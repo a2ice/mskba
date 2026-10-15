@@ -23,10 +23,10 @@ html[data-appearance-mode="light"] :is(
     ) {
         background-image: linear-gradient(170deg,
             var(--light-display-gloss-top, #455467) 0%,
-            var(--light-display-gloss-bottom, #18212b) 90%);
+            var(--light-display-gloss-bottom, #18212b) 90%) !important;
         -webkit-background-clip: text;
         background-clip: text;
-        -webkit-text-fill-color: transparent;
+        -webkit-text-fill-color: transparent !important;
     }
 }
 /* Large card titles, controls and small h3 headings stay solid. */
@@ -101,8 +101,8 @@ html[data-appearance-mode="light"] :is(.mskba-modal, .app-contact-wizard__dialog
     font-family: var(--preview-font-family, var(--light-display-font-family, Inter, Arial, sans-serif));
 }
 html[data-appearance-mode="light"] .theme-preview[data-preview-gloss="off"] .theme-preview__display-title {
-    background-image: none;
-    -webkit-text-fill-color: currentColor;
+    background-image: none !important;
+    -webkit-text-fill-color: currentColor !important;
     color: var(--text);
 }
 @media (prefers-contrast: more), (forced-colors: active) {
