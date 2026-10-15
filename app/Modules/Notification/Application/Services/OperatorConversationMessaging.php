@@ -102,6 +102,7 @@ final class OperatorConversationMessaging
             payload: [
                 'source' => 'operator.message',
                 'operator_conversation_id' => $conversation->id,
+                'operator_user_id' => $conversation->operator_user_id,
                 'operator_message_id' => $messageId,
             ],
         ));
