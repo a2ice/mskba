@@ -131,6 +131,19 @@ final class OperatorActivityService
             return '/';
         }
 
+        // Preserve the requested page for ordinary account/message navigation,
+        // but never expose query strings, contacts/verification URLs or arbitrary
+        // private path parameters to a backoffice operator.
+        if (preg_match('~^/account/notifications/threads/(operator|support|direct)/[1-9][0-9]*/?$~', $path)) {
+            return rtrim($path, '/');
+        }
+        if ($path === '/account/notifications' || $path === '/account/notifications/') {
+            return '/account/notifications';
+        }
+        if (preg_match('~^/account/notifications(?:/|$)~', $path)) {
+            return '/account/notifications';
+        }
+
         if (preg_match('~^/(account|backoffice|admin|api|auth|login|logout|integrations)(/|$)~i', $path, $matches)) {
             return '/'.$matches[1];
         }
