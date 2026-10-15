@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notification;
 
+use App\Filament\Backoffice\Resources\SupportTickets\SupportTicketResource;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -212,6 +213,7 @@ final class SupportTicketsTest extends TestCase
             'body' => 'Позднее сообщение',
         ])->assertForbidden();
     }
+
     public function test_support_conversations_are_visually_grouped_without_merging_tickets(): void
     {
         $customer = $this->user();
@@ -276,11 +278,151 @@ final class SupportTicketsTest extends TestCase
         // Protocol-relative external URLs are never promoted to clickable links.
         $this->actingAs($customer)->post(route('account.notifications.support.store'), [
             'subject' => 'Проверка ссылки',
-            'body' => "Страница обращения: //example.com\\n\\nОбычный текст",
+            'body' => 'Страница обращения: //example.com\\n\\nОбычный текст',
         ])->assertRedirect();
         $other = SupportTicket::query()->latest('id')->firstOrFail();
         $this->get(route('account.notifications.threads.support', $other))
             ->assertOk()->assertDontSee('href="//example.com"', false);
     }
 
+    public function test_close_reason_actor_and_system_timeline_are_visible_to_both_sides_and_reopen(): void
+    {
+        $customer = $this->user();
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $ticket = $this->createTicket($customer);
+        $close = route('account.notifications.threads.support.close', $ticket);
+        $reopen = route('account.notifications.threads.support.reopen', $ticket);
+
+        $this->actingAs($lead)->post($close, [
+            'reason' => 'other',
+        ])->assertSessionHasErrors(['description']);
+        $this->assertSame('open', $ticket->fresh()->status);
+
+        $this->post($close, [
+            'reason' => 'other', 'description' => 'Проверка причины закрытия',
+        ])->assertRedirect();
+        $this->assertSame('closed', $ticket->fresh()->status);
+        $this->assertSame('other', $ticket->fresh()->close_reason);
+        $this->assertSame('Проверка причины закрытия', $ticket->fresh()->close_description);
+        $this->assertSame($lead->id, (int) $ticket->fresh()->closed_by_user_id);
+        $this->assertNotNull($ticket->fresh()->closed_at);
+
+        $event = $ticket->thread->events()->where('action', 'support_closed')->firstOrFail();
+        $this->assertSame('other', $event->metadata['reason']);
+        $this->assertSame($lead->id, (int) $event->actor_user_id);
+
+        foreach ([$customer, $lead] as $viewer) {
+            $page = $this->actingAs($viewer)->get(route('account.notifications.threads.support', $ticket))
+                ->assertOk()->assertSee('Система MSKBA')->assertSee('Другая причина')
+                ->assertSee('Проверка причины закрытия')->assertSee($lead->username);
+            $this->assertStringContainsString('Обращение закрыто.', $page->getContent());
+            $history = $this->getJson(route('account.notifications.threads.support.history', $ticket))
+                ->assertOk()->json('html');
+            $this->assertStringContainsString('Обращение закрыто.', $history);
+            $this->assertStringContainsString('Другая причина', $history);
+        }
+        $this->actingAs($customer)->post($reopen)->assertForbidden();
+        $this->actingAs($lead)->post($reopen)->assertRedirect();
+        $this->assertSame('open', $ticket->fresh()->status);
+        $this->assertNull($ticket->fresh()->close_reason);
+        $this->assertNull($ticket->fresh()->closed_by_user_id);
+        $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
+        $page = $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee('Обращение возобновлено')->assertSee($lead->username);
+        $this->assertStringContainsString('Обращение закрыто.', $page->getContent());
+        $this->actingAs($lead)->post($reopen)->assertForbidden();
+        $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
+    }
+
+    public function test_reason_is_enum_and_non_other_reasons_discard_description(): void
+    {
+        $customer = $this->user();
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $ticket = $this->createTicket($customer);
+
+        $this->actingAs($lead)->post(route('account.notifications.threads.support.close', $ticket), [
+            'reason' => 'malicious_invalid',
+        ])->assertSessionHasErrors('reason');
+        $this->assertSame('open', $ticket->fresh()->status);
+
+        $this->post(route('account.notifications.threads.support.close', $ticket), [
+            'reason' => 'no_longer_relevant', 'description' => 'Should not persist',
+        ])->assertRedirect();
+        $this->assertSame('no_longer_relevant', $ticket->fresh()->close_reason);
+        $this->assertNull($ticket->fresh()->close_description);
+        $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee('Не актуально')->assertDontSee('Should not persist');
+    }
+
+    public function test_support_history_keyset_paginates_system_events_and_messages_without_leaking(): void
+    {
+        $customer = $this->user();
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $stranger = $this->user();
+        $ticket = $this->createTicket($customer);
+        $thread = $ticket->thread;
+        foreach (range(1, 14) as $index) {
+            $thread->messages()->create(['sender_user_id' => $customer->id, 'body' => 'Сообщение '.$index]);
+        }
+        $this->actingAs($lead)->post(route('account.notifications.threads.support.close', $ticket), [
+            'reason' => 'resolved',
+        ])->assertRedirect();
+
+        $seen = [];
+        $cursor = null;
+        for ($page = 0; $page < 4; $page++) {
+            $response = $this->actingAs($customer)->getJson(
+                route('account.notifications.threads.support.history', $ticket)
+                .($cursor !== null ? '?before='.rawurlencode($cursor) : '')
+            )->assertOk();
+            $seen[] = $response->json('html');
+            $cursor = $response->json('next_before');
+            if ($cursor === null) {
+                break;
+            }
+        }
+        $joined = implode(' ', $seen);
+        $this->assertStringContainsString('Обращение закрыто.', $joined);
+        $this->assertStringContainsString('Сообщение 1', $joined);
+        $this->assertStringContainsString('Сообщение 14', $joined);
+        $this->actingAs($stranger)->getJson(
+            route('account.notifications.threads.support.history', $ticket)
+        )->assertForbidden();
+        $this->actingAs($customer)->getJson(
+            route('account.notifications.threads.support.history', $ticket).'?before=bad!!'
+        )->assertStatus(422);
+    }
+
+    public function test_filament_support_view_is_read_only_and_obeys_historical_permissions(): void
+    {
+        $customer = $this->user();
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $ticket = $this->createTicket($customer);
+        $base = '/backoffice/support-tickets';
+
+        $this->actingAs($customer)->get($base)->assertForbidden();
+        $this->actingAs($lead)->get($base)->assertOk()
+            ->assertSee('Техподдержка')
+            ->assertSee('Управление - ', false)
+            ->assertSee('originalSuffix', false);
+        $this->get('/backoffice/dashboard-button-styles')->assertOk()
+            ->assertSee('Стили кнопок')->assertSee('Дизайн');
+        $this->get($base.'/'.$ticket->id)->assertOk()
+            ->assertSee('Вопрос об аккаунте')->assertSee('Прошу помочь с подтверждением');
+        $this->assertFalse(SupportTicketResource::canCreate());
+        $this->assertFalse(SupportTicketResource::canEdit($ticket));
+        $this->assertFalse(SupportTicketResource::canDelete($ticket));
+
+        $staff = $this->user(UserSystemRoleEnum::ADMIN);
+        // Filament AuthenticateSession binds the preceding logged-in identity.
+        $this->flushSession();
+        $this->actingAs($staff)->get($base)->assertForbidden();
+        app(AdminUpdateUserOperationalPermissionsHandler::class)
+            ->handle($lead, $staff->id, [
+                UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS,
+            ]);
+        $this->actingAs($staff)->get($base)->assertOk()
+            ->assertDontSee('Вопрос об аккаунте');
+        $this->get($base.'/'.$ticket->id)->assertNotFound();
+    }
 }

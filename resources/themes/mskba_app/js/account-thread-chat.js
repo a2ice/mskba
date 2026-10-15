@@ -372,3 +372,31 @@ if (root) {
         if (!document.hidden) { void refreshDirectState(); void refresh(); void refreshRail(); }
     });
 }
+
+
+// A native modal keeps the requested close reason in a real server-validated form.
+document.querySelectorAll('[data-support-close-dialog]').forEach(dialog => {
+    const trigger = document.querySelector('[data-support-close-trigger]');
+    const cancel = dialog.querySelector('[data-support-close-cancel]');
+    const reason = dialog.querySelector('[data-support-close-reason]');
+    const wrap = dialog.querySelector('[data-support-close-description-wrap]');
+    const description = dialog.querySelector('[data-support-close-description]');
+    const syncReason = () => {
+        const other = reason?.value === 'other';
+        if (wrap) wrap.hidden = !other;
+        if (description) {
+            description.required = other;
+            if (!other) description.value = '';
+        }
+    };
+    trigger?.addEventListener('click', () => {
+        syncReason();
+        dialog.showModal();
+    });
+    cancel?.addEventListener('click', () => dialog.close());
+    reason?.addEventListener('change', syncReason);
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) dialog.close();
+    });
+    syncReason();
+});

@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Providers\Filament;
 
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
+use App\Filament\Backoffice\Resources\SupportTickets\SupportTicketResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -13,11 +15,13 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 final class BackofficePanelProvider extends PanelProvider
@@ -32,7 +36,32 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
-            ->resources([AccountDashboardWidgetResource::class, DashboardButtonStyleResource::class, BackofficeUserResource::class])
+            ->resources([
+                AccountDashboardWidgetResource::class,
+                DashboardButtonStyleResource::class,
+                BackofficeUserResource::class,
+                SupportTicketResource::class,
+            ])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(<<<'HTML'
+<script>
+(function () {
+    const prefix = 'Управление - ';
+    const originalSuffix = ' - MSKBA · Управление';
+    function updateTitle() {
+        const title = document.querySelector('title');
+        if (!title) return;
+        const current = title.textContent.trim();
+        if (current.startsWith(prefix)) return;
+        const section = current.endsWith(originalSuffix)
+            ? current.slice(0, -originalSuffix.length)
+            : current;
+        title.textContent = prefix + section + ' - MSKBA';
+    }
+    updateTitle();
+    document.addEventListener('livewire:navigated', updateTitle);
+})();
+</script>
+HTML))
             ->pages([Dashboard::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
