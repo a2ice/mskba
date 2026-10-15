@@ -6,11 +6,13 @@ import {
 
 const origin = 'https://dev.mskba.ru';
 
-test('detects support and direct threads only on the current origin', () => {
+test('detects support, direct and operator threads only on the current origin', () => {
     assert.deepEqual(conversationFromHref('/account/notifications/threads/support/17', origin),
         { kind: 'support', id: 17 });
     assert.deepEqual(conversationFromHref(origin + '/account/notifications/threads/direct/23', origin),
         { kind: 'direct', id: 23 });
+    assert.deepEqual(conversationFromHref('/account/notifications/threads/operator/99', origin),
+        { kind: 'operator', id: 99 });
     assert.deepEqual(conversationFromHref('/account/notifications/threads/support/5/', origin),
         { kind: 'support', id: 5 });
 });

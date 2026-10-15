@@ -890,6 +890,17 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/notifications/threads/profile/{changeRequest}/transfer', [ProfileRequestThreadController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.transfer');
         Route::post('/notifications/threads/profile/{changeRequest}/remove', [ProfileRequestThreadController::class, 'remove'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.remove');
         Route::post('/notifications/threads/profile/{changeRequest}/messages', [ProfileRequestThreadController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.profile.messages');
+        // Operator-service conversations are distinct from personal DMs.
+        Route::get('/notifications/threads/operator/{conversation}', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'show'])
+            ->name('account.notifications.threads.operator')->defaults('breadcrumb', 'Диалог с оператором');
+        Route::get('/notifications/threads/operator/{conversation}/history', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'history'])
+            ->middleware('throttle:60,1')->name('account.notifications.threads.operator.history');
+        Route::get('/notifications/threads/operator/{conversation}/state', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'state'])
+            ->middleware('throttle:30,1')->name('account.notifications.threads.operator.state');
+        Route::patch('/notifications/threads/operator/{conversation}/read', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'read'])
+            ->name('account.notifications.threads.operator.read');
+        Route::post('/notifications/threads/operator/{conversation}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'send'])
+            ->middleware('throttle:direct-messages')->name('account.notifications.threads.operator.messages');
         Route::get('/notifications/threads/direct/{conversation}', [DirectMessagesController::class, 'show'])
             ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
         Route::post('/notifications/users/{user}/block', [DirectMessagesController::class, 'block'])->middleware('throttle:10,1')->name('account.notifications.direct.block');
@@ -923,7 +934,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/notifications/popover/notice/{id}', [\App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class, 'notice'])
             ->whereNumber('id')->middleware('throttle:20,1')->name('account.notifications.popover.notice');
         Route::get('/notifications/popover/{kind}/{id}', \App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class)
-            ->where('kind', 'support|direct')->whereNumber('id')
+            ->where('kind', 'support|direct|operator')->whereNumber('id')
             ->middleware('throttle:30,1')->name('account.notifications.popover');
         Route::get('/notifications/new', [AccountController::class, 'newNotifications'])
             ->name('account.notifications.new');

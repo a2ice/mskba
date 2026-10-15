@@ -8,6 +8,7 @@ use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyle
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\SupportTickets\SupportTicketResource;
 use App\Filament\Backoffice\Resources\OperatorUsers\OperatorUserResource;
+use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -45,6 +46,7 @@ final class BackofficePanelProvider extends PanelProvider
                 BackofficeUserResource::class,
                 SupportTicketResource::class,
                 OperatorUserResource::class,
+                OperatorConversationResource::class,
             ])
             // Filament's support chat uses the same browser-safe Reverb key
             // as the portal, never a private app secret or compiled .env.

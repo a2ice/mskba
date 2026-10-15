@@ -6,8 +6,10 @@ const subscriptions = new Map();
 
 const attach = () => {
     const present = new Set();
-    document.querySelectorAll('[data-filament-support-chat][data-support-thread-id]').forEach(element => {
-        const threadId = element.dataset.supportThreadId;
+    document.querySelectorAll('[data-filament-support-chat][data-support-thread-id], [data-filament-operator-chat][data-operator-thread-id]').forEach(element => {
+        const isOperator = element.hasAttribute('data-filament-operator-chat');
+        const threadId = isOperator ? element.dataset.operatorThreadId : element.dataset.supportThreadId;
+        const stateUrl = isOperator ? element.dataset.operatorStateUrl : element.dataset.supportStateUrl;
         const livewireId = element.closest('[wire\\:id]')?.getAttribute('wire:id');
         if (!threadId || !livewireId) return;
         present.add(livewireId);
@@ -18,12 +20,12 @@ const attach = () => {
             if (syncPending || document.hidden || !element.isConnected) return;
             syncPending = true;
             try {
-                const response = await fetch(element.dataset.supportStateUrl, {
+                const response = await fetch(stateUrl, {
                     credentials: 'same-origin', cache: 'no-store',
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 if (response.status === 403 || response.status === 404) {
-                    window.location.assign('/backoffice/support-tickets');
+                    window.location.assign(isOperator ? '/backoffice/operator-conversations' : '/backoffice/support-tickets');
                     return;
                 }
                 if (!response.ok) return;
@@ -34,7 +36,7 @@ const attach = () => {
                 // Reverb/network may be temporarily unavailable. The next refresh retries.
             } finally { syncPending = false; }
         };
-        const viewport = element.querySelector('[data-filament-support-history]');
+        const viewport = element.querySelector('[data-filament-support-history], [data-filament-operator-history]');
         let stickToBottom = true;
         let olderSnapshot = null;
         const onScroll = () => {
@@ -61,8 +63,9 @@ const attach = () => {
             requestAnimationFrame(() => { viewport.scrollTop = viewport.scrollHeight; });
         }
         const onSent = () => { if (viewport) viewport.scrollTop = viewport.scrollHeight; };
-        window.addEventListener('support-chat-sent', onSent);
-        const unsubscribe = subscribePrivate('support-tickets.' + threadId, '.conversation.changed', () => {
+        const sentEvent = isOperator ? 'operator-chat-sent' : 'support-chat-sent';
+        window.addEventListener(sentEvent, onSent);
+        const unsubscribe = subscribePrivate((isOperator ? 'operator-conversations.' : 'support-tickets.') + threadId, '.conversation.changed', () => {
             void sync();
         });
         const onReconnect = (event) => {
@@ -79,7 +82,7 @@ const attach = () => {
             observer.disconnect();
             viewport?.removeEventListener('scroll', onScroll);
             viewport?.removeEventListener('click', onClick);
-            window.removeEventListener('support-chat-sent', onSent);
+            window.removeEventListener(sentEvent, onSent);
         });
     });
     for (const [id, unsubscribe] of subscriptions) {

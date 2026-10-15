@@ -4,7 +4,7 @@ export const conversationFromHref = (href, origin) => {
     try {
         const url = new URL(href, origin);
         if (url.origin !== origin || url.search || url.hash) return null;
-        const match = url.pathname.match(/^\/account\/notifications\/threads\/(support|direct)\/([1-9]\d*)\/?$/);
+        const match = url.pathname.match(/^\/account\/notifications\/threads\/(support|direct|operator)\/([1-9]\d*)\/?$/);
         return match ? { kind: match[1], id: Number(match[2]) } : null;
     } catch { return null; }
 };

@@ -21,6 +21,7 @@ final class ConversationChangedBroadcast implements ShouldBroadcastNow
         return new PrivateChannel(match ($this->type) {
             'profile' => 'request-threads.',
             'support' => 'support-tickets.',
+            'operator' => 'operator-conversations.',
             default => 'direct-conversations.',
         }.$this->id);
     }

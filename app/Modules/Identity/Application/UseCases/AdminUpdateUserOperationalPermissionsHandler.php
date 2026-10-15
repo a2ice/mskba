@@ -118,6 +118,11 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $enabled && $wasEnabled) {
                     app(SupportTicketAccess::class)->revokeForUser($target, $actor);
                 }
+                if ($permission === UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE
+                    && ! $enabled && $wasEnabled) {
+                    app(\App\Modules\Notification\Application\Services\OperatorConversationRevocation::class)
+                        ->revokeForUser($target);
+                }
                 // Unchanged values must not reset the original grant timestamp.
             }
         });
