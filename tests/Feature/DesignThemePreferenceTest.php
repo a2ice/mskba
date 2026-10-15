@@ -23,8 +23,8 @@ final class DesignThemePreferenceTest extends TestCase
         );
         $this->assertSame('arena_night', app(DesignThemeManager::class)->default()->slug);
         $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
-        $this->assertSame('#F8FAFE', $day->colors['bg']);
-        $this->assertSame('#EDF4FC', $day->colors['surface-raised']);
+        $this->assertSame('#F3F4F6', $day->colors['bg']);
+        $this->assertSame('#F7F8FA', $day->colors['surface-raised']);
         $this->assertStringContainsString('--light-page-top: #ffffff;', $day->css_code);
     }
 
@@ -45,10 +45,10 @@ final class DesignThemePreferenceTest extends TestCase
         $migration->up();
 
         $day->refresh();
-        $this->assertSame('#F8FAFE', $day->colors['bg']);
-        $this->assertSame('#F7FAFF', $day->colors['field']);
+        $this->assertSame('#F3F4F6', $day->colors['bg']);
+        $this->assertSame('#F8F9FA', $day->colors['field']);
         $this->assertSame('#DDEEFF', $day->colors['surface-raised']);
-        $this->assertStringContainsString('--body-glow: #c5daf030;', $day->css_code);
+        $this->assertStringContainsString('--body-glow: #00000000;', $day->css_code);
         $this->assertSame($before + 1, $day->revisions()->count());
     }
 
@@ -68,11 +68,46 @@ final class DesignThemePreferenceTest extends TestCase
         $migration->up();
 
         $day->refresh();
-        $this->assertSame('#F8FAFE', $day->colors['bg']);
-        $this->assertSame('#F7FAFF', $day->colors['field']);
+        $this->assertSame('#F3F4F6', $day->colors['bg']);
+        $this->assertSame('#F8F9FA', $day->colors['field']);
         $this->assertSame('#DDEEFF', $day->colors['surface-raised']);
-        $this->assertStringContainsString('--body-glow: #c5daf030;', $day->css_code);
-        $this->assertStringContainsString('--light-card-blue: #e9f3ff;', $day->css_code);
+        $this->assertStringContainsString('--body-glow: #00000000;', $day->css_code);
+        $this->assertStringContainsString('--light-card-blue: #FFFFFF;', $day->css_code);
+        $this->assertSame($before + 1, $day->revisions()->count());
+
+        $migration->up();
+        $this->assertSame($before + 1, $day->revisions()->count());
+    }
+
+    public function test_social_neutral_upgrade_preserves_custom_filament_colors_and_is_idempotent(): void
+    {
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $colors = $day->colors;
+        $colors['bg'] = '#F8FAFE'; // Previous standard value.
+        $colors['line'] = '#AAABAC'; // Administrator override.
+        $colors['surface-raised'] = '#EDF4FC'; // Previous standard.
+        $css = str_replace(
+            '--light-page-bottom: #F1F2F4;',
+            '--light-page-bottom: #eef5fc;',
+            $day->css_code,
+        );
+        $css = str_replace(
+            '--light-title-top: #18212B;',
+            '--light-title-top: #334455;', // Administrator override.
+            $css,
+        );
+        $day->update(['colors' => $colors, 'css_code' => $css]);
+        $before = $day->revisions()->count();
+
+        $migration = require database_path('migrations/2026_10_15_230000_social_neutral_court_day.php');
+        $migration->up();
+
+        $day->refresh();
+        $this->assertSame('#F3F4F6', $day->colors['bg']);
+        $this->assertSame('#F7F8FA', $day->colors['surface-raised']);
+        $this->assertSame('#AAABAC', $day->colors['line']);
+        $this->assertStringContainsString('--light-page-bottom: #F1F2F4;', $day->css_code);
+        $this->assertStringContainsString('--light-title-top: #334455;', $day->css_code);
         $this->assertSame($before + 1, $day->revisions()->count());
 
         $migration->up();
