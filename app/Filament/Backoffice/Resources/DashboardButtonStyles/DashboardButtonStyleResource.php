@@ -30,6 +30,8 @@ final class DashboardButtonStyleResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Дизайн';
+
     public static function getNavigationLabel(): string
     {
         return 'Стили кнопок';

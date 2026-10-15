@@ -9,7 +9,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 final class SupportTicket extends Model
 {
-    protected $fillable = ['user_id', 'subject', 'status'];
+    protected $fillable = ['user_id', 'subject', 'status', 'close_reason', 'close_description', 'closed_by_user_id', 'closed_at'];
+
+    protected function casts(): array
+    {
+        return ['closed_at' => 'datetime'];
+    }
+
+    public function closer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'closed_by_user_id');
+    }
 
     public function user(): BelongsTo
     {

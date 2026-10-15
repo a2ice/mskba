@@ -901,6 +901,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/notifications/threads/support/{ticket}/claim', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.support.claim');
         Route::post('/notifications/threads/support/{ticket}/transfer', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.support.transfer');
         Route::post('/notifications/threads/support/{ticket}/close', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'close'])->middleware('throttle:10,1')->name('account.notifications.threads.support.close');
+        Route::post('/notifications/threads/support/{ticket}/reopen', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'reopen'])->middleware('throttle:10,1')->name('account.notifications.threads.support.reopen');
         Route::get('/notifications/threads/system/history', [AccountConversationsController::class, 'historySystem'])->middleware('throttle:60,1')->name('account.notifications.threads.system.history');
         Route::patch('/notifications/threads/system/read', [AccountConversationsController::class, 'readSystem'])
             ->name('account.notifications.threads.system.read');
