@@ -93,6 +93,10 @@ final class DashboardWidgetLayoutDelayTest extends TestCase
 
     public function test_filament_rejects_rapid_second_save_but_allows_after_timer(): void
     {
+        // Freeze the clock so a CI runner crossing a second boundary while
+        // rendering Filament does not turn a valid 5-second cooldown into 4.
+        $this->travelTo(now()->startOfSecond());
+
         $editor = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $widget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
         $this->actingAs($editor);
