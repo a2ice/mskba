@@ -77,9 +77,34 @@ final class DesignThemeCss
             $declarations[] = '--'.$name.':'.$colors[$name].';';
         }
 
-        return "/* MSKBA appearance: {$theme->slug} */\n:root {\n    "
-            .implode("\n    ", $declarations)."\n}\n"
-            .trim((string) $theme->css_code)."\n";
+        $bodyFont = (string) ($theme->body_font ?? 'inter');
+        $headingFont = (string) ($theme->heading_font ?? 'inter');
+        if (! isset(DesignFontCatalog::FAMILIES[$bodyFont], DesignFontCatalog::FAMILIES[$headingFont])) {
+            throw ValidationException::withMessages(['body_font' => 'Выбери шрифты из утверждённой коллекции.']);
+        }
+
+        $fontDeclarations = [
+            '--theme-font-family: '.DesignFontCatalog::family($bodyFont).';',
+            '--theme-heading-font-family: '.DesignFontCatalog::family($headingFont).';',
+            '--light-display-font-family: '.DesignFontCatalog::family($headingFont).';',
+        ];
+        $glowColor = $theme->widget_glow_color;
+        if ($glowColor !== null && $glowColor !== '') {
+            $strength = $theme->widget_glow_strength ?? 20;
+            if (! is_string($glowColor) || ! preg_match('/\\A#[a-fA-F0-9]{6}\\z/D', $glowColor)
+                || ! is_numeric($strength) || (int) $strength < 0 || (int) $strength > 40) {
+                throw ValidationException::withMessages(['widget_glow_color' => 'Недопустимые параметры свечения карточек.']);
+            }
+            $alpha = strtoupper(str_pad(dechex((int) round(((int) $strength) * 255 / 100)), 2, '0', STR_PAD_LEFT));
+            $fontDeclarations[] = '--surface-corner-glow: '.strtoupper($glowColor).$alpha.';';
+        }
+
+        // Applied after the editable legacy CSS to ensure visual controls win
+        // while retaining backwards-compatible custom properties and revisions.
+        return "/* MSKBA appearance: {$theme->slug} */\\n:root {\\n    "
+            .implode("\\n    ", $declarations)."\\n}\\n"
+            .trim((string) $theme->css_code)."\\n:root {\\n    "
+            .implode("\\n    ", $fontDeclarations)."\\n}\\n";
     }
 
     public function revision(DesignTheme $theme): string
