@@ -149,13 +149,13 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         const read = document.createElement('button');
         read.type = 'button';
         read.className = 'app-message-toast__read';
-        read.textContent = 'Прочитано';
+        read.textContent = 'Отметить прочитанным';
         read.setAttribute('aria-label', 'Отметить уведомление прочитанным');
         read.addEventListener('click', () => markRead());
-        if (notification.is_read) {
-            read.disabled = true;
-            read.textContent = 'Прочитано';
-        }
+        // An already read conversation can remain minimized in its original
+        // toast, but there is no new "read" action to offer for that notice.
+        read.hidden = Boolean(notification.is_read);
+        read.disabled = Boolean(notification.is_read);
         card.append(read);
 
         // Never permit external or javascript: URLs from notification metadata.
@@ -234,10 +234,13 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             }
         }
         if (cards.has(id)) {
-            // If it was acknowledged while expanded, refresh its read control.
-            if (notification.is_read) {
-                const read = cards.get(id).querySelector('.app-message-toast__read');
-                if (read) { read.disabled = true; read.textContent = 'Прочитано'; }
+            // The expanded window may have acknowledged this notification.
+            // Keep the original toast, but reflect its CURRENT read status.
+            const read = cards.get(id).querySelector('.app-message-toast__read');
+            if (read) {
+                read.hidden = Boolean(notification.is_read);
+                read.disabled = Boolean(notification.is_read);
+                read.textContent = 'Отметить прочитанным';
             }
         } else {
             const card = create(notification);

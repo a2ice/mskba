@@ -39,11 +39,22 @@
 /* Do not inherit the global design-system paragraph spacing in toasts. */
 .toast p { margin-top: 0; }
 .app-message-toast-region .toast:is(:hover, :focus-within) { opacity: 1; }
-.app-message-toast__heading { min-width: 0; font-size: .8rem; line-height: 1.3; }
+.app-message-toast__heading {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding-right: 23px; /* Reserve space for the close button on long titles. */
+    font-size: .8rem;
+    line-height: 1.3;
+}
 .app-message-toast__close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: grid;
+    place-items: center;
     width: 22px;
     height: 22px;
-    margin: -3px -4px 0 0;
+    margin: 0;
     padding: 0;
     border: 0;
     border-radius: 8px;
@@ -92,9 +103,10 @@
     }
     .app-message-toast__error { font-size: .675rem; }
     .app-message-toast__close {
+        top: 3px;
+        right: 3px;
         width: 19.8px;
         height: 19.8px;
-        margin: -2.7px -3.6px 0 0;
         font-size: 16.2px;
     }
 }
@@ -396,3 +408,5 @@ body.app-notification-popover-open .app-message-toast-region {
         background: rgba(0,0,0,.56);
     }
 }
+
+.app-message-toast__read[hidden] { display: none !important; }

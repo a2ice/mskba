@@ -241,6 +241,7 @@ test('minimized conversation returns to original toast even when already read', 
     const original = region.children[0];
     assert.equal(original.querySelector('.app-message-toast__heading').textContent, 'Техподдержка №3');
     assert.equal(original.querySelector('.app-message-toast__read').disabled, true);
+    assert.equal(original.querySelector('.app-message-toast__read').hidden, true);
     dock.reconcile([1, 2, 3, 4].map(id => notification(id)));
     assert.equal(region.children[0], original);
     dock.unpin(55);
@@ -258,4 +259,22 @@ test('a minimized unread notification is not duplicated after resynchronization'
     dock.reconcile([notice, notification(42)]);
     assert.deepEqual(region.children.map(item => item.dataset.messageToastId), ['41', '42']);
     assert.equal(dock.size(), 2);
+});
+
+test('a new unread toast offers a read action; an acknowledged minimized toast does not', () => {
+    const { region, dock, requests } = setup();
+    const unread = notification(62, { title: 'Новое сообщение техподдержки №3' });
+    dock.add(unread);
+    const read = region.children[0].querySelector('.app-message-toast__read');
+    assert.equal(read.textContent, 'Отметить прочитанным');
+    assert.equal(read.hidden, false);
+    assert.equal(read.disabled, false);
+
+    // The notice can be acknowledged in the expanded window, then minimized.
+    dock.pin({ ...unread, is_read: true });
+    const acknowledged = region.children[0].querySelector('.app-message-toast__read');
+    assert.equal(acknowledged.hidden, true);
+    assert.equal(acknowledged.disabled, true);
+    assert.equal(region.children[0].querySelector('.app-message-toast__expand'), null);
+    assert.equal(requests.length, 0, 'Minimize must not change read status');
 });
