@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages;
 
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
@@ -11,6 +12,8 @@ final class CreateAccountDashboardWidget extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         AccountDashboardWidgetResource::assertSafeData($data);
+        $data['last_edit_at'] = now();
+
         return $data;
     }
 }
