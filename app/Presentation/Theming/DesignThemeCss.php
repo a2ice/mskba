@@ -99,6 +99,24 @@ final class DesignThemeCss
             $fontDeclarations[] = '--surface-corner-glow: '.strtoupper($glowColor).$alpha.';';
         }
 
+        $sidebarMap = [
+            'sidebar_background' => '--sidebar-background',
+            'sidebar_text' => '--sidebar-text',
+            'sidebar_hover' => '--sidebar-hover',
+            'sidebar_active_background' => '--sidebar-active-background',
+            'sidebar_active_text' => '--sidebar-active-text',
+        ];
+        foreach ($sidebarMap as $column => $token) {
+            $value = $theme->{$column};
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (! is_string($value) || ! preg_match('/\\A#[a-fA-F0-9]{6}\\z/D', $value)) {
+                throw ValidationException::withMessages([$column => 'Используй HEX-цвет #RRGGBB.']);
+            }
+            $fontDeclarations[] = $token.': '.strtoupper($value).';';
+        }
+
         // Applied after the editable legacy CSS to ensure visual controls win
         // while retaining backwards-compatible custom properties and revisions.
         return "/* MSKBA appearance: {$theme->slug} */\n:root {\n    "
