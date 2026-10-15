@@ -6,6 +6,8 @@
     <section class="app-messages app-messages--thread" aria-label="Переписка с техподдержкой"
              data-chat-root data-chat-history-url="{{ route('account.notifications.threads.support.history', $ticket) }}"
              data-chat-read-url="{{ route('account.notifications.threads.support.read', $ticket) }}"
+             data-chat-support-state-url="{{ route('account.notifications.threads.support.state', $ticket) }}"
+             data-chat-support-signature="{{ $supportSignature }}"
              data-chat-unread-initial="{{ $unread }}" data-chat-channel="support-tickets.{{ $thread->id }}">
         <header class="panel app-messages__thread-header">
             <a class="app-messages__back" href="{{ route('account.notifications') }}" aria-label="Все сообщения">
@@ -98,10 +100,9 @@
             <div class="panel app-messages__compose app-messages__system-footer">
                 <p>Обращение закрыто. История доступна для чтения.</p>
                 @if ($ticket->closed_by_user_id)
-                    <p>Закрыл: {{ $ticket->closer?->username ?? 'Сотрудник поддержки' }}.
-                        Причина: {{ \App\Modules\Notification\Domain\Enums\SupportClosureReasonEnum::tryFrom($ticket->close_reason ?? '')?->label() ?? 'Не указана' }}.
-                        @if ($ticket->close_description) Описание: {{ $ticket->close_description }}. @endif
-                    </p>
+                    <p>{{ app(\App\Modules\Notification\Application\Services\SupportTicketLifecycleText::class)->closed(
+                        $ticket->closer?->username, $ticket->close_reason, $ticket->close_description,
+                    ) }}</p>
                 @endif
                 @if ($canReopen)
                     <form method="POST" action="{{ route('account.notifications.threads.support.reopen', $ticket) }}">

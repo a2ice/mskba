@@ -8,6 +8,42 @@ if (root) {
     const form = root.querySelector('[data-chat-compose]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const directStateUrl = root.dataset.chatDirectStateUrl || null;
+    const supportStateUrl = root.dataset.chatSupportStateUrl || null;
+    const supportSignature = root.dataset.chatSupportSignature || null;
+    let supportStatePending = false;
+    let supportStateQueued = false;
+    // The state endpoint is authoritative for the composer/closed banner,
+    // including missed Reverb events or a backgrounded tab.
+    const refreshSupportState = async () => {
+        if (!supportStateUrl) return;
+        if (supportStatePending) { supportStateQueued = true; return; }
+        supportStatePending = true;
+        try {
+            const response = await fetch(supportStateUrl, {
+                credentials: 'same-origin', cache: 'no-store',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (response.status === 403 || response.status === 404) {
+                window.location.reload(); // Revoke stale confidential data immediately.
+                return;
+            }
+            if (!response.ok) return;
+            const data = await response.json();
+            if (typeof data.signature === 'string' && data.signature !== supportSignature) {
+                // Re-render the entire server-authorized composition. No stale
+                // form references, actions or submit handlers survive the change.
+                window.location.reload();
+            }
+        } catch (_error) {
+            // Preserve the last view on transient network failure; next check retries.
+        } finally {
+            supportStatePending = false;
+            if (supportStateQueued) {
+                supportStateQueued = false;
+                void refreshSupportState();
+            }
+        }
+    };
     let before = log?.dataset.nextBefore || null;
     let loading = false;
     let latestPending = false;
@@ -348,6 +384,12 @@ if (root) {
     const channel = root.dataset.chatChannel;
     if (channel) subscribePrivate(channel, '.conversation.changed', payload => {
         if (payload?.access_changed) {
+            if (supportStateUrl) {
+                void refreshSupportState();
+                void refresh();
+                void refreshRail();
+                return;
+            }
             if (!directStateUrl) { window.location.reload(); return; }
             void refreshDirectState();
             void refresh();
@@ -364,13 +406,28 @@ if (root) {
     });
     // Returning to a background window also reconciles notifications that
     // arrived while inactive. read acknowledgement waits for this fetch.
-    window.addEventListener('focus', () => { void refreshDirectState(); void refresh(); void refreshRail(); });
+    window.addEventListener('focus', () => {
+        void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+    });
     window.addEventListener('mskba:realtime-state', event => {
-        if (event.detail?.state === 'connected') { void refreshDirectState(); void refresh(); void refreshRail(); }
+        if (event.detail?.state === 'connected') {
+            void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+        }
     });
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) { void refreshDirectState(); void refresh(); void refreshRail(); }
+        if (!document.hidden) {
+            void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+        }
     });
+    if (supportStateUrl) {
+        // Reverb is fast; periodic authorization-aware state reconciliation
+        // covers disconnects, suspended browser tabs and missed broadcasts.
+        void refreshSupportState();
+        const supportStateTimer = window.setInterval(() => {
+            if (!document.hidden) void refreshSupportState();
+        }, 10000);
+        window.addEventListener('pagehide', () => window.clearInterval(supportStateTimer), { once: true });
+    }
 }
 
 

@@ -86,8 +86,40 @@ final class SupportTicketsController extends Controller
             'canReopen' => $ticket->status === 'closed' && $access->isAgent($viewer)
                 && $access->canRead($viewer, $ticket, $thread)
                 && ($isLead || $thread->lead_user_id === null),
+            'supportSignature' => $this->stateSignature($viewer, $ticket, $thread, $access),
             'conversationCards' => app(AccountConversationRail::class)->items($viewer, $request),
             'activeConversationId' => 'support-'.$ticket->id,
+        ]);
+    }
+
+    public function state(Request $request, SupportTicket $ticket, SupportTicketAccess $access): JsonResponse
+    {
+        $viewer = $request->user()->canonical();
+        $thread = $ticket->thread()->firstOrFail();
+        abort_unless($access->canRead($viewer, $ticket, $thread), 403);
+
+        return response()->json([
+            'status' => $ticket->status,
+            'can_send' => $access->canWrite($viewer, $ticket, $thread),
+            'signature' => $this->stateSignature($viewer, $ticket, $thread, $access),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    private function stateSignature(User $viewer, SupportTicket $ticket,
+        RequestThread $thread, SupportTicketAccess $access): string
+    {
+        $isAgent = $access->isAgent($viewer);
+        $isLead = $isAgent && (int) $thread->lead_user_id === $viewer->id;
+        $canReopen = $ticket->status === 'closed' && $isAgent
+            && $access->canRead($viewer, $ticket, $thread)
+            && ($isLead || $thread->lead_user_id === null);
+
+        return implode(':', [
+            $ticket->status,
+            $access->canWrite($viewer, $ticket, $thread) ? '1' : '0',
+            $isLead ? '1' : '0',
+            $canReopen ? '1' : '0',
+            $thread->lead_user_id ?? 0,
         ]);
     }
 

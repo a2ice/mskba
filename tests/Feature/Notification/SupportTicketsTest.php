@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Application\Services\SupportTicketLifecycleText;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel;
@@ -308,18 +309,28 @@ final class SupportTicketsTest extends TestCase
         $this->assertNotNull($ticket->fresh()->closed_at);
 
         $event = $ticket->thread->events()->where('action', 'support_closed')->firstOrFail();
+        $this->assertSame(
+            'Обращение закрыл @'.$lead->username.'. Причина: Проверка причины закрытия.',
+            app(SupportTicketLifecycleText::class)
+                ->closed($lead->username, 'other', 'Проверка причины закрытия'),
+        );
         $this->assertSame('other', $event->metadata['reason']);
         $this->assertSame($lead->id, (int) $event->actor_user_id);
 
         foreach ([$customer, $lead] as $viewer) {
             $page = $this->actingAs($viewer)->get(route('account.notifications.threads.support', $ticket))
-                ->assertOk()->assertSee('Система MSKBA')->assertSee('Другая причина')
-                ->assertSee('Проверка причины закрытия')->assertSee($lead->username);
-            $this->assertStringContainsString('Обращение закрыто.', $page->getContent());
+                ->assertOk()->assertSee('Система MSKBA')
+                ->assertSee('Обращение закрыл @'.$lead->username)
+                ->assertSee('Причина: Проверка причины закрытия')
+                ->assertDontSee('Описание причины:')->assertDontSee('Другая причина.')
+                ->assertSee($lead->username);
+            $this->assertStringContainsString('Обращение закрыл @'.$lead->username, $page->getContent());
             $history = $this->getJson(route('account.notifications.threads.support.history', $ticket))
                 ->assertOk()->json('html');
-            $this->assertStringContainsString('Обращение закрыто.', $history);
-            $this->assertStringContainsString('Другая причина', $history);
+            $this->assertStringContainsString('Обращение закрыл @'.$lead->username, $history);
+            $this->assertStringContainsString('Причина: Проверка причины закрытия', $history);
+            $this->assertStringNotContainsString('Описание причины:', $history);
+            $this->assertStringNotContainsString('Другая причина.', $history);
         }
         $this->actingAs($customer)->post($reopen)->assertForbidden();
         $this->actingAs($lead)->post($reopen)->assertRedirect();
@@ -329,7 +340,7 @@ final class SupportTicketsTest extends TestCase
         $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
         $page = $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
             ->assertOk()->assertSee('Обращение возобновлено')->assertSee($lead->username);
-        $this->assertStringContainsString('Обращение закрыто.', $page->getContent());
+        $this->assertStringContainsString('Обращение закрыл @'.$lead->username, $page->getContent());
         $this->actingAs($lead)->post($reopen)->assertForbidden();
         $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
     }
@@ -382,7 +393,7 @@ final class SupportTicketsTest extends TestCase
             }
         }
         $joined = implode(' ', $seen);
-        $this->assertStringContainsString('Обращение закрыто.', $joined);
+        $this->assertStringContainsString('Обращение закрыл @'.$lead->username, $joined);
         $this->assertStringContainsString('Сообщение 1', $joined);
         $this->assertStringContainsString('Сообщение 14', $joined);
         $this->actingAs($stranger)->getJson(
@@ -424,5 +435,84 @@ final class SupportTicketsTest extends TestCase
         $this->actingAs($staff)->get($base)->assertOk()
             ->assertDontSee('Вопрос об аккаунте');
         $this->get($base.'/'.$ticket->id)->assertNotFound();
+    }
+
+    public function test_support_state_reconciles_open_closed_and_reopened_composer_without_reverb(): void
+    {
+        $customer = $this->user();
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $ticket = $this->createTicket($customer);
+        $stateUrl = route('account.notifications.threads.support.state', $ticket);
+
+        $open = $this->actingAs($customer)->getJson($stateUrl)->assertOk()
+            ->assertJsonPath('status', 'open')->assertJsonPath('can_send', true);
+        $openSignature = $open->json('signature');
+        $this->assertNotEmpty($openSignature);
+        $this->assertStringContainsString('no-store', $open->headers->get('Cache-Control'));
+
+        $openPage = $this->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee('data-chat-support-state-url=', false)
+            ->assertSee('data-chat-support-signature="'.$openSignature.'"', false)
+            ->assertSee('data-chat-compose', false);
+
+        $this->actingAs($lead)->post(route('account.notifications.threads.support.close', $ticket), [
+            'reason' => 'other', 'description' => 'Вопрос решён другим способом',
+        ])->assertRedirect();
+
+        $closed = $this->actingAs($customer)->getJson($stateUrl)->assertOk()
+            ->assertJsonPath('status', 'closed')->assertJsonPath('can_send', false);
+        $this->assertNotSame($openSignature, $closed->json('signature'));
+        $closedPage = $this->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()
+            ->assertSee('Обращение закрыто. История доступна для чтения.')
+            ->assertSee('Обращение закрыл @'.$lead->username)
+            ->assertSee('Причина: Вопрос решён другим способом')
+            ->assertDontSee('Описание причины:')
+            ->assertDontSee('data-chat-compose', false);
+        $this->assertStringContainsString('data-chat-support-signature="'.$closed->json('signature').'"',
+            $closedPage->getContent());
+
+        $this->actingAs($lead)->post(route('account.notifications.threads.support.reopen', $ticket))
+            ->assertRedirect();
+
+        $reopened = $this->actingAs($customer)->getJson($stateUrl)->assertOk()
+            ->assertJsonPath('status', 'open')->assertJsonPath('can_send', true);
+        $this->assertNotSame($closed->json('signature'), $reopened->json('signature'));
+        $this->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee('data-chat-compose', false)
+            ->assertDontSee('Обращение закрыто. История доступна для чтения.');
+    }
+
+    public function test_support_state_does_not_reveal_status_to_other_users_or_revoked_agents(): void
+    {
+        $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $customer = $this->user();
+        $outsider = $this->user();
+        $ticket = $this->createTicket($customer);
+        $url = route('account.notifications.threads.support.state', $ticket);
+        $this->actingAs($outsider)->getJson($url)->assertForbidden();
+
+        $staff = $this->user(UserSystemRoleEnum::ADMIN);
+        app(AdminUpdateUserOperationalPermissionsHandler::class)
+            ->handle($lead, $staff->id, [
+                UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS,
+            ]);
+        $this->actingAs($staff)->getJson($url)->assertForbidden();
+
+        $this->actingAs($customer)->getJson($url)->assertOk()
+            ->assertJsonPath('can_send', true);
+    }
+
+    public function test_closure_text_avoids_duplicate_reason_label_and_punctuation(): void
+    {
+        $formatter = app(SupportTicketLifecycleText::class);
+        $this->assertSame('Обращение закрыл @admin. Причина: Вопрос решён.',
+            $formatter->closed('admin', 'resolved', 'Игнорируемая заметка'));
+        $this->assertSame('Обращение закрыл @admin. Причина: Не актуально.',
+            $formatter->closed('admin', 'no_longer_relevant', null));
+        $this->assertSame('Обращение закрыл @admin. Причина: Подтверждена ошибка!',
+            $formatter->closed('admin', 'other', 'Подтверждена ошибка!'));
+        $this->assertSame('Обращение закрыл @admin.',
+            $formatter->closed('admin', null, null));
     }
 }
