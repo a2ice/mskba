@@ -14,7 +14,8 @@ final readonly class RecordOnlineUserPresence
 
     public function handle(Request $request, Closure $next): Response
     {
-        $userIdBefore = $request->user()?->getAuthIdentifier();
+        $actorBefore = $request->user();
+        $userIdBefore = $actorBefore?->getAuthIdentifier();
         $fingerprint = $request->attributes->get('browser_fingerprint');
         $fingerprintId = $fingerprint instanceof UserFingerprint ? $fingerprint->getKey() : null;
 
@@ -37,6 +38,9 @@ final readonly class RecordOnlineUserPresence
             $this->presence->touch((int) $userIdAfter);
         } elseif (is_numeric($userIdBefore)) {
             $this->presence->forget((int) $userIdBefore);
+            if ($actorBefore instanceof \App\Modules\Identity\Domain\Models\User) {
+                app(\App\Modules\Portal\Application\Services\OperatorActivityService::class)->forget($actorBefore);
+            }
         }
 
         return $response;
