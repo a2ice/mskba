@@ -15,6 +15,8 @@ final class StoreProfileAvatarHandler
 {
     private const MAX_AVATARS = 3;
 
+    private const MAX_MANUAL_UPLOAD_BYTES = 10 * 1024 * 1024;
+
     public function __construct(
         private readonly WebpImageNormalizer $normalizer,
     ) {}
@@ -25,7 +27,12 @@ final class StoreProfileAvatarHandler
         string $source = 'upload',
         ?string $sourceReference = null,
     ): Media {
-        $image = $this->normalizer->normalize($contents);
+        $image = $this->normalizer->normalize(
+            $contents,
+            maxInputBytes: $source === 'upload'
+                ? self::MAX_MANUAL_UPLOAD_BYTES
+                : WebpImageNormalizer::MAX_INPUT_BYTES,
+        );
         $disk = 'public';
         $path = sprintf('avatars/%d/%s.webp', $profile->id, Str::uuid());
 

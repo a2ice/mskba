@@ -1,17 +1,17 @@
 import { initProfileInlineSave } from './profile-inline-save.js';
 
-const PROFILE_AVATAR_INPUT_MAX_BYTES = 5 * 1024 * 1024;
+const PROFILE_AVATAR_INPUT_MAX_BYTES = 10 * 1024 * 1024;
 const PROFILE_AVATAR_POST_MAX_BYTES = 768 * 1024;
 
 // The outer development Nginx can reject multi-megabyte multipart requests
 // before Laravel sees them. The backend stores a 200px WebP avatar, so downsize
-// large uploads client-side without changing the original 5MB input contract.
+// large uploads client-side without changing the original 10MB input contract.
 async function prepareProfileAvatar(file) {
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         throw new Error('Поддерживаются только JPEG, PNG и WebP.');
     }
     if (file.size > PROFILE_AVATAR_INPUT_MAX_BYTES) {
-        throw new Error('Файл аватара должен быть не больше 5 МБ.');
+        throw new Error('Файл аватара должен быть не больше 10 МБ.');
     }
     if (file.size <= PROFILE_AVATAR_POST_MAX_BYTES) return file;
 

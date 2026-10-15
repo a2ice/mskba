@@ -60,7 +60,7 @@
                             @else
                                 Сначала сохрани личные данные — после этого можно будет загрузить аватар.
                             @endif
-                            JPEG, PNG или WebP до 5 МБ. Можно хранить до трёх аватаров и переключаться между ними.
+                            JPEG, PNG или WebP до 10 МБ. Можно хранить до трёх аватаров и переключаться между ними.
                         </p>
                         <span class="app-profile__upload-state" role="status"
                               data-profile-avatar-upload-status hidden>Загружаем…</span>
