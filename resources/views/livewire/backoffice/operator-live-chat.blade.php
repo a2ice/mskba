@@ -1,6 +1,7 @@
 <div class="mskba-support-chat" data-filament-operator-chat
     data-operator-thread-id="{{ $conversation->id }}"
     data-operator-state-url="{{ route('account.notifications.threads.operator.state', $conversation) }}"
+    @if ($canSeePresence) data-operator-presence-channel="operator-presence.{{ $conversation->recipient_user_id }}" @endif
     wire:poll.visible.12s="refreshConversation">
     @once
         <style>
