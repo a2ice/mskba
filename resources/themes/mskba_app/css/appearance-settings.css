@@ -4,5 +4,26 @@
 .app-appearance-settings form { display:grid; gap:12px; max-width:480px; margin-top:10px; }
 .app-appearance-settings label { font-weight:600; font-size:14px; }
 .app-appearance-settings select { width:100%; min-height:48px; padding:12px; font-size:16px; border:1px solid var(--control-line); border-radius:var(--radius-control); background:var(--field); color:var(--text); }
+/* Match the shared select-control used in profile and confirmation forms.
+   The outer wrapper owns the Tabler chevron; never show the native arrow. */
+.app-appearance-settings .select-control select {
+    appearance:none;
+    -webkit-appearance:none;
+    padding-inline:16px 48px;
+    cursor:pointer;
+}
+.app-appearance-settings .select-control > svg {
+    inset-inline-end:16px;
+    width:18px;
+    height:18px;
+}
+@media(forced-colors:active) {
+    .app-appearance-settings .select-control select {
+        appearance:auto;
+        -webkit-appearance:auto;
+        padding-inline-end:16px;
+    }
+    .app-appearance-settings .select-control > svg { display:none; }
+}
 .app-appearance-settings button { justify-self:start; }
 .app-appearance-settings [role="status"] { color:var(--muted); min-height:20px; font-size:14px; }
