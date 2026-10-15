@@ -14,9 +14,6 @@
             outline: none !important;
             box-shadow: none !important;
         }
-        html[data-appearance-mode="light"] .theme-preview__cool-panel {
-            background: linear-gradient(150deg, #ffffff38, transparent 58%), var(--surface-raised);
-        }
     </style>
 </head>
 <body>

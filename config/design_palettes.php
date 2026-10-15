@@ -52,11 +52,11 @@ CSS,
     'day' => [
         'slug' => 'court_day',
         'name' => 'Светлый паркет',
-        'description' => 'Ледяной голубой фон, белые карточки и тёплые баскетбольные акценты.',
+        'description' => 'Светлый глянцевый паркет, ледяные и тёплые карточки, фирменный оранжевый.',
         'mode' => 'light',
         'colors' => [
-            'bg' => '#EBF3FC', 'surface' => '#FFFFFF', 'surface-raised' => '#E6F1FC',
-            'field' => '#F4F9FF', 'text' => '#1A2838', 'muted' => '#506073',
+            'bg' => '#F8FAFE', 'surface' => '#FFFFFF', 'surface-raised' => '#EDF4FC',
+            'field' => '#F7FAFF', 'text' => '#1A2838', 'muted' => '#506073',
             'faint' => '#5E7082', 'accent' => '#BD4F00', 'accent-hover' => '#A74500',
             'accent-active' => '#8C3900', 'on-accent' => '#FFFFFF', 'line' => '#C6D8EA',
             'control-line' => '#7D91A5', 'success' => '#176A43', 'warning' => '#865300',
@@ -66,9 +66,9 @@ CSS,
 :root {
     --theme-font-family: Inter, Arial, sans-serif;
     --header-bg: #f6fafffa;
-    --body-glow: #a4cef338;
+    --body-glow: #c5daf030;
     --ambient-shadow: #375a791a;
-    --surface-glint: #c4dff54d;
+    --surface-glint: #ffffff9c;
     --danger-bg: #fff0f1;
     --danger-hover-bg: #ffe3e6;
     --success-bg: #e3f5e9;
@@ -87,12 +87,26 @@ CSS,
     --shadow-popover: #27475e26;
     --shadow-modal: #27475e30;
     --loader-bg: #e9f3ffde;
-    --surface-corner-glow: #a3d3f354;
+    --surface-corner-glow: #b5d5f442;
     --surface-corner-glow-success: #176a4314;
     --surface-corner-glow-error: #b02e3814;
     --radius-control: 12px;
     --radius-card: 24px;
     --radius-hero: 32px;
+    --light-page-top: #ffffff;
+    --light-page-center: #f9fbfe;
+    --light-page-bottom: #eef5fc;
+    --light-title-top: #172332;
+    --light-title-bottom: #3a526d;
+    --light-card-blue: #e9f3ff;
+    --light-card-amber: #fff7ed;
+    --light-card-shadow: #274e7914;
+    --light-card-shadow-hover: #244d7626;
+    --light-card-line: #c9dbee;
+    --light-button-top: #c15400;
+    --light-button-bottom: #983c00;
+    --light-nav-active-top: #fff9f1;
+    --light-nav-active-bottom: #f2e7dc;
 }
 CSS,
     ],

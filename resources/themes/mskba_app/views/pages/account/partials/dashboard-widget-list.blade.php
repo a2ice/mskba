@@ -32,7 +32,7 @@
         $refreshSeconds = min(60, max(0, (int) ($widget->refresh_delay_seconds ?? 5)));
     @endphp
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
-             data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}"
+             data-dashboard-widget="{{ $widget->id }}" data-widget-kind="{{ $widget->kind }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}"
              data-widget-version="{{ $widgetVersion }}" data-widget-refresh-delay="{{ $refreshSeconds }}"
              @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header">

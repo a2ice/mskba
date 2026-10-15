@@ -23,8 +23,9 @@ final class DesignThemePreferenceTest extends TestCase
         );
         $this->assertSame('arena_night', app(DesignThemeManager::class)->default()->slug);
         $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
-        $this->assertSame('#EBF3FC', $day->colors['bg']);
-        $this->assertSame('#E6F1FC', $day->colors['surface-raised']);
+        $this->assertSame('#F8FAFE', $day->colors['bg']);
+        $this->assertSame('#EDF4FC', $day->colors['surface-raised']);
+        $this->assertStringContainsString('--light-page-top: #ffffff;', $day->css_code);
     }
 
     public function test_blue_palette_upgrade_preserves_manual_filament_edits(): void
@@ -44,10 +45,37 @@ final class DesignThemePreferenceTest extends TestCase
         $migration->up();
 
         $day->refresh();
-        $this->assertSame('#EBF3FC', $day->colors['bg']);
-        $this->assertSame('#F4F9FF', $day->colors['field']);
+        $this->assertSame('#F8FAFE', $day->colors['bg']);
+        $this->assertSame('#F7FAFF', $day->colors['field']);
         $this->assertSame('#DDEEFF', $day->colors['surface-raised']);
-        $this->assertStringContainsString('--body-glow: #a4cef338;', $day->css_code);
+        $this->assertStringContainsString('--body-glow: #c5daf030;', $day->css_code);
+        $this->assertSame($before + 1, $day->revisions()->count());
+    }
+
+    public function test_surface_palette_upgrade_keeps_custom_filament_values_and_creates_one_revision(): void
+    {
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $colors = $day->colors;
+        $colors['bg'] = '#EBF3FC';
+        $colors['field'] = '#F4F9FF';
+        $colors['surface-raised'] = '#DDEEFF'; // Custom override must survive.
+        $css = str_replace('--body-glow: #c5daf030;', '--body-glow: #a4cef338;', $day->css_code);
+        $css = preg_replace('/^\\s*--light-[a-z-]+:[^;]+;\\n?/m', '', $css);
+        $day->update(['colors' => $colors, 'css_code' => $css]);
+        $before = $day->revisions()->count();
+
+        $migration = require database_path('migrations/2026_10_15_220000_polish_court_day_surface_palette.php');
+        $migration->up();
+
+        $day->refresh();
+        $this->assertSame('#F8FAFE', $day->colors['bg']);
+        $this->assertSame('#F7FAFF', $day->colors['field']);
+        $this->assertSame('#DDEEFF', $day->colors['surface-raised']);
+        $this->assertStringContainsString('--body-glow: #c5daf030;', $day->css_code);
+        $this->assertStringContainsString('--light-card-blue: #e9f3ff;', $day->css_code);
+        $this->assertSame($before + 1, $day->revisions()->count());
+
+        $migration->up();
         $this->assertSame($before + 1, $day->revisions()->count());
     }
 
