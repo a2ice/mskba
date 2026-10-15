@@ -143,35 +143,32 @@ test('displays only three items and fills the freed slot without reading pending
 
     await region.children[0].querySelector('.app-message-toast__close').trigger('click');
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['3', '2', '1']);
-    assert.deepEqual(counts, [2]);
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].options.method, 'PATCH');
-    assert.equal(requests[0].options.headers['X-CSRF-TOKEN'], 'csrf-token');
+    assert.deepEqual(counts, []);
+    assert.equal(requests.length, 0, 'Dismissing does not acknowledge reading');
 
     dock.reconcile([notification(3), notification(2), notification(1)]);
     assert.equal(dock.size(), 3);
 });
 
-test('clicking an action marks it read before navigating', async () => {
+test('clicking an action navigates but does not automatically acknowledge', async () => {
     const { dock, region, requests, visits, counts } = setup();
     dock.add(notification(8));
     const link = region.children[0].querySelector('.app-message-toast__link');
     assert.ok(link);
     await link.trigger('click');
 
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].url, '/account/notifications/8/read');
+    assert.equal(requests.length, 0);
     assert.deepEqual(visits, ['https://dev.mskba.ru/faq/welcome']);
-    assert.deepEqual(counts, [2]);
-    assert.equal(dock.size(), 0);
-    assert.equal(region.hidden, true);
+    assert.deepEqual(counts, []);
+    assert.equal(dock.size(), 1);
+    assert.equal(region.hidden, false);
 });
 
 test('failed read keeps the toast visible, shows an error and does not navigate', async () => {
     const { dock, region, visits, respondWith } = setup();
     respondWith({ ok: false });
     dock.add(notification(9));
-    await region.children[0].querySelector('.app-message-toast__link').trigger('click');
+    await region.children[0].querySelector('.app-message-toast__read').trigger('click');
     assert.equal(dock.size(), 1);
     assert.equal(region.hidden, false);
     assert.deepEqual(visits, []);
@@ -197,4 +194,39 @@ test('reconciliation heals cross-tab reads and makes a waiting toast visible', (
     dock.reconcile([1, 2, 3, 4].map((id) => notification(id)));
     dock.reconcile([notification(2), notification(3), notification(4)]);
     assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['2', '3', '4']);
+});
+
+test('expansion does not mark a notification read or navigate', async () => {
+    const { region, counts, requests, visits } = setup();
+    const expanded = [];
+    const dock = createNotificationToastDock(region, (count) => counts.push(count), {
+        onExpand: (notice) => expanded.push(notice.id),
+    });
+    dock.add(notification(19));
+    await region.children[0].querySelector('.app-message-toast__expand').trigger('click');
+    assert.deepEqual(expanded, [19]);
+    assert.equal(requests.length, 0);
+    assert.deepEqual(visits, []);
+    assert.deepEqual(counts, []);
+    assert.equal(dock.size(), 1);
+});
+
+test('explicit read button calls PATCH and advances queued notifications', async () => {
+    const { region, counts, requests } = setup();
+    const dock = createNotificationToastDock(region, (count) => counts.push(count));
+    dock.reconcile([1, 2, 3, 4].map((id) => notification(id)));
+    await region.children[0].querySelector('.app-message-toast__read').trigger('click');
+    assert.deepEqual(counts, [2]);
+    assert.equal(requests[0].url, '/account/notifications/1/read');
+    assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['2', '3', '4']);
+});
+
+test('disabled expansion on messages page leaves ordinary toast with normal link', () => {
+    const { region } = setup();
+    const dock = createNotificationToastDock(region, () => {}, {
+        canExpand: () => false, onExpand: () => { throw new Error('not allowed'); },
+    });
+    dock.add(notification(1));
+    assert.equal(region.children[0].querySelector('.app-message-toast__expand'), null);
+    assert.ok(region.children[0].querySelector('.app-message-toast__link'));
 });

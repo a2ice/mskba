@@ -198,6 +198,25 @@ if (root) {
     }
 
     const textarea = form?.querySelector('textarea[name="body"]');
+    // Handoff from the floating chat: never persist a message beyond this tab.
+    const draftRoute = window.location.pathname.match(/^\/account\/notifications\/threads\/(support|direct)\/([1-9]\d*)\/?$/);
+    const draftUser = document.querySelector('[data-app-header]')?.dataset.notificationUserId;
+    const handoffKey = draftRoute && draftUser
+        ? 'mskba:notification-popover:' + draftUser + ':draft:' + draftRoute[1] + ':' + draftRoute[2]
+        : null;
+    if (textarea && handoffKey) {
+        try {
+            const saved = window.sessionStorage.getItem(handoffKey);
+            if (saved && !textarea.value) {
+                textarea.value = saved.slice(0, Number(textarea.maxLength) || 2000);
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            textarea.addEventListener('input', () => {
+                if (textarea.value) window.sessionStorage.setItem(handoffKey, textarea.value);
+                else window.sessionStorage.removeItem(handoffKey);
+            });
+        } catch { /* Browser storage is optional. */ }
+    }
     const charCount = form?.querySelector('[data-direct-char-count]');
     if (directStateUrl && textarea && charCount) {
         const updateCount = () => { charCount.textContent = `${textarea.value.length} / 500`; };

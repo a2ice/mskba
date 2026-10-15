@@ -13,18 +13,32 @@ export const truncateToastMessage = (value) => {
     return characters.slice(0, MAX_TOAST_BODY_LENGTH - 3).join('') + '...';
 };
 
-export const createNotificationToastDock = (region, onCountChange) => {
+export const createNotificationToastDock = (region, onCountChange, options = {}) => {
     if (!region) return null;
 
     // Keep all unread notifications in memory, but mount at most three cards.
     const notifications = new Map();
     const cards = new Map();
+    const storageKey = options.userId ? 'mskba:toast-dismissed:' + options.userId : null;
+    const restoreDismissed = () => {
+        if (!storageKey) return [];
+        try {
+            const items = JSON.parse(window.sessionStorage.getItem(storageKey) || '[]');
+            return Array.isArray(items) ? items.filter(id => /^\d+$/.test(String(id))).slice(-100) : [];
+        } catch { return []; }
+    };
+    const dismissed = new Set(restoreDismissed());
+    const storeDismissed = () => {
+        if (!storageKey) return;
+        try { window.sessionStorage.setItem(storageKey, JSON.stringify([...dismissed].slice(-100))); }
+        catch { /* Browser storage may be unavailable. */ }
+    };
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     const mountWaiting = () => {
         for (const [id, notification] of notifications) {
             if (cards.size >= MAX_VISIBLE_TOASTS) break;
-            if (cards.has(id)) continue;
+            if (cards.has(id) || dismissed.has(id)) continue;
             const card = create(notification);
             cards.set(id, card);
             region.append(card);
@@ -35,6 +49,8 @@ export const createNotificationToastDock = (region, onCountChange) => {
     const remove = (id) => {
         const key = String(id);
         notifications.delete(key);
+        dismissed.delete(key);
+        storeDismissed();
         cards.get(key)?.remove();
         cards.delete(key);
         mountWaiting();
@@ -58,8 +74,8 @@ export const createNotificationToastDock = (region, onCountChange) => {
         const close = document.createElement('button');
         close.type = 'button';
         close.className = 'app-message-toast__close';
-        close.setAttribute('aria-label', 'Отметить сообщение прочитанным');
-        close.title = 'Отметить прочитанным';
+        close.setAttribute('aria-label', 'Скрыть уведомление');
+        close.title = 'Скрыть без отметки прочитанным';
         close.textContent = '×';
 
         let markingAsRead = false;
@@ -97,7 +113,13 @@ export const createNotificationToastDock = (region, onCountChange) => {
             }
         };
 
-        close.addEventListener('click', () => markRead());
+        close.addEventListener('click', () => {
+            dismissed.add(String(notification.id));
+            storeDismissed();
+            cards.get(String(notification.id))?.remove();
+            cards.delete(String(notification.id));
+            mountWaiting();
+        });
         card.append(heading, close);
 
         if (notification.body) {
@@ -108,6 +130,24 @@ export const createNotificationToastDock = (region, onCountChange) => {
             body.title = notification.body;
             card.append(body);
         }
+
+        if (options.canExpand?.(notification) !== false && typeof options.onExpand === 'function') {
+            const expand = document.createElement('button');
+            expand.type = 'button';
+            expand.className = 'app-message-toast__expand';
+            expand.textContent = 'Развернуть';
+            expand.setAttribute('aria-label', 'Развернуть уведомление');
+            expand.addEventListener('click', () => options.onExpand(notification));
+            card.append(expand);
+        }
+
+        const read = document.createElement('button');
+        read.type = 'button';
+        read.className = 'app-message-toast__read';
+        read.textContent = 'Прочитано';
+        read.setAttribute('aria-label', 'Отметить уведомление прочитанным');
+        read.addEventListener('click', () => markRead());
+        card.append(read);
 
         // Never permit external or javascript: URLs from notification metadata.
         if (notification.href) {
@@ -120,12 +160,13 @@ export const createNotificationToastDock = (region, onCountChange) => {
                     link.className = 'app-message-toast__link';
                     link.href = url.href;
                     link.textContent = notification.action_text || 'Открыть';
-                    link.addEventListener('click', async (event) => {
+                    link.addEventListener('click', (event) => {
                         // Let browsers handle new tabs / modified clicks normally.
                         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                         event.preventDefault();
-                        // Navigate only after the notification is successfully read.
-                        if (await markRead()) window.location.assign(url.href);
+                        // Navigation is not an acknowledgement. Conversation views
+                        // acknowledge when actually read according to their rules.
+                        window.location.assign(url.href);
                     });
                     card.append(link);
                 }
@@ -141,7 +182,7 @@ export const createNotificationToastDock = (region, onCountChange) => {
         const id = String(notification.id);
         if (notifications.has(id)) return;
         notifications.set(id, notification);
-        if (cards.size < MAX_VISIBLE_TOASTS) {
+        if (cards.size < MAX_VISIBLE_TOASTS && ! dismissed.has(id)) {
             const card = create(notification, live);
             cards.set(id, card);
             if (live) {
@@ -161,11 +202,16 @@ export const createNotificationToastDock = (region, onCountChange) => {
                 notifications.delete(id);
                 cards.get(id)?.remove();
                 cards.delete(id);
+                dismissed.delete(id);
             }
         }
+        storeDismissed();
         unread.forEach((item) => add(item));
         mountWaiting();
     };
 
-    return { add, remove, reconcile, size: () => cards.size };
+    return {
+        add, remove, reconcile,
+        size: () => cards.size,
+    };
 };

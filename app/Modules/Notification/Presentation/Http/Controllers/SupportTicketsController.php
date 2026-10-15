@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Application\Services\SupportTicketLifecycleText;
 use App\Modules\Notification\Application\Services\SupportTicketMessagingService;
 use App\Modules\Notification\Application\Services\SupportTicketTimeline;
 use App\Modules\Notification\Application\UseCases\CreateSupportTicketHandler;
@@ -102,6 +103,9 @@ final class SupportTicketsController extends Controller
             'status' => $ticket->status,
             'can_send' => $access->canWrite($viewer, $ticket, $thread),
             'signature' => $this->stateSignature($viewer, $ticket, $thread, $access),
+            'close_reason' => $ticket->status === 'closed'
+                ? app(SupportTicketLifecycleText::class)
+                    ->reason($ticket->close_reason, $ticket->close_description) : null,
         ])->header('Cache-Control', 'private, no-store');
     }
 
