@@ -159,6 +159,36 @@ final class OperatorConversationsTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_revocation_redacts_old_operator_notification_previews_without_affecting_the_customer(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $operator = $this->user(UserSystemRoleEnum::EDITOR);
+        $customer = $this->user();
+        $this->grant($super, $operator);
+        $conversation = app(OperatorConversationMessaging::class)->start($operator, $customer, 'Операторский привет');
+        $this->actingAs($customer)->postJson(
+            route('account.notifications.threads.operator.messages', $conversation),
+            ['body' => 'Приватный ответ получен'],
+        )->assertCreated();
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $operator->id,
+            'body' => 'Приватный ответ получен',
+        ]);
+
+        app(GlobalOperationalPermissionManager::class)->sync($super, $operator, [], []);
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $operator->id,
+            'title' => 'Операторские диалоги MSKBA',
+            'body' => 'Доступ к переписке прекращён.',
+        ]);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $customer->id,
+            'body' => 'Операторский привет',
+        ]);
+    }
+
     public function test_new_operators_cannot_start_until_explicitly_granted_and_marketing_is_separate(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
