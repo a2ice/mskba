@@ -16,3 +16,5 @@ Broadcast::channel('direct-conversations.{id}', [\App\Modules\Notification\Infra
 
 Broadcast::channel('support-tickets.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'support']);
 Broadcast::channel('operator-conversations.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'operator']);
+// Page-change events contain no URLs. Only the assigned operator may subscribe.
+Broadcast::channel('operator-presence.{userId}', \App\Modules\Portal\Infrastructure\Broadcasting\OperatorPresenceChannel::class);
