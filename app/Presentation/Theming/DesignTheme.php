@@ -45,6 +45,7 @@ final class DesignTheme extends Model
         self::saved(function (self $theme): void {
             if (! $theme->wasRecentlyCreated && ! $theme->wasChanged([
                 'name', 'description', 'colors', 'css_code', 'mode', 'is_published',
+                'body_font', 'heading_font', 'widget_glow_color', 'widget_glow_strength',
             ])) {
                 return;
             }
@@ -56,6 +57,10 @@ final class DesignTheme extends Model
                 'colors' => $theme->colors,
                 'css_code' => $theme->css_code,
                 'is_published' => $theme->is_published,
+                'body_font' => $theme->body_font,
+                'heading_font' => $theme->heading_font,
+                'widget_glow_color' => $theme->widget_glow_color,
+                'widget_glow_strength' => $theme->widget_glow_strength,
                 'created_at' => now(),
             ]);
         });
