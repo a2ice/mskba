@@ -347,7 +347,7 @@ if (root) {
                 void refreshRail();
                 bottom();
             } catch (error) { showError(error.message); }
-            finally { sendingDirect = false; send.disabled = directStateUrl ? !canSendDirect : false; }
+            finally { sendingDirect = false; send.disabled = directStateUrl ? !canSendDirect : (operatorStateUrl ? textarea.disabled : false); }
         });
     }
 
