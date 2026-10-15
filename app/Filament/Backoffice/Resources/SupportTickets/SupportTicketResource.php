@@ -108,7 +108,7 @@ final class SupportTicketResource extends Resource
                     ->columnSpanFull()->visible(fn (SupportTicket $record): bool => filled($record->close_description)),
                 TextEntry::make('created_at')->label('Создано')->dateTime('d.m.Y H:i'),
             ]),
-            Section::make('История сообщений и действий — только просмотр')
+            Section::make('Переписка с пользователем')
                 ->schema([
                     ViewEntry::make('history')
                         ->view('filament.backoffice.support-ticket-history')->columnSpanFull(),

@@ -8,7 +8,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
-use App\Modules\Notification\Application\Services\SupportTicketMessageNotifier;
+use App\Modules\Notification\Application\Services\SupportTicketMessagingService;
 use App\Modules\Notification\Application\Services\SupportTicketTimeline;
 use App\Modules\Notification\Application\UseCases\CreateSupportTicketHandler;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
@@ -151,24 +151,11 @@ final class SupportTicketsController extends Controller
         return response()->json(['unread_count' => $read->handle($viewer, supportTicketId: $ticket->id)]);
     }
 
-    public function message(Request $request, SupportTicket $ticket, SupportTicketAccess $access,
-        SupportTicketMessageNotifier $notifier): JsonResponse
+    public function message(Request $request, SupportTicket $ticket,
+        SupportTicketMessagingService $messaging): JsonResponse
     {
-        $actor = $request->user()->canonical();
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
-        abort_unless(trim($data['body']) !== '', 422);
-        $thread = DB::transaction(function () use ($ticket, $actor, $access, $data): RequestThread {
-            $ticket = SupportTicket::query()->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
-            $thread = $ticket->thread()->firstOrFail();
-            abort_unless($access->canWrite($actor, $ticket, $thread), 403);
-            $thread->messages()->create(['sender_user_id' => $actor->id, 'body' => trim($data['body'])]);
-            $thread->touch();
-            $ticket->touch();
-
-            return $thread;
-        });
-        $notifier->notify($ticket, $thread, $actor, $data['body']);
-        $this->broadcast($thread);
+        $messaging->send($request->user(), $ticket->id, $data['body']);
 
         return response()->json(['message' => 'Отправлено.'], 201);
     }

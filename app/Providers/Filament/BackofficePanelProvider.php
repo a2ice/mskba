@@ -42,6 +42,11 @@ final class BackofficePanelProvider extends PanelProvider
                 BackofficeUserResource::class,
                 SupportTicketResource::class,
             ])
+            // Filament's support chat uses the same browser-safe Reverb key
+            // as the portal, never a private app secret or compiled .env.
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
+                '<meta name="mskba-reverb-app-key" content="'.e((string) config('broadcasting.connections.reverb.key')).'">',
+            ))
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(<<<'HTML'
 <script>
 (function () {

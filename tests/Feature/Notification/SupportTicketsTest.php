@@ -25,6 +25,7 @@ final class SupportTicketsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
         config()->set('themes.active', 'mskba_app');
         app()->forgetInstance(ThemeResolver::class);
         View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
@@ -290,6 +291,8 @@ final class SupportTicketsTest extends TestCase
     {
         $customer = $this->user();
         $lead = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        // Factory usernames can be absent. This test verifies an @login format.
+        $lead->forceFill(['username' => 'qa_support_lead'])->save();
         $ticket = $this->createTicket($customer);
         $close = route('account.notifications.threads.support.close', $ticket);
         $reopen = route('account.notifications.threads.support.reopen', $ticket);
