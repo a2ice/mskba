@@ -7,8 +7,11 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\DirectMessageBlockService;
 use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\SupportTicket;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -64,6 +67,20 @@ final class NotificationPopoverController extends Controller
             'limit' => 500,
             'can_send' => $canSend,
             'status' => $canSend ? null : 'Отправка личных сообщений недоступна.',
+        ]);
+    }
+
+    /** Restore an already read notification without caching its private body in the browser. */
+    public function notice(Request $request, int $id, UserNotificationPresenter $presenter): JsonResponse
+    {
+        $viewer = $request->user()->canonical();
+        $notification = UserNotification::query()
+            ->whereKey($id)->whereIn('user_id', $viewer->identityIds())
+            ->firstOrFail();
+
+        return $this->respond([
+            ...$presenter->present($notification),
+            'is_read' => $notification->status === UserNotificationStatusEnum::READ,
         ]);
     }
 

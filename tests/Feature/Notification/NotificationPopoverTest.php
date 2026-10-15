@@ -5,8 +5,11 @@ namespace Tests\Feature\Notification;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\SupportTicket;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
@@ -109,5 +112,30 @@ final class NotificationPopoverTest extends TestCase
         auth()->logout();
         $this->getJson(route('account.notifications.popover', ['kind' => 'support', 'id' => $ticket->id]))
             ->assertUnauthorized();
+    }
+
+    public function test_read_notification_can_restore_its_popover_only_for_its_owner(): void
+    {
+        $owner = $this->user();
+        $stranger = $this->user();
+        $notice = UserNotification::query()->create([
+            'user_id' => $owner->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::READ,
+            'title' => 'Подробности уведомления',
+            'body' => 'Сообщение остаётся доступным после прочтения.',
+            'action_url' => '/faq',
+        ]);
+        $url = route('account.notifications.popover.notice', $notice->id);
+
+        $this->actingAs($stranger)->getJson($url)->assertNotFound();
+        $response = $this->actingAs($owner)->getJson($url)->assertOk()
+            ->assertJsonPath('id', $notice->id)
+            ->assertJsonPath('is_read', true)
+            ->assertJsonPath('title', 'Подробности уведомления')
+            ->assertJsonPath('body', 'Сообщение остаётся доступным после прочтения.');
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+
+        $this->getJson(route('account.notifications.popover.notice', 9999999))->assertNotFound();
     }
 }

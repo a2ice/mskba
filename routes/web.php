@@ -908,6 +908,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.threads.system.read');
         Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])
             ->name('account.notifications.threads.system')->defaults('breadcrumb', 'Система MSKBA');
+        Route::get('/notifications/popover/notice/{id}', [\App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class, 'notice'])
+            ->whereNumber('id')->middleware('throttle:20,1')->name('account.notifications.popover.notice');
         Route::get('/notifications/popover/{kind}/{id}', \App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class)
             ->where('kind', 'support|direct')->whereNumber('id')
             ->middleware('throttle:30,1')->name('account.notifications.popover');

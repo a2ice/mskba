@@ -320,8 +320,8 @@ export const createNotificationPopover = (userId) => {
         session.set(key, String(notice.id));
         heading.textContent = notice.title || 'Уведомление MSKBA';
         original.href = safeHref(notice.href) || '/account/notifications';
-        read.disabled = false;
-        read.textContent = 'Отметить прочитанным';
+        read.disabled = Boolean(notice.is_read);
+        read.textContent = notice.is_read ? 'Прочитано' : 'Отметить прочитанным';
         const saved = session.get(placeKey);
         if (saved && window.matchMedia('(min-width: 768px)').matches) {
             try {
@@ -424,11 +424,28 @@ export const createNotificationPopover = (userId) => {
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && !root.hidden) { void state(); void history().catch(() => {}); }
     });
-    const restore = (items) => {
-        if (!root.hidden) return;
+    let restoring = false;
+    const restore = async (items) => {
+        if (!root.hidden || restoring) return;
         const id = session.get(key);
+        if (!id || !/^\d+$/.test(id)) return;
         const item = items.find(one => String(one.id) === id);
-        if (item) void open(item);
+        if (item) { await open(item); return; }
+        // A read notification may still have an open window across navigation.
+        // Retrieve only this owner's authorized notification, never store its body.
+        restoring = true;
+        try {
+            const response = await jsonGet('/account/notifications/popover/notice/' + id);
+            if (response.status === 403 || response.status === 404) {
+                session.del(key);
+                return;
+            }
+            if (!response.ok) return;
+            const notice = await response.json();
+            if (root.hidden && session.get(key) === id && String(notice.id) === id)
+                await open(notice);
+        } catch { /* retry when connectivity returns */ }
+        finally { restoring = false; }
     };
 
     return { open, close, restore, isOpen: () => !root.hidden };
