@@ -1,9 +1,8 @@
 <div class="mskba-support-chat"
      data-filament-support-chat data-support-thread-id="{{ $thread->id }}"
      data-support-state-url="{{ route('account.notifications.threads.support.state', $ticket) }}"
-     wire:poll.visible.30s="refreshConversation">
+     wire:poll.visible.12s="refreshConversation">
     @once
-        @vite('resources/js/backoffice-support-chat.js')
         <style>
             .mskba-support-chat{display:flex;flex-direction:column;gap:1rem;color:inherit}
             .mskba-support-chat__toolbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}

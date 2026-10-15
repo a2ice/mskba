@@ -230,3 +230,32 @@ test('disabled expansion on messages page leaves ordinary toast with normal link
     assert.equal(region.children[0].querySelector('.app-message-toast__expand'), null);
     assert.ok(region.children[0].querySelector('.app-message-toast__link'));
 });
+
+test('minimized conversation returns to original toast even when already read', () => {
+    const { region, dock, counts, requests } = setup();
+    dock.reconcile([1, 2, 3, 4].map(id => notification(id)));
+    const restored = notification(55, { title: 'Техподдержка №3', is_read: true });
+    dock.pin(restored);
+    assert.deepEqual(region.children.map(item => item.dataset.messageToastId), ['55', '1', '2']);
+    assert.equal(dock.size(), 3);
+    const original = region.children[0];
+    assert.equal(original.querySelector('.app-message-toast__heading').textContent, 'Техподдержка №3');
+    assert.equal(original.querySelector('.app-message-toast__read').disabled, true);
+    dock.reconcile([1, 2, 3, 4].map(id => notification(id)));
+    assert.equal(region.children[0], original);
+    dock.unpin(55);
+    assert.deepEqual(region.children.map(item => item.dataset.messageToastId), ['1', '2', '3']);
+    assert.deepEqual(counts, []);
+    assert.equal(requests.length, 0);
+});
+
+test('a minimized unread notification is not duplicated after resynchronization', () => {
+    const { dock, region } = setup();
+    const notice = notification(41);
+    dock.reconcile([notice, notification(42)]);
+    dock.pin(notice);
+    dock.pin(notice);
+    dock.reconcile([notice, notification(42)]);
+    assert.deepEqual(region.children.map(item => item.dataset.messageToastId), ['41', '42']);
+    assert.equal(dock.size(), 2);
+});

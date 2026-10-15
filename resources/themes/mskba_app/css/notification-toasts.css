@@ -244,30 +244,60 @@
     color: var(--accent);
     cursor: pointer;
 }
-.app-notification-popover__form { display: flex; flex-direction: column; gap: 6px; }
-.app-notification-popover__form[hidden] { display: none; }
-.app-notification-popover__form label { font-size: .78rem; font-weight: 650; }
-.app-notification-popover__form textarea {
-    width: 100%;
-    resize: vertical;
-    min-height: 60px;
-    max-height: 160px;
-    padding: 10px;
+.app-notification-popover__form {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
     border: 1px solid var(--border, var(--line, #777));
+    border-radius: 12px;
     background: var(--surface);
+}
+.app-notification-popover__form[hidden] { display: none; }
+.app-notification-popover__form:focus-within { border-color: var(--accent); }
+.app-notification-popover__form label {
+    padding: 10px 12px 0;
+    font-size: .78rem;
+    font-weight: 650;
+}
+.app-notification-popover__form textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 70px;
+    max-height: 155px;
+    resize: vertical;
+    padding: 10px 12px;
+    border: 0;
+    outline: none;
+    box-shadow: none;
+    background: transparent;
     color: var(--text);
-    border-radius: 9px;
+    border-radius: 0;
+}
+.app-notification-popover__form textarea:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+.app-notification-popover__compose-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 46px;
+    padding: 4px 9px 9px;
 }
 .app-notification-popover__form button {
-    align-self: flex-end;
-    padding: 8px 14px;
+    flex: 0 0 auto;
+    padding: 9px 14px;
     border-radius: 9px;
-    color: white;
+    color: #fff;
     border: 0;
     font-weight: 600;
     background: var(--accent);
     cursor: pointer;
 }
+.app-notification-popover__form button:disabled { opacity: .55; cursor: progress; }
 .app-notification-popover__status, .app-notification-popover__hint {
     font-size: .8rem;
     color: var(--muted);

@@ -31,10 +31,11 @@ export const isVisibleCurrentThreadToast = (notice, pathname, origin, atLatest) 
     } catch { return false; }
 };
 
-export const createNotificationPopover = (userId) => {
+export const createNotificationPopover = (userId, options = {}) => {
     if (!userId || isMessagesPage(window.location.pathname)) return null;
     const key = 'mskba:notification-popover:' + userId;
     const placeKey = key + ':position';
+    const modeKey = key + ':mode';
     const root = document.createElement('section');
     root.className = 'app-notification-popover';
     root.hidden = true;
@@ -80,6 +81,7 @@ export const createNotificationPopover = (userId) => {
     const close = () => {
         keepDraft();
         stop();
+        const previous = active;
         active = null;
         descriptor = null;
         contract = null;
@@ -87,12 +89,30 @@ export const createNotificationPopover = (userId) => {
         backdrop.hidden = true;
         document.body.classList.remove('app-notification-popover-open');
         content.replaceChildren();
+        options.onClose?.(previous);
         session.del(key);
+        session.del(modeKey);
         restoreFocus?.focus?.();
     };
+    const minimizeNotice = (notice) => {
+        if (!notice?.id) return;
+        keepDraft();
+        stop();
+        contract = null;
+        active = notice;
+        root.hidden = true;
+        backdrop.hidden = true;
+        document.body.classList.remove('app-notification-popover-open');
+        content.replaceChildren();
+        session.set(key, String(notice.id));
+        session.set(modeKey, 'minimized');
+        // Return to the ORIGINAL compact toast and its existing queue.
+        options.onMinimize?.(notice);
+    };
+    const minimize = () => minimizeNotice(active);
     backdrop.addEventListener('click', close);
     root.querySelector('[data-popover-close]').addEventListener('click', close);
-    root.querySelector('[data-popover-minimize]').addEventListener('click', close);
+    root.querySelector('[data-popover-minimize]').addEventListener('click', minimize);
 
     const showError = (message) => {
         let node = content.querySelector('[data-popover-error]');
@@ -195,7 +215,7 @@ export const createNotificationPopover = (userId) => {
             + '<form data-popover-form class="app-notification-popover__form"><label for="mskba-popover-input">Ответить</label>'
             + '<textarea id="mskba-popover-input" data-popover-input rows="3" placeholder="Напишите сообщение…" maxlength="'
             + (Number(result.limit) === 500 ? 500 : 2000) + '"></textarea>'
-            + '<button type="submit" data-popover-send>Отправить</button></form>'
+            + '<div class="app-notification-popover__compose-footer"><button type="submit" data-popover-send>Отправить</button></div></form>'
             + '<p data-popover-error class="app-notification-popover__error" role="status"></p>';
         const older = content.querySelector('[data-popover-older]');
         older.addEventListener('click', async () => {
@@ -324,10 +344,12 @@ export const createNotificationPopover = (userId) => {
         active = notice;
         descriptor = conversationFromHref(notice.href, window.location.origin);
         contract = null;
+        options.onExpand?.(notice);
         root.hidden = false;
         backdrop.hidden = false;
         document.body.classList.add('app-notification-popover-open');
         session.set(key, String(notice.id));
+        session.set(modeKey, 'open');
         heading.textContent = notice.title || 'Уведомление MSKBA';
         original.href = safeHref(notice.href) || '/account/notifications';
         read.disabled = Boolean(notice.is_read);
@@ -367,6 +389,7 @@ export const createNotificationPopover = (userId) => {
             if (active !== selected) return;
             document.dispatchEvent(new CustomEvent('notification:count-changed',
                 { detail: { unread_count: data.unread_count } }));
+            selected.is_read = true;
             read.textContent = 'Прочитано';
         } catch (error) {
             if (active === selected) { read.disabled = false; showError(error.message); }
@@ -438,9 +461,14 @@ export const createNotificationPopover = (userId) => {
     const restore = async (items) => {
         if (!root.hidden || restoring) return;
         const id = session.get(key);
+        if (active && session.get(modeKey) === 'minimized' && String(active.id) === id) return;
         if (!id || !/^\d+$/.test(id)) return;
+        const restoreNotice = (notice) => {
+            if (session.get(modeKey) === 'minimized') minimizeNotice(notice);
+            else void open(notice);
+        };
         const item = items.find(one => String(one.id) === id);
-        if (item) { await open(item); return; }
+        if (item) { restoreNotice(item); return; }
         // A read notification may still have an open window across navigation.
         // Retrieve only this owner's authorized notification, never store its body.
         restoring = true;
@@ -448,15 +476,21 @@ export const createNotificationPopover = (userId) => {
             const response = await jsonGet('/account/notifications/popover/notice/' + id);
             if (response.status === 403 || response.status === 404) {
                 session.del(key);
+                session.del(modeKey);
                 return;
             }
             if (!response.ok) return;
             const notice = await response.json();
             if (root.hidden && session.get(key) === id && String(notice.id) === id)
-                await open(notice);
+                restoreNotice(notice);
         } catch { /* retry when connectivity returns */ }
         finally { restoring = false; }
     };
 
-    return { open, close, restore, isOpen: () => !root.hidden };
+    return {
+        open, close, restore, minimize,
+        isOpen: () => !root.hidden,
+        isMinimized: (id) => root.hidden && String(active?.id) === String(id)
+            && session.get(modeKey) === 'minimized',
+    };
 };
