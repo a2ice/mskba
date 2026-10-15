@@ -505,6 +505,10 @@ final class AccountUnifiedMessagesTest extends TestCase
 
     public function test_direct_rate_limit_allows_three_messages_per_ten_seconds_per_sender_across_recipients(): void
     {
+        // Freeze time so CI execution at a second boundary cannot turn the
+        // expected initial 10-second Retry-After into 9 before assertion.
+        $this->travelTo(now()->startOfSecond());
+
         $sender = $this->user();
         $first = $this->user();
         $second = $this->user();
