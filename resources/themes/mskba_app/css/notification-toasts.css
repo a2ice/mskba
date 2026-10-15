@@ -187,14 +187,23 @@
 }
 .app-notification-popover__grip { color: var(--muted); font-size: 1rem; }
 .app-notification-popover__header button {
+    display: grid;
+    place-items: center;
     flex: 0 0 28px;
+    width: 28px;
     height: 28px;
+    padding: 0;
+    line-height: 1;
     border: none;
     background: transparent;
     color: inherit;
     border-radius: 6px;
-    font-size: 21px;
     cursor: pointer;
+}
+.app-notification-popover__header button svg {
+    display: block;
+    width: 16px;
+    height: 16px;
 }
 .app-notification-popover__header button:hover { background: #7773; }
 .app-notification-popover__content {
@@ -255,12 +264,7 @@
     background: var(--surface);
 }
 .app-notification-popover__form[hidden] { display: none; }
-.app-notification-popover__form:focus-within { border-color: var(--accent); }
-.app-notification-popover__form label {
-    padding: 10px 12px 0;
-    font-size: .78rem;
-    font-weight: 650;
-}
+.app-notification-popover__form:focus-within { border-color: var(--control-line, var(--line)); }
 .app-notification-popover__form textarea {
     display: block;
     box-sizing: border-box;
@@ -324,6 +328,16 @@
     outline: 2px solid var(--accent);
     outline-offset: 3px;
 }
+/* Same single-outline composer used by the full conversation page.
+   Theme-wide input focus styles use !important: suppress them only for
+   this textarea, while retaining an understated focus cue on its container. */
+.app-notification-popover .app-notification-popover__form textarea:focus,
+.app-notification-popover .app-notification-popover__form textarea:focus-visible {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 @media(max-width:767px) {
     .app-notification-popover {
         inset: auto 0 0 0 !important;

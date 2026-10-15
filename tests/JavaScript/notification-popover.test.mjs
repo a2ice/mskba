@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    conversationFromHref, isMessagesPage, isVisibleCurrentThreadToast,
+    conversationFromHref, isMessagesPage, isVisibleCurrentThreadToast, popoverComposerMarkup,
 } from '../../resources/themes/mskba_app/js/notification-popover.js';
 
 const origin = 'https://dev.mskba.ru';
@@ -50,4 +50,15 @@ test('active focused conversation suppresses only its own toast when at latest m
     assert.equal(isVisibleCurrentThreadToast(
         { href: 'https://evil.example/account/notifications/threads/support/17' }, current, origin, true), false);
     assert.equal(isVisibleCurrentThreadToast({ href: current }, '/faq', origin, true), false);
+});
+
+test('floating chat composer matches the full chat: no visible label, accessible textarea, bounded message length', () => {
+    const composer = popoverComposerMarkup(2000);
+    assert.ok(composer.includes('aria-label="Сообщение"'));
+    assert.ok(composer.includes('placeholder="Напишите сообщение…'));
+    assert.ok(composer.includes('maxlength="2000"'));
+    assert.ok(composer.includes('data-popover-send>Отправить</button>'));
+    assert.ok(composer.includes('app-notification-popover__compose-footer'));
+    assert.equal(composer.includes('<label'), false);
+    assert.ok(popoverComposerMarkup(500).includes('maxlength="500"'));
 });
