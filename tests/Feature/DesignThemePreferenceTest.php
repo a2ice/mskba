@@ -169,7 +169,7 @@ final class DesignThemePreferenceTest extends TestCase
         $day->refresh();
         $this->assertSame('inter', $day->body_font);
         $this->assertSame('inter', $day->heading_font);
-        $this->assertNull($day->sidebar_hover);
+        $this->assertSame('#F7F8FA', $day->sidebar_hover);
         $this->assertSame(20, $day->widget_glow_strength);
         $this->assertSame($initial + 2, $day->revisions()->count());
     }
