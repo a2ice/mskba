@@ -21,6 +21,16 @@ const session = {
 };
 export const isMessagesPage = (path) => /^\/account\/notifications(?:\/|$)/.test(path);
 
+// Suppress only a notification already visible in the currently focused chat.
+// When reading older messages, the toast must remain available.
+export const isVisibleCurrentThreadToast = (notice, pathname, origin, atLatest) => {
+    if (!atLatest || !/^\/account\/notifications\/threads\/[^/]+(?:\/\d+)?\/?$/.test(pathname)) return false;
+    try {
+        const url = new URL(notice?.href || '', origin);
+        return url.origin === origin && url.pathname.replace(/\/$/, '') === pathname.replace(/\/$/, '');
+    } catch { return false; }
+};
+
 export const createNotificationPopover = (userId) => {
     if (!userId || isMessagesPage(window.location.pathname)) return null;
     const key = 'mskba:notification-popover:' + userId;

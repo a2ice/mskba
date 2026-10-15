@@ -3,7 +3,7 @@
 // notification reads in other tabs and temporarily unavailable Reverb.
 import { subscribePrivate } from '../../../js/realtime.js';
 import { createNotificationToastDock } from './notification-toasts.js';
-import { createNotificationPopover, isMessagesPage } from './notification-popover.js';
+import { createNotificationPopover, isMessagesPage, isVisibleCurrentThreadToast } from './notification-popover.js';
 
 const header = document.querySelector('[data-app-header][data-notification-user-id]');
 
@@ -13,6 +13,15 @@ if (header) {
     let latestCount = Math.max(0, Number(countBadge?.dataset.unreadCount || 0) || 0);
     let revision = 0;
     let syncSerial = 0;
+    const toastAlreadyVisible = (notification) => {
+        const viewport = document.querySelector('[data-chat-root] [data-chat-scroll]');
+        const atLatest = viewport
+            && viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100
+            && !document.hidden && document.hasFocus();
+        return isVisibleCurrentThreadToast(
+            notification, window.location.pathname, window.location.origin, atLatest,
+        );
+    };
     const popover = createNotificationPopover(header.dataset.notificationUserId);
     const dock = createNotificationToastDock(document.querySelector('[data-message-toast-region]'), (count) => {
         render(count);
@@ -65,7 +74,7 @@ if (header) {
                 beforeId = next;
             } while (true);
             if (thisSync !== syncSerial || startedAt !== revision) return;
-            dock?.reconcile(notifications);
+            dock?.reconcile(notifications.filter(notification => !toastAlreadyVisible(notification)));
             popover?.restore(notifications);
             render(unreadCount);
         } catch {
@@ -75,7 +84,7 @@ if (header) {
 
     subscribePrivate(`users.${header.dataset.notificationUserId}`, '.notification.created', (payload) => {
         render(payload?.unread_count);
-        dock?.add(payload?.notification, true);
+        if (!toastAlreadyVisible(payload?.notification)) dock?.add(payload?.notification, true);
         // Reconcile any missed events with the authoritative list.
         void synchronize();
     });

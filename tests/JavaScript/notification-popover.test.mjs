@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    conversationFromHref, isMessagesPage,
+    conversationFromHref, isMessagesPage, isVisibleCurrentThreadToast,
 } from '../../resources/themes/mskba_app/js/notification-popover.js';
 
 const origin = 'https://dev.mskba.ru';
@@ -39,4 +39,15 @@ test('message section pages never show a competing draggable chat', () => {
     for (const path of ['/faq', '/', '/account', '/account/confirmation', '/games']) {
         assert.equal(isMessagesPage(path), false, path);
     }
+});
+
+test('active focused conversation suppresses only its own toast when at latest message', () => {
+    const current = '/account/notifications/threads/support/17';
+    assert.equal(isVisibleCurrentThreadToast({ href: current }, current, origin, true), true);
+    assert.equal(isVisibleCurrentThreadToast({ href: current }, current, origin, false), false);
+    assert.equal(isVisibleCurrentThreadToast(
+        { href: '/account/notifications/threads/support/18' }, current, origin, true), false);
+    assert.equal(isVisibleCurrentThreadToast(
+        { href: 'https://evil.example/account/notifications/threads/support/17' }, current, origin, true), false);
+    assert.equal(isVisibleCurrentThreadToast({ href: current }, '/faq', origin, true), false);
 });
