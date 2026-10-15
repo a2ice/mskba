@@ -3,6 +3,9 @@
 namespace App\Livewire\Backoffice;
 
 use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Portal\Application\Services\OperatorActivityService;
 use App\Modules\Notification\Application\Services\OperatorConversationAccess;
 use App\Modules\Notification\Application\Services\OperatorConversationMessaging;
 use App\Modules\Notification\Domain\Models\OperatorConversation;
@@ -66,6 +69,13 @@ final class OperatorLiveChat extends Component
         $hasOlder = $rows->count() > $this->visibleLimit;
         $messages = $rows->take($this->visibleLimit)->reverse()->values();
         $actor = auth('web')->user()->canonical();
+        // Dialog access and permission to track someone's navigation are
+        // independent. Never retrieve or render presence for chat-only staff.
+        $canSeePresence = app(UserOperationalPermissionChecker::class)
+            ->allows($actor, Permission::OPERATOR_PRESENCE_VIEW);
+        $presence = $canSeePresence
+            ? app(OperatorActivityService::class)->state($conversation->recipient)
+            : null;
 
         return view('livewire.backoffice.operator-live-chat', [
             'conversation' => $conversation,
@@ -74,6 +84,8 @@ final class OperatorLiveChat extends Component
             'moreOnPortal' => $hasOlder && $this->visibleLimit >= 100,
             'canSend' => app(OperatorConversationAccess::class)->canWrite($actor, $conversation),
             'viewer' => $actor,
+            'canSeePresence' => $canSeePresence,
+            'presence' => $presence,
         ]);
     }
 }
