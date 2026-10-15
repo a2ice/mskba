@@ -31,6 +31,43 @@ final class DesignThemeBackofficeTest extends TestCase
             ->assertSee('theme-preview__cool-panel');
     }
 
+    public function test_light_preview_offers_three_local_fonts_and_untouched_dark_preview(): void
+    {
+        $actor = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $night = DesignTheme::query()->where('slug', 'arena_night')->firstOrFail();
+
+        $this->actingAs($actor)->get(route('design-themes.preview', $day))
+            ->assertOk()
+            ->assertSee('data-premium-font', false)
+            ->assertSee('data-premium-gloss', false)
+            ->assertSee('Onest — вариант A')
+            ->assertSee('Manrope — вариант B')
+            ->assertSee('Inter — текущий')
+            ->assertSee('theme-preview__display-title');
+
+        $this->get(route('design-themes.preview', $night))
+            ->assertOk()
+            ->assertDontSee('data-premium-font', false);
+    }
+
+    public function test_premium_font_files_and_ofl_licenses_are_bundled_locally(): void
+    {
+        foreach (['onest', 'manrope'] as $family) {
+            foreach (['latin', 'cyrillic'] as $subset) {
+                $this->assertFileExists(resource_path(
+                    "themes/mskba_app/assets/fonts/premium/{$family}-{$subset}-wght-normal.woff2"
+                ));
+            }
+            $this->assertFileExists(resource_path(
+                "themes/mskba_app/assets/fonts/premium/{$family}-OFL-LICENSE.txt"
+            ));
+        }
+    }
+
     public function test_admin_can_restore_a_previous_theme_revision(): void
     {
         $actor = User::factory()->create([

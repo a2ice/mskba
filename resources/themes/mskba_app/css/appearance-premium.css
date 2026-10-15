@@ -1,0 +1,130 @@
+/* Task 043 / Apple-inspired refinement: restrained typographic sheen and
+ * navigation material. All effects are strictly light-mode; feed cards remain
+ * opaque white and the accepted Tabler icon set is not modified. */
+html[data-appearance-mode="light"] :is(
+    .app-account-section__heading h1,
+    .app-account-section__heading h2,
+    .app-account-overview__intro h1,
+    .app-messages__heading h1,
+    .theme-preview__display-title
+) {
+    font-family: var(--light-display-font-family, var(--theme-font-family, Inter, Arial, sans-serif));
+    font-weight: 800;
+    letter-spacing: -.035em;
+    color: var(--text);
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    html[data-appearance-mode="light"] :is(
+        .app-account-section__heading h1,
+        .app-account-section__heading h2,
+        .app-account-overview__intro h1,
+        .app-messages__heading h1,
+        .theme-preview__display-title
+    ) {
+        background-image: linear-gradient(170deg,
+            var(--light-display-gloss-top, #455467) 0%,
+            var(--light-display-gloss-bottom, #18212b) 90%) !important;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent !important;
+    }
+}
+/* Large card titles, controls and small h3 headings stay solid. */
+html[data-appearance-mode="light"] :is(.site-header, .app-site-header, .app-context-bar) {
+    background: var(--light-premium-chrome, #ffffffec);
+    -webkit-backdrop-filter: blur(var(--light-premium-blur, 12px)) saturate(1.08);
+    backdrop-filter: blur(var(--light-premium-blur, 12px)) saturate(1.08);
+}
+html[data-appearance-mode="light"] :is(
+    .app-header-dropdown, .app-context-path__menu, .app-context-actions__menu,
+    .app-notification-popover
+) {
+    background: var(--light-premium-menu, #fffffff4);
+    -webkit-backdrop-filter: blur(var(--light-premium-blur, 12px)) saturate(1.08);
+    backdrop-filter: blur(var(--light-premium-blur, 12px)) saturate(1.08);
+    box-shadow: 0 10px 32px var(--light-premium-shadow, #26364514);
+}
+html[data-appearance-mode="light"] :is(.mskba-modal, .app-contact-wizard__dialog) {
+    background: var(--surface);
+    box-shadow: 0 22px 64px var(--shadow-modal), 0 1px 0 #ffffff inset;
+}
+/* Preview controls do not persist any changes to a user's theme. */
+.theme-preview__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    align-items: end;
+    margin: 0 0 24px;
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+}
+.theme-preview__controls label {
+    display: grid;
+    gap: 6px;
+    min-width: min(100%, 210px);
+    font-size: 14px;
+    font-weight: 600;
+}
+.theme-preview__controls select {
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 1px solid var(--control-line);
+    border-radius: var(--radius-control);
+    color: var(--text);
+    background: var(--field);
+    font: inherit;
+}
+.theme-preview__controls .theme-preview__check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    font-weight: 500;
+}
+.theme-preview__controls input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+}
+.theme-preview__controls .theme-preview__hint {
+    flex: 1 1 100%;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+.theme-preview[data-preview-font] {
+    font-family: var(--preview-font-family, var(--theme-font-family, Inter, Arial, sans-serif));
+}
+.theme-preview[data-preview-font] .theme-preview__display-title {
+    font-family: var(--preview-font-family, var(--light-display-font-family, Inter, Arial, sans-serif));
+}
+html[data-appearance-mode="light"] .theme-preview[data-preview-gloss="off"] .theme-preview__display-title {
+    background-image: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    color: var(--text);
+}
+@media (prefers-contrast: more), (forced-colors: active) {
+    html[data-appearance-mode="light"] :is(
+        .app-account-section__heading h1,
+        .app-account-section__heading h2,
+        .app-account-overview__intro h1,
+        .app-messages__heading h1,
+        .theme-preview__display-title
+    ) {
+        background-image: none !important;
+        -webkit-text-fill-color: currentColor !important;
+        color: var(--text);
+    }
+}
+@media (prefers-reduced-transparency: reduce) {
+    html[data-appearance-mode="light"] :is(
+        .site-header, .app-site-header, .app-context-bar, .app-header-dropdown,
+        .app-context-path__menu, .app-context-actions__menu, .app-notification-popover
+    ) {
+        background: var(--surface);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}

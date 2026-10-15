@@ -1,4 +1,5 @@
 @import './fonts.css';
+@import './fonts-premium.css';
 @import './tokens.css';
 @import './design-system.css';
 @import './modal.css';
@@ -20,6 +21,7 @@
 @import './account-messages.css';
 @import './appearance-settings.css';
 @import './appearance-light.css';
+@import './appearance-premium.css';
 
 .app-shell { min-height: 100dvh; }
 
