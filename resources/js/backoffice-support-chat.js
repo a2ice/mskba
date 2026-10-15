@@ -13,7 +13,10 @@ const attach = () => {
         present.add(livewireId);
         if (subscriptions.has(livewireId)) return;
 
+        let syncPending = false;
         const sync = async () => {
+            if (syncPending || document.hidden || !element.isConnected) return;
+            syncPending = true;
             try {
                 const response = await fetch(element.dataset.supportStateUrl, {
                     credentials: 'same-origin', cache: 'no-store',
@@ -28,8 +31,8 @@ const attach = () => {
                 if (!component) return;
                 await component.$wire.$call('refreshConversation');
             } catch (_error) {
-                // Livewire or the network may be temporarily unavailable.
-            }
+                // Reverb/network may be temporarily unavailable. The next refresh retries.
+            } finally { syncPending = false; }
         };
         const viewport = element.querySelector('[data-filament-support-history]');
         let stickToBottom = true;
@@ -62,7 +65,16 @@ const attach = () => {
         const unsubscribe = subscribePrivate('support-tickets.' + threadId, '.conversation.changed', () => {
             void sync();
         });
+        const onReconnect = (event) => {
+            if (event.detail?.state === 'connected') void sync();
+        };
+        window.addEventListener('mskba:realtime-state', onReconnect);
+        // Small, bounded fallback if a client misses Reverb: only while this
+        // authenticated support chat is mounted and the tab is visible.
+        const fallback = window.setInterval(() => { void sync(); }, 12000);
         subscriptions.set(livewireId, () => {
+            window.clearInterval(fallback);
+            window.removeEventListener('mskba:realtime-state', onReconnect);
             unsubscribe();
             observer.disconnect();
             viewport?.removeEventListener('scroll', onScroll);
@@ -88,5 +100,19 @@ if (document.readyState === 'loading') {
     attach();
 }
 document.addEventListener('livewire:navigated', attach);
+document.addEventListener('livewire:initialized', attach);
 document.addEventListener('livewire:navigating', cleanup);
 window.addEventListener('pagehide', cleanup);
+let pendingAttach = false;
+const observer = new MutationObserver(() => {
+    if (pendingAttach) return;
+    pendingAttach = true;
+    queueMicrotask(() => {
+        pendingAttach = false;
+        attach();
+    });
+});
+const startObserver = () => observer.observe(document.body, { childList: true, subtree: true });
+if (document.body) startObserver();
+else document.addEventListener('DOMContentLoaded', startObserver, { once: true });
+window.addEventListener('pagehide', () => observer.disconnect());

@@ -22,13 +22,27 @@ if (header) {
             notification, window.location.pathname, window.location.origin, atLatest,
         );
     };
-    const popover = createNotificationPopover(header.dataset.notificationUserId);
-    const dock = createNotificationToastDock(document.querySelector('[data-message-toast-region]'), (count) => {
+    let dock = null;
+    const popover = createNotificationPopover(header.dataset.notificationUserId, {
+        onMinimize: (notice) => dock?.pin(notice),
+        onExpand: (notice) => dock?.unpin(notice.id),
+        onClose: (notice) => { if (notice) dock?.unpin(notice.id); },
+    });
+    dock = createNotificationToastDock(document.querySelector('[data-message-toast-region]'), (count) => {
         render(count);
         void synchronize();
     }, {
         canExpand: () => !isMessagesPage(window.location.pathname),
         onExpand: (notification) => popover?.open(notification),
+        onDismiss: (notification) => {
+            // Dismissing a minimized original toast also closes its saved dialog.
+            if (popover?.isMinimized?.(notification.id)) popover.close();
+        },
+        onRead: (notification) => {
+            // Explicit read on a minimized toast also ends its temporary
+            // persistence. It must not silently reappear on the next page.
+            if (popover?.isMinimized?.(notification.id)) popover.close();
+        },
         userId: header.dataset.notificationUserId,
     });
 

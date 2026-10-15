@@ -82,6 +82,16 @@ final class SupportLiveChatTest extends TestCase
         ]);
         $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
             ->assertOk()->assertSee('Здравствуйте, мы поможем разобраться');
+        // A user reply from the portal/popover is visible after refreshing the
+        // existing Livewire chat, even if the agent has not sent anything.
+        $this->actingAs($customer)->postJson(route('account.notifications.threads.support.messages', $ticket), [
+            'body' => 'Новое сообщение из плавающего окна',
+        ])->assertCreated();
+        $this->actingAs($lead);
+        Livewire::test(SupportLiveChat::class, ['ticketId' => $ticket->id])
+            ->call('refreshConversation')
+            ->assertSee('Новое сообщение из плавающего окна');
+
     }
 
     public function test_livewire_rejects_stranger_before_mount_and_legacy_access_rules_remain(): void
