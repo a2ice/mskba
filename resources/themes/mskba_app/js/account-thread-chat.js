@@ -9,7 +9,32 @@ if (root) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const directStateUrl = root.dataset.chatDirectStateUrl || null;
     const supportStateUrl = root.dataset.chatSupportStateUrl || null;
+    const operatorStateUrl = root.dataset.chatOperatorStateUrl || null;
     const supportSignature = root.dataset.chatSupportSignature || null;
+    const refreshOperatorState = async () => {
+        if (!operatorStateUrl) return;
+        try {
+            const response = await fetch(operatorStateUrl, {
+                credentials: 'same-origin', cache: 'no-store',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (response.status === 403 || response.status === 404) {
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) return;
+            const result = await response.json();
+            const input = root.querySelector('[data-chat-compose] textarea[name="body"]');
+            const send = root.querySelector('[data-chat-send]');
+            const status = root.querySelector('[data-chat-operator-status]');
+            if (input) {
+                input.disabled = !result.can_send;
+                input.hidden = !result.can_send;
+            }
+            if (send) send.disabled = !result.can_send;
+            if (status) status.hidden = Boolean(result.can_send);
+        } catch { /* retry after reconnection */ }
+    };
     let supportStatePending = false;
     let supportStateQueued = false;
     // The state endpoint is authoritative for the composer/closed banner,
@@ -199,7 +224,7 @@ if (root) {
 
     const textarea = form?.querySelector('textarea[name="body"]');
     // Handoff from the floating chat: never persist a message beyond this tab.
-    const draftRoute = window.location.pathname.match(/^\/account\/notifications\/threads\/(support|direct)\/([1-9]\d*)\/?$/);
+    const draftRoute = window.location.pathname.match(/^\/account\/notifications\/threads\/(support|direct|operator)\/([1-9]\d*)\/?$/);
     const draftUser = document.querySelector('[data-app-header]')?.dataset.notificationUserId;
     const handoffKey = draftRoute && draftUser
         ? 'mskba:notification-popover:' + draftUser + ':draft:' + draftRoute[1] + ':' + draftRoute[2]
@@ -409,6 +434,10 @@ if (root) {
                 void refreshRail();
                 return;
             }
+            if (operatorStateUrl) {
+                void refreshOperatorState(); void refresh(); void refreshRail();
+                return;
+            }
             if (!directStateUrl) { window.location.reload(); return; }
             void refreshDirectState();
             void refresh();
@@ -419,25 +448,32 @@ if (root) {
         readRevision += 1;
         // A new outgoing message can grant the other participant the right
         // to reply even if the sender's privacy is set to NOBODY.
-        void refreshDirectState();
+        void refreshDirectState(); void refreshOperatorState();
         void refresh();
         void refreshRail();
     });
     // Returning to a background window also reconciles notifications that
     // arrived while inactive. read acknowledgement waits for this fetch.
     window.addEventListener('focus', () => {
-        void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+        void refreshSupportState(); void refreshDirectState(); void refreshOperatorState(); void refresh(); void refreshRail();
     });
     window.addEventListener('mskba:realtime-state', event => {
         if (event.detail?.state === 'connected') {
-            void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+            void refreshSupportState(); void refreshDirectState(); void refreshOperatorState(); void refresh(); void refreshRail();
         }
     });
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            void refreshSupportState(); void refreshDirectState(); void refresh(); void refreshRail();
+            void refreshSupportState(); void refreshDirectState(); void refreshOperatorState(); void refresh(); void refreshRail();
         }
     });
+    if (operatorStateUrl) {
+        void refreshOperatorState();
+        const operatorStateTimer = window.setInterval(() => {
+            if (!document.hidden) void refreshOperatorState();
+        }, 10000);
+        window.addEventListener('pagehide', () => window.clearInterval(operatorStateTimer), { once: true });
+    }
     if (supportStateUrl) {
         // Reverb is fast; periodic authorization-aware state reconciliation
         // covers disconnects, suspended browser tabs and missed broadcasts.
