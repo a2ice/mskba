@@ -99,11 +99,9 @@
         @else
             <div class="panel app-messages__compose app-messages__system-footer">
                 <p>Обращение закрыто. История доступна для чтения.</p>
-                @if ($ticket->closed_by_user_id)
-                    <p>{{ app(\App\Modules\Notification\Application\Services\SupportTicketLifecycleText::class)->closed(
-                        $ticket->closer?->username, $ticket->close_reason, $ticket->close_description,
-                    ) }}</p>
-                @endif
+                <p>Причина: {{ app(\App\Modules\Notification\Application\Services\SupportTicketLifecycleText::class)->reason(
+                    $ticket->close_reason, $ticket->close_description,
+                ) ?? 'Не указана' }}</p>
                 @if ($canReopen)
                     <form method="POST" action="{{ route('account.notifications.threads.support.reopen', $ticket) }}">
                         @csrf

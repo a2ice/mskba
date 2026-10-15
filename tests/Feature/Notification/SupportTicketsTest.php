@@ -339,7 +339,7 @@ final class SupportTicketsTest extends TestCase
         $this->assertNull($ticket->fresh()->closed_by_user_id);
         $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
         $page = $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
-            ->assertOk()->assertSee('Обращение возобновлено')->assertSee($lead->username);
+            ->assertOk()->assertSee('Обращение возобновил @'.$lead->username)->assertDontSee('Возобновил:');
         $this->assertStringContainsString('Обращение закрыл @'.$lead->username, $page->getContent());
         $this->actingAs($lead)->post($reopen)->assertForbidden();
         $this->assertSame(1, $ticket->thread->events()->where('action', 'support_reopened')->count());
@@ -362,7 +362,8 @@ final class SupportTicketsTest extends TestCase
         $this->assertSame('no_longer_relevant', $ticket->fresh()->close_reason);
         $this->assertNull($ticket->fresh()->close_description);
         $this->actingAs($customer)->get(route('account.notifications.threads.support', $ticket))
-            ->assertOk()->assertSee('Не актуально')->assertDontSee('Should not persist');
+            ->assertOk()->assertSee('<p>Причина: Не актуально</p>', false)
+            ->assertDontSee('Should not persist');
     }
 
     public function test_support_history_keyset_paginates_system_events_and_messages_without_leaking(): void
@@ -468,7 +469,11 @@ final class SupportTicketsTest extends TestCase
             ->assertSee('Обращение закрыл @'.$lead->username)
             ->assertSee('Причина: Вопрос решён другим способом')
             ->assertDontSee('Описание причины:')
+            ->assertSee('<p>Причина: Вопрос решён другим способом</p>', false)
             ->assertDontSee('data-chat-compose', false);
+        $this->assertSame(1, substr_count(
+            $closedPage->getContent(), 'Обращение закрыл @'.$lead->username,
+        ));
         $this->assertStringContainsString('data-chat-support-signature="'.$closed->json('signature').'"',
             $closedPage->getContent());
 
@@ -514,5 +519,10 @@ final class SupportTicketsTest extends TestCase
             $formatter->closed('admin', 'other', 'Подтверждена ошибка!'));
         $this->assertSame('Обращение закрыл @admin.',
             $formatter->closed('admin', null, null));
+        $this->assertSame('Обращение возобновил @admin.', $formatter->reopened('admin'));
+        $this->assertSame('Обращение возобновил @сотрудник_поддержки.', $formatter->reopened(null));
+        $this->assertSame('Не актуально', $formatter->reason('no_longer_relevant', null));
+        $this->assertSame('Проверка сохранения', $formatter->reason('other', 'Проверка сохранения'));
+        $this->assertNull($formatter->reason(null, null));
     }
 }

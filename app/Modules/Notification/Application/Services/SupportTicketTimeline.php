@@ -62,7 +62,7 @@ final class SupportTicketTimeline
         $name = $row->actor?->username ?? 'Сотрудник поддержки';
         $data = $row->metadata ?? [];
         if ($row->action === 'support_reopened') {
-            $text = 'Обращение возобновлено. Возобновил: '.$name.'.';
+            $text = app(SupportTicketLifecycleText::class)->reopened($name);
         } else {
             $text = app(SupportTicketLifecycleText::class)->closed(
                 $name, $data['reason'] ?? null, $data['description'] ?? null,
