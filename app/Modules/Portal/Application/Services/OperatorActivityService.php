@@ -34,8 +34,9 @@ final class OperatorActivityService
                 $stateKey = 'operator-activity:current:'.$userId;
                 $previous = $store->get($stateKey);
                 $changed = ! is_array($previous)
-                    || ($previous['session'] ?? null) !== $session
-                    || ($previous['path'] ?? null) !== $page;
+                    || ($previous['path'] ?? null) !== $page
+                    || (int) ($previous['at'] ?? 0) < $now
+                        - (int) config('operator_activity.online_seconds', 150);
                 $historyKey = 'operator-activity:history:'.$userId.':'.$session;
                 $history = $store->get($historyKey, []);
                 $history = is_array($history) ? $history : [];
