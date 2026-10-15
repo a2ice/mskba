@@ -8,6 +8,8 @@ use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\DirectConversation;
+use App\Modules\Notification\Domain\Models\OperatorConversation;
+use App\Modules\Notification\Application\Services\OperatorConversationAccess;
 use App\Modules\Notification\Domain\Models\RequestThread;
 
 final class ConversationChannel
@@ -34,6 +36,13 @@ final class ConversationChannel
         $ticket = SupportTicket::query()->find($thread->subject_id);
 
         return $ticket !== null && app(SupportTicketAccess::class)->canRead($user, $ticket, $thread);
+    }
+
+    public function operator(User $user, string|int $id): bool
+    {
+        $conversation = OperatorConversation::query()->find($id);
+
+        return $conversation !== null && app(OperatorConversationAccess::class)->canRead($user, $conversation);
     }
 
     public function direct(User $user, string|int $id): bool
