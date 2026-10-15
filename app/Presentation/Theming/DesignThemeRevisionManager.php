@@ -33,6 +33,11 @@ final class DesignThemeRevisionManager
                 'heading_font' => $revision->heading_font,
                 'widget_glow_color' => $revision->widget_glow_color,
                 'widget_glow_strength' => $revision->widget_glow_strength,
+                'sidebar_background' => $revision->sidebar_background,
+                'sidebar_text' => $revision->sidebar_text,
+                'sidebar_hover' => $revision->sidebar_hover,
+                'sidebar_active_background' => $revision->sidebar_active_background,
+                'sidebar_active_text' => $revision->sidebar_active_text,
             ])->save();
             // The saved-event appends a new version so the restore itself is reversible.
         });
