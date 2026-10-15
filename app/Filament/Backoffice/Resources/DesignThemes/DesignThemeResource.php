@@ -157,19 +157,19 @@ final class DesignThemeResource extends Resource
         app(DesignThemeCss::class)->validate((array) ($data['colors'] ?? []), $data['css_code'] ?? null);
         foreach (['body_font', 'heading_font'] as $field) {
             if (! isset(DesignFontCatalog::OPTIONS[$data[$field] ?? 'inter'])) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Выбери шрифт из коллекции MSKBA.',
                 ]);
             }
         }
         $glow = $data['widget_glow_color'] ?? null;
         if ($glow !== null && $glow !== '' && (! is_string($glow) || ! preg_match('/\\A#[0-9a-fA-F]{6}\\z/D', $glow))) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'widget_glow_color' => 'Выбери цвет в формате HEX.',
             ]);
         }
         if (isset($data['widget_glow_strength']) && ! in_array((int) $data['widget_glow_strength'], [0, 8, 12, 16, 20, 28, 36], true)) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'widget_glow_strength' => 'Выбери допустимую интенсивность подсветки.',
             ]);
         }
