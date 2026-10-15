@@ -35,7 +35,7 @@
 .app-roles__card:hover {border-color:var(--control-line);}
 .app-roles__card:has(input[type=checkbox]:checked) {
   border-color:var(--accent);
-  background:#ff79000f;
+  background:var(--subtle-accent-bg);
 }
 .app-roles__choice {display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex:0 0 auto;min-width:0;}
 .app-roles__heading {display:flex;align-items:center;min-width:0;gap:2px;}
@@ -115,7 +115,7 @@
   justify-content:center;
   gap:10px;
   border-radius:inherit;
-  background:#090a0bc9;
+  background:var(--loader-bg);
   font-size:14px;
   font-weight:600;
   color:var(--text);

@@ -25,7 +25,7 @@
     background-repeat: no-repeat;
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
-    box-shadow: 0 32px 100px #000b;
+    box-shadow: 0 32px 100px var(--shadow-modal);
 }
 /* One surface, one glow: status is assigned to the dialog root.
    Header, scrolled body and footer keep transparent backgrounds. */
@@ -35,7 +35,7 @@
 .mskba-modal:not([open]) { display: none; }
 .mskba-modal[open] { display: flex; }
 .mskba-modal::backdrop {
-    background: #000c;
+    background: var(--backdrop-bg);
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
 }

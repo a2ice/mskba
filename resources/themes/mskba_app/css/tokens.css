@@ -13,5 +13,14 @@
   --surface-corner-glow:#ff79001e;
   --surface-corner-glow-success:#35cb7922;
   --surface-corner-glow-error:#ff545e22;
-  font-family:Inter,Arial,sans-serif; font-synthesis:none;
+  --theme-font-family:Inter,Arial,sans-serif;
+  --header-bg:#090a0bf5; --body-glow:#ff79000b; --ambient-shadow:#0004;
+  --glass-bg:#101214e6; --danger-bg:#301b1e; --danger-hover-bg:#422226;
+  --success-bg:#173025; --warning-bg:#33291b; --danger-badge-bg:#301b1e;
+  --surface-glint:#ffffff03; --tile-bg:#281b11; --tile-border:#5c381f;
+  --avatar-bg:#2a1b10; --avatar-border:#8a481b; --backdrop-bg:#000b;
+  --subtle-accent-bg:#ff790014; --subtle-white-bg:#ffffff09;
+  --shadow-menu:#0009; --shadow-popover:#0008; --shadow-modal:#000b;
+  --loader-bg:#090a0bc9; --text-on-accent:var(--on-accent);
+  font-family:var(--theme-font-family); font-synthesis:none;
 }

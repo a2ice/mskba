@@ -1,0 +1,39 @@
+/* Light mode: legacy literal color exceptions are kept behind a single modifier. */
+html[data-appearance-mode="light"] { color-scheme: light; }
+html[data-appearance-mode="light"] .app-header-mobile[open] .app-header-mobile-panel {
+ background:var(--surface);box-shadow:0 18px 42px var(--ambient-shadow)
+}
+html[data-appearance-mode="light"] .app-user-avatar__unread {color:var(--on-accent)}
+html[data-appearance-mode="light"] .app-roles__settings-link:hover {color:var(--text)}
+html[data-appearance-mode="light"] .app-context-path__menu a:hover,
+html[data-appearance-mode="light"] .app-context-actions__menu :is(a,button,summary):hover {background:var(--subtle-accent-bg)}
+html[data-appearance-mode="light"] .app-context-path__menu [aria-current="page"] {background:var(--subtle-white-bg)}
+html[data-appearance-mode="light"] :is(
+ .app-header-dropdown,.app-context-path__menu,.app-context-actions__menu,
+ .app-notification-popover,.app-message-toast-region .toast,.app-messages__conversation,
+ .app-messages__bubble,.app-contact-wizard__dialog
+) {box-shadow:0 12px 36px var(--ambient-shadow)}
+html[data-appearance-mode="light"] .app-notification-popover__header {background:var(--surface-raised)}
+html[data-appearance-mode="light"] .app-notification-popover__header button:hover {background:var(--surface)}
+html[data-appearance-mode="light"] :is(.mskba-modal,dialog)::backdrop {background:var(--backdrop-bg)}
+html[data-appearance-mode="light"] .app-contact-wizard__choices label {background:var(--surface)}
+html[data-appearance-mode="light"] .app-account-nav__link:is(.is-active,[aria-current="page"]) {
+ background:var(--surface-corner-layer),var(--subtle-accent-bg);
+ border-color:color-mix(in srgb,var(--accent) 36%,var(--line))
+}
+html[data-appearance-mode="light"] .app-account-nav__badge {background:var(--subtle-accent-bg)}
+html[data-appearance-mode="light"] .wizard-choice input:checked+span {background:var(--subtle-accent-bg)}
+html[data-appearance-mode="light"] .app-messages__bubble--system {background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+html[data-appearance-mode="light"] .app-messages__direct-event--blocked span {color:var(--danger)}
+html[data-appearance-mode="light"] .app-messages__direct-event--unblocked span {color:var(--success)}
+/* Hero/media overlays stay dark, text remains white for legibility on photography. */
+html[data-appearance-mode="light"] .hero,
+html[data-appearance-mode="light"] .hero :is(h1,.hero-copy,.eyebrow,.meta,.muted) {color:#fff}
+html[data-appearance-mode="light"] .hero .accent {color:#ffad69}
+html[data-appearance-mode="light"] .media-badge {color:#fff}
+html[data-appearance-mode="light"] .team-card {
+ background:radial-gradient(ellipse at 100% 0%,var(--subtle-accent-bg),transparent 65%),var(--surface)
+}
+@media (prefers-reduced-motion: reduce) {
+ html[data-appearance-mode="light"] * {scroll-behavior:auto}
+}

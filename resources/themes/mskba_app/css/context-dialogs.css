@@ -18,7 +18,7 @@
 .app-context-help__lookup.has-clear .app-context-help__arrow { right: 38px; }
 .app-context-help__clear { right: 4px; font-size: 22px; line-height: 1; }
 .app-context-help__arrow svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.app-context-help__options { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4; max-height: 240px; overflow-y: auto; padding: 5px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-raised); box-shadow: 0 12px 32px #0008; }
+.app-context-help__options { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4; max-height: 240px; overflow-y: auto; padding: 5px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-raised); box-shadow: 0 12px 32px var(--shadow-popover); }
 .app-context-help__option { display: block; width: 100%; min-height: 39px; padding: 9px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
 .app-context-help__option:is(:hover, [aria-selected="true"]) { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .app-context-help__options p { padding: 9px 12px; margin: 0; font-size: 13px; color: var(--muted); }

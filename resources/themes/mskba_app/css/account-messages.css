@@ -5,7 +5,7 @@
     display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:14px;
     padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--conversation-accent,var(--accent));
     border-radius:var(--radius-card);background:var(--surface);color:var(--text);
-    box-shadow:0 10px 28px #0004;text-decoration:none;min-width:0;transition:background .15s,border-color .15s
+    box-shadow:0 10px 28px var(--ambient-shadow);text-decoration:none;min-width:0;transition:background .15s,border-color .15s
 }
 .app-messages__conversation:hover{background:var(--surface-raised);border-color:var(--control-line);border-left-color:var(--conversation-accent,var(--accent))}
 .app-messages__avatar{display:grid;place-items:center;width:44px;height:44px;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:14px;color:var(--accent);flex:none}
@@ -66,7 +66,7 @@
 .app-messages__support a{color:var(--accent);font-size:13px;width:fit-content;display:inline-flex;gap:6px;align-items:center}
 .app-messages__support a svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
 
-.app-messages__bubble--system{align-self:center;max-width:85%;border:1px solid color-mix(in srgb,#ff8a00 40%,var(--line));border-radius:14px;background:color-mix(in srgb,#ff8a00 7%,var(--surface))}
+.app-messages__bubble--system{align-self:center;max-width:85%;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
 .app-messages__bubble--system .app-messages__bubble-head strong{color:var(--accent)}
 .app-messages__participants{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .app-messages__participant{display:inline;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:650;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
@@ -182,8 +182,8 @@
 .app-messages__actions>.app-context-actions__menu :is(button,a){font-size:13px}
 .app-messages--thread .app-profile-thread__reviewers{margin:0;padding:18px}
 .app-messages--thread [hidden]{display:none!important}
-.app-messages__review-dialog{width:min(500px,calc(100vw - 32px));max-width:100%;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-raised);color:var(--text);padding:24px;box-shadow:0 22px 60px #000a}
-.app-messages__review-dialog::backdrop{background:#000a}
+.app-messages__review-dialog{width:min(500px,calc(100vw - 32px));max-width:100%;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-raised);color:var(--text);padding:24px;box-shadow:0 22px 60px var(--shadow-modal)}
+.app-messages__review-dialog::backdrop{background:var(--shadow-modal)}
 .app-messages__review-dialog form{display:grid;gap:14px}
 .app-messages__review-dialog h3{margin:0}
 .app-messages__review-dialog textarea{width:100%;min-height:100px;color:var(--text);background:var(--surface);border:1px solid var(--control-line);border-radius:var(--radius-control);padding:12px}
@@ -351,8 +351,8 @@
 /* Persistent direct-message moderation events, quiet and accessible. */
 .app-messages__direct-event{align-self:center;max-width:96%;display:flex;gap:8px;align-items:baseline;justify-content:center;flex-wrap:wrap;text-align:center;font-size:12px;line-height:1.5;padding:4px 8px}
 .app-messages__direct-event time{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
-.app-messages__direct-event--blocked span{color:#ec9db7}
-.app-messages__direct-event--unblocked span{color:#8cdbaf}
+.app-messages__direct-event--blocked span{color:var(--danger)}
+.app-messages__direct-event--unblocked span{color:var(--success)}
 /* Replace, rather than duplicate, the composer textarea while sending is forbidden.
    Keep the notice inside the shared panel and above the action buttons. */
 .app-messages--thread .app-messages__compose .app-messages__direct-status{

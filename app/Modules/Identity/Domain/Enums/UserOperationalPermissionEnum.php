@@ -19,6 +19,8 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_WIDGET_DELETE = 'backoffice.widget.delete';
     case BACKOFFICE_STYLE_VIEW = 'backoffice.button_style.view';
     case BACKOFFICE_STYLE_MANAGE = 'backoffice.button_style.manage';
+    case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
+    case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
 
     /** @return list<self> */
     public static function backofficeCases(): array
@@ -31,6 +33,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_WIDGET_DELETE,
             self::BACKOFFICE_STYLE_VIEW,
             self::BACKOFFICE_STYLE_MANAGE,
+            self::BACKOFFICE_THEME_VIEW,
+            self::BACKOFFICE_THEME_MANAGE,
         ];
     }
 
@@ -56,6 +60,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_WIDGET_DELETE => 'Удаление виджетов дашборда',
             self::BACKOFFICE_STYLE_VIEW => 'Просмотр справочника CSS-классов',
             self::BACKOFFICE_STYLE_MANAGE => 'Создание, изменение и удаление CSS-классов',
+            self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
+            self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
         };
     }
 

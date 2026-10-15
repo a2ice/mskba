@@ -42,7 +42,7 @@
     padding: 12px 14px; margin-bottom: 16px;
     border: 1px solid var(--danger);
     border-radius: var(--radius-control);
-    background: #ff42510c;
+    background: color-mix(in srgb,var(--danger) 5%,transparent);
     color: var(--text);
     line-height: 1.5;
 }

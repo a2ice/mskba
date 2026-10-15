@@ -1,4 +1,5 @@
 import './header.js';
+import './features/appearance-preferences.js';
 import './notification-counts.js';
 import './context-bar.js';
 import './context-dialogs.js';

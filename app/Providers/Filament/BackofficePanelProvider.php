@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
+use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\SupportTickets\SupportTicketResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
 use Filament\Http\Middleware\Authenticate;
@@ -39,6 +40,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->resources([
                 AccountDashboardWidgetResource::class,
                 DashboardButtonStyleResource::class,
+                DesignThemeResource::class,
                 BackofficeUserResource::class,
                 SupportTicketResource::class,
             ])

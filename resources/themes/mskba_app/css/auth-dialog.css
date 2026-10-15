@@ -57,7 +57,7 @@
 .mskba-auth-form input:focus-visible,
 .mskba-auth-form select:focus-visible {
     border-color: var(--accent);
-    outline: 2px solid #ff790047;
+    outline: 2px solid color-mix(in srgb,var(--accent) 28%,transparent);
     outline-offset: 1px;
 }
 .mskba-auth-form input:disabled,
@@ -106,9 +106,9 @@
 .mskba-auth-message {
     padding: 12px 14px;
     color: var(--danger);
-    border: 1px solid #ff93984a;
+    border: 1px solid color-mix(in srgb,var(--danger) 28%,transparent);
     border-radius: 10px;
-    background: #ff93980e;
+    background: color-mix(in srgb,var(--danger) 6%,transparent);
     font-size: 13px;
     line-height: 20px;
 }

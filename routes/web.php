@@ -111,6 +111,12 @@ Route::get('/', function () use ($themeResolver) {
 
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 
+Route::get('/assets/design-themes/{theme}/{revision}.css', \App\Presentation\Theming\DesignThemeStylesheetController::class)
+    ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('revision', '[a-f0-9]{16}')
+    ->name('design-themes.css');
+Route::get('/backoffice/design-themes/preview/{theme}', \App\Presentation\Theming\DesignThemePreviewController::class)
+    ->middleware('auth')->name('design-themes.preview');
+
 Route::post('/site-summary/heartbeat', SiteSummaryController::class)
     ->middleware('throttle:30,1')
     ->name('site-summary.heartbeat');
@@ -852,6 +858,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/player/generations/{generation}/image', PlayerCharacterGenerationImageController::class)
             ->name('account.player-character.generations.image');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+        Route::patch('/settings/appearance', \App\Presentation\Theming\UpdateDesignThemePreferenceController::class)
+            ->middleware('throttle:12,1')->name('account.settings.appearance.update');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
             ->name('account.settings.password.update');

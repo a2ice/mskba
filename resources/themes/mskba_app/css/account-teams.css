@@ -128,7 +128,7 @@
   font-size:12px;
   font-weight:500;
   line-height:1.5;
-  box-shadow:0 7px 24px #0008;
+  box-shadow:0 7px 24px var(--shadow-popover);
   pointer-events:none;
 }
 .app-team-gate-tooltip[hidden] {display:none;}

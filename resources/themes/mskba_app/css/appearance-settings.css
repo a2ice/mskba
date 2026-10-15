@@ -1,0 +1,8 @@
+.app-appearance-settings { padding:24px; display:grid; gap:12px; max-width:800px; }
+.app-appearance-settings > h2 { font-size:22px; line-height:28px; }
+.app-appearance-settings > p { font-size:14px; }
+.app-appearance-settings form { display:grid; gap:12px; max-width:480px; margin-top:10px; }
+.app-appearance-settings label { font-weight:600; font-size:14px; }
+.app-appearance-settings select { width:100%; min-height:48px; padding:12px; font-size:16px; border:1px solid var(--control-line); border-radius:var(--radius-control); background:var(--field); color:var(--text); }
+.app-appearance-settings button { justify-self:start; }
+.app-appearance-settings [role="status"] { color:var(--muted); min-height:20px; font-size:14px; }

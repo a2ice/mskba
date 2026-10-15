@@ -116,7 +116,7 @@
 .privacy-onboarding__selection .badge {
   flex-shrink:0;
   color:var(--accent);
-  background:#ff790016;
+  background:var(--subtle-accent-bg);
 }
 .privacy-onboarding__selection p {
   font-size:12px; line-height:18px; color:var(--muted);
@@ -214,10 +214,10 @@
 .privacy-onboarding__reminder {
     display:flex; align-items:flex-start; gap:14px;
     padding:16px 20px; margin-bottom:24px;
-    border:1px solid #ff79004a;
+    border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);
     border-left:3px solid var(--accent);
     border-radius:var(--radius-control);
-    background:#ff79000c;
+    background:color-mix(in srgb,var(--accent) 5%,transparent);
 }
 .privacy-onboarding__reminder > svg { width:22px; height:22px; flex-shrink:0; color:var(--accent); }
 .privacy-onboarding__reminder strong { display:block; font-size:15px; line-height:22px; }

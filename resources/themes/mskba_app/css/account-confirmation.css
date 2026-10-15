@@ -40,7 +40,7 @@
 /* Verified-contact onboarding dialog. */
 .app-contact-wizard__trigger{display:flex;align-items:center;flex-wrap:wrap;gap:12px 14px;margin-top:16px}
 .app-contact-wizard__hint{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
-.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px #0009;overflow:auto}
+.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px var(--shadow-menu);overflow:auto}
 .app-contact-wizard__dialog:not([open]){display:none}
 .app-contact-wizard__dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
 .app-contact-wizard__header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 26px 18px;border-bottom:1px solid var(--line)}
@@ -52,7 +52,7 @@
 .app-contact-wizard__body h3{font-size:19px;line-height:1.3;margin:0 0 10px}
 .app-contact-wizard__body section>p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 20px}
 .app-contact-wizard__choices{display:grid;gap:10px}
-.app-contact-wizard__choices label{display:flex;align-items:center;gap:14px;padding:15px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .15s ease;background:rgba(255,255,255,.015)}
+.app-contact-wizard__choices label{display:flex;align-items:center;gap:14px;padding:15px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .15s ease;background:color-mix(in srgb,var(--surface) 95%,var(--text) 5%)}
 .app-contact-wizard__choices label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .app-contact-wizard__choices input{accent-color:var(--accent);width:18px;height:18px;flex:none}
 .app-contact-wizard__choices strong{display:block;font-size:15px}
@@ -166,7 +166,7 @@
     width:max-content;max-width:min(240px,calc(100vw - 36px));
     padding:6px 9px;border-radius:8px;border:1px solid var(--control-line);
     background:var(--surface-raised);color:var(--text);
-    box-shadow:0 8px 20px #0009;font-size:12px;line-height:16px;font-weight:500;
+    box-shadow:0 8px 20px var(--shadow-menu);font-size:12px;line-height:16px;font-weight:500;
     text-align:left;white-space:normal;pointer-events:none;
     opacity:0;visibility:hidden;transition:opacity .12s ease,visibility .12s ease;
 }
@@ -302,7 +302,7 @@
     width:max-content;max-width:calc(100vw - 48px);
     padding:5px 9px;border:1px solid var(--control-line);
     border-radius:8px;background:var(--surface-raised);color:var(--text);
-    box-shadow:0 6px 18px #0007;
+    box-shadow:0 6px 18px var(--shadow-popover);
     font-size:12px;font-weight:500;line-height:16px;letter-spacing:normal;
     opacity:0;visibility:hidden;pointer-events:none;
     transition:opacity 100ms ease-out,visibility 100ms ease-out;

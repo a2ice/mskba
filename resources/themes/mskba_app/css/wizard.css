@@ -41,8 +41,8 @@
   transform:translateY(-50%);
   display:inline-flex; align-items:center; gap:4px; min-width:0;
   max-width:calc(100% - 152px); height:26px; padding:2px 3px 2px 9px;
-  background:rgba(255, 121, 0, .09);
-  border:1px solid rgba(255, 121, 0, .28);
+  background:color-mix(in srgb,var(--accent) 9%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);
   border-radius:999px;
   pointer-events:none;
 }
@@ -57,7 +57,7 @@
   border:0; border-radius:50%; background:transparent;
   color:#fff; cursor:pointer; pointer-events:auto;
 }
-.wizard-role-clear:hover { background:rgba(255, 121, 0, .16); }
+.wizard-role-clear:hover { background:color-mix(in srgb,var(--accent) 16%,transparent); }
 .wizard-role-clear:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
 .wizard-role-clear svg { width:12px; height:12px; stroke-width:1.8; }
 .wizard-role-group { min-width:0; border:1px solid var(--line); border-radius:var(--radius-control); background:var(--field); }
@@ -95,7 +95,7 @@
     border-color:color-mix(in srgb, var(--control-line) 75%, transparent);
   }
 }
-.wizard-choice input:checked+span { border-color:var(--accent); background:#ff79000f; }
+.wizard-choice input:checked+span { border-color:var(--accent); background:var(--subtle-accent-bg); }
 .wizard-choice input:focus-visible+span { outline:2px solid var(--accent); outline-offset:3px; }
 .wizard-step .field-group label { font-size:13px; font-weight:600; }
 .wizard-step .field-group input, .wizard-step .field-group select {
@@ -128,7 +128,7 @@ label.wizard-required-label::after {
   color:var(--text); background:var(--surface-raised);
   border:1px solid var(--line); border-radius:var(--radius-control);
   font-size:12px; line-height:17px; font-weight:500; white-space:normal;
-  box-shadow:0 7px 24px #0008; z-index:10; opacity:0; visibility:hidden;
+  box-shadow:0 7px 24px var(--shadow-popover); z-index:10; opacity:0; visibility:hidden;
   transition:opacity .12s ease .2s, visibility 0s linear .32s;
 }
 label.wizard-required-label:is(:hover,.is-tooltip-open)::after {

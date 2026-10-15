@@ -18,6 +18,8 @@
 @import './account-roles.css';
 @import './account-profile.css';
 @import './account-messages.css';
+@import './appearance-settings.css';
+@import './appearance-light.css';
 
 .app-shell { min-height: 100dvh; }
 
