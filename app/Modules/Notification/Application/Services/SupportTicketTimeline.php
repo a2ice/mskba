@@ -2,7 +2,6 @@
 
 namespace App\Modules\Notification\Application\Services;
 
-use App\Modules\Notification\Domain\Enums\SupportClosureReasonEnum;
 use App\Modules\Notification\Domain\Models\RequestThread;
 use App\Modules\Notification\Presentation\Presenters\SupportMessagePresenter;
 
@@ -65,12 +64,9 @@ final class SupportTicketTimeline
         if ($row->action === 'support_reopened') {
             $text = 'Обращение возобновлено. Возобновил: '.$name.'.';
         } else {
-            $reason = SupportClosureReasonEnum::tryFrom((string) ($data['reason'] ?? ''));
-            $text = 'Обращение закрыто. Закрыл: '.$name.'. Причина: '
-                .($reason?->label() ?? 'Не указана').'.';
-            if (filled($data['description'] ?? null)) {
-                $text .= ' Описание причины: '.$data['description'];
-            }
+            $text = app(SupportTicketLifecycleText::class)->closed(
+                $name, $data['reason'] ?? null, $data['description'] ?? null,
+            );
         }
 
         return ['kind' => 'system', 'id' => 'support-event-'.$row->id,
