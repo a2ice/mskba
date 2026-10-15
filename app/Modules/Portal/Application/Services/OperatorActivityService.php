@@ -17,11 +17,11 @@ final class OperatorActivityService
 
     private const HISTORY_TTL = 7200;
 
-    public function record(User $actor, string $sessionId, string $pathname): void
+    public function record(User $actor, string $sessionId, string $pathname): bool
     {
         $actor = $actor->canonical();
         if ($actor->isBlocked() || $actor->trashed() || $sessionId === '') {
-            return;
+            return false;
         }
 
         $page = $this->safePath($pathname);
@@ -29,9 +29,13 @@ final class OperatorActivityService
         $userId = (int) $actor->id;
         try {
             $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
-            $store->lock('operator-activity:lock:'.$userId, 3)->block(1, function () use ($store, $userId, $session, $page): void {
+            return (bool) $store->lock('operator-activity:lock:'.$userId, 3)->block(1, function () use ($store, $userId, $session, $page): bool {
                 $now = now()->timestamp;
                 $stateKey = 'operator-activity:current:'.$userId;
+                $previous = $store->get($stateKey);
+                $changed = ! is_array($previous)
+                    || ($previous['session'] ?? null) !== $session
+                    || ($previous['path'] ?? null) !== $page;
                 $historyKey = 'operator-activity:history:'.$userId.':'.$session;
                 $history = $store->get($historyKey, []);
                 $history = is_array($history) ? $history : [];
@@ -47,10 +51,14 @@ final class OperatorActivityService
                     'path' => $page,
                     'at' => $now,
                 ], self::HISTORY_TTL);
+
+                return $changed;
             });
         } catch (Throwable $exception) {
             // Presence must never block site navigation if Redis is unavailable.
             report($exception);
+
+            return false;
         }
     }
 
