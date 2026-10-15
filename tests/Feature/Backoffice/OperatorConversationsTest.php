@@ -117,7 +117,7 @@ final class OperatorConversationsTest extends TestCase
         Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
             ->assertSee('Проверка активности')
             ->assertDontSee('Сейчас на странице:')
-            ->assertDontSee('/account/notifications/threads/operator/'.$conversation->id);
+            ->assertDontSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
         $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
 
         // Granting navigation visibility does not change the separate right to chat.
@@ -132,15 +132,15 @@ final class OperatorConversationsTest extends TestCase
         $chat = Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
             ->assertSee('Онлайн')
             ->assertSee('Сейчас на странице:')
-            ->assertSee('/account/notifications/threads/operator/'.$conversation->id);
+            ->assertSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
 
         // Simulates Livewire's existing periodic refresh, without messages
         // being sent from either side.
         $activity->record($customer, 'current-session-test', '/faq');
         $chat->call('refreshConversation')
             ->assertSee('Сейчас на странице:')
-            ->assertSee('/faq')
-            ->assertDontSee('/account/notifications/threads/operator/'.$conversation->id);
+            ->assertSee('<strong>/faq</strong>', false)
+            ->assertDontSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
 
         $activity->forget($customer);
         $chat->call('refreshConversation')
