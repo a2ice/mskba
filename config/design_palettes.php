@@ -52,42 +52,42 @@ CSS,
     'day' => [
         'slug' => 'court_day',
         'name' => 'Светлый паркет',
-        'description' => 'Светлая арена, чистые карточки и тёплые баскетбольные акценты.',
+        'description' => 'Ледяной голубой фон, белые карточки и тёплые баскетбольные акценты.',
         'mode' => 'light',
         'colors' => [
-            'bg' => '#F7F8FA', 'surface' => '#FFFFFF', 'surface-raised' => '#EEF1F4',
-            'field' => '#F8F9FA', 'text' => '#17191D', 'muted' => '#505B66',
-            'faint' => '#5A6672', 'accent' => '#BD4F00', 'accent-hover' => '#A74500',
-            'accent-active' => '#8C3900', 'on-accent' => '#FFFFFF', 'line' => '#D9DEE3',
-            'control-line' => '#858F9A', 'success' => '#176A43', 'warning' => '#865300',
-            'danger' => '#B02E38', 'info' => '#1F5E98',
+            'bg' => '#EBF3FC', 'surface' => '#FFFFFF', 'surface-raised' => '#E6F1FC',
+            'field' => '#F4F9FF', 'text' => '#1A2838', 'muted' => '#506073',
+            'faint' => '#5E7082', 'accent' => '#BD4F00', 'accent-hover' => '#A74500',
+            'accent-active' => '#8C3900', 'on-accent' => '#FFFFFF', 'line' => '#C6D8EA',
+            'control-line' => '#7D91A5', 'success' => '#176A43', 'warning' => '#865300',
+            'danger' => '#B02E38', 'info' => '#205F99',
         ],
         'css_code' => <<<'CSS'
 :root {
     --theme-font-family: Inter, Arial, sans-serif;
-    --header-bg: #fffffffa;
-    --body-glow: #bd4f000a;
-    --ambient-shadow: #19212a18;
-    --surface-glint: #ffffff00;
+    --header-bg: #f6fafffa;
+    --body-glow: #a4cef338;
+    --ambient-shadow: #375a791a;
+    --surface-glint: #c4dff54d;
     --danger-bg: #fff0f1;
     --danger-hover-bg: #ffe3e6;
     --success-bg: #e3f5e9;
     --warning-bg: #fff4d9;
     --danger-badge-bg: #fff0f1;
-    --glass-bg: #ffffffed;
+    --glass-bg: #f7fbffee;
     --tile-bg: #fff0e5;
     --tile-border: #dfb08d;
     --avatar-bg: #fff0e5;
     --avatar-border: #c47d47;
     --backdrop-bg: #1a202b88;
     --subtle-accent-bg: #bd4f0012;
-    --subtle-white-bg: #20252b07;
+    --subtle-white-bg: #d8e8f899;
     --shadow-accent: 0 8px 24px #bd4f0018;
-    --shadow-menu: #19212a24;
-    --shadow-popover: #19212a26;
-    --shadow-modal: #19212a2a;
-    --loader-bg: #ffffffd9;
-    --surface-corner-glow: #bd4f0012;
+    --shadow-menu: #27475e24;
+    --shadow-popover: #27475e26;
+    --shadow-modal: #27475e30;
+    --loader-bg: #e9f3ffde;
+    --surface-corner-glow: #a3d3f354;
     --surface-corner-glow-success: #176a4314;
     --surface-corner-glow-error: #b02e3814;
     --radius-control: 12px;

@@ -26,7 +26,9 @@ final class DesignThemeBackofficeTest extends TestCase
         $this->get('/backoffice/design-themes/create')->assertOk();
         $this->get('/backoffice/design-themes/'.$night->id.'/edit')->assertOk();
         $this->get(route('design-themes.preview', $night))->assertOk()
-            ->assertSee('Ночная арена');
+            ->assertSee('Ночная арена')
+            ->assertSee('theme-preview .search-control input:focus-visible')
+            ->assertSee('theme-preview__cool-panel');
     }
 
     public function test_admin_can_restore_a_previous_theme_revision(): void

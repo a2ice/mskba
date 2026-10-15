@@ -7,9 +7,20 @@
     @vite(['resources/themes/mskba_app/css/app.css'])
     {{-- Compiled CSS is strictly validated: no HTML, selectors beyond :root or external URLs. --}}
     <style>{!! $compiledCss !!}</style>
+    {{-- Only this preview nests input inside .search-control: preserve the
+         wrapper focus indicator and remove the redundant inner outline. --}}
+    <style>
+        .theme-preview .search-control input:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        html[data-appearance-mode="light"] .theme-preview__cool-panel {
+            background: linear-gradient(150deg, #ffffff38, transparent 58%), var(--surface-raised);
+        }
+    </style>
 </head>
 <body>
-<main class="container" style="padding:36px 0 90px">
+<main class="container theme-preview" style="padding:36px 0 90px">
     <p class="eyebrow accent">MSKBA / ТЕМА ОФОРМЛЕНИЯ</p>
     <h1 style="font-size:clamp(32px,4vw,48px);margin:16px 0 12px">{{ $theme->name }}</h1>
     <p class="muted" style="margin-bottom:26px">{{ $theme->description }}</p>
@@ -23,7 +34,7 @@
                 <button class="button secondary">Подробнее</button>
             </div>
         </section>
-        <section class="panel" style="padding:24px">
+        <section class="panel theme-preview__cool-panel" style="padding:24px">
             <h2>Состояния</h2>
             <div class="actions" style="margin-top:20px">
                 <span class="badge success">Подтверждено</span>
