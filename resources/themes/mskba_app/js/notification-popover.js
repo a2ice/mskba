@@ -31,6 +31,12 @@ export const isVisibleCurrentThreadToast = (notice, pathname, origin, atLatest) 
     } catch { return false; }
 };
 
+// Shared markup contract: same borderless composer as the full chat.
+export const popoverComposerMarkup = (limit) => '<form data-popover-form class="app-notification-popover__form">'
+    + '<textarea id="mskba-popover-input" data-popover-input aria-label="Сообщение" rows="3" placeholder="Напишите сообщение…" maxlength="'
+    + (Number(limit) === 500 ? 500 : 2000) + '"></textarea>'
+    + '<div class="app-notification-popover__compose-footer"><button type="submit" data-popover-send>Отправить</button></div></form>';
+
 export const createNotificationPopover = (userId, options = {}) => {
     if (!userId || isMessagesPage(window.location.pathname)) return null;
     const key = 'mskba:notification-popover:' + userId;
@@ -44,8 +50,10 @@ export const createNotificationPopover = (userId, options = {}) => {
     root.innerHTML = '<header class="app-notification-popover__header" data-popover-drag>'
         + '<span aria-hidden="true" class="app-notification-popover__grip">⠿</span>'
         + '<strong data-popover-title>Уведомление</strong>'
-        + '<button type="button" data-popover-minimize aria-label="Свернуть окно">−</button>'
-        + '<button type="button" data-popover-close aria-label="Закрыть окно">×</button></header>'
+        + '<button type="button" data-popover-minimize aria-label="Свернуть окно">'
+        + '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>'
+        + '<button type="button" data-popover-close aria-label="Закрыть окно">'
+        + '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>'
         + '<div class="app-notification-popover__content" data-popover-content></div>'
         + '<footer class="app-notification-popover__footer"><a data-popover-original href="/account/notifications">Открыть полностью</a>'
         + '<button type="button" data-popover-read>Отметить прочитанным</button></footer>';
@@ -212,10 +220,7 @@ export const createNotificationPopover = (userId, options = {}) => {
             + '<button type="button" data-popover-older hidden>Показать предыдущие</button>'
             + '<div data-popover-log class="app-notification-popover__log" role="log" aria-live="polite"></div></div>'
             + '<p data-popover-status class="app-notification-popover__status" hidden></p>'
-            + '<form data-popover-form class="app-notification-popover__form"><label for="mskba-popover-input">Ответить</label>'
-            + '<textarea id="mskba-popover-input" data-popover-input rows="3" placeholder="Напишите сообщение…" maxlength="'
-            + (Number(result.limit) === 500 ? 500 : 2000) + '"></textarea>'
-            + '<div class="app-notification-popover__compose-footer"><button type="submit" data-popover-send>Отправить</button></div></form>'
+            + popoverComposerMarkup(result.limit)
             + '<p data-popover-error class="app-notification-popover__error" role="status"></p>';
         const older = content.querySelector('[data-popover-older]');
         older.addEventListener('click', async () => {
