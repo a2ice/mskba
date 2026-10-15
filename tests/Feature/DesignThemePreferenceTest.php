@@ -228,6 +228,8 @@ final class DesignThemePreferenceTest extends TestCase
             ->assertSee('data-design-theme="court_day"', false)
             ->assertSee('data-appearance-mode="light"', false)
             ->assertSee('name="design_theme_id"', false)
+            ->assertSee('class="select-control app-appearance-settings__select"', false)
+            ->assertSee('<use href="#chevron-down"/>', false)
             ->assertSee('Оформление сайта');
     }
 
