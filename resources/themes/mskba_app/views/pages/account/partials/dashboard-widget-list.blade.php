@@ -16,14 +16,38 @@
         $gradientGlow = is_string($color) && preg_match('/^#[0-9a-fA-F]{6}$/D', $color)
             ? $color.'1e'
             : null;
+        $imagePosition = in_array($widget->image_position, ['left', 'right', 'top', 'bottom'], true)
+            ? $widget->image_position : 'top';
+        $imageWidth = in_array((int) $widget->image_width_percent, [25, 50, 75, 100], true)
+            ? (int) $widget->image_width_percent : 100;
+        $imageGap = min(64, max(0, (int) ($widget->image_gap_px ?? 10)));
+        $showImage = filled($widget->image_url) && filter_var($widget->image_url, FILTER_VALIDATE_URL)
+            && in_array(parse_url($widget->image_url, PHP_URL_SCHEME), ['http', 'https'], true);
+        // With a full-width image no grid column remains for text; stack it.
+        if ($imageWidth === 100 && in_array($imagePosition, ['left', 'right'], true)) {
+            $imagePosition = 'top';
+        }
+        $imageCss = "--widget-image-gap: {$imageGap}px; --widget-image-fr: {$imageWidth}fr; --widget-text-fr: ".(100 - $imageWidth)."fr; --widget-image-width: {$imageWidth}%";
+        $widgetVersion = hash('sha256', serialize($widget->getAttributes()));
+        $refreshSeconds = min(60, max(0, (int) ($widget->refresh_delay_seconds ?? 5)));
     @endphp
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
              data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}"
+             data-widget-version="{{ $widgetVersion }}" data-widget-refresh-delay="{{ $refreshSeconds }}"
              @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header">
             <h2>{{ $widget->title }}</h2>
             @if ($widget->kind === 'advertisement')<span class="app-dashboard-widget__ad-label">Реклама</span>@endif
         </div>
+        <div class="app-dashboard-widget__composition{{ $showImage ? ' app-dashboard-widget__composition--'.$imagePosition : '' }}"
+             @if ($showImage) style="{{ $imageCss }}" @endif>
+            @if ($showImage)
+                <div class="app-dashboard-widget__media">
+                    <img class="app-dashboard-widget__image" src="{{ $widget->image_url }}"
+                         alt="" loading="lazy" referrerpolicy="no-referrer">
+                </div>
+            @endif
+            <div class="app-dashboard-widget__content">
         @switch($widget->kind)
             @case('account_status')
                 <div class="app-account-overview__status-top">
@@ -63,9 +87,6 @@
                         srcdoc="{{ $document }}"></iframe>
                 @break
             @default
-                @if ($widget->kind === 'advertisement' && $widget->image_url)
-                    <img class="app-dashboard-widget__ad-image" src="{{ $widget->image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
-                @endif
                 @if ($widget->body)
                     <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body) !!}</div>
                 @endif
@@ -87,6 +108,8 @@
                 @endforeach
             </div>
         @endif
+            </div>
+        </div>
     </article>
 @empty
     <section class="panel app-dashboard-widget app-dashboard-widget--full">

@@ -63,7 +63,26 @@
  .app-dashboard-widget{padding:18px}
 }
 
-.app-dashboard-widget__ad-image{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:12px;aspect-ratio:16/8}
+/* Per-widget media and content. Fractions divide available width after the gap. */
+.app-dashboard-widget__composition{display:flex;flex-direction:column;flex:1;width:100%;min-width:0;gap:var(--widget-image-gap,10px)}
+.app-dashboard-widget__content{display:flex;flex-direction:column;align-items:flex-start;flex:1;gap:12px;min-width:0;width:100%}
+.app-dashboard-widget__media{width:var(--widget-image-width,100%);max-width:100%;min-width:0}
+.app-dashboard-widget__image{display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:12px;aspect-ratio:16/8}
+.app-dashboard-widget__composition--bottom .app-dashboard-widget__media{order:2}
+.app-dashboard-widget__composition--left,.app-dashboard-widget__composition--right{display:grid;grid-template-columns:minmax(0,var(--widget-image-fr)) minmax(0,var(--widget-text-fr));align-items:start}
+.app-dashboard-widget__composition--left .app-dashboard-widget__media,.app-dashboard-widget__composition--right .app-dashboard-widget__media{width:100%}
+.app-dashboard-widget__composition--right{grid-template-columns:minmax(0,var(--widget-text-fr)) minmax(0,var(--widget-image-fr))}
+.app-dashboard-widget__composition--right .app-dashboard-widget__content{order:1}
+.app-dashboard-widget__composition--right .app-dashboard-widget__media{order:2}
+.app-dashboard-widget__refresh-state{position:absolute;right:14px;bottom:12px;z-index:2;display:inline-grid;place-items:center;width:30px;height:30px;color:var(--accent);border:1px solid currentColor;border-radius:999px;background:var(--surface-raised,#181818);font-size:13px;font-weight:700;line-height:1}
+.app-dashboard-widget--refreshing{position:relative}
+@media(max-width:639px){
+ .app-dashboard-widget__composition--left,.app-dashboard-widget__composition--right{display:flex;flex-direction:column}
+ .app-dashboard-widget__composition--right .app-dashboard-widget__media{order:0}
+ .app-dashboard-widget__composition--right .app-dashboard-widget__content{order:1}
+ .app-dashboard-widget__composition--left .app-dashboard-widget__media,.app-dashboard-widget__composition--right .app-dashboard-widget__media{width:var(--widget-image-width)}
+}
+
 
 .app-account-intro .app-dashboard-admin__shortcut{margin-top:8px}
 .app-dashboard-admin__shortcut a{font-size:13px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
