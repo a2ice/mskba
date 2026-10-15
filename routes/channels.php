@@ -15,3 +15,4 @@ Broadcast::channel('request-threads.{id}', [\App\Modules\Notification\Infrastruc
 Broadcast::channel('direct-conversations.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'direct']);
 
 Broadcast::channel('support-tickets.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'support']);
+Broadcast::channel('operator-conversations.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'operator']);
