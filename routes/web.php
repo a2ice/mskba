@@ -769,6 +769,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::post('/presence/heartbeat',
+            \App\Modules\Portal\Presentation\Http\Controllers\OperatorActivityHeartbeatController::class)
+            ->middleware('throttle:8,1')->name('account.presence.heartbeat');
+
         Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
             ->middleware('throttle:30,1')->name('account.dashboard.widgets');
         Route::get('/profile', AccountProfileController::class)
