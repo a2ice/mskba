@@ -70,6 +70,10 @@ final class AdminUpdateUserOperationalPermissionsHandler
                         UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
                         UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES,
                         UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS,
+                        UserOperationalPermissionEnum::OPERATOR_PRESENCE_VIEW,
+                        UserOperationalPermissionEnum::OPERATOR_SESSION_HISTORY_VIEW,
+                        UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE,
+                        UserOperationalPermissionEnum::OPERATOR_MARKETING_SEND,
                     ], true)) {
                     // Ordinary admins cannot issue or withdraw critical global
                     // rights via either the new editor or the legacy handler.
