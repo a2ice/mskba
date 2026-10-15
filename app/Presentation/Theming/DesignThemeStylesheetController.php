@@ -2,14 +2,25 @@
 
 namespace App\Presentation\Theming;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Response;
 
 final class DesignThemeStylesheetController
 {
     public function __invoke(string $theme, string $revision, DesignThemeCss $css): Response
     {
-        $record = DesignTheme::query()->where('slug', $theme)
-            ->where('is_published', true)->firstOrFail();
+        try {
+            $record = DesignTheme::query()->where('slug', $theme)
+                ->where('is_published', true)->firstOrFail();
+        } catch (QueryException $exception) {
+            // The fallback page may request its built-in CSS while migrations
+            // are still running. No custom or light theme exists yet.
+            if ($theme !== 'arena_night') {
+                throw $exception;
+            }
+
+            $record = app(DesignThemeManager::class)->default();
+        }
 
         abort_unless(hash_equals($css->revision($record), $revision), 404);
 

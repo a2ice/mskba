@@ -31,3 +31,8 @@
 - Изолированная SQLite: полная миграция, серверный HTML для гостя с `arena_night` и `court_day` и изменяемым CSS URL — PASS.
 - Chromium: real desktop screenshots для обеих тем; мобильный CDP viewport 390×844, `innerWidth=390`, `documentScrollWidth=390`, dialog width 374, x=8–382 — PASS. Нет обрезания/переполнения в проверенной модалке входа.
 - Проверка всех авторизованных экранов и визуальное согласование владельца остаются **на приёмку** после доставки dev; это не выполненный production deploy.
+
+## CI follow-up — 2026-10-15
+
+- Исправлен рендер без миграций: до появления `design_theme_settings` используется системная «Ночная арена», ошибки других запросов БД не скрываются.
+- Добавлен тест `DesignThemeWithoutTablesTest`; ранее упавшие `MskbaAppPreviewTest` и `MskbaAppRegistrationLegalDialogTest` повторно прошли (16 targeted tests / 95 assertions).
