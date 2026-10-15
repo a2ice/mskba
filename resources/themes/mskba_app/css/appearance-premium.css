@@ -281,3 +281,34 @@ html[data-appearance-mode="light"] .panel.app-dashboard-widget {
         transition: none;
     }
 }
+
+
+/* Sidebar colors are independent of general cards and action colors.
+   Null palette fields use established theme primitives. */
+html[data-design-theme] .app-account-nav {
+    background: var(--sidebar-background, var(--surface));
+}
+html[data-design-theme] .app-account-nav__link:not(.is-active):not([aria-current="page"]) {
+    color: var(--sidebar-text, var(--muted));
+}
+html[data-design-theme] .app-account-nav__link:not(.is-active):not([aria-current="page"]):hover {
+    background: var(--sidebar-hover, var(--surface-raised));
+    color: var(--sidebar-text, var(--text));
+    border-color: var(--line);
+}
+html[data-design-theme] .app-account-nav__link:is(.is-active,[aria-current="page"]):not(.app-account-nav__group-trigger) {
+    color: var(--sidebar-active-text, var(--accent));
+    background: var(--sidebar-active-background, var(--subtle-accent-bg));
+    border-color: color-mix(in srgb, var(--sidebar-active-text, var(--accent)) 25%, var(--line));
+}
+html[data-design-theme] .app-account-nav__group-trigger.is-active {
+    background: transparent;
+    color: var(--sidebar-text, var(--text));
+    border-color: transparent;
+}
+/* Mobile/compact navigation keeps the same separately editable surface. */
+@media (max-width: 900px) {
+    html[data-design-theme] .app-account-nav--mobile .app-account-nav__links {
+        background: var(--sidebar-background, var(--surface));
+    }
+}
