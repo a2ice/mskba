@@ -113,8 +113,8 @@ html[data-appearance-mode="light"] .theme-preview[data-preview-gloss="off"] .the
         .app-messages__heading h1,
         .theme-preview__display-title
     ) {
-        background-image: none;
-        -webkit-text-fill-color: currentColor;
+        background-image: none !important;
+        -webkit-text-fill-color: currentColor !important;
         color: var(--text);
     }
 }
