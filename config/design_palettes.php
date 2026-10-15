@@ -107,6 +107,13 @@ CSS,
     --light-button-bottom: #BD4F00;
     --light-nav-active-top: #FFF4EB;
     --light-nav-active-bottom: #FFF4EB;
+    --light-display-font-family: Inter, Arial, sans-serif;
+    --light-display-gloss-top: #435468;
+    --light-display-gloss-bottom: #18212B;
+    --light-premium-chrome: #ffffffed;
+    --light-premium-menu: #fffffff4;
+    --light-premium-blur: 12px;
+    --light-premium-shadow: #26364514;
 }
 CSS,
     ],
