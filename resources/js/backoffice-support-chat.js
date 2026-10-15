@@ -68,6 +68,11 @@ const attach = () => {
         const unsubscribe = subscribePrivate((isOperator ? 'operator-conversations.' : 'support-tickets.') + threadId, '.conversation.changed', () => {
             void sync();
         });
+        const unsubscribePresence = isOperator && element.dataset.operatorPresenceChannel
+            ? subscribePrivate(element.dataset.operatorPresenceChannel, '.operator.presence.changed', () => {
+                void sync();
+            })
+            : () => {};
         const onReconnect = (event) => {
             if (event.detail?.state === 'connected') void sync();
         };
@@ -79,6 +84,7 @@ const attach = () => {
             window.clearInterval(fallback);
             window.removeEventListener('mskba:realtime-state', onReconnect);
             unsubscribe();
+            unsubscribePresence();
             observer.disconnect();
             viewport?.removeEventListener('scroll', onScroll);
             viewport?.removeEventListener('click', onClick);

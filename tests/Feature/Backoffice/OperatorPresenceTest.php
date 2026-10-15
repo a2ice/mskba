@@ -10,9 +10,11 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OperatorActivityService;
+use App\Modules\Portal\Infrastructure\Broadcasting\OperatorPresenceChangedBroadcast;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 final class OperatorPresenceTest extends TestCase
@@ -99,6 +101,17 @@ final class OperatorPresenceTest extends TestCase
         ])->assertOk();
         $this->assertSame('/account', $service->state($user)['path']);
 
+        // A staff member with presence-view permission should see the actual
+        // Messages page, but never sensitive account routes or URL parameters.
+        $this->postJson(route('account.presence.heartbeat'), [
+            'path' => '/account/notifications/threads/operator/17?token=private#draft',
+        ])->assertOk();
+        $this->assertSame('/account/notifications/threads/operator/17', $service->state($user)['path']);
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications'));
+        $this->assertSame('/account/notifications/threads/support/42', $service->safePath('/account/notifications/threads/support/42'));
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications/threads/profile/99'));
+        $this->assertSame('/account', $service->safePath('/account/contacts/verify/1234'));
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications/read/123?token=xyz'));
         $this->assertSame('/', $service->safePath('https://another.example/faq'));
         $this->assertSame('/', $service->safePath('//another.example/faq'));
 
@@ -107,6 +120,29 @@ final class OperatorPresenceTest extends TestCase
         }
         $this->assertCount(100, $service->history($user));
         $this->assertSame('/faq/109', $service->history($user)[99]['path']);
+    }
+
+    public function test_presence_broadcasts_only_on_actual_page_changes_without_url_payload(): void
+    {
+        $user = $this->user();
+        Event::fake([OperatorPresenceChangedBroadcast::class]);
+
+        $this->actingAs($user)->postJson(route('account.presence.heartbeat'), [
+            'path' => '/account/notifications/threads/operator/1?private=hidden',
+        ])->assertOk();
+
+        // Repeated heartbeat with a different query must not broadcast.
+        $this->postJson(route('account.presence.heartbeat'), [
+            'path' => '/account/notifications/threads/operator/1?private=another',
+        ])->assertOk();
+
+        Event::assertDispatchedTimes(OperatorPresenceChangedBroadcast::class, 1);
+        Event::assertDispatched(OperatorPresenceChangedBroadcast::class,
+            fn (OperatorPresenceChangedBroadcast $event): bool =>
+                $event->userId === $user->id && $event->broadcastWith() === ['changed' => true]);
+
+        $this->postJson(route('account.presence.heartbeat'), ['path' => '/faq'])->assertOk();
+        Event::assertDispatchedTimes(OperatorPresenceChangedBroadcast::class, 2);
     }
 
     public function test_filament_users_require_presence_right_and_history_requires_extra_permission(): void

@@ -17,11 +17,11 @@ final class OperatorActivityService
 
     private const HISTORY_TTL = 7200;
 
-    public function record(User $actor, string $sessionId, string $pathname): void
+    public function record(User $actor, string $sessionId, string $pathname): bool
     {
         $actor = $actor->canonical();
         if ($actor->isBlocked() || $actor->trashed() || $sessionId === '') {
-            return;
+            return false;
         }
 
         $page = $this->safePath($pathname);
@@ -29,9 +29,14 @@ final class OperatorActivityService
         $userId = (int) $actor->id;
         try {
             $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
-            $store->lock('operator-activity:lock:'.$userId, 3)->block(1, function () use ($store, $userId, $session, $page): void {
+            return (bool) $store->lock('operator-activity:lock:'.$userId, 3)->block(1, function () use ($store, $userId, $session, $page): bool {
                 $now = now()->timestamp;
                 $stateKey = 'operator-activity:current:'.$userId;
+                $previous = $store->get($stateKey);
+                $changed = ! is_array($previous)
+                    || ($previous['path'] ?? null) !== $page
+                    || (int) ($previous['at'] ?? 0) < $now
+                        - (int) config('operator_activity.online_seconds', 150);
                 $historyKey = 'operator-activity:history:'.$userId.':'.$session;
                 $history = $store->get($historyKey, []);
                 $history = is_array($history) ? $history : [];
@@ -47,10 +52,14 @@ final class OperatorActivityService
                     'path' => $page,
                     'at' => $now,
                 ], self::HISTORY_TTL);
+
+                return $changed;
             });
         } catch (Throwable $exception) {
             // Presence must never block site navigation if Redis is unavailable.
             report($exception);
+
+            return false;
         }
     }
 
@@ -129,6 +138,19 @@ final class OperatorActivityService
             || str_starts_with($pathname, '//') || str_contains($path, '%')
             || preg_match('~[^/a-zA-Z0-9_\\-]~', $path)) {
             return '/';
+        }
+
+        // Preserve the requested page for ordinary account/message navigation,
+        // but never expose query strings, contacts/verification URLs or arbitrary
+        // private path parameters to a backoffice operator.
+        if (preg_match('~^/account/notifications/threads/(operator|support|direct)/[1-9][0-9]*/?$~', $path)) {
+            return rtrim($path, '/');
+        }
+        if ($path === '/account/notifications' || $path === '/account/notifications/') {
+            return '/account/notifications';
+        }
+        if (preg_match('~^/account/notifications(?:/|$)~', $path)) {
+            return '/account/notifications';
         }
 
         if (preg_match('~^/(account|backoffice|admin|api|auth|login|logout|integrations)(/|$)~i', $path, $matches)) {

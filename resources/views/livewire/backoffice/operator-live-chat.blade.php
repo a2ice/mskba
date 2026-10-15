@@ -1,6 +1,7 @@
 <div class="mskba-support-chat" data-filament-operator-chat
     data-operator-thread-id="{{ $conversation->id }}"
     data-operator-state-url="{{ route('account.notifications.threads.operator.state', $conversation) }}"
+    @if ($canSeePresence) data-operator-presence-channel="operator-presence.{{ $conversation->recipient_user_id }}" @endif
     wire:poll.visible.12s="refreshConversation">
     @once
         <style>
@@ -21,10 +22,38 @@
             .mskba-support-chat__secondary{font-size:.78rem;opacity:.7}
             .mskba-support-chat__older{align-self:center;font-size:.8rem;text-decoration:underline}
             .mskba-support-chat__banner{background:rgba(100,116,139,.1);border-radius:.7rem;padding:1rem;font-size:.88rem}
+            .mskba-operator-presence{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .65rem;padding:.7rem .85rem;background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.18);border-radius:.8rem;font-size:.83rem}
+            .mskba-operator-presence__status{display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap;font-weight:600}
+            .mskba-operator-presence__dot{width:.55rem;height:.55rem;flex-shrink:0;border-radius:50%;background:#9ca3af}
+            .mskba-operator-presence__status--online .mskba-operator-presence__dot{background:#16a34a}
+            .mskba-operator-presence__path{overflow-wrap:anywhere;word-break:break-word}
+            .mskba-operator-presence__updated{font-size:.72rem;opacity:.65}
             @media(max-width:640px){.mskba-support-chat__history{min-height:290px;max-height:55dvh}.mskba-support-chat__bubble{max-width:95%}}
         </style>
     @endonce
-    <p class="mskba-support-chat__secondary">Сервисная переписка с @{{ $conversation->recipient->username }} · обновление через Reverb</p>
+    <p class="mskba-support-chat__secondary">Сервисная переписка с {{ $conversation->recipient->username }} · обновление через Reverb</p>
+    @if ($canSeePresence)
+        <div class="mskba-operator-presence" data-operator-presence
+            aria-label="Присутствие пользователя" aria-live="polite" aria-atomic="true">
+            <span class="mskba-operator-presence__status{{ ($presence['online'] ?? false) ? ' mskba-operator-presence__status--online' : '' }}">
+                <span class="mskba-operator-presence__dot" aria-hidden="true"></span>
+                {{ ($presence['online'] ?? false) ? 'Онлайн' : 'Офлайн' }}
+            </span>
+            @if ($presence)
+                <span class="mskba-operator-presence__path">
+                    {{ $presence['online'] ? 'Сейчас на странице:' : 'Последняя страница:' }}
+                    <strong>{{ $presence['path'] }}</strong>
+                </span>
+                <time class="mskba-operator-presence__updated"
+                    datetime="{{ \Carbon\Carbon::createFromTimestamp($presence['at'])->toIso8601String() }}"
+                    title="Время последней активности">
+                    {{ \Carbon\Carbon::createFromTimestamp($presence['at'])->format('d.m.Y H:i:s') }}
+                </time>
+            @else
+                <span class="mskba-support-chat__secondary">Данные об активности пока отсутствуют.</span>
+            @endif
+        </div>
+    @endif
     <div class="mskba-support-chat__history" data-filament-operator-history
         role="log" aria-label="История переписки" aria-live="polite">
         @if ($hasOlder)

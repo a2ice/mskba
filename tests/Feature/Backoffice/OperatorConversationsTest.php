@@ -9,12 +9,15 @@ use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permissio
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Portal\Application\Services\OperatorActivityService;
+use App\Modules\Portal\Infrastructure\Broadcasting\OperatorPresenceChannel;
 use App\Modules\Notification\Application\Services\OperatorConversationMessaging;
 use App\Modules\Notification\Domain\Models\OperatorConversation;
 use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel;
 use App\Presentation\Theming\ThemeResolver;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Livewire\Livewire;
@@ -92,6 +95,67 @@ final class OperatorConversationsTest extends TestCase
 
         $this->patchJson(route('account.notifications.threads.operator.read', $conversation))
             ->assertOk()->assertJsonStructure(['unread_count']);
+    }
+
+    public function test_operator_chat_shows_current_page_live_only_with_presence_permission(): void
+    {
+        config()->set('operator_activity.cache_store', 'array');
+        Cache::store('array')->clear();
+
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $operator = $this->user(UserSystemRoleEnum::EDITOR);
+        $customer = $this->user();
+        $this->grant($super, $operator);
+        $conversation = app(OperatorConversationMessaging::class)
+            ->start($operator, $customer, 'Проверка активности');
+
+        $activity = app(OperatorActivityService::class);
+        $activity->record($customer, 'current-session-test', '/account/notifications/threads/operator/'.$conversation->id);
+
+        $this->actingAs($operator);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
+            ->assertSee('Проверка активности')
+            ->assertDontSee('Сейчас на странице:')
+            ->assertDontSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
+
+        // Granting navigation visibility does not change the separate right to chat.
+        app(GlobalOperationalPermissionManager::class)->sync($super, $operator, [], [
+            Permission::OPERATOR_CONVERSATION_HANDLE->value,
+            Permission::OPERATOR_PRESENCE_VIEW->value,
+        ]);
+
+        $this->assertTrue(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($super, $customer->id));
+
+        $chat = Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
+            ->assertSee('Онлайн')
+            ->assertSee('Сейчас на странице:')
+            ->assertSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
+
+        // Simulates Livewire's existing periodic refresh, without messages
+        // being sent from either side.
+        $activity->record($customer, 'current-session-test', '/faq');
+        $chat->call('refreshConversation')
+            ->assertSee('Сейчас на странице:')
+            ->assertSee('<strong>/faq</strong>', false)
+            ->assertDontSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
+
+        $activity->forget($customer);
+        $chat->call('refreshConversation')
+            ->assertSee('Офлайн')
+            ->assertSee('Данные об активности пока отсутствуют.');
+
+        // Revoking only presence access instantly hides the location on the
+        // next authorized refresh, but keeps the operator's chat accessible.
+        app(GlobalOperationalPermissionManager::class)->sync($super, $operator, [], [
+            Permission::OPERATOR_CONVERSATION_HANDLE->value,
+        ]);
+        $chat->call('refreshConversation')
+            ->assertDontSee('Данные об активности пока отсутствуют.')
+            ->assertSee('Проверка активности');
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
     }
 
     public function test_stranger_and_operator_without_permission_cannot_read_or_write(): void
