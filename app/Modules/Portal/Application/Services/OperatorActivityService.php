@@ -27,9 +27,8 @@ final class OperatorActivityService
         $page = $this->safePath($pathname);
         $session = hash('sha256', $sessionId);
         $userId = (int) $actor->id;
-        $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
-
         try {
+            $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
             $store->lock('operator-activity:lock:'.$userId, 3)->block(1, function () use ($store, $userId, $session, $page): void {
                 $now = now()->timestamp;
                 $stateKey = 'operator-activity:current:'.$userId;
@@ -58,8 +57,12 @@ final class OperatorActivityService
     /** @return array{path: string, at: int, online: bool}|null */
     public function state(User $user): ?array
     {
-        $data = Cache::store((string) config('operator_activity.cache_store', 'redis'))
-            ->get('operator-activity:current:'.$user->canonical()->id);
+        try {
+            $data = Cache::store((string) config('operator_activity.cache_store', 'redis'))
+                ->get('operator-activity:current:'.$user->canonical()->id);
+        } catch (Throwable) {
+            return null;
+        }
 
         if (! is_array($data) || ! is_string($data['path'] ?? null) || ! is_numeric($data['at'] ?? null)) {
             return null;
@@ -78,13 +81,21 @@ final class OperatorActivityService
     public function history(User $user): array
     {
         $userId = $user->canonical()->id;
-        $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
-        $current = $store->get('operator-activity:current:'.$userId);
+        try {
+            $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
+            $current = $store->get('operator-activity:current:'.$userId);
+        } catch (Throwable) {
+            return [];
+        }
         if (! is_array($current) || ! is_string($current['session'] ?? null)) {
             return [];
         }
 
-        $history = $store->get('operator-activity:history:'.$userId.':'.$current['session'], []);
+        try {
+            $history = $store->get('operator-activity:history:'.$userId.':'.$current['session'], []);
+        } catch (Throwable) {
+            return [];
+        }
 
         return is_array($history) ? array_slice($history, -self::HISTORY_LIMIT) : [];
     }
@@ -93,6 +104,10 @@ final class OperatorActivityService
     {
         // Only a path from our own site, never query strings, fragments or
         // potentially sensitive account/admin URL segments.
+        if (! str_starts_with($pathname, '/') || str_starts_with($pathname, '//')) {
+            return '/';
+        }
+
         $path = parse_url($pathname, PHP_URL_PATH);
         if (! is_string($path) || ! str_starts_with($path, '/') || strlen($path) > 190
             || str_starts_with($pathname, '//') || str_contains($path, '%')
