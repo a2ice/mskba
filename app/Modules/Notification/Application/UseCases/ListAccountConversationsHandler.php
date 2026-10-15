@@ -9,6 +9,8 @@ use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
+use App\Modules\Notification\Domain\Models\OperatorConversation;
+use App\Modules\Notification\Application\Services\OperatorConversationAccess;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Presentation\Presenters\SupportMessagePresenter;
@@ -120,6 +122,48 @@ final class ListAccountConversationsHandler
             ];
         });
 
+        // Service/operator conversations are separate from private user-to-user DMs.
+        // A revoked operator cannot discover their former conversations.
+        $operatorAccess = app(OperatorConversationAccess::class);
+        $operatorConversationsQuery = OperatorConversation::query()
+            ->where(function ($query) use ($identityIds, $user, $operatorAccess): void {
+                $query->whereIn('recipient_user_id', $identityIds);
+                if ($operatorAccess->isOperator($user)) {
+                    $query->orWhere('operator_user_id', $user->id);
+                }
+            });
+        $operatorConversations = $operatorConversationsQuery
+            ->with(['operator', 'recipient', 'latestMessage'])
+            ->orderByDesc('updated_at')->limit(100)->get();
+
+        $operatorUnread = UserNotification::query()
+            ->whereIn('user_id', $identityIds)
+            ->whereNotNull('payload->operator_conversation_id')
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->whereIn('payload->operator_conversation_id', $operatorConversations->pluck('id'))
+            ->get(['id', 'payload'])
+            ->groupBy(fn (UserNotification $notice): int => (int) ($notice->payload['operator_conversation_id'] ?? 0));
+
+        $operatorCards = $operatorConversations->map(function (OperatorConversation $conversation) use ($user, $operatorUnread): array {
+            $fromOperator = (int) $conversation->operator_user_id === $user->id;
+            $other = $fromOperator ? $conversation->recipient : $conversation->operator;
+            $latest = $conversation->latestMessage;
+            $author = $latest && (int) $latest->sender_user_id === $user->id
+                ? 'Вы' : ($other?->username ?? 'MSKBA');
+
+            return [
+                'id' => 'operator-'.$conversation->id,
+                'name' => $fromOperator
+                    ? 'Операторский диалог — @'.($other?->username ?? 'участник')
+                    : 'Сообщение оператора MSKBA',
+                'preview' => $latest ? $author.': '.$latest->body : 'Сервисная переписка',
+                'unread_count' => $operatorUnread->get($conversation->id, collect())->count(),
+                'date' => $latest?->created_at ?? $conversation->created_at,
+                'status' => null,
+                'url' => route('account.notifications.threads.operator', $conversation->id),
+            ];
+        });
+
         // Correlated EXISTS on (thread, member) instead of multiplying rows with large JOINs.
         $profileRequests = $this->profileAccess->visibleRequests($user)
             ->with(['thread' => fn ($q) => $q->with(['memberships' => fn ($m) => $m->where('user_id', $user->id), 'latestMessage.sender'])])
@@ -185,7 +229,7 @@ final class ListAccountConversationsHandler
         });
 
         return $teamConversations->concat($directConversations)
-            ->concat($profileConversations)->concat($supportConversations)
+            ->concat($operatorCards)->concat($profileConversations)->concat($supportConversations)
             ->sortByDesc('date')->values();
     }
 }
