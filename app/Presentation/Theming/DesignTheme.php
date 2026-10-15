@@ -46,6 +46,8 @@ final class DesignTheme extends Model
             if (! $theme->wasRecentlyCreated && ! $theme->wasChanged([
                 'name', 'description', 'colors', 'css_code', 'mode', 'is_published',
                 'body_font', 'heading_font', 'widget_glow_color', 'widget_glow_strength',
+                'sidebar_background', 'sidebar_text', 'sidebar_hover',
+                'sidebar_active_background', 'sidebar_active_text',
             ])) {
                 return;
             }
@@ -61,6 +63,11 @@ final class DesignTheme extends Model
                 'heading_font' => $theme->heading_font,
                 'widget_glow_color' => $theme->widget_glow_color,
                 'widget_glow_strength' => $theme->widget_glow_strength,
+                'sidebar_background' => $theme->sidebar_background,
+                'sidebar_text' => $theme->sidebar_text,
+                'sidebar_hover' => $theme->sidebar_hover,
+                'sidebar_active_background' => $theme->sidebar_active_background,
+                'sidebar_active_text' => $theme->sidebar_active_text,
                 'created_at' => now(),
             ]);
         });
