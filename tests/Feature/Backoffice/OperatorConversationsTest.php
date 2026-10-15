@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OperatorActivityService;
+use App\Modules\Portal\Infrastructure\Broadcasting\OperatorPresenceChannel;
 use App\Modules\Notification\Application\Services\OperatorConversationMessaging;
 use App\Modules\Notification\Domain\Models\OperatorConversation;
 use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel;
@@ -117,12 +118,16 @@ final class OperatorConversationsTest extends TestCase
             ->assertSee('Проверка активности')
             ->assertDontSee('Сейчас на странице:')
             ->assertDontSee('/account/notifications/threads/operator/'.$conversation->id);
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
 
         // Granting navigation visibility does not change the separate right to chat.
         app(GlobalOperationalPermissionManager::class)->sync($super, $operator, [], [
             Permission::OPERATOR_CONVERSATION_HANDLE->value,
             Permission::OPERATOR_PRESENCE_VIEW->value,
         ]);
+
+        $this->assertTrue(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($super, $customer->id));
 
         $chat = Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
             ->assertSee('Онлайн')
@@ -150,6 +155,7 @@ final class OperatorConversationsTest extends TestCase
         $chat->call('refreshConversation')
             ->assertDontSee('Данные об активности пока отсутствуют.')
             ->assertSee('Проверка активности');
+        $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
     }
 
     public function test_stranger_and_operator_without_permission_cannot_read_or_write(): void
