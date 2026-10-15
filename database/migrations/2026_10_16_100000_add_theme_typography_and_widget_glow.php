@@ -23,6 +23,19 @@ return new class extends Migration
             $table->unsignedTinyInteger('widget_glow_strength')->default(20);
         });
 
+        // Preserve fonts manually selected through CSS before the new Filament
+        // controls existed, including saved historical revisions.
+        foreach (['design_themes', 'design_theme_revisions'] as $table) {
+            foreach (DB::table($table)->select(['id', 'css_code'])->get() as $record) {
+                $body = $this->existingFont($record->css_code, '--theme-font-family');
+                $heading = $this->existingFont($record->css_code, '--light-display-font-family');
+                DB::table($table)->where('id', $record->id)->update([
+                    'body_font' => $body ?? 'inter',
+                    'heading_font' => $heading ?? $body ?? 'inter',
+                ]);
+            }
+        }
+
         DB::transaction(function (): void {
             $theme = DB::table('design_themes')->where('slug', 'court_day')->lockForUpdate()->first();
             if (! $theme) {
@@ -71,6 +84,27 @@ return new class extends Migration
                 DB::table('design_theme_revisions')->insert($snapshot);
             }
         });
+    }
+
+    private function existingFont(?string $css, string $token): ?string
+    {
+        if (! preg_match('/'.preg_quote($token, '/').'\\s*:\\s*([^;]+);/i', (string) $css, $match)) {
+            return null;
+        }
+
+        foreach ([
+            'onest' => 'Onest MSKBA',
+            'manrope' => 'Manrope MSKBA',
+            'golos-text' => 'Golos Text MSKBA',
+            'commissioner' => 'Commissioner MSKBA',
+            'rubik' => 'Rubik MSKBA',
+        ] as $key => $family) {
+            if (stripos($match[1], $family) !== false) {
+                return $key;
+            }
+        }
+
+        return 'inter';
     }
 
     public function down(): void
