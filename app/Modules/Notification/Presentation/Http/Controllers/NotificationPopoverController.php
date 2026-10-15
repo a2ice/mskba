@@ -9,6 +9,8 @@ use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
+use App\Modules\Notification\Domain\Models\OperatorConversation;
+use App\Modules\Notification\Application\Services\OperatorConversationAccess;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
@@ -43,6 +45,24 @@ final class NotificationPopoverController extends Controller
                 'limit' => 2000,
                 'can_send' => $canSend,
                 'status' => $ticket->status === 'closed' ? 'Обращение закрыто. История доступна для чтения.' : null,
+            ]);
+        }
+
+        if ($kind === 'operator') {
+            $conversation = OperatorConversation::query()->findOrFail($id);
+            $access = app(OperatorConversationAccess::class);
+            abort_unless($access->canRead($viewer, $conversation), 403);
+            $canSend = $access->canWrite($viewer, $conversation);
+
+            return $this->respond([
+                'kind' => 'operator',
+                'history_url' => route('account.notifications.threads.operator.history', $conversation, false),
+                'state_url' => route('account.notifications.threads.operator.state', $conversation, false),
+                'send_url' => route('account.notifications.threads.operator.messages', $conversation, false),
+                'channel' => 'operator-conversations.'.$conversation->id,
+                'limit' => 2000,
+                'can_send' => $canSend,
+                'status' => $canSend ? null : 'Отправка сообщений недоступна.',
             ]);
         }
 
