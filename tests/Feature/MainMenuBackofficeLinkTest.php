@@ -21,7 +21,7 @@ final class MainMenuBackofficeLinkTest extends TestCase
                 'status' => UserStatusEnum::CONFIRMED,
             ]);
 
-            $this->actingAs($user);
+            $this->actingAs($user)->get(route('welcome'))->assertOk();
 
             $more = collect(app(MenuResolver::class)->resolve('main'))
                 ->firstWhere('label', 'Еще')['children'];
@@ -41,7 +41,7 @@ final class MainMenuBackofficeLinkTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
         ]);
 
-        $this->actingAs($user);
+        $this->actingAs($user)->get(route('welcome'))->assertOk();
 
         $more = collect(app(MenuResolver::class)->resolve('main'))
             ->firstWhere('label', 'Еще')['children'];
