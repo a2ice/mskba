@@ -3,6 +3,11 @@
 namespace App\Filament\Backoffice\Resources\OperatorUsers;
 
 use App\Filament\Backoffice\Resources\OperatorUsers\Pages\ListOperatorUsers;
+use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
+use App\Modules\Notification\Application\Services\OperatorConversationAccess;
+use App\Modules\Notification\Application\Services\OperatorConversationMessaging;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use App\Filament\Backoffice\Resources\OperatorUsers\Pages\ViewOperatorUser;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -111,7 +116,29 @@ final class OperatorUserResource extends Resource
                 }),
         ])
             ->defaultSort('id', 'desc')
-            ->recordActions([ViewAction::make()->label('История сессии')]);
+            ->recordActions([
+                ViewAction::make()->label('История сессии'),
+                Action::make('write')
+                    ->label('Написать')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->visible(fn (User $record): bool => auth('web')->user() instanceof User
+                        && app(OperatorConversationAccess::class)->mayContact(auth('web')->user(), $record))
+                    ->modalHeading(fn (User $record): string => 'Написать @'.$record->username)
+                    ->schema([
+                        Textarea::make('body')
+                            ->label('Сервисное сообщение')
+                            ->required()->maxLength(2000)->rows(4),
+                    ])
+                    ->modalSubmitActionLabel('Отправить')
+                    ->action(function (User $record, array $data): void {
+                        $actor = auth('web')->user()->canonical();
+                        $conversation = app(OperatorConversationMessaging::class)
+                            ->start($actor, $record, $data['body']);
+                        redirect()->to(OperatorConversationResource::getUrl('view', [
+                            'record' => $conversation,
+                        ]));
+                    }),
+            ]);
     }
 
     public static function infolist(Schema $schema): Schema
