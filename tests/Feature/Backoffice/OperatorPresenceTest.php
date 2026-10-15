@@ -99,6 +99,17 @@ final class OperatorPresenceTest extends TestCase
         ])->assertOk();
         $this->assertSame('/account', $service->state($user)['path']);
 
+        // A staff member with presence-view permission should see the actual
+        // Messages page, but never sensitive account routes or URL parameters.
+        $this->postJson(route('account.presence.heartbeat'), [
+            'path' => '/account/notifications/threads/operator/17?token=private#draft',
+        ])->assertOk();
+        $this->assertSame('/account/notifications/threads/operator/17', $service->state($user)['path']);
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications'));
+        $this->assertSame('/account/notifications/threads/support/42', $service->safePath('/account/notifications/threads/support/42'));
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications/threads/profile/99'));
+        $this->assertSame('/account', $service->safePath('/account/contacts/verify/1234'));
+        $this->assertSame('/account/notifications', $service->safePath('/account/notifications/read/123?token=xyz'));
         $this->assertSame('/', $service->safePath('https://another.example/faq'));
         $this->assertSame('/', $service->safePath('//another.example/faq'));
 
