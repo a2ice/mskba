@@ -33,6 +33,10 @@ final class GlobalOperationalPermissionManager
         return [
             Permission::MANAGE_SYSTEM_ROLES, Permission::REVIEW_PROFILE_CHANGES,
             Permission::HANDLE_SUPPORT_TICKETS,
+            Permission::OPERATOR_PRESENCE_VIEW,
+            Permission::OPERATOR_SESSION_HISTORY_VIEW,
+            Permission::OPERATOR_CONVERSATION_HANDLE,
+            Permission::OPERATOR_MARKETING_SEND,
         ];
     }
 
