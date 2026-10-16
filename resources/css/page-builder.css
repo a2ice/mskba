@@ -1,5 +1,6 @@
 @import './page-builder-hero-slider.css';
 @import './page-builder-spacing.css';
+@import './page-builder-backgrounds.css';
 /* The builder is a full-width canvas, not a second layout container.
    Editors opt into the same .container used by the site header wherever
    a section needs boxed content; siblings can remain edge-to-edge. */

@@ -112,6 +112,44 @@ Example mixing full-width backgrounds with boxed content:
 Place spacing classes on the desired section/wrapper. The Page Builder
 root and base template never introduce default space of their own.
 
+### Theme-aware background utilities
+
+All background classes are available inside `.mskba-page-builder`, for both
+`arena_night` (dark) and `court_day` (light), including customized published
+Design Themes. They use the live theme's CSS color tokens and update when the
+selected theme changes, without copying HEX values into builder pages.
+
+Families: `blue`, `grey`, `orange`, `green`, `red`, `yellow`.
+Each family has **9** classes: 3 solid fills and all 6 directed gradients
+between its light, normal and dark shades:
+
+- Solid: `bg-lightblue`, `bg-blue`, `bg-darkblue`.
+- Gradient: `bg-grad-lightblue-blue`, `bg-grad-blue-lightblue`,
+  `bg-grad-blue-darkblue`, `bg-grad-darkblue-blue`,
+  `bg-grad-lightblue-darkblue`, `bg-grad-darkblue-lightblue`.
+
+Substitute `blue` with any other family, e.g. `bg-lightgrey`,
+`bg-orange`, `bg-grad-darkgreen-lightgreen`. All gradients run from
+top-left to bottom-right (135°); reversing their color names reverses the
+color order. Additionally, `bg-page`, `bg-surface`,
+`bg-surface-raised`, `bg-field`, `bg-accent`, and `bg-transparent`
+map directly to the current theme.
+
+```html
+<section class="bg-grad-lightblue-darkblue py-5">
+  <div class="container">
+    <h2 class="mb-3">Площадки Москвы</h2>
+  </div>
+</section>
+<section class="bg-lightgrey py-4">
+  <div class="container">...</div>
+</section>
+```
+
+Utilities set **only the background**. Text and icon colors are not changed
+automatically; check contrast in both light and dark themes. Page-specific
+local CSS can override the utilities with a more specific selector.
+
 ## Editor layout in Filament 5
 
 Page, template and generic component edit forms use a single outer column.

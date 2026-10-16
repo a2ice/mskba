@@ -31,6 +31,9 @@ final class BuilderPlaceholderGuide
                 Text::make('Отступы в разметке: mt-3 — сверху 16px, mb-4 — снизу 24px, px-3 — горизонтальный внутренний отступ 16px, py-5 — вертикальный 48px.'),
                 Text::make('Поддерживаются m-0…m-5, mt/mb/ml/mr/ms/me/mx/my-0…5, p-0…p-5, pt/pb/pl/pr/ps/pe/px/py-0…5, gap-0…5, mx-auto.'),
                 Text::make('Пример секции: <section class="py-5"><div class="container"><h2 class="mb-3">Заголовок</h2>…</div></section>. Классы действуют только в Page Builder.'),
+                Text::make('Фоны: bg-lightblue, bg-blue, bg-darkblue; аналогично grey, orange, green, red, yellow — 3 сплошных фона для каждого цвета.'),
+                Text::make('Градиенты: bg-grad-lightblue-darkblue или bg-grad-darkblue-lightblue; также доступны light→base, base→light, base→dark, dark→base (всего 6 на цвет).'),
+                Text::make('Семантические фоны: bg-page, bg-surface, bg-surface-raised, bg-field, bg-accent, bg-transparent. Все классы зависят от выбранной темы и действуют только внутри Page Builder.'),
                 Text::make('Сначала опубликуй шаблон и компоненты. Визуальный редактор будет добавлен позже.'),
             ]);
     }
