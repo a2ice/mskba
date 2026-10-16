@@ -37,6 +37,13 @@ final class OperatorActivityService
                     || ($previous['path'] ?? null) !== $page
                     || (int) ($previous['at'] ?? 0) < $now
                         - (int) config('operator_activity.online_seconds', 150);
+                // A heartbeat refreshes last activity, not the time the user
+                // opened this page. Preserve entry time across same-path
+                // heartbeats and short disconnects.
+                $enteredAt = is_array($previous)
+                    && ($previous['path'] ?? null) === $page
+                    && is_numeric($previous['entered_at'] ?? null)
+                        ? (int) $previous['entered_at'] : $now;
                 $historyKey = 'operator-activity:history:'.$userId.':'.$session;
                 $history = $store->get($historyKey, []);
                 $history = is_array($history) ? $history : [];
@@ -50,6 +57,7 @@ final class OperatorActivityService
                 $store->put($stateKey, [
                     'session' => $session,
                     'path' => $page,
+                    'entered_at' => $enteredAt,
                     'at' => $now,
                 ], self::HISTORY_TTL);
 
@@ -79,7 +87,7 @@ final class OperatorActivityService
         }
     }
 
-    /** @return array{path: string, at: int, online: bool}|null */
+    /** @return array{path: string, entered_at: int, at: int, online: bool}|null */
     public function state(User $user): ?array
     {
         try {
@@ -97,6 +105,8 @@ final class OperatorActivityService
 
         return [
             'path' => $data['path'],
+            // Existing Redis records written before this change only contain at.
+            'entered_at' => is_numeric($data['entered_at'] ?? null) ? (int) $data['entered_at'] : $timestamp,
             'at' => $timestamp,
             'online' => $timestamp >= now()->timestamp - (int) config('operator_activity.online_seconds', 150),
         ];

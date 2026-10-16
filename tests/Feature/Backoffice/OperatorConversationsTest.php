@@ -109,6 +109,7 @@ final class OperatorConversationsTest extends TestCase
         $conversation = app(OperatorConversationMessaging::class)
             ->start($operator, $customer, 'Проверка активности');
 
+        $this->travelTo(\Carbon\CarbonImmutable::parse('2026-10-16 11:02:52', 'UTC'));
         $activity = app(OperatorActivityService::class);
         $activity->record($customer, 'current-session-test', '/account/notifications/threads/operator/'.$conversation->id);
 
@@ -132,15 +133,34 @@ final class OperatorConversationsTest extends TestCase
         $chat = Livewire::test(OperatorLiveChat::class, ['conversationId' => $conversation->id])
             ->assertSee('Онлайн')
             ->assertSee('Сейчас на странице:')
-            ->assertSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
+            ->assertSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false)
+            ->assertSee('с 16.10.2026 14:02:52 МСК')
+            ->assertSee('Время перехода на страницу (МСК)')
+            ->assertDontSee('Сервисная переписка с')
+            ->assertSee('wire:poll.visible.12s', false);
 
         // Simulates Livewire's existing periodic refresh, without messages
         // being sent from either side.
+        $this->travel(10)->seconds();
         $activity->record($customer, 'current-session-test', '/faq');
         $chat->call('refreshConversation')
             ->assertSee('Сейчас на странице:')
             ->assertSee('<strong>/faq</strong>', false)
+            ->assertSee('с 16.10.2026 14:03:02 МСК')
             ->assertDontSee('<strong>/account/notifications/threads/operator/'.$conversation->id.'</strong>', false);
+
+        // Online/offline must update through a simple Livewire refresh, without
+        // requiring a chat message or another navigation.
+        $this->travel(151)->seconds();
+        $chat->call('refreshConversation')
+            ->assertSee('Офлайн')
+            ->assertSee('Последняя страница:')
+            ->assertSee('с 16.10.2026 14:03:02 МСК');
+        $activity->record($customer, 'current-session-test', '/faq');
+        $chat->call('refreshConversation')
+            ->assertSee('Онлайн')
+            ->assertSee('Сейчас на странице:')
+            ->assertSee('с 16.10.2026 14:03:02 МСК');
 
         $activity->forget($customer);
         $chat->call('refreshConversation')
@@ -156,6 +176,7 @@ final class OperatorConversationsTest extends TestCase
             ->assertDontSee('Данные об активности пока отсутствуют.')
             ->assertSee('Проверка активности');
         $this->assertFalse(app(OperatorPresenceChannel::class)->join($operator, $customer->id));
+        $this->travelBack();
     }
 
     public function test_stranger_and_operator_without_permission_cannot_read_or_write(): void

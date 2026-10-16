@@ -145,6 +145,55 @@ final class OperatorPresenceTest extends TestCase
         Event::assertDispatchedTimes(OperatorPresenceChangedBroadcast::class, 2);
     }
 
+    public function test_page_entry_time_is_stable_across_heartbeats_and_presence_recovers_after_idle(): void
+    {
+        config()->set('operator_activity.online_seconds', 150);
+        $user = $this->user();
+        $activity = app(OperatorActivityService::class);
+        $this->travelTo(\Carbon\CarbonImmutable::parse('2026-10-16 11:02:52', 'UTC'));
+        $initial = now()->timestamp;
+
+        $this->assertTrue($activity->record($user, 'entry-test-session', '/venues?private=hidden'));
+        $first = $activity->state($user);
+        $this->assertSame('/venues', $first['path']);
+        $this->assertSame($initial, $first['entered_at']);
+        $this->assertSame($initial, $first['at']);
+        $this->assertTrue($first['online']);
+
+        // A normal heartbeat updates last activity without changing page-entry time.
+        $this->travel(60)->seconds();
+        $this->assertFalse($activity->record($user, 'entry-test-session', '/venues?other=query'));
+        $heartbeat = $activity->state($user);
+        $this->assertSame($initial, $heartbeat['entered_at']);
+        $this->assertSame($initial + 60, $heartbeat['at']);
+        $this->assertTrue($heartbeat['online']);
+
+        // No websocket event is needed to become offline: the visible
+        // Livewire poll will recalculate online from the latest heartbeat.
+        $this->travel(151)->seconds();
+        $this->assertFalse($activity->state($user)['online']);
+        $this->assertTrue($activity->record($user, 'entry-test-session', '/venues'));
+        $resumed = $activity->state($user);
+        $this->assertTrue($resumed['online']);
+        $this->assertSame($initial, $resumed['entered_at']);
+
+        $this->travel(10)->seconds();
+        $this->assertTrue($activity->record($user, 'entry-test-session', '/events'));
+        $newPage = $activity->state($user);
+        $this->assertSame('/events', $newPage['path']);
+        $this->assertSame($initial + 221, $newPage['entered_at']);
+
+        // Existing cache entries written before entered_at was introduced
+        // still remain readable during the rolling deployment.
+        Cache::store('array')->put('operator-activity:current:'.$user->id, [
+            'session' => hash('sha256', 'entry-test-session'),
+            'path' => '/faq',
+            'at' => $initial + 200,
+        ], 7200);
+        $this->assertSame($initial + 200, $activity->state($user)['entered_at']);
+        $this->travelBack();
+    }
+
     public function test_filament_users_require_presence_right_and_history_requires_extra_permission(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
