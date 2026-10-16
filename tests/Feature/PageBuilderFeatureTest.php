@@ -53,10 +53,12 @@ final class PageBuilderFeatureTest extends TestCase
         $legacy = PageBuilderPage::query()->create([
             'name' => 'До обновления', 'path' => '/legacy',
             'draft_html' => '<h1>Раньше было ограничено</h1>',
+        ]);
+        $legacy->forceFill([
             'published_html' => '<h1>Публикация</h1>',
             'published_path' => '/legacy',
             'published_at' => now(),
-        ]);
+        ])->save();
         $already = PageBuilderPage::query()->create([
             'name' => 'Уже с контейнером', 'path' => '/already-boxed',
             'draft_html' => '<section class="container"><h2>Ок</h2></section>',
