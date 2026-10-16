@@ -45,6 +45,11 @@ final class PageBuilderPublisher
                 $item->published_meta_description = $item->meta_description;
                 $item->published_template_id = $item->template_id;
             }
+            if ($item instanceof PageBuilderComponent && $item->slug === 'hero-slider') {
+                HeroSliderSettings::validate($item->draft_slides, $item->draft_options);
+                $item->published_slides = $item->draft_slides;
+                $item->published_options = HeroSliderSettings::options($item->draft_options);
+            }
             $item->published_html = $item->draft_html;
             $item->published_css = $item->draft_css;
             $item->published_at = now();
@@ -68,7 +73,7 @@ final class PageBuilderPublisher
                 ->where('entity_type', self::type($item))->where('entity_id', $item->getKey())
                 ->findOrFail($revisionId);
             $state = (array) $revision->snapshot;
-            foreach (['draft_html', 'draft_css', 'name', 'path', 'meta_title', 'meta_description', 'template_id'] as $key) {
+            foreach (['draft_html', 'draft_css', 'draft_slides', 'draft_options', 'name', 'path', 'meta_title', 'meta_description', 'template_id'] as $key) {
                 if (array_key_exists($key, $state) && $item->isFillable($key)) {
                     $item->{$key} = $state[$key];
                 }
@@ -101,6 +106,9 @@ final class PageBuilderPublisher
         $state = $item->only(['name', 'draft_html', 'draft_css']);
         if ($item instanceof PageBuilderPage) {
             $state += $item->only(['path', 'meta_title', 'meta_description', 'template_id']);
+        }
+        if ($item instanceof PageBuilderComponent && $item->slug === 'hero-slider') {
+            $state += $item->only(['draft_slides', 'draft_options']);
         }
         return $state;
     }
