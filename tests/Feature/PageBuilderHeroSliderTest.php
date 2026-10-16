@@ -69,13 +69,65 @@ final class PageBuilderHeroSliderTest extends TestCase
         $this->assertStringContainsString('mskba-hero-slide__highlights', $preview);
         $this->assertStringNotContainsString('<script', $preview);
 
-        // A published page cannot show a draft-only component.
+        // Never publish a blank homepage while its hero component is still a draft.
         $publisher = app(PageBuilderPublisher::class);
-        $publisher->publish($home);
-        $home->refresh();
-        $this->assertStringNotContainsString('data-mskba-hero-slider', $renderer->render($home)['html']);
+        try {
+            $publisher->publish($home);
+            $this->fail('Draft-only Hero Slider should block publication.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('hero-slider', $exception->errors()['draft_html'][0]);
+        }
+        $this->assertNull($home->refresh()->published_at);
+        $this->assertSame(0, PageBuilderRevision::query()->where('entity_type', 'page')->count());
+
         $publisher->publish($this->slider());
-        $this->assertStringContainsString('data-mskba-hero-slider', $renderer->render($home)['html']);
+        $publisher->publish($home);
+        $this->assertStringContainsString('data-mskba-hero-slider', $renderer->render($home->refresh())['html']);
+    }
+
+
+    public function test_existing_public_page_is_not_modified_when_draft_component_is_unpublished(): void
+    {
+        $publisher = app(PageBuilderPublisher::class);
+        $page = $this->home();
+        $page->update(['draft_html' => '<h1>Первая публикация</h1>']);
+        $publisher->publish($page);
+        $page->update(['draft_html' => '<mskba-component name="hero-slider"></mskba-component>']);
+
+        try {
+            $publisher->publish($page);
+            $this->fail('Publish must fail for an unpublished hero.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('hero-slider', $exception->errors()['draft_html'][0]);
+        }
+        $page->refresh();
+        $this->assertSame('<h1>Первая публикация</h1>', $page->published_html);
+        $this->assertSame(1, PageBuilderRevision::query()->where('entity_type', 'page')->count());
+    }
+
+    public function test_ordinary_unpublished_component_and_invalid_source_block_publish(): void
+    {
+        $page = $this->home();
+        $page->update(['draft_html' => '<mskba-component name="not-published"></mskba-component>']);
+        $publisher = app(PageBuilderPublisher::class);
+        try {
+            $publisher->publish($page);
+            $this->fail('Missing generic component should block publication.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('not-published', $exception->errors()['draft_html'][0]);
+        }
+
+        $page->update(['draft_html' => '<mskba-component name="games-list" source="not_allowed"></mskba-component>']);
+        try {
+            $publisher->publish($page);
+            $this->fail('Unregistered dynamic source should block publication.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('games-list', $exception->errors()['draft_html'][0]);
+        }
+
+        $page->update(['draft_html' => '<mskba-component name="games-list" source="upcoming_games"></mskba-component>']);
+        $publisher->publish($page);
+        $this->assertNotNull($page->refresh()->published_at);
     }
 
     public function test_slide_content_is_escaped_and_draft_does_not_mutate_published_snapshot(): void
