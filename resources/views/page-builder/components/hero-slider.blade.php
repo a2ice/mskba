@@ -1,4 +1,4 @@
-<section class="mskba-hero-slider" id="{{ $sliderId }}"
+<section class="mskba-hero-slider"
     data-mskba-hero-slider
     data-autoplay="{{ $options['autoplay'] ? '1' : '0' }}"
     data-interval="{{ $options['interval_ms'] }}"
