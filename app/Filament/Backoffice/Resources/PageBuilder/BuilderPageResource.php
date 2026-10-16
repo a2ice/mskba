@@ -14,7 +14,6 @@ use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -37,7 +36,7 @@ final class BuilderPageResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make('Страница')->columns(2)->schema([
                 TextInput::make('name')->label('Название')->required()->maxLength(150),
                 TextInput::make('path')->label('URL')->required()->unique(ignoreRecord: true)
@@ -48,16 +47,14 @@ final class BuilderPageResource extends Resource
             ]),
             Tabs::make('Редактор')->tabs([
                 Tab::make('HTML и CSS')->schema([
-                    Grid::make(3)->schema([
-                        Section::make('Код')->columnSpan(2)->schema([
-                            CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
-                                ->required()->columnSpanFull(),
-                            CodeEditor::make('draft_css')->label('CSS (локальный)')->language(Language::Css)
-                                ->columnSpanFull()
-                                ->helperText('Без JS, @import, URL и глобальных CSS-селекторов. Селекторы ограничены рамкой страницы.'),
-                        ]),
-                        BuilderPlaceholderGuide::panel()->columnSpan(1),
-                    ]),
+                    Section::make('Код')->columns(1)->schema([
+                        CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
+                            ->required()->columnSpanFull(),
+                        CodeEditor::make('draft_css')->label('CSS (локальный)')->language(Language::Css)
+                            ->columnSpanFull()
+                            ->helperText('Без JS, @import, URL и глобальных CSS-селекторов. Селекторы ограничены рамкой страницы.'),
+                    ])->columnSpanFull(),
+                    BuilderPlaceholderGuide::panel()->collapsible()->columnSpanFull(),
                 ]),
                 Tab::make('SEO')->schema([
                     TextInput::make('meta_title')->label('Meta title')->maxLength(180),
