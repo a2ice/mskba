@@ -26,6 +26,23 @@ final class PageBuilderHeroSliderTest extends TestCase
         return PageBuilderPage::query()->where('path', '/')->firstOrFail();
     }
 
+    public function test_superadmin_can_open_seeded_hero_filament_editor(): void
+    {
+        $user = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $this->withoutVite();
+        $this->actingAs($user);
+        \Filament\Facades\Filament::setCurrentPanel(
+            \Filament\Facades\Filament::getPanel('backoffice')
+        );
+
+        $this->get(BuilderComponentResource::getUrl('edit', [
+            'record' => $this->slider()->id,
+        ]))->assertOk()->assertSee('Hero Slider');
+    }
+
     public function test_migration_creates_unpublished_editable_hero_component(): void
     {
         $slider = $this->slider();
