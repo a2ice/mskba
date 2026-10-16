@@ -35,6 +35,11 @@ final class HeroSliderComponent
                 $slide[$key] = max(0, min(100, (float) ($slide[$key] ?? $fallback)));
             }
 
+            foreach (['background' => 0, 'far' => 240, 'near' => 460,
+                'copy' => 440, 'highlights' => 1050, 'cta' => 1450] as $part => $fallback) {
+                $key = 'delay_'.$part.'_ms';
+                $slide[$key] = max(0, min(5000, (int) ($slide[$key] ?? $fallback)));
+            }
             return $slide;
         }, $slides);
 
