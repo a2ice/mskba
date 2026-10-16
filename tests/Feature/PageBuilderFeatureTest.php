@@ -115,6 +115,46 @@ final class PageBuilderFeatureTest extends TestCase
         $this->getJson(route('page-builder.data', 'unknown'))->assertNotFound();
     }
 
+    public function test_superadmin_can_open_all_builder_backoffice_resource_screens(): void
+    {
+        $user = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $this->withoutVite();
+        $this->actingAs($user);
+
+        \Filament\Facades\Filament::setCurrentPanel(
+            \Filament\Facades\Filament::getPanel('backoffice')
+        );
+
+        foreach ([
+            \App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource::class,
+            \App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource::class,
+            \App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource::class,
+        ] as $resource) {
+            $this->get($resource::getUrl('index'))->assertOk();
+            $this->get($resource::getUrl('create'))->assertOk();
+        }
+        $this->get(\App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource::getUrl(
+            'edit', ['record' => $this->home()->id]
+        ))->assertOk();
+    }
+
+    public function test_custom_public_page_never_shadows_existing_laravel_routes(): void
+    {
+        $page = PageBuilderPage::query()->create([
+            'path' => '/about-mskba', 'name' => 'О проекте',
+            'draft_html' => '<h1>Новый раздел</h1>',
+        ]);
+        app(PageBuilderPublisher::class)->publish($page);
+        $this->withoutVite();
+
+        $this->get('/about-mskba')->assertOk()->assertSee('Новый раздел');
+        $this->get('/faq')->assertOk();
+        $this->get('/missing/non-existent')->assertNotFound();
+    }
+
     public function test_reserved_path_is_not_publishable(): void
     {
         $page = PageBuilderPage::query()->create([
