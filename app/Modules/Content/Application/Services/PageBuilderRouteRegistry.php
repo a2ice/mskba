@@ -56,7 +56,7 @@ final class PageBuilderRouteRegistry
             return $empty;
         }
 
-        if (! $route instanceof LaravelRoute || $route->isFallback()
+        if (! $route instanceof LaravelRoute
             || $route->getName() === 'page-builder.dynamic') {
             return $empty;
         }
