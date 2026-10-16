@@ -23,6 +23,10 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
   Published HTML, CSS, SEO and template selection are separate snapshot fields.
   Publication records a revision. Restore changes only the *draft*; to roll back
   the public view, restore draft, save, and publish again.
+  Publishing a page with a missing, unpublished or malformed component
+  placeholder is rejected before the public snapshot changes; the editor is
+  told to publish its components first. Dynamic `games-list` requires an
+  allowed source. The preview may still show component drafts.
 - **Preview**: authenticated backoffice route; noindex/no-store.
 - **Routes**: \`/\` uses the builder only after the homepage is published;
   legacy homepage remains unchanged otherwise. New one-segment URLs
