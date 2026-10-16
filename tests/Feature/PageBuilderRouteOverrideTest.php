@@ -44,7 +44,10 @@ final class PageBuilderRouteOverrideTest extends TestCase
         $this->withoutVite();
 
         $this->assertSame('/events', route('events.index', [], false));
+        $before = app(PageBuilderRouteRegistry::class)->inspect('/events');
         $this->get('/events')->assertOk()->assertDontSee('CMS EVENTS VERSION');
+        $after = app(PageBuilderRouteRegistry::class)->inspect('/events');
+        $this->assertSame($before, $after, 'Маршрут не должен менять признаки допуска после первого GET.');
         $this->assertNull($page->published_at);
 
         $publisher->publish($page);
