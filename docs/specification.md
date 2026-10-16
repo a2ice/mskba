@@ -1189,6 +1189,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Identity Account Confirmation](specification/identity-account-confirmation.md)
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
 - [Identity Tracking Retention](specification/identity-tracking-retention.md)
+- [Операторский центр: права, Redis presence, время МСК и realtime](specification/operator-center-rollout.md)
 - [Contact](specification/contact.md)
 - [Location](specification/location.md)
 - [Notification](specification/notification.md)
