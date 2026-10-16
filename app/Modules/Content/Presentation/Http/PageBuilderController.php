@@ -37,6 +37,14 @@ final class PageBuilderController extends Controller
         return $this->page($page, $renderer, false);
     }
 
+    /** Used by the reviewed public route override; not an editor preview. */
+    public function published(PageBuilderPage $page, PageBuilderRenderer $renderer): Response
+    {
+        abort_unless($page->published_at !== null, 404);
+
+        return $this->page($page, $renderer, false);
+    }
+
     public function preview(PageBuilderPage $page, PageBuilderRenderer $renderer): Response
     {
         $user = auth('web')->user();
