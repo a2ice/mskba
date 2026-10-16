@@ -41,7 +41,6 @@ final class HeroSliderComponent
         return view('page-builder.components.hero-slider', [
             'slides' => $prepared,
             'options' => HeroSliderSettings::options($options),
-            'sliderId' => 'mskba-hero-'.$component->getKey(),
         ])->render();
     }
 
