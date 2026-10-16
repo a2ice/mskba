@@ -41,8 +41,12 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
 
 ## Shared content width and full-width sections
 
-The outer `.mskba-page-builder` is **fluid**: 100% wide, no max-width or
-horizontal padding. It is a render/CSS scope, not a second `.container`.
+The outer `.mskba-page-builder` is **fluid and spacing-neutral**:
+100% wide, without max-width, margin, padding, or gap. The default
+`.mskba-builder-section` template wrapper also adds no gap/padding.
+Neither wrapper is a design/layout container: each section controls its
+own top/bottom spacing, so the first full-width hero can sit flush against
+the site header or context bar.
 This allows a page to mix full-bleed sections and centered content.
 The existing `.container` from the `mskba_app` design system is the
 **single source of truth** for header, breadcrumbs and boxed Page Builder
