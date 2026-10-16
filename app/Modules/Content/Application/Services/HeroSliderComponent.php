@@ -25,6 +25,9 @@ final class HeroSliderComponent
         $prepared = array_map(function (array $slide): array {
             foreach (['background_desktop', 'background_mobile', 'near_player', 'far_player'] as $key) {
                 $slide[$key.'_url'] = $this->mediaUrl($slide[$key] ?? null);
+                if ($key === 'background_desktop' && $slide[$key.'_url'] === null) {
+                    $slide[$key.'_url'] = asset('images/bg-indoor.png');
+                }
             }
 
             foreach (['far_x' => 45, 'near_x' => 72, 'far_width' => 18, 'near_width' => 34,
@@ -46,9 +49,6 @@ final class HeroSliderComponent
     {
         if (! is_string($path) || $path === '') {
             return null;
-        }
-        if ($path === 'site:bg-indoor') {
-            return asset('images/bg-indoor.png');
         }
         // All uploaded paths are checked by HeroSliderSettings before use.
         return Storage::disk('public')->url($path);
