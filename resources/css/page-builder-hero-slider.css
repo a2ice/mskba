@@ -89,9 +89,12 @@
     background:#ff7300;transform:scale(1.18);
 }
 /* Resting slides display all content, including when JavaScript is disabled. */
-.mskba-hero-slide.is-animating .mskba-hero-slide__background {animation:mskba-hero-fade .7s both;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__player--far {animation:mskba-hero-up .85s .24s both;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__player--near {animation:mskba-hero-up .9s .46s both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background {animation:mskba-hero-fade .7s var(--background-delay,0ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-up"] {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far {animation:mskba-hero-up .85s var(--far-delay,240ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near {animation:mskba-hero-up .9s var(--near-delay,460ms) both;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="fade"],
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="fade"] {animation-name:mskba-hero-fade;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="zoom"],
@@ -102,16 +105,23 @@
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="fade"] > * {animation-name:mskba-hero-fade;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="zoom"] > * {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="slide-left"] > * {animation-name:mskba-hero-left;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__eyebrow {animation-delay:.44s;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__title {animation-delay:.58s;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__description {animation-delay:.72s;}
-.mskba-hero-slide.is-animating .mskba-hero-slide__cta {animation-delay:1.45s;}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__eyebrow {animation-delay:var(--copy-delay,440ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__title {animation-delay:calc(var(--copy-delay,440ms) + 140ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__description {animation-delay:calc(var(--copy-delay,440ms) + 280ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__cta {animation-delay:var(--cta-delay,1450ms);}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="fade"] {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-up"] {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights a .mskba-hero-slide__icon {
-    animation:mskba-hero-fade .45s calc(1.05s + var(--highlight-index) * .13s) both;
+    animation:mskba-hero-fade .45s calc(var(--highlights-delay,1050ms) + var(--highlight-index) * 130ms) both;
 }
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights a span:last-child {
-    animation:mskba-hero-fade .45s calc(1.16s + var(--highlight-index) * .13s) both;
+    animation:mskba-hero-fade .45s calc(var(--highlights-delay,1050ms) + 110ms + var(--highlight-index) * 130ms) both;
 }
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-up"] a span {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-left"] a span {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="zoom"] a span {animation-name:mskba-hero-zoom;}
 @keyframes mskba-hero-fade {from{opacity:0}to{opacity:1}}
 @keyframes mskba-hero-up {from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
 @keyframes mskba-hero-left {from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
