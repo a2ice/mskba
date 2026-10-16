@@ -39,6 +39,43 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
 - **Design themes**: CSS can reference the existing CSS tokens; builder rules
   are prefixed with \`.mskba-page-builder\` to prevent styling surrounding UI.
 
+## Shared content width and full-width sections
+
+The outer `.mskba-page-builder` is **fluid**: 100% wide, no max-width or
+horizontal padding. It is a render/CSS scope, not a second `.container`.
+This allows a page to mix full-bleed sections and centered content.
+The existing `.container` from the `mskba_app` design system is the
+**single source of truth** for header, breadcrumbs and boxed Page Builder
+content (1280px max, 32px/24px/16px responsive side gutters).
+
+Author boxed sections in the page or template editor:
+
+```html
+<div class="container">
+  <mskba-component name="hero-slider"></mskba-component>
+</div>
+```
+
+Author full-width sections without this wrapper:
+
+```html
+<section class="events-hero">
+  <h1>Мероприятия</h1>
+</section>
+<div class="container">
+  <h2>Каталог</h2>
+</div>
+```
+
+The builder HTML allowlist accepts `section`, `div` and `class`; editors
+must still use scoped CSS validation, never arbitrary JS/PHP.
+A one-time, idempotent **data migration** wraps pre-existing draft and
+published page HTML in explicit `.container` elements (unless already
+boxed). This preserves the current DEV layout, including the home hero
+and /events, while allowing new CMS pages to choose widths per section.
+Templates, components, route ownership and past revisions are untouched.
+Migration rollback does not remove editor-controlled HTML wrappers.
+
 ## Editor layout in Filament 5
 
 Page, template and generic component edit forms use a single outer column.
