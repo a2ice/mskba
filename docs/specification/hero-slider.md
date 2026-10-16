@@ -43,6 +43,13 @@ No main/production publication is part of this task.
   seamless highlight marquee. It pauses on hover/focus; the repeated visual
   group is inert and hidden from assistive technology. Reduced-motion users
   get a stationary horizontally scrollable rail instead of automatic motion.
+- Stage height is explicitly sized (not content-driven) because the background and
+  transparent player images are absolutely positioned. After the CTA and highlights
+  share one row, desktop uses `clamp(450px, 35cqw, 530px)`, short desktop
+  `clamp(410px, 32cqw, 480px)`, tablet `clamp(440px, 62cqw, 540px)`.
+  Mobile height is intentionally unchanged to preserve room for composition
+  and the existing fixed bottom navigation. Recheck when final transparent player
+  imagery is integrated.
 - Navigation arrows: first-party centered SVG chevrons, not font glyphs.
 - Mobile: crop/recompose the scene, hide highlights and carousel arrows,
   use swipe and dots, reserve vertical space for the project's existing
