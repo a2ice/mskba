@@ -36,6 +36,15 @@ final class HeroSliderComponent
                 $slide['delay_background_ms'] = (int) ($slide['delay_background_ms'] ?? 0);
                 $slide['elements'] = array_map(function (array $element): array {
                     $element['image_url'] = $this->mediaUrl($element['image'] ?? null);
+                    if (($element['type'] ?? '') === 'links') {
+                        $element['links'] = array_map(function (array $link): array {
+                            $link['icon_url'] = ($link['icon'] ?? null) === 'custom'
+                                ? $this->mediaUrl($link['image'] ?? null)
+                                : null;
+
+                            return $link;
+                        }, $element['links'] ?? []);
+                    }
                     foreach (['x' => 10, 'y' => 20, 'width' => 50,
                         'mobile_x' => 6, 'mobile_y' => 20, 'mobile_width' => 88] as $key => $fallback) {
                         $element[$key] = (float) ($element[$key] ?? $fallback);

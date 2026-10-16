@@ -95,6 +95,68 @@ final class UniversalHeroSliderTest extends TestCase
         $this->assertStringContainsString('2 из 2', $visible);
     }
 
+    public function test_generic_links_reuse_five_icons_and_support_custom_uploaded_images(): void
+    {
+        $slide = $this->slide('Хайлайты');
+        $slide['elements'][] = [
+            'type' => 'links', 'name' => 'Разделы портала', 'class_name' => 'slider-highlights',
+            'x' => 43, 'y' => 68, 'width' => 53,
+            'links' => [
+                ['label' => 'Площадки', 'url' => '/venues', 'icon' => 'court'],
+                ['label' => 'Турниры', 'url' => '/tournaments', 'icon' => 'trophy'],
+                ['label' => 'Команды', 'url' => '/teams', 'icon' => 'users'],
+                ['label' => 'Медиа', 'url' => '/news', 'icon' => 'video'],
+                ['label' => 'Рейтинги', 'url' => '/participants', 'icon' => 'chart'],
+                ['label' => 'Афиша', 'url' => '/events', 'icon' => 'custom',
+                    'image' => 'page-builder/hero/custom-icon.webp'],
+            ],
+        ];
+        HeroSliderSettings::validate([$slide], []);
+        $html = $this->render([$slide]);
+
+        $this->assertStringContainsString('mskba-hero-slide__highlights--layers', $html);
+        $this->assertStringContainsString('mskba-hero-slide__highlights-group--duplicate', $html);
+        $this->assertStringContainsString('aria-hidden="true" inert', $html);
+        $this->assertStringContainsString('href="/tournaments"', $html);
+        $this->assertStringContainsString('href="/venues"', $html);
+        $this->assertStringContainsString('href="/teams"', $html);
+        $this->assertStringContainsString('href="/news"', $html);
+        $this->assertStringContainsString('href="/participants"', $html);
+        $this->assertStringContainsString('custom-icon.webp', $html);
+        $this->assertStringContainsString('data-layer-name="Разделы портала"', $html);
+    }
+
+    public function test_generic_button_shows_arrow_by_default_and_can_hide_it(): void
+    {
+        $slide = $this->slide('О портале');
+        $html = $this->render([$slide]);
+        $this->assertStringContainsString('<span aria-hidden="true">→</span>', $html);
+        $slide['elements'][1]['show_arrow'] = false;
+        $html = $this->render([$slide]);
+        $this->assertStringNotContainsString('<span aria-hidden="true">→</span>', $html);
+    }
+
+    public function test_link_groups_reject_unsafe_urls_and_missing_custom_icons(): void
+    {
+        $slide = $this->slide('Валидация');
+        foreach ([
+            [['label' => 'Внешний', 'url' => 'javascript:alert(1)', 'icon' => 'court']],
+            [['label' => 'Нет картинки', 'url' => '/venues', 'icon' => 'custom']],
+            [['label' => 'Неизвестная иконка', 'url' => '/venues', 'icon' => 'script']],
+            [],
+        ] as $links) {
+            $slide['elements'][] = ['type' => 'links', 'name' => 'Ряд ссылок', 'links' => $links];
+            try {
+                HeroSliderSettings::validate([$slide], []);
+                $this->fail('Недопустимый набор ссылок не должен публиковаться.');
+            } catch (ValidationException) {
+                // Expected.
+            } finally {
+                array_pop($slide['elements']);
+            }
+        }
+    }
+
     public function test_no_matching_slides_returns_empty_public_markup(): void
     {
         $html = $this->render([$this->slide('Закрытый', ['auth' => 'guest', 'confirmation' => 'confirmed'])]);

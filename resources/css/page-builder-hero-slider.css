@@ -250,3 +250,46 @@
 @media (prefers-reduced-motion:reduce) {
     .mskba-hero-slide.is-animating .mskba-hero-slide__layer {animation:none!important;}
 }
+
+
+/* Opt-in MSKBA composition presets for generic layers. Unlike viewport-based
+   page-local font sizes, these scale with the actual slider canvas (cqw).
+   Generic elements without these classes keep their universal styling. */
+.mskba-page-builder .mskba-hero-slide--layers .slider-eyebrow .mskba-hero-slide__layer-text {
+    color:#ff8b24;font-size:clamp(11px,1.05cqw,15px);font-weight:850;letter-spacing:.13em;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading {
+    color:#fff;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
+    letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+    color:#ff7412;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
+    letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+    color:rgba(255,255,255,.9);font-size:clamp(14px,1.2cqw,18px);line-height:1.45;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-cta .mskba-hero-slide__layer-button {
+    min-height:49px;padding:12px 24px;font-size:15px;gap:20px;
+    background:linear-gradient(145deg,#ff8b0b,#f15a05);color:#fff!important;
+    box-shadow:0 10px 28px rgba(255,105,0,.25);
+}
+.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {
+    max-height:none;overflow:visible;
+}
+.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__highlights--layers {
+    width:100%;max-width:none;margin:0;
+}
+.mskba-hero-slide__custom-icon {display:block;width:26px;height:26px;object-fit:contain;}
+.mskba-hero-slide--layers .mskba-hero-slide__layer-button {gap:14px;}
+.mskba-hero-slide--layers .mskba-hero-slide__layer-button span[aria-hidden] {font-size:18px;line-height:1;}
+@container mskba-hero (max-width:640px) {
+    .mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading,
+    .mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+        font-size:clamp(32px,8cqw,48px);
+    }
+    .mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+        font-size:13px;
+    }
+    .mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {display:none;}
+}

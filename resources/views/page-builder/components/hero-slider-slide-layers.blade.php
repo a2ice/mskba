@@ -43,7 +43,10 @@
                 @endif
                 @break
             @case('button')
-                <a class="mskba-hero-slide__layer-button" href="{{ $element['url'] }}">{{ $element['content'] }}</a>
+                <a class="mskba-hero-slide__layer-button" href="{{ $element['url'] }}">{{ $element['content'] }}@if ($element['show_arrow'] ?? true)<span aria-hidden="true">→</span>@endif</a>
+                @break
+            @case('links')
+                @include('page-builder.components.hero-slider-links', ['element' => $element])
                 @break
         @endswitch
     </div>

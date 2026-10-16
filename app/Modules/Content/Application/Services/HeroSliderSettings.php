@@ -17,7 +17,7 @@ final class HeroSliderSettings
     public const MAX_SLIDES = 6;
     public const MAX_LAYERS = 16;
     public const MOTIONS = ['fade', 'slide-up', 'slide-left', 'zoom', 'none'];
-    public const LAYER_TYPES = ['heading', 'text', 'image', 'button'];
+    public const LAYER_TYPES = ['heading', 'text', 'image', 'button', 'links'];
 
     public static function options(?array $options): array
     {
@@ -73,6 +73,12 @@ final class HeroSliderSettings
             'slides.*.elements.*.url' => ['nullable', 'string', 'max:220', self::internalLink()],
             'slides.*.elements.*.image' => ['nullable', 'string', self::imagePath()],
             'slides.*.elements.*.alt' => ['nullable', 'string', 'max:140'],
+            'slides.*.elements.*.show_arrow' => ['nullable', 'boolean'],
+            'slides.*.elements.*.links' => ['nullable', 'array', 'list', 'max:8'],
+            'slides.*.elements.*.links.*.label' => ['required', 'string', 'max:35'],
+            'slides.*.elements.*.links.*.url' => ['required', 'string', 'max:220', self::internalLink()],
+            'slides.*.elements.*.links.*.icon' => ['nullable', Rule::in(['court', 'trophy', 'users', 'video', 'chart', 'custom'])],
+            'slides.*.elements.*.links.*.image' => ['nullable', 'string', self::imagePath()],
             'slides.*.elements.*.animation' => ['nullable', Rule::in(self::MOTIONS)],
             'slides.*.elements.*.delay_ms' => ['nullable', 'integer', 'between:0,5000'],
             'slides.*.elements.*.duration_ms' => ['nullable', 'integer', 'between:100,3000'],
@@ -163,6 +169,19 @@ final class HeroSliderSettings
                     }
                     if ($type === 'image' && trim((string) ($layer['image'] ?? '')) === '') {
                         $validator->errors()->add("{$prefix}.image", 'Выбери изображение.');
+                    }
+                    if ($type === 'links') {
+                        $links = $layer['links'] ?? null;
+                        if (! is_array($links) || count($links) < 1) {
+                            $validator->errors()->add("{$prefix}.links", 'Добавь хотя бы одну ссылку с иконкой.');
+                        } else {
+                            foreach ($links as $itemIndex => $item) {
+                                if (is_array($item) && ($item['icon'] ?? null) === 'custom'
+                                    && trim((string) ($item['image'] ?? '')) === '') {
+                                    $validator->errors()->add("{$prefix}.links.{$itemIndex}.image", 'Загрузи иконку ссылки.');
+                                }
+                            }
+                        }
                     }
                 }
             }

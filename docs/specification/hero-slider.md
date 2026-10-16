@@ -143,3 +143,33 @@ No simulated or implicit tag matches are performed.
 Existing Page Builder draft/publish/revision mechanics apply unchanged. New
 slides and editing older slides do not affect published output until
 \`Сохранить и опубликовать\` or the separate Publish action is performed.
+
+
+## Acceptance: recreating the MSKBA hero in universal mode
+
+When recreating the old design as typed layers, assign the following opt-in CSS
+preset classes: `slider-eyebrow`, `slider-heading`, `slider-accent`,
+`slider-description`, `slider-cta`. These are first-party
+container-relative typographic styles and are isolated to generic slides;
+the previously published legacy slides are not restyled.
+
+New layer type `links` (`Группа ссылок · хайлайты`) is a reorderable
+list of 1–8 typed links. Each has label, internal URL, and an icon selected from
+`court/trophy/users/video/chart` or a custom uploaded raster image. Reuses
+the trusted existing carousel highlight CSS and responsive behavior: row on
+desktop; scrolling highlight rail on tablet; hidden on mobile. As with
+legacy highlights, duplicate marquee link groups are inert and hidden from
+accessibility APIs. All URLs, upload paths, alt text and classes are validated
+server-side; inline SVG icons are first-party Blade markup.
+
+Example first slide at desktop 1280 × 450: eyebrow `(6%, 16%, 60%)`,
+heading `(6%, 24%, 75%)`, accent `(6%, 35%, 75%)`,
+description `(6%, 51%, 42%)`, CTA `(6%, 69%, 22%)`,
+links group `(43%, 68%, 53%)`. Final alignment and mobile values must
+be adjusted after visual QA on the author's actual assets.
+
+The `show_arrow` toggle on button layers defaults to on (matching the
+legacy CTA); it may be switched off for other button types.
+The global arrows/dots appear only when **at least two audience-visible slides**
+are enabled. This is intentional; check both legacy slide toggles and audience
+filters before diagnosing a missing navigation control.

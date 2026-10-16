@@ -63,7 +63,7 @@ final class BuilderComponentResource extends Resource
                     Toggle::make('draft_options.show_dots')->label('Индикаторы')->default(true),
                 ]),
             Section::make('Слайды · порядок и содержимое')
-                ->description('Фон арены — единое изображение. Два игрока — отдельные прозрачные PNG/WebP. На mobile хайлайты скрыты, нижняя навигация сайта не входит в этот компонент.')
+                ->description('Универсальные слайды состоят из слоёв: заголовки, тексты, изображения, кнопки и группы ссылок. Старый макет MSKBA сохранён без изменений.')
                 ->visible(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
                 ->schema([
                     Repeater::make('draft_slides')->label('Слайды')
@@ -131,13 +131,14 @@ final class BuilderComponentResource extends Resource
                                         ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null) ?: ($state['type'] ?? 'Новый элемент'))
                                         ->reorderable()->cloneable()->collapsible()
                                         ->minItems(1)->maxItems(16)->defaultItems(0)
-                                        ->helperText('Обязательно добавь хотя бы один элемент слайда (заголовок, текст, изображение или кнопку) перед публикацией.')
+                                        ->helperText('Для публикации нужен минимум один элемент: заголовок, текст, изображение, кнопка или группа ссылок.')
                                         ->schema([
                                             Grid::make(3)->schema([
                                                 Select::make('type')->label('Тип элемента')->native(false)->live()
                                                     ->options([
                                                         'heading' => 'Заголовок', 'text' => 'Текст',
                                                         'image' => 'Изображение', 'button' => 'Кнопка',
+                                                        'links' => 'Группа ссылок · хайлайты',
                                                     ])->default('text')->required(),
                                                 TextInput::make('name')->label('Название элемента')->required()->maxLength(90),
                                                 TextInput::make('class_name')->label('CSS-классы (до 3)')
@@ -147,6 +148,34 @@ final class BuilderComponentResource extends Resource
                                             Textarea::make('content')->label('Текст')->rows(2)->maxLength(400)
                                                 ->visible(fn (Get $get): bool => in_array($get('type'), ['heading','text','button'], true))
                                                 ->required(fn (Get $get): bool => in_array($get('type'), ['heading','text','button'], true)),
+                                            Toggle::make('show_arrow')->label('Стрелка справа от текста кнопки')
+                                                ->visible(fn (Get $get): bool => $get('type') === 'button')
+                                                ->default(true),
+                                            Repeater::make('links')->label('Ссылки с иконками')
+                                                ->visible(fn (Get $get): bool => $get('type') === 'links')
+                                                ->helperText('На desktop — горизонтальная группа, на tablet — прокручиваемая лента, на mobile скрыта (как в старом макете).')
+                                                ->reorderable()->cloneable()->collapsible()
+                                                ->minItems(1)->maxItems(8)->defaultItems(0)
+                                                ->itemLabel(fn (array $state): ?string => $state['label'] ?? 'Новая ссылка')
+                                                ->schema([
+                                                    TextInput::make('label')->label('Подпись')->required()->maxLength(35),
+                                                    TextInput::make('url')->label('Внутренняя ссылка')->required()->maxLength(220),
+                                                    Select::make('icon')->label('Иконка')->native(false)->live()
+                                                        ->options([
+                                                            'court' => 'Площадка',
+                                                            'trophy' => 'Кубок',
+                                                            'users' => 'Участники',
+                                                            'video' => 'Видео',
+                                                            'chart' => 'Рейтинг',
+                                                            'custom' => 'Загрузить свою',
+                                                        ])->default('court')->required(),
+                                                    FileUpload::make('image')->label('Своя иконка (PNG/WebP)')
+                                                        ->visible(fn (Get $get): bool => $get('icon') === 'custom')
+                                                        ->required(fn (Get $get): bool => $get('icon') === 'custom')
+                                                        ->image()->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg', 'image/avif'])
+                                                        ->disk('public')->directory('page-builder/hero')
+                                                        ->visibility('public')->maxSize(1024),
+                                                ])->columns(2),
                                             TextInput::make('url')->label('Внутренняя ссылка кнопки')
                                                 ->visible(fn (Get $get): bool => $get('type') === 'button')
                                                 ->required(fn (Get $get): bool => $get('type') === 'button'),
