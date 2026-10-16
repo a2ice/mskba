@@ -21,6 +21,15 @@ return new class extends Migration
         DB::transaction(function (): void {
             $query = DB::table('page_builder_components')->where('slug', 'hero-slider');
             $row = $query->lockForUpdate()->first();
+            if ($row !== null) {
+                $keys = array_keys(get_object_vars($row));
+                echo 'HERO_RESPONSIVE_PATCH: inspected columns='.implode(',', $keys)."\n";
+                foreach (['id', 'draft_slides', 'published_slides'] as $required) {
+                    if (! property_exists($row, $required)) {
+                        throw new \RuntimeException('Missing expected page_builder_components column: '.$required);
+                    }
+                }
+            }
             if (! $row) {
                 echo "HERO_RESPONSIVE_PATCH: skipped (component absent)\\n";
 
@@ -83,11 +92,16 @@ return new class extends Migration
             ]);
 
             $changes['updated_at'] = now();
-            $query->update($changes);
+            DB::table('page_builder_components')->where('id', $row->id)->update($changes);
 
-            // Re-read persisted values and check exact JSON equality before
-            // declaring the patch successful (transaction rolls back on error).
-            $updated = $query->first();
+            // Re-read with a FRESH query and explicit projection: Query Builder
+            // may retain a temporary column selection after update() and
+            // return an incomplete row from the previously reused builder.
+            $updated = DB::table('page_builder_components')
+                ->where('id', $row->id)->first(['draft_slides', 'published_slides']);
+            if ($updated === null) {
+                throw new \RuntimeException('Hero Slider component vanished during verification.');
+            }
             foreach (['draft_slides', 'published_slides'] as $column) {
                 if (isset($changes[$column])
                     && json_decode($updated->{$column}, true) !== json_decode($changes[$column], true)) {
