@@ -99,6 +99,12 @@ final class BuilderComponentResource extends Resource
                                     ->options(self::animationOptions())->default('zoom')->native(false),
                                 Select::make('animation_copy')->label('Появление текста')
                                     ->options(self::animationOptions())->default('slide-up')->native(false),
+                                Select::make('animation_background')->label('Появление фона')
+                                    ->options(self::animationOptions())->default('fade')->native(false),
+                                Select::make('animation_highlights')->label('Появление хайлайтов')
+                                    ->options(self::animationOptions())->default('fade')->native(false),
+                                Select::make('animation_cta')->label('Появление кнопки')
+                                    ->options(self::animationOptions())->default('slide-up')->native(false),
                                 TextInput::make('far_x')->label('Дальний игрок X · desktop, %')
                                     ->numeric()->minValue(0)->maxValue(100)->default(45),
                                 TextInput::make('near_x')->label('Ближний игрок X · desktop, %')
@@ -112,6 +118,23 @@ final class BuilderComponentResource extends Resource
                                 TextInput::make('near_mobile_x')->label('Ближний игрок X · mobile, %')
                                     ->numeric()->minValue(0)->maxValue(100)->default(75),
                             ]),
+                            Section::make('Таймлайн · задержки анимаций, мс')
+                                ->description('0–5000 мс. При наведении и фокусе автопереключение приостанавливается.')
+                                ->collapsible()->collapsed()->columns(3)
+                                ->schema([
+                                    TextInput::make('delay_background_ms')->label('Фон')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(0),
+                                    TextInput::make('delay_far_ms')->label('Дальний игрок')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(240),
+                                    TextInput::make('delay_near_ms')->label('Ближний игрок')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(460),
+                                    TextInput::make('delay_copy_ms')->label('Заголовок и текст')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(440),
+                                    TextInput::make('delay_highlights_ms')->label('Хайлайты')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(1050),
+                                    TextInput::make('delay_cta_ms')->label('Кнопка')
+                                        ->numeric()->minValue(0)->maxValue(5000)->default(1450),
+                                ]),
                             Repeater::make('highlights')->label('Хайлайты (скрыты на mobile)')
                                 ->collapsible()->reorderable()->maxItems(5)
                                 ->schema([
