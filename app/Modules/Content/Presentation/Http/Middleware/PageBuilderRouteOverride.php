@@ -16,7 +16,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class PageBuilderRouteOverride
 {
-    public function handle(Request $request, Closure $next, PageBuilderRouteRegistry $registry): Response
+    public function __construct(private readonly PageBuilderRouteRegistry $registry) {}
+
+    public function handle(Request $request, Closure $next): Response
     {
         if (! $request->isMethod('GET') && ! $request->isMethod('HEAD')) {
             return $next($request);
@@ -24,7 +26,7 @@ final class PageBuilderRouteOverride
 
         $routeName = $request->route()?->getName();
         $path = '/'.ltrim($request->path(), '/');
-        if (! is_string($routeName) || ! $registry->mayOverride($routeName, $path)) {
+        if (! is_string($routeName) || ! $this->registry->mayOverride($routeName, $path)) {
             return $next($request);
         }
 
