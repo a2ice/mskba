@@ -31,7 +31,8 @@ final class HeroSliderComponent
 
         $prepared = array_map(function (array $slide): array {
             if (($slide['layout'] ?? 'legacy') === 'layers') {
-                $slide['background_desktop_url'] = $this->mediaUrl($slide['background_image'] ?? null);
+                $slide['background_desktop_url'] = $this->mediaUrl($slide['background_image'] ?? null)
+                    ?? (($slide['background_preset'] ?? null) === 'indoor' ? asset('images/bg-indoor.png') : null);
                 $slide['background_mobile_url'] = $this->mediaUrl($slide['background_image_mobile'] ?? null);
                 $slide['delay_background_ms'] = (int) ($slide['delay_background_ms'] ?? 0);
                 $slide['elements'] = array_map(function (array $element): array {

@@ -121,6 +121,9 @@ final class BuilderComponentResource extends Resource
                                         FileUpload::make('background_image_mobile')->label('Фон · mobile')
                                             ->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
                                             ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(3072),
+                                        Select::make('background_preset')->label('Встроенный фон (при отсутствии изображения)')
+                                            ->native(false)->options(['indoor' => 'Баскетбольная арена'])
+                                            ->helperText('Для старых слайдов, перенесённых из прежнего редактора. Загрузка изображения всегда имеет приоритет.'),
                                         Select::make('scrim')->label('Затемнение/осветление фона')
                                             ->native(false)->options(['none' => 'Нет', 'dark' => 'Тёмное', 'light' => 'Светлое'])
                                             ->default('none'),

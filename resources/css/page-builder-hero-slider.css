@@ -302,3 +302,14 @@
     }
     .mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {display:none;}
 }
+
+/* Migrated historic player images, rendered as generic image layers. */
+.mskba-page-builder .mskba-hero-slide--layers .slider-player {
+    top:auto;bottom:-3%;max-height:103%;pointer-events:none;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-player .mskba-hero-slide__layer-image {
+    max-height:450px;object-position:bottom;filter:drop-shadow(1px 8px 15px rgba(0,0,0,.35));
+}
+@container mskba-hero (max-width:640px) {
+    .mskba-page-builder .mskba-hero-slide--layers .slider-player {bottom:10%;top:auto;}
+}

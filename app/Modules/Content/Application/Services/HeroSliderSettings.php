@@ -57,6 +57,7 @@ final class HeroSliderSettings
 
             'slides.*.background_effect' => ['nullable', Rule::in(self::MOTIONS)],
             'slides.*.scrim' => ['nullable', Rule::in(['none', 'dark', 'light'])],
+            'slides.*.background_preset' => ['nullable', Rule::in(['indoor'])],
             'slides.*.background_image' => ['nullable', 'string', self::imagePath()],
             'slides.*.background_image_mobile' => ['nullable', 'string', self::imagePath()],
             'slides.*.background_desktop' => ['nullable', 'string', self::imagePath()],
