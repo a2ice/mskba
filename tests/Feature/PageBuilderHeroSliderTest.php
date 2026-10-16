@@ -119,6 +119,20 @@ final class PageBuilderHeroSliderTest extends TestCase
         $this->assertSame($oldTitle, $revision->snapshot['draft_slides'][0]['title']);
     }
 
+    public function test_layer_animation_presets_and_stagger_delays_are_bounded(): void
+    {
+        $slides = $this->slider()->draft_slides;
+        $slides[0]['animation_background'] = 'fade';
+        $slides[0]['animation_cta'] = 'slide-up';
+        $slides[0]['animation_highlights'] = 'zoom';
+        $slides[0]['delay_far_ms'] = 2300;
+        HeroSliderSettings::validate($slides, ['autoplay' => false]);
+
+        $slides[0]['delay_far_ms'] = 8000;
+        $this->expectException(ValidationException::class);
+        HeroSliderSettings::validate($slides, []);
+    }
+
     public function test_player_assets_and_internal_links_are_validated(): void
     {
         $slides = $this->slider()->draft_slides;
