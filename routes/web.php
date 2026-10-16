@@ -573,7 +573,6 @@ Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class,
 
 Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])
-        ->middleware(\App\Modules\Content\Presentation\Http\Middleware\PageBuilderRouteOverride::class)
         ->name('events.index')
         ->defaults('breadcrumb', 'Мероприятия');
     Route::get('/{event}/games/{game}', [EventGameController::class, 'show'])
