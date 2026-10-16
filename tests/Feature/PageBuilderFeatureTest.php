@@ -101,6 +101,7 @@ final class PageBuilderFeatureTest extends TestCase
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->withoutVite();
         $this->actingAs($user)->get(route('page-builder.preview', $page))
             ->assertOk()->assertSee('Предпросмотр черновика')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
         $this->assertNull($page->refresh()->published_at);

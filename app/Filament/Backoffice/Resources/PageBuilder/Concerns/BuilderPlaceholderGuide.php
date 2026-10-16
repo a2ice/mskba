@@ -18,9 +18,9 @@ final class BuilderPlaceholderGuide
             ->description($description)
             ->schema([
                 Text::make('<mskba-component name="hero-banner"></mskba-component>')
-                    ->size('sm'),
+                    ,
                 Text::make('<mskba-component name="games-list" source="upcoming_games" limit="5"></mskba-component>')
-                    ->size('sm'),
+                    ,
                 Text::make('upcoming_games — '.PageBuilderSources::DESCRIPTIONS['upcoming_games']),
                 Text::make('my_games — '.PageBuilderSources::DESCRIPTIONS['my_games']),
                 Text::make('featured_teams — '.PageBuilderSources::DESCRIPTIONS['featured_teams']),
