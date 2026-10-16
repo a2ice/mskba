@@ -3,7 +3,7 @@
 @if ($builderTheme === 'mskba_app')
     @push('meta')
         <meta name="description" content="{{ $metaDescription }}">
-        <meta name="robots" content="{{ $metaRobots }}">
+        <meta name="robots" content="{{ $metaRobots }}">\n        @unless ($builderPreview)\n            <link rel="canonical" href="{{ url()->current() }}">\n        @endunless
     @endpush
 @endif
 
