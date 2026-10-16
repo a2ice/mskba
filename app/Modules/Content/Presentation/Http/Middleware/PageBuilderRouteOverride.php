@@ -11,8 +11,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Attached only to reviewed, public GET entry routes. Existing middleware and
- * nested entity/action routes are untouched; the old handler is the fallback.
+ * Web-group middleware: gates dynamically on exact public, unguarded, named
+ * GET/HEAD routes. Existing controllers, app middleware and nested routes stay intact.
  */
 final class PageBuilderRouteOverride
 {
