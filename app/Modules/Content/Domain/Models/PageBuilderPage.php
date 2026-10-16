@@ -26,6 +26,9 @@ final class PageBuilderPage extends Model
 
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return [
+            'published_at' => 'datetime',
+            'cms_override_enabled' => 'boolean',
+        ];
     }
 }

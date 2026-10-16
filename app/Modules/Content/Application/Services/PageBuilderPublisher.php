@@ -15,6 +15,7 @@ final class PageBuilderPublisher
     public function __construct(
         private readonly PageBuilderMarkup $markup,
         private readonly PageBuilderSources $sources,
+        private readonly PageBuilderRouteRegistry $routeRegistry,
     ) {}
 
     public function publish(Model $record): void
@@ -29,10 +30,7 @@ final class PageBuilderPublisher
             $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
             $this->markup->validate((string) $item->draft_html, $item->draft_css);
             if ($item instanceof PageBuilderPage) {
-                if (! preg_match('/\A\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?\z/D', $item->path)
-                    || ($item->path !== '/' && in_array(ltrim($item->path, '/'), self::reservedPaths(), true))) {
-                    throw ValidationException::withMessages(['path' => 'Недопустимый или системный URL.']);
-                }
+                $route = $this->routeRegistry->forPublication($item->path);
                 if ($item->template_id !== null && ! PageBuilderTemplate::query()
                     ->whereKey($item->template_id)->whereNotNull('published_at')->exists()) {
                     throw ValidationException::withMessages(['template_id' => 'Сначала опубликуй выбранный шаблон.']);
@@ -45,6 +43,9 @@ final class PageBuilderPublisher
                 // Reject missing dependencies BEFORE writing any public snapshot.
                 $this->assertComponentsPublished($item);
                 // A saved URL is still a draft until the editor explicitly publishes it.
+                $item->published_route_type = $route['type'];
+                $item->published_route_name = $route['route_name'];
+                $item->cms_override_enabled = $route['route_name'] !== null;
                 $item->published_path = $item->path;
                 $item->published_name = $item->name;
                 $item->published_meta_title = $item->meta_title;
@@ -65,6 +66,46 @@ final class PageBuilderPublisher
                 'entity_id' => $item->getKey(),
                 'action' => 'publish',
                 'snapshot' => $this->snapshot($item),
+                'user_id' => auth('web')->id(),
+                'created_at' => now(),
+            ]);
+        });
+    }
+
+    /**
+     * Reversible switch between the published CMS snapshot and original Laravel
+     * handler. Draft state is unchanged, and the action is audit recorded.
+     */
+    public function setOverrideEnabled(PageBuilderPage $page, bool $enabled): void
+    {
+        DB::transaction(function () use ($page, $enabled): void {
+            $item = PageBuilderPage::query()->whereKey($page->getKey())->lockForUpdate()->firstOrFail();
+            if ($item->published_at === null
+                || ! is_string($item->published_route_name)
+                || $item->published_route_type !== 'public_index'
+                || ! $this->routeRegistry->mayOverride($item->published_route_name, $item->published_path)) {
+                throw ValidationException::withMessages([
+                    'path' => 'Для этого опубликованного маршрута переключение CMS недоступно.',
+                ]);
+            }
+
+            if ((bool) $item->cms_override_enabled === $enabled) {
+                return;
+            }
+            $item->cms_override_enabled = $enabled;
+            $item->save();
+            PageBuilderRevision::query()->create([
+                'entity_type' => 'page',
+                'entity_id' => $item->getKey(),
+                'action' => $enabled ? 'override_on' : 'override_off',
+                'snapshot' => [
+                    'name' => $item->name,
+                    'path' => $item->path,
+                    'draft_html' => $item->draft_html,
+                    'draft_css' => $item->draft_css,
+                    'route_name' => $item->published_route_name,
+                    'cms_override_enabled' => $enabled,
+                ],
                 'user_id' => auth('web')->id(),
                 'created_at' => now(),
             ]);
@@ -159,19 +200,13 @@ final class PageBuilderPublisher
         };
     }
 
-    public static function reservedPaths(): array
-    {
-        return ['account','admin','backoffice','api','login','register','logout','events',
-            'teams','venues','participants','players','coaches','news','shop','privacy',
-            'storage','assets','sitemap.xml','dashboard','tournaments','faq','partners',
-            'page-builder','site-summary','integrations','sports-sections','r'];
-    }
-
     private function snapshot(Model $item): array
     {
         $state = $item->only(['name', 'draft_html', 'draft_css']);
         if ($item instanceof PageBuilderPage) {
             $state += $item->only(['path', 'meta_title', 'meta_description', 'template_id']);
+            $state['published_route_type'] = $item->published_route_type;
+            $state['published_route_name'] = $item->published_route_name;
         }
         if ($item instanceof PageBuilderComponent && $item->slug === 'hero-slider') {
             $state += $item->only(['draft_slides', 'draft_options']);

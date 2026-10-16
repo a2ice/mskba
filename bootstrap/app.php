@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ShowCreationPageAccess;
+use App\Modules\Content\Presentation\Http\Middleware\PageBuilderRouteOverride;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnsurePersonalDataDistributionSetupCompleted;
@@ -51,6 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
             RecordBrowserFingerprint::class,
             RecordOnlineUserPresence::class,
             EnsureGameRosterContainsPlayers::class,
+            PageBuilderRouteOverride::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
