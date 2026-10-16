@@ -74,9 +74,6 @@ final class HeroSliderSettings
 
     private static function imagePath(bool $allowFallback = true): string
     {
-        $prefix = $allowFallback ? '(?:site:bg-indoor|page-builder/hero/[A-Za-z0-9_-]+\.(?:png|jpg|jpeg|webp|avif))'
-            : '(?:page-builder/hero/[A-Za-z0-9_-]+\.(?:png|jpg|jpeg|webp|avif))';
-
-        return '~\A'.$prefix.'\z~iD';
+        return '~\\Apage-builder/hero/[A-Za-z0-9_-]+\\.(?:png|jpg|jpeg|webp|avif)\\z~iD';
     }
 }
