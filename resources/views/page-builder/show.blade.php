@@ -4,6 +4,9 @@
     @push('meta')
         <meta name="description" content="{{ $metaDescription }}">
         <meta name="robots" content="{{ $metaRobots }}">
+        @unless ($builderPreview)
+            <link rel="canonical" href="{{ url()->current() }}">
+        @endunless
     @endpush
 @endif
 

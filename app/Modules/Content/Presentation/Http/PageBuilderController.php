@@ -20,7 +20,7 @@ final class PageBuilderController extends Controller
     public function home(PageBuilderRenderer $renderer): ?Response
     {
         try {
-            $page = PageBuilderPage::query()->where('path', '/')->whereNotNull('published_at')->first();
+            $page = PageBuilderPage::query()->where('published_path', '/')->whereNotNull('published_at')->first();
         } catch (QueryException $exception) {
             if (! Schema::hasTable('page_builder_pages')) {
                 return null; // Zero-downtime deploy: existing homepage remains available.
@@ -32,7 +32,7 @@ final class PageBuilderController extends Controller
 
     public function dynamic(string $builderSlug, PageBuilderRenderer $renderer): Response
     {
-        $page = PageBuilderPage::query()->where('path', '/'.$builderSlug)
+        $page = PageBuilderPage::query()->where('published_path', '/'.$builderSlug)
             ->whereNotNull('published_at')->firstOrFail();
         return $this->page($page, $renderer, false);
     }

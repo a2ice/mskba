@@ -17,6 +17,9 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
 - **Permissions**: \`backoffice.page_builder.view/edit/publish\` require
   \`backoffice.access\`. Only superadmins have all three by default.
 - **Publish**: edit/save draft, then explicitly publish with confirmation.
+  The editor's `path` is a draft URL; `published_path` remains fixed until publication.
+  Existing public URLs are backfilled and cannot be claimed by another page.
+  Published MSKBA app pages emit a canonical link. 
   Published HTML, CSS, SEO and template selection are separate snapshot fields.
   Publication records a revision. Restore changes only the *draft*; to roll back
   the public view, restore draft, save, and publish again.

@@ -155,6 +155,52 @@ final class PageBuilderFeatureTest extends TestCase
         $this->get('/missing/non-existent')->assertNotFound();
     }
 
+    public function test_published_url_is_unchanged_when_only_draft_path_changes(): void
+    {
+        $publisher = app(PageBuilderPublisher::class);
+        $page = PageBuilderPage::query()->create([
+            'name' => 'Демонстрация', 'path' => '/builder-demo',
+            'draft_html' => '<h1>Тестовая страница</h1>',
+        ]);
+        $publisher->publish($page);
+        $this->withoutVite();
+
+        $this->assertSame('/builder-demo', $page->refresh()->published_path);
+        $this->get('/builder-demo')->assertOk()->assertSee('Тестовая страница')
+            ->assertSee('rel="canonical"', false);
+        $page->update(['path' => '/builder-next', 'draft_html' => '<h1>Новый черновик</h1>']);
+
+        $this->get('/builder-demo')->assertOk()->assertSee('Тестовая страница')
+            ->assertDontSee('Новый черновик');
+        $this->get('/builder-next')->assertNotFound();
+        $this->assertSame('/builder-demo', $page->refresh()->published_path);
+
+        $publisher->publish($page);
+        $this->assertSame('/builder-next', $page->refresh()->published_path);
+        $this->get('/builder-demo')->assertNotFound();
+        $this->get('/builder-next')->assertOk()->assertSee('Новый черновик');
+        $this->assertSame('/builder-next', PageBuilderRevision::query()
+            ->where('entity_type', 'page')->latest('id')->firstOrFail()->snapshot['path']);
+    }
+
+    public function test_published_url_cannot_be_taken_by_another_page(): void
+    {
+        $publisher = app(PageBuilderPublisher::class);
+        $first = PageBuilderPage::query()->create([
+            'name' => 'Первая', 'path' => '/first-public',
+            'draft_html' => '<h1>Первая</h1>',
+        ]);
+        $publisher->publish($first);
+        $first->update(['path' => '/first-draft']);
+
+        $second = PageBuilderPage::query()->create([
+            'name' => 'Вторая', 'path' => '/first-public',
+            'draft_html' => '<h1>Вторая</h1>',
+        ]);
+        $this->expectException(ValidationException::class);
+        $publisher->publish($second);
+    }
+
     public function test_reserved_path_is_not_publishable(): void
     {
         $page = PageBuilderPage::query()->create([
