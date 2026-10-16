@@ -1,9 +1,13 @@
 @import './page-builder-hero-slider.css';
+@import './page-builder-spacing.css';
 /* The builder is a full-width canvas, not a second layout container.
    Editors opt into the same .container used by the site header wherever
    a section needs boxed content; siblings can remain edge-to-edge. */
-.mskba-page-builder{width:100%;min-width:0;padding-block:24px;}
-.mskba-builder-section{display:grid;gap:18px}
+/* Root and default template wrapper provide no design spacing:
+   section/template markup explicitly opts into margins, padding or gap.
+   This allows a full-bleed hero to touch the sticky header/context bar. */
+.mskba-page-builder{width:100%;min-width:0}
+.mskba-builder-section{min-width:0}
 .mskba-builder-preview-note{border:1px solid var(--line,#ddd);padding:10px 16px;border-radius:12px;margin-bottom:24px}
 .mskba-builder-unavailable{color:var(--danger,#a11)}
 .mskba-builder-dynamic{min-height:90px}

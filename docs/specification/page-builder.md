@@ -41,8 +41,12 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
 
 ## Shared content width and full-width sections
 
-The outer `.mskba-page-builder` is **fluid**: 100% wide, no max-width or
-horizontal padding. It is a render/CSS scope, not a second `.container`.
+The outer `.mskba-page-builder` is **fluid and spacing-neutral**:
+100% wide, without max-width, margin, padding, or gap. The default
+`.mskba-builder-section` template wrapper also adds no gap/padding.
+Neither wrapper is a design/layout container: each section controls its
+own top/bottom spacing, so the first full-width hero can sit flush against
+the site header or context bar.
 This allows a page to mix full-bleed sections and centered content.
 The existing `.container` from the `mskba_app` design system is the
 **single source of truth** for header, breadcrumbs and boxed Page Builder
@@ -75,6 +79,38 @@ boxed). This preserves the current DEV layout, including the home hero
 and /events, while allowing new CMS pages to choose widths per section.
 Templates, components, route ownership and past revisions are untouched.
 Migration rollback does not remove editor-controlled HTML wrappers.
+
+### Spacing utilities for section authors
+
+Page Builder includes a scoped, dependency-free subset of Bootstrap 5 spacing
+utilities. Classes apply only within `.mskba-page-builder`, not the rest of
+the site's existing design system:
+
+- `m-*`, `mt-*`, `mb-*`, `ml-*`, `mr-*`, `ms-*`, `me-*`, `mx-*`, `my-*`
+- `p-*`, `pt-*`, `pb-*`, `pl-*`, `pr-*`, `ps-*`, `pe-*`, `px-*`, `py-*`
+- `gap-*` for flex/grid layouts, plus `mx-auto` and `my-auto`
+
+Each numeric suffix uses the Bootstrap 5 scale: `0 = 0`, `1 = 4px`,
+`2 = 8px`, `3 = 16px`, `4 = 24px`, `5 = 48px` at a 16px root size.
+`s/e` are logical inline start/end; `x/y` are horizontal/vertical.
+These are simple CSS classes, not the Bootstrap or Tailwind frameworks.
+
+Example mixing full-width backgrounds with boxed content:
+
+```html
+<section class="py-5">
+  <div class="container">
+    <h2 class="mb-3">Мероприятия</h2>
+    <p class="mt-2">Каталог</p>
+  </div>
+</section>
+<section class="py-0">
+  <mskba-component name="hero-slider"></mskba-component>
+</section>
+```
+
+Place spacing classes on the desired section/wrapper. The Page Builder
+root and base template never introduce default space of their own.
 
 ## Editor layout in Filament 5
 
