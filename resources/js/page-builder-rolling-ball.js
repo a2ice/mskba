@@ -17,6 +17,8 @@ function initRollingBall(root) {
     const sprite = root.querySelector('img.mskba-rolling-ball__sprite');
     if (!scene || !sprite || !scene.querySelector('[data-mskba-hero-slider]')) return;
     root.dataset.rollingBallReady = '1';
+    // Page Builder sanitizer forces lazy images; preload this scene asset.
+    sprite.loading = 'eager';
 
     const visual = document.createElement('div');
     visual.className = 'mskba-rolling-ball__visual';
