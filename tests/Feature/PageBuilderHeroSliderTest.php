@@ -67,6 +67,13 @@ final class PageBuilderHeroSliderTest extends TestCase
         $this->assertStringContainsString('БУДЬ В КОМЬЮНИТИ.', $preview);
         $this->assertStringContainsString('data-hero-go="1"', $preview);
         $this->assertStringContainsString('mskba-hero-slide__highlights', $preview);
+        $this->assertStringContainsString('mskba-hero-slide__actions', $preview);
+        $this->assertStringContainsString('mskba-hero-slide__highlights-viewport', $preview);
+        $this->assertStringContainsString('mskba-hero-slide__highlights-track', $preview);
+        $this->assertStringContainsString('mskba-hero-slide__highlights-group--duplicate', $preview);
+        $this->assertStringContainsString('aria-hidden="true" inert', $preview);
+        $this->assertStringContainsString('data-hero-prev aria-label="Предыдущий слайд"><svg', $preview);
+        $this->assertStringContainsString('data-hero-next aria-label="Следующий слайд"><svg', $preview);
         $this->assertStringNotContainsString('<script', $preview);
 
         // Never publish a blank homepage while its hero component is still a draft.
