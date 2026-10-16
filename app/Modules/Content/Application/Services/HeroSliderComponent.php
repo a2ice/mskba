@@ -49,6 +49,11 @@ final class HeroSliderComponent
                         'mobile_x' => 6, 'mobile_y' => 20, 'mobile_width' => 88] as $key => $fallback) {
                         $element[$key] = (float) ($element[$key] ?? $fallback);
                     }
+                    foreach (['tablet_x' => 'x', 'tablet_y' => 'y', 'tablet_width' => 'width'] as $tabletKey => $desktopKey) {
+                        // Existing JSON has no tablet coordinates. Fall back to
+                        // the author's desktop layout without mutating stored data.
+                        $element[$tabletKey] = (float) ($element[$tabletKey] ?? $element[$desktopKey]);
+                    }
                     $element['delay_ms'] = (int) ($element['delay_ms'] ?? 0);
                     $element['duration_ms'] = (int) ($element['duration_ms'] ?? 700);
                     $element['z_index'] = (int) ($element['z_index'] ?? 4);

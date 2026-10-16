@@ -191,6 +191,12 @@ final class BuilderComponentResource extends Resource
                                                 TextInput::make('x')->label('Desktop X, %')->numeric()->minValue(0)->maxValue(100)->default(10),
                                                 TextInput::make('y')->label('Desktop Y, %')->numeric()->minValue(0)->maxValue(100)->default(20),
                                                 TextInput::make('width')->label('Desktop ширина, %')->numeric()->minValue(5)->maxValue(100)->default(50),
+                                                TextInput::make('tablet_x')->label('Tablet X, %')->numeric()->minValue(0)->maxValue(100)
+                                                    ->helperText('641–1050 px по ширине слайдера. Пусто = значение Desktop.'),
+                                                TextInput::make('tablet_y')->label('Tablet Y, %')->numeric()->minValue(0)->maxValue(100)
+                                                    ->helperText('Пусто = Desktop Y.'),
+                                                TextInput::make('tablet_width')->label('Tablet ширина, %')->numeric()->minValue(5)->maxValue(100)
+                                                    ->helperText('Пусто = ширина Desktop.'),
                                                 TextInput::make('mobile_x')->label('Mobile X, %')->numeric()->minValue(0)->maxValue(100)->default(6),
                                                 TextInput::make('mobile_y')->label('Mobile Y, %')->numeric()->minValue(0)->maxValue(100)->default(20),
                                                 TextInput::make('mobile_width')->label('Mobile ширина, %')->numeric()->minValue(5)->maxValue(100)->default(88),

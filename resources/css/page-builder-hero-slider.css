@@ -239,6 +239,15 @@
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="none"] {animation:none;}
 .mskba-hero-slide__layer-button:focus-visible {outline:3px solid var(--accent,#ff7900);outline-offset:3px;}
+/* Generic layers have independent tablet positions (641–1050px canvas).
+   Legacy artwork and its layout remain unchanged. */
+@container mskba-hero (min-width:641px) and (max-width:1050px) {
+    .mskba-hero-slide--layers .mskba-hero-slide__layer {
+        left:var(--layer-tablet-x,var(--layer-x));
+        top:var(--layer-tablet-y,var(--layer-y));
+        width:var(--layer-tablet-width,var(--layer-width));
+    }
+}
 @container mskba-hero (max-width:640px) {
     .mskba-hero-slide__layer {
         left:var(--layer-mobile-x);top:var(--layer-mobile-y);width:var(--layer-mobile-width);

@@ -17,6 +17,8 @@
         $kind = $element['type'];
         $class = trim((string) ($element['class_name'] ?? ''));
         $style = '--layer-x:'.$element['x'].'%;--layer-y:'.$element['y'].'%;--layer-width:'.$element['width'].'%;'
+            .'--layer-tablet-x:'.$element['tablet_x'].'%;--layer-tablet-y:'.$element['tablet_y'].'%;'
+            .'--layer-tablet-width:'.$element['tablet_width'].'%;'
             .'--layer-mobile-x:'.$element['mobile_x'].'%;--layer-mobile-y:'.$element['mobile_y'].'%;'
             .'--layer-mobile-width:'.$element['mobile_width'].'%;--layer-z:'.$element['z_index'].';'
             .'--layer-delay:'.$element['delay_ms'].'ms;--layer-duration:'.$element['duration_ms'].'ms;';

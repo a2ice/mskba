@@ -70,6 +70,44 @@ final class UniversalHeroSliderTest extends TestCase
         $this->assertStringContainsString('href="/events"', $html);
     }
 
+
+    public function test_tablet_positions_are_independent_and_fall_back_to_desktop_when_omitted(): void
+    {
+        $slide = $this->slide('Tablet');
+        $slide['elements'][0]['tablet_x'] = 8;
+        $slide['elements'][0]['tablet_y'] = 21;
+        $slide['elements'][0]['tablet_width'] = 85;
+        HeroSliderSettings::validate([$slide], []);
+
+        $html = $this->render([$slide]);
+        $this->assertStringContainsString('--layer-x:7%;--layer-y:15%;--layer-width:70%;', $html);
+        $this->assertStringContainsString('--layer-tablet-x:8%;--layer-tablet-y:21%;--layer-tablet-width:85%;', $html);
+        $this->assertStringContainsString('--layer-mobile-x:5%;--layer-mobile-y:20%;--layer-mobile-width:90%;', $html);
+        // The second existing element has no tablet settings: it inherits
+        // its normalized desktop coordinates (10%, 20%, 50%).
+        $this->assertStringContainsString('--layer-tablet-x:10%;--layer-tablet-y:20%;--layer-tablet-width:50%;', $html);
+    }
+
+    public function test_out_of_range_tablet_positions_are_rejected(): void
+    {
+        $base = $this->slide('Tablet validation');
+        foreach ([
+            ['tablet_x', -1],
+            ['tablet_y', 101],
+            ['tablet_width', 4],
+            ['tablet_width', 101],
+        ] as [$key, $badValue]) {
+            $slide = $base;
+            $slide['elements'][0][$key] = $badValue;
+            try {
+                HeroSliderSettings::validate([$slide], []);
+                $this->fail('Invalid responsive coordinate accepted: '.$key);
+            } catch (ValidationException) {
+                // Expected.
+            }
+        }
+    }
+
     public function test_server_filters_guest_confirmation_and_role_before_output(): void
     {
         $slides = [

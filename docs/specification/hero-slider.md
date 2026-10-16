@@ -173,3 +173,32 @@ legacy CTA); it may be switched off for other button types.
 The global arrows/dots appear only when **at least two audience-visible slides**
 are enabled. This is intentional; check both legacy slide toggles and audience
 filters before diagnosing a missing navigation control.
+
+
+### Responsive layer positioning (v3)
+
+Layer coordinates now support three **independent layout bands**, measured by
+the actual slider container width (CSS container queries), not screen height:
+
+- Desktop: width greater than 1050 px — `x/y/width`.
+- Tablet: width from 641 to 1050 px — `tablet_x/tablet_y/tablet_width`.
+- Mobile: width up to 640 px — `mobile_x/mobile_y/mobile_width`.
+
+Every tablet field is nullable in the Filament editor. An unset tablet value
+inherits the corresponding desktop coordinate, individually. Legacy JSON,
+published slide snapshots and saved draft layers are not migrated, reset or
+changed. Values are server-validated and emitted as safe, bounded CSS custom
+properties. Generic tablet positioning does not touch the legacy slider.
+At tablet widths, the existing highlights marquee remains horizontally
+scrollable; at mobile widths highlights remain hidden, matching the legacy
+presentation.
+
+Suggested **starting** tablet composition for the classic MSKBA hero
+(eyebrow/heading/accent/description/CTA/highlights): X=6/6/6/6/6/42,
+Y=12/20/29/45/69/69, width=88/92/92/78/30/54 (all percentages).
+Suggested mobile composition at 360–390 px:
+X=6 for all visible text/button layers, Y=9/16/31/49/68,
+width=88/92/92/88/55. The highlight layer is hidden on mobile.
+These are initial authoring values, not visual-acceptance guarantees.
+Test 1024, 768, 641, 640, 390 and 360 px in an actual browser before final
+acceptance, especially heading wrapping and vertical spacing.
