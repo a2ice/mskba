@@ -1,4 +1,5 @@
 import { subscribePrivate } from './realtime.js';
+import { observeChatResume } from './backoffice-chat-resume.js';
 
 // Only subscribe while a support record is mounted in Filament. Reverb carries
 // an invalidation signal; the authorized Livewire component fetches content.
@@ -77,12 +78,16 @@ const attach = () => {
             if (event.detail?.state === 'connected') void sync();
         };
         window.addEventListener('mskba:realtime-state', onReconnect);
+        // Browser tab suspension can delay or drop WebSocket/poll refreshes.
+        // Revalidate immediately on return, without waiting for a chat message.
+        const stopResumeRefresh = observeChatResume(() => { void sync(); });
         // Small, bounded fallback if a client misses Reverb: only while this
         // authenticated support chat is mounted and the tab is visible.
         const fallback = window.setInterval(() => { void sync(); }, 12000);
         subscriptions.set(livewireId, () => {
             window.clearInterval(fallback);
             window.removeEventListener('mskba:realtime-state', onReconnect);
+            stopResumeRefresh();
             unsubscribe();
             unsubscribePresence();
             observer.disconnect();
