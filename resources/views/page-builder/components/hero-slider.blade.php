@@ -7,12 +7,15 @@
     tabindex="0">
     <div class="mskba-hero-slider__stage">
         @foreach ($slides as $slide)
-            <article class="mskba-hero-slide {{ $loop->first ? 'is-active' : '' }}"
+            <article class="mskba-hero-slide {{ ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--layers' : '' }} {{ $loop->first ? 'is-active' : '' }}"
                 data-hero-slide data-slide-index="{{ $loop->index }}"
-                aria-label="Слайд {{ $loop->iteration }} из {{ count($slides) }}"
+                aria-label="{{ $slide['name'] ?? ('Слайд '.$loop->iteration) }} · {{ $loop->iteration }} из {{ count($slides) }}"
                 aria-roledescription="слайд"
                 @unless($loop->first) hidden inert aria-hidden="true" @endunless
-                style="--far-x:{{ $slide['far_x'] }}%;--near-x:{{ $slide['near_x'] }}%;--far-width:{{ $slide['far_width'] }}%;--near-width:{{ $slide['near_width'] }}%;--far-mobile-x:{{ $slide['far_mobile_x'] }}%;--near-mobile-x:{{ $slide['near_mobile_x'] }}%;--background-delay:{{ $slide['delay_background_ms'] }}ms;--far-delay:{{ $slide['delay_far_ms'] }}ms;--near-delay:{{ $slide['delay_near_ms'] }}ms;--copy-delay:{{ $slide['delay_copy_ms'] }}ms;--highlights-delay:{{ $slide['delay_highlights_ms'] }}ms;--cta-delay:{{ $slide['delay_cta_ms'] }}ms">
+                style="--far-x:{{ $slide['far_x'] ?? 45 }}%;--near-x:{{ $slide['near_x'] ?? 72 }}%;--far-width:{{ $slide['far_width'] ?? 18 }}%;--near-width:{{ $slide['near_width'] ?? 34 }}%;--far-mobile-x:{{ $slide['far_mobile_x'] ?? 22 }}%;--near-mobile-x:{{ $slide['near_mobile_x'] ?? 75 }}%;--background-delay:{{ $slide['delay_background_ms'] ?? 0 }}ms;--far-delay:{{ $slide['delay_far_ms'] ?? 240 }}ms;--near-delay:{{ $slide['delay_near_ms'] ?? 460 }}ms;--copy-delay:{{ $slide['delay_copy_ms'] ?? 440 }}ms;--highlights-delay:{{ $slide['delay_highlights_ms'] ?? 1050 }}ms;--cta-delay:{{ $slide['delay_cta_ms'] ?? 1450 }}ms">
+                @if (($slide['layout'] ?? 'legacy') === 'layers')
+                    @include('page-builder.components.hero-slider-slide-layers', ['slide' => $slide, 'firstVisible' => $loop->first])
+                @else
                 @if ($slide['background_desktop_url'])
                     <picture class="mskba-hero-slide__background" data-motion="{{ $slide['animation_background'] ?? 'fade' }}" aria-hidden="true">
                         @if ($slide['background_mobile_url'])
@@ -131,6 +134,7 @@
                         @endif
                     </div>
                 </div>
+                @endif
             </article>
         @endforeach
     </div>

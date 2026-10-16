@@ -11,6 +11,7 @@ use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -19,6 +20,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -64,10 +67,123 @@ final class BuilderComponentResource extends Resource
                 ->visible(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
                 ->schema([
                     Repeater::make('draft_slides')->label('Слайды')
-                        ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'Новый слайд')
+                        ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null) ?: ($state['title'] ?? 'Новый слайд'))
                         ->reorderable()->collapsible()->cloneable()
-                        ->minItems(1)->maxItems(6)
+                        ->minItems(1)->maxItems(6)->defaultItems(0)
                         ->schema([
+                            Grid::make(3)->schema([
+                                TextInput::make('name')->label('Название слайда (для админки)')->maxLength(90),
+                                Toggle::make('enabled')->label('Слайд включён')->default(true),
+                                Select::make('layout')->label('Тип слайда')->native(false)->live()
+                                    ->options([
+                                        'layers' => 'Универсальный · слои',
+                                        'legacy' => 'MSKBA · прежний макет',
+                                    ])
+                                    ->default('layers')->required()
+                                    ->helperText('Существующие слайды сохраняют старое оформление. Для новых выбирай «Универсальный».'),
+                            ]),
+                            Section::make('Кому показывать слайд')
+                                ->description('Условия проверяются сервером до выдачи HTML. Неавторизованные и неподходящие пользователи не получают скрытые слайды.')
+                                ->collapsible()->collapsed()
+                                ->columns(2)->schema([
+                                    Select::make('audience.auth')->label('Авторизация')->native(false)
+                                        ->options([
+                                            'all' => 'Всем', 'guest' => 'Только гостям',
+                                            'authenticated' => 'Только авторизованным',
+                                        ])->default('all'),
+                                    Select::make('audience.confirmation')->label('Статус аккаунта')->native(false)
+                                        ->options([
+                                            'any' => 'Любой', 'confirmed' => 'Подтверждён',
+                                            'unconfirmed' => 'Не подтверждён',
+                                        ])->default('any'),
+                                    CheckboxList::make('audience.system_roles')->label('Системные роли (хотя бы одна)')
+                                        ->options([
+                                            'user' => 'Пользователь', 'editor' => 'Редактор',
+                                            'moderator' => 'Модератор', 'admin' => 'Админ',
+                                            'superadmin' => 'Суперадмин',
+                                        ])->columns(2)->columnSpanFull(),
+                                    CheckboxList::make('audience.participation_roles')->label('Роли участия (хотя бы одна)')
+                                        ->options([
+                                            'player' => 'Игрок', 'coach' => 'Тренер', 'referee' => 'Судья',
+                                            'statistician' => 'Статист', 'media' => 'Медиа',
+                                            'venue_related' => 'Представитель площадки', 'organizer' => 'Организатор',
+                                        ])->columns(2)->columnSpanFull(),
+                                    Text::make('Теги пользователей пока не реализованы: интерфейс появится после внедрения общей системы тегов для персонализации страниц и рекламы.'),
+                                ]),
+                            Section::make('Универсальный слайд')
+                                ->visible(fn (Get $get): bool => $get('layout') === 'layers')
+                                ->description('Фон и произвольные элементы — текст, изображения, кнопки. Перетаскивай элементы для изменения порядка; координаты в % холста.')
+                                ->schema([
+                                    Grid::make(2)->schema([
+                                        FileUpload::make('background_image')->label('Фон · desktop')
+                                            ->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
+                                            ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(4096),
+                                        FileUpload::make('background_image_mobile')->label('Фон · mobile')
+                                            ->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
+                                            ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(3072),
+                                        Select::make('scrim')->label('Затемнение/осветление фона')
+                                            ->native(false)->options(['none' => 'Нет', 'dark' => 'Тёмное', 'light' => 'Светлое'])
+                                            ->default('none'),
+                                        Select::make('background_effect')->label('Появление фона')->native(false)
+                                            ->options(self::animationOptions())->default('fade'),
+                                    ]),
+                                    Repeater::make('elements')->label('Элементы слайда')
+                                        ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null) ?: ($state['type'] ?? 'Новый элемент'))
+                                        ->reorderable()->cloneable()->collapsible()
+                                        ->minItems(1)->maxItems(16)->defaultItems(0)
+                                        ->schema([
+                                            Grid::make(3)->schema([
+                                                Select::make('type')->label('Тип элемента')->native(false)->live()
+                                                    ->options([
+                                                        'heading' => 'Заголовок', 'text' => 'Текст',
+                                                        'image' => 'Изображение', 'button' => 'Кнопка',
+                                                    ])->default('text')->required(),
+                                                TextInput::make('name')->label('Название элемента')->required()->maxLength(90),
+                                                TextInput::make('class_name')->label('CSS-классы (до 3)')
+                                                    ->maxLength(160)->regex('/\A[a-z][a-z0-9_-]{0,49}(?: [a-z][a-z0-9_-]{0,49}){0,2}\z/D')
+                                                    ->helperText('Например: my-slide-title bg-lightblue. Без точек и CSS-кода.'),
+                                            ]),
+                                            Textarea::make('content')->label('Текст')->rows(2)->maxLength(400)
+                                                ->visible(fn (Get $get): bool => in_array($get('type'), ['heading','text','button'], true))
+                                                ->required(fn (Get $get): bool => in_array($get('type'), ['heading','text','button'], true)),
+                                            TextInput::make('url')->label('Внутренняя ссылка кнопки')
+                                                ->visible(fn (Get $get): bool => $get('type') === 'button')
+                                                ->required(fn (Get $get): bool => $get('type') === 'button'),
+                                            FileUpload::make('image')->label('Изображение')
+                                                ->visible(fn (Get $get): bool => $get('type') === 'image')
+                                                ->required(fn (Get $get): bool => $get('type') === 'image')
+                                                ->image()->acceptedFileTypes(['image/jpeg','image/png','image/webp','image/avif'])
+                                                ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(4096),
+                                            TextInput::make('alt')->label('Альтернативный текст изображения')
+                                                ->maxLength(140)->visible(fn (Get $get): bool => $get('type') === 'image')
+                                                ->helperText('Для декоративной картинки оставь пустым.'),
+                                            Section::make('Положение слоя')->columns(3)->schema([
+                                                TextInput::make('x')->label('Desktop X, %')->numeric()->minValue(0)->maxValue(100)->default(10),
+                                                TextInput::make('y')->label('Desktop Y, %')->numeric()->minValue(0)->maxValue(100)->default(20),
+                                                TextInput::make('width')->label('Desktop ширина, %')->numeric()->minValue(5)->maxValue(100)->default(50),
+                                                TextInput::make('mobile_x')->label('Mobile X, %')->numeric()->minValue(0)->maxValue(100)->default(6),
+                                                TextInput::make('mobile_y')->label('Mobile Y, %')->numeric()->minValue(0)->maxValue(100)->default(20),
+                                                TextInput::make('mobile_width')->label('Mobile ширина, %')->numeric()->minValue(5)->maxValue(100)->default(88),
+                                                TextInput::make('z_index')->label('Слой Z (2–7)')->numeric()->minValue(2)->maxValue(7)->default(4),
+                                                Select::make('align')->label('Выравнивание')->native(false)->options([
+                                                    'left' => 'Слева', 'center' => 'По центру', 'right' => 'Справа',
+                                                ])->default('left'),
+                                            ])->collapsible()->collapsed(),
+                                            Section::make('Таймлайн и эффект')->columns(3)->schema([
+                                                Select::make('animation')->label('Эффект')->native(false)
+                                                    ->options(self::animationOptions())->default('fade'),
+                                                TextInput::make('delay_ms')->label('Задержка, мс')
+                                                    ->numeric()->minValue(0)->maxValue(5000)->default(0),
+                                                TextInput::make('duration_ms')->label('Продолжительность, мс')
+                                                    ->numeric()->minValue(100)->maxValue(3000)->default(700),
+                                            ])->collapsible()->collapsed(),
+                                        ]),
+                                ]),
+                            Section::make('Старый макет MSKBA')
+                                ->description('Совместимый режим текущей главной. Не влияет на универсальные слайды.')
+                                ->collapsible()->collapsed()
+                                ->visible(fn (Get $get): bool => ($get('layout') ?? 'legacy') === 'legacy')
+                                ->schema([
                             Grid::make(2)->schema([
                                 TextInput::make('eyebrow')->label('Надпись над заголовком')->maxLength(90),
                                 Textarea::make('title')->label('Заголовок (переносы разрешены)')
@@ -145,6 +261,7 @@ final class BuilderComponentResource extends Resource
                                     TextInput::make('url')->label('Внутренняя ссылка')->required(),
                                 ])->columns(3),
                         ]),
+                        ]),
                 ]),
             Section::make('HTML и CSS')->columns(1)
                 ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
@@ -164,6 +281,7 @@ final class BuilderComponentResource extends Resource
     private static function animationOptions(): array
     {
         return [
+            'none' => 'Без анимации',
             'fade' => 'Fade-in',
             'slide-up' => 'Slide-up',
             'slide-left' => 'Slide-left',

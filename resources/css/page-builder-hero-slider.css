@@ -211,3 +211,42 @@
     .mskba-hero-slide__background,
     .mskba-hero-slider__pagination button {animation:none!important;transition:none!important;}
 }
+
+
+/* Generic JSON-based slide layers. Legacy basketball artwork is unchanged. */
+.mskba-hero-slide--layers {background:var(--bg,#090a0c);color:var(--text,#fff);}
+.mskba-hero-slide__layer-scrim {position:absolute;inset:0;z-index:1;pointer-events:none;}
+.mskba-hero-slide__layer-scrim--dark {background:linear-gradient(90deg,#05070ae8,#08090a22 90%);}
+.mskba-hero-slide__layer-scrim--light {background:linear-gradient(90deg,#ffffff99,#ffffff11 90%);}
+.mskba-hero-slide__layer {
+    position:absolute;left:var(--layer-x);top:var(--layer-y);width:var(--layer-width);
+    z-index:var(--layer-z);max-height:100%;overflow-wrap:anywhere;
+}
+.mskba-hero-slide__layer-heading {margin:0;font-size:clamp(30px,4cqw,70px);font-weight:900;line-height:1.03;}
+.mskba-hero-slide__layer-text {margin:0;font-size:clamp(14px,1.6cqw,21px);line-height:1.45;}
+.mskba-hero-slide__layer-image {display:block;width:100%;height:auto;max-height:480px;object-fit:contain;}
+.mskba-hero-slide__layer-button {
+    display:inline-flex;justify-content:center;align-items:center;max-width:100%;
+    min-height:44px;padding:12px 22px;border-radius:999px;
+    font-weight:700;background:var(--accent,#ff7900);color:var(--on-accent,#fff)!important;
+    text-decoration:none!important;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer {
+    animation:mskba-hero-up var(--layer-duration,700ms) var(--layer-delay,0ms) both;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="fade"] {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="none"] {animation:none;}
+.mskba-hero-slide__layer-button:focus-visible {outline:3px solid var(--accent,#ff7900);outline-offset:3px;}
+@container mskba-hero (max-width:640px) {
+    .mskba-hero-slide__layer {
+        left:var(--layer-mobile-x);top:var(--layer-mobile-y);width:var(--layer-mobile-width);
+    }
+    .mskba-hero-slide__layer-heading {font-size:clamp(28px,8cqw,48px);}
+    .mskba-hero-slide__layer-text {font-size:clamp(14px,3.4cqw,18px);}
+    .mskba-hero-slide__layer-image {max-height:360px;}
+}
+@media (prefers-reduced-motion:reduce) {
+    .mskba-hero-slide.is-animating .mskba-hero-slide__layer {animation:none!important;}
+}

@@ -8,6 +8,8 @@ use Illuminate\Validation\ValidationException;
 
 final class HeroSliderComponent
 {
+    public function __construct(private readonly HeroSliderAudience $audience) {}
+
     /** Render only the application's trusted Blade view, never editor HTML/JS. */
     public function render(PageBuilderComponent $component, bool $preview = false): string
     {
@@ -22,7 +24,31 @@ final class HeroSliderComponent
                 : '';
         }
 
+        $slides = array_values(array_filter($slides, fn (array $slide): bool => $this->audience->visible($slide, $preview)));
+        if ($slides === []) {
+            return '';
+        }
+
         $prepared = array_map(function (array $slide): array {
+            if (($slide['layout'] ?? 'legacy') === 'layers') {
+                $slide['background_desktop_url'] = $this->mediaUrl($slide['background_image'] ?? null);
+                $slide['background_mobile_url'] = $this->mediaUrl($slide['background_image_mobile'] ?? null);
+                $slide['delay_background_ms'] = (int) ($slide['delay_background_ms'] ?? 0);
+                $slide['elements'] = array_map(function (array $element): array {
+                    $element['image_url'] = $this->mediaUrl($element['image'] ?? null);
+                    foreach (['x' => 10, 'y' => 20, 'width' => 50,
+                        'mobile_x' => 6, 'mobile_y' => 20, 'mobile_width' => 88] as $key => $fallback) {
+                        $element[$key] = (float) ($element[$key] ?? $fallback);
+                    }
+                    $element['delay_ms'] = (int) ($element['delay_ms'] ?? 0);
+                    $element['duration_ms'] = (int) ($element['duration_ms'] ?? 700);
+                    $element['z_index'] = (int) ($element['z_index'] ?? 4);
+
+                    return $element;
+                }, $slide['elements']);
+
+                return $slide;
+            }
             foreach (['background_desktop', 'background_mobile', 'near_player', 'far_player'] as $key) {
                 $slide[$key.'_url'] = $this->mediaUrl($slide[$key] ?? null);
                 if ($key === 'background_desktop' && $slide[$key.'_url'] === null) {

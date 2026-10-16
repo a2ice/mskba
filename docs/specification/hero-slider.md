@@ -98,3 +98,48 @@ Browser acceptance at **1440×900, 1280×720, 768×1024, 390×844, 360×640**:
 Publish neither the component nor \`/\` without explicit approval from the owner.
 
 QA on DEV: 1440×900, 1280×720, 768×1024, 390×844, 360×640; confirm CTA/highlights are co-linear, tablet marquee clips to available width without horizontal page overflow, reduced-motion disables marquee, arrow chevrons are visually centered in their circular buttons, and mobile has no highlights.
+
+
+## Hero Slider — universal layered slide format (v2)
+
+The existing \`page_builder_components\` record with slug \`hero-slider\` already
+contains the \`draft_slides\`, \`published_slides\`, \`draft_options\` and
+\`published_options\` **JSON columns**. No new per-slide or per-element tables
+are necessary. A non-destructive migration adds \`layout: legacy\` to existing
+slide JSON; published snapshots and revision history are preserved.
+
+New slides use \`layout: layers\`. Each slide has a human-readable name,
+enabled flag, optional responsive background, optional scrim, audience
+conditions and an ordered \`elements\` array. Each element has:
+
+- \`type\`: \`heading\`, \`text\`, \`image\` or \`button\`; \`name\` (editor only).
+- \`content\` or public-disk \`image\`, optional image \`alt\` and internal \`url\`.
+- \`class_name\`: up to 3 safe CSS classes, no arbitrary CSS or JavaScript.
+- \`x/y/width\` and \`mobile_x/mobile_y/mobile_width\`: percentages of slider
+  canvas. \`z_index\` ranges 2–7; \`align\` is left/center/right.
+- \`animation\` preset, \`delay_ms\` (0–5000) and \`duration_ms\` (100–3000).
+  Every element owns its timeline independently. Reduced-motion disables it.
+
+Limits: 6 slides, 16 elements per universal slide, bounded field lengths/media
+types, uploaded media only under \`page-builder/hero/\`, internal links only.
+Both legacy and layered slides can coexist in a single slider; previous
+legacy-specific editor controls are shown only for \`layout: legacy\`. The
+default for a newly added slide is the generic mode.
+
+Audience conditions are evaluated **server-side on each request** before the
+slider HTML is returned: authentication \`all|guest|authenticated\`, confirmation
+\`any|confirmed|unconfirmed\`, optional system roles and active participation
+roles. A slide with no matching audience is omitted (and all its content, image
+URLs and animation data never reach the client). A slider without matching
+slides renders empty. Editor preview intentionally bypasses targeting so staff
+can inspect all slide variations, but disabled slides stay hidden. Audience
+filtering is not merely browser CSS or JavaScript hiding.
+
+The JSON keys \`audience.tags_any\` and \`audience.tags_none\` are **reserved**.
+Their nonempty use is rejected by validation until user tagging and its shared
+matching service exist; legacy imported records with these fields fail closed.
+No simulated or implicit tag matches are performed.
+
+Existing Page Builder draft/publish/revision mechanics apply unchanged. New
+slides and editing older slides do not affect published output until
+\`Сохранить и опубликовать\` or the separate Publish action is performed.
