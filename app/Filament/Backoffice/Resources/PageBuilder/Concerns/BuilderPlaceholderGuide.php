@@ -17,6 +17,7 @@ final class BuilderPlaceholderGuide
         return Section::make('Плейсхолдеры и источники')
             ->description($description)
             ->schema([
+                Text::make('<mskba-component name="hero-slider"></mskba-component> — управляемый системный Hero Slider.'),
                 Text::make('<mskba-component name="hero-banner"></mskba-component>')
                     ,
                 Text::make('<mskba-component name="games-list" source="upcoming_games" limit="5"></mskba-component>')
