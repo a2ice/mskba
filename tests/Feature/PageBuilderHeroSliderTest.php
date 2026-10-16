@@ -8,6 +8,10 @@ use App\Modules\Content\Application\Services\PageBuilderRenderer;
 use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Content\Domain\Models\PageBuilderRevision;
+use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -68,6 +72,7 @@ final class PageBuilderHeroSliderTest extends TestCase
         // A published page cannot show a draft-only component.
         $publisher = app(PageBuilderPublisher::class);
         $publisher->publish($home);
+        $home->refresh();
         $this->assertStringNotContainsString('data-mskba-hero-slider', $renderer->render($home)['html']);
         $publisher->publish($this->slider());
         $this->assertStringContainsString('data-mskba-hero-slider', $renderer->render($home)['html']);
@@ -81,6 +86,7 @@ final class PageBuilderHeroSliderTest extends TestCase
         $home = $this->home();
         $home->update(['draft_html' => '<mskba-component name="hero-slider"></mskba-component>']);
         $publisher->publish($home);
+        $home->refresh();
 
         $slides = $slider->draft_slides;
         $slides[0]['title'] = '<img src=x onerror=alert(1)>';
@@ -123,7 +129,7 @@ final class PageBuilderHeroSliderTest extends TestCase
         $slider = $this->slider();
         $publisher = app(PageBuilderPublisher::class);
         $publisher->publish($slider);
-        $oldTitle = $slider->published_slides[0]['title'];
+        $oldTitle = $slider->refresh()->published_slides[0]['title'];
         $revision = PageBuilderRevision::query()
             ->where('entity_type', 'component')->where('entity_id', $slider->id)->firstOrFail();
         $slides = $slider->draft_slides;
