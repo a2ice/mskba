@@ -21,6 +21,7 @@
 }
 .mskba-hero-slide__player {
     position:absolute; z-index:2; bottom:-3%; height:auto; max-height:103%; pointer-events:none;
+    translate:-50% 0;
     display:block; object-fit:contain; object-position:bottom; filter:drop-shadow(1px 8px 15px rgba(0,0,0,.35));
 }
 .mskba-hero-slide__player--far { left:var(--far-x,45%);width:var(--far-width,18%); }
