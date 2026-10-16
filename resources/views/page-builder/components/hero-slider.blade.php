@@ -12,9 +12,9 @@
                 aria-label="Слайд {{ $loop->iteration }} из {{ count($slides) }}"
                 aria-roledescription="слайд"
                 @unless($loop->first) hidden inert aria-hidden="true" @endunless
-                style="--far-x:{{ $slide['far_x'] }}%;--near-x:{{ $slide['near_x'] }}%;--far-width:{{ $slide['far_width'] }}%;--near-width:{{ $slide['near_width'] }}%;--far-mobile-x:{{ $slide['far_mobile_x'] }}%;--near-mobile-x:{{ $slide['near_mobile_x'] }}%">
+                style="--far-x:{{ $slide['far_x'] }}%;--near-x:{{ $slide['near_x'] }}%;--far-width:{{ $slide['far_width'] }}%;--near-width:{{ $slide['near_width'] }}%;--far-mobile-x:{{ $slide['far_mobile_x'] }}%;--near-mobile-x:{{ $slide['near_mobile_x'] }}%;--background-delay:{{ $slide['delay_background_ms'] }}ms;--far-delay:{{ $slide['delay_far_ms'] }}ms;--near-delay:{{ $slide['delay_near_ms'] }}ms;--copy-delay:{{ $slide['delay_copy_ms'] }}ms;--highlights-delay:{{ $slide['delay_highlights_ms'] }}ms;--cta-delay:{{ $slide['delay_cta_ms'] }}ms">
                 @if ($slide['background_desktop_url'])
-                    <picture class="mskba-hero-slide__background" aria-hidden="true">
+                    <picture class="mskba-hero-slide__background" data-motion="{{ $slide['animation_background'] ?? 'fade' }}" aria-hidden="true">
                         @if ($slide['background_mobile_url'])
                             <source media="(max-width: 640px)" srcset="{{ $slide['background_mobile_url'] }}">
                         @endif
@@ -22,7 +22,7 @@
                              @if ($loop->first) fetchpriority="high" @else loading="lazy" @endif>
                     </picture>
                 @else
-                    <div class="mskba-hero-slide__background mskba-hero-slide__background--placeholder" aria-hidden="true"></div>
+                    <div class="mskba-hero-slide__background mskba-hero-slide__background--placeholder" data-motion="{{ $slide['animation_background'] ?? 'fade' }}" aria-hidden="true"></div>
                 @endif
                 <div class="mskba-hero-slide__scrim" aria-hidden="true"></div>
 
@@ -55,13 +55,13 @@
                     @if (! empty($slide['description']))
                         <p class="mskba-hero-slide__description">{{ $slide['description'] }}</p>
                     @endif
-                    <a class="mskba-hero-slide__cta" href="{{ $slide['cta_url'] }}">
+                    <a class="mskba-hero-slide__cta" data-motion="{{ $slide['animation_cta'] ?? 'slide-up' }}" href="{{ $slide['cta_url'] }}">
                         {{ $slide['cta_label'] }} <span aria-hidden="true">→</span>
                     </a>
                 </div>
 
                 @if (! empty($slide['highlights']))
-                    <nav class="mskba-hero-slide__highlights" aria-label="Разделы портала">
+                    <nav class="mskba-hero-slide__highlights" data-motion="{{ $slide['animation_highlights'] ?? 'fade' }}" aria-label="Разделы портала">
                         @foreach ($slide['highlights'] as $highlight)
                             <a href="{{ $highlight['url'] }}" style="--highlight-index:{{ $loop->index }}">
                                 <span class="mskba-hero-slide__icon" aria-hidden="true">
