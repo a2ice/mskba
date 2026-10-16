@@ -35,10 +35,15 @@ No main/production publication is part of this task.
 ## Layout and media
 
 - Desktop: dark cinematic arena, white/orange text left, two optional alpha
-  images of players, five highlights in a single row **below CTA and above dots**.
-- Compact-height desktop: highlights move to the right instead of overlapping
-  the CTA.
-- Tablet: compact text on the left and highlights in a small right-side grid.
+  images of players, five highlights in the **same action row as the CTA**,
+  right-aligned, with no backing plate.
+- Compact-height desktop: preserve the same flex action row, tighten spacing
+  and title typography where needed to avoid overlapping CTA and highlights.
+- Tablet: CTA remains on the left, while the remaining width contains a clipped
+  seamless highlight marquee. It pauses on hover/focus; the repeated visual
+  group is inert and hidden from assistive technology. Reduced-motion users
+  get a stationary horizontally scrollable rail instead of automatic motion.
+- Navigation arrows: first-party centered SVG chevrons, not font glyphs.
 - Mobile: crop/recompose the scene, hide highlights and carousel arrows,
   use swipe and dots, reserve vertical space for the project's existing
   fixed mobile bottom navigation. **Do not create another nav bar inside hero.**
@@ -84,3 +89,5 @@ Browser acceptance at **1440×900, 1280×720, 768×1024, 390×844, 360×640**:
 
 **Deployment caution:** Merge this feature to dev only after CI and Filament QA.
 Publish neither the component nor \`/\` without explicit approval from the owner.
+
+QA on DEV: 1440×900, 1280×720, 768×1024, 390×844, 360×640; confirm CTA/highlights are co-linear, tablet marquee clips to available width without horizontal page overflow, reduced-motion disables marquee, arrow chevrons are visually centered in their circular buttons, and mobile has no highlights.
