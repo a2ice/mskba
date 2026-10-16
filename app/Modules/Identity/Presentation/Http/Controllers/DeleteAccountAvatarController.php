@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\UseCases\DeleteProfileAvatarHandler;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -14,7 +15,7 @@ final class DeleteAccountAvatarController extends Controller
         Request $request,
         int $avatar,
         DeleteProfileAvatarHandler $deleteProfileAvatar,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $profile = $request->user()?->profile;
 
         if ($profile === null) {
@@ -25,6 +26,8 @@ final class DeleteAccountAvatarController extends Controller
 
         $deleteProfileAvatar->handle($profile, $avatar);
 
-        return back()->with('avatar_status', 'Аватар удалён.');
+        return $request->expectsJson()
+            ? AccountAvatarJsonResponse::success($profile, 'Аватар удалён.')
+            : back()->with('avatar_status', 'Аватар удалён.');
     }
 }

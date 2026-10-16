@@ -1,40 +1,11 @@
 import { initProfileInlineSave } from './profile-inline-save.js';
+import { initAvatarManager } from './avatar-manager.js';
 
-const PROFILE_AVATAR_INPUT_MAX_BYTES = 10 * 1024 * 1024;
-
-// Upload the original file unchanged. Laravel validates the MIME type,
-// dimensions and size, and stores only a normalized 200px WebP avatar.
-// Do not transcode through Canvas: browser encoders vary, and the outer
-// Nginx reverse proxy must be configured to accept valid uploads.
-// Task 026: use existing avatar forms, nickname JSON endpoint and Modal 1.1 shell.
+// Avatar operations use AJAX; Laravel validates and normalizes originals.
 const profileRoot = document.querySelector('[data-account-profile]');
 
 if (profileRoot) {
-    const uploadForm = profileRoot.querySelector('[data-profile-avatar-upload]');
-    uploadForm?.querySelector('input[type=file]')?.addEventListener('change', event => {
-        const input = event.target;
-        const file = input.files?.[0];
-        if (!file) return;
-
-        const state = profileRoot.querySelector('[data-profile-avatar-upload-status]');
-        if (file.size > PROFILE_AVATAR_INPUT_MAX_BYTES) {
-            input.value = '';
-            if (state) {
-                state.hidden = false;
-                state.textContent = 'Файл аватара должен быть не больше 10 МБ.';
-            }
-            return;
-        }
-
-        if (state) {
-            state.hidden = false;
-            state.textContent = 'Загружаем…';
-        }
-        uploadForm.setAttribute('aria-busy', 'true');
-        // Native multipart/form POST keeps the original image and CSRF token.
-        // The server checks the file and normalizes it to WebP.
-        uploadForm.submit();
-    });
+    initAvatarManager(profileRoot);
 
     const personalForm = profileRoot.querySelector('[data-profile-personal-form]');
     if (personalForm) {
