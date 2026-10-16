@@ -31,7 +31,6 @@
             @media(max-width:640px){.mskba-support-chat__history{min-height:290px;max-height:55dvh}.mskba-support-chat__bubble{max-width:95%}}
         </style>
     @endonce
-    <p class="mskba-support-chat__secondary">Сервисная переписка с {{ $conversation->recipient->username }} · обновление через Reverb</p>
     @if ($canSeePresence)
         <div class="mskba-operator-presence" data-operator-presence
             aria-label="Присутствие пользователя" aria-live="polite" aria-atomic="true">
@@ -44,10 +43,14 @@
                     {{ $presence['online'] ? 'Сейчас на странице:' : 'Последняя страница:' }}
                     <strong>{{ $presence['path'] }}</strong>
                 </span>
+                @php
+                    $enteredAtMsk = \Carbon\CarbonImmutable::createFromTimestampUTC($presence['entered_at'])
+                        ->setTimezone('Europe/Moscow');
+                @endphp
                 <time class="mskba-operator-presence__updated"
-                    datetime="{{ \Carbon\Carbon::createFromTimestamp($presence['at'])->toIso8601String() }}"
-                    title="Время последней активности">
-                    {{ \Carbon\Carbon::createFromTimestamp($presence['at'])->format('d.m.Y H:i:s') }}
+                    datetime="{{ $enteredAtMsk->toIso8601String() }}"
+                    title="Время перехода на страницу (МСК)">
+                    с {{ $enteredAtMsk->format('d.m.Y H:i:s') }} МСК
                 </time>
             @else
                 <span class="mskba-support-chat__secondary">Данные об активности пока отсутствуют.</span>
