@@ -10,29 +10,43 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * A read-only view of the actual, route-cached Laravel collection.
- * Only code-reviewed, exact GET/HEAD routes may be replaced.
+ * Inspect the actual registered Laravel routes (including route:cache).
+ * Static, named, public GET/HEAD routes may be owned by the Page Builder.
+ * No per-page route declarations or allowlist of public URLs is required.
  */
 final class PageBuilderRouteRegistry
 {
-    private const RESERVED = [
-        'account', 'admin', 'backoffice', 'api', 'login', 'register', 'logout',
-        'dashboard', 'storage', 'assets', 'page-builder', 'site-summary',
-        'integrations', 'r',
+    /**
+     * Never let CMS short-circuit these application/security entry points.
+     * This is a denylist of systems, not an allowlist of public content.
+     */
+    private const PROTECTED_ROOTS = [
+        'account', 'admin', 'backoffice', 'api', 'auth', 'login', 'register',
+        'logout', 'dashboard', 'storage', 'assets', 'page-builder',
+        'site-summary', 'integrations', 'r', 'up', 'sanctum', 'livewire',
+        'horizon', 'telescope', 'broadcasting', 'oauth', 'webhooks', 'password',
+        'password-reset', 'csrf',
     ];
 
-    /** @return array{type:string, route_name:?string, action:?string, source:?string, eligible:bool, conflict:bool} */
+    /** @return array{type:string,route_name:?string,action:?string,source:?string,eligible:bool,conflict:bool} */
     public function inspect(string $path): array
     {
-        $empty = ['type' => 'static', 'route_name' => null, 'action' => null,
-            'source' => null, 'eligible' => false, 'conflict' => false];
+        $empty = [
+            'type' => 'static', 'route_name' => null, 'action' => null,
+            'source' => null, 'eligible' => false, 'conflict' => false,
+        ];
 
         if ($path === '/') {
+            // Home uses its existing explicit opt-in and fallback Blade.
             return $empty;
         }
 
-        $first = explode('/', ltrim($path, '/'))[0];
-        if (in_array($first, self::RESERVED, true)) {
+        if (preg_match('~\A/[a-z0-9]+(?:-[a-z0-9]+)*\z~D', $path) !== 1) {
+            return [...$empty, 'type' => 'protected', 'conflict' => true];
+        }
+
+        $root = ltrim($path, '/');
+        if (in_array($root, self::PROTECTED_ROOTS, true)) {
             return [...$empty, 'type' => 'protected', 'conflict' => true];
         }
 
@@ -42,43 +56,49 @@ final class PageBuilderRouteRegistry
             return $empty;
         }
 
-        if (! $route instanceof LaravelRoute
+        if (! $route instanceof LaravelRoute || $route->isFallback()
             || $route->getName() === 'page-builder.dynamic') {
             return $empty;
         }
 
         $name = $route->getName();
-        $settings = is_string($name) ? config('page-builder.overrides.'.$name) : null;
-        $exact = '/'.trim($route->uri(), '/') === $path;
-        $eligible = $exact
-            && is_array($settings)
-            && ($settings['path'] ?? null) === $path
+        $staticPath = '/'.trim($route->uri(), '/');
+        // Middleware executing before the action MUST NOT bypass authorization,
+        // rate limits, signed URL checks or any other route-scoped guards.
+        // Only the normal 'web' group is permitted at this stage.
+        $middlewares = $route->gatherMiddleware();
+        $public = count(array_diff($middlewares, ['web'])) === 0;
+
+        $eligible = $staticPath === $path
+            && is_string($name) && $name !== ''
             && in_array('GET', $route->methods(), true)
-            && in_array('HEAD', $route->methods(), true);
+            && in_array('HEAD', $route->methods(), true)
+            && $public;
 
         return [
             'type' => $eligible ? 'public_index' : 'protected',
             'route_name' => is_string($name) ? $name : null,
             'action' => $route->getActionName(),
-            'source' => $eligible ? (string) ($settings['source'] ?? '') : null,
+            'source' => 'Laravel route: '.($name ?: $route->uri()),
             'eligible' => $eligible,
             'conflict' => true,
         ];
     }
 
-    /** @return array{type:string, route_name:?string} */
+    /** @return array{type:string,route_name:?string} */
     public function forPublication(string $path): array
     {
-        if (! preg_match('~\A/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?\z~D', $path)) {
+        if (preg_match('~\A/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?\z~D', $path) !== 1) {
             throw ValidationException::withMessages([
                 'path' => 'Пока поддерживаются только одноуровневые URL вида /about.',
             ]);
         }
+
         $info = $this->inspect($path);
         if ($info['conflict'] && ! $info['eligible']) {
             throw ValidationException::withMessages([
-                'path' => 'Этот Laravel-маршрут защищён от CMS-переопределения. '
-                    .'Динамические страницы, формы и системные маршруты будут подключаться отдельно.',
+                'path' => 'Маршрут защищён: авторизация, служебные операции, '
+                    .'параметризованные страницы и формы пока не переопределяются CMS.',
             ]);
         }
 
@@ -98,20 +118,21 @@ final class PageBuilderRouteRegistry
     public function description(string $path): string
     {
         $info = $this->inspect($path);
+
         if ($path === '/') {
             return 'Главная: специальный маршрут Laravel, уже подключённый к Page Builder.';
         }
         if (! $info['conflict']) {
-            return 'Новая публичная страница. После публикации доступна по этому URL без изменения routes/web.php.';
+            return 'Новый URL. После публикации страница будет доступна через CMS без изменения routes/web.php.';
         }
         if (! $info['eligible']) {
-            return 'Защищённый Laravel-маршрут: CMS не может его заменить на этом этапе.';
+            return 'Защищённый маршрут Laravel. Переопределение через CMS недоступно на этом этапе.';
         }
 
         return sprintf(
-            'Обнаружена Laravel-версия: %s → %s (%s). После публикации CMS получит приоритет. '
-                .'Исходный контроллер сохранится для мгновенного возврата.',
-            $info['route_name'], $info['action'], $info['source'],
+            'Есть исходная Laravel-версия: %s → %s. Публикация включит CMS-приоритет; '
+                .'действие «Вернуть Laravel» восстановит старую страницу без деплоя.',
+            $info['route_name'], $info['action'],
         );
     }
 }
