@@ -4,7 +4,7 @@
     color:#fff; background:#08090a; box-shadow:0 18px 54px rgba(14,19,27,.14);
     container:mskba-hero / inline-size;
 }
-.mskba-hero-slider__stage { position:relative; height:clamp(460px,37cqw,560px); }
+.mskba-hero-slider__stage { position:relative; height:clamp(570px,45cqw,650px); }
 .mskba-hero-slide { position:absolute; inset:0; overflow:hidden; background:#090a0c; }
 .mskba-hero-slide[hidden] { display:none!important; }
 .mskba-hero-slide__background,
