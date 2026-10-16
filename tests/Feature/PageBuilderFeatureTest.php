@@ -139,6 +139,12 @@ final class PageBuilderFeatureTest extends TestCase
         $this->get(\App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource::getUrl(
             'edit', ['record' => $this->home()->id]
         ))->assertOk();
+        $this->get(\App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource::getUrl(
+            'edit', ['record' => $this->home()->template_id]
+        ))->assertOk();
+        $this->get(\App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource::getUrl(
+            'edit', ['record' => PageBuilderComponent::query()->where('slug', 'hero-slider')->firstOrFail()->id]
+        ))->assertOk();
     }
 
     public function test_custom_public_page_never_shadows_existing_laravel_routes(): void

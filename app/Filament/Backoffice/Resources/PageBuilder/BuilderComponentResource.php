@@ -39,7 +39,7 @@ final class BuilderComponentResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make('Компонент')->columns(2)->schema([
                 TextInput::make('name')->label('Название')->required()->maxLength(150),
                 TextInput::make('slug')->label('Плейсхолдер')->required()
@@ -146,16 +146,18 @@ final class BuilderComponentResource extends Resource
                                 ])->columns(3),
                         ]),
                 ]),
-            Grid::make(3)->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')->schema([
-                Section::make('HTML и CSS')->columnSpan(2)->schema([
+            Section::make('HTML и CSS')->columns(1)
+                ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
+                ->schema([
                     CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                         ->required(fn (?PageBuilderComponent $record): bool => $record?->slug !== 'hero-slider')
-                        ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider'),
+                        ->columnSpanFull(),
                     CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
-                        ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider'),
-                ]),
-                BuilderPlaceholderGuide::panel()->columnSpan(1),
-            ]),
+                        ->columnSpanFull(),
+                ])->columnSpanFull(),
+            BuilderPlaceholderGuide::panel()->collapsible()
+                ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
+                ->columnSpanFull(),
         ]);
     }
 

@@ -13,7 +13,6 @@ use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -34,19 +33,19 @@ final class BuilderTemplateResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make('Шаблон')->columns(2)->schema([
                 TextInput::make('name')->label('Название')->required()->maxLength(150),
                 TextInput::make('slug')->label('Идентификатор')->required()
                     ->regex('/\A[a-z][a-z0-9_-]{1,79}\z/D')->unique(ignoreRecord: true),
             ]),
-            Grid::make(3)->schema([
-                Section::make('HTML и CSS')->columnSpan(2)->schema([
-                    CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)->required(),
-                    CodeEditor::make('draft_css')->label('CSS')->language(Language::Css),
-                ]),
-                BuilderPlaceholderGuide::panel(true)->columnSpan(1),
-            ]),
+            Section::make('HTML и CSS')->columns(1)->schema([
+                CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
+                    ->required()->columnSpanFull(),
+                CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
+                    ->columnSpanFull(),
+            ])->columnSpanFull(),
+            BuilderPlaceholderGuide::panel(true)->collapsible()->columnSpanFull(),
         ]);
     }
 
