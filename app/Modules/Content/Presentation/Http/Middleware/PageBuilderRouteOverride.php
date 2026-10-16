@@ -7,6 +7,8 @@ use App\Modules\Content\Application\Services\PageBuilderRouteRegistry;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Content\Presentation\Http\PageBuilderController;
 use Closure;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,13 +32,22 @@ final class PageBuilderRouteOverride
             return $next($request);
         }
 
-        $page = PageBuilderPage::query()
-            ->where('published_path', $path)
-            ->where('published_route_name', $routeName)
-            ->where('published_route_type', 'public_index')
-            ->where('cms_override_enabled', true)
-            ->whereNotNull('published_at')
-            ->first();
+        try {
+            $page = PageBuilderPage::query()
+                ->where('published_path', $path)
+                ->where('published_route_name', $routeName)
+                ->where('published_route_type', 'public_index')
+                ->where('cms_override_enabled', true)
+                ->whereNotNull('published_at')
+                ->first();
+        } catch (QueryException $exception) {
+            // Mirrors the home Page Builder zero-downtime migration guard.
+            // Never mask other DB errors or accidentally override the legacy route.
+            if (! Schema::hasTable('page_builder_pages')) {
+                return $next($request);
+            }
+            throw $exception;
+        }
 
         if ($page === null) {
             return $next($request);
