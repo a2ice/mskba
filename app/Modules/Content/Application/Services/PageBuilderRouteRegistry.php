@@ -2,6 +2,7 @@
 
 namespace App\Modules\Content\Application\Services;
 
+use Filament\Notifications\Http\Middleware\InitializeNotificationMailbox;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route as LaravelRoute;
 use Illuminate\Support\Facades\Route;
@@ -65,9 +66,11 @@ final class PageBuilderRouteRegistry
         $staticPath = '/'.trim($route->uri(), '/');
         // Middleware executing before the action MUST NOT bypass authorization,
         // rate limits, signed URL checks or any other route-scoped guards.
-        // Only the normal 'web' group is permitted at this stage.
+        // Filament's notification mailbox may be attached lazily after the
+        // first request. It does not authorize access or mutate entities.
+        // Other middleware (auth, can, signed, throttle, etc.) remains blocked.
         $middlewares = $route->gatherMiddleware();
-        $public = count(array_diff($middlewares, ['web'])) === 0;
+        $public = count(array_diff($middlewares, ['web', InitializeNotificationMailbox::class])) === 0;
 
         $eligible = $staticPath === $path
             && is_string($name) && $name !== ''
