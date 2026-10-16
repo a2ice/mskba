@@ -45,8 +45,13 @@ final class PageBuilderRouteOverrideTest extends TestCase
 
         $this->assertSame('/events', route('events.index', [], false));
         $before = app(PageBuilderRouteRegistry::class)->inspect('/events');
+        $beforeMiddlewares = \Illuminate\Support\Facades\Route::getRoutes()
+            ->match(\Illuminate\Http\Request::create('/events', 'GET'))->gatherMiddleware();
         $this->get('/events')->assertOk()->assertDontSee('CMS EVENTS VERSION');
         $after = app(PageBuilderRouteRegistry::class)->inspect('/events');
+        $afterMiddlewares = \Illuminate\Support\Facades\Route::getRoutes()
+            ->match(\Illuminate\Http\Request::create('/events', 'GET'))->gatherMiddleware();
+        $this->assertSame($beforeMiddlewares, $afterMiddlewares, 'Middleware mutates across dispatch');
         $this->assertSame($before, $after, 'Маршрут не должен менять признаки допуска после первого GET.');
         $this->assertNull($page->published_at);
 
