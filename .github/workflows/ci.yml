@@ -143,8 +143,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
 
-      - name: Test browser upload, notification toast behavior and Reverb configuration
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/reverb-browser-config.test.mjs
+      - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/reverb-browser-config.test.mjs
 
       - name: Build frontend
         # Do not bake localhost:8000 and sample Reverb credentials from .env.example
