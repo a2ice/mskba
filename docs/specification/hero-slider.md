@@ -12,7 +12,9 @@ No main/production publication is part of this task.
 - Fill/reorder up to **6 slides**. Each has eyebrow, title (newlines accepted),
   accent line, description, CTA text/relative URL, five optional highlights,
   desktop arena background, optional separate mobile crop and near/far PNG/WebP players.
-- Choose fade / slide-up / slide-left / zoom per player and text. Enter
+- Choose fade / slide-up / slide-left / zoom separately for the background,
+  players, text, CTA and highlights. The advanced timeline sets independent
+  appearance delays for all six groups (0–5000 ms). Enter
   optional desktop/mobile player X coordinates in percent, desktop widths in percent.
 - Set arrows, dots, and optional autoplay interval (4–30 seconds).
   Autoplay defaults **off**; pauses on hover/focus, on a hidden tab,
