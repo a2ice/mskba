@@ -4,6 +4,8 @@ namespace App\Filament\Backoffice\Resources\PageBuilder\Concerns;
 
 use App\Modules\Content\Application\Services\PageBuilderPublisher;
 use App\Modules\Content\Domain\Models\PageBuilderRevision;
+use App\Modules\Content\Domain\Models\PageBuilderPage;
+use App\Modules\Content\Application\Services\PageBuilderRouteRegistry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -23,23 +25,55 @@ trait BuilderEditorActions
                     && $resource::canViewAny()),
             Action::make('publish')->label('Опубликовать')->icon('heroicon-o-check-circle')
                 ->color('success')->requiresConfirmation()
-                ->modalDescription('Публичная версия обновится только после подтверждения. Черновик сначала необходимо сохранить.')
+                ->modalDescription(fn (): string => $this->record instanceof PageBuilderPage
+                    && app(PageBuilderRouteRegistry::class)->inspect((string) $this->record->path)['eligible']
+                        ? 'Этот URL уже обслуживается Laravel. Публикация включит CMS-приоритет, '
+                            .'а старый контроллер останется доступен через «Вернуть Laravel». '
+                            .'Убедись, что все функции прежней страницы перенесены в компоненты. '
+                            .'Черновик сначала необходимо сохранить.'
+                        : 'Публичная версия обновится только после подтверждения. Черновик сначала необходимо сохранить.')
                 ->visible(fn (): bool => $resource::canPublish())
                 ->action(function (): void {
                     app(PageBuilderPublisher::class)->publish($this->record);
                     Notification::make()->title('Опубликовано')->success()->send();
-                    $this->refreshFormData(['published_at']);
+                    $this->record->refresh();
+                    $this->refreshFormData(['published_at', 'cms_override_enabled', 'published_route_name']);
+                }),
+            Action::make('disableCmsOverride')->label('Вернуть Laravel')
+                ->icon('heroicon-o-arrow-uturn-left')->color('warning')->requiresConfirmation()
+                ->modalDescription('Публичная CMS-страница останется сохранена, но URL немедленно снова будет обслуживаться исходным Laravel-контроллером.')
+                ->visible(fn (): bool => $resource::canPublish()
+                    && $this->record instanceof PageBuilderPage
+                    && $this->record->published_route_name !== null
+                    && (bool) $this->record->cms_override_enabled)
+                ->action(function (): void {
+                    app(PageBuilderPublisher::class)->setOverrideEnabled($this->record, false);
+                    $this->record->refresh();
+                    Notification::make()->title('Исходный Laravel-маршрут восстановлен')->success()->send();
+                }),
+            Action::make('enableCmsOverride')->label('Включить CMS-версию')
+                ->icon('heroicon-o-check-circle')->color('success')->requiresConfirmation()
+                ->modalDescription('На этом URL снова будет показана последняя опубликованная CMS-версия. Черновик останется неизменным.')
+                ->visible(fn (): bool => $resource::canPublish()
+                    && $this->record instanceof PageBuilderPage
+                    && $this->record->published_at !== null
+                    && $this->record->published_route_name !== null
+                    && ! (bool) $this->record->cms_override_enabled)
+                ->action(function (): void {
+                    app(PageBuilderPublisher::class)->setOverrideEnabled($this->record, true);
+                    $this->record->refresh();
+                    Notification::make()->title('CMS-приоритет включён')->success()->send();
                 }),
             Action::make('restore')->label('Восстановить черновик')
                 ->visible(fn (): bool => $resource::canCreate()
                     && PageBuilderRevision::query()
                         ->where('entity_type', PageBuilderPublisher::type($this->record))
-                        ->where('entity_id', $this->record->getKey())->exists())
+                        ->where('entity_id', $this->record->getKey())->where('action', 'publish')->exists())
                 ->form([
                     Select::make('revision_id')->label('Опубликованная версия')->required()
                         ->options(fn (): array => PageBuilderRevision::query()
                             ->where('entity_type', PageBuilderPublisher::type($this->record))
-                            ->where('entity_id', $this->record->getKey())
+                            ->where('entity_id', $this->record->getKey())->where('action', 'publish')
                             ->latest('id')->limit(40)->get()
                             ->mapWithKeys(fn (PageBuilderRevision $revision): array => [
                                 $revision->id => '#'.$revision->id.' · '.$revision->created_at->format('d.m.Y H:i'),
