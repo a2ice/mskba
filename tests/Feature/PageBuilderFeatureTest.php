@@ -34,6 +34,15 @@ final class PageBuilderFeatureTest extends TestCase
         $this->assertStringContainsString('.mskba-page-builder{width:100%', file_get_contents(
             resource_path('css/page-builder.css'),
         ));
+        // The CMS canvas and base-template section must not impose spacing:
+        // a full-width hero can start flush against the header/context bar.
+        $css = file_get_contents(resource_path('css/page-builder.css'));
+        preg_match('/\\.mskba-page-builder\\s*\\{([^}]+)\\}/', $css, $root);
+        $this->assertNotEmpty($root);
+        $this->assertDoesNotMatchRegularExpression('/\\b(?:padding|margin|gap|max-width)(?:-[_a-z]+)?\\s*:/', $root[1]);
+        preg_match('/\\.mskba-builder-section\\s*\\{([^}]+)\\}/', $css, $section);
+        $this->assertNotEmpty($section);
+        $this->assertDoesNotMatchRegularExpression('/\\b(?:padding|margin|gap)(?:-[_a-z]+)?\\s*:/', $section[1]);
 
         $html = '<section class="wide-section"><h1>Вся ширина</h1></section>'
             .'<div class="container"><h2>По общей сетке шапки</h2></div>';
