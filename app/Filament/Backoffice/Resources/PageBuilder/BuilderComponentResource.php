@@ -131,6 +131,7 @@ final class BuilderComponentResource extends Resource
                                         ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null) ?: ($state['type'] ?? 'Новый элемент'))
                                         ->reorderable()->cloneable()->collapsible()
                                         ->minItems(1)->maxItems(16)->defaultItems(0)
+                                        ->helperText('Обязательно добавь хотя бы один элемент слайда (заголовок, текст, изображение или кнопку) перед публикацией.')
                                         ->schema([
                                             Grid::make(3)->schema([
                                                 Select::make('type')->label('Тип элемента')->native(false)->live()

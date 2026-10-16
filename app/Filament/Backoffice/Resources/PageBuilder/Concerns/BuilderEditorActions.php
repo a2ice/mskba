@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 trait BuilderEditorActions
 {
@@ -56,15 +57,38 @@ trait BuilderEditorActions
         // also be invoked directly.
         abort_unless($resource::canEdit($this->getRecord()) && $resource::canPublish(), 403);
 
-        // Reuse Filament form validation/dehydration (including uploads) and
-        // lifecycle hooks. Suppress the intermediate "Saved" notification and
-        // navigation, which would interrupt the publish action.
-        $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+        try {
+            // Filament validates and saves the live form, including uploads.
+            // Suppress the intermediate notification and redirect.
+            $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
 
-        // Publication validates route ownership, components, CSS and hero
-        // settings in its own transaction. A failure keeps the old published
-        // snapshot unchanged, while the just-saved draft is still available.
-        app(PageBuilderPublisher::class)->publish($this->getRecord());
+            // Publication validates components, routes and slider settings in
+            // a transaction. Failed publication preserves the previous snapshot.
+            app(PageBuilderPublisher::class)->publish($this->getRecord());
+        } catch (ValidationException $exception) {
+            // Filament's inline errors can be far above the confirmation modal
+            // (inside nested/collapsed repeaters). Always surface the reason.
+            $messages = collect($exception->errors())->flatten()->all();
+            $missingLayer = collect(array_keys($exception->errors()))->contains(
+                static fn (string $key): bool => preg_match(
+                    '/(?:draft_slides|slides)\\.[^.]+\\.elements$/',
+                    $key,
+                ) === 1,
+            );
+            $message = $missingLayer
+                ? 'В универсальном слайде добавь хотя бы один элемент: заголовок, текст, изображение или кнопку.'
+                : (string) ($messages[0] ?? 'Проверь обязательные поля редактора.');
+
+            Notification::make()
+                ->title('Не удалось сохранить и опубликовать')
+                ->body($message)
+                ->danger()
+                ->persistent()
+                ->send();
+
+            throw $exception;
+        }
+
         $this->getRecord()->refresh();
 
         Notification::make()->title('Сохранено и опубликовано')->success()->send();

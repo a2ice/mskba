@@ -126,6 +126,43 @@ final class PageBuilderSaveAndPublishTest extends TestCase
         $this->assertNull($page->refresh()->published_at);
     }
 
+    public function test_legacy_slider_slides_are_shown_as_enabled_when_field_is_missing(): void
+    {
+        $this->loginAsSuperadmin();
+        $slider = PageBuilderComponent::query()->where('slug', 'hero-slider')->firstOrFail();
+        $storedSlides = $slider->draft_slides;
+        $this->assertArrayNotHasKey('enabled', $storedSlides[0]);
+
+        $form = Livewire::test(EditBuilderComponent::class, ['record' => $slider->getRouteKey()])
+            ->get('data');
+        $formSlides = array_values($form['draft_slides']);
+
+        $this->assertTrue($formSlides[0]['enabled']);
+        $this->assertSame('legacy', $formSlides[0]['layout']);
+        $this->assertArrayNotHasKey('enabled', $slider->refresh()->draft_slides[0]);
+    }
+
+    public function test_empty_universal_slide_cannot_be_published_via_combined_action(): void
+    {
+        $this->loginAsSuperadmin();
+        $slider = PageBuilderComponent::query()->where('slug', 'hero-slider')->firstOrFail();
+        $slides = $slider->draft_slides;
+        $slides[] = [
+            'layout' => 'layers',
+            'name' => 'Новый универсальный слайд',
+            'enabled' => true,
+            'elements' => [],
+        ];
+
+        Livewire::test(EditBuilderComponent::class, ['record' => $slider->getRouteKey()])
+            ->fillForm(['draft_slides' => $slides])
+            ->call('saveAndPublish')
+            ->assertHasErrors();
+
+        $this->assertNull($slider->refresh()->published_at);
+        $this->assertNull($slider->published_slides);
+    }
+
     public function test_invalid_html_prevents_publication_of_unsaved_changes(): void
     {
         $this->loginAsSuperadmin();
