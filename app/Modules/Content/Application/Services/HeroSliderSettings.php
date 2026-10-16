@@ -39,7 +39,7 @@ final class HeroSliderSettings
                 'slides.*.background_desktop' => ['nullable', 'string', self::imagePath()],
                 'slides.*.background_mobile' => ['nullable', 'string', self::imagePath()],
                 'slides.*.far_player' => ['nullable', 'string', self::imagePath()],
-                'slides.*.near_player' => ['nullable', 'string', self::imagePath(false)],
+                'slides.*.near_player' => ['nullable', 'string', self::imagePath()],
                 'slides.*.animation_background' => ['nullable', Rule::in(['fade', 'slide-up', 'slide-left', 'zoom'])],
                 'slides.*.animation_highlights' => ['nullable', Rule::in(['fade', 'slide-up', 'slide-left', 'zoom'])],
                 'slides.*.animation_cta' => ['nullable', Rule::in(['fade', 'slide-up', 'slide-left', 'zoom'])],
@@ -78,11 +78,11 @@ final class HeroSliderSettings
 
     private static function internalLink(): string
     {
-        return '~\A(?:/(?!/)[A-Za-z0-9/_#.?=&%-]*|#[A-Za-z][A-Za-z0-9_-]*)\z~D';
+        return 'regex:~\A(?:/(?!/)[A-Za-z0-9/_#.?=&%-]*|#[A-Za-z][A-Za-z0-9_-]*)\z~D';
     }
 
     private static function imagePath(): string
     {
-        return '~\Apage-builder/hero/[A-Za-z0-9_-]+\.(?:png|jpg|jpeg|webp|avif)\z~iD';
+        return 'regex:~\Apage-builder/hero/[A-Za-z0-9_-]+\.(?:png|jpg|jpeg|webp|avif)\z~iD';
     }
 }
