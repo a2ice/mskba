@@ -12,6 +12,7 @@ final class PageBuilderRenderer
     public function __construct(
         private readonly PageBuilderMarkup $markup,
         private readonly PageBuilderSources $sources,
+        private readonly HeroSliderComponent $heroSlider,
     ) {}
 
     /** @return array{html:string,css:string} */
@@ -67,12 +68,18 @@ final class PageBuilderRenderer
                 } else {
                     /** @var PageBuilderComponent|null $component */
                     $component = $components->get($name);
-                    $body = $component
-                        ? ($preview ? $component->draft_html : $component->published_html)
-                        : null;
-                    $replacements[$token] = is_string($body)
-                        ? $this->markup->html($body)
-                        : ($preview ? '<p class="mskba-builder-unavailable">Неизвестный или неопубликованный компонент: '.e($name).'</p>' : '');
+                    if ($name === 'hero-slider') {
+                        $replacements[$token] = $component && ($preview || $component->published_at !== null)
+                            ? $this->heroSlider->render($component, $preview)
+                            : ($preview ? '<p class="mskba-builder-unavailable">Hero Slider пока не создан или не опубликован.</p>' : '');
+                    } else {
+                        $body = $component
+                            ? ($preview ? $component->draft_html : $component->published_html)
+                            : null;
+                        $replacements[$token] = is_string($body)
+                            ? $this->markup->html($body)
+                            : ($preview ? '<p class="mskba-builder-unavailable">Неизвестный или неопубликованный компонент: '.e($name).'</p>' : '');
+                    }
                 }
                 return $token;
             },

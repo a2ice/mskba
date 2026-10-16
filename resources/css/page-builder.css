@@ -1,3 +1,4 @@
+@import './page-builder-hero-slider.css';
 .mskba-page-builder{width:min(1320px,100%);margin-inline:auto;padding:24px max(16px,2vw)}
 .mskba-builder-section{display:grid;gap:18px}
 .mskba-builder-preview-note{border:1px solid var(--line,#ddd);padding:10px 16px;border-radius:12px;margin-bottom:24px}
