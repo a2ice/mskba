@@ -36,6 +36,16 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
 - **Design themes**: CSS can reference the existing CSS tokens; builder rules
   are prefixed with \`.mskba-page-builder\` to prevent styling surrounding UI.
 
+## Editor layout in Filament 5
+
+Page, template and generic component edit forms use a single outer column.
+Metadata is followed by a full-width code editor, with the placeholder guide
+in a collapsible section **below** HTML/CSS instead of consuming a third of the
+code editing area. The Hero Slider's structured component form retains its
+internal multi-column fields but occupies the full available outer width.
+The layout applies equally to create and edit screens; it does not change
+stored content, publishing, preview URLs or validation.
+
 ## Security rules
 
 No arbitrary PHP, Blade, SQL, JavaScript, iframe or inline event attributes
