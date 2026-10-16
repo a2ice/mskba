@@ -65,3 +65,6 @@
 .app-profile__save-feedback.is-error{color:var(--danger)}
 .app-profile__save-feedback:empty{display:none}
 .app-profile__personal-form .app-confirmation__save-field{min-height:0}
+
+.app-profile__avatar-library[hidden]{display:none}
+.app-profile__upload-state[data-error="true"]{color:var(--danger, #b42318)}

@@ -1,76 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
 
-const source = readFileSync(
+const profile = readFileSync(
     new URL('../../resources/themes/mskba_app/js/account-profile.js', import.meta.url),
     'utf8',
-).replace(/^import .+;$/gm, '');
+);
+const manager = readFileSync(
+    new URL('../../resources/themes/mskba_app/js/avatar-manager.js', import.meta.url),
+    'utf8',
+);
 
-function selectFile(file) {
-    const handlers = new Map();
-    const state = { hidden: true, textContent: '' };
-    const input = {
-        files: [file],
-        value: 'chosen-file',
-        addEventListener(name, callback) { handlers.set(name, callback); },
-    };
-    const uploadForm = {
-        submitted: 0, busy: false,
-        querySelector(selector) { return selector === 'input[type=file]' ? input : null; },
-        setAttribute(name, value) { if (name === 'aria-busy') this.busy = value === 'true'; },
-        submit() { this.submitted++; },
-    };
-    const profileRoot = {
-        querySelector(selector) {
-            if (selector === '[data-profile-avatar-upload]') return uploadForm;
-            if (selector === '[data-profile-avatar-upload-status]') return state;
-            return null;
-        },
-    };
-    // Intentionally no Canvas, WebP encoder, DataTransfer, or File constructor.
-    // Safari must not require any of them just to submit a valid image.
-    runInNewContext(source, {
-        document: {
-            querySelector(selector) {
-                return selector === '[data-account-profile]' ? profileRoot : null;
-            },
-        },
-    });
-
-    handlers.get('change')({ target: input });
-    return { uploadForm, state, input };
-}
-
-test('a 2.6 MB PNG is submitted as the original file without Canvas', () => {
-    const file = { name: 'logo.png', type: 'image/png', size: 2637631 };
-    const { uploadForm, state, input } = selectFile(file);
-    assert.equal(uploadForm.submitted, 1);
-    assert.equal(uploadForm.busy, true);
-    assert.equal(state.textContent, 'Загружаем…');
-    assert.equal(state.hidden, false);
-    assert.strictEqual(input.files[0], file);
+test('profile initializes dedicated AJAX avatar manager, not native submit', () => {
+    assert.match(profile, /import\s*\{\s*initAvatarManager\s*\}/);
+    assert.match(profile, /initAvatarManager\(profileRoot\)/);
+    assert.doesNotMatch(profile, /uploadForm\.submit\(\)/);
 });
 
-test('an original JPEG at the 10 MiB boundary is submitted unchanged', () => {
-    const file = { name: 'photo.jpg', type: 'image/jpeg', size: 10 * 1024 * 1024 };
-    const { uploadForm, input } = selectFile(file);
-    assert.equal(uploadForm.submitted, 1);
-    assert.strictEqual(input.files[0], file);
+test('original files are submitted with multipart FormData and JSON response', () => {
+    assert.match(manager, /new FormData\(form\)/);
+    assert.match(manager, /fetch\(form\.action,/);
+    assert.match(manager, /'application\/json'/);
+    assert.match(manager, /'X-CSRF-TOKEN'/);
+    assert.doesNotMatch(manager, /document\.createElement\(['"]canvas['"]\)|\.toBlob\(|new DataTransfer\(/);
 });
 
-test('files over 10 MiB are rejected before multipart POST', () => {
-    const file = { name: 'huge.png', type: 'image/png', size: 10 * 1024 * 1024 + 1 };
-    const { uploadForm, state, input } = selectFile(file);
-    assert.equal(uploadForm.submitted, 0);
-    assert.equal(uploadForm.busy, false);
-    assert.equal(input.value, '');
-    assert.equal(state.textContent, 'Файл аватара должен быть не больше 10 МБ.');
+test('all avatar forms are intercepted without page navigation', () => {
+    assert.match(manager, /profileRoot\.addEventListener\('submit'/);
+    assert.match(manager, /event\.preventDefault\(\)/);
+    assert.match(manager, /render\(data\)/);
+    assert.doesNotMatch(manager, /window\.location|location\.reload/);
 });
 
-test('unsupported type reaches authoritative Laravel validation', () => {
-    const file = { name: 'unsupported.svg', type: 'image/svg+xml', size: 128 };
-    const { uploadForm } = selectFile(file);
-    assert.equal(uploadForm.submitted, 1);
+test('client retains 10 MB limit and delegates authoritative checks to backend', () => {
+    assert.match(manager, /10 \* 1024 \* 1024/);
+    assert.match(manager, /errors\?\.avatar\?\.\[0\]/);
 });

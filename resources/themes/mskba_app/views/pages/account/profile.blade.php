@@ -30,7 +30,7 @@
                             @csrf
                             <label for="app-profile-avatar-file"
                                    class="app-profile__avatar-preview app-profile__avatar-upload-target"
-                                   title="Загрузить аватар">
+                                   title="Загрузить аватар" data-profile-avatar-preview>
                                 @if ($profile->avatarUrl())
                                     <img src="{{ $profile->avatarUrl() }}" alt="Твой текущий аватар" width="112" height="112">
                                 @else
@@ -63,24 +63,23 @@
                             JPEG, PNG или WebP до 10 МБ. Можно хранить до трёх аватаров и переключаться между ними.
                         </p>
                         <span class="app-profile__upload-state" role="status"
-                              data-profile-avatar-upload-status hidden>Загружаем…</span>
+                              data-profile-avatar-upload-status aria-live="polite" hidden>Загружаем…</span>
                     </div>
                 </div>
-                @if ($avatars->isNotEmpty())
-                    <div class="app-profile__avatar-library" aria-label="Сохранённые аватары">
+                <div class="app-profile__avatar-library" data-profile-avatar-library aria-label="Сохранённые аватары" @if ($avatars->isEmpty()) hidden @endif>
                         @foreach ($avatars as $avatar)
                             <div class="app-profile__avatar-item">
                                 <img src="{{ $avatar->publicUrl() }}" alt="Аватар {{ $loop->iteration }}" width="76" height="76">
                                 @if ($avatar->is_featured)
                                     <span class="app-profile__avatar-current">Основной</span>
                                 @else
-                                    <form method="POST" action="{{ route('account.avatar.activate', $avatar->id) }}">
+                                    <form method="POST" action="{{ route('account.avatar.activate', $avatar->id) }}" data-profile-avatar-action>
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit" class="app-profile__text-action">Сделать основным</button>
                                     </form>
                                 @endif
-                                <form method="POST" action="{{ route('account.avatar.destroy', $avatar->id) }}">
+                                <form method="POST" action="{{ route('account.avatar.destroy', $avatar->id) }}" data-profile-avatar-action>
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="app-profile__text-action app-profile__text-action--muted"
@@ -89,7 +88,6 @@
                             </div>
                         @endforeach
                     </div>
-                @endif
             </section>
 
             <section class="panel app-profile__panel" aria-labelledby="app-profile-address-heading">
