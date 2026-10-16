@@ -12,7 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 final class PageBuilderPublisher
 {
-    public function __construct(private readonly PageBuilderMarkup $markup) {}
+    public function __construct(
+        private readonly PageBuilderMarkup $markup,
+        private readonly PageBuilderSources $sources,
+    ) {}
 
     public function publish(Model $record): void
     {
@@ -38,6 +41,9 @@ final class PageBuilderPublisher
                     ->where('id', '!=', $item->getKey())->exists()) {
                     throw ValidationException::withMessages(['path' => 'Этот URL уже занят другой опубликованной страницей.']);
                 }
+                // Preview resolves draft components, while public pages require published ones.
+                // Reject missing dependencies BEFORE writing any public snapshot.
+                $this->assertComponentsPublished($item);
                 // A saved URL is still a draft until the editor explicitly publishes it.
                 $item->published_path = $item->path;
                 $item->published_name = $item->name;
@@ -81,6 +87,66 @@ final class PageBuilderPublisher
             $item->save();
             // Restore never changes the published copy.
         });
+    }
+
+
+    /** Ensure publication cannot silently replace a previewed component with empty HTML. */
+    private function assertComponentsPublished(PageBuilderPage $page): void
+    {
+        $templateHtml = $page->template_id !== null
+            ? (string) PageBuilderTemplate::query()->whereKey($page->template_id)->value('published_html')
+            : '[[page_content]]';
+        $effectiveHtml = str_replace('[[page_content]]', (string) $page->draft_html, $templateHtml);
+        $matches = [];
+        preg_match_all(
+            '~<mskba-component\b(?P<attrs>[^>]*)>\s*</mskba-component>~i',
+            $effectiveHtml,
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        // Match the renderer's supported placeholder grammar exactly.
+        if (preg_match_all('~<mskba-component\b~i', $effectiveHtml) !== count($matches)) {
+            throw ValidationException::withMessages([
+                'draft_html' => 'Неверный синтаксис компонента. Используй <mskba-component name="..."></mskba-component>.',
+            ]);
+        }
+
+        $required = [];
+        foreach ($matches as $match) {
+            if (! preg_match('/\bname="([a-z][a-z0-9_-]{1,79})"/', $match['attrs'], $nameMatch)) {
+                throw ValidationException::withMessages([
+                    'draft_html' => 'У компонента отсутствует корректный атрибут name.',
+                ]);
+            }
+            $name = $nameMatch[1];
+            if ($name === 'games-list') {
+                preg_match('/\bsource="([^"]*)"/', $match['attrs'], $sourceMatch);
+                if (! $this->sources->isRegistered((string) ($sourceMatch[1] ?? ''))) {
+                    throw ValidationException::withMessages([
+                        'draft_html' => 'Для games-list укажи зарегистрированный источник данных source.',
+                    ]);
+                }
+                continue;
+            }
+            $required[$name] = true;
+        }
+
+        if ($required === []) {
+            return;
+        }
+
+        $published = PageBuilderComponent::query()
+            ->whereIn('slug', array_keys($required))
+            ->whereNotNull('published_at')
+            ->pluck('slug')->all();
+        $missing = array_diff(array_keys($required), $published);
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'draft_html' => 'Сначала опубликуй компоненты в «Дизайн → Компоненты»: '
+                    .implode(', ', $missing).'. Страница не опубликована; текущая публичная версия сохранена.',
+            ]);
+        }
     }
 
     public static function type(Model $record): string
