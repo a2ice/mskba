@@ -152,6 +152,16 @@ local CSS can override the utilities with a more specific selector.
 
 ## Editor layout in Filament 5
 
+On every existing Page Builder editor (Pages, Templates and Components), the form
+footer includes **«Сохранить и опубликовать»** alongside the regular Save
+button. The combined action confirms publication, validates/dehydrates the
+current form through Filament, saves the draft without redirect, then publishes
+via `PageBuilderPublisher`. It requires both edit and publish permissions,
+even for direct Livewire method calls. If publication fails, the saved draft
+remains, but the previous public snapshot remains intact. New records are first
+created normally; publishing is available in the edit form. Existing standalone
+Save and Publish actions remain available.
+
 Page, template and generic component edit forms use a single outer column.
 Metadata is followed by a full-width code editor, with the placeholder guide
 in a collapsible section **below** HTML/CSS instead of consuming a third of the

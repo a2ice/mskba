@@ -13,6 +13,63 @@ use Illuminate\Database\Eloquent\Model;
 
 trait BuilderEditorActions
 {
+    /**
+     * Keep the default Save/Cancel actions and add a combined workflow next to
+     * Save. All three Page Builder edit screens share this trait.
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            Action::make('saveAndPublish')
+                ->label('Сохранить и опубликовать')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->visible(fn (): bool => static::getResource()::canPublish()
+                    && static::getResource()::canEdit($this->getRecord()))
+                ->requiresConfirmation()
+                ->modalDescription(function (): string {
+                    $path = $this->getRecord() instanceof PageBuilderPage
+                        ? (string) ($this->data['path'] ?? $this->getRecord()->path)
+                        : null;
+
+                    if ($path !== null && app(PageBuilderRouteRegistry::class)->inspect($path)['eligible']) {
+                        return 'Текущие изменения будут сохранены и сразу опубликованы. '
+                            .'Этот URL уже обслуживается Laravel: публикация включит CMS-приоритет, '
+                            .'а исходный контроллер останется доступен через «Вернуть Laravel». '
+                            .'Проверь, что необходимые функции страницы перенесены.';
+                    }
+
+                    return 'Текущие изменения будут сохранены и сразу опубликованы. '
+                        .'В случае ошибки публикации сохранённый черновик останется доступен, '
+                        .'а прежняя публичная версия не изменится.';
+                })
+                ->action(fn () => $this->saveAndPublish()),
+            $this->getCancelFormAction(),
+        ];
+    }
+
+    public function saveAndPublish(): void
+    {
+        $resource = static::getResource();
+        // Never trust action visibility as authorization: Livewire methods may
+        // also be invoked directly.
+        abort_unless($resource::canEdit($this->getRecord()) && $resource::canPublish(), 403);
+
+        // Reuse Filament form validation/dehydration (including uploads) and
+        // lifecycle hooks. Suppress the intermediate "Saved" notification and
+        // navigation, which would interrupt the publish action.
+        $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+
+        // Publication validates route ownership, components, CSS and hero
+        // settings in its own transaction. A failure keeps the old published
+        // snapshot unchanged, while the just-saved draft is still available.
+        app(PageBuilderPublisher::class)->publish($this->getRecord());
+        $this->getRecord()->refresh();
+
+        Notification::make()->title('Сохранено и опубликовано')->success()->send();
+    }
+
     protected function getHeaderActions(): array
     {
         $resource = static::getResource();
