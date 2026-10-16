@@ -17,7 +17,7 @@
     @endif
     <div class="mskba-page-builder">
         @if ($builderPreview)
-            <div class="mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
+            <div class="container mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
         @endif
         {!! $builderHtml !!}
     </div>
