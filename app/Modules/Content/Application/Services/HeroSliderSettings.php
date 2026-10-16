@@ -38,7 +38,7 @@ final class HeroSliderSettings
                 'slides.*.cta_url' => ['required', 'string', 'max:220', self::internalLink()],
                 'slides.*.background_desktop' => ['nullable', 'string', self::imagePath()],
                 'slides.*.background_mobile' => ['nullable', 'string', self::imagePath()],
-                'slides.*.far_player' => ['nullable', 'string', self::imagePath(false)],
+                'slides.*.far_player' => ['nullable', 'string', self::imagePath()],
                 'slides.*.near_player' => ['nullable', 'string', self::imagePath(false)],
                 'slides.*.animation_far' => ['nullable', Rule::in(['fade', 'slide-up', 'slide-left', 'zoom'])],
                 'slides.*.animation_near' => ['nullable', Rule::in(['fade', 'slide-up', 'slide-left', 'zoom'])],
@@ -72,8 +72,8 @@ final class HeroSliderSettings
         return '~\A(?:/(?!/)[A-Za-z0-9/_#.?=&%-]*|#[A-Za-z][A-Za-z0-9_-]*)\z~D';
     }
 
-    private static function imagePath(bool $allowFallback = true): string
+    private static function imagePath(): string
     {
-        return '~\\Apage-builder/hero/[A-Za-z0-9_-]+\\.(?:png|jpg|jpeg|webp|avif)\\z~iD';
+        return '~\Apage-builder/hero/[A-Za-z0-9_-]+\.(?:png|jpg|jpeg|webp|avif)\z~iD';
     }
 }
