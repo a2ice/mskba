@@ -4,7 +4,8 @@
     color:#fff; background:#08090a; box-shadow:0 18px 54px rgba(14,19,27,.14);
     container:mskba-hero / inline-size;
 }
-.mskba-hero-slider__stage { position:relative; height:clamp(570px,45cqw,650px); }
+/* Keep a predictable graphic canvas while matching the compact action-row layout. */
+.mskba-hero-slider__stage { position:relative; height:clamp(450px,35cqw,530px); }
 .mskba-hero-slide { position:absolute; inset:0; overflow:hidden; background:#090a0c; }
 .mskba-hero-slide[hidden] { display:none!important; }
 .mskba-hero-slide__background,
@@ -139,7 +140,7 @@
 @keyframes mskba-hero-zoom {from{opacity:0;scale:.94}to{opacity:1;scale:1}}
 /* Short desktop keeps the same action-row layout and reduces hero height. */
 @media (max-height:790px) and (min-width:1100px) {
-    .mskba-hero-slider__stage {height:clamp(430px,37cqw,520px);}
+    .mskba-hero-slider__stage {height:clamp(410px,32cqw,480px);}
     .mskba-hero-slide__copy {top:12%;}
     .mskba-hero-slide__title {font-size:clamp(36px,3.7cqw,58px);}
     .mskba-hero-slide__description {margin-top:13px;}
@@ -149,7 +150,7 @@
 /* Tablet and compact containers: CTA remains pinned left of a clipped,
    seamless highlight rail. The repeated group is inert/hidden from accessibility. */
 @container mskba-hero (max-width:1050px) {
-    .mskba-hero-slider__stage {height:clamp(480px,75cqw,640px);}
+    .mskba-hero-slider__stage {height:clamp(440px,62cqw,540px);}
     .mskba-hero-slide__copy {top:14%;left:6%;right:6%;width:auto;}
     .mskba-hero-slide__title {font-size:clamp(35px,5cqw,56px);max-width:80%;}
     .mskba-hero-slide__description {max-width:68%;}
