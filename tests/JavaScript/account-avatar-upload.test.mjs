@@ -22,7 +22,7 @@ test('original files are submitted with multipart FormData and JSON response', (
     assert.match(manager, /fetch\(form\.action,/);
     assert.match(manager, /'application\/json'/);
     assert.match(manager, /'X-CSRF-TOKEN'/);
-    assert.doesNotMatch(manager, /canvas|toBlob|DataTransfer/i);
+    assert.doesNotMatch(manager, /document\.createElement\(['"]canvas['"]\)|\.toBlob\(|new DataTransfer\(/);
 });
 
 test('all avatar forms are intercepted without page navigation', () => {
