@@ -44,7 +44,7 @@
 /* CTA and highlights share the same vertical row, never overlap. */
 .mskba-hero-slide__actions {
     display:flex;align-items:center;gap:clamp(18px,3cqw,44px);
-    width:100%;margin-top:20px;min-width:0;
+    width:100%;margin-top:35px;min-width:0;
 }
 .mskba-hero-slide__cta {
     flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:20px;
