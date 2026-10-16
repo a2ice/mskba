@@ -146,7 +146,7 @@ final class BuilderComponentResource extends Resource
                                 ])->columns(3),
                         ]),
                 ]),
-            Grid::make(3)->schema([
+            Grid::make(3)->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')->schema([
                 Section::make('HTML и CSS')->columnSpan(2)->schema([
                     CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                         ->required(fn (?PageBuilderComponent $record): bool => $record?->slug !== 'hero-slider')
