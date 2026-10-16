@@ -77,6 +77,9 @@ final class PageBuilderMarkup
                 throw ValidationException::withMessages(['draft_css' => 'Слишком много селекторов в одном правиле.']);
             }
             foreach ($selectors as $selector) {
+                if (in_array(strtolower($selector), ['html', 'body', 'head', ':root'], true)) {
+                    throw ValidationException::withMessages(['draft_css' => 'Глобальные селекторы запрещены.']);
+                }
                 if (! preg_match('/\A(?:[.#]?[a-zA-Z][a-zA-Z0-9_-]*(?::(?:hover|focus-visible|active))?)(?:\s+[.#]?[a-zA-Z][a-zA-Z0-9_-]*)*\z/D', $selector)) {
                     throw ValidationException::withMessages(['draft_css' => 'Разрешены только локальные классы, идентификаторы и простые селекторы.']);
                 }

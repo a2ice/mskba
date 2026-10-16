@@ -26,7 +26,7 @@ final class PageBuilderPublisher
             $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
             $this->markup->validate((string) $item->draft_html, $item->draft_css);
             if ($item instanceof PageBuilderPage) {
-                if (! preg_match('~\A/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?\z/D', $item->path)
+                if (! preg_match('/\A\/(?:[a-z0-9]+(?:-[a-z0-9]+)*)?\z/D', $item->path)
                     || ($item->path !== '/' && in_array(ltrim($item->path, '/'), self::reservedPaths(), true))) {
                     throw ValidationException::withMessages(['path' => 'Недопустимый или системный URL.']);
                 }

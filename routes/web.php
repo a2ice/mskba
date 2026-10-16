@@ -1054,7 +1054,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
     });
 });
 
- // Only one-segment, explicitly published CMS pages. Existing routes win.
- Route::get('/{builderSlug}', [PageBuilderController::class, 'dynamic'])
-     ->where('builderSlug', '[a-z0-9]+(?:-[a-z0-9]+)*')
-     ->name('page-builder.dynamic');
+// Only run after ALL explicit routes (including routes in other files).
+// Laravel prioritizes fallback routes after normal matching.
+Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
+    abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
+    $slug = $request->path();
+    abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
+    return app(PageBuilderController::class)->dynamic($slug, $renderer);
+})->name('page-builder.dynamic');

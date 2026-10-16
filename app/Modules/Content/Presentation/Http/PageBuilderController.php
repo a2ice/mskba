@@ -41,7 +41,7 @@ final class PageBuilderController extends Controller
     {
         $user = auth('web')->user();
         abort_unless($user && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_ACCESS)
-            && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_PAGE_BUILDER_VIEW), 403);
+            && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_BUILDER_VIEW), 403);
         return $this->page($page, $renderer, true)
             ->header('Cache-Control', 'no-store, private')
             ->header('X-Robots-Tag', 'noindex, nofollow');
