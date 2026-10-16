@@ -202,3 +202,22 @@ width=88/92/92/88/55. The highlight layer is hidden on mobile.
 These are initial authoring values, not visual-acceptance guarantees.
 Test 1024, 768, 641, 640, 390 and 360 px in an actual browser before final
 acceptance, especially heading wrapping and vertical spacing.
+
+
+## Retirement of old fixed-layout editor on DEV
+
+The migration \`2026_10_17_002000_convert_dev_legacy_hero_slider_slides_to_layers\`
+preserves the complete pre-conversion draft/published JSON in a
+\`page_builder_revisions\` backup before converting fixed MSKBA slides to
+typed layers. The converter retains titles, CTA, labels, internal URLs, icon
+groups, images (including optional players), animation delays, audience and
+enabled state. A built-in \`indoor\` background preset preserves the historical
+arena image when the legacy slide lacked its own uploaded background.
+
+Once this migration succeeds in staging, the Filament editing form no longer
+offers the \`legacy\` format or displays specialized controls for a "far/near
+player". Existing universal settings remain intact. Backend legacy rendering
+is temporarily retained solely as a rollback/archival compatibility path;
+remove it only after independent browser verification of old slide revisions.
+This guarantees that older revision snapshots remain renderable during recovery.
+No changes to production DB or main branch are permitted.
