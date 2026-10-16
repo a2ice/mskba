@@ -1,5 +1,8 @@
 @import './page-builder-hero-slider.css';
-.mskba-page-builder{width:min(1320px,100%);margin-inline:auto;padding:24px max(16px,2vw)}
+/* The builder is a full-width canvas, not a second layout container.
+   Editors opt into the same .container used by the site header wherever
+   a section needs boxed content; siblings can remain edge-to-edge. */
+.mskba-page-builder{width:100%;min-width:0;padding-block:24px;}
 .mskba-builder-section{display:grid;gap:18px}
 .mskba-builder-preview-note{border:1px solid var(--line,#ddd);padding:10px 16px;border-radius:12px;margin-bottom:24px}
 .mskba-builder-unavailable{color:var(--danger,#a11)}

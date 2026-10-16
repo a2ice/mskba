@@ -24,6 +24,64 @@ final class PageBuilderFeatureTest extends TestCase
         return PageBuilderPage::query()->where('path', '/')->firstOrFail();
     }
 
+    public function test_page_builder_is_a_fluid_canvas_with_explicit_boxed_and_full_width_sections(): void
+    {
+        $seed = $this->home();
+        $this->assertStringStartsWith('<div class="container">', $seed->draft_html);
+        $this->assertStringNotContainsString('1320px', file_get_contents(
+            resource_path('css/page-builder.css'),
+        ));
+        $this->assertStringContainsString('.mskba-page-builder{width:100%', file_get_contents(
+            resource_path('css/page-builder.css'),
+        ));
+
+        $html = '<section class="wide-section"><h1>Вся ширина</h1></section>'
+            .'<div class="container"><h2>По общей сетке шапки</h2></div>';
+        $seed->update(['draft_html' => $html]);
+        $publisher = app(PageBuilderPublisher::class);
+        $publisher->publish($seed);
+
+        $rendered = app(PageBuilderRenderer::class)->render($seed->refresh())['html'];
+        $this->assertStringContainsString('<section class="wide-section">', $rendered);
+        $this->assertStringContainsString('<div class="container">', $rendered);
+        $this->assertStringContainsString('Вся ширина', $rendered);
+        $this->assertStringContainsString('По общей сетке шапки', $rendered);
+    }
+
+    public function test_legacy_boxed_migration_is_idempotent_and_preserves_existing_containers(): void
+    {
+        $legacy = PageBuilderPage::query()->create([
+            'name' => 'До обновления', 'path' => '/legacy',
+            'draft_html' => '<h1>Раньше было ограничено</h1>',
+        ]);
+        $legacy->forceFill([
+            'published_html' => '<h1>Публикация</h1>',
+            'published_path' => '/legacy',
+            'published_at' => now(),
+        ])->save();
+        $already = PageBuilderPage::query()->create([
+            'name' => 'Уже с контейнером', 'path' => '/already-boxed',
+            'draft_html' => '<section class="container"><h2>Ок</h2></section>',
+        ]);
+
+        $migration = require database_path('migrations/2026_10_16_183000_preserve_existing_page_builder_boxed_sections.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame(
+            '<div class="container"><h1>Раньше было ограничено</h1></div>',
+            $legacy->refresh()->draft_html,
+        );
+        $this->assertSame(
+            '<div class="container"><h1>Публикация</h1></div>',
+            $legacy->published_html,
+        );
+        $this->assertSame(
+            '<section class="container"><h2>Ок</h2></section>',
+            $already->refresh()->draft_html,
+        );
+    }
+
     public function test_migration_keeps_current_home_page_until_explicit_publish(): void
     {
         $page = $this->home();
