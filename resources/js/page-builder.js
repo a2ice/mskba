@@ -1,3 +1,5 @@
+import './page-builder-hero-slider.js';
+
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.
 const roots = document.querySelectorAll('[data-mskba-builder-source]');
 
