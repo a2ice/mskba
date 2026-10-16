@@ -28,10 +28,13 @@ Laravel routes. It does NOT replace the legacy welcome page automatically.
   told to publish its components first. Dynamic `games-list` requires an
   allowed source. The preview may still show component drafts.
 - **Preview**: authenticated backoffice route; noindex/no-store.
-- **Routes**: \`/\` uses the builder only after the homepage is published;
-  legacy homepage remains unchanged otherwise. New one-segment URLs
-  e.g. \`/about\` are served only when published. System routes are reserved
-  and existing explicit Laravel routes take precedence.
+- **Routes**: `/` uses the Page Builder once published; its existing legacy
+  fallback remains available. New single-segment paths use the existing CMS
+  fallback. For a matching existing, named, static and public GET/HEAD
+  Laravel route (e.g. `/events`), publication gives CMS the priority.
+  Filament shows the original Laravel name and handler, plus actions to
+  disable/re-enable the CMS override without deployment or rewriting route files.
+  This works with `route:cache`; old named routes are retained.
 - **SEO**: published title, description and route-aware canonical URL.
 - **Design themes**: CSS can reference the existing CSS tokens; builder rules
   are prefixed with \`.mskba-page-builder\` to prevent styling surrounding UI.
@@ -65,9 +68,24 @@ public subset of event and team fields in anonymous responses.
   panels, and embedded Vue/JS modules are separate approved implementation
   increments. Do not allow raw JS code in page records as a shortcut.
 - Component nesting and arbitrary CSS at-rules are intentionally unavailable.
-- Additional system pages and multi-segment CMS routes will need individual
-  route ownership reviews. An explicit existing route always wins.
+- Protected system roots, guarded routes (auth/signed/throttle/permissions),
+  parameterized entity pages and create/edit forms cannot be overridden yet.
+  Later stages use typed components that preserve Laravel business rules.
+- The CMS version of `/events` will not automatically contain its legacy
+  filters or event list: an `events-catalog` component is a separate task.
 - Existing dashboard widgets remain in their separate subsystem until a
   dedicated migration/adapter is designed; do not silently replace them.
 - Keep homepage unpublished until public design and hero-slide layers
   receive explicit approval.
+
+## CMS Route Override — DEV acceptance
+
+1. Save `/events` draft: old `events.index` remains active; Filament displays
+   its Laravel route and `EventController::index`.
+2. Publish: `/events` displays CMS output, canonical and page SEO.
+3. Disable CMS: original Laravel controller is active immediately. Enable CMS:
+   previously published CMS output returns; both actions audited.
+4. Verify `/events/create`, `/events/{event}`, POST `/events`, auth/account/API
+   routes cannot be intercepted.
+5. New `/about-cms` works via fallback; draft edits never change public HTML.
+6. Run route cache, full CI and browser acceptance on DEV; not production.
