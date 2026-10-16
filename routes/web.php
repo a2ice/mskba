@@ -21,6 +21,7 @@ use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatus
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
+use App\Modules\Content\Presentation\Http\PageBuilderController;
 use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
@@ -106,8 +107,18 @@ use Illuminate\Support\Facades\Route;
 $themeResolver = app(ThemeResolver::class);
 
 Route::get('/', function () use ($themeResolver) {
-    return $themeResolver->page('welcome');
+    return app(PageBuilderController::class)->home(app(\App\Modules\Content\Application\Services\PageBuilderRenderer::class))
+        ?? $themeResolver->page('welcome');
 })->name('welcome');
+
+Route::get('/backoffice/page-builder/preview/{page}', [PageBuilderController::class, 'preview'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('page-builder.preview')
+    ->whereNumber('page');
+
+Route::get('/page-builder/data/{source}', [PageBuilderController::class, 'data'])
+    ->middleware('throttle:60,1')->name('page-builder.data')
+    ->where('source', '[a-z_]+');
 
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 
@@ -1042,3 +1053,12 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.venues.schedule.update');
     });
 });
+
+// Only run after ALL explicit routes (including routes in other files).
+// Laravel prioritizes fallback routes after normal matching.
+Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
+    abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
+    $slug = $request->path();
+    abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
+    return app(PageBuilderController::class)->dynamic($slug, $renderer);
+})->name('page-builder.dynamic');

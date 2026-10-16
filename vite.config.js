@@ -11,6 +11,8 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/backoffice-support-chat.js',
+                'resources/css/page-builder.css',
+                'resources/js/page-builder.js',
                 'resources/themes/mskba_dark/css/app.css',
                 'resources/themes/mskba_dark/js/app.js',
                 'resources/themes/mskba_streetball/css/app.css',

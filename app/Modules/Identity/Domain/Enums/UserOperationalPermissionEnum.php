@@ -25,6 +25,9 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_STYLE_MANAGE = 'backoffice.button_style.manage';
     case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
+    case BACKOFFICE_BUILDER_VIEW = 'backoffice.page_builder.view';
+    case BACKOFFICE_BUILDER_EDIT = 'backoffice.page_builder.edit';
+    case BACKOFFICE_BUILDER_PUBLISH = 'backoffice.page_builder.publish';
 
     /** @return list<self> */
     public static function backofficeCases(): array
@@ -39,6 +42,9 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE,
             self::BACKOFFICE_THEME_VIEW,
             self::BACKOFFICE_THEME_MANAGE,
+            self::BACKOFFICE_BUILDER_VIEW,
+            self::BACKOFFICE_BUILDER_EDIT,
+            self::BACKOFFICE_BUILDER_PUBLISH,
         ];
     }
 
@@ -70,6 +76,9 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE => 'Создание, изменение и удаление CSS-классов',
             self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
+            self::BACKOFFICE_BUILDER_VIEW => 'Просмотр страниц, шаблонов и компонентов',
+            self::BACKOFFICE_BUILDER_EDIT => 'Редактирование черновиков конструктора страниц',
+            self::BACKOFFICE_BUILDER_PUBLISH => 'Публикация и восстановление страниц и компонентов',
         };
     }
 

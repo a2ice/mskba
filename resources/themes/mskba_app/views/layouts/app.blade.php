@@ -8,7 +8,8 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         {{-- The Reverb app key is public; secrets never enter the HTML. --}}
         <meta name="mskba-reverb-app-key" content="{{ config('broadcasting.connections.reverb.key') }}">
-        <title>{{ isset($title) ? $title.' · MSKBA' : 'MSKBA' }}</title>
+        <title>{{ isset($metaTitle) && filled($metaTitle) ? $metaTitle : (isset($title) ? $title.' · MSKBA' : 'MSKBA') }}</title>
+        @stack('meta')
         <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
         @vite(['resources/themes/mskba_app/css/app.css', 'resources/themes/mskba_app/js/app.js'])
         <link id="mskba-appearance-css" rel="stylesheet" href="{{ app(\App\Presentation\Theming\DesignThemeManager::class)->cssUrl($appearanceTheme) }}">

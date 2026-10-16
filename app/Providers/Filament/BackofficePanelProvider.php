@@ -6,6 +6,9 @@ use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWi
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
+use App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource;
+use App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource;
+use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
 use App\Filament\Backoffice\Resources\SupportTickets\SupportTicketResource;
 use App\Filament\Backoffice\Resources\OperatorUsers\OperatorUserResource;
 use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
@@ -43,6 +46,9 @@ final class BackofficePanelProvider extends PanelProvider
                 AccountDashboardWidgetResource::class,
                 DashboardButtonStyleResource::class,
                 DesignThemeResource::class,
+                BuilderPageResource::class,
+                BuilderTemplateResource::class,
+                BuilderComponentResource::class,
                 BackofficeUserResource::class,
                 SupportTicketResource::class,
                 OperatorUserResource::class,
