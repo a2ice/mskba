@@ -25,6 +25,9 @@ final class BuilderPlaceholderGuide
                 Text::make('upcoming_games — '.PageBuilderSources::DESCRIPTIONS['upcoming_games']),
                 Text::make('my_games — '.PageBuilderSources::DESCRIPTIONS['my_games']),
                 Text::make('featured_teams — '.PageBuilderSources::DESCRIPTIONS['featured_teams']),
+                Text::make('Верстка: <div class="container">...</div> — тот же ограниченный контейнер, что у шапки сайта (до 1280 px).'),
+                Text::make('Секция во всю ширину: <section class="my-wide-section">...</section> — без обёртки .container.'),
+                Text::make('Можно чередовать boxed- и full-width-секции на одной странице. Внешний .mskba-page-builder ширину не ограничивает.'),
                 Text::make('Сначала опубликуй шаблон и компоненты. Визуальный редактор будет добавлен позже.'),
             ]);
     }
