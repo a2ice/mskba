@@ -57,6 +57,43 @@ final class PageBuilderFeatureTest extends TestCase
         $this->assertStringContainsString('По общей сетке шапки', $rendered);
     }
 
+
+    public function test_page_builder_spacing_utilities_are_scoped_and_preserve_html_classes(): void
+    {
+        $css = file_get_contents(resource_path('css/page-builder-spacing.css'));
+        $this->assertIsString($css);
+        $sizes = ['0', '.25rem', '.5rem', '1rem', '1.5rem', '3rem'];
+        $groups = [
+            'm' => 'margin', 'mt' => 'margin-top', 'mb' => 'margin-bottom',
+            'ms' => 'margin-inline-start', 'me' => 'margin-inline-end',
+            'ml' => 'margin-left', 'mr' => 'margin-right',
+            'mx' => 'margin-inline', 'my' => 'margin-block',
+            'p' => 'padding', 'pt' => 'padding-top', 'pb' => 'padding-bottom',
+            'ps' => 'padding-inline-start', 'pe' => 'padding-inline-end',
+            'pl' => 'padding-left', 'pr' => 'padding-right',
+            'px' => 'padding-inline', 'py' => 'padding-block', 'gap' => 'gap',
+        ];
+        foreach ($groups as $prefix => $property) {
+            foreach ($sizes as $index => $size) {
+                $this->assertStringContainsString(
+                    '.mskba-page-builder .'.$prefix.'-'.$index.'{'.$property.':'.$size.'}',
+                    $css,
+                );
+            }
+        }
+        $this->assertStringContainsString('.mskba-page-builder .mx-auto{margin-inline:auto}', $css);
+        $this->assertStringContainsString(
+            "@import './page-builder-spacing.css';",
+            file_get_contents(resource_path('css/page-builder.css')),
+        );
+
+        $html = app(PageBuilderMarkup::class)->html(
+            '<section class="py-5 px-3"><div class="container mt-2 mb-4">Текст</div></section>',
+        );
+        $this->assertStringContainsString('class="py-5 px-3"', $html);
+        $this->assertStringContainsString('class="container mt-2 mb-4"', $html);
+    }
+
     public function test_legacy_boxed_migration_is_idempotent_and_preserves_existing_containers(): void
     {
         $legacy = PageBuilderPage::query()->create([
