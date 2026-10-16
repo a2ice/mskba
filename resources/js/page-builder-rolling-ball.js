@@ -35,9 +35,6 @@ function initRollingBall(root) {
         frame.style.backgroundImage = `url("${sprite.currentSrc || sprite.src}")`;
         measure();
     };
-    if (sprite.complete) ready();
-    else sprite.addEventListener('load', ready, { once: true });
-
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     svg.append(path);
@@ -99,5 +96,7 @@ function initRollingBall(root) {
     window.addEventListener('scroll', queue, { passive: true });
     window.addEventListener('resize', measure, { passive: true });
     rollingBallReducedMotion.addEventListener?.('change', queue);
+    if (sprite.complete) ready();
+    else sprite.addEventListener('load', ready, { once: true });
 }
 document.querySelectorAll('.mskba-rolling-ball').forEach(initRollingBall);
