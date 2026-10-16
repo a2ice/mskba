@@ -7,12 +7,12 @@
     tabindex="0">
     <div class="mskba-hero-slider__stage">
         @foreach ($slides as $slide)
-            <article class="mskba-hero-slide {{ ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--layers' : '' }} {{ $loop->first ? 'is-active' : '' }}"
+            <article class="mskba-hero-slide {{ ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--layers' : '' }} {{ ($slide['mobile_layout'] ?? 'absolute') === 'flow' && ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--mobile-flow' : '' }} {{ $loop->first ? 'is-active' : '' }}"
                 data-hero-slide data-slide-index="{{ $loop->index }}"
                 aria-label="{{ $slide['name'] ?? ('Слайд '.$loop->iteration) }} · {{ $loop->iteration }} из {{ count($slides) }}"
                 aria-roledescription="слайд"
                 @unless($loop->first) hidden inert aria-hidden="true" @endunless
-                style="--far-x:{{ $slide['far_x'] ?? 45 }}%;--near-x:{{ $slide['near_x'] ?? 72 }}%;--far-width:{{ $slide['far_width'] ?? 18 }}%;--near-width:{{ $slide['near_width'] ?? 34 }}%;--far-mobile-x:{{ $slide['far_mobile_x'] ?? 22 }}%;--near-mobile-x:{{ $slide['near_mobile_x'] ?? 75 }}%;--background-delay:{{ $slide['delay_background_ms'] ?? 0 }}ms;--far-delay:{{ $slide['delay_far_ms'] ?? 240 }}ms;--near-delay:{{ $slide['delay_near_ms'] ?? 460 }}ms;--copy-delay:{{ $slide['delay_copy_ms'] ?? 440 }}ms;--highlights-delay:{{ $slide['delay_highlights_ms'] ?? 1050 }}ms;--cta-delay:{{ $slide['delay_cta_ms'] ?? 1450 }}ms">
+                style="--mobile-padding-top:{{ $slide['mobile_padding_top'] ?? 38 }}px;--mobile-padding-bottom:{{ $slide['mobile_padding_bottom'] ?? 76 }}px;--mobile-min-height:{{ $slide['mobile_min_height'] ?? 470 }}px;--far-x:{{ $slide['far_x'] ?? 45 }}%;--near-x:{{ $slide['near_x'] ?? 72 }}%;--far-width:{{ $slide['far_width'] ?? 18 }}%;--near-width:{{ $slide['near_width'] ?? 34 }}%;--far-mobile-x:{{ $slide['far_mobile_x'] ?? 22 }}%;--near-mobile-x:{{ $slide['near_mobile_x'] ?? 75 }}%;--background-delay:{{ $slide['delay_background_ms'] ?? 0 }}ms;--far-delay:{{ $slide['delay_far_ms'] ?? 240 }}ms;--near-delay:{{ $slide['delay_near_ms'] ?? 460 }}ms;--copy-delay:{{ $slide['delay_copy_ms'] ?? 440 }}ms;--highlights-delay:{{ $slide['delay_highlights_ms'] ?? 1050 }}ms;--cta-delay:{{ $slide['delay_cta_ms'] ?? 1450 }}ms">
                 @if (($slide['layout'] ?? 'legacy') === 'layers')
                     @include('page-builder.components.hero-slider-slide-layers', ['slide' => $slide, 'firstVisible' => $loop->first])
                 @else

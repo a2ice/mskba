@@ -35,6 +35,10 @@ final class HeroSliderComponent
                     ?? (($slide['background_preset'] ?? null) === 'indoor' ? asset('images/bg-indoor.png') : null);
                 $slide['background_mobile_url'] = $this->mediaUrl($slide['background_image_mobile'] ?? null);
                 $slide['delay_background_ms'] = (int) ($slide['delay_background_ms'] ?? 0);
+                $slide['mobile_layout'] = $slide['mobile_layout'] ?? 'absolute';
+                $slide['mobile_padding_top'] = (int) ($slide['mobile_padding_top'] ?? 38);
+                $slide['mobile_padding_bottom'] = (int) ($slide['mobile_padding_bottom'] ?? 76);
+                $slide['mobile_min_height'] = (int) ($slide['mobile_min_height'] ?? 470);
                 $slide['elements'] = array_map(function (array $element): array {
                     $element['image_url'] = $this->mediaUrl($element['image'] ?? null);
                     if (($element['type'] ?? '') === 'links') {
@@ -58,6 +62,15 @@ final class HeroSliderComponent
                     $element['delay_ms'] = (int) ($element['delay_ms'] ?? 0);
                     $element['duration_ms'] = (int) ($element['duration_ms'] ?? 700);
                     $element['z_index'] = (int) ($element['z_index'] ?? 4);
+                    // Flow is opt-in per slide. Within flow layouts, images
+                    // overlay by default; link rails are hidden on phones.
+                    $element['mobile_placement'] = $element['mobile_placement'] ??
+                        match ($element['type']) {
+                            'image' => 'overlay',
+                            'links' => 'hidden',
+                            default => 'flow',
+                        };
+                    $element['mobile_gap'] = (int) ($element['mobile_gap'] ?? 12);
 
                     return $element;
                 }, $slide['elements']);

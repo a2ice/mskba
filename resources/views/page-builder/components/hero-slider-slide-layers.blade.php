@@ -21,11 +21,13 @@
             .'--layer-tablet-width:'.$element['tablet_width'].'%;'
             .'--layer-mobile-x:'.$element['mobile_x'].'%;--layer-mobile-y:'.$element['mobile_y'].'%;'
             .'--layer-mobile-width:'.$element['mobile_width'].'%;--layer-z:'.$element['z_index'].';'
+            .'--layer-mobile-gap:'.$element['mobile_gap'].'px;'
             .'--layer-delay:'.$element['delay_ms'].'ms;--layer-duration:'.$element['duration_ms'].'ms;';
         $motion = $element['animation'] ?? 'fade';
     @endphp
     <div class="mskba-hero-slide__layer mskba-hero-slide__layer--{{ $kind }} {{ $class }}"
         data-motion="{{ $motion }}" data-layer-name="{{ $element['name'] }}"
+        data-mobile-placement="{{ $element['mobile_placement'] }}"
         style="{{ $style }}text-align:{{ $element['align'] ?? 'left' }};">
         @switch($kind)
             @case('heading')

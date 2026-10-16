@@ -313,3 +313,48 @@
 @container mskba-hero (max-width:640px) {
     .mskba-page-builder .mskba-hero-slide--layers .slider-player {bottom:10%;top:auto;}
 }
+
+/* Universal responsive composition: opt-in mobile flow.
+   Normal HTML flow keeps vertical spacing stable regardless of slide height,
+   font wrapping, or browser zoom. No absolute Y coordinates for flow items. */
+@container mskba-hero (max-width:640px) {
+    .mskba-hero-slider__stage:has(> .mskba-hero-slide--mobile-flow.is-active) {
+        height:auto;
+        min-height:0;
+    }
+    .mskba-hero-slide--mobile-flow.is-active {
+        position:relative;
+        inset:auto;
+        display:flex;
+        flex-direction:column;
+        align-items:flex-start;
+        box-sizing:border-box;
+        min-height:var(--mobile-min-height,470px);
+        padding:var(--mobile-padding-top,38px) 6% var(--mobile-padding-bottom,76px);
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="flow"] {
+        position:relative;
+        inset:auto;
+        flex:0 0 auto;
+        max-height:none;
+        margin:var(--layer-mobile-gap,12px) 0 0;
+        width:min(100%,var(--layer-mobile-width,100%));
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="overlay"] {
+        position:absolute;
+        left:var(--layer-mobile-x,6%);
+        top:var(--layer-mobile-y,20%);
+        width:var(--layer-mobile-width,88%);
+        margin:0;
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="hidden"] {
+        display:none!important;
+    }
+    /* Generic link groups may participate in the flow when explicitly selected. */
+    .mskba-page-builder .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer--links[data-mobile-placement="flow"] {
+        display:block;
+    }
+    .mskba-hero-slider__stage:has(> .mskba-hero-slide--mobile-flow.is-active) ~ .mskba-hero-slider__pagination {
+        bottom:22px;
+    }
+}

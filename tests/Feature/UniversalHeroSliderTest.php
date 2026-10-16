@@ -108,6 +108,75 @@ final class UniversalHeroSliderTest extends TestCase
         }
     }
 
+
+    public function test_flow_mobile_layout_renders_independent_gaps_and_placement(): void
+    {
+        $slide = $this->slide('Mobile flow');
+        $slide['mobile_layout'] = 'flow';
+        $slide['mobile_padding_top'] = 38;
+        $slide['mobile_padding_bottom'] = 76;
+        $slide['mobile_min_height'] = 470;
+        $slide['elements'][0]['mobile_placement'] = 'flow';
+        $slide['elements'][0]['mobile_gap'] = 0;
+        $slide['elements'][1]['mobile_placement'] = 'flow';
+        $slide['elements'][1]['mobile_gap'] = 24;
+        $slide['elements'][] = [
+            'type' => 'image', 'name' => 'Overlay', 'image' => 'page-builder/hero/test.webp',
+            'mobile_placement' => 'overlay', 'mobile_x' => 72, 'mobile_y' => 52,
+            'mobile_width' => 27,
+        ];
+        $slide['elements'][] = [
+            'type' => 'links', 'name' => 'Hidden links',
+            'mobile_placement' => 'hidden',
+            'links' => [['label' => 'Площадки', 'url' => '/venues', 'icon' => 'court']],
+        ];
+        HeroSliderSettings::validate([$slide], []);
+        $html = $this->render([$slide]);
+        $this->assertStringContainsString('mskba-hero-slide--mobile-flow', $html);
+        $this->assertStringContainsString('--mobile-padding-top:38px;--mobile-padding-bottom:76px;--mobile-min-height:470px;', $html);
+        $this->assertStringContainsString('data-mobile-placement="flow"', $html);
+        $this->assertStringContainsString('data-mobile-placement="overlay"', $html);
+        $this->assertStringContainsString('data-mobile-placement="hidden"', $html);
+        $this->assertStringContainsString('--layer-mobile-gap:24px', $html);
+        $this->assertStringContainsString('--layer-tablet-x:', $html);
+    }
+
+    public function test_mobile_flow_settings_are_validated_and_existing_slides_default_to_absolute(): void
+    {
+        $legacyUniversal = $this->slide('Untouched');
+        $html = $this->render([$legacyUniversal]);
+        $this->assertStringNotContainsString('mskba-hero-slide--mobile-flow', $html);
+
+        foreach ([
+            ['mobile_layout', 'javascript'],
+            ['mobile_padding_top', 500],
+            ['mobile_padding_bottom', -1],
+            ['mobile_min_height', 200],
+        ] as [$key, $value]) {
+            $candidate = $legacyUniversal;
+            $candidate[$key] = $value;
+            try {
+                HeroSliderSettings::validate([$candidate], []);
+                $this->fail('Unexpected valid setting '.$key);
+            } catch (ValidationException) {
+                // Expected.
+            }
+        }
+        foreach ([
+            ['mobile_placement', 'script'],
+            ['mobile_gap', 121],
+        ] as [$key, $value]) {
+            $candidate = $legacyUniversal;
+            $candidate['elements'][0][$key] = $value;
+            try {
+                HeroSliderSettings::validate([$candidate], []);
+                $this->fail('Unexpected valid layer setting '.$key);
+            } catch (ValidationException) {
+                // Expected.
+            }
+        }
+    }
+
     public function test_server_filters_guest_confirmation_and_role_before_output(): void
     {
         $slides = [

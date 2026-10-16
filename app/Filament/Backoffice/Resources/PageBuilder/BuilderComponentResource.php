@@ -76,6 +76,13 @@ final class BuilderComponentResource extends Resource
                                 TextInput::make('name')->label('Название слайда (для админки)')->maxLength(90),
                                 Toggle::make('enabled')->label('Слайд включён')->default(true),
                                 Hidden::make('layout')->default('layers'),
+                                Select::make('mobile_layout')->label('Компоновка Mobile')
+                                    ->native(false)->live()
+                                    ->options([
+                                        'absolute' => 'Свободная — координаты X/Y',
+                                        'flow' => 'Последовательная — без пустот между элементами',
+                                    ])->default('absolute')->required()
+                                    ->helperText('Для текстовых слайдов выбирай последовательную: высота подстраивается под содержимое. Desktop и Tablet не меняются.'),
                             ]),
                             Section::make('Кому показывать слайд')
                                 ->description('Условия проверяются сервером до выдачи HTML. Неавторизованные и неподходящие пользователи не получают скрытые слайды.')
@@ -125,6 +132,19 @@ final class BuilderComponentResource extends Resource
                                         Select::make('background_effect')->label('Появление фона')->native(false)
                                             ->options(self::animationOptions())->default('fade'),
                                     ]),
+                                    Section::make('Компоновка Mobile · отступы и высота')
+                                        ->description('Применяется только в последовательном режиме: элементы идут по порядку, с заданными отступами в пикселях.')
+                                        ->visible(fn (Get $get): bool => $get('mobile_layout') === 'flow')
+                                        ->collapsible()->collapsed()->columns(3)
+                                        ->schema([
+                                            TextInput::make('mobile_padding_top')->label('Отступ сверху, px')
+                                                ->numeric()->minValue(12)->maxValue(120)->default(38),
+                                            TextInput::make('mobile_padding_bottom')->label('Отступ снизу, px')
+                                                ->numeric()->minValue(48)->maxValue(160)->default(76),
+                                            TextInput::make('mobile_min_height')->label('Минимальная высота, px')
+                                                ->numeric()->minValue(360)->maxValue(780)->default(470)
+                                                ->helperText('Если текста больше, слайдер вырастет автоматически.'),
+                                        ]),
                                     Repeater::make('elements')->label('Элементы слайда')
                                         ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null) ?: ($state['type'] ?? 'Новый элемент'))
                                         ->reorderable()->cloneable()->collapsible()
@@ -198,6 +218,16 @@ final class BuilderComponentResource extends Resource
                                                 TextInput::make('mobile_x')->label('Mobile X, %')->numeric()->minValue(0)->maxValue(100)->default(6),
                                                 TextInput::make('mobile_y')->label('Mobile Y, %')->numeric()->minValue(0)->maxValue(100)->default(20),
                                                 TextInput::make('mobile_width')->label('Mobile ширина, %')->numeric()->minValue(5)->maxValue(100)->default(88),
+                                                Select::make('mobile_placement')->label('Mobile · расположение')
+                                                    ->native(false)->options([
+                                                        'flow' => 'В потоке — после предыдущего элемента',
+                                                        'overlay' => 'Наложение — по координатам X/Y',
+                                                        'hidden' => 'Скрыть на mobile',
+                                                    ])->helperText('В последовательной компоновке X/Y работают только для наложения.'),
+                                                TextInput::make('mobile_gap')->label('Mobile · отступ перед, px')
+                                                    ->numeric()->minValue(0)->maxValue(120)
+                                                    ->helperText('Работает в последовательном режиме только для элементов в потоке.'),
+
                                                 TextInput::make('z_index')->label('Слой Z (2–7)')->numeric()->minValue(2)->maxValue(7)->default(4),
                                                 Select::make('align')->label('Выравнивание')->native(false)->options([
                                                     'left' => 'Слева', 'center' => 'По центру', 'right' => 'Справа',

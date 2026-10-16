@@ -221,3 +221,30 @@ is temporarily retained solely as a rollback/archival compatibility path;
 remove it only after independent browser verification of old slide revisions.
 This guarantees that older revision snapshots remain renderable during recovery.
 No changes to production DB or main branch are permitted.
+
+### Mobile composition: sequential layout (opt-in)
+
+Universal slide JSON supports `mobile_layout: "flow" | "absolute"`. Default is
+`absolute` for existing content to preserve published layouts. In flow mode,
+the **active** slide grows with natural content height and has configurable
+`mobile_padding_top` (12–120 px), `mobile_padding_bottom` (48–160 px), and
+`mobile_min_height` (360–780 px). The hero keeps its responsive background
+and overlay layer support. With fewer/more text lines, gaps remain stable.
+
+Each element has `mobile_placement`: `flow` (content sequence),
+`overlay` (coordinate-based decoration), `hidden`. If omitted, text,
+heading and button default to flow, images to overlay, links to hidden.
+`mobile_gap` is the margin *before* that flow element in pixels (0–120).
+Slide order in the Filament Repeater is also mobile reading order.
+Absolute coordinates for desktop/tablet and their appearance are unchanged.
+
+Mobile stage height is calculated from the currently active flow slide via
+`:has()` container-relative CSS; pagination stays inside the slide bottom
+padding, and reduced-motion preferences still apply to each layer.
+Legacy and existing absolute mobile layouts keep their previous sizing.
+
+The one-off guarded DEV migration enables flow only on the unique authored
+MSKBA slide containing the five `slider-*` text/button presets, adding
+small explicit gaps to its existing JSON layers. It archives draft and
+published snapshots and leaves desktop/tablet, other slides and production
+untouched.
