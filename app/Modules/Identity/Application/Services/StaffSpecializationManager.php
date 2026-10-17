@@ -25,7 +25,7 @@ final class StaffSpecializationManager
     }
 
     /** @param list<int|string> $ids */
-    public function sync(User $actor, User $target, array $ids): void
+    public function sync(User $actor, User $target, array $ids, ?string $staffTitle = null): void
     {
         if (! $this->mayManage($actor, $target)) {
             throw new AuthorizationException('Недостаточно прав на назначение специализаций.');
@@ -41,7 +41,11 @@ final class StaffSpecializationManager
             throw ValidationException::withMessages(['specialization_ids' => 'Специализации не должны повторяться.']);
         }
 
-        DB::transaction(function () use ($actor, $target, $values): void {
+        if ($staffTitle !== null && mb_strlen(trim($staffTitle)) > 120) {
+            throw ValidationException::withMessages(['staff_title' => 'Название должности слишком длинное.']);
+        }
+
+        DB::transaction(function () use ($actor, $target, $values, $staffTitle): void {
             $lockedActor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
             $lockedTarget = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
             if (! $this->mayManage($lockedActor, $lockedTarget)) {
@@ -72,6 +76,9 @@ final class StaffSpecializationManager
             }
 
             $lockedTarget->managerSpecializations()->sync($values);
+            if ($staffTitle !== null) {
+                $lockedTarget->forceFill(['staff_title' => trim($staffTitle) ?: null])->save();
+            }
         });
     }
 }

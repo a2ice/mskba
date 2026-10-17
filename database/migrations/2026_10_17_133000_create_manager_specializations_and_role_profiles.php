@@ -9,6 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::table('users', function (Blueprint $table): void {
+            $table->string('staff_title', 120)->nullable();
+        });
         // PostgreSQL's users_system_role_check was generated from the old enum.
         if (DB::getDriverName() === 'pgsql') {
             DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_system_role_check');
@@ -81,6 +84,9 @@ return new class extends Migration
         Schema::dropIfExists('manager_specialization_user');
         Schema::dropIfExists('manager_specializations');
         Schema::dropIfExists('system_role_permission_profiles');
+        Schema::table('users', function (Blueprint $table): void {
+            $table->dropColumn('staff_title');
+        });
 
         if (DB::getDriverName() === 'pgsql') {
             DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_system_role_check');

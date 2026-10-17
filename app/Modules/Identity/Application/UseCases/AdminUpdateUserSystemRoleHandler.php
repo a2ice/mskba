@@ -46,6 +46,7 @@ final class AdminUpdateUserSystemRoleHandler
             if ($target->system_role === UserSystemRoleEnum::MANAGER && $role !== UserSystemRoleEnum::MANAGER) {
                 // Stale specialist grants must not reactivate upon a later promotion.
                 $target->managerSpecializations()->detach();
+                $target->forceFill(['staff_title' => null])->save();
             }
             $target->update(['system_role' => $role]);
             $hasProfileReview = $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);

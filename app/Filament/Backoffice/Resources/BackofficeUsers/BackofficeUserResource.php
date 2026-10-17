@@ -240,6 +240,7 @@ final class BackofficeUserResource extends Resource
             TextColumn::make('username')->label('Пользователь')->searchable()->sortable()->weight('bold'),
             TextColumn::make('system_role')->label('Системная роль')
                 ->badge()->formatStateUsing(fn ($record): string => $record->system_role->label()),
+            TextColumn::make('staff_title')->label('Должность')->placeholder('—'),
             TextColumn::make('status')->label('Статус')
                 ->badge()->formatStateUsing(fn ($record): string => $record->status->label()),
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),

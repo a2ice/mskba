@@ -8,6 +8,7 @@ use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager
 use App\Modules\Identity\Application\Services\StaffSpecializationManager;
 use App\Modules\Identity\Domain\Models\ManagerSpecialization;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\TextInput;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -102,10 +103,12 @@ final class EditBackofficeUser extends EditRecord
                 ->modalHeading('Специализации менеджера')
                 ->modalDescription('Можно выбрать несколько профилей. Каждый добавляет фиксированные права, управляемые суперадминистратором.')
                 ->fillForm(fn (): array => [
+                    'staff_title' => $this->getRecord()->staff_title,
                     'specialization_ids' => $this->getRecord()->managerSpecializations()
                         ->pluck('manager_specializations.id')->map(fn ($id): string => (string) $id)->all(),
                 ])
                 ->schema([
+                    TextInput::make('staff_title')->label('Отображаемая должность (не влияет на права)')->maxLength(120),
                     CheckboxList::make('specialization_ids')
                         ->label('Функциональные специализации')
                         ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
@@ -118,7 +121,7 @@ final class EditBackofficeUser extends EditRecord
                     if (! is_array($ids)) {
                         throw ValidationException::withMessages(['specialization_ids' => 'Неверный список специализаций.']);
                     }
-                    app(StaffSpecializationManager::class)->sync($actor, $this->getRecord(), $ids);
+                    app(StaffSpecializationManager::class)->sync($actor, $this->getRecord(), $ids, (string) ($data['staff_title'] ?? ''));
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
         ];
