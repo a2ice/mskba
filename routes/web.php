@@ -22,6 +22,7 @@ use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Content\Presentation\Http\PageBuilderController;
+use App\Modules\Content\Presentation\Http\PageBuilderScriptController;
 use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
@@ -115,6 +116,17 @@ Route::get('/backoffice/page-builder/preview/{page}', [PageBuilderController::cl
     ->middleware(['auth', 'throttle:30,1'])
     ->name('page-builder.preview')
     ->whereNumber('page');
+
+// Isolated JS preview is authenticated and sandboxed by response CSP.
+// The published route accepts only the current enabled content hash.
+Route::get('/backoffice/page-builder/js-preview/{type}/{id}', [PageBuilderScriptController::class, 'preview'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('page-builder.js-preview')
+    ->where(['type' => 'page|template|component', 'id' => '[0-9]+']);
+Route::get('/page-builder/scripts/{type}/{id}/{hash}.js', [PageBuilderScriptController::class, 'show'])
+    ->middleware('throttle:120,1')
+    ->name('page-builder.script')
+    ->where(['type' => 'page|template|component', 'id' => '[0-9]+', 'hash' => '[a-f0-9]{64}']);
 
 Route::get('/page-builder/data/{source}', [PageBuilderController::class, 'data'])
     ->middleware('throttle:60,1')->name('page-builder.data')
