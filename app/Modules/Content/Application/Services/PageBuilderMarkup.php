@@ -48,60 +48,75 @@ final class PageBuilderMarkup
         return $this->html->sanitize($html);
     }
 
-    /** Restrict selectors to the builder root and allow only inert declarations. */
+    /**
+     * Preserve standard CSS properties, selectors, nesting, media/container
+     * queries, keyframes and custom properties. Browser parsing is the source
+     * of truth for declaration validity, not a hand-maintained allowlist.
+     *
+     * @scope keeps editor CSS inside the Page Builder canvas; preventing
+     * unmatched braces is essential to stop authored rules escaping it.
+     * Reject raw HTML tag termination while the CSS is emitted in <style>.
+     */
     public function css(?string $css): string
     {
         $css = trim((string) $css);
         if ($css === '') {
             return '';
         }
-        if (strlen($css) > 15_000 || preg_match('~[@{}<>\\\\]|url\s*\(|expression\s*\(|(?:javascript|data|behavior|binding)\s*:|/\*~i', str_replace(['{', '}'], '', $css))) {
-            throw ValidationException::withMessages(['draft_css' => 'Запрещены импорты, URL, скрипты и глобальные CSS-правила.']);
-        }
-        // Explicitly parse a subset of CSS: selectors plus ordinary properties.
-        preg_match_all('/([^{}]+)\{([^{}]*)\}/s', $css, $blocks, PREG_SET_ORDER);
-        if ($blocks === [] || trim(preg_replace('/[^{}]+\{[^{}]*\}/s', '', $css)) !== '') {
-            throw ValidationException::withMessages(['draft_css' => 'Используй простые CSS-правила selector { property: value; }.']);
+        if (strlen($css) > 100_000
+            || preg_match('~</\s*style\b|<\s*script\b|<\?php|<!--|-->~i', $css)
+            || preg_match('~@(?:import|charset|namespace)\b|expression\s*\(|-moz-binding\b|(?:javascript|data)\s*:~i', $css)) {
+            throw ValidationException::withMessages([
+                'draft_css' => 'Запрещены исполняемые конструкции, @import и выход CSS за пределы редактора.',
+            ]);
         }
 
-        $allowed = ['color','background','background-color','border','border-color','border-radius',
-            'box-shadow','display','gap','row-gap','column-gap','padding','padding-top','padding-bottom',
-            'padding-left','padding-right','margin','margin-top','margin-bottom','margin-left','margin-right',
-            'font-size','font-weight','font-family','line-height','letter-spacing','text-align',
-            'width','max-width','min-width','height','min-height','object-fit','overflow',
-            'align-items','justify-content','grid-template-columns','flex-direction','flex-wrap','opacity'];
-        $output = [];
-        foreach ($blocks as $block) {
-            $selectors = array_map('trim', explode(',', trim($block[1])));
-            if (count($selectors) > 8) {
-                throw ValidationException::withMessages(['draft_css' => 'Слишком много селекторов в одном правиле.']);
+        // Balanced braces must be checked while ignoring quoted strings and
+        // comments. Otherwise a stray } can escape the page-only @scope.
+        $depth = 0;
+        $quote = null;
+        $comment = false;
+        $length = strlen($css);
+        for ($index = 0; $index < $length; $index++) {
+            $char = $css[$index];
+            $next = $css[$index + 1] ?? '';
+            if ($comment) {
+                if ($char === '*' && $next === '/') {
+                    $comment = false;
+                    $index++;
+                }
+                continue;
             }
-            foreach ($selectors as $selector) {
-                if (in_array(strtolower($selector), ['html', 'body', 'head', ':root'], true)) {
-                    throw ValidationException::withMessages(['draft_css' => 'Глобальные селекторы запрещены.']);
+            if ($quote !== null) {
+                if ($char === '\\') {
+                    $index++;
+                } elseif ($char === $quote) {
+                    $quote = null;
                 }
-                if (! preg_match('/\A(?:[.#]?[a-zA-Z][a-zA-Z0-9_-]*(?::(?:hover|focus-visible|active))?)(?:\s+[.#]?[a-zA-Z][a-zA-Z0-9_-]*)*\z/D', $selector)) {
-                    throw ValidationException::withMessages(['draft_css' => 'Разрешены только локальные классы, идентификаторы и простые селекторы.']);
-                }
+                continue;
             }
-            $declarations = [];
-            foreach (explode(';', $block[2]) as $declaration) {
-                if (trim($declaration) === '') {
-                    continue;
+            if ($char === '/' && $next === '*') {
+                $comment = true;
+                $index++;
+            } elseif ($char === '"' || $char === "'") {
+                $quote = $char;
+            } elseif ($char === '{') {
+                $depth++;
+            } elseif ($char === '}') {
+                $depth--;
+                if ($depth < 0) {
+                    break;
                 }
-                if (! preg_match('/\A\s*([a-z-]+)\s*:\s*(.*?)\s*\z/sD', $declaration, $parts)
-                    || ! in_array($parts[1], $allowed, true)
-                    || ! preg_match('/\A[a-zA-Z0-9#.,% ()_+\-*\/]+\z/D', $parts[2])
-                    || preg_match('/url\s*\(|expression\s*\(|javascript|data:|behavior|binding|\/\*/i', $parts[2])) {
-                    throw ValidationException::withMessages(['draft_css' => 'Недопустимое CSS-свойство или значение.']);
-                }
-                $declarations[] = $parts[1].': '.$parts[2];
-            }
-            if ($declarations !== []) {
-                $output[] = implode(', ', array_map(fn (string $x): string => '.mskba-page-builder '.$x, $selectors))
-                    .' { '.implode('; ', $declarations).'; }';
             }
         }
-        return implode("\n", $output);
+        if ($depth !== 0 || $quote !== null || $comment) {
+            throw ValidationException::withMessages([
+                'draft_css' => 'Проверь закрывающие скобки, кавычки и комментарии в CSS.',
+            ]);
+        }
+
+        // Native CSS scoping supports modern nested @media/@container and
+        // pseudo-selectors without rewriting author-controlled declarations.
+        return "@scope (.mskba-page-builder) {\n".$css."\n}";
     }
 }
