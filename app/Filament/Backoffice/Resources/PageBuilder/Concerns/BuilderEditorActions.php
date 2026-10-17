@@ -168,6 +168,7 @@ trait BuilderEditorActions
                     $revision = PageBuilderRevision::query()->where('entity_type', PageBuilderPublisher::type($this->record))
                         ->where('entity_id', $this->record->getKey())->where('action', 'publish')
                         ->findOrFail((int) $data['revision_id']);
+                    $resource = static::getResource();
                     if (! $resource::canEditCss()
                         && trim((string) ($revision->snapshot['draft_css'] ?? '')) !== trim((string) $this->record->draft_css)) {
                         abort(403, 'Нет прав на восстановление CSS конструктора.');
