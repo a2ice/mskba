@@ -12,6 +12,7 @@ final class UserSystemRoleAvatarBadgeTest extends TestCase
         $expected = [
             'superadmin' => '#7c3aed',
             'admin' => '#c2410c',
+            'manager' => '#0f766e',
             'moderator' => '#1d4ed8',
             'editor' => '#0f766e',
         ];
