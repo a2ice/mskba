@@ -64,7 +64,7 @@ final class BuilderPageResource extends Resource
                             ->required()->columnSpanFull(),
                         CodeEditor::make('draft_css')->label('CSS (локальный)')->language(Language::Css)
                             ->columnSpanFull()
-                            ->helperText('Без JS, @import, URL и глобальных CSS-селекторов. Селекторы ограничены рамкой страницы.'),
+                            ->helperText('Полный CSS: свойства, псевдоклассы, @media, @container, @keyframes. Автоматически ограничен содержимым Page Builder. Запрещены @import и исполняемый HTML/JS.'),
                     ])->columnSpanFull(),
                     BuilderPlaceholderGuide::panel()->collapsible()->columnSpanFull(),
                 ]),
