@@ -5,6 +5,9 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\StaffSpecializationManager;
+use App\Modules\Identity\Domain\Models\ManagerSpecialization;
+use Filament\Forms\Components\CheckboxList;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -52,6 +55,8 @@ final class EditBackofficeUser extends EditRecord
                                 // accidentally through the human user editor.
                                 if ($role !== UserSystemRoleEnum::SUPERADMIN
                                     && $role !== UserSystemRoleEnum::SYSTEM
+                                    && $role !== UserSystemRoleEnum::MODERATOR
+                                    && $role !== UserSystemRoleEnum::EDITOR
                                     && $role->numericValue() < $actorRole->numericValue()) {
                                     $roles[$role->value] = $role->label();
                                 }
@@ -72,6 +77,8 @@ final class EditBackofficeUser extends EditRecord
                         || in_array($role, [
                             UserSystemRoleEnum::SUPERADMIN,
                             UserSystemRoleEnum::SYSTEM,
+                            UserSystemRoleEnum::MODERATOR,
+                            UserSystemRoleEnum::EDITOR,
                         ], true)
                         || $role->numericValue() >= $actor->system_role->numericValue()) {
                         throw ValidationException::withMessages([
@@ -86,6 +93,33 @@ final class EditBackofficeUser extends EditRecord
 
                     // Reload effective defaults after changing the user's role.
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $target]));
+                }),
+            Action::make('assignSpecializations')
+                ->label('Назначить специализации')
+                ->icon('heroicon-o-identification')
+                ->visible(fn (): bool => auth('web')->user() !== null
+                    && app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $this->getRecord()))
+                ->modalHeading('Специализации менеджера')
+                ->modalDescription('Можно выбрать несколько профилей. Каждый добавляет фиксированные права, управляемые суперадминистратором.')
+                ->fillForm(fn (): array => [
+                    'specialization_ids' => $this->getRecord()->managerSpecializations()
+                        ->pluck('manager_specializations.id')->map(fn ($id): string => (string) $id)->all(),
+                ])
+                ->schema([
+                    CheckboxList::make('specialization_ids')
+                        ->label('Функциональные специализации')
+                        ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
+                        ->columns(2),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $ids = $data['specialization_ids'] ?? [];
+                    if (! is_array($ids)) {
+                        throw ValidationException::withMessages(['specialization_ids' => 'Неверный список специализаций.']);
+                    }
+                    app(StaffSpecializationManager::class)->sync($actor, $this->getRecord(), $ids);
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
         ];
     }

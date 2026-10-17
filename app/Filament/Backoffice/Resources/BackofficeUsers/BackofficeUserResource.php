@@ -102,6 +102,7 @@ final class BackofficeUserResource extends Resource
         }
         if ($role === UserSystemRoleEnum::ADMIN) {
             return $query->whereIn('system_role', [
+                UserSystemRoleEnum::MANAGER->value,
                 UserSystemRoleEnum::MODERATOR->value,
                 UserSystemRoleEnum::EDITOR->value,
                 UserSystemRoleEnum::USER->value,
@@ -136,6 +137,19 @@ final class BackofficeUserResource extends Resource
                                     Placeholder::make('current_system_role')
                                         ->label('Текущая системная роль')
                                         ->content(fn (?User $record): string => $record?->system_role->label() ?? '—'),
+                                ]),
+                        ]),
+                    Tab::make('Специализации')
+                        ->icon('heroicon-o-identification')
+                        ->schema([
+                            Section::make('Специализации менеджера')
+                                ->description('Назначаются одновременно; изменение общего профиля действует на всех менеджеров с этой специализацией.')
+                                ->schema([
+                                    Placeholder::make('manager_specialization_summary')
+                                        ->label('Активные специализации')
+                                        ->content(fn (?User $record): string => $record?->system_role === UserSystemRoleEnum::MANAGER
+                                            ? ($record->managerSpecializations()->pluck('name')->implode(' · ') ?: 'Не назначены')
+                                            : 'Специализации доступны только системной роли Manager.'),
                                 ]),
                         ]),
                     Tab::make('Глобальные права')

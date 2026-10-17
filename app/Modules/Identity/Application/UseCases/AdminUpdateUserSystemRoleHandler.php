@@ -43,6 +43,10 @@ final class AdminUpdateUserSystemRoleHandler
 
             $hadSupport = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS);
             $hadProfileReview = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
+            if ($target->system_role === UserSystemRoleEnum::MANAGER && $role !== UserSystemRoleEnum::MANAGER) {
+                // Stale specialist grants must not reactivate upon a later promotion.
+                $target->managerSpecializations()->detach();
+            }
             $target->update(['system_role' => $role]);
             $hasProfileReview = $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
             if (! $hadSupport && $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)) {
@@ -79,6 +83,8 @@ final class AdminUpdateUserSystemRoleHandler
             || ! $actorRole->atLeast(UserSystemRoleEnum::ADMIN)
             || $actor->id === $target->id
             || $actorRole->numericValue() <= $target->system_role->numericValue()
+            || in_array($role, [UserSystemRoleEnum::SYSTEM, UserSystemRoleEnum::SUPERADMIN,
+                UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR], true)
             || $role->numericValue() >= $actorRole->numericValue()
             || ! $this->permissionChecker->allows($actor, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES)
         ) {
