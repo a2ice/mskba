@@ -83,7 +83,12 @@ final class StaffPermissionProfiles
             return true;
         }
 
-        if ($role === Role::MANAGER || in_array($role, [Role::MODERATOR, Role::EDITOR], true)) {
+        if (in_array($role, [Role::MODERATOR, Role::EDITOR], true)) {
+            // Legacy records remain compatible until their data migration.
+            return true;
+        }
+
+        if ($role === Role::MANAGER) {
             return in_array($permission, [
                 Permission::CONTENT_MANAGE,
                 Permission::CREATE_COORDINATION, Permission::CREATE_TEAM,
@@ -92,6 +97,8 @@ final class StaffPermissionProfiles
                 Permission::OPERATOR_PRESENCE_VIEW, Permission::OPERATOR_SESSION_HISTORY_VIEW,
                 Permission::OPERATOR_CONVERSATION_HANDLE, Permission::OPERATOR_MARKETING_SEND,
                 Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW,
+                Permission::BACKOFFICE_WIDGET_CREATE, Permission::BACKOFFICE_WIDGET_EDIT,
+                Permission::BACKOFFICE_STYLE_MANAGE,
                 Permission::BACKOFFICE_STYLE_VIEW, Permission::BACKOFFICE_THEME_VIEW,
                 Permission::BACKOFFICE_BUILDER_VIEW,
             ], true);

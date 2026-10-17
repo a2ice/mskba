@@ -44,7 +44,7 @@ final class BackofficePermissionsTest extends TestCase
         );
     }
 
-    public function test_confirmed_admin_keeps_previous_widget_permissions_but_can_be_explicitly_restricted(): void
+    public function test_confirmed_admin_baseline_cannot_be_revoked_individually(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
@@ -55,12 +55,12 @@ final class BackofficePermissionsTest extends TestCase
 
         $this->grant($super, $admin, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW]);
         $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->assertFalse(Gate::forUser($admin)->allows('update', $widget));
+        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
 
         $this->grant($super, $admin, []);
-        $this->assertFalse($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->actingAs($admin)->get('/backoffice')->assertForbidden();
-        $this->get('/backoffice/account-dashboard-widgets')->assertForbidden();
+        $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
+        $this->actingAs($admin)->get('/backoffice')->assertOk();
     }
 
     public function test_delegated_editor_can_edit_a_regular_widget_without_becoming_admin(): void
@@ -132,7 +132,7 @@ final class BackofficePermissionsTest extends TestCase
     public function test_filament_permission_editor_writes_only_backoffice_snapshots(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
-        $target = $this->user(UserSystemRoleEnum::USER);
+        $target = $this->user(UserSystemRoleEnum::MANAGER);
         UserOperationalPermission::query()->create([
             'user_id' => $target->id,
             'permission' => Permission::HANDLE_SUPPORT_TICKETS,
@@ -157,7 +157,7 @@ final class BackofficePermissionsTest extends TestCase
         $this->assertFalse($manager->allows($target, Permission::BACKOFFICE_WIDGET_CREATE));
         $this->assertTrue(UserOperationalPermission::query()->where('user_id', $target->id)
             ->where('permission', Permission::HANDLE_SUPPORT_TICKETS->value)->value('is_allowed'));
-        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
     }
 
     public function test_ordinary_admin_cannot_grant_filament_rights_in_legacy_bulk_handler(): void
