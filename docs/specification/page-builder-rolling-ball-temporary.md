@@ -89,6 +89,26 @@ avoid the previous sprite from browser cache. The rendered image must be
 - Scroll-linear animation is deliberately a **visual** model, not a no-slip
   3D simulation; the earlier changing-angular-velocity algorithm caused
   inconsistent frame cadence during scale-up.
+
+### iPhone Safari fast flicks
+
+- Mobile Safari's collapsing browser toolbar can issue viewport `resize`
+  while the page is still moving. Height-only scene/viewport changes must NOT
+  recompute the scene's scroll start/end: both stay stable until the actual
+  rendered slider WIDTH changes (rotation/breakpoint).
+- The scroll handler now schedules at most one `requestAnimationFrame`
+  callback per display frame and reads the latest native `scrollY` at paint
+  time. This is *not* a second animation: there is no stored follower,
+  easing, interpolation, or movement after the user's page scroll has
+  settled. The ball's pose remains determined by the native scroll position.
+- In fast swipes, a 189px timeline with only 16 photographed stills can
+  necessarily skip some intermediate sprite frames when the browser scrolls
+  over multiple ~12px steps between draws. That limitation requires either
+  more real intermediate photos, longer scroll scene, or intentionally adding
+  lag; it cannot be solved fully by changing event listeners alone.
+- Native scroll remains uninterrupted: no touch/scroll hijacking, sticky
+  hero, forced scroll snapping, or JavaScript `preventDefault` on touch.
+
 - Landing remains 30% earlier than the old scroll-distance duration, with
   no fixed/sticky Hero or page-wide overlay.
 - No frame blending or optical flow. The CSS pseudo-element renders frame zero
