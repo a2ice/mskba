@@ -51,8 +51,8 @@ return new class extends Migration
         ]);
 
         DB::table('manager_specializations')->insert([
-            ['code' => 'moderator', 'name' => 'Модератор', 'permissions' => json_encode([]), 'is_system' => true, 'created_at' => $now, 'updated_at' => $now],
-            ['code' => 'editor', 'name' => 'Редактор', 'permissions' => json_encode(['content.manage']), 'is_system' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['code' => 'moderator', 'name' => 'Модератор', 'permissions' => json_encode(['content.manage']), 'is_system' => true, 'created_at' => $now, 'updated_at' => $now],
+            ['code' => 'editor', 'name' => 'Редактор', 'permissions' => json_encode(['content.manage', 'backoffice.page_builder.view']), 'is_system' => true, 'created_at' => $now, 'updated_at' => $now],
             ['code' => 'advertiser', 'name' => 'Рекламный менеджер', 'permissions' => json_encode(['operator.presence.view','operator.conversation.handle','operator.marketing.send']), 'is_system' => true, 'created_at' => $now, 'updated_at' => $now],
         ]);
 

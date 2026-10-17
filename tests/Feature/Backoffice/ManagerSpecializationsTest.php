@@ -66,6 +66,34 @@ final class ManagerSpecializationsTest extends TestCase
         $this->assertCount(2, $manager->managerSpecializations()->get());
     }
 
+    public function test_moderator_keeps_legacy_content_management_gate_without_builder_code_rights(): void
+    {
+        $super = $this->actor(Role::SUPERADMIN);
+        $manager = $this->actor(Role::MANAGER);
+        $moderator = ManagerSpecialization::query()->where('code', 'moderator')->firstOrFail();
+        app(StaffSpecializationManager::class)->sync($super, $manager, [$moderator->id]);
+
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($manager, Permission::CONTENT_MANAGE));
+        $this->assertFalse($checker->allows($manager, Permission::BACKOFFICE_BUILDER_EDIT));
+        $this->assertFalse($checker->allows($manager, Permission::BACKOFFICE_BUILDER_PUBLISH));
+    }
+
+    public function test_admin_cannot_revoke_unknown_backoffice_right_from_subordinate(): void
+    {
+        $super = $this->actor(Role::SUPERADMIN);
+        $admin = $this->actor(Role::ADMIN);
+        $manager = $this->actor(Role::MANAGER);
+        app(\App\Modules\Identity\Application\Services\BackofficePermissionManager::class)
+            ->sync($super, $manager, [Permission::BACKOFFICE_STYLE_VIEW->value]);
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($manager, Permission::BACKOFFICE_STYLE_VIEW));
+
+        app(\App\Modules\Identity\Application\Services\BackofficePermissionManager::class)
+            ->sync($admin, $manager, []);
+        $this->assertTrue($checker->allows($manager, Permission::BACKOFFICE_STYLE_VIEW));
+    }
+
     public function test_admin_cannot_assign_specialization_exceeding_own_permissions(): void
     {
         $admin = $this->actor(Role::ADMIN);
