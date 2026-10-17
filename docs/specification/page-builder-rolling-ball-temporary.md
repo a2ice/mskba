@@ -36,8 +36,11 @@ its URL and paints one frame at a time.
 </section>
 ```
 
-Do not insert the ball into a slider's individual slide; it must be a sibling
-of the Hero Slider in the same `mskba-hero-scene` wrapper. Do not add
+Keep the HTML ball as a sibling of Hero Slider in `mskba-hero-scene`.
+At runtime first-party JS moves it inside the **slider root**, never inside an
+individual slide, so the shared ball sits behind every slide's text/CTA but
+above the slide background. No Page Builder HTML changes are needed for this
+upgrade. Do not add
 `<script>`, inline CSS, SVG, or event-handler attributes to editor HTML.
 **Slider itself is intentionally untouched.**
 
@@ -52,11 +55,17 @@ A different size will not activate the overlay, by design.
   641–1050, >1050), not browser device type.
 - Responsive ball tile: 122/165/195 CSS px; scale grows 0.75 -> 1.00.
 - Six full cycles of the original 16 frames; last step is frame 1.
-- No frame blending or optical flow; dark (not transparent) ball initially,
-  gradually brighter as the ball rolls closer.
+- No frame blending or optical flow. The CSS pseudo-element renders frame zero
+  **as soon as the stylesheet loads**, even before JS; the ball is never
+  hidden with opacity at scroll progress zero. It is darkened (not transparent)
+  initially and becomes brighter as it rolls closer.
 - Motion is tied to native page scroll. Hero never gets `position: fixed`
   or `sticky`; ball stays in its final relative position after movement.
 - A single decorative overlay, consistently visible over all slides.
+- Opt-in slider root allows overflow so half the ball can hang below the hero.
+  Each individual slide still clips its background to the rounded corners.
+- Layer order: background/scrim 0–1, ball 3, content/CTA min 4, navigation 8–9.
+  Content editor z-index remains adjustable for other decorative graphics.
 - Opt-in only if a real sprite image can load and its size is valid.
 - Reduced-motion users get the final resting state.
 - Sprite frame container has `rotate(90deg)`, matching the approved demo.
