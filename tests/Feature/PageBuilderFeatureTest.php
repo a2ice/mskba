@@ -160,8 +160,9 @@ final class PageBuilderFeatureTest extends TestCase
         $html = app(PageBuilderRenderer::class)->render($page);
         $this->assertStringContainsString('Заголовок', $html['html']);
         $this->assertStringContainsString('data-mskba-builder-source="upcoming_games"', $html['html']);
-        $this->assertStringContainsString('.mskba-page-builder .hero', $html['css']);
-        $this->assertStringContainsString('.mskba-page-builder .home-intro', $html['css']);
+        $this->assertStringContainsString('@scope (.mskba-page-builder)', $html['css']);
+        $this->assertStringContainsString('.hero { color: var(--accent); }', $html['css']);
+        $this->assertStringContainsString('.home-intro { padding: 24px; }', $html['css']);
 
         $page->update(['draft_html' => '<h1>Новый черновик</h1>']);
         $this->assertStringNotContainsString('Новый черновик', app(PageBuilderRenderer::class)->render($page)['html']);
@@ -172,7 +173,35 @@ final class PageBuilderFeatureTest extends TestCase
         $this->assertStringContainsString('games-list', $page->refresh()->draft_html);
     }
 
-    public function test_css_and_html_code_cannot_execute_scripts_or_global_styles(): void
+    public function test_page_builder_css_supports_modern_properties_and_at_rules_without_property_allowlist(): void
+    {
+        $markup = app(PageBuilderMarkup::class);
+        $css = <<<'CSS'
+.slider-cta {
+  min-width: 175px;
+  white-space: nowrap;
+  transform: translateY(-2px);
+  --ball-scale: .75;
+}
+@media (max-width: 640px) {
+  .slider-cta:hover, .slider-cta:focus-visible {
+    animation: ball-roll .75s ease-in-out;
+  }
+}
+@container (min-width: 300px) {
+  .slider-cta::before { content: "{"; }
+}
+@keyframes ball-roll { to { transform: rotate(90deg); } }
+CSS;
+        $result = $markup->css($css);
+        $this->assertStringStartsWith("@scope (.mskba-page-builder) {\n", $result);
+        $this->assertStringContainsString('white-space: nowrap;', $result);
+        $this->assertStringContainsString('@media (max-width: 640px)', $result);
+        $this->assertStringContainsString('@container (min-width: 300px)', $result);
+        $this->assertStringContainsString('@keyframes ball-roll', $result);
+    }
+
+    public function test_css_and_html_code_cannot_escape_the_page_style_element(): void
     {
         $markup = app(PageBuilderMarkup::class);
         foreach (['<script>alert(1)</script>', '<div onclick="alert(1)">X</div>',
@@ -184,8 +213,14 @@ final class PageBuilderFeatureTest extends TestCase
                 // expected
             }
         }
-        foreach (['body { color: red; }', '.box { background: url(https://evil.org/x); }',
-            '@import "https://evil.org/a";'] as $css) {
+        foreach ([
+            '@import "https://evil.org/a";',
+            '.box { color: red; } </style><script>alert(1)</script>',
+            '} body { display: none; }',
+            '.button { color: red;',
+            '.button { content: "unclosed; }',
+            '.button { color: red; /* comment',
+        ] as $css) {
             try {
                 $markup->css($css);
                 $this->fail('Unsafe CSS accepted: '.$css);
@@ -193,8 +228,10 @@ final class PageBuilderFeatureTest extends TestCase
                 // expected
             }
         }
-        $this->assertStringContainsString('.mskba-page-builder .hero',
-            $markup->css('.hero { background-color: #ff0000; }'));
+        // The author can use body selectors, but they are scoped to builder
+        // subtree and therefore cannot style the actual document body.
+        $this->assertStringContainsString('@scope (.mskba-page-builder) {',
+            $markup->css('body { color: red; }'));
     }
 
     public function test_preview_requires_backoffice_rights_and_does_not_publish(): void
