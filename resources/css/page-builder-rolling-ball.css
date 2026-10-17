@@ -1,20 +1,55 @@
-/* TEMP (TODO): move trusted rolling-ball options into superadmin design settings.
-   Opt-in independent Page Builder overlay; never alters generic slider layers. */
+/* TEMP TODO: expose trusted effect settings to superadmins without executing stored JS.
+   Page Builder still owns the opt-in markup; JS moves the decorative ball
+   into the slider root, never into an individual slide. */
 .mskba-page-builder .mskba-hero-scene {
     position: relative;
     overflow: visible;
     isolation: isolate;
     container: mskba-rolling-scene / inline-size;
 }
+/* Only opt-in sliders may overflow: the individual slides keep the artwork
+   and rounded corners clipped while the rolling ball can hang below the stage. */
+.mskba-page-builder .mskba-hero-scene .mskba-hero-slider {
+    overflow: visible;
+}
+.mskba-page-builder .mskba-hero-scene .mskba-hero-slide {
+    border-radius: 24px;
+    overflow: hidden;
+}
 .mskba-page-builder .mskba-rolling-ball {
     position: absolute;
-    z-index: 20;
-    left: 0;
-    top: 0;
+    z-index: 3;
+    left: 23.5%;
+    top: 40.5%;
     width: 0;
     height: 0;
     pointer-events: none;
-    opacity: 0;
+    --ball-scale: .75;
+    --ball-brightness: .07;
+    --ball-saturation: .38;
+    --ball-frame-x: 0%;
+    --ball-frame-y: 0%;
+}
+/* Render the *first frame* in CSS immediately, even before Vite JS executes.
+   No opacity fade or frame crossfade: appearance changes by lighting only.
+   Using a pseudo-element keeps the ball painted during DOM reparenting. */
+.mskba-page-builder .mskba-rolling-ball::before {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 122px;
+    height: 122px;
+    left: 0;
+    top: 0;
+    background-image: var(--ball-image, url('/images/ball-16.webp'));
+    background-repeat: no-repeat;
+    background-size: 400% 400%;
+    background-position: var(--ball-frame-x) var(--ball-frame-y);
+    transform: translate(-50%, -50%) scale(var(--ball-scale)) rotate(90deg);
+    transform-origin: center center;
+    filter: brightness(var(--ball-brightness)) saturate(var(--ball-saturation))
+        drop-shadow(0 6px 8px rgba(0,0,0,.34));
+    will-change: transform, background-position;
 }
 .mskba-page-builder .mskba-rolling-ball__sprite {
     position: absolute;
@@ -23,40 +58,25 @@
     opacity: 0;
     pointer-events: none;
 }
-.mskba-page-builder .mskba-rolling-ball__visual {
-    position: absolute;
-    width: 122px;
-    height: 122px;
-    left: 0;
-    top: 0;
-    transform: translate(-50%, -50%) scale(var(--ball-scale, .75));
-    transform-origin: center center;
-    will-change: transform;
-}
-.mskba-page-builder .mskba-rolling-ball__frame {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background-repeat: no-repeat;
-    background-size: 400% 400%;
-    transform: rotate(90deg);
-    transform-origin: center center;
-    filter: brightness(var(--ball-brightness, .07))
-            saturate(var(--ball-saturation, .38))
-            drop-shadow(0 6px 8px rgba(0,0,0,.34));
+/* Keep readable and interactive foreground layers above the independent ball,
+   even if a content editor assigned them a low z-index in Filament. */
+.mskba-page-builder .mskba-hero-scene .mskba-hero-slide--layers
+    .mskba-hero-slide__layer:is(
+        .mskba-hero-slide__layer--heading,
+        .mskba-hero-slide__layer--text,
+        .mskba-hero-slide__layer--button,
+        .mskba-hero-slide__layer--links
+    ) {
+    z-index: max(4, var(--layer-z, 4));
 }
 @container mskba-rolling-scene (min-width: 641px) {
-    .mskba-page-builder .mskba-rolling-ball__visual {
-        width: 165px;
-        height: 165px;
-    }
+    .mskba-page-builder .mskba-rolling-ball { left: 31.5%; top: 42.5%; }
+    .mskba-page-builder .mskba-rolling-ball::before { width: 165px; height: 165px; }
 }
 @container mskba-rolling-scene (min-width: 1051px) {
-    .mskba-page-builder .mskba-rolling-ball__visual {
-        width: 195px;
-        height: 195px;
-    }
+    .mskba-page-builder .mskba-rolling-ball { left: 47.5%; top: 44%; }
+    .mskba-page-builder .mskba-rolling-ball::before { width: 195px; height: 195px; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .mskba-page-builder .mskba-rolling-ball__visual { will-change: auto; }
+    .mskba-page-builder .mskba-rolling-ball::before { will-change: auto; }
 }
