@@ -90,8 +90,11 @@ final class BackofficePermissionManager
                     // Baseline and specialization rights cannot be disabled here.
                     continue;
                 }
-                if ($enabled && ! $profiles->allowedForRole($target->system_role, $permission)) {
-                    throw new AuthorizationException('Право недопустимо для роли пользователя.');
+                if (! $profiles->allowedForRole($target->system_role, $permission)) {
+                    if ($enabled) {
+                        throw new AuthorizationException('Право недопустимо для роли пользователя.');
+                    }
+                    continue;
                 }
                 if ($enabled && ! $this->checker->allows($target, $permission)
                     && $actor->system_role !== UserSystemRoleEnum::SUPERADMIN

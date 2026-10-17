@@ -6,6 +6,8 @@ use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Application\Services\StaffSpecializationManager;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Models\ManagerSpecialization;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
@@ -129,20 +131,30 @@ final class EditBackofficeUser extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $target = $this->getRecord()->canonical();
+        $actor = auth('web')->user()?->canonical();
+        $profiles = app(StaffPermissionProfiles::class);
+        $checker = app(UserOperationalPermissionChecker::class);
         $global = app(GlobalOperationalPermissionManager::class);
-        $selected = $global->granted($this->getRecord());
-        $data['creation_permissions'] = array_values(array_intersect(
-            $selected,
-            array_map(static fn (Permission $p): string => $p->value, $global->creationPermissions()),
-        ));
-
-        if (auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN)) {
-            $data['privileged_permissions'] = array_values(array_intersect(
-                $selected,
-                array_map(static fn (Permission $p): string => $p->value, $global->privilegedPermissions()),
-            ));
-            $data['backoffice_permissions'] = app(BackofficePermissionManager::class)
-                ->granted($this->getRecord());
+        $groups = [
+            'creation_permissions' => $global->creationPermissions(),
+            'privileged_permissions' => $global->privilegedPermissions(),
+            'backoffice_permissions' => Permission::backofficeCases(),
+        ];
+        foreach ($groups as $field => $permissions) {
+            $data[$field] = [];
+            $data['locked_'.$field] = [];
+            foreach ($permissions as $permission) {
+                $effective = $checker->allows($target, $permission);
+                $editable = $actor !== null
+                    && $profiles->allowedForRole($target->system_role, $permission)
+                    && ! $profiles->inherited($target, $permission)
+                    && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
+                        || $checker->allows($actor, $permission));
+                if ($effective) {
+                    $data[$editable ? $field : 'locked_'.$field][] = $permission->value;
+                }
+            }
         }
 
         return $data;

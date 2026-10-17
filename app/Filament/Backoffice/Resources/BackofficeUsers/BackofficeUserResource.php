@@ -127,6 +127,19 @@ final class BackofficeUserResource extends Resource
                 && ! app(UserOperationalPermissionChecker::class)->allows($actor, $permission));
     }
 
+    /** @return array<string, string> */
+    private static function selectablePermissions(array $permissions, ?User $record, bool $locked): array
+    {
+        $options = [];
+        foreach ($permissions as $permission) {
+            if (self::cannotDelegate($record, $permission) === $locked) {
+                $options[$permission->value] = $permission->label();
+            }
+        }
+
+        return $options;
+    }
+
     public static function form(Schema $schema): Schema
     {
         $global = app(GlobalOperationalPermissionManager::class);
@@ -174,10 +187,14 @@ final class BackofficeUserResource extends Resource
                                 ->description('Действуют на уровне портала. Базовые права роли и специализаций не снимаются индивидуально. Недоступные разрешения показаны неактивными.')
                                 ->schema([
                                     CheckboxList::make('creation_permissions')
-                                        ->label('Создание объектов')
-                                        ->options($optionMap($global->creationPermissions()))
-                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
+                                        ->label('Создание объектов — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
                                         ->columns(2)->bulkToggleable(),
+                                    CheckboxList::make('locked_creation_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(2),
                                 ]),
                         ]),
                     Tab::make('Администрирование')
@@ -188,10 +205,14 @@ final class BackofficeUserResource extends Resource
                                 ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('privileged_permissions')
-                                        ->label('Критичные разрешения')
-                                        ->options($optionMap($global->privilegedPermissions()))
-                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
+                                        ->label('Критичные разрешения — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
                                         ->columns(1)->bulkToggleable(),
+                                    CheckboxList::make('locked_privileged_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(1),
                                 ]),
                         ]),
                     Tab::make('Filament')
@@ -202,10 +223,14 @@ final class BackofficeUserResource extends Resource
                                 ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('backoffice_permissions')
-                                        ->label('Разрешения Filament')
-                                        ->options($optionMap(Permission::backofficeCases()))
-                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
+                                        ->label('Разрешения Filament — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
                                         ->columns(2)->bulkToggleable(),
+                                    CheckboxList::make('locked_backoffice_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(2),
                                 ]),
                         ]),
                     Tab::make('Права сущностей')

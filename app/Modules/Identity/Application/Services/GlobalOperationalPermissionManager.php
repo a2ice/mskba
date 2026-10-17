@@ -128,34 +128,27 @@ final class GlobalOperationalPermissionManager
 
         $checker = app(UserOperationalPermissionChecker::class);
         $profiles = app(StaffPermissionProfiles::class);
+        $all = $privileged === null
+            ? $this->creationPermissions()
+            : array_merge($this->creationPermissions(), $this->privilegedPermissions());
+        // The form edits only individual grants: never overwrite role/specialization
+        // defaults or permissions outside the grantor's own scope.
+        $scope = array_values(array_filter($all, static fn (Permission $permission): bool =>
+            $profiles->allowedForRole($target->system_role, $permission)
+            && ! $profiles->inherited($target->canonical(), $permission)
+            && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
+                || $checker->allows($actor, $permission))
+        ));
         foreach (array_merge($creation, $privileged ?? []) as $key) {
             $permission = Permission::from($key);
-            if (! $profiles->allowedForRole($target->system_role, $permission)) {
-                throw new AuthorizationException('Право недопустимо для роли получателя.');
-            }
-            if ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
-                && ! $checker->allows($actor, $permission)
-                && ! $checker->allows($target, $permission)) {
-                throw new AuthorizationException('Нельзя выдать право, которого нет у администратора.');
+            if (! in_array($permission, $scope, true)) {
+                throw new AuthorizationException('Нельзя назначать недоступные или наследуемые права.');
             }
         }
-
-        // Delegation can never amplify the administrator's own effective
-        // creation rights, including when superadmin explicitly denied one.
-        $allowed = array_map(static fn (string $v): Permission => Permission::from($v),
-            array_merge($creation, $privileged ?? []));
-        $scope = $privileged === null
-            ? $this->creationPermissions()
-            : array_merge($this->creationPermissions(),
-                $actor->system_role === UserSystemRoleEnum::SUPERADMIN
-                    ? $this->privilegedPermissions()
-                    : array_values(array_filter($this->privilegedPermissions(),
-                        fn (Permission $p): bool => $checker->allows($actor, $p))),
-            );
-        // Admins may see unavailable rights, but their saved checkbox payload
-        // cannot revoke privileges outside the rights they themselves possess.
-        $allowed = array_values(array_filter($allowed,
-            fn (Permission $p): bool => in_array($p, $scope, true)));
+        $allowed = array_values(array_map(
+            static fn (string $value): Permission => Permission::from($value),
+            array_merge($creation, $privileged ?? [])
+        ));
 
         app(AdminUpdateUserOperationalPermissionsHandler::class)
             ->handle($actor, $target->canonical()->id, $allowed, $scope);
