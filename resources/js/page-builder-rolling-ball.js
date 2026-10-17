@@ -38,17 +38,8 @@ const rollingBallSmooth = value => value * value * (3 - 2 * value);
 // formerly required scroll distance, then remains attached to the hero.
 const rollingBallTimelineFactor = .7;
 const rollingBallSpriteFrames = 16;
+const rollingBallTurns = 1; // 16 distinct photos across the hero's 0..1 scroll range
 const rollingBallAssetRevision = 'photo-20261017-centered-v2';
-const rollingBallTwoPi = 2 * Math.PI;
-
-// Approximate no-slip physical rolling: angular displacement = integral(ds/R)
-// along the straight, screen-projected path as the apparent radius grows.
-function rollingBallAngularTravel(distance, startRadius, endRadius, progress) {
-    const t = rollingBallClamp(progress, 0, 1);
-    const delta = endRadius - startRadius;
-    if (Math.abs(delta) < 1e-6) return distance * t / startRadius;
-    return distance * Math.log((startRadius + delta * t) / startRadius) / delta;
-}
 
 function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
@@ -82,7 +73,6 @@ function initRollingBall(root) {
     if (sprite.complete) useSprite();
     else sprite.addEventListener('load', useSprite, { once: true });
 
-    let revolutions = 1;
     let start = 0;
     let distance = 270;
     let activeProfile = rollingBallProfiles.mobile;
@@ -94,10 +84,10 @@ function initRollingBall(root) {
         const x = activeProfile.from[0] + (activeProfile.to[0] - activeProfile.from[0]) * travel;
         const y = activeProfile.from[1] + (activeProfile.to[1] - activeProfile.from[1]) * travel;
         const light = rollingBallSmooth(travel);
-        // Fixed step length in real scroll pixels: equal scroll increments
-        // advance equal frame counts. No angular acceleration during scale-up.
-        // At the exact landing, wrap cleanly to the first photographed frame.
-        const framesTravelled = Math.floor(p * revolutions * rollingBallSpriteFrames);
+        // One photographed revolution, evenly spaced across the scroll range.
+        // 189px scene distance => one new frame roughly every 11.8px;
+        // the browser's wheel event size does not enter this calculation.
+        const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);
         const frame = p >= 1 ? 0 : framesTravelled % rollingBallSpriteFrames;
 
         root.style.left = (x / 10).toFixed(3) + '%';
@@ -122,15 +112,6 @@ function initRollingBall(root) {
         const rect = slider.getBoundingClientRect();
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
-        const dx = (activeProfile.to[0] - activeProfile.from[0]) / 1000 * rect.width;
-        const dy = (activeProfile.to[1] - activeProfile.from[1]) / 1000 * rect.height;
-        const apparentPathDistance = Math.hypot(dx, dy);
-        const startRadius = activeProfile.tileSize * activeProfile.startScale / 2;
-        const endRadius = activeProfile.tileSize * activeProfile.endScale / 2;
-        const totalAngle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, 1);
-        // Choose one or more whole turns from the approximate travel geometry;
-        // distribute all of their frames UNIFORMLY over the scroll timeline.
-        revolutions = Math.max(1, Math.round(totalAngle / rollingBallTwoPi));
         // If Hero is already within the initial viewport (homepage), start
         // at scrollY=0 rather than waiting for a fixed header offset.
         // Below-the-fold scenes start when they approach the viewport.
