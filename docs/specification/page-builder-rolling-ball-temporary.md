@@ -16,8 +16,8 @@ adds the page markup and provides a published 4x4 sprite image.
 ## Page Builder markup
 
 In the **HTML** tab on the homepage, use the following structure. The sprite
-URL below is a placeholder: replace it with the real public URL after uploading
-the 1024x1024 WebP/PNG sprite to the site's public storage (or public assets).
+URL below points to the versioned public 1024x1024 WebP asset at
+`public/images/ball-16.webp`. No Laravel storage symlink is required.
 The template's img tag is only a sanitized asset carrier: first-party JS reads
 its URL and paints one frame at a time.
 
@@ -28,7 +28,7 @@ its URL and paints one frame at a time.
       <mskba-component name="hero-slider"></mskba-component>
       <div class="mskba-rolling-ball">
         <img class="mskba-rolling-ball__sprite"
-             src="/storage/page-builder/hero/REPLACE-WITH-UPLOADED-SPRITE.webp"
+             src="/images/ball-16.webp"
              alt="">
       </div>
     </div>
@@ -42,10 +42,9 @@ of the Hero Slider in the same `mskba-hero-scene` wrapper. Do not add
 **Slider itself is intentionally untouched.**
 
 The sprite must be exactly 1024 x 1024, a 4 x 4 grid of 256 x 256
-square frames. The currently approved graphic is
-`MSKBA-responsive-ball-stage-v8/assets/ball-16.webp`
-(from the owner's standalone demo bundle). A different size will not activate
-the overlay, by design.
+square frames. The approved file is now tracked at
+`public/images/ball-16.webp` and is served at `/images/ball-16.webp`.
+A different size will not activate the overlay, by design.
 
 ## Current behavior
 
@@ -72,7 +71,9 @@ the overlay, by design.
 
 ## Limits / next iteration
 
-1. Create a safe **asset-manager** upload path for standalone page effects.
+1. Decide whether standalone page-effect assets should use Filament-managed
+   uploads or versioned `public/images/` paths; verify public-storage symlinks
+   and file permissions before migrating away from this temporary asset.
 2. Allow superadmins to configure trusted animation options without storing
    arbitrary executable JavaScript (a separate design discussion).
 3. Check that the ball is compatible with every slider background and with
