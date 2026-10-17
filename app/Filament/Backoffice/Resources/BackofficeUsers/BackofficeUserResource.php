@@ -6,6 +6,8 @@ use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\ListBackofficeUsers;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -112,6 +114,19 @@ final class BackofficeUserResource extends Resource
         return $query->whereRaw('1 = 0');
     }
 
+    private static function cannotDelegate(?User $record, Permission $permission): bool
+    {
+        $actor = auth('web')->user()?->canonical();
+        if ($actor === null || $record === null) {
+            return true;
+        }
+        $profiles = app(StaffPermissionProfiles::class);
+        return ! $profiles->allowedForRole($record->system_role, $permission)
+            || $profiles->inherited($record, $permission)
+            || ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                && ! app(UserOperationalPermissionChecker::class)->allows($actor, $permission));
+    }
+
     public static function form(Schema $schema): Schema
     {
         $global = app(GlobalOperationalPermissionManager::class);
@@ -156,11 +171,12 @@ final class BackofficeUserResource extends Resource
                         ->icon('heroicon-o-plus-circle')
                         ->schema([
                             Section::make('Глобальные права — создание')
-                                ->description('Действуют на уровне портала. Значения по умолчанию и индивидуальные запреты сохраняются. Администратор вправе делегировать эти некритичные права только пользователю с меньшей системной ролью.')
+                                ->description('Действуют на уровне портала. Базовые права роли и специализаций не снимаются индивидуально. Недоступные разрешения показаны неактивными.')
                                 ->schema([
                                     CheckboxList::make('creation_permissions')
                                         ->label('Создание объектов')
                                         ->options($optionMap($global->creationPermissions()))
+                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
                                         ->columns(2)->bulkToggleable(),
                                 ]),
                         ]),
@@ -173,12 +189,8 @@ final class BackofficeUserResource extends Resource
                                 ->schema([
                                     CheckboxList::make('privileged_permissions')
                                         ->label('Критичные разрешения')
-                                        ->options(fn (?User $record): array => $optionMap(
-                                            array_values(array_filter($global->privilegedPermissions(),
-                                                fn (Permission $permission): bool => $permission !== Permission::REVIEW_PROFILE_CHANGES
-                                                    || $record?->system_role?->atLeast(UserSystemRoleEnum::ADMIN),
-                                            ))
-                                        ))
+                                        ->options($optionMap($global->privilegedPermissions()))
+                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
                                         ->columns(1)->bulkToggleable(),
                                 ]),
                         ]),
@@ -187,11 +199,12 @@ final class BackofficeUserResource extends Resource
                         ->schema([
                             Section::make('Filament — административный интерфейс')
                                 ->description('Вход и ресурсы Filament. Администратор может передать только имеющиеся у него разрешения. Базовые права роли и специализаций неотзываемы.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('backoffice_permissions')
                                         ->label('Разрешения Filament')
                                         ->options($optionMap(Permission::backofficeCases()))
+                                        ->disableOptionWhen(fn (string $value, ?User $record): bool => self::cannotDelegate($record, Permission::from($value)))
                                         ->columns(2)->bulkToggleable(),
                                 ]),
                         ]),
