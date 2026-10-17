@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
 use App\Modules\Identity\Domain\Models\SystemRolePermissionProfile;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Placeholder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -51,6 +52,11 @@ final class SystemRoleProfileResource extends Resource
             Section::make('Базовые права системной роли')
                 ->description('Применяются ко всем пользователям роли и не могут быть сняты индивидуально. Superadmin всегда имеет полный доступ.')
                 ->schema([
+                    Placeholder::make('edited_role')
+                        ->label('Редактируемая системная роль')
+                        ->content(fn (?SystemRolePermissionProfile $record): string => $record === null
+                            ? '—'
+                            : Role::from($record->role)->label().' ('.$record->role.')'),
                     CheckboxList::make('permissions')->label('Разрешения')
                         ->options(array_combine(
                             array_map(static fn (Permission $p): string => $p->value, Permission::cases()),
