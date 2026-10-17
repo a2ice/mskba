@@ -8,6 +8,7 @@ const script = readFileSync(new URL('../../resources/js/page-builder-rolling-bal
 function createHarness() {
     const listeners = {};
     const values = {};
+    const frames = [];
     const rootStyle = {
         left: null,
         top: null,
@@ -48,7 +49,10 @@ function createHarness() {
         innerHeight: 800,
         matchMedia: () => media,
         addEventListener: (name, fn) => { listeners[name] = fn; },
-        requestAnimationFrame: () => { throw new Error('Time-based motion must not be used'); },
+        requestAnimationFrame: callback => {
+            frames.push(callback);
+            return frames.length;
+        },
     };
     const context = {
         window: win,
@@ -64,15 +68,24 @@ function createHarness() {
         frameX: values['--ball-frame-x'],
         frameY: values['--ball-frame-y'],
     });
-    const scroll = y => { win.scrollY = y; listeners.scroll(); return sample(); };
+    const flush = () => { while (frames.length) frames.shift()(); };
+    const scroll = y => { win.scrollY = y; listeners.scroll(); flush(); return sample(); };
+    const swipeStep = y => { win.scrollY = y; listeners.scroll(); return frames.length; };
     const resize = (w, h) => {
         width = w;
         height = h;
         listeners.resize();
+        flush();
+        return sample();
+    };
+    const viewportHeight = next => {
+        win.innerHeight = next;
+        listeners.resize(); // Safari browser-bar collapse can fire resize.
+        flush();
         return sample();
     };
     const setReducedMotion = on => { reducedMotion = on; listeners['motion:change'](); return sample(); };
-    return { sample, scroll, resize, setReducedMotion, sprite };
+    return { sample, scroll, swipeStep, flush, resize, viewportHeight, setReducedMotion, sprite };
 }
 
 test('native scroll coordinates and frame steps are deterministic, linear, and immediate', () => {
@@ -117,4 +130,30 @@ test('responsive breakpoints and reduced motion retain their landing coordinates
     assert.equal(scene.setReducedMotion(true).left, 29);
     assert.equal(scene.setReducedMotion(true).top, 100);
     assert.deepEqual(scene.setReducedMotion(false), tablet);
+});
+
+test('iPhone Safari toolbar resizing preserves scroll-to-ball mapping during touch flicks', () => {
+    const scene = createHarness();
+    scene.resize(375, 700);
+    const mid = scene.scroll(105);
+    assert.notEqual(mid.top, 100, 'midflight ball should not be in landed state');
+    assert.deepEqual(scene.viewportHeight(610), mid, 'changing viewport height must not shift the ball');
+    assert.deepEqual(scene.resize(375, 520), mid, 'height-only hero reflow must not change scroll progress');
+    assert.deepEqual(scene.viewportHeight(800), mid);
+    assert.deepEqual(scene.scroll(105), mid, 'same native scroll always gives same pose');
+    assert.equal(scene.scroll(500).top, 100, 'landing remains exactly on bottom edge');
+});
+
+test('rapid scroll events coalesce into one frame using the latest native scroll position', () => {
+    const scene = createHarness();
+    assert.equal(scene.swipeStep(8), 1);
+    assert.equal(scene.swipeStep(100), 1);
+    assert.equal(scene.swipeStep(189), 1, 'no accumulation of pending frames');
+    scene.flush();
+    assert.deepEqual(scene.sample(), {
+        left: 31.5, top: 100, scale: 1, frameX: '0%', frameY: '0%',
+    });
+    assert.equal(scene.swipeStep(250), 1);
+    scene.flush();
+    assert.equal(scene.sample().top, 100, 'scroll beyond landing does not change the ball');
 });
