@@ -71,6 +71,15 @@ A different size will not activate the overlay, by design.
   instead of **0.07**, approximately the previous half-timeline light level.
   It gradually brightens to 1.02 with saturation 0.74 → 1.00; no opacity
   fade and no black-circle silhouette.
+- Motion starts with the **first scroll pixel** when Hero is already in
+  the opening viewport (no arbitrary 107px pre-roll delay). For an opt-in
+  scene below the fold, motion starts when it approaches the viewport.
+- Scroll distance to the final landing is **70% of the previous distance**
+  (30% earlier). A custom smooth easing has nonzero initial velocity but
+  settles gently at the end. In the landed state progress is clamped to 1,
+  and the ball remains positioned inside its natural Hero container.
+- Six sprite cycles are retained; the **last frame is explicitly frame zero**,
+  matching the opening frontal / anfas basketball sprite frame.
 - Motion is tied to native page scroll. Hero never gets `position: fixed`
   or `sticky`; ball stays in its final relative position after movement.
 - A single decorative overlay, consistently visible over all slides.

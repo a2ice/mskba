@@ -36,6 +36,17 @@ const rollingBallLighting = {
 };
 const rollingBallClamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const rollingBallSmooth = value => value * value * (3 - 2 * value);
+// Keep the gentle stop of smoothstep, but give the ball nonzero motion
+// from the *first* scroll pixel (smoothstep alone has zero initial velocity).
+const rollingBallTravelEase = value => {
+    const remaining = 1 - value;
+    return rollingBallSmooth(value) + .6 * value * remaining * remaining;
+};
+// The ball now completes the entire first-scene path in 70% of the
+// formerly required scroll distance, then remains attached to the hero.
+const rollingBallTimelineFactor = .7;
+const rollingBallCycles = 6;
+const rollingBallSpriteFrames = 16;
 
 function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
@@ -76,10 +87,11 @@ function initRollingBall(root) {
 
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
-        const travel = rollingBallSmooth(p);
+        const travel = rollingBallTravelEase(p);
         const point = path.getPointAtLength(pathLength * travel);
         const light = rollingBallSmooth(travel);
-        const frame = Math.round(travel * 16 * 6) % 16;
+        // First and final frames are *exactly* frame 0 (frontal view).
+        const frame = p >= 1 ? 0 : Math.round(travel * rollingBallSpriteFrames * rollingBallCycles) % rollingBallSpriteFrames;
 
         root.style.left = (point.x / 10).toFixed(3) + '%';
         root.style.top = (point.y / 10).toFixed(3) + '%';
@@ -105,8 +117,12 @@ function initRollingBall(root) {
         activeProfile = rollingBallProfiles[band];
         path.setAttribute('d', activeProfile.path);
         pathLength = path.getTotalLength();
-        start = Math.max(0, window.scrollY + rect.top - 107);
-        distance = Math.min(360, Math.max(270, rect.height * .48));
+        // If Hero is already within the initial viewport (homepage), start
+        // at scrollY=0 rather than waiting for a fixed header offset.
+        // Below-the-fold scenes start when they approach the viewport.
+        const heroPageTop = window.scrollY + rect.top;
+        start = Math.max(0, heroPageTop - window.innerHeight * .8);
+        distance = Math.min(360, Math.max(270, rect.height * .48)) * rollingBallTimelineFactor;
         target = targetFromScroll();
         if (!initialized) {
             // No sudden jump on a restored scroll position after reload.
