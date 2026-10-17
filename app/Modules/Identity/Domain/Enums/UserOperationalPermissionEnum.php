@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Domain\Enums;
 
 enum UserOperationalPermissionEnum: string
 {
+    case CONTENT_MANAGE = 'content.manage';
     case CREATE_COORDINATION = 'coordination.create';
     case CREATE_TEAM = 'team.create';
     case CREATE_EVENT = 'event.create';
@@ -68,6 +69,7 @@ enum UserOperationalPermissionEnum: string
     public function label(): string
     {
         return match ($this) {
+            self::CONTENT_MANAGE => 'Управление редакционным контентом',
             self::CREATE_COORDINATION => 'Создание опросов и согласований',
             self::CREATE_TEAM => 'Создание команд',
             self::CREATE_EVENT => 'Создание мероприятий',
@@ -102,6 +104,10 @@ enum UserOperationalPermissionEnum: string
 
     public function defaultAllowed(): bool
     {
+        if ($this === self::CONTENT_MANAGE) {
+            return false;
+        }
+
         if ($this->isBackoffice()) {
             return false;
         }
@@ -116,6 +122,12 @@ enum UserOperationalPermissionEnum: string
 
     public function defaultAllowedFor(UserSystemRoleEnum $systemRole): bool
     {
+        // Legacy accounts remain readable until old references are retired.
+        if ($this === self::CONTENT_MANAGE) {
+            return $systemRole->atLeast(UserSystemRoleEnum::ADMIN)
+                || in_array($systemRole, [UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR], true);
+        }
+
         if ($this->isBackoffice()) {
             if ($systemRole === UserSystemRoleEnum::SUPERADMIN) {
                 return true;

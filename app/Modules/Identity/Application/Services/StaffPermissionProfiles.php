@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Modules\Identity\Application\Services;
+
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
+use App\Modules\Identity\Domain\Models\SystemRolePermissionProfile;
+use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Immutable role/specialization grants and a hard system-role permission ceiling.
+ * Missing tables during a rolling deployment retain legacy enum defaults.
+ */
+final class StaffPermissionProfiles
+{
+    /** @return list<string> */
+    public function roleKeys(Role $role): array
+    {
+        if ($role === Role::SUPERADMIN) {
+            return array_map(static fn (Permission $p): string => $p->value, Permission::cases());
+        }
+
+        if (! Schema::hasTable('system_role_permission_profiles')) {
+            return array_values(array_map(static fn (Permission $p): string => $p->value,
+                array_filter(Permission::cases(), static fn (Permission $p): bool => $p->defaultAllowedFor($role))
+            ));
+        }
+
+        $profile = SystemRolePermissionProfile::query()->find($role->value);
+
+        if ($profile !== null) {
+            return array_values(array_filter((array) $profile->permissions, 'is_string'));
+        }
+
+        // Old role values are still accepted for historic tests and data reads.
+        return array_values(array_map(static fn (Permission $p): string => $p->value,
+            array_filter(Permission::cases(), static fn (Permission $p): bool => $p->defaultAllowedFor($role))
+        ));
+    }
+
+    /** @return list<string> */
+    public function specializationKeys(User $user): array
+    {
+        if ($user->system_role !== Role::MANAGER || ! Schema::hasTable('manager_specializations')) {
+            return [];
+        }
+
+        return $user->managerSpecializations()->get(['manager_specializations.permissions'])
+            ->flatMap(static fn ($item): array => (array) $item->permissions)
+            ->filter(static fn ($key): bool => is_string($key))
+            ->unique()->values()->all();
+    }
+
+    public function inherited(User $user, Permission $permission): bool
+    {
+        return in_array($permission->value, $this->roleKeys($user->system_role), true)
+            || in_array($permission->value, $this->specializationKeys($user), true);
+    }
+
+    /** Explicit upper bound: a functional manager cannot become a system admin. */
+    public function allowedForRole(Role $role, Permission $permission): bool
+    {
+        if ($role === Role::SUPERADMIN || $role === Role::ADMIN) {
+            return true;
+        }
+
+        if ($role === Role::MANAGER || in_array($role, [Role::MODERATOR, Role::EDITOR], true)) {
+            return in_array($permission, [
+                Permission::CONTENT_MANAGE,
+                Permission::CREATE_COORDINATION, Permission::CREATE_TEAM,
+                Permission::CREATE_EVENT, Permission::CREATE_TOURNAMENT,
+                Permission::HANDLE_SUPPORT_TICKETS,
+                Permission::OPERATOR_PRESENCE_VIEW, Permission::OPERATOR_SESSION_HISTORY_VIEW,
+                Permission::OPERATOR_CONVERSATION_HANDLE, Permission::OPERATOR_MARKETING_SEND,
+                Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW,
+                Permission::BACKOFFICE_STYLE_VIEW, Permission::BACKOFFICE_THEME_VIEW,
+                Permission::BACKOFFICE_BUILDER_VIEW,
+            ], true);
+        }
+
+        if ($role === Role::USER) {
+            return ! $permission->isBackoffice()
+                && ! in_array($permission, [
+                    Permission::CONTENT_MANAGE, Permission::MANAGE_SYSTEM_ROLES,
+                    Permission::REVIEW_PROFILE_CHANGES, Permission::HANDLE_SUPPORT_TICKETS,
+                    Permission::OPERATOR_PRESENCE_VIEW, Permission::OPERATOR_SESSION_HISTORY_VIEW,
+                    Permission::OPERATOR_CONVERSATION_HANDLE, Permission::OPERATOR_MARKETING_SEND,
+                ], true);
+        }
+
+        return false;
+    }
+}

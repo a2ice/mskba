@@ -12,6 +12,11 @@ final class UserOperationalPermissionChecker
     {
         $user = $user->canonical();
 
+        $profiles = app(StaffPermissionProfiles::class);
+        if (! $profiles->allowedForRole($user->system_role, $permission)) {
+            return false;
+        }
+
         // Sensitive review cannot be delegated to a lower system role.
         if ($permission === UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES
             && (! $user->isConfirmed() || ! $user->system_role->atLeast(UserSystemRoleEnum::ADMIN))) {
@@ -46,6 +51,11 @@ final class UserOperationalPermissionChecker
             }
         }
 
+        // Baseline role and specialization grants are never user-deniable.
+        if ($profiles->inherited($user, $permission)) {
+            return true;
+        }
+
         $snapshot = $user->operationalPermissions()
             ->where('permission', $permission->value)
             ->first();
@@ -54,6 +64,9 @@ final class UserOperationalPermissionChecker
             return (bool) $snapshot->is_allowed;
         }
 
-        return $permission->defaultAllowedFor($user->system_role);
+        // When a managed role profile exists, it is authoritative. Legacy
+        // roles without a profile retain their historical behavior.
+        return in_array($user->system_role, [UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR], true)
+            && $permission->defaultAllowedFor($user->system_role);
     }
 }

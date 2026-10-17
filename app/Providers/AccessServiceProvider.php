@@ -34,7 +34,8 @@ class AccessServiceProvider extends ServiceProvider
         Gate::define(
             'manage-content',
             fn (User $user): bool => $user->isConfirmed()
-                && $user->system_role->atLeast(UserSystemRoleEnum::EDITOR),
+                && app(UserOperationalPermissionChecker::class)
+                    ->allows($user, UserOperationalPermissionEnum::CONTENT_MANAGE),
         );
         Gate::define(
             'manage-user-operational-permissions',
