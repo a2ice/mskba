@@ -88,7 +88,7 @@ final class PageBuilderScriptVersionStore
         abort_unless($this->permissions->allows($actor, Permission::BACKOFFICE_BUILDER_PUBLISH), 403);
         [$type, $id] = $this->owner($owner);
 
-        return DB::transaction(static function () use ($type, $id): PageBuilderScriptAsset {
+        return DB::transaction(static function () use ($type, $id, $actor): PageBuilderScriptAsset {
             $script = PageBuilderScriptAsset::query()
                 ->where('entity_type', $type)->where('entity_id', $id)
                 ->lockForUpdate()->firstOrFail();
