@@ -20,7 +20,7 @@ final class UpdateUserSystemRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', Rule::enum(UserSystemRoleEnum::class)],
+            'role' => ['required', 'string', Rule::in([UserSystemRoleEnum::ADMIN->value, UserSystemRoleEnum::MANAGER->value, UserSystemRoleEnum::USER->value])],
         ];
     }
 

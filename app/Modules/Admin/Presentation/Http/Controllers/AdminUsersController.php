@@ -43,7 +43,7 @@ final class AdminUsersController extends Controller
             'users' => $users->handle($request->query()),
             'filters' => $request->query(),
             'statuses' => UserStatusEnum::cases(),
-            'roles' => UserSystemRoleEnum::cases(),
+            'roles' => [UserSystemRoleEnum::SUPERADMIN, UserSystemRoleEnum::ADMIN, UserSystemRoleEnum::MANAGER, UserSystemRoleEnum::USER],
             'operationalPermissions' => UserOperationalPermissionEnum::cases(),
             'permissionGroups' => app(PermissionCatalog::class)->userGroups(),
             'onlinePresence' => $presence->snapshot(),
