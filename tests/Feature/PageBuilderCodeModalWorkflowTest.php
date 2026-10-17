@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Backoffice\Resources\PageBuilder\Pages\EditBuilderPage;
 use App\Modules\Content\Application\Services\PageBuilderPublisher;
 use App\Modules\Content\Application\Services\PageBuilderScriptVersionStore;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
@@ -9,7 +10,9 @@ use App\Modules\Content\Domain\Models\PageBuilderScriptAsset;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class PageBuilderCodeModalWorkflowTest extends TestCase
@@ -106,4 +109,41 @@ final class PageBuilderCodeModalWorkflowTest extends TestCase
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(PageBuilderScriptVersionStore::class)->savePublishAndEnable($admin, $page, '');
     }
+    public function test_filament_code_buttons_open_modals_and_publish_separately(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $page = $this->publishedHome();
+
+        Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+            ->assertActionVisible('editBuilderCss')
+            ->assertActionVisible('editBuilderJs')
+            ->assertActionDoesNotExist('publish')
+            ->assertActionDoesNotExist('rollbackCss')
+            ->mountAction('editBuilderCss')
+            ->assertMountedActionModalSee('Исходный CSS');
+
+        Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+            ->callAction('editBuilderCss', data: [
+                'source' => '.modal-cta { white-space: nowrap; }',
+            ])
+            ->assertHasNoFormErrors();
+        $this->assertSame('.modal-cta { white-space: nowrap; }', $page->refresh()->published_css);
+
+        Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+            ->mountAction('editBuilderJs')
+            ->assertMountedActionModalSee('Исходный JavaScript');
+
+        Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+            ->callAction('editBuilderJs', data: [
+                'source' => 'console.log("unified modal");',
+            ])
+            ->assertHasNoFormErrors();
+
+        $script = PageBuilderScriptAsset::query()->firstOrFail();
+        $this->assertTrue($script->is_enabled);
+        $this->assertSame('console.log("unified modal");', $script->published_js);
+    }
+
 }
