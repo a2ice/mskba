@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 trait BuilderEditorActions
 {
     use BuilderCodeFormGuard;
+    use BuilderScriptEditorActions;
 
     /**
      * Keep the default Save/Cancel actions and add a combined workflow next to
@@ -102,6 +103,7 @@ trait BuilderEditorActions
         $resource = static::getResource();
 
         return [
+            ...$this->scriptActions(),
             Action::make('preview')->label('Предпросмотр')->icon('heroicon-o-eye')
                 ->url(fn (): string => route('page-builder.preview', ['page' => $this->record->getKey()]))
                 ->openUrlInNewTab()
