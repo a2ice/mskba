@@ -305,7 +305,7 @@ final class AdminUserManagementTest extends TestCase
             ->assertRedirect(route('admin.users'))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('user_operational_permissions', [
+        $this->assertDatabaseMissing('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
             'is_allowed' => false,

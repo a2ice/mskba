@@ -136,6 +136,56 @@ final class ManagerSpecializationsTest extends TestCase
         $this->assertFalse(app(UserOperationalPermissionChecker::class)->allows($manager->fresh(), Permission::CONTENT_MANAGE));
     }
 
+    public function test_downgrade_disables_personal_operator_grant_and_does_not_restore_it_on_repromotion(): void
+    {
+        $super = $this->actor(Role::SUPERADMIN);
+        $manager = $this->actor(Role::MANAGER);
+        UserOperationalPermission::query()->create([
+            'user_id' => $manager->id,
+            'permission' => Permission::OPERATOR_CONVERSATION_HANDLE, 'is_allowed' => true,
+        ]);
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($manager, Permission::OPERATOR_CONVERSATION_HANDLE));
+
+        $change = app(AdminUpdateUserSystemRoleHandler::class);
+        $change->handle($super, $manager->id, Role::USER);
+        $this->assertFalse($checker->allows($manager->fresh(), Permission::OPERATOR_CONVERSATION_HANDLE));
+        $change->handle($super, $manager->id, Role::MANAGER);
+        $this->assertFalse($checker->allows($manager->fresh(), Permission::OPERATOR_CONVERSATION_HANDLE));
+    }
+
+    public function test_old_user_admin_endpoint_cannot_grant_outside_admin_effective_rights(): void
+    {
+        $admin = $this->actor(Role::ADMIN);
+        $user = $this->actor(Role::USER);
+        $profile = SystemRolePermissionProfile::query()->findOrFail(Role::ADMIN->value);
+        $profile->update(['permissions' => array_values(array_diff(
+            $profile->permissions, [Permission::CREATE_EVENT->value]
+        ))]);
+
+        $this->expectException(AuthorizationException::class);
+        app(\App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler::class)
+            ->handle($admin, $user->id, [Permission::CREATE_EVENT]);
+    }
+
+    public function test_old_user_admin_endpoint_cannot_revoke_right_outside_admin_scope(): void
+    {
+        $admin = $this->actor(Role::ADMIN);
+        $user = $this->actor(Role::USER);
+        UserOperationalPermission::query()->create([
+            'user_id' => $user->id,
+            'permission' => Permission::CREATE_EVENT, 'is_allowed' => true,
+        ]);
+        $profile = SystemRolePermissionProfile::query()->findOrFail(Role::ADMIN->value);
+        $profile->update(['permissions' => array_values(array_diff(
+            $profile->permissions, [Permission::CREATE_EVENT->value]
+        ))]);
+
+        app(\App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler::class)
+            ->handle($admin, $user->id, []);
+        $this->assertTrue(app(UserOperationalPermissionChecker::class)->allows($user, Permission::CREATE_EVENT));
+    }
+
     public function test_system_role_profile_changes_baseline_for_existing_manager(): void
     {
         $manager = $this->actor(Role::MANAGER);

@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
@@ -41,6 +42,7 @@ final class AdminUpdateUserSystemRoleHandler
                 return;
             }
 
+            $hadOperator = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE);
             $hadSupport = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS);
             $hadProfileReview = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
             if ($target->system_role === UserSystemRoleEnum::MANAGER && $role !== UserSystemRoleEnum::MANAGER) {
@@ -49,6 +51,18 @@ final class AdminUpdateUserSystemRoleHandler
                 $target->forceFill(['staff_title' => null])->save();
             }
             $target->update(['system_role' => $role]);
+            // Do not allow stale personal grants to reactivate after a user
+            // is demoted and later promoted back into the staff hierarchy.
+            $profiles = app(StaffPermissionProfiles::class);
+            foreach ($target->operationalPermissions()->where('is_allowed', true)->get() as $snapshot) {
+                if (! $profiles->allowedForRole($role, $snapshot->permission)) {
+                    $snapshot->update(['is_allowed' => false]);
+                }
+            }
+            if ($hadOperator && ! $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE)) {
+                app(\App\Modules\Notification\Application\Services\OperatorConversationRevocation::class)
+                    ->revokeForUser($target);
+            }
             $hasProfileReview = $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
             if (! $hadSupport && $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)) {
                 app(SupportTicketAccess::class)->setGrantCursor($target);
