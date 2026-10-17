@@ -149,6 +149,20 @@ trait BuilderEditorActions
                     $this->record->refresh();
                     Notification::make()->title('CMS-приоритет включён')->success()->send();
                 }),
+            Action::make('rollbackCss')->label('Откатить CSS')
+                ->icon('heroicon-o-arrow-path')->color('warning')
+                ->requiresConfirmation()
+                ->modalDescription('Будет восстановлена предыдущая опубликованная версия CSS. HTML, компоненты и слайды останутся без изменений.')
+                ->visible(fn (): bool => $resource::canPublishCss()
+                    && (bool) $this->record->has_previous_css
+                    && $this->record->published_at !== null)
+                ->action(function (): void {
+                    abort_unless(static::getResource()::canPublishCss(), 403);
+                    app(PageBuilderPublisher::class)->rollbackCss($this->record);
+                    $this->record->refresh();
+                    Notification::make()->title('Предыдущая версия CSS восстановлена')->success()->send();
+                    $this->fillForm();
+                }),
             Action::make('restore')->label('Восстановить черновик')
                 ->visible(fn (): bool => $resource::canCreate()
                     && PageBuilderRevision::query()
