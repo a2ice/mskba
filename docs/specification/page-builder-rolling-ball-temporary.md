@@ -44,27 +44,39 @@ upgrade. Do not add
 `<script>`, inline CSS, SVG, or event-handler attributes to editor HTML.
 **Slider itself is intentionally untouched.**
 
-The sprite must be exactly 1024 x 1024, a 4 x 4 grid of 256 x 256
-square frames. The approved file is now tracked at
-`public/images/ball-16.webp` and is served at `/images/ball-16.webp`.
-A different size will not activate the overlay, by design.
+The photographed source sprite `public/images/ball-16.png` is 1254 x 1254,
+with 16 RGBA frames in a 4 x 4 grid. Each tile is cropped independently
+using rounded quarter-sheet boundaries and resized to 256 x 256, avoiding
+bleed across half-pixel tile boundaries. The optimized file is
+`public/images/ball-16.webp` (1024 x 1024, 4 x 4). Conversion verified
+16 nonempty frames and preserved alpha. The transparent WebP is **301,614 B**
+vs **1,942,087 B** source PNG (84.5% smaller).
+The homepage's existing Filament HTML continues to reference
+`/images/ball-16.webp`. The frontend uses `?v=photo-20261017-v1` to
+avoid the previous sprite from browser cache. The rendered image must be
+1024 x 1024; other sizes are rejected before use.
 
 ## Current behavior
 
-- Three motion profiles selected by **actual scene width** (<=640,
-  641–1050, >1050), not browser/device brand. Each profile controls its own
-  path and scale; light level is currently shared across profiles:
-  - mobile: ball tile 122 CSS px, scale **0.75 → 1.00**; existing path untouched
-    (rightmost center at ~85.5% of Hero, final center at 20.5%).
-  - tablet: tile 165 CSS px, scale **0.43 → 1.00**; rightmost center ~78.6%,
-    final center at 29%.
-  - desktop: tile 195 CSS px, scale **0.22 → 1.00**; rightmost center ~74.6%,
-    final center at 31.5%, to the right of the CTA.
-- Profiles describe **apparent size relative to court perspective**;
-  end scale remains 1.00 on all screen sizes. First paint in CSS uses the
-  same start coordinates, scale and lighting as the JS profile, so nothing
-  snaps into position after the JavaScript bundle loads.
-- Six full cycles of the original 16 frames; last step is frame 1.
+- **Straight diagonal roll** on the wood floor, not a Bezier arc. Both
+  screen coordinates use exactly the same eased progress. Starting (x,y)
+  and finishing (x,y) percentages of the rendered Hero:
+  - mobile: (85%, 40.5%) → (20.5%, 100%), scale 0.75 → 1;
+  - tablet: (78.5%, 42.5%) → (29%, 100%), scale 0.43 → 1;
+  - desktop: (74.5%, 44%) → (31.5%, 100%), scale 0.22 → 1.
+  The end point remains half the ball outside the bottom of the Hero.
+- Sprite frame selection is based on **projected screen-space distance**
+  and ball radius, not `wheel` events, per-event pixel deltas or elapsed
+  time. Angle increases by an integral of `ds/r` as the apparent ball
+  size grows; the final total is adjusted to the closest whole number of
+  rotations so the ball stops *exactly* on frame 0, frontal view.
+  The direction is the one photographed on the real Spalding (frame order
+  0..15). Reverse scroll reverses frames. No 90-degree wrapper rotation.
+- No frame blending. A ball with a larger visible radius rotates less
+  for the same distance than a distant smaller ball. Note: this is
+  **screen-perspective approximation**, not a full 3D rigid-body solver.
+- Landing remains 30% earlier than the old scroll-distance duration, with
+  no fixed/sticky Hero or page-wide overlay.
 - No frame blending or optical flow. The CSS pseudo-element renders frame zero
   **as soon as the stylesheet loads**, even before JS; the ball is never
   hidden with opacity at scroll progress zero. Starting brightness is **0.57**
@@ -78,8 +90,7 @@ A different size will not activate the overlay, by design.
   (30% earlier). A custom smooth easing has nonzero initial velocity but
   settles gently at the end. In the landed state progress is clamped to 1,
   and the ball remains positioned inside its natural Hero container.
-- Six sprite cycles are retained; the **last frame is explicitly frame zero**,
-  matching the opening frontal / anfas basketball sprite frame.
+- The **last frame is explicitly frame zero**, matching the opening frontal / anfas basketball sprite frame.
 - Motion is tied to native page scroll. Hero never gets `position: fixed`
   or `sticky`; ball stays in its final relative position after movement.
 - A single decorative overlay, consistently visible over all slides.
@@ -89,7 +100,7 @@ A different size will not activate the overlay, by design.
   Content editor z-index remains adjustable for other decorative graphics.
 - Opt-in only if a real sprite image can load and its size is valid.
 - Reduced-motion users get the final resting state.
-- Sprite frame container has `rotate(90deg)`, matching the approved demo.
+- No extra CSS rotation: photographed frames already contain the intended roll axis.
 - Layer does not intercept pointer events or slider navigation.
 
 ## Integration files
@@ -108,8 +119,7 @@ A different size will not activate the overlay, by design.
    arbitrary executable JavaScript (a separate design discussion).
 3. Check that the ball is compatible with every slider background and with
    pagination/CTA in the final page design.
-4. Consider controlling movement by real world surface travel instead of
-   a fixed six rotations for a more physically accurate roll.
+4. Calibrate projected physical angular travel against the real photo sequence on mobile/tablet/desktop. If needed, introduce per-scene spin-direction calibration without changing the sprite itself.
 5. Maintain sanitizer boundary, existing published snapshots, and
    mobile reduced-motion support.
 

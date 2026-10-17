@@ -19,7 +19,7 @@
 .mskba-page-builder .mskba-rolling-ball {
     position: absolute;
     z-index: 3;
-    left: 23.5%;
+    left: 85%;
     top: 40.5%;
     width: 0;
     height: 0;
@@ -41,11 +41,12 @@
     height: 122px;
     left: 0;
     top: 0;
-    background-image: var(--ball-image, url('/images/ball-16.webp'));
+    background-image: var(--ball-image, url('/images/ball-16.webp?v=photo-20261017-v1'));
     background-repeat: no-repeat;
     background-size: 400% 400%;
     background-position: var(--ball-frame-x) var(--ball-frame-y);
-    transform: translate(-50%, -50%) scale(var(--ball-scale)) rotate(90deg);
+    /* Photo frames already follow the physical roll axis: no legacy 90deg correction. */
+    transform: translate(-50%, -50%) scale(var(--ball-scale));
     transform-origin: center center;
     filter: brightness(var(--ball-brightness)) saturate(var(--ball-saturation))
         drop-shadow(0 6px 8px rgba(0,0,0,.34));
@@ -71,7 +72,7 @@
 }
 @container mskba-rolling-scene (min-width: 641px) {
     .mskba-page-builder .mskba-rolling-ball {
-        left: 41%;
+        left: 78.5%;
         top: 42.5%;
         --ball-scale: .43;
     }
@@ -79,7 +80,7 @@
 }
 @container mskba-rolling-scene (min-width: 1051px) {
     .mskba-page-builder .mskba-rolling-ball {
-        left: 52%;
+        left: 74.5%;
         top: 44%;
         --ball-scale: .22;
     }
