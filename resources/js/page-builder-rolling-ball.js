@@ -31,17 +31,14 @@ const rollingBallLighting = {
 };
 const rollingBallClamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const rollingBallSmooth = value => value * value * (3 - 2 * value);
-// Keep the gentle stop of smoothstep, but give the ball nonzero motion
-// from the *first* scroll pixel (smoothstep alone has zero initial velocity).
-const rollingBallTravelEase = value => {
-    const remaining = 1 - value;
-    return rollingBallSmooth(value) + .6 * value * remaining * remaining;
-};
+// For this first scene, use strictly linear scroll progress for both
+// translation and photographed frame selection. Native scroll is the clock;
+// no easing or time-based follower that continues to move after scrolling stops.
 // The ball now completes the entire first-scene path in 70% of the
 // formerly required scroll distance, then remains attached to the hero.
 const rollingBallTimelineFactor = .7;
 const rollingBallSpriteFrames = 16;
-const rollingBallAssetRevision = 'photo-20261017-v1';
+const rollingBallAssetRevision = 'photo-20261017-centered-v2';
 const rollingBallTwoPi = 2 * Math.PI;
 
 // Approximate no-slip physical rolling: angular displacement = integral(ds/R)
@@ -85,33 +82,23 @@ function initRollingBall(root) {
     if (sprite.complete) useSprite();
     else sprite.addEventListener('load', useSprite, { once: true });
 
-    let apparentPathDistance = 0;
-    let startRadius = 1;
-    let endRadius = 1;
-    let roundedTurns = 1;
-    let maxPhysicalAngle = 1;
+    let revolutions = 1;
     let start = 0;
     let distance = 270;
-    let target = 0;
-    let displayed = 0;
-    let raf = 0;
-    let lastTime = 0;
-    let initialized = false;
     let activeProfile = rollingBallProfiles.mobile;
 
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
-        const travel = rollingBallTravelEase(p);
+        const travel = p;
         // Both axes use the same progress: geometrically a straight line.
         const x = activeProfile.from[0] + (activeProfile.to[0] - activeProfile.from[0]) * travel;
         const y = activeProfile.from[1] + (activeProfile.to[1] - activeProfile.from[1]) * travel;
         const light = rollingBallSmooth(travel);
-        const angle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, travel);
-        // Nearest complete number of revolutions guarantees frame 0 on landing.
-        const framesTravelled = maxPhysicalAngle > 0
-            ? angle / maxPhysicalAngle * roundedTurns * rollingBallSpriteFrames
-            : 0;
-        const frame = p >= 1 ? 0 : Math.floor(framesTravelled + 1e-8) % rollingBallSpriteFrames;
+        // Fixed step length in real scroll pixels: equal scroll increments
+        // advance equal frame counts. No angular acceleration during scale-up.
+        // At the exact landing, wrap cleanly to the first photographed frame.
+        const framesTravelled = Math.floor(p * revolutions * rollingBallSpriteFrames);
+        const frame = p >= 1 ? 0 : framesTravelled % rollingBallSpriteFrames;
 
         root.style.left = (x / 10).toFixed(3) + '%';
         root.style.top = (y / 10).toFixed(3) + '%';
@@ -137,49 +124,30 @@ function initRollingBall(root) {
         activeProfile = rollingBallProfiles[band];
         const dx = (activeProfile.to[0] - activeProfile.from[0]) / 1000 * rect.width;
         const dy = (activeProfile.to[1] - activeProfile.from[1]) / 1000 * rect.height;
-        apparentPathDistance = Math.hypot(dx, dy);
-        startRadius = activeProfile.tileSize * activeProfile.startScale / 2;
-        endRadius = activeProfile.tileSize * activeProfile.endScale / 2;
-        maxPhysicalAngle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, 1);
-        roundedTurns = Math.max(1, Math.round(maxPhysicalAngle / rollingBallTwoPi));
+        const apparentPathDistance = Math.hypot(dx, dy);
+        const startRadius = activeProfile.tileSize * activeProfile.startScale / 2;
+        const endRadius = activeProfile.tileSize * activeProfile.endScale / 2;
+        const totalAngle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, 1);
+        // Choose one or more whole turns from the approximate travel geometry;
+        // distribute all of their frames UNIFORMLY over the scroll timeline.
+        revolutions = Math.max(1, Math.round(totalAngle / rollingBallTwoPi));
         // If Hero is already within the initial viewport (homepage), start
         // at scrollY=0 rather than waiting for a fixed header offset.
         // Below-the-fold scenes start when they approach the viewport.
         const heroPageTop = window.scrollY + rect.top;
         start = Math.max(0, heroPageTop - window.innerHeight * .8);
         distance = Math.min(360, Math.max(270, rect.height * .48)) * rollingBallTimelineFactor;
-        target = targetFromScroll();
-        if (!initialized) {
-            // No sudden jump on a restored scroll position after reload.
-            displayed = target;
-            initialized = true;
-        }
-        paint(displayed);
-        queue();
+        // A restored scroll position must immediately reproduce exactly
+        // the same ball pose; there is no time-based catch-up.
+        paint(targetFromScroll());
     }
 
-    function tick(now) {
-        raf = 0;
-        const elapsed = lastTime ? Math.min(64, now - lastTime) : 16;
-        lastTime = now;
-        displayed += (target - displayed) * (1 - Math.exp(-elapsed / 55));
-        if (Math.abs(displayed - target) < .0003) displayed = target;
-        paint(displayed);
-        if (displayed !== target) raf = window.requestAnimationFrame(tick);
-        else lastTime = 0;
-    }
-
-    function queue() {
-        if (!initialized) return;
-        target = targetFromScroll();
-        if (!raf && Math.abs(displayed - target) > .0003) {
-            raf = window.requestAnimationFrame(tick);
-        }
-    }
-
-    window.addEventListener('scroll', queue, { passive: true });
+    // The hero and the ball share the browser's native scroll clock. Once the
+    // target clamps to 1, every following scroll paints the identical landed
+    // frame and coordinates (the DOM continues moving with the page).
+    window.addEventListener('scroll', () => paint(targetFromScroll()), { passive: true });
     window.addEventListener('resize', measure, { passive: true });
-    rollingBallReducedMotion.addEventListener?.('change', () => paint(displayed));
+    rollingBallReducedMotion.addEventListener?.('change', () => paint(targetFromScroll()));
     if ('ResizeObserver' in window) {
         new ResizeObserver(measure).observe(slider);
     }
