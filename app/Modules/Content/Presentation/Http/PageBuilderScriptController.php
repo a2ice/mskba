@@ -62,7 +62,7 @@ final class PageBuilderScriptController extends Controller
             .'<h3>Изолированная песочница (не реальная страница)</h3>'
             .'<p>Скрипт выполняется без доступа к аккаунту, сети и DOM портала.</p>'
             .'<button id="demo-button">Тестовая кнопка</button><div id="result"></div>'
-            .'<script>try {(0,eval)(atob("'.$encoded.'"));}'
+            .'<script>try {(0,eval)(new TextDecoder().decode(Uint8Array.from(atob("'.$encoded.'"), c => c.charCodeAt(0))));}'
             .'catch(e){document.getElementById("result").textContent=String(e);}</script>'
             .'</body></html>';
 
