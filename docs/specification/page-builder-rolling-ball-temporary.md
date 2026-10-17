@@ -51,14 +51,26 @@ A different size will not activate the overlay, by design.
 
 ## Current behavior
 
-- Three geometric paths selected by **actual scene width** (<=640,
-  641–1050, >1050), not browser device type.
-- Responsive ball tile: 122/165/195 CSS px; scale grows 0.75 -> 1.00.
+- Three motion profiles selected by **actual scene width** (<=640,
+  641–1050, >1050), not browser/device brand. Each profile controls its own
+  path and scale; light level is currently shared across profiles:
+  - mobile: ball tile 122 CSS px, scale **0.75 → 1.00**; existing path untouched
+    (rightmost center at ~85.5% of Hero, final center at 20.5%).
+  - tablet: tile 165 CSS px, scale **0.43 → 1.00**; rightmost center ~78.6%,
+    final center at 29%.
+  - desktop: tile 195 CSS px, scale **0.22 → 1.00**; rightmost center ~74.6%,
+    final center at 31.5%, to the right of the CTA.
+- Profiles describe **apparent size relative to court perspective**;
+  end scale remains 1.00 on all screen sizes. First paint in CSS uses the
+  same start coordinates, scale and lighting as the JS profile, so nothing
+  snaps into position after the JavaScript bundle loads.
 - Six full cycles of the original 16 frames; last step is frame 1.
 - No frame blending or optical flow. The CSS pseudo-element renders frame zero
   **as soon as the stylesheet loads**, even before JS; the ball is never
-  hidden with opacity at scroll progress zero. It is darkened (not transparent)
-  initially and becomes brighter as it rolls closer.
+  hidden with opacity at scroll progress zero. Starting brightness is **0.57**
+  instead of **0.07**, approximately the previous half-timeline light level.
+  It gradually brightens to 1.02 with saturation 0.74 → 1.00; no opacity
+  fade and no black-circle silhouette.
 - Motion is tied to native page scroll. Hero never gets `position: fixed`
   or `sticky`; ball stays in its final relative position after movement.
 - A single decorative overlay, consistently visible over all slides.
@@ -91,6 +103,29 @@ A different size will not activate the overlay, by design.
    a fixed six rotations for a more physically accurate roll.
 5. Maintain sanitizer boundary, existing published snapshots, and
    mobile reduced-motion support.
+
+### Planned second scene, NOT implemented yet
+
+Once the responsive Hero animation is accepted, the same physical ball should
+continue into a second page section (e.g. a still photo of a basketball player
+with a just-released shooting pose). The motion controller should support a
+**scroll scene timeline**:
+
+1. `hero-roll`: a scene-relative ball travels into the foreground and comes
+   to rest half outside the Hero. Hero is not fixed; the ball follows its DOM.
+2. `hero-exit handoff`: when natural page scroll carries the resting ball
+   close to the fixed site header, capture its viewport position and hand the
+   *same* ball (same frame, size and lighting) to a page-wide effects overlay.
+3. `shot-intro`: scroll progress, section geometry and the player's release
+   hand determine a new path, spin direction, z-order and scale. This should
+   work in reverse on upward scroll, and preserve reduced-motion behavior.
+
+**Do not prematurely attach a second copy of the ball to the next section.**
+The second phase needs explicit ownership/layer handoff without a visible jump,
+plus measurement of the real next-section artwork and release-point geometry.
+The current hero-only controller remains the source of truth until acceptance.
+Responsive profiles should eventually become editable Page Builder settings
+for authorized editors, without duplicating movement code in user-supplied JS.
 
 **Do not touch `main`/production.** Publish the page markup separately only
 after visual acceptance and asset upload.

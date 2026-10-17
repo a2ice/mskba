@@ -2,10 +2,37 @@
 // Opt-in via .mskba-hero-scene and .mskba-rolling-ball. The ball is shared by
 // all slides and lives inside the slider root for correct z-index interleaving.
 const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-const rollingBallPaths = {
-    mobile: 'M 235 405 C 430 440 785 510 850 615 C 900 735 600 920 205 1000',
-    tablet: 'M 315 425 C 545 440 840 485 885 575 C 935 720 520 915 160 1000',
-    desktop: 'M 475 440 C 640 450 900 490 945 585 C 985 745 530 925 130 1000',
+// First-scene profiles use the *rendered hero width*, not the device name.
+// The 0..1000 coordinate system preserves the same responsive DOM wrapper.
+// A future section-to-section director can own this ball without changing
+// the sprite renderer or reintroducing slide-specific layers.
+const rollingBallProfiles = {
+    mobile: {
+        path: 'M 235 405 C 430 440 785 510 850 615 C 900 735 600 920 205 1000',
+        startScale: .75,
+        endScale: 1,
+    },
+    tablet: {
+        path: 'M 410 425 C 555 445 775 485 785 590 C 800 730 575 907 290 1000',
+        startScale: .43,
+        endScale: 1,
+    },
+    desktop: {
+        // Tighter court-perspective arc: rightmost ~77%, landing at 31.5%.
+        // A small starting ball reads as distant at natural parquet scale.
+        path: 'M 520 440 C 615 445 735 495 745 595 C 760 750 590 900 315 1000',
+        startScale: .22,
+        endScale: 1,
+    },
+};
+// Old brightness at scroll 0 was .07 (almost entirely black). Its halfway
+// timeline level was ~.59, so use that as the floor: low-lit, never a silhouette.
+// No opacity interpolation or frame blending is involved.
+const rollingBallLighting = {
+    startBrightness: .57,
+    endBrightness: 1.02,
+    startSaturation: .74,
+    endSaturation: 1,
 };
 const rollingBallClamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const rollingBallSmooth = value => value * value * (3 - 2 * value);
@@ -45,19 +72,25 @@ function initRollingBall(root) {
     let raf = 0;
     let lastTime = 0;
     let initialized = false;
+    let activeProfile = rollingBallProfiles.mobile;
 
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
         const travel = rollingBallSmooth(p);
         const point = path.getPointAtLength(pathLength * travel);
-        const light = rollingBallSmooth(rollingBallClamp((travel - .02) / .9, 0, 1));
+        const light = rollingBallSmooth(travel);
         const frame = Math.round(travel * 16 * 6) % 16;
 
         root.style.left = (point.x / 10).toFixed(3) + '%';
         root.style.top = (point.y / 10).toFixed(3) + '%';
-        root.style.setProperty('--ball-scale', (0.75 + .25 * travel).toFixed(4));
-        root.style.setProperty('--ball-brightness', (.07 + .95 * light).toFixed(4));
-        root.style.setProperty('--ball-saturation', (.38 + .62 * light).toFixed(4));
+        root.style.setProperty('--ball-scale',
+            (activeProfile.startScale + (activeProfile.endScale - activeProfile.startScale) * travel).toFixed(4));
+        root.style.setProperty('--ball-brightness',
+            (rollingBallLighting.startBrightness
+                + (rollingBallLighting.endBrightness - rollingBallLighting.startBrightness) * light).toFixed(4));
+        root.style.setProperty('--ball-saturation',
+            (rollingBallLighting.startSaturation
+                + (rollingBallLighting.endSaturation - rollingBallLighting.startSaturation) * light).toFixed(4));
         root.style.setProperty('--ball-frame-x', `${(frame % 4) * 100 / 3}%`);
         root.style.setProperty('--ball-frame-y', `${Math.floor(frame / 4) * 100 / 3}%`);
     }
@@ -69,7 +102,8 @@ function initRollingBall(root) {
     function measure() {
         const rect = slider.getBoundingClientRect();
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
-        path.setAttribute('d', rollingBallPaths[band]);
+        activeProfile = rollingBallProfiles[band];
+        path.setAttribute('d', activeProfile.path);
         pathLength = path.getTotalLength();
         start = Math.max(0, window.scrollY + rect.top - 107);
         distance = Math.min(360, Math.max(270, rect.height * .48));
