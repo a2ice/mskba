@@ -57,7 +57,7 @@ final class SystemRoleProfileResource extends Resource
                             array_map(static fn (Permission $p): string => $p->label(), Permission::cases())
                         ))
                         ->disableOptionWhen(fn (string $value, ?SystemRolePermissionProfile $record): bool =>
-                            $record === null || ! $profiles->allowedForRole(Role::from($record->role), Permission::from($value)))
+                            $record === null || ! $profiles->allowedInProfile(Role::from($record->role), Permission::from($value)))
                         ->columns(2),
                 ]),
         ]);
@@ -74,7 +74,7 @@ final class SystemRoleProfileResource extends Resource
         $role = Role::from($record->role);
         foreach ($keys as $key) {
             $permission = is_string($key) ? Permission::tryFrom($key) : null;
-            if ($permission === null || ! app(StaffPermissionProfiles::class)->allowedForRole($role, $permission)) {
+            if ($permission === null || ! app(StaffPermissionProfiles::class)->allowedInProfile($role, $permission)) {
                 throw ValidationException::withMessages(['data.permissions' => 'Недопустимое системное разрешение.']);
             }
         }

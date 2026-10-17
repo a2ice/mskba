@@ -65,7 +65,7 @@ final class ManagerSpecializationResource extends Resource
                             array_map(static fn (Permission $p): string => $p->value, Permission::cases()),
                             array_map(static fn (Permission $p): string => $p->label(), Permission::cases()),
                         ))
-                        ->disableOptionWhen(fn (string $value): bool => ! $profiles->allowedForRole(Role::MANAGER, Permission::from($value)))
+                        ->disableOptionWhen(fn (string $value): bool => ! $profiles->allowedInProfile(Role::MANAGER, Permission::from($value)))
                         ->columns(2)->columnSpanFull(),
                 ]),
         ]);
@@ -80,7 +80,7 @@ final class ManagerSpecializationResource extends Resource
         }
         foreach ($permissions as $key) {
             $permission = is_string($key) ? Permission::tryFrom($key) : null;
-            if ($permission === null || ! app(StaffPermissionProfiles::class)->allowedForRole(Role::MANAGER, $permission)) {
+            if ($permission === null || ! app(StaffPermissionProfiles::class)->allowedInProfile(Role::MANAGER, $permission)) {
                 throw ValidationException::withMessages(['data.permissions' => 'В профиле менеджера присутствуют недопустимые права.']);
             }
         }

@@ -64,6 +64,18 @@ final class StaffPermissionProfiles
             || in_array($permission->value, $this->specializationKeys($user), true);
     }
 
+    /**
+     * Grants whose historical access requires a cursor must be assigned through
+     * the dedicated audited individual workflow, never via a mutable template.
+     */
+    public function allowedInProfile(Role $role, Permission $permission): bool
+    {
+        return $this->allowedForRole($role, $permission)
+            && ! in_array($permission, [
+                Permission::HANDLE_SUPPORT_TICKETS, Permission::REVIEW_PROFILE_CHANGES,
+            ], true);
+    }
+
     /** Explicit upper bound: a functional manager cannot become a system admin. */
     public function allowedForRole(Role $role, Permission $permission): bool
     {

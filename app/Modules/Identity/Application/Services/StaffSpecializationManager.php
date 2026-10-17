@@ -57,14 +57,15 @@ final class StaffSpecializationManager
                 throw ValidationException::withMessages(['specialization_ids' => 'Неизвестная специализация.']);
             }
 
+            $checker = app(UserOperationalPermissionChecker::class);
+            $hadConversations = $checker->allows($lockedTarget, Permission::OPERATOR_CONVERSATION_HANDLE);
             $previous = $lockedTarget->managerSpecializations()->pluck('manager_specializations.id')->map(fn ($id): int => (int) $id)->all();
             $newIds = array_diff($values, $previous);
-            $checker = app(UserOperationalPermissionChecker::class);
             $ceilings = app(StaffPermissionProfiles::class);
             foreach ($specializations as $specialization) {
                 foreach ((array) $specialization->permissions as $key) {
                     $permission = is_string($key) ? Permission::tryFrom($key) : null;
-                    if ($permission === null || ! $ceilings->allowedForRole(Role::MANAGER, $permission)) {
+                    if ($permission === null || ! $ceilings->allowedInProfile(Role::MANAGER, $permission)) {
                         throw new AuthorizationException('Специализация содержит запрещённые права.');
                     }
                     if (in_array($specialization->id, $newIds, true)
@@ -76,6 +77,10 @@ final class StaffSpecializationManager
             }
 
             $lockedTarget->managerSpecializations()->sync($values);
+            if ($hadConversations && ! $checker->allows($lockedTarget->fresh(), Permission::OPERATOR_CONVERSATION_HANDLE)) {
+                app(\App\Modules\Notification\Application\Services\OperatorConversationRevocation::class)
+                    ->revokeForUser($lockedTarget);
+            }
             if ($staffTitle !== null) {
                 $lockedTarget->forceFill(['staff_title' => trim($staffTitle) ?: null])->save();
             }
