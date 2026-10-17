@@ -7,6 +7,7 @@ use App\Modules\Content\Domain\Models\PageBuilderRevision;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Content\Application\Services\PageBuilderRouteRegistry;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 trait BuilderEditorActions
 {
     use BuilderCodeFormGuard;
+    use BuilderScriptEditorActions;
 
     /**
      * Keep the default Save/Cancel actions and add a combined workflow next to
@@ -102,6 +104,11 @@ trait BuilderEditorActions
         $resource = static::getResource();
 
         return [
+            ActionGroup::make($this->scriptActions())
+                ->label('JavaScript')
+                ->icon('heroicon-o-code-bracket')
+                ->visible(fn (): bool => $resource::canViewJs()
+                    || $resource::canEditJs() || $resource::canPublishJs()),
             Action::make('preview')->label('Предпросмотр')->icon('heroicon-o-eye')
                 ->url(fn (): string => route('page-builder.preview', ['page' => $this->record->getKey()]))
                 ->openUrlInNewTab()

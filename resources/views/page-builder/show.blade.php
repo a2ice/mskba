@@ -19,6 +19,9 @@
 
 @push('scripts')
     @vite('resources/js/page-builder.js')
+    @foreach ($builderScripts as $scriptUrl)
+        <script defer src="{{ $scriptUrl }}"></script>
+    @endforeach
 @endpush
 
 @section('content')

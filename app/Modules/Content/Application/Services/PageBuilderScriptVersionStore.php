@@ -82,6 +82,40 @@ final class PageBuilderScriptVersionStore
         });
     }
 
+
+    /**
+     * Emergency kill switch. No physical asset is created or removed.
+     * Fresh page responses immediately omit the script URL.
+     */
+    public function setEnabled(User $actor, Model $owner, bool $enabled): PageBuilderScriptAsset
+    {
+        $this->authorize($actor, Permission::BACKOFFICE_BUILDER_JS_PUBLISH);
+        abort_unless($this->permissions->allows($actor, Permission::BACKOFFICE_BUILDER_PUBLISH), 403);
+        [$type, $id] = $this->owner($owner);
+
+        return DB::transaction(static function () use ($type, $id, $actor, $enabled): PageBuilderScriptAsset {
+            $script = PageBuilderScriptAsset::query()
+                ->where('entity_type', $type)->where('entity_id', $id)
+                ->lockForUpdate()->firstOrFail();
+            abort_if($enabled && ($script->published_hash === null || $script->published_js === null), 409,
+                'Сначала опубликуй JavaScript.');
+            if ((bool) $script->is_enabled !== $enabled) {
+                $script->is_enabled = $enabled;
+                $script->save();
+                DB::table('page_builder_script_audit')->insert([
+                    'entity_type' => $type,
+                    'entity_id' => $id,
+                    'action' => $enabled ? 'enable' : 'disable',
+                    'user_id' => $actor->id,
+                    'content_hash' => $script->published_hash,
+                    'created_at' => now(),
+                ]);
+            }
+
+            return $script->refresh();
+        });
+    }
+
     public function rollback(User $actor, Model $owner): PageBuilderScriptAsset
     {
         $this->authorize($actor, Permission::BACKOFFICE_BUILDER_JS_PUBLISH);
