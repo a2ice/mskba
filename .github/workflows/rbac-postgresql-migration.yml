@@ -11,9 +11,13 @@ jobs:
   legacy-upgrade-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ['16', '17']
     services:
       postgres:
-        image: postgres:16
+        image: postgres:${{ matrix.postgres-version }}
         env:
           POSTGRES_USER: rbac_ci
           POSTGRES_PASSWORD: ci-only-disposable
