@@ -43,7 +43,7 @@ return new class extends Migration
         DB::table('system_role_permission_profiles')->insert([
             ['role' => 'user', 'permissions' => json_encode(['team.create','coordination.create']), 'created_at' => $now, 'updated_at' => $now],
             ['role' => 'manager', 'permissions' => json_encode(['backoffice.access','team.create','coordination.create']), 'created_at' => $now, 'updated_at' => $now],
-            ['role' => 'admin', 'permissions' => json_encode(['backoffice.access','backoffice.widget.view','backoffice.widget.create','backoffice.widget.edit','team.create','coordination.create','event.create','tournament.create']), 'created_at' => $now, 'updated_at' => $now],
+            ['role' => 'admin', 'permissions' => json_encode(['backoffice.access','backoffice.widget.view','backoffice.widget.create','backoffice.widget.edit','content.manage','team.create','coordination.create','event.create','tournament.create']), 'created_at' => $now, 'updated_at' => $now],
             ['role' => 'system', 'permissions' => json_encode([]), 'created_at' => $now, 'updated_at' => $now],
         ]);
 

@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\ManagerSpecializations\ManagerSpecializationResource;
+use App\Filament\Backoffice\Resources\SystemRoleProfiles\SystemRoleProfileResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource;
@@ -51,6 +52,7 @@ final class BackofficePanelProvider extends PanelProvider
                 BuilderTemplateResource::class,
                 BuilderComponentResource::class,
                 BackofficeUserResource::class,
+                SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,
                 SupportTicketResource::class,
                 OperatorUserResource::class,
