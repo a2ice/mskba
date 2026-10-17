@@ -43,7 +43,7 @@ trait BuilderScriptEditorActions
                 ->form([
                     CodeEditor::make('source')->label('Исходный JavaScript')
                         ->language(Language::JavaScript)
-                        ->maxLength(100000)->columnSpanFull(),
+                        ->columnSpanFull(),
                 ])
                 ->fillForm(fn (): array => [
                     'source' => (string) ($this->scriptAsset()?->draft_js ?? ''),
