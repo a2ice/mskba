@@ -46,6 +46,42 @@ trait BuilderPermissions
         return false;
     }
 
+    public static function canViewCss(): bool
+    {
+        return static::canViewAny() && static::allowed(Permission::BACKOFFICE_BUILDER_CSS_VIEW);
+    }
+
+    public static function canEditCss(): bool
+    {
+        return static::canCreate()
+            && static::canViewCss()
+            && static::allowed(Permission::BACKOFFICE_BUILDER_CSS_EDIT);
+    }
+
+    public static function canPublishCss(): bool
+    {
+        return static::canPublish()
+            && static::allowed(Permission::BACKOFFICE_BUILDER_CSS_PUBLISH);
+    }
+
+    public static function canViewJs(): bool
+    {
+        return static::canViewAny() && static::allowed(Permission::BACKOFFICE_BUILDER_JS_VIEW);
+    }
+
+    public static function canEditJs(): bool
+    {
+        return static::canCreate()
+            && static::canViewJs()
+            && static::allowed(Permission::BACKOFFICE_BUILDER_JS_EDIT);
+    }
+
+    public static function canPublishJs(): bool
+    {
+        return static::canPublish()
+            && static::allowed(Permission::BACKOFFICE_BUILDER_JS_PUBLISH);
+    }
+
     public static function canPublish(): bool
     {
         return static::allowed(Permission::BACKOFFICE_BUILDER_PUBLISH);
