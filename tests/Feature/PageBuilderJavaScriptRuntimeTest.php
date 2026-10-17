@@ -55,7 +55,7 @@ final class PageBuilderJavaScriptRuntimeTest extends TestCase
         $this->assertSame([], $renderer->render($page, true)['scripts']);
         $this->get($url1)->assertOk()
             ->assertHeader('X-Content-Type-Options', 'nosniff')
-            ->assertHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+            ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, public')
             ->assertSee('document.body.dataset.test = "draft";', false);
 
         $store->saveDraft($admin, $page, 'document.body.dataset.test = "new";');
@@ -122,7 +122,7 @@ final class PageBuilderJavaScriptRuntimeTest extends TestCase
         $this->get($url)->assertRedirect();
         $this->actingAs($admin);
         $response = $this->get($url)->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
         $csp = (string) $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString('sandbox allow-scripts', $csp);
         $this->assertStringContainsString("connect-src 'none'", $csp);
