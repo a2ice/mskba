@@ -144,7 +144,6 @@ final class BackofficePermissionsTest extends TestCase
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm(['backoffice_permissions' => [
-                Permission::BACKOFFICE_ACCESS->value,
                 Permission::BACKOFFICE_WIDGET_VIEW->value,
                 Permission::BACKOFFICE_WIDGET_EDIT->value,
             ]])

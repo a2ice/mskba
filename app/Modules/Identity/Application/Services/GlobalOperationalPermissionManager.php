@@ -141,14 +141,17 @@ final class GlobalOperationalPermissionManager
         ));
         foreach (array_merge($creation, $privileged ?? []) as $key) {
             $permission = Permission::from($key);
-            if (! in_array($permission, $scope, true)) {
-                throw new AuthorizationException('Нельзя назначать недоступные или наследуемые права.');
+            // Backward compatible payloads may contain immutable inherited
+            // grants, but they must never create an individual override.
+            if (! in_array($permission, $scope, true)
+                && ! $profiles->inherited($target->canonical(), $permission)) {
+                throw new AuthorizationException('Нельзя назначать недоступные права.');
             }
         }
-        $allowed = array_values(array_map(
+        $allowed = array_values(array_filter(array_map(
             static fn (string $value): Permission => Permission::from($value),
             array_merge($creation, $privileged ?? [])
-        ));
+        ), static fn (Permission $permission): bool => in_array($permission, $scope, true)));
 
         app(AdminUpdateUserOperationalPermissionsHandler::class)
             ->handle($actor, $target->canonical()->id, $allowed, $scope);
