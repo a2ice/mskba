@@ -58,6 +58,13 @@ final class PageBuilderPublisher
                 $item->published_options = HeroSliderSettings::options($item->draft_options);
             }
             $item->published_html = $item->draft_html;
+            // Independent CSS rollback state; HTML-only publishes never
+            // replace the previous CSS version.
+            if ($item->published_at !== null
+                && (string) $item->published_css !== (string) $item->draft_css) {
+                $item->previous_css = $item->published_css;
+                $item->has_previous_css = true;
+            }
             $item->published_css = $item->draft_css;
             $item->published_at = now();
             $item->save();
@@ -96,6 +103,35 @@ final class PageBuilderPublisher
                     ]);
                 }
             });
+    }
+
+    /**
+     * Swap current and previous published CSS only. HTML, component data and
+     * CMS override status remain untouched. Draft CSS follows the rollback so
+     * the next publish does not immediately undo the restored design.
+     */
+    public function rollbackCss(Model $record): void
+    {
+        DB::transaction(function () use ($record): void {
+            $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
+            if (! $item->has_previous_css || $item->published_at === null) {
+                throw ValidationException::withMessages(['draft_css' => 'Предыдущая версия CSS отсутствует.']);
+            }
+            $current = $item->published_css;
+            $item->published_css = $item->previous_css;
+            $item->previous_css = $current;
+            $item->draft_css = $item->published_css;
+            $item->save();
+
+            PageBuilderRevision::query()->create([
+                'entity_type' => self::type($item),
+                'entity_id' => $item->getKey(),
+                'action' => 'css_rollback',
+                'snapshot' => ['sha256' => hash('sha256', (string) $item->published_css)],
+                'user_id' => auth('web')->id(),
+                'created_at' => now(),
+            ]);
+        });
     }
 
     /**
