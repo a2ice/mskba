@@ -76,6 +76,8 @@ function initRollingBall(root) {
     let start = 0;
     let distance = 270;
     let activeProfile = rollingBallProfiles.mobile;
+    let measuredWidth = null;
+    let scheduledFrame = 0;
 
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
@@ -108,8 +110,28 @@ function initRollingBall(root) {
         return rollingBallClamp((window.scrollY - start) / distance, 0, 1);
     }
 
+    // Coalesce scroll/visual-viewport events into a single browser paint.
+    // Read the *latest* native scroll position on that frame: no easing,
+    // historical progress queue or movement after native scrolling stops.
+    function schedulePaint() {
+        if (scheduledFrame) return;
+        scheduledFrame = window.requestAnimationFrame(() => {
+            scheduledFrame = 0;
+            paint(targetFromScroll());
+        });
+    }
+
     function measure() {
         const rect = slider.getBoundingClientRect();
+        // iOS Safari collapses/expands browser chrome during touch flicks,
+        // firing resize and sometimes ResizeObserver for HEIGHT-only changes.
+        // Do not alter the animation's scroll endpoints mid-gesture.
+        // A real breakpoint/orientation change also changes scene width.
+        if (measuredWidth !== null && Math.abs(measuredWidth - rect.width) < 1) {
+            schedulePaint();
+            return;
+        }
+        measuredWidth = rect.width;
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
         // If Hero is already within the initial viewport (homepage), start
@@ -118,6 +140,9 @@ function initRollingBall(root) {
         const heroPageTop = window.scrollY + rect.top;
         start = Math.max(0, heroPageTop - window.innerHeight * .8);
         distance = Math.min(360, Math.max(270, rect.height * .48)) * rollingBallTimelineFactor;
+        // The browser's toolbar can now change viewport height without
+        // changing start or distance. Only a genuine scene-width change
+        // selects a new responsive profile and recalibrates the timeline.
         // A restored scroll position must immediately reproduce exactly
         // the same ball pose; there is no time-based catch-up.
         paint(targetFromScroll());
@@ -126,7 +151,7 @@ function initRollingBall(root) {
     // The hero and the ball share the browser's native scroll clock. Once the
     // target clamps to 1, every following scroll paints the identical landed
     // frame and coordinates (the DOM continues moving with the page).
-    window.addEventListener('scroll', () => paint(targetFromScroll()), { passive: true });
+    window.addEventListener('scroll', schedulePaint, { passive: true });
     window.addEventListener('resize', measure, { passive: true });
     rollingBallReducedMotion.addEventListener?.('change', () => paint(targetFromScroll()));
     if ('ResizeObserver' in window) {
