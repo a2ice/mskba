@@ -347,12 +347,13 @@ final class AdminUserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.users.operational-permissions.update', $target), [
-                'permissions' => [],
+                'permissions' => [UserOperationalPermissionEnum::CREATE_EVENT->value],
             ])
             ->assertRedirect(route('admin.users'));
 
         $permission = UserOperationalPermission::query()
             ->whereBelongsTo($target)
+            ->where('permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
             ->firstOrFail();
 
         $audit = AuditLog::query()
@@ -361,7 +362,7 @@ final class AdminUserManagementTest extends TestCase
             ->where('event', 'created')
             ->firstOrFail();
 
-        $this->assertFalse($audit->new_values['is_allowed']);
+        $this->assertTrue($audit->new_values['is_allowed']);
         $this->assertNotNull($audit->actor_id);
     }
 
@@ -478,7 +479,9 @@ final class AdminUserManagementTest extends TestCase
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_TEAM->value,
         ]);
-        $this->assertDatabaseHas('user_operational_permissions', [
+        $this->assertTrue(app(UserOperationalPermissionChecker::class)
+            ->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
+        $this->assertDatabaseMissing('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
             'is_allowed' => false,
