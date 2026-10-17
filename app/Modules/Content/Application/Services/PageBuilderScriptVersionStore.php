@@ -55,7 +55,7 @@ final class PageBuilderScriptVersionStore
         abort_unless($this->permissions->allows($actor, Permission::BACKOFFICE_BUILDER_PUBLISH), 403);
         [$type, $id] = $this->owner($owner);
 
-        return DB::transaction(static function () use ($type, $id): PageBuilderScriptAsset {
+        return DB::transaction(static function () use ($type, $id, $actor): PageBuilderScriptAsset {
             $script = PageBuilderScriptAsset::query()
                 ->where('entity_type', $type)->where('entity_id', $id)
                 ->lockForUpdate()->firstOrFail();
@@ -68,6 +68,14 @@ final class PageBuilderScriptVersionStore
                 $script->published_hash = $hash;
                 $script->published_at = now();
                 $script->save();
+                DB::table('page_builder_script_audit')->insert([
+                    'entity_type' => $type,
+                    'entity_id' => $id,
+                    'action' => 'publish',
+                    'user_id' => $actor->id,
+                    'content_hash' => $hash,
+                    'created_at' => now(),
+                ]);
             }
 
             return $script->refresh();
@@ -89,6 +97,14 @@ final class PageBuilderScriptVersionStore
             [$script->published_hash, $script->previous_hash] = [$script->previous_hash, $script->published_hash];
             $script->published_at = now();
             $script->save();
+            DB::table('page_builder_script_audit')->insert([
+                'entity_type' => $type,
+                'entity_id' => $id,
+                'action' => 'rollback',
+                'user_id' => $actor->id,
+                'content_hash' => $script->published_hash,
+                'created_at' => now(),
+            ]);
 
             return $script->refresh();
         });
