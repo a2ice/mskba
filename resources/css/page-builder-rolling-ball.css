@@ -1,0 +1,62 @@
+/* TEMP (TODO): move trusted rolling-ball options into superadmin design settings.
+   Opt-in independent Page Builder overlay; never alters generic slider layers. */
+.mskba-page-builder .mskba-hero-scene {
+    position: relative;
+    overflow: visible;
+    isolation: isolate;
+    container: mskba-rolling-scene / inline-size;
+}
+.mskba-page-builder .mskba-rolling-ball {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0;
+}
+.mskba-page-builder .mskba-rolling-ball__sprite {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+.mskba-page-builder .mskba-rolling-ball__visual {
+    position: absolute;
+    width: 122px;
+    height: 122px;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%) scale(var(--ball-scale, .75));
+    transform-origin: center center;
+    will-change: transform;
+}
+.mskba-page-builder .mskba-rolling-ball__frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: 400% 400%;
+    transform: rotate(90deg);
+    transform-origin: center center;
+    filter: brightness(var(--ball-brightness, .07))
+            saturate(var(--ball-saturation, .38))
+            drop-shadow(0 6px 8px rgba(0,0,0,.34));
+}
+@container mskba-rolling-scene (min-width: 641px) {
+    .mskba-page-builder .mskba-rolling-ball__visual {
+        width: 165px;
+        height: 165px;
+    }
+}
+@container mskba-rolling-scene (min-width: 1051px) {
+    .mskba-page-builder .mskba-rolling-ball__visual {
+        width: 195px;
+        height: 195px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mskba-page-builder .mskba-rolling-ball__visual { will-change: auto; }
+}
