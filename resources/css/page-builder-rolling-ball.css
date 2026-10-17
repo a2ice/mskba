@@ -25,8 +25,8 @@
     height: 0;
     pointer-events: none;
     --ball-scale: .75;
-    --ball-brightness: .07;
-    --ball-saturation: .38;
+    --ball-brightness: .57;
+    --ball-saturation: .74;
     --ball-frame-x: 0%;
     --ball-frame-y: 0%;
 }
@@ -70,11 +70,19 @@
     z-index: max(4, var(--layer-z, 4));
 }
 @container mskba-rolling-scene (min-width: 641px) {
-    .mskba-page-builder .mskba-rolling-ball { left: 31.5%; top: 42.5%; }
+    .mskba-page-builder .mskba-rolling-ball {
+        left: 41%;
+        top: 42.5%;
+        --ball-scale: .43;
+    }
     .mskba-page-builder .mskba-rolling-ball::before { width: 165px; height: 165px; }
 }
 @container mskba-rolling-scene (min-width: 1051px) {
-    .mskba-page-builder .mskba-rolling-ball { left: 47.5%; top: 44%; }
+    .mskba-page-builder .mskba-rolling-ball {
+        left: 52%;
+        top: 44%;
+        --ball-scale: .22;
+    }
     .mskba-page-builder .mskba-rolling-ball::before { width: 195px; height: 195px; }
 }
 @media (prefers-reduced-motion: reduce) {
