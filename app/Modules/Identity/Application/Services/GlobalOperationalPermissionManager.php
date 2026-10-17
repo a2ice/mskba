@@ -41,23 +41,14 @@ final class GlobalOperationalPermissionManager
     }
 
     /** @return list<string> */
+    /** @return list<string> */
     public function granted(User $target): array
     {
-        $target = $target->canonical();
-        $snapshots = $target->operationalPermissions()
-            ->whereIn('permission', array_map(
-                static fn (Permission $p): string => $p->value,
-                array_merge($this->creationPermissions(), $this->privilegedPermissions()),
-            ))
-            ->get()->keyBy(static fn (UserOperationalPermission $p): string => $p->permission->value);
-
+        $checker = app(UserOperationalPermissionChecker::class);
         return array_values(array_map(
             static fn (Permission $p): string => $p->value,
-            array_filter(
-                array_merge($this->creationPermissions(), $this->privilegedPermissions()),
-                static fn (Permission $p): bool =>
-                    ($snapshots->get($p->value)?->is_allowed) ?? $p->defaultAllowedFor($target->system_role),
-            ),
+            array_filter(array_merge($this->creationPermissions(), $this->privilegedPermissions()),
+                fn (Permission $p): bool => $checker->allows($target, $p))
         ));
     }
 
@@ -70,6 +61,10 @@ final class GlobalOperationalPermissionManager
         $sources = [];
         foreach (array_merge($this->creationPermissions(), $this->privilegedPermissions()) as $p) {
             $explicit = $snapshots->get($p->value);
+            if (app(StaffPermissionProfiles::class)->inherited($target, $p)) {
+                $sources[$p->value] = 'Наследуется от роли или специализации';
+                continue;
+            }
             $sources[$p->value] = $explicit === null
                 ? ($p->defaultAllowedFor($target->system_role) ? 'По роли / по умолчанию' : 'Не предоставлено')
                 : ($explicit->is_allowed ? 'Выдано индивидуально' : 'Явно запрещено');
@@ -101,8 +96,7 @@ final class GlobalOperationalPermissionManager
     {
         $actor = $actor->canonical();
 
-        return $this->mayManage($actor)
-            && $actor->system_role === UserSystemRoleEnum::SUPERADMIN;
+        return $this->mayManage($actor);
     }
 
     /**
@@ -118,7 +112,7 @@ final class GlobalOperationalPermissionManager
         $this->validateSet($creation, $this->creationPermissions(), 'data.creation_permissions');
         if ($privileged !== null) {
             if (! $this->canManagePrivileged($actor)) {
-                throw new AuthorizationException('Критичные глобальные разрешения может назначать только superadmin.');
+                throw new AuthorizationException('Недостаточно прав для управления критичными разрешениями.');
             }
             $this->validateSet($privileged, $this->privilegedPermissions(), 'data.privileged_permissions');
 
@@ -132,22 +126,32 @@ final class GlobalOperationalPermissionManager
             }
         }
 
-        // Delegation can never amplify the administrator's own effective
-        // creation rights, including when superadmin explicitly denied one.
-        if (! $this->canManagePrivileged($actor)) {
-            $checker = app(UserOperationalPermissionChecker::class);
-            foreach ($creation as $selected) {
-                if (! $checker->allows($actor, Permission::from($selected))) {
-                    throw new AuthorizationException('Нельзя передать право, которого нет у администратора.');
-                }
-            }
-        }
-
-        $allowed = array_map(static fn (string $v): Permission => Permission::from($v),
-            array_merge($creation, $privileged ?? []));
-        $scope = $privileged === null
+        $checker = app(UserOperationalPermissionChecker::class);
+        $profiles = app(StaffPermissionProfiles::class);
+        $all = $privileged === null
             ? $this->creationPermissions()
             : array_merge($this->creationPermissions(), $this->privilegedPermissions());
+        // The form edits only individual grants: never overwrite role/specialization
+        // defaults or permissions outside the grantor's own scope.
+        $scope = array_values(array_filter($all, static fn (Permission $permission): bool =>
+            $profiles->allowedForRole($target->system_role, $permission)
+            && ! $profiles->inherited($target->canonical(), $permission)
+            && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
+                || $checker->allows($actor, $permission))
+        ));
+        foreach (array_merge($creation, $privileged ?? []) as $key) {
+            $permission = Permission::from($key);
+            // Backward compatible payloads may contain immutable inherited
+            // grants, but they must never create an individual override.
+            if (! in_array($permission, $scope, true)
+                && ! $profiles->inherited($target->canonical(), $permission)) {
+                throw new AuthorizationException('Нельзя назначать недоступные права.');
+            }
+        }
+        $allowed = array_values(array_filter(array_map(
+            static fn (string $value): Permission => Permission::from($value),
+            array_merge($creation, $privileged ?? [])
+        ), static fn (Permission $permission): bool => in_array($permission, $scope, true)));
 
         app(AdminUpdateUserOperationalPermissionsHandler::class)
             ->handle($actor, $target->canonical()->id, $allowed, $scope);

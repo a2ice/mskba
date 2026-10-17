@@ -170,6 +170,12 @@ class User extends Authenticatable implements FilamentUser, HasName
             });
     }
 
+    public function managerSpecializations(): BelongsToMany
+    {
+        return $this->belongsToMany(ManagerSpecialization::class, 'manager_specialization_user')
+            ->withPivot('assigned_by')->withTimestamps();
+    }
+
     public function operationalPermissions(): HasMany
     {
         return $this->hasMany(UserOperationalPermission::class);

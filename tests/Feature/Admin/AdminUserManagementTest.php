@@ -219,12 +219,12 @@ final class AdminUserManagementTest extends TestCase
 
         $this->actingAs($superadmin)
             ->post(route('admin.users.system-role.update', $target), [
-                'role' => UserSystemRoleEnum::MODERATOR->value,
+                'role' => UserSystemRoleEnum::MANAGER->value,
             ])
             ->assertRedirect(route('admin.users'))
             ->assertSessionHas('success');
 
-        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->refresh()->system_role);
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->refresh()->system_role);
 
         $this->actingAs($superadmin)
             ->post(route('admin.users.system-role.update', $target), [
@@ -243,7 +243,7 @@ final class AdminUserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.users.system-role.update', $target), [
-                'role' => UserSystemRoleEnum::MODERATOR->value,
+                'role' => UserSystemRoleEnum::MANAGER->value,
             ])
             ->assertForbidden();
 
@@ -255,11 +255,11 @@ final class AdminUserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.users.system-role.update', $target), [
-                'role' => UserSystemRoleEnum::MODERATOR->value,
+                'role' => UserSystemRoleEnum::MANAGER->value,
             ])
             ->assertRedirect(route('admin.users'));
 
-        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->refresh()->system_role);
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->refresh()->system_role);
 
         $this->actingAs($admin)
             ->post(route('admin.users.system-role.update', $target), [
@@ -283,12 +283,13 @@ final class AdminUserManagementTest extends TestCase
             ->post(route('admin.users.system-role.update', $target), [
                 'role' => UserSystemRoleEnum::SUPERADMIN->value,
             ])
-            ->assertForbidden();
+            ->assertRedirect()
+            ->assertSessionHasErrors('role');
 
         $this->assertSame(UserSystemRoleEnum::ADMIN, $target->refresh()->system_role);
     }
 
-    public function test_operational_permissions_are_allowed_by_default_and_admin_can_disable_them(): void
+    public function test_operational_role_baseline_cannot_be_individually_disabled(): void
     {
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $target = $this->user(UserSystemRoleEnum::USER);
@@ -304,12 +305,12 @@ final class AdminUserManagementTest extends TestCase
             ->assertRedirect(route('admin.users'))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('user_operational_permissions', [
+        $this->assertDatabaseMissing('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
             'is_allowed' => false,
         ]);
-        $this->assertFalse($checker->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
+        $this->assertTrue($checker->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
     }
 
     public function test_operational_permission_management_respects_role_hierarchy(): void
@@ -346,12 +347,13 @@ final class AdminUserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('admin.users.operational-permissions.update', $target), [
-                'permissions' => [],
+                'permissions' => [UserOperationalPermissionEnum::CREATE_EVENT->value],
             ])
             ->assertRedirect(route('admin.users'));
 
         $permission = UserOperationalPermission::query()
             ->whereBelongsTo($target)
+            ->where('permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
             ->firstOrFail();
 
         $audit = AuditLog::query()
@@ -360,7 +362,7 @@ final class AdminUserManagementTest extends TestCase
             ->where('event', 'created')
             ->firstOrFail();
 
-        $this->assertFalse($audit->new_values['is_allowed']);
+        $this->assertTrue($audit->new_values['is_allowed']);
         $this->assertNotNull($audit->actor_id);
     }
 
@@ -477,7 +479,9 @@ final class AdminUserManagementTest extends TestCase
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_TEAM->value,
         ]);
-        $this->assertDatabaseHas('user_operational_permissions', [
+        $this->assertTrue(app(UserOperationalPermissionChecker::class)
+            ->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
+        $this->assertDatabaseMissing('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
             'is_allowed' => false,

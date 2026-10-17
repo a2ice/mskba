@@ -6,6 +6,8 @@ use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\ListBackofficeUsers;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -102,6 +104,7 @@ final class BackofficeUserResource extends Resource
         }
         if ($role === UserSystemRoleEnum::ADMIN) {
             return $query->whereIn('system_role', [
+                UserSystemRoleEnum::MANAGER->value,
                 UserSystemRoleEnum::MODERATOR->value,
                 UserSystemRoleEnum::EDITOR->value,
                 UserSystemRoleEnum::USER->value,
@@ -109,6 +112,32 @@ final class BackofficeUserResource extends Resource
         }
 
         return $query->whereRaw('1 = 0');
+    }
+
+    private static function cannotDelegate(?User $record, Permission $permission): bool
+    {
+        $actor = auth('web')->user()?->canonical();
+        if ($actor === null || $record === null) {
+            return true;
+        }
+        $profiles = app(StaffPermissionProfiles::class);
+        return ! $profiles->allowedForRole($record->system_role, $permission)
+            || $profiles->inherited($record, $permission)
+            || ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                && ! app(UserOperationalPermissionChecker::class)->allows($actor, $permission));
+    }
+
+    /** @return array<string, string> */
+    private static function selectablePermissions(array $permissions, ?User $record, bool $locked): array
+    {
+        $options = [];
+        foreach ($permissions as $permission) {
+            if (self::cannotDelegate($record, $permission) === $locked) {
+                $options[$permission->value] = $permission->label();
+            }
+        }
+
+        return $options;
     }
 
     public static function form(Schema $schema): Schema
@@ -138,47 +167,70 @@ final class BackofficeUserResource extends Resource
                                         ->content(fn (?User $record): string => $record?->system_role->label() ?? '—'),
                                 ]),
                         ]),
+                    Tab::make('Специализации')
+                        ->icon('heroicon-o-identification')
+                        ->schema([
+                            Section::make('Специализации менеджера')
+                                ->description('Назначаются одновременно; изменение общего профиля действует на всех менеджеров с этой специализацией.')
+                                ->schema([
+                                    Placeholder::make('manager_specialization_summary')
+                                        ->label('Активные специализации')
+                                        ->content(fn (?User $record): string => $record?->system_role === UserSystemRoleEnum::MANAGER
+                                            ? ($record->managerSpecializations()->pluck('name')->implode(' · ') ?: 'Не назначены')
+                                            : 'Специализации доступны только системной роли Manager.'),
+                                ]),
+                        ]),
                     Tab::make('Глобальные права')
                         ->icon('heroicon-o-plus-circle')
                         ->schema([
                             Section::make('Глобальные права — создание')
-                                ->description('Действуют на уровне портала. Значения по умолчанию и индивидуальные запреты сохраняются. Администратор вправе делегировать эти некритичные права только пользователю с меньшей системной ролью.')
+                                ->description('Действуют на уровне портала. Базовые права роли и специализаций не снимаются индивидуально. Недоступные разрешения показаны неактивными.')
                                 ->schema([
                                     CheckboxList::make('creation_permissions')
-                                        ->label('Создание объектов')
-                                        ->options($optionMap($global->creationPermissions()))
+                                        ->label('Создание объектов — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
                                         ->columns(2)->bulkToggleable(),
+                                    CheckboxList::make('locked_creation_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(2),
                                 ]),
                         ]),
                     Tab::make('Администрирование')
                         ->icon('heroicon-o-shield-check')
                         ->schema([
                             Section::make('Глобальные права — администрирование и техподдержка')
-                                ->description('Критичные права. Назначать и отзывать может только superadmin. Право на проверку изменения подтверждённых данных доступно исключительно пользователю с ролью admin.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                                ->description('Назначение разрешено только в пределах собственных полномочий и системной роли получателя; недоступные права остаются видимы.')
+                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('privileged_permissions')
-                                        ->label('Критичные разрешения')
-                                        ->options(fn (?User $record): array => $optionMap(
-                                            array_values(array_filter($global->privilegedPermissions(),
-                                                fn (Permission $permission): bool => $permission !== Permission::REVIEW_PROFILE_CHANGES
-                                                    || $record?->system_role?->atLeast(UserSystemRoleEnum::ADMIN),
-                                            ))
-                                        ))
+                                        ->label('Критичные разрешения — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
                                         ->columns(1)->bulkToggleable(),
+                                    CheckboxList::make('locked_privileged_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(1),
                                 ]),
                         ]),
                     Tab::make('Filament')
                         ->icon('heroicon-o-cog-6-tooth')
                         ->schema([
                             Section::make('Filament — административный интерфейс')
-                                ->description('Вход в Filament и права на его ресурсы. Только superadmin может назначать эти разрешения. Доступ к исполняемым HTML/CSS/JS-виджетам по-прежнему только у superadmin.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                                ->description('Вход и ресурсы Filament. Администратор может передать только имеющиеся у него разрешения. Базовые права роли и специализаций неотзываемы.')
+                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('backoffice_permissions')
-                                        ->label('Разрешения Filament')
-                                        ->options($optionMap(Permission::backofficeCases()))
+                                        ->label('Разрешения Filament — индивидуальные назначения')
+                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
                                         ->columns(2)->bulkToggleable(),
+                                    CheckboxList::make('locked_backoffice_permissions')
+                                        ->label('Наследуемые или недоступные права (только просмотр)')
+                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
+                                        ->disabled()->dehydrated(false)
+                                        ->columns(2),
                                 ]),
                         ]),
                     Tab::make('Права сущностей')
@@ -226,6 +278,7 @@ final class BackofficeUserResource extends Resource
             TextColumn::make('username')->label('Пользователь')->searchable()->sortable()->weight('bold'),
             TextColumn::make('system_role')->label('Системная роль')
                 ->badge()->formatStateUsing(fn ($record): string => $record->system_role->label()),
+            TextColumn::make('staff_title')->label('Должность')->placeholder('—'),
             TextColumn::make('status')->label('Статус')
                 ->badge()->formatStateUsing(fn ($record): string => $record->status->label()),
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),

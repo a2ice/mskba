@@ -1,0 +1,78 @@
+name: RBAC PostgreSQL Migration
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-upgrade-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ['16', '17']
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: rbac_ci
+          POSTGRES_PASSWORD: ci-only-disposable
+          POSTGRES_DB: mskba_rbac_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U rbac_ci -d mskba_rbac_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      DB_CONNECTION: pgsql
+      DB_URL: ''
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: mskba_rbac_ci
+      DB_USERNAME: rbac_ci
+      DB_PASSWORD: ci-only-disposable
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      SESSION_DRIVER: array
+      MAIL_MAILER: array
+      BROADCAST_CONNECTION: 'null'
+      TELEGRAM_BOT_TOKEN: ''
+      PULSE_ENABLED: 'false'
+      TELESCOPE_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure PHP PostgreSQL
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, gd, zip, pdo_pgsql, pgsql
+          coverage: none
+      - name: Install backend dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Prepare isolated test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Build pre-RBAC schema in disposable PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          RBAC_MIGRATION=database/migrations/2026_10_17_133000_create_manager_specializations_and_role_profiles.php
+          test -f "$RBAC_MIGRATION"
+          mv "$RBAC_MIGRATION" /tmp/rbac-ci-upgrade.php
+          php artisan migrate:fresh --force --no-interaction
+          php tests/Integration/StaffRbacPostgresUpgrade.php seed
+          mv /tmp/rbac-ci-upgrade.php "$RBAC_MIGRATION"
+      - name: Upgrade legacy moderators and editors on PostgreSQL
+        run: php artisan migrate --force --no-interaction
+      - name: Verify migrated identities and grants
+        run: php tests/Integration/StaffRbacPostgresUpgrade.php verify
+      - name: Verify migration idempotence
+        run: php artisan migrate --force --no-interaction

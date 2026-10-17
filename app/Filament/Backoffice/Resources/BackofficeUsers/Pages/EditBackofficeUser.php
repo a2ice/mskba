@@ -5,6 +5,12 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\StaffSpecializationManager;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Models\ManagerSpecialization;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\TextInput;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -52,6 +58,8 @@ final class EditBackofficeUser extends EditRecord
                                 // accidentally through the human user editor.
                                 if ($role !== UserSystemRoleEnum::SUPERADMIN
                                     && $role !== UserSystemRoleEnum::SYSTEM
+                                    && $role !== UserSystemRoleEnum::MODERATOR
+                                    && $role !== UserSystemRoleEnum::EDITOR
                                     && $role->numericValue() < $actorRole->numericValue()) {
                                     $roles[$role->value] = $role->label();
                                 }
@@ -72,6 +80,8 @@ final class EditBackofficeUser extends EditRecord
                         || in_array($role, [
                             UserSystemRoleEnum::SUPERADMIN,
                             UserSystemRoleEnum::SYSTEM,
+                            UserSystemRoleEnum::MODERATOR,
+                            UserSystemRoleEnum::EDITOR,
                         ], true)
                         || $role->numericValue() >= $actor->system_role->numericValue()) {
                         throw ValidationException::withMessages([
@@ -87,25 +97,64 @@ final class EditBackofficeUser extends EditRecord
                     // Reload effective defaults after changing the user's role.
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $target]));
                 }),
+            Action::make('assignSpecializations')
+                ->label('Назначить специализации')
+                ->icon('heroicon-o-identification')
+                ->visible(fn (): bool => auth('web')->user() !== null
+                    && app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $this->getRecord()))
+                ->modalHeading('Специализации менеджера')
+                ->modalDescription('Можно выбрать несколько профилей. Каждый добавляет фиксированные права, управляемые суперадминистратором.')
+                ->fillForm(fn (): array => [
+                    'staff_title' => $this->getRecord()->staff_title,
+                    'specialization_ids' => $this->getRecord()->managerSpecializations()
+                        ->pluck('manager_specializations.id')->map(fn ($id): string => (string) $id)->all(),
+                ])
+                ->schema([
+                    TextInput::make('staff_title')->label('Отображаемая должность (не влияет на права)')->maxLength(120),
+                    CheckboxList::make('specialization_ids')
+                        ->label('Функциональные специализации')
+                        ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
+                        ->columns(2),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $ids = $data['specialization_ids'] ?? [];
+                    if (! is_array($ids)) {
+                        throw ValidationException::withMessages(['specialization_ids' => 'Неверный список специализаций.']);
+                    }
+                    app(StaffSpecializationManager::class)->sync($actor, $this->getRecord(), $ids, (string) ($data['staff_title'] ?? ''));
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
         ];
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $target = $this->getRecord()->canonical();
+        $actor = auth('web')->user()?->canonical();
+        $profiles = app(StaffPermissionProfiles::class);
+        $checker = app(UserOperationalPermissionChecker::class);
         $global = app(GlobalOperationalPermissionManager::class);
-        $selected = $global->granted($this->getRecord());
-        $data['creation_permissions'] = array_values(array_intersect(
-            $selected,
-            array_map(static fn (Permission $p): string => $p->value, $global->creationPermissions()),
-        ));
-
-        if (auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN) {
-            $data['privileged_permissions'] = array_values(array_intersect(
-                $selected,
-                array_map(static fn (Permission $p): string => $p->value, $global->privilegedPermissions()),
-            ));
-            $data['backoffice_permissions'] = app(BackofficePermissionManager::class)
-                ->granted($this->getRecord());
+        $groups = [
+            'creation_permissions' => $global->creationPermissions(),
+            'privileged_permissions' => $global->privilegedPermissions(),
+            'backoffice_permissions' => Permission::backofficeCases(),
+        ];
+        foreach ($groups as $field => $permissions) {
+            $data[$field] = [];
+            $data['locked_'.$field] = [];
+            foreach ($permissions as $permission) {
+                $effective = $checker->allows($target, $permission);
+                $editable = $actor !== null
+                    && $profiles->allowedForRole($target->system_role, $permission)
+                    && ! $profiles->inherited($target, $permission)
+                    && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
+                        || $checker->allows($actor, $permission));
+                if ($effective) {
+                    $data[$editable ? $field : 'locked_'.$field][] = $permission->value;
+                }
+            }
         }
 
         return $data;
@@ -128,7 +177,7 @@ final class EditBackofficeUser extends EditRecord
 
         $privileged = null;
         $backoffice = null;
-        if ($isSuper) {
+        if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
             $privileged = $data['privileged_permissions'] ?? [];
             $backoffice = $data['backoffice_permissions'] ?? [];
             if (! is_array($privileged) || ! is_array($backoffice)) {
@@ -149,7 +198,7 @@ final class EditBackofficeUser extends EditRecord
         // Neither user status/system role nor unrelated permissions are writable.
         DB::transaction(function () use ($actor, $record, $global, $creation, $privileged, $backoffice, $isSuper): void {
             $global->sync($actor, $record, array_values($creation), $privileged);
-            if ($isSuper) {
+            if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
                 app(BackofficePermissionManager::class)->sync($actor, $record, array_values($backoffice));
             }
         });

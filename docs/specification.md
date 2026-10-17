@@ -95,7 +95,7 @@
 
 ## Роли в identity-слое
 
-Техническая модель системных ролей и ролей участия пользователя описана в [Identity Roles](specification/identity-roles.md).
+Техническая модель системных ролей и ролей участия пользователя описана в [Identity Roles](specification/identity-roles.md). Переход на system-role manager с множественными специализациями, базовыми профилями permissions и делегированием: [Manager RBAC](specification/manager-rbac.md).
 
 ## Аутентификация
 

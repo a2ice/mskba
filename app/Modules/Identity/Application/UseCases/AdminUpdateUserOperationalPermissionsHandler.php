@@ -2,6 +2,8 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
@@ -28,7 +30,10 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->authorize($actor, $target);
+            $lockedActor = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+            $this->authorize($lockedActor, $target);
+            $profiles = app(StaffPermissionProfiles::class);
+            $checker = app(UserOperationalPermissionChecker::class);
 
             if (! $target->system_role->atLeast(UserSystemRoleEnum::ADMIN)
                 && in_array(UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES, $allowedPermissions, true)) {
@@ -74,21 +79,39 @@ final class AdminUpdateUserOperationalPermissionsHandler
                         UserOperationalPermissionEnum::OPERATOR_SESSION_HISTORY_VIEW,
                         UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE,
                         UserOperationalPermissionEnum::OPERATOR_MARKETING_SEND,
-                    ], true)) {
-                    // Ordinary admins cannot issue or withdraw critical global
-                    // rights via either the new editor or the legacy handler.
+                    ], true) && ($scope === null
+                        || ! app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)->allows($actor, $permission))) {
+                    // Legacy bulk forms remain conservative. Unified Filament
+                    // forms delegate only rights already held by the actor.
                     continue;
                 }
                 $enabled = $allowed->has($permission->value);
+                // Legacy HTML endpoints use the same immutable role baseline,
+                // role ceiling, and actor delegation rules as Filament.
+                if (! $profiles->allowedForRole($target->system_role, $permission)) {
+                    if ($enabled) {
+                        throw new AuthorizationException('Право недопустимо для роли получателя.');
+                    }
+                    continue;
+                }
+                if ($profiles->inherited($target, $permission)) {
+                    continue;
+                }
+                if ($lockedActor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                    && ! $checker->allows($lockedActor, $permission)) {
+                    if ($enabled) {
+                        throw new AuthorizationException('Нельзя выдать отсутствующее у администратора право.');
+                    }
+                    continue;
+                }
+                $wasEffective = $checker->allows($target, $permission);
                 $current = UserOperationalPermission::query()
                     ->where('user_id', $target->id)->where('permission', $permission->value)->first();
                 // Capture the previous effective value *before* updating the Eloquent model.
                 // A regrant must establish a new history boundary, not revive the old one.
-                $wasEnabled = $current !== null
-                    ? (bool) $current->is_allowed
-                    : $permission->defaultAllowedFor($target->system_role);
+                $wasEnabled = $wasEffective;
                 if ($current !== null) {
-                    if ($wasEnabled !== $enabled) {
+                    if ((bool) $current->is_allowed !== $enabled) {
                         $current->update(['is_allowed' => $enabled]);
                     }
                 } elseif ($enabled !== $permission->defaultAllowedFor($target->system_role)) {
@@ -97,29 +120,30 @@ final class AdminUpdateUserOperationalPermissionsHandler
                         'is_allowed' => $enabled,
                     ]);
                 }
-                if ($permission === UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES && $enabled && ! $wasEnabled) {
+                $isEffective = $checker->allows($target, $permission);
+                if ($permission === UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES && $isEffective && ! $wasEnabled) {
                     DB::table('review_permission_cursors')->updateOrInsert(
                         ['user_id' => $target->id, 'permission' => $permission->value],
                         ['after_request_id' => ProfileChangeRequest::query()->max('id') ?? 0,
                             'created_at' => now(), 'updated_at' => now()]);
                 }
-                if ($permission === UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES && ! $enabled && $wasEnabled) {
+                if ($permission === UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES && ! $isEffective && $wasEnabled) {
                     // Preserve a tombstone, but never allow a future regrant to reactivate
                     // an old membership silently. Subquery avoids a large permission JOIN.
                     app(RequestThreadMembershipManager::class)
                         ->revokeForUser($target, $actor);
                 }
-                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && $enabled && ! $wasEnabled) {
+                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && $isEffective && ! $wasEnabled) {
                     app(SupportTicketAccess::class)->setGrantCursor($target);
                 }
                 // Revoking the permission instantly blocks history, POST and
                 // private websocket authorization. Old explicit memberships do
                 // not override the checker on future regrants.
-                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $enabled && $wasEnabled) {
+                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $isEffective && $wasEnabled) {
                     app(SupportTicketAccess::class)->revokeForUser($target, $actor);
                 }
                 if ($permission === UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE
-                    && ! $enabled && $wasEnabled) {
+                    && ! $isEffective && $wasEnabled) {
                     app(\App\Modules\Notification\Application\Services\OperatorConversationRevocation::class)
                         ->revokeForUser($target);
                 }
