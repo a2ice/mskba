@@ -9,8 +9,14 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Notifications\Notification;
-use Illuminate\Contracts\View\View;
+use Illuminate\Validation\ValidationException;
 
+/**
+ * Compact, consistent code editors for all three Page Builder resources.
+ * Code is not part of the general record form, so saving page HTML cannot
+ * inadvertently overwrite JS/CSS, and modal code actions cannot publish
+ * pending slide, SEO, template or route changes.
+ */
 trait BuilderScriptEditorActions
 {
     private function scriptAsset(): ?PageBuilderScriptAsset
@@ -23,99 +29,127 @@ trait BuilderScriptEditorActions
             ->first();
     }
 
-    protected function scriptActions(): array
+    /** @return array<Action> */
+    protected function codeEditorActions(): array
     {
         return [
-            Action::make('viewBuilderJs')->label('Просмотреть JS')
-                ->icon('heroicon-o-eye')
-                ->visible(fn (): bool => static::getResource()::canViewJs())
-                ->modalHeading('JavaScript · текущий черновик')
-                ->modalSubmitAction(false)
-                ->modalContent(fn (): View => view('page-builder.js-source', [
-                    'source' => (string) ($this->scriptAsset()?->draft_js ?? ''),
-                ])),
+            Action::make('editBuilderCss')
+                ->label('CSS')
+                ->icon('heroicon-o-paint-brush')
+                ->outlined()
+                ->visible(fn (): bool => static::getResource()::canViewCss())
+                ->modalHeading('CSS · стили')
+                ->modalDescription(fn (): string => $this->getRecord()->published_at === null
+                    ? 'Страница ещё не опубликована. CSS сохранится как черновик; впервые он станет публичным вместе со страницей.'
+                    : 'Редактируй CSS независимо от HTML и настроек. Публикация обновит только стили; при изменении предыдущая версия останется для отката.')
+                ->form([
+                    CodeEditor::make('source')->label('Исходный CSS')
+                        ->language(Language::Css)
+                        ->disabled(fn (): bool => ! static::getResource()::canEditCss())
+                        ->columnSpanFull(),
+                ])
+                ->fillForm(fn (): array => [
+                    'source' => (string) ($this->getRecord()->fresh()?->draft_css ?? ''),
+                ])
+                ->modalSubmitAction(fn (Action $action) => static::getResource()::canEditCss()
+                    ? $action->label(static::getResource()::canPublishCss() && $this->getRecord()->published_at !== null
+                        ? 'Сохранить и опубликовать' : 'Сохранить черновик')->color('success')
+                    : false)
+                ->modalCancelActionLabel('Отмена')
+                ->extraModalFooterActions(fn (Action $action): array => [
+                    $action->makeModalSubmitAction('rollbackCssFromModal', arguments: ['operation' => 'rollback'])
+                        ->label('Откатить CSS')->color('warning')
+                        ->visible(fn (): bool => static::getResource()::canPublishCss()
+                            && (bool) $this->getRecord()->fresh()?->has_previous_css),
+                ])
+                ->action(function (array $data, array $arguments): void {
+                    if (($arguments['operation'] ?? null) === 'rollback') {
+                        abort_unless(static::getResource()::canPublishCss(), 403);
+                        app(PageBuilderPublisher::class)->rollbackCss($this->getRecord());
+                        $this->getRecord()->refresh();
+                        Notification::make()->title('Предыдущая версия CSS восстановлена')->success()->send();
 
-            Action::make('editBuilderJs')->label('Редактировать JS')
+                        return;
+                    }
+                    abort_unless(static::getResource()::canEditCss(), 403);
+                    $publisher = app(PageBuilderPublisher::class);
+                    if (! static::getResource()::canPublishCss()) {
+                        $publisher->saveCssDraft($this->getRecord(), $data['source'] ?? '');
+                        Notification::make()->title('Черновик CSS сохранён')->success()->send();
+
+                        return;
+                    }
+                    $published = $publisher->saveAndPublishCss($this->getRecord(), $data['source'] ?? '');
+                    Notification::make()->title($published
+                        ? 'CSS сохранён и опубликован' : 'Черновик CSS сохранён; сначала опубликуй страницу')->success()->send();
+                }),
+
+            Action::make('editBuilderJs')
+                ->label('JS')
                 ->icon('heroicon-o-code-bracket')
-                ->visible(fn (): bool => static::getResource()::canEditJs())
-                ->modalHeading('JavaScript · черновик')
-                ->modalDescription('Сохранение не меняет публичный сайт. Для запуска потребуются отдельные публикация и включение.')
+                ->outlined()
+                ->visible(fn (): bool => static::getResource()::canViewJs())
+                ->modalHeading('JavaScript · редактор')
+                ->modalDescription(function (): string {
+                    $script = $this->scriptAsset();
+                    if ($script?->is_enabled) {
+                        return 'JS включён для посетителей. Сохранение и публикация обновят исполняемый код. Можно отключить или откатить.';
+                    }
+
+                    return 'JS сейчас отключён. «Сохранить и опубликовать» сразу включит его для новых загрузок страницы. Публикуй только проверенный код.';
+                })
                 ->form([
                     CodeEditor::make('source')->label('Исходный JavaScript')
                         ->language(Language::JavaScript)
+                        ->disabled(fn (): bool => ! static::getResource()::canEditJs())
                         ->columnSpanFull(),
                 ])
                 ->fillForm(fn (): array => [
                     'source' => (string) ($this->scriptAsset()?->draft_js ?? ''),
                 ])
-                ->action(function (array $data): void {
+                ->modalSubmitAction(fn (Action $action) => static::getResource()::canEditJs()
+                    ? $action->label(static::getResource()::canPublishJs()
+                        ? 'Сохранить и опубликовать' : 'Сохранить черновик')->color('success')
+                    : false)
+                ->modalCancelActionLabel('Отмена')
+                ->extraModalFooterActions(fn (Action $action): array => [
+                    $action->makeModalSubmitAction('disableJsFromModal', arguments: ['operation' => 'disable'])
+                        ->label('Отключить JS')->color('danger')
+                        ->visible(fn (): bool => static::getResource()::canPublishJs()
+                            && (bool) $this->scriptAsset()?->is_enabled),
+                    $action->makeModalSubmitAction('rollbackJsFromModal', arguments: ['operation' => 'rollback'])
+                        ->label('Откатить JS')->color('warning')
+                        ->visible(fn (): bool => static::getResource()::canPublishJs()
+                            && $this->scriptAsset()?->previous_hash !== null),
+                ])
+                ->action(function (array $data, array $arguments): void {
+                    $operation = $arguments['operation'] ?? 'save_publish';
+                    $service = app(PageBuilderScriptVersionStore::class);
+                    $record = $this->getRecord();
+                    $actor = auth('web')->user();
+                    if ($operation === 'disable') {
+                        abort_unless(static::getResource()::canPublishJs(), 403);
+                        $service->setEnabled($actor, $record, false);
+                        Notification::make()->title('JS отключён для новых загрузок страницы')->success()->send();
+
+                        return;
+                    }
+                    if ($operation === 'rollback') {
+                        abort_unless(static::getResource()::canPublishJs(), 403);
+                        $service->rollbackAndEnable($actor, $record);
+                        Notification::make()->title('Предыдущая версия JS восстановлена и включена')->success()->send();
+
+                        return;
+                    }
                     abort_unless(static::getResource()::canEditJs(), 403);
-                    app(PageBuilderScriptVersionStore::class)->saveDraft(
-                        auth('web')->user(), $this->getRecord(), $data['source'] ?? '',
-                    );
-                    Notification::make()->title('Черновик JavaScript сохранён')->success()->send();
-                }),
+                    if (! static::getResource()::canPublishJs()) {
+                        $service->saveDraft($actor, $record, $data['source'] ?? '');
+                        Notification::make()->title('Черновик JS сохранён')->success()->send();
 
-            Action::make('previewBuilderJs')->label('Тест JS · песочница')
-                ->icon('heroicon-o-shield-check')
-                ->visible(fn (): bool => static::getResource()::canViewJs())
-                ->modalHeading('Изолированный предпросмотр JavaScript')
-                ->modalDescription('Тестовый DOM, не копия страницы. Песочница не имеет доступа к аккаунту, сайту или сети. Изменения в редакторе сначала сохрани.')
-                ->modalSubmitAction(false)
-                ->modalContent(fn (): View => view('page-builder.js-sandbox', [
-                    'src' => route('page-builder.js-preview', [
-                        'type' => PageBuilderPublisher::type($this->getRecord()),
-                        'id' => $this->getRecord()->getKey(),
-                    ]),
-                ])),
-
-            Action::make('publishBuilderJs')->label('Опубликовать JS')
-                ->icon('heroicon-o-arrow-up-tray')->color('warning')
-                ->requiresConfirmation()
-                ->modalDescription('Создаст текущую JS-версию из сохранённого черновика. Уже включённый скрипт обновится для новых загрузок страницы; если он выключен, публикация не запустит его.')
-                ->visible(fn (): bool => static::getResource()::canPublishJs()
-                    && $this->scriptAsset()?->draft_js !== null)
-                ->action(function (): void {
-                    abort_unless(static::getResource()::canPublishJs(), 403);
-                    app(PageBuilderScriptVersionStore::class)->publish(auth('web')->user(), $this->getRecord());
-                    Notification::make()->title('JavaScript опубликован')->success()->send();
-                }),
-
-            Action::make('enableBuilderJs')->label('Включить JS')
-                ->icon('heroicon-o-play')->color('danger')
-                ->requiresConfirmation()
-                ->modalDescription('Опубликованный JS будет выполняться с правами сайта на публичных страницах. Включай только проверенный код. В уже открытых вкладках выключение не прерывает работающий JS.')
-                ->visible(fn (): bool => static::getResource()::canPublishJs()
-                    && $this->scriptAsset()?->published_hash !== null
-                    && ! (bool) $this->scriptAsset()?->is_enabled)
-                ->action(function (): void {
-                    abort_unless(static::getResource()::canPublishJs(), 403);
-                    app(PageBuilderScriptVersionStore::class)->setEnabled(auth('web')->user(), $this->getRecord(), true);
-                    Notification::make()->title('JavaScript включён для новых загрузок страницы')->success()->send();
-                }),
-
-            Action::make('disableBuilderJs')->label('Отключить JS')
-                ->icon('heroicon-o-stop-circle')->color('danger')
-                ->requiresConfirmation()
-                ->modalDescription('Новые загрузки страниц больше не подключат JS. Уже выполняющийся код в открытых вкладках останется до обновления страницы.')
-                ->visible(fn (): bool => static::getResource()::canPublishJs()
-                    && (bool) $this->scriptAsset()?->is_enabled)
-                ->action(function (): void {
-                    abort_unless(static::getResource()::canPublishJs(), 403);
-                    app(PageBuilderScriptVersionStore::class)->setEnabled(auth('web')->user(), $this->getRecord(), false);
-                    Notification::make()->title('JavaScript отключён для новых загрузок')->success()->send();
-                }),
-
-            Action::make('rollbackBuilderJs')->label('Откатить JS')
-                ->icon('heroicon-o-arrow-uturn-left')->color('warning')
-                ->requiresConfirmation()
-                ->modalDescription('Вернёт предыдущую опубликованную JS-версию. Черновик останется прежним. Скрипт остаётся включённым или выключенным.')
-                ->visible(fn (): bool => static::getResource()::canPublishJs()
-                    && $this->scriptAsset()?->previous_hash !== null)
-                ->action(function (): void {
-                    abort_unless(static::getResource()::canPublishJs(), 403);
-                    app(PageBuilderScriptVersionStore::class)->rollback(auth('web')->user(), $this->getRecord());
-                    Notification::make()->title('Предыдущая версия JavaScript восстановлена')->success()->send();
+                        return;
+                    }
+                    $service->savePublishAndEnable($actor, $record, $data['source'] ?? '');
+                    Notification::make()->title('JavaScript сохранён, опубликован и включён')->success()->send();
                 }),
         ];
     }
