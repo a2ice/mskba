@@ -116,6 +116,36 @@ final class PageBuilderScriptVersionStore
         });
     }
 
+    /**
+     * One deliberate editor operation: persist draft, publish it and enable
+     * the version for new requests atomically. Avoid half-published states.
+     */
+    public function savePublishAndEnable(User $actor, Model $owner, ?string $source): PageBuilderScriptAsset
+    {
+        $this->authorize($actor, Permission::BACKOFFICE_BUILDER_JS_EDIT);
+        $this->authorize($actor, Permission::BACKOFFICE_BUILDER_JS_PUBLISH);
+        abort_unless($this->permissions->allows($actor, Permission::BACKOFFICE_BUILDER_EDIT)
+            && $this->permissions->allows($actor, Permission::BACKOFFICE_BUILDER_PUBLISH), 403);
+        abort_if(trim((string) $source) === '', 422, 'Нельзя опубликовать пустой JavaScript.');
+
+        return DB::transaction(function () use ($actor, $owner, $source): PageBuilderScriptAsset {
+            $this->saveDraft($actor, $owner, $source);
+            $this->publish($actor, $owner);
+
+            return $this->setEnabled($actor, $owner, true);
+        });
+    }
+
+    /** Restore and reactivate the previous JS with one editor action. */
+    public function rollbackAndEnable(User $actor, Model $owner): PageBuilderScriptAsset
+    {
+        return DB::transaction(function () use ($actor, $owner): PageBuilderScriptAsset {
+            $this->rollback($actor, $owner);
+
+            return $this->setEnabled($actor, $owner, true);
+        });
+    }
+
     public function rollback(User $actor, Model $owner): PageBuilderScriptAsset
     {
         $this->authorize($actor, Permission::BACKOFFICE_BUILDER_JS_PUBLISH);
