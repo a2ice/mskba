@@ -54,6 +54,12 @@ final class StaffPermissionProfiles
 
     public function inherited(User $user, Permission $permission): bool
     {
+        // Legacy role defaults were historically overridable. Preserve their
+        // explicit denials until every old role reference has been retired.
+        if (in_array($user->system_role, [Role::MODERATOR, Role::EDITOR], true)) {
+            return false;
+        }
+
         return in_array($permission->value, $this->roleKeys($user->system_role), true)
             || in_array($permission->value, $this->specializationKeys($user), true);
     }
