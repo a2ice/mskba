@@ -105,6 +105,19 @@ final class PageBuilderPublisher
             });
     }
 
+    /** Save CSS draft only, with no effect on the published page. */
+    public function saveCssDraft(Model $record, ?string $source): void
+    {
+        $css = (string) $source;
+        $this->markup->css($css);
+
+        DB::transaction(function () use ($record, $css): void {
+            $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
+            $item->draft_css = $css;
+            $item->save();
+        });
+    }
+
     /**
      * Save CSS without publishing unrelated pending HTML, layout, slider or
      * template edits. If the entity is already published, deploy only its CSS
