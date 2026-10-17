@@ -39,13 +39,9 @@ final class BuilderTemplateResource extends Resource
                 TextInput::make('slug')->label('Идентификатор')->required()
                     ->regex('/\A[a-z][a-z0-9_-]{1,79}\z/D')->unique(ignoreRecord: true),
             ]),
-            Section::make('HTML и CSS')->columns(1)->schema([
+            Section::make('HTML')->columns(1)->schema([
                 CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                     ->required()->columnSpanFull(),
-                CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
-                    ->visible(fn (): bool => static::canViewCss())
-                    ->disabled(fn (): bool => ! static::canEditCss())
-                    ->columnSpanFull(),
             ])->columnSpanFull(),
             BuilderPlaceholderGuide::panel(true)->collapsible()->columnSpanFull(),
         ]);

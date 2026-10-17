@@ -105,6 +105,69 @@ final class PageBuilderPublisher
             });
     }
 
+    /** Save CSS draft only, with no effect on the published page. */
+    public function saveCssDraft(Model $record, ?string $source): void
+    {
+        $css = (string) $source;
+        $this->markup->css($css);
+
+        DB::transaction(function () use ($record, $css): void {
+            $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
+            $item->draft_css = $css;
+            $item->save();
+        });
+    }
+
+    /**
+     * Save CSS without publishing unrelated pending HTML, layout, slider or
+     * template edits. If the entity is already published, deploy only its CSS
+     * and rotate the previous CSS slot when content actually changed.
+     *
+     * A new, unpublished entity can stage CSS; its first complete publication
+     * still uses the bottom Save and Publish page action.
+     *
+     * @return bool Whether CSS was published to an existing public entity.
+     */
+    public function saveAndPublishCss(Model $record, ?string $source): bool
+    {
+        if (! $record instanceof PageBuilderPage
+            && ! $record instanceof PageBuilderTemplate
+            && ! $record instanceof PageBuilderComponent) {
+            throw new \InvalidArgumentException('Unsupported builder record');
+        }
+
+        $css = (string) $source;
+        $this->markup->css($css);
+
+        return DB::transaction(function () use ($record, $css): bool {
+            $item = $record->newQuery()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
+            $item->draft_css = $css;
+
+            if ($item->published_at === null) {
+                $item->save();
+
+                return false;
+            }
+
+            if ((string) $item->published_css !== $css) {
+                $item->previous_css = $item->published_css;
+                $item->has_previous_css = true;
+                $item->published_css = $css;
+                PageBuilderRevision::query()->create([
+                    'entity_type' => self::type($item),
+                    'entity_id' => $item->getKey(),
+                    'action' => 'css_publish',
+                    'snapshot' => ['sha256' => hash('sha256', $css)],
+                    'user_id' => auth('web')->id(),
+                    'created_at' => now(),
+                ]);
+            }
+            $item->save();
+
+            return true;
+        });
+    }
+
     /**
      * Swap current and previous published CSS only. HTML, component data and
      * CMS override status remain untouched. Draft CSS follows the rollback so

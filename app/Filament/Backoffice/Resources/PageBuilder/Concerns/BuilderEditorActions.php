@@ -7,7 +7,6 @@ use App\Modules\Content\Domain\Models\PageBuilderRevision;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Content\Application\Services\PageBuilderRouteRegistry;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
@@ -104,33 +103,12 @@ trait BuilderEditorActions
         $resource = static::getResource();
 
         return [
-            ActionGroup::make($this->scriptActions())
-                ->label('JavaScript')
-                ->icon('heroicon-o-code-bracket')
-                ->visible(fn (): bool => $resource::canViewJs()
-                    || $resource::canEditJs() || $resource::canPublishJs()),
+            ...$this->codeEditorActions(),
             Action::make('preview')->label('Предпросмотр')->icon('heroicon-o-eye')
                 ->url(fn (): string => route('page-builder.preview', ['page' => $this->record->getKey()]))
                 ->openUrlInNewTab()
                 ->visible(fn (): bool => $this->record instanceof \App\Modules\Content\Domain\Models\PageBuilderPage
                     && $resource::canViewAny()),
-            Action::make('publish')->label('Опубликовать')->icon('heroicon-o-check-circle')
-                ->color('success')->requiresConfirmation()
-                ->modalDescription(fn (): string => $this->record instanceof PageBuilderPage
-                    && app(PageBuilderRouteRegistry::class)->inspect((string) $this->record->path)['eligible']
-                        ? 'Этот URL уже обслуживается Laravel. Публикация включит CMS-приоритет, '
-                            .'а старый контроллер останется доступен через «Вернуть Laravel». '
-                            .'Убедись, что все функции прежней страницы перенесены в компоненты. '
-                            .'Черновик сначала необходимо сохранить.'
-                        : 'Публичная версия обновится только после подтверждения. Черновик сначала необходимо сохранить.')
-                ->visible(fn (): bool => $resource::canPublish())
-                ->action(function (): void {
-                    $this->assertCanPublishCode();
-                    app(PageBuilderPublisher::class)->publish($this->record);
-                    Notification::make()->title('Опубликовано')->success()->send();
-                    $this->record->refresh();
-                    $this->refreshFormData(['published_at', 'cms_override_enabled', 'published_route_name']);
-                }),
             Action::make('disableCmsOverride')->label('Вернуть Laravel')
                 ->icon('heroicon-o-arrow-uturn-left')->color('warning')->requiresConfirmation()
                 ->modalDescription('Публичная CMS-страница останется сохранена, но URL немедленно снова будет обслуживаться исходным Laravel-контроллером.')
@@ -155,20 +133,6 @@ trait BuilderEditorActions
                     app(PageBuilderPublisher::class)->setOverrideEnabled($this->record, true);
                     $this->record->refresh();
                     Notification::make()->title('CMS-приоритет включён')->success()->send();
-                }),
-            Action::make('rollbackCss')->label('Откатить CSS')
-                ->icon('heroicon-o-arrow-path')->color('warning')
-                ->requiresConfirmation()
-                ->modalDescription('Будет восстановлена предыдущая опубликованная версия CSS. HTML, компоненты и слайды останутся без изменений.')
-                ->visible(fn (): bool => $resource::canPublishCss()
-                    && (bool) $this->record->has_previous_css
-                    && $this->record->published_at !== null)
-                ->action(function (): void {
-                    abort_unless(static::getResource()::canPublishCss(), 403);
-                    app(PageBuilderPublisher::class)->rollbackCss($this->record);
-                    $this->record->refresh();
-                    Notification::make()->title('Предыдущая версия CSS восстановлена')->success()->send();
-                    $this->fillForm();
                 }),
             Action::make('restore')->label('Восстановить черновик')
                 ->visible(fn (): bool => $resource::canCreate()
