@@ -10,11 +10,18 @@
     @endpush
 @endif
 
-@section('content')
-    @vite(['resources/css/page-builder.css', 'resources/js/page-builder.js'])
+@push('styles')
+    @vite('resources/css/page-builder.css')
     @if ($builderCss !== '')
         <style>{!! $builderCss !!}</style>
     @endif
+@endpush
+
+@push('scripts')
+    @vite('resources/js/page-builder.js')
+@endpush
+
+@section('content')
     <div class="mskba-page-builder">
         @if ($builderPreview)
             <div class="container mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
