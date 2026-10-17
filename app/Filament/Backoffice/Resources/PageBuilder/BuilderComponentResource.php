@@ -252,7 +252,9 @@ final class BuilderComponentResource extends Resource
                         ->required(fn (?PageBuilderComponent $record): bool => $record?->slug !== 'hero-slider')
                         ->columnSpanFull(),
                     CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
-                        ->columnSpanFull(),
+                        ->visible(fn (): bool => static::canViewCss())
+                    ->disabled(fn (): bool => ! static::canEditCss())
+                    ->columnSpanFull(),
                 ])->columnSpanFull(),
             BuilderPlaceholderGuide::panel()->collapsible()
                 ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
