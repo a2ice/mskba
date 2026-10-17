@@ -8,21 +8,16 @@ const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: red
 // the sprite renderer or reintroducing slide-specific layers.
 const rollingBallProfiles = {
     mobile: {
-        path: 'M 235 405 C 430 440 785 510 850 615 C 900 735 600 920 205 1000',
-        startScale: .75,
-        endScale: 1,
+        from: [850, 405], to: [205, 1000],
+        startScale: .75, endScale: 1, tileSize: 122,
     },
     tablet: {
-        path: 'M 410 425 C 555 445 775 485 785 590 C 800 730 575 907 290 1000',
-        startScale: .43,
-        endScale: 1,
+        from: [785, 425], to: [290, 1000],
+        startScale: .43, endScale: 1, tileSize: 165,
     },
     desktop: {
-        // Tighter court-perspective arc: rightmost ~77%, landing at 31.5%.
-        // A small starting ball reads as distant at natural parquet scale.
-        path: 'M 520 440 C 615 445 735 495 745 595 C 760 750 590 900 315 1000',
-        startScale: .22,
-        endScale: 1,
+        from: [745, 440], to: [315, 1000],
+        startScale: .22, endScale: 1, tileSize: 195,
     },
 };
 // Old brightness at scroll 0 was .07 (almost entirely black). Its halfway
@@ -45,8 +40,18 @@ const rollingBallTravelEase = value => {
 // The ball now completes the entire first-scene path in 70% of the
 // formerly required scroll distance, then remains attached to the hero.
 const rollingBallTimelineFactor = .7;
-const rollingBallCycles = 6;
 const rollingBallSpriteFrames = 16;
+const rollingBallAssetRevision = 'photo-20261017-v1';
+const rollingBallTwoPi = 2 * Math.PI;
+
+// Approximate no-slip physical rolling: angular displacement = integral(ds/R)
+// along the straight, screen-projected path as the apparent radius grows.
+function rollingBallAngularTravel(distance, startRadius, endRadius, progress) {
+    const t = rollingBallClamp(progress, 0, 1);
+    const delta = endRadius - startRadius;
+    if (Math.abs(delta) < 1e-6) return distance * t / startRadius;
+    return distance * Math.log((startRadius + delta * t) / startRadius) / delta;
+}
 
 function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
@@ -71,11 +76,20 @@ function initRollingBall(root) {
             root.style.setProperty('--ball-image', `url("${url.replaceAll('"', '%22')}")`);
         }
     };
+    // Bypass cached old WebP while preserving Filament custom asset URLs.
+    const originalUrl = new URL(sprite.getAttribute('src') || sprite.src, location.href);
+    if (originalUrl.pathname === '/images/ball-16.webp') {
+        originalUrl.searchParams.set('v', rollingBallAssetRevision);
+        sprite.src = originalUrl.toString();
+    }
     if (sprite.complete) useSprite();
     else sprite.addEventListener('load', useSprite, { once: true });
 
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let pathLength = 0;
+    let apparentPathDistance = 0;
+    let startRadius = 1;
+    let endRadius = 1;
+    let roundedTurns = 1;
+    let maxPhysicalAngle = 1;
     let start = 0;
     let distance = 270;
     let target = 0;
@@ -88,13 +102,19 @@ function initRollingBall(root) {
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
         const travel = rollingBallTravelEase(p);
-        const point = path.getPointAtLength(pathLength * travel);
+        // Both axes use the same progress: geometrically a straight line.
+        const x = activeProfile.from[0] + (activeProfile.to[0] - activeProfile.from[0]) * travel;
+        const y = activeProfile.from[1] + (activeProfile.to[1] - activeProfile.from[1]) * travel;
         const light = rollingBallSmooth(travel);
-        // First and final frames are *exactly* frame 0 (frontal view).
-        const frame = p >= 1 ? 0 : Math.round(travel * rollingBallSpriteFrames * rollingBallCycles) % rollingBallSpriteFrames;
+        const angle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, travel);
+        // Nearest complete number of revolutions guarantees frame 0 on landing.
+        const framesTravelled = maxPhysicalAngle > 0
+            ? angle / maxPhysicalAngle * roundedTurns * rollingBallSpriteFrames
+            : 0;
+        const frame = p >= 1 ? 0 : Math.floor(framesTravelled + 1e-8) % rollingBallSpriteFrames;
 
-        root.style.left = (point.x / 10).toFixed(3) + '%';
-        root.style.top = (point.y / 10).toFixed(3) + '%';
+        root.style.left = (x / 10).toFixed(3) + '%';
+        root.style.top = (y / 10).toFixed(3) + '%';
         root.style.setProperty('--ball-scale',
             (activeProfile.startScale + (activeProfile.endScale - activeProfile.startScale) * travel).toFixed(4));
         root.style.setProperty('--ball-brightness',
@@ -115,8 +135,13 @@ function initRollingBall(root) {
         const rect = slider.getBoundingClientRect();
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
-        path.setAttribute('d', activeProfile.path);
-        pathLength = path.getTotalLength();
+        const dx = (activeProfile.to[0] - activeProfile.from[0]) / 1000 * rect.width;
+        const dy = (activeProfile.to[1] - activeProfile.from[1]) / 1000 * rect.height;
+        apparentPathDistance = Math.hypot(dx, dy);
+        startRadius = activeProfile.tileSize * activeProfile.startScale / 2;
+        endRadius = activeProfile.tileSize * activeProfile.endScale / 2;
+        maxPhysicalAngle = rollingBallAngularTravel(apparentPathDistance, startRadius, endRadius, 1);
+        roundedTurns = Math.max(1, Math.round(maxPhysicalAngle / rollingBallTwoPi));
         // If Hero is already within the initial viewport (homepage), start
         // at scrollY=0 rather than waiting for a fixed header offset.
         // Below-the-fold scenes start when they approach the viewport.
