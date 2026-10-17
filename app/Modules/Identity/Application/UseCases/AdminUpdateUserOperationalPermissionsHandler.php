@@ -74,9 +74,10 @@ final class AdminUpdateUserOperationalPermissionsHandler
                         UserOperationalPermissionEnum::OPERATOR_SESSION_HISTORY_VIEW,
                         UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE,
                         UserOperationalPermissionEnum::OPERATOR_MARKETING_SEND,
-                    ], true)) {
-                    // Ordinary admins cannot issue or withdraw critical global
-                    // rights via either the new editor or the legacy handler.
+                    ], true) && ($scope === null
+                        || ! app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)->allows($actor, $permission))) {
+                    // Legacy bulk forms remain conservative. Unified Filament
+                    // forms delegate only rights already held by the actor.
                     continue;
                 }
                 $enabled = $allowed->has($permission->value);

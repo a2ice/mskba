@@ -168,8 +168,8 @@ final class BackofficeUserResource extends Resource
                         ->icon('heroicon-o-shield-check')
                         ->schema([
                             Section::make('Глобальные права — администрирование и техподдержка')
-                                ->description('Критичные права. Назначать и отзывать может только superadmin. Право на проверку изменения подтверждённых данных доступно исключительно пользователю с ролью admin.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                                ->description('Назначение разрешено только в пределах собственных полномочий и системной роли получателя; недоступные права остаются видимы.')
+                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
                                 ->schema([
                                     CheckboxList::make('privileged_permissions')
                                         ->label('Критичные разрешения')
@@ -186,7 +186,7 @@ final class BackofficeUserResource extends Resource
                         ->icon('heroicon-o-cog-6-tooth')
                         ->schema([
                             Section::make('Filament — административный интерфейс')
-                                ->description('Вход в Filament и права на его ресурсы. Только superadmin может назначать эти разрешения. Доступ к исполняемым HTML/CSS/JS-виджетам по-прежнему только у superadmin.')
+                                ->description('Вход и ресурсы Filament. Администратор может передать только имеющиеся у него разрешения. Базовые права роли и специализаций неотзываемы.')
                                 ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
                                 ->schema([
                                     CheckboxList::make('backoffice_permissions')

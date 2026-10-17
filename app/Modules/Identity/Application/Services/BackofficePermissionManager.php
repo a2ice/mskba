@@ -25,21 +25,13 @@ final class BackofficePermissionManager
     }
 
     /** @return list<string> */
+    /** @return list<string> */
     public function granted(User $user): array
     {
-        $user = $user->canonical();
-        $snapshots = $user->operationalPermissions()
-            ->whereIn('permission', array_map(
-                fn (Permission $p): string => $p->value, Permission::backofficeCases()
-            ))
-            ->get()->keyBy(fn (UserOperationalPermission $p): string => $p->permission->value);
-
         return array_values(array_map(
-            fn (Permission $p): string => $p->value,
-            array_filter(Permission::backofficeCases(), static function (Permission $p) use ($user, $snapshots): bool {
-                return ($snapshots->get($p->value)?->is_allowed)
-                    ?? $p->defaultAllowedFor($user->system_role);
-            })
+            static fn (Permission $p): string => $p->value,
+            array_filter(Permission::backofficeCases(),
+                fn (Permission $p): bool => $this->checker->allows($user, $p))
         ));
     }
 
@@ -48,7 +40,7 @@ final class BackofficePermissionManager
         $actor = $actor->canonical();
 
         if (! $actor->isConfirmed() || $actor->isBlocked() || $actor->trashed()
-            || $actor->system_role !== UserSystemRoleEnum::SUPERADMIN) {
+            || ! $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
             return false;
         }
 
@@ -59,8 +51,8 @@ final class BackofficePermissionManager
         $target = $target->canonical();
 
         return $actor->id !== $target->id
-            && $target->system_role !== UserSystemRoleEnum::SUPERADMIN
-            && $target->system_role !== UserSystemRoleEnum::SYSTEM;
+            && $target->system_role !== UserSystemRoleEnum::SYSTEM
+            && $actor->system_role->numericValue() > $target->system_role->numericValue();
     }
 
     /**
@@ -69,7 +61,7 @@ final class BackofficePermissionManager
     public function sync(User $actor, User $target, array $values): void
     {
         if (! $this->mayManage($actor, $target)) {
-            throw new AuthorizationException('Управление доступом Filament разрешено только суперадминистратору.');
+            throw new AuthorizationException('Недостаточно прав на управление доступом Filament.');
         }
 
         $allowedKeys = array_map(fn (Permission $p): string => $p->value, Permission::backofficeCases());
@@ -86,6 +78,19 @@ final class BackofficePermissionManager
 
             foreach (Permission::backofficeCases() as $permission) {
                 $enabled = in_array($permission->value, $values, true);
+                $profiles = app(StaffPermissionProfiles::class);
+                if ($profiles->inherited($target, $permission)) {
+                    // Baseline and specialization rights cannot be disabled here.
+                    continue;
+                }
+                if ($enabled && ! $profiles->allowedForRole($target->system_role, $permission)) {
+                    throw new AuthorizationException('Право недопустимо для роли пользователя.');
+                }
+                if ($enabled && ! $this->checker->allows($target, $permission)
+                    && $actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                    && ! $this->checker->allows($actor, $permission)) {
+                    throw new AuthorizationException('Нельзя передать право, которого нет у администратора.');
+                }
                 $existing = UserOperationalPermission::query()->where('user_id', $target->id)
                     ->where('permission', $permission->value)->first();
                 if ($existing !== null) {

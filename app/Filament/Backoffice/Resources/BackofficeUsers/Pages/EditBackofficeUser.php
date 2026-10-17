@@ -133,7 +133,7 @@ final class EditBackofficeUser extends EditRecord
             array_map(static fn (Permission $p): string => $p->value, $global->creationPermissions()),
         ));
 
-        if (auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN) {
+        if (auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN)) {
             $data['privileged_permissions'] = array_values(array_intersect(
                 $selected,
                 array_map(static fn (Permission $p): string => $p->value, $global->privilegedPermissions()),
@@ -162,7 +162,7 @@ final class EditBackofficeUser extends EditRecord
 
         $privileged = null;
         $backoffice = null;
-        if ($isSuper) {
+        if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
             $privileged = $data['privileged_permissions'] ?? [];
             $backoffice = $data['backoffice_permissions'] ?? [];
             if (! is_array($privileged) || ! is_array($backoffice)) {
@@ -183,7 +183,7 @@ final class EditBackofficeUser extends EditRecord
         // Neither user status/system role nor unrelated permissions are writable.
         DB::transaction(function () use ($actor, $record, $global, $creation, $privileged, $backoffice, $isSuper): void {
             $global->sync($actor, $record, array_values($creation), $privileged);
-            if ($isSuper) {
+            if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
                 app(BackofficePermissionManager::class)->sync($actor, $record, array_values($backoffice));
             }
         });
