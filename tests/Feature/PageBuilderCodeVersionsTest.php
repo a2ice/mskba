@@ -68,6 +68,39 @@ final class PageBuilderCodeVersionsTest extends TestCase
         $this->assertSame('.demo { margin: 4px; }', $page->published_css);
     }
 
+    public function test_previous_css_survives_html_only_publications_and_can_be_rolled_back(): void
+    {
+        $page = $this->page();
+        $publisher = app(PageBuilderPublisher::class);
+
+        $page->update(['draft_css' => '.box { color: red; }']);
+        $publisher->publish($page);
+        $page->refresh();
+        $this->assertFalse($page->has_previous_css);
+
+        $page->update(['draft_css' => '.box { color: blue; }']);
+        $publisher->publish($page);
+        $page->refresh();
+        $this->assertSame('.box { color: red; }', $page->previous_css);
+        $this->assertTrue($page->has_previous_css);
+
+        for ($i = 0; $i < 4; $i++) {
+            $page->update(['draft_html' => '<h1>HTML '. $i .'</h1>']);
+            $publisher->publish($page);
+            $page->refresh();
+        }
+
+        $this->assertSame('.box { color: red; }', $page->previous_css);
+        $this->assertSame('.box { color: blue; }', $page->published_css);
+        $currentHtml = $page->published_html;
+        $publisher->rollbackCss($page);
+        $page->refresh();
+        $this->assertSame('.box { color: red; }', $page->published_css);
+        $this->assertSame('.box { color: blue; }', $page->previous_css);
+        $this->assertSame($currentHtml, $page->published_html);
+        $this->assertSame('.box { color: red; }', $page->draft_css);
+    }
+
     public function test_css_and_js_privileges_are_granular_and_delegable(): void
     {
         $admin = $this->admin();
