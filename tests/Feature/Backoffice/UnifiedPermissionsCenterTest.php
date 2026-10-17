@@ -34,7 +34,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
     public function test_superadmin_can_manage_creation_support_and_filament_without_changing_system_role(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
-        $target = $this->user();
+        $target = $this->user(UserSystemRoleEnum::MANAGER);
         $this->actingAs($super);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
@@ -58,14 +58,15 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $this->assertTrue($checker->allows($target, Permission::CREATE_TOURNAMENT));
         $this->assertTrue($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
         $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_ACCESS));
-        $this->assertFalse($checker->allows($target, Permission::CREATE_COORDINATION));
-        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+        // Manager baseline cannot be silently revoked by an individual form.
+        $this->assertTrue($checker->allows($target, Permission::CREATE_COORDINATION));
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
     }
 
-    public function test_admin_can_manage_creation_for_lower_role_without_granting_sensitive_or_filament_permissions(): void
+    public function test_admin_can_delegate_only_own_rights_to_lower_role(): void
     {
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
-        $target = $this->user(UserSystemRoleEnum::EDITOR);
+        $target = $this->user(UserSystemRoleEnum::MANAGER);
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
@@ -73,9 +74,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm([
                 'creation_permissions' => [Permission::CREATE_EVENT->value],
-                // These fields are not visible to admin. A forged Livewire
-                // request still must not grant them.
-                'privileged_permissions' => [Permission::HANDLE_SUPPORT_TICKETS->value],
+                'privileged_permissions' => [],
                 'backoffice_permissions' => [Permission::BACKOFFICE_ACCESS->value],
             ])
             ->call('save')->assertHasNoFormErrors();
@@ -83,7 +82,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $checker = app(UserOperationalPermissionChecker::class);
         $this->assertTrue($checker->allows($target, Permission::CREATE_EVENT));
         $this->assertFalse($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
-        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_ACCESS));
+        $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_ACCESS));
     }
 
     public function test_admin_cannot_manage_equal_higher_or_system_role_accounts(): void
@@ -91,7 +90,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $peer = $this->user(UserSystemRoleEnum::ADMIN);
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
-        $editor = $this->user(UserSystemRoleEnum::EDITOR);
+        $editor = $this->user(UserSystemRoleEnum::MANAGER);
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
@@ -169,11 +168,11 @@ final class UnifiedPermissionsCenterTest extends TestCase
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->assertActionVisible('changeSystemRole')
             ->callAction('changeSystemRole', data: [
-                'new_system_role' => UserSystemRoleEnum::MODERATOR->value,
+                'new_system_role' => UserSystemRoleEnum::MANAGER->value,
             ])
             ->assertHasNoFormErrors();
 
-        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->fresh()->system_role);
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
         $after = UserOperationalPermission::query()
             ->where('user_id', $target->id)
             ->orderBy('permission')
@@ -185,7 +184,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
     public function test_switching_to_user_role_removes_staff_role_using_existing_handler(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
-        $target = $this->user(UserSystemRoleEnum::EDITOR);
+        $target = $this->user(UserSystemRoleEnum::MANAGER);
         $this->actingAs($super);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 

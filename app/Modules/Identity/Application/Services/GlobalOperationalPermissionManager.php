@@ -61,6 +61,10 @@ final class GlobalOperationalPermissionManager
         $sources = [];
         foreach (array_merge($this->creationPermissions(), $this->privilegedPermissions()) as $p) {
             $explicit = $snapshots->get($p->value);
+            if (app(StaffPermissionProfiles::class)->inherited($target, $p)) {
+                $sources[$p->value] = 'Наследуется от роли или специализации';
+                continue;
+            }
             $sources[$p->value] = $explicit === null
                 ? ($p->defaultAllowedFor($target->system_role) ? 'По роли / по умолчанию' : 'Не предоставлено')
                 : ($explicit->is_allowed ? 'Выдано индивидуально' : 'Явно запрещено');
