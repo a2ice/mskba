@@ -78,6 +78,13 @@ final class BackofficePermissionManager
 
             foreach (Permission::backofficeCases() as $permission) {
                 $enabled = in_array($permission->value, $values, true);
+                // Admins may neither grant nor revoke a permission absent
+                // from their own effective set, even if a crafted Livewire
+                // payload omits all disabled options.
+                if ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                    && ! $this->checker->allows($actor, $permission)) {
+                    continue;
+                }
                 $profiles = app(StaffPermissionProfiles::class);
                 if ($profiles->inherited($target, $permission)) {
                     // Baseline and specialization rights cannot be disabled here.
