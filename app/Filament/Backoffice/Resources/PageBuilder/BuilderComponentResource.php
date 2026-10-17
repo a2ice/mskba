@@ -245,16 +245,12 @@ final class BuilderComponentResource extends Resource
                                 ]),
                         ]),
                 ]),
-            Section::make('HTML и CSS')->columns(1)
+            Section::make('HTML')->columns(1)
                 ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
                 ->schema([
                     CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                         ->required(fn (?PageBuilderComponent $record): bool => $record?->slug !== 'hero-slider')
                         ->columnSpanFull(),
-                    CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
-                        ->visible(fn (): bool => static::canViewCss())
-                    ->disabled(fn (): bool => ! static::canEditCss())
-                    ->columnSpanFull(),
                 ])->columnSpanFull(),
             BuilderPlaceholderGuide::panel()->collapsible()
                 ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
