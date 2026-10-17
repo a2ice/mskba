@@ -47,12 +47,16 @@ upgrade. Do not add
 The photographed source sprite `public/images/ball-16.png` is 1254 x 1254,
 with 16 RGBA frames in a 4 x 4 grid. Each tile is cropped independently
 using rounded quarter-sheet boundaries and resized to 256 x 256, avoiding
-bleed across half-pixel tile boundaries. The optimized file is
-`public/images/ball-16.webp` (1024 x 1024, 4 x 4). Conversion verified
-16 nonempty frames and preserved alpha. The transparent WebP is **301,614 B**
-vs **1,942,087 B** source PNG (84.5% smaller).
+bleed across half-pixel tile boundaries. The optimized file is `public/images/ball-16.webp` (1024 x 1024, 4 x 4).
+Each original photograph is uniformly resized to 226 px and centered inside
+a 256 px transparent atlas cell using its alpha silhouette (threshold 32).
+Frame alpha centroids have ≤1.5 px deviation from the common center. No
+photographic content, seam, logo or texture is redrawn or rotated.
+A CSS factor of 256/226 retains the previous apparent ball size.
+The transparent centered WebP is **240,472 B** vs **1,942,087 B**
+source PNG (~87.6% smaller).
 The homepage's existing Filament HTML continues to reference
-`/images/ball-16.webp`. The frontend uses `?v=photo-20261017-v1` to
+`/images/ball-16.webp`. The frontend uses `?v=photo-20261017-centered-v2` to
 avoid the previous sprite from browser cache. The rendered image must be
 1024 x 1024; other sizes are rejected before use.
 
@@ -65,16 +69,26 @@ avoid the previous sprite from browser cache. The rendered image must be
   - tablet: (78.5%, 42.5%) → (29%, 100%), scale 0.43 → 1;
   - desktop: (74.5%, 44%) → (31.5%, 100%), scale 0.22 → 1.
   The end point remains half the ball outside the bottom of the Hero.
-- Sprite frame selection is based on **projected screen-space distance**
-  and ball radius, not `wheel` events, per-event pixel deltas or elapsed
-  time. Angle increases by an integral of `ds/r` as the apparent ball
-  size grows; the final total is adjusted to the closest whole number of
-  rotations so the ball stops *exactly* on frame 0, frontal view.
-  The direction is the one photographed on the real Spalding (frame order
-  0..15). Reverse scroll reverses frames. No 90-degree wrapper rotation.
-- No frame blending. A ball with a larger visible radius rotates less
-  for the same distance than a distant smaller ball. Note: this is
-  **screen-perspective approximation**, not a full 3D rigid-body solver.
+- Sprite frames and ball coordinates are **pure functions of the same
+  clamped native page scroll position**. No 55ms exponential follower and no
+  smoothstep easing of the trajectory. The point on the straight line is
+  interpolated linearly from `p=0` to `p=1`, as is the apparent scale.
+- 16 photographed frames make **one complete revolution** over the first
+  scene's scroll range, with equal distance between frame changes.
+  For the usual 189 px timeline this is ~11.8 page-scroll pixels per frame.
+  This is device-independent whether the user scrolls with wheel, keyboard,
+  touchpad or touch. Larger wheel steps necessarily skip intermediate frames:
+  16 still photos cannot synthesize frames that do not exist.
+- After `p=1`, exactly the same x, y, size, and frame zero are repainted, while
+  the entire Hero continues to scroll normally. No freezing the element in
+  viewport or capturing screen pixels; reverse scroll reconstructs the same
+  frames and coordinates. Reduced motion remains at the settled state.
+- Only brightness progression is eased; that does not affect the position or
+  frame progression. The photographed order 0..15 determines rotation
+  direction; no extra CSS rotation.
+- Scroll-linear animation is deliberately a **visual** model, not a no-slip
+  3D simulation; the earlier changing-angular-velocity algorithm caused
+  inconsistent frame cadence during scale-up.
 - Landing remains 30% earlier than the old scroll-distance duration, with
   no fixed/sticky Hero or page-wide overlay.
 - No frame blending or optical flow. The CSS pseudo-element renders frame zero
@@ -119,7 +133,7 @@ avoid the previous sprite from browser cache. The rendered image must be
    arbitrary executable JavaScript (a separate design discussion).
 3. Check that the ball is compatible with every slider background and with
    pagination/CTA in the final page design.
-4. Calibrate projected physical angular travel against the real photo sequence on mobile/tablet/desktop. If needed, introduce per-scene spin-direction calibration without changing the sprite itself.
+4. If later needed, add a separate physically modeled flying-ball mode without altering scroll-linear frame cadence of the Hero.
 5. Maintain sanitizer boundary, existing published snapshots, and
    mobile reduced-motion support.
 

@@ -27,6 +27,8 @@
     --ball-scale: .75;
     --ball-brightness: .57;
     --ball-saturation: .74;
+    /* Photo tiles now use 226px of a 256px atlas cell, aligned by silhouette. */
+    --ball-visual-size-factor: 1.1327434;
     --ball-frame-x: 0%;
     --ball-frame-y: 0%;
 }
@@ -41,12 +43,13 @@
     height: 122px;
     left: 0;
     top: 0;
-    background-image: var(--ball-image, url('/images/ball-16.webp?v=photo-20261017-v1'));
+    background-image: var(--ball-image, url('/images/ball-16.webp?v=photo-20261017-centered-v2'));
     background-repeat: no-repeat;
     background-size: 400% 400%;
     background-position: var(--ball-frame-x) var(--ball-frame-y);
     /* Photo frames already follow the physical roll axis: no legacy 90deg correction. */
-    transform: translate(-50%, -50%) scale(var(--ball-scale));
+    transform: translate(-50%, -50%) scale(calc(var(--ball-scale) * var(--ball-visual-size-factor)));
+
     transform-origin: center center;
     filter: brightness(var(--ball-brightness)) saturate(var(--ball-saturation))
         drop-shadow(0 6px 8px rgba(0,0,0,.34));
