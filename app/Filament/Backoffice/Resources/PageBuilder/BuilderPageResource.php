@@ -63,7 +63,9 @@ final class BuilderPageResource extends Resource
                         CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                             ->required()->columnSpanFull(),
                         CodeEditor::make('draft_css')->label('CSS (локальный)')->language(Language::Css)
-                            ->columnSpanFull()
+                            ->visible(fn (): bool => static::canViewCss())
+                    ->disabled(fn (): bool => ! static::canEditCss())
+                    ->columnSpanFull()
                             ->helperText('Полный CSS: свойства, псевдоклассы, @media, @container, @keyframes. Автоматически ограничен содержимым Page Builder. Запрещены @import и исполняемый HTML/JS.'),
                     ])->columnSpanFull(),
                     BuilderPlaceholderGuide::panel()->collapsible()->columnSpanFull(),

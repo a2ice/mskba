@@ -29,6 +29,7 @@ final class PageBuilderPage extends Model
         return [
             'published_at' => 'datetime',
             'cms_override_enabled' => 'boolean',
+            'has_previous_css' => 'boolean',
         ];
     }
 }

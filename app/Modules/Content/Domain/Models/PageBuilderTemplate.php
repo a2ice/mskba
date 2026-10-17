@@ -12,6 +12,6 @@ final class PageBuilderTemplate extends Model
 
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return ['published_at' => 'datetime', 'has_previous_css' => 'boolean'];
     }
 }

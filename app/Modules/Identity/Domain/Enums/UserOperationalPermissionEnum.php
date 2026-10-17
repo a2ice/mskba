@@ -28,6 +28,12 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_BUILDER_VIEW = 'backoffice.page_builder.view';
     case BACKOFFICE_BUILDER_EDIT = 'backoffice.page_builder.edit';
     case BACKOFFICE_BUILDER_PUBLISH = 'backoffice.page_builder.publish';
+    case BACKOFFICE_BUILDER_CSS_VIEW = 'backoffice.page_builder.css.view';
+    case BACKOFFICE_BUILDER_CSS_EDIT = 'backoffice.page_builder.css.edit';
+    case BACKOFFICE_BUILDER_CSS_PUBLISH = 'backoffice.page_builder.css.publish';
+    case BACKOFFICE_BUILDER_JS_VIEW = 'backoffice.page_builder.js.view';
+    case BACKOFFICE_BUILDER_JS_EDIT = 'backoffice.page_builder.js.edit';
+    case BACKOFFICE_BUILDER_JS_PUBLISH = 'backoffice.page_builder.js.publish';
 
     /** @return list<self> */
     public static function backofficeCases(): array
@@ -45,6 +51,12 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_BUILDER_VIEW,
             self::BACKOFFICE_BUILDER_EDIT,
             self::BACKOFFICE_BUILDER_PUBLISH,
+            self::BACKOFFICE_BUILDER_CSS_VIEW,
+            self::BACKOFFICE_BUILDER_CSS_EDIT,
+            self::BACKOFFICE_BUILDER_CSS_PUBLISH,
+            self::BACKOFFICE_BUILDER_JS_VIEW,
+            self::BACKOFFICE_BUILDER_JS_EDIT,
+            self::BACKOFFICE_BUILDER_JS_PUBLISH,
         ];
     }
 
@@ -79,6 +91,12 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_BUILDER_VIEW => 'Просмотр страниц, шаблонов и компонентов',
             self::BACKOFFICE_BUILDER_EDIT => 'Редактирование черновиков конструктора страниц',
             self::BACKOFFICE_BUILDER_PUBLISH => 'Публикация и восстановление страниц и компонентов',
+            self::BACKOFFICE_BUILDER_CSS_VIEW => 'Просмотр CSS конструктора страниц',
+            self::BACKOFFICE_BUILDER_CSS_EDIT => 'Редактирование CSS конструктора страниц',
+            self::BACKOFFICE_BUILDER_CSS_PUBLISH => 'Публикация CSS конструктора страниц',
+            self::BACKOFFICE_BUILDER_JS_VIEW => 'Просмотр JS конструктора страниц (будущий редактор)',
+            self::BACKOFFICE_BUILDER_JS_EDIT => 'Редактирование JS конструктора страниц (будущий редактор)',
+            self::BACKOFFICE_BUILDER_JS_PUBLISH => 'Публикация JS конструктора страниц (будущий редактор)',
         };
     }
 

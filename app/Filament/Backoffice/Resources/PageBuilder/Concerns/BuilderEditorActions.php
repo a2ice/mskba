@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 trait BuilderEditorActions
 {
+    use BuilderCodeFormGuard;
+
     /**
      * Keep the default Save/Cancel actions and add a combined workflow next to
      * Save. All three Page Builder edit screens share this trait.
@@ -64,6 +66,7 @@ trait BuilderEditorActions
 
             // Publication validates components, routes and slider settings in
             // a transaction. Failed publication preserves the previous snapshot.
+            $this->assertCanPublishCode();
             app(PageBuilderPublisher::class)->publish($this->getRecord());
         } catch (ValidationException $exception) {
             // Filament's inline errors can be far above the confirmation modal
@@ -115,6 +118,7 @@ trait BuilderEditorActions
                         : 'Публичная версия обновится только после подтверждения. Черновик сначала необходимо сохранить.')
                 ->visible(fn (): bool => $resource::canPublish())
                 ->action(function (): void {
+                    $this->assertCanPublishCode();
                     app(PageBuilderPublisher::class)->publish($this->record);
                     Notification::make()->title('Опубликовано')->success()->send();
                     $this->record->refresh();
@@ -145,6 +149,20 @@ trait BuilderEditorActions
                     $this->record->refresh();
                     Notification::make()->title('CMS-приоритет включён')->success()->send();
                 }),
+            Action::make('rollbackCss')->label('Откатить CSS')
+                ->icon('heroicon-o-arrow-path')->color('warning')
+                ->requiresConfirmation()
+                ->modalDescription('Будет восстановлена предыдущая опубликованная версия CSS. HTML, компоненты и слайды останутся без изменений.')
+                ->visible(fn (): bool => $resource::canPublishCss()
+                    && (bool) $this->record->has_previous_css
+                    && $this->record->published_at !== null)
+                ->action(function (): void {
+                    abort_unless(static::getResource()::canPublishCss(), 403);
+                    app(PageBuilderPublisher::class)->rollbackCss($this->record);
+                    $this->record->refresh();
+                    Notification::make()->title('Предыдущая версия CSS восстановлена')->success()->send();
+                    $this->fillForm();
+                }),
             Action::make('restore')->label('Восстановить черновик')
                 ->visible(fn (): bool => $resource::canCreate()
                     && PageBuilderRevision::query()
@@ -161,7 +179,15 @@ trait BuilderEditorActions
                             ])->all()),
                 ])
                 ->action(function (array $data): void {
-                    app(PageBuilderPublisher::class)->restoreDraft($this->record, (int) $data['revision_id']);
+                    $revision = PageBuilderRevision::query()->where('entity_type', PageBuilderPublisher::type($this->record))
+                        ->where('entity_id', $this->record->getKey())->where('action', 'publish')
+                        ->findOrFail((int) $data['revision_id']);
+                    $resource = static::getResource();
+                    if (! $resource::canEditCss()
+                        && trim((string) ($revision->snapshot['draft_css'] ?? '')) !== trim((string) $this->record->draft_css)) {
+                        abort(403, 'Нет прав на восстановление CSS конструктора.');
+                    }
+                    app(PageBuilderPublisher::class)->restoreDraft($this->record, $revision->id);
                     Notification::make()->title('Черновик восстановлен; публичная версия не изменена')->success()->send();
                     $this->fillForm();
                 }),

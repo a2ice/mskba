@@ -43,6 +43,8 @@ final class BuilderTemplateResource extends Resource
                 CodeEditor::make('draft_html')->label('HTML')->language(Language::Html)
                     ->required()->columnSpanFull(),
                 CodeEditor::make('draft_css')->label('CSS')->language(Language::Css)
+                    ->visible(fn (): bool => static::canViewCss())
+                    ->disabled(fn (): bool => ! static::canEditCss())
                     ->columnSpanFull(),
             ])->columnSpanFull(),
             BuilderPlaceholderGuide::panel(true)->collapsible()->columnSpanFull(),

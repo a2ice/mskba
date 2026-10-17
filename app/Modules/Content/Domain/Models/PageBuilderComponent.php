@@ -12,7 +12,7 @@ final class PageBuilderComponent extends Model
 
     protected function casts(): array
     {
-        return ['published_at' => 'datetime', 'draft_slides' => 'array', 'published_slides' => 'array',
+        return ['published_at' => 'datetime', 'has_previous_css' => 'boolean', 'draft_slides' => 'array', 'published_slides' => 'array',
             'draft_options' => 'array', 'published_options' => 'array'];
     }
 }
