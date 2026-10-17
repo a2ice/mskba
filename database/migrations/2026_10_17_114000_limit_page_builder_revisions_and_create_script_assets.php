@@ -27,6 +27,17 @@ return new class extends Migration
             $table->unique(['entity_type', 'entity_id'], 'pb_scripts_owner_unique');
         });
 
+        Schema::create('page_builder_script_audit', function (Blueprint $table): void {
+            $table->id();
+            $table->string('entity_type', 16);
+            $table->unsignedBigInteger('entity_id');
+            $table->string('action', 16);
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->char('content_hash', 64)->nullable();
+            $table->timestamp('created_at');
+            $table->index(['entity_type', 'entity_id', 'id'], 'pb_script_audit_owner_idx');
+        });
+
         // Existing unlimited full snapshots become bounded, too. Preserve the
         // action/user/date and a hash for audit without retaining old code.
         $owners = DB::table('page_builder_revisions')
@@ -77,6 +88,7 @@ return new class extends Migration
     {
         // Bounded history is irreversible by design; down only removes the
         // not-yet-executable script staging schema.
+        Schema::dropIfExists('page_builder_script_audit');
         Schema::dropIfExists('page_builder_script_assets');
     }
 };
