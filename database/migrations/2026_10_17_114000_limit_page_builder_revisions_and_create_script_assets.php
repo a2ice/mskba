@@ -38,6 +38,40 @@ return new class extends Migration
             $table->index(['entity_type', 'entity_id', 'id'], 'pb_script_audit_owner_idx');
         });
 
+        // CSS has its own previous published slot. HTML-only republishing must
+        // never evict the CSS rollback point.
+        foreach (['page_builder_pages', 'page_builder_templates', 'page_builder_components'] as $tableName) {
+            Schema::table($tableName, function (Blueprint $table): void {
+                $table->longText('previous_css')->nullable();
+                $table->boolean('has_previous_css')->default(false);
+            });
+        }
+
+        // Recover the last different CSS version before historical full
+        // snapshots are converted to compact audit records.
+        $tableFor = ['page' => 'page_builder_pages',
+            'template' => 'page_builder_templates',
+            'component' => 'page_builder_components'];
+        foreach ($tableFor as $kind => $tableName) {
+            $rows = DB::table($tableName)->whereNotNull('published_at')->get(['id', 'published_css']);
+            foreach ($rows as $owner) {
+                $history = DB::table('page_builder_revisions')
+                    ->where('entity_type', $kind)->where('entity_id', $owner->id)
+                    ->where('action', 'publish')->orderByDesc('id')->get(['snapshot']);
+                foreach ($history as $revision) {
+                    $snapshot = json_decode((string) $revision->snapshot, true) ?: [];
+                    if (array_key_exists('draft_css', $snapshot)
+                        && (string) $snapshot['draft_css'] !== (string) $owner->published_css) {
+                        DB::table($tableName)->where('id', $owner->id)->update([
+                            'previous_css' => $snapshot['draft_css'],
+                            'has_previous_css' => true,
+                        ]);
+                        break;
+                    }
+                }
+            }
+        }
+
         // Existing unlimited full snapshots become bounded, too. Preserve the
         // action/user/date and a hash for audit without retaining old code.
         $owners = DB::table('page_builder_revisions')
@@ -90,5 +124,10 @@ return new class extends Migration
         // not-yet-executable script staging schema.
         Schema::dropIfExists('page_builder_script_audit');
         Schema::dropIfExists('page_builder_script_assets');
+        foreach (['page_builder_pages', 'page_builder_templates', 'page_builder_components'] as $tableName) {
+            Schema::table($tableName, function (Blueprint $table): void {
+                $table->dropColumn(['previous_css', 'has_previous_css']);
+            });
+        }
     }
 };
