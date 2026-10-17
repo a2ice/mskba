@@ -69,7 +69,33 @@ final class PageBuilderPublisher
                 'user_id' => auth('web')->id(),
                 'created_at' => now(),
             ]);
+            // Only the latest two *full* publication snapshots remain restorable.
+            // Older entries keep tiny audit metadata, not CSS/HTML/slider copies.
+            $this->compactPublishedHistory(self::type($item), (int) $item->getKey());
         });
+    }
+
+    private function compactPublishedHistory(string $entityType, int $entityId): void
+    {
+        $ids = PageBuilderRevision::query()
+            ->where('entity_type', $entityType)->where('entity_id', $entityId)
+            ->where('action', 'publish')->orderByDesc('id')->limit(2)->pluck('id')->all();
+
+        PageBuilderRevision::query()
+            ->where('entity_type', $entityType)->where('entity_id', $entityId)
+            ->where('action', 'publish')->whereNotIn('id', $ids)
+            ->orderBy('id')->chunkById(100, static function ($revisions): void {
+                foreach ($revisions as $revision) {
+                    $snapshot = $revision->snapshot;
+                    $revision->update([
+                        'action' => 'publish_audit',
+                        'snapshot' => [
+                            'sha256' => hash('sha256', json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)),
+                            'archived' => true,
+                        ],
+                    ]);
+                }
+            });
     }
 
     /**
@@ -101,8 +127,6 @@ final class PageBuilderPublisher
                 'snapshot' => [
                     'name' => $item->name,
                     'path' => $item->path,
-                    'draft_html' => $item->draft_html,
-                    'draft_css' => $item->draft_css,
                     'route_name' => $item->published_route_name,
                     'cms_override_enabled' => $enabled,
                 ],
