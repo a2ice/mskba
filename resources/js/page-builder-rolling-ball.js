@@ -8,21 +8,16 @@ const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: red
 // the sprite renderer or reintroducing slide-specific layers.
 const rollingBallProfiles = {
     mobile: {
-        path: 'M 235 405 C 430 440 785 510 850 615 C 900 735 600 920 205 1000',
-        startScale: .75,
-        endScale: 1,
+        from: [850, 405], to: [205, 1000],
+        startScale: .75, endScale: 1, tileSize: 122,
     },
     tablet: {
-        path: 'M 410 425 C 555 445 775 485 785 590 C 800 730 575 907 290 1000',
-        startScale: .43,
-        endScale: 1,
+        from: [785, 425], to: [290, 1000],
+        startScale: .43, endScale: 1, tileSize: 165,
     },
     desktop: {
-        // Tighter court-perspective arc: rightmost ~77%, landing at 31.5%.
-        // A small starting ball reads as distant at natural parquet scale.
-        path: 'M 520 440 C 615 445 735 495 745 595 C 760 750 590 900 315 1000',
-        startScale: .22,
-        endScale: 1,
+        from: [745, 440], to: [315, 1000],
+        startScale: .22, endScale: 1, tileSize: 195,
     },
 };
 // Old brightness at scroll 0 was .07 (almost entirely black). Its halfway
@@ -36,17 +31,15 @@ const rollingBallLighting = {
 };
 const rollingBallClamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 const rollingBallSmooth = value => value * value * (3 - 2 * value);
-// Keep the gentle stop of smoothstep, but give the ball nonzero motion
-// from the *first* scroll pixel (smoothstep alone has zero initial velocity).
-const rollingBallTravelEase = value => {
-    const remaining = 1 - value;
-    return rollingBallSmooth(value) + .6 * value * remaining * remaining;
-};
+// For this first scene, use strictly linear scroll progress for both
+// translation and photographed frame selection. Native scroll is the clock;
+// no easing or time-based follower that continues to move after scrolling stops.
 // The ball now completes the entire first-scene path in 70% of the
 // formerly required scroll distance, then remains attached to the hero.
 const rollingBallTimelineFactor = .7;
-const rollingBallCycles = 6;
 const rollingBallSpriteFrames = 16;
+const rollingBallTurns = 1; // 16 distinct photos across the hero's 0..1 scroll range
+const rollingBallAssetRevision = 'photo-20261017-centered-v2';
 
 function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
@@ -71,30 +64,34 @@ function initRollingBall(root) {
             root.style.setProperty('--ball-image', `url("${url.replaceAll('"', '%22')}")`);
         }
     };
+    // Bypass cached old WebP while preserving Filament custom asset URLs.
+    const originalUrl = new URL(sprite.getAttribute('src') || sprite.src, location.href);
+    if (originalUrl.pathname === '/images/ball-16.webp') {
+        originalUrl.searchParams.set('v', rollingBallAssetRevision);
+        sprite.src = originalUrl.toString();
+    }
     if (sprite.complete) useSprite();
     else sprite.addEventListener('load', useSprite, { once: true });
 
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let pathLength = 0;
     let start = 0;
     let distance = 270;
-    let target = 0;
-    let displayed = 0;
-    let raf = 0;
-    let lastTime = 0;
-    let initialized = false;
     let activeProfile = rollingBallProfiles.mobile;
 
     function paint(progress) {
         const p = rollingBallReducedMotion.matches ? 1 : progress;
-        const travel = rollingBallTravelEase(p);
-        const point = path.getPointAtLength(pathLength * travel);
+        const travel = p;
+        // Both axes use the same progress: geometrically a straight line.
+        const x = activeProfile.from[0] + (activeProfile.to[0] - activeProfile.from[0]) * travel;
+        const y = activeProfile.from[1] + (activeProfile.to[1] - activeProfile.from[1]) * travel;
         const light = rollingBallSmooth(travel);
-        // First and final frames are *exactly* frame 0 (frontal view).
-        const frame = p >= 1 ? 0 : Math.round(travel * rollingBallSpriteFrames * rollingBallCycles) % rollingBallSpriteFrames;
+        // One photographed revolution, evenly spaced across the scroll range.
+        // 189px scene distance => one new frame roughly every 11.8px;
+        // the browser's wheel event size does not enter this calculation.
+        const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);
+        const frame = p >= 1 ? 0 : framesTravelled % rollingBallSpriteFrames;
 
-        root.style.left = (point.x / 10).toFixed(3) + '%';
-        root.style.top = (point.y / 10).toFixed(3) + '%';
+        root.style.left = (x / 10).toFixed(3) + '%';
+        root.style.top = (y / 10).toFixed(3) + '%';
         root.style.setProperty('--ball-scale',
             (activeProfile.startScale + (activeProfile.endScale - activeProfile.startScale) * travel).toFixed(4));
         root.style.setProperty('--ball-brightness',
@@ -115,46 +112,23 @@ function initRollingBall(root) {
         const rect = slider.getBoundingClientRect();
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
-        path.setAttribute('d', activeProfile.path);
-        pathLength = path.getTotalLength();
         // If Hero is already within the initial viewport (homepage), start
         // at scrollY=0 rather than waiting for a fixed header offset.
         // Below-the-fold scenes start when they approach the viewport.
         const heroPageTop = window.scrollY + rect.top;
         start = Math.max(0, heroPageTop - window.innerHeight * .8);
         distance = Math.min(360, Math.max(270, rect.height * .48)) * rollingBallTimelineFactor;
-        target = targetFromScroll();
-        if (!initialized) {
-            // No sudden jump on a restored scroll position after reload.
-            displayed = target;
-            initialized = true;
-        }
-        paint(displayed);
-        queue();
+        // A restored scroll position must immediately reproduce exactly
+        // the same ball pose; there is no time-based catch-up.
+        paint(targetFromScroll());
     }
 
-    function tick(now) {
-        raf = 0;
-        const elapsed = lastTime ? Math.min(64, now - lastTime) : 16;
-        lastTime = now;
-        displayed += (target - displayed) * (1 - Math.exp(-elapsed / 55));
-        if (Math.abs(displayed - target) < .0003) displayed = target;
-        paint(displayed);
-        if (displayed !== target) raf = window.requestAnimationFrame(tick);
-        else lastTime = 0;
-    }
-
-    function queue() {
-        if (!initialized) return;
-        target = targetFromScroll();
-        if (!raf && Math.abs(displayed - target) > .0003) {
-            raf = window.requestAnimationFrame(tick);
-        }
-    }
-
-    window.addEventListener('scroll', queue, { passive: true });
+    // The hero and the ball share the browser's native scroll clock. Once the
+    // target clamps to 1, every following scroll paints the identical landed
+    // frame and coordinates (the DOM continues moving with the page).
+    window.addEventListener('scroll', () => paint(targetFromScroll()), { passive: true });
     window.addEventListener('resize', measure, { passive: true });
-    rollingBallReducedMotion.addEventListener?.('change', () => paint(displayed));
+    rollingBallReducedMotion.addEventListener?.('change', () => paint(targetFromScroll()));
     if ('ResizeObserver' in window) {
         new ResizeObserver(measure).observe(slider);
     }
