@@ -44,13 +44,17 @@ final class PageBuilderSaveAndPublishTest extends TestCase
             'draft_html' => '<h1>Старый текст</h1>',
         ]);
 
+        // CSS is now persisted separately by the dedicated CSS modal,
+        // while the bottom Save and Publish action owns the rest of the page.
+        app(\App\Modules\Content\Application\Services\PageBuilderPublisher::class)
+            ->saveCssDraft($page, '.intro { padding: 24px; }');
+
         Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
             ->assertSee('Сохранить и опубликовать')
             ->fillForm([
                 'name' => 'Новая страница',
                 'path' => '/combined-new',
                 'draft_html' => '<h1>Актуальная публикация</h1>',
-                'draft_css' => '.intro { padding: 24px; }',
                 'meta_title' => 'Обновлённый заголовок',
             ])
             ->call('saveAndPublish')
