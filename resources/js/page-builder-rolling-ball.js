@@ -9,7 +9,7 @@ const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: red
 const rollingBallProfiles = {
     mobile: {
         from: [850, 405], to: [205, 1000],
-        startScale: .75, endScale: 1, tileSize: 122,
+        startScale: .525, endScale: 1, tileSize: 122,
     },
     tablet: {
         from: [785, 425], to: [290, 1000],

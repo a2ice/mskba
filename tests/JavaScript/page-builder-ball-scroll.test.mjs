@@ -121,8 +121,15 @@ test('responsive breakpoints and reduced motion retain their landing coordinates
     const scene = createHarness();
     const mobile = scene.resize(375, 320);
     assert.deepEqual(mobile, {
-        left: 85, top: 40.5, scale: .75, frameX: '0%', frameY: '0%',
+        left: 85, top: 40.5, scale: .525, frameX: '0%', frameY: '0%',
     });
+    const mobileMiddle = scene.scroll(94.5);
+    assert.equal(mobileMiddle.scale, .7625, 'mobile ball scales linearly toward the unchanged landing size');
+    const mobileLanded = scene.scroll(189);
+    assert.deepEqual(mobileLanded, {
+        left: 20.5, top: 100, scale: 1, frameX: '0%', frameY: '0%',
+    }, 'final mobile size, position and frontal sprite frame must stay unchanged');
+    scene.scroll(0);
     const tablet = scene.resize(768, 400);
     assert.deepEqual(tablet, {
         left: 78.5, top: 42.5, scale: .43, frameX: '0%', frameY: '0%',
