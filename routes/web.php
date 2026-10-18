@@ -139,6 +139,8 @@ Route::get('/assets/design-themes/{theme}/{revision}.css', \App\Presentation\The
     ->name('design-themes.css');
 Route::get('/backoffice/design-themes/preview/{theme}', \App\Presentation\Theming\DesignThemePreviewController::class)
     ->middleware('auth')->name('design-themes.preview');
+Route::get('/backoffice/design-themes/ui-kit/{theme}', \App\Presentation\Theming\DesignThemeUiKitController::class)
+    ->middleware(['auth', 'throttle:60,1'])->name('design-themes.ui-kit');
 
 Route::post('/site-summary/heartbeat', SiteSummaryController::class)
     ->middleware('throttle:30,1')
