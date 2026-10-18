@@ -119,13 +119,9 @@ function initRollingBall(root) {
 
         // Apply the player's own parallax offset to the ball's destination.
         // Both use the same section-progress geometry and speed profile.
-        const sceneProgress = rollingBallClamp(
-            (window.innerHeight - venueRect.top) /
-                Math.max(1, window.innerHeight + venueRect.height), 0, 1);
-        const factor = storyRect.width <= 640 ? .32 : storyRect.width <= 1050 ? .58 : 1;
-        const playerShift = rollingBallReducedMotion.matches ? 0 : -sceneProgress * 74 * factor;
+        // Marker carries the very same player-parallax transform as the image.
         const endX = markerRect.left - storyRect.left;
-        const endY = markerRect.top - storyRect.top + playerShift;
+        const endY = markerRect.top - storyRect.top;
         const x = startX + (endX - startX) * p;
         const y = startY + (endY - startY) * p;
 
