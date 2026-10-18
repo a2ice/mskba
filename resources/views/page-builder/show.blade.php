@@ -28,11 +28,31 @@
     @endforeach
 @endpush
 
+@php
+    // PR 1 is intentionally DEV-only and opt-in to the existing published Hero.
+    // Neither Page Builder snapshots nor production/main HTML are mutated.
+    $showVenuesScene = app()->environment('staging')
+        && request()->path() === '/'
+        && ! $builderPreview
+        && str_contains((string) $builderHtml, 'data-mskba-hero-slider')
+        && str_contains((string) $builderHtml, 'mskba-hero-scene');
+@endphp
+
 @section('content')
     <div class="mskba-page-builder">
         @if ($builderPreview)
             <div class="container mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
         @endif
-        {!! $builderHtml !!}
+        @if ($showVenuesScene)
+            <div class="mskba-home-story" data-mskba-home-story>
+                @include('page-builder.components.venues-scene-art')
+                <div class="mskba-home-story__hero-slot">
+                    {!! $builderHtml !!}
+                </div>
+                @include('page-builder.components.venues-scene')
+            </div>
+        @else
+            {!! $builderHtml !!}
+        @endif
     </div>
 @endsection
