@@ -33,6 +33,14 @@
         @if ($builderPreview)
             <div class="container mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
         @endif
-        {!! $builderHtml !!}
+        @if ($builderShowVenuesScene ?? false)
+            {{-- Shared graphics start behind the Hero, while venues content stays in flow. --}}
+            <div class="mskba-home-story" data-mskba-home-story>
+                {!! $builderHtml !!}
+                @include('page-builder.components.venues-scene')
+            </div>
+        @else
+            {!! $builderHtml !!}
+        @endif
     </div>
 @endsection
