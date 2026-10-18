@@ -62,6 +62,12 @@
     z-index: 5;
     min-width: 0;
 }
+/* During ownership handoff the same ball is drawn above the Hero surface.
+   Otherwise its upper half would disappear behind the Hero stacking context
+   on the very first pixel after crossing the boundary. */
+.mskba-page-builder .mskba-home-story > .mskba-rolling-ball {
+    z-index: 6;
+}
 /* The previous Page Builder markup uses bg-lightgrey on #hero. The artwork
  * must be visible beneath that Hero, but the original slider stays opaque. */
 .mskba-page-builder .mskba-home-story__hero-slot #hero {
