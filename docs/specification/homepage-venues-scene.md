@@ -161,3 +161,12 @@ parallax completing its authored shift at scroll-bottom.
 Pixel-perfect coordinates still require a visual check on DEV at 1440/390
 and a screenshot/video from the actual browser before acceptance; tests alone
 cannot validate composition against the supplied design image.
+
+The same finite-scroll guard also applies to Ball Director's **second** leg:
+nominal 220–440px transition is capped by
+`document.scrollHeight - cachedViewportHeight - heroTransitionEnd`.
+If only 115px of native scroll remain after the 189px first-scene path,
+the ball still reaches the hand marker at the last available scroll position.
+No scrolling is synthesized; this is a deterministic target interpolation.
+A dedicated Node regression test asserts the ball is at its destination at
+maxScroll=304 and returns to the unchanged Hero pose on reverse scroll.
