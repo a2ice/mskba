@@ -101,6 +101,35 @@ final class DesignThemeBackofficeTest extends TestCase
         $this->assertSame($initialCount + 2, $theme->revisions()->count());
     }
 
+    public function test_ui_kit_is_protected_non_indexed_and_can_preview_unpublished_theme(): void
+    {
+        $actor = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $draft = $day->replicate(['slug', 'is_system', 'is_published']);
+        $draft->slug = 'draft_ui_kit';
+        $draft->is_published = false;
+        $draft->save();
+
+        $this->get(route('design-themes.ui-kit', $draft))->assertRedirect('/login');
+
+        $this->actingAs($actor)->get(route('design-themes.ui-kit', $draft))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertSee('draft_ui_kit')
+            ->assertSee('data-kit-widths', false);
+
+        $this->get(route('design-themes.ui-kit', $draft).'?embed=1')
+            ->assertOk()
+            ->assertSee('Кнопки, статусы и фильтры')
+            ->assertDontSee('data-kit-frame', false);
+    }
+
     public function test_ordinary_user_cannot_edit_or_preview_themes(): void
     {
         $actor = User::factory()->create([
