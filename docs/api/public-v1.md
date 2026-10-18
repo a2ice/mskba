@@ -16,13 +16,13 @@ the requester being iOS or Android.
 
 ## Query
 
-- \`limit\`: optional integer, 1–100, default 30.
-- \`cursor\`: optional opaque string from a previous response's \`meta.next_cursor\`.
+- `limit`: optional integer, 1–100, default 30.
+- `cursor`: optional opaque string from a previous response's `meta.next_cursor`.
   Never decode, construct, edit, or persist a cursor as a user identifier.
 
 The ordering is by the unique venue ID ascending. Clients consume all pages until
-\`meta.has_more\` is \`false\`; the last page's \`meta.next_cursor\` and
-\`links.next\` are \`null\`. This is keyset pagination, not offset pagination.
+`meta.has_more` is `false`; the last page's `meta.next_cursor` and
+`links.next` are `null`. This is keyset pagination, not offset pagination.
 Changes to the underlying dataset between requests can change what remains
 visible; pagination does not create a frozen snapshot.
 
@@ -30,7 +30,7 @@ visible; pagination does not create a frozen snapshot.
 
 HTTP 200 JSON (illustrative values):
 
-\`\`\`json
+```json
 {
   "data": [
     {
@@ -58,15 +58,15 @@ HTTP 200 JSON (illustrative values):
     "next": null
   }
 }
-\`\`\`
+```
 
-- A venue is public only when \`status=confirmed\`. Unconfirmed, blocked,
+- A venue is public only when `status=confirmed`. Unconfirmed, blocked,
   and soft-deleted venues are excluded, even for signed-in users.
-- An operationally \`temporarily_closed\` confirmed venue stays visible.
-- \`type\`, \`status\`, and \`operational_status\` are stable machine-readable
-  enum values; \`type_label\` is display text and should not be parsed.
-- \`address\`, \`latitude\`, \`longitude\`, \`image_url\`, and
-  \`short_description\` may be \`null\`. URLs are absolute.
+- An operationally `temporarily_closed` confirmed venue stays visible.
+- `type`, `status`, and `operational_status` are stable machine-readable
+  enum values; `type_label` is display text and should not be parsed.
+- `address`, `latitude`, `longitude`, `image_url`, and
+  `short_description` may be `null`. URLs are absolute.
 - No internal ownership, moderation drafts, roles, contacts or permissions
   are returned.
 - Invalid query parameters produce HTTP 422 JSON validation errors.
@@ -75,12 +75,12 @@ HTTP 200 JSON (illustrative values):
 
 ## Examples
 
-\`\`\`sh
+```sh
 curl -H 'Accept: application/json' \
   'https://dev.mskba.ru/api/v1/venues?limit=30'
-\`\`\`
+```
 
-\`\`\`js
+```js
 let cursor = null;
 do {
   const url = new URL('https://dev.mskba.ru/api/v1/venues');
@@ -92,12 +92,12 @@ do {
   // Process page.data here.
   cursor = page.meta.next_cursor;
 } while (cursor !== null);
-\`\`\`
+```
 
 ## Browser compatibility (CORS)
 
-For public \`api/*\` paths, the response permits any Origin (\`*\`) but does
-not allow credentialed cross-origin cookies. The default \`fetch\` examples
+For public `api/*` paths, the response permits any Origin (`*`) but does
+not allow credentialed cross-origin cookies. The default `fetch` examples
 explicitly omit credentials. HTTPS, input validation and per-route throttling
 are still required; CORS is not authentication and does not limit non-browser
 clients. For future cookie-based first-party SPA sessions, define a separate
