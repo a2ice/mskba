@@ -81,6 +81,14 @@ final class PageBuilderController extends Controller
             'builderScripts' => $output['scripts'],
             'builderPreview' => $preview,
             'builderTheme' => app(ThemeResolver::class)->active(),
+            // PR1 visual acceptance only: leave published Page Builder snapshots
+            // untouched; show the new scene exclusively on the staging homepage.
+            // Enable production only via a later explicit Page Builder publish.
+            'builderShowVenuesScene' => app()->environment('staging')
+                && ! $preview
+                && $page->published_path === '/'
+                && request()->path() === '/'
+                && str_contains($output['html'], 'data-mskba-hero-slider'),
         ]);
     }
 }
