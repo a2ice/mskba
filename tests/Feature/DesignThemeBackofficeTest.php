@@ -25,6 +25,15 @@ final class DesignThemeBackofficeTest extends TestCase
         $this->actingAs($actor)->get('/backoffice/design-themes')->assertOk();
         $this->get('/backoffice/design-themes/create')->assertOk();
         $this->get('/backoffice/design-themes/'.$night->id.'/edit')->assertOk();
+        $this->get(route('design-themes.ui-kit', $night))->assertOk()
+            ->assertSee('UI Kit: Ночная арена')
+            ->assertSee('data-kit-frame', false)
+            ->assertSee('data-theme-picker', false)
+            ->assertSee('court_day');
+        $this->get(route('design-themes.ui-kit', $night).'?embed=1')->assertOk()
+            ->assertSee('Кнопки, статусы и фильтры')
+            ->assertSee('data-kit-dialog-open', false)
+            ->assertSee('--accent');
         $this->get(route('design-themes.preview', $night))->assertOk()
             ->assertSee('Ночная арена')
             ->assertSee('theme-preview .search-control input:focus-visible')
@@ -102,5 +111,7 @@ final class DesignThemeBackofficeTest extends TestCase
 
         $this->actingAs($actor)->get('/backoffice/design-themes')->assertForbidden();
         $this->get(route('design-themes.preview', $night))->assertForbidden();
+        $this->get(route('design-themes.ui-kit', $night))->assertForbidden();
+        $this->get(route('design-themes.ui-kit', $night).'?embed=1')->assertForbidden();
     }
 }
