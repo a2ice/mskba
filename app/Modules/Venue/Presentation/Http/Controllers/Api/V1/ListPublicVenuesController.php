@@ -26,7 +26,7 @@ final class ListPublicVenuesController extends Controller
                 function (string $attribute, mixed $value, Closure $fail): void {
                     try {
                         $cursor = Cursor::fromEncoded($value);
-                        $id = $cursor?->parameters()['id'] ?? null;
+                        $id = $cursor?->parameter('id');
 
                         if (filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false) {
                             return;
