@@ -5,6 +5,7 @@ use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationManifestC
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationReferenceController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebhookController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\PaymentWebhookController;
+use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\ListPublicVenuesController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/integrations/telegram/webhook', TelegramWebhookController::class)
@@ -28,3 +29,13 @@ Route::get('/integrations/github-openai/player-character/{generation}/references
 Route::post('/integrations/github-openai/player-character/{generation}/callback', GitHubOpenAiGenerationCallbackController::class)
     ->middleware('throttle:30,1')
     ->name('integrations.github-openai.player-character.callback');
+
+// Public read-only mobile API: no embedded application secret or user session.
+Route::get('/v1/venues', ListPublicVenuesController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.v1.venues.index');
+
+// Compatibility with the first iOS integration path; same contract and rules.
+Route::get('/get_venues', ListPublicVenuesController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.legacy.get_venues');
