@@ -8,15 +8,15 @@ const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: red
 // the sprite renderer or reintroducing slide-specific layers.
 const rollingBallProfiles = {
     mobile: {
-        from: [850, 405], to: [205, 1000],
+        from: [150, 405], to: [795, 1000],
         startScale: .525, endScale: 1, tileSize: 122,
     },
     tablet: {
-        from: [785, 425], to: [290, 1000],
+        from: [215, 425], to: [710, 1000],
         startScale: .43, endScale: 1, tileSize: 165,
     },
     desktop: {
-        from: [745, 440], to: [315, 1000],
+        from: [255, 440], to: [685, 1000],
         startScale: .22, endScale: 1, tileSize: 195,
     },
 };
@@ -90,7 +90,10 @@ function initRollingBall(root) {
         // 189px scene distance => one new frame roughly every 11.8px;
         // the browser's wheel event size does not enter this calculation.
         const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);
-        const frame = p >= 1 ? 0 : framesTravelled % rollingBallSpriteFrames;
+        // Reverse the photographic frame sequence when mirroring the horizontal
+        // direction. Both endpoints remain on frontal frame zero.
+        const frame = p >= 1 ? 0
+            : (rollingBallSpriteFrames - (framesTravelled % rollingBallSpriteFrames)) % rollingBallSpriteFrames;
 
         root.style.left = (x / 10).toFixed(3) + '%';
         root.style.top = (y / 10).toFixed(3) + '%';
