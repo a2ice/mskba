@@ -16,9 +16,9 @@
     --venues-highlights-lift: 0px;
     /* All transparent PNGs share a canvas. Scale/crop the canvas deliberately,
        instead of trusting the PNG dimensions to match the approved mockup. */
-    --venues-foreground-width: 74%;
-    --venues-foreground-top: clamp(185px, 15.5vw, 300px);
-    --venues-foreground-left: 0px;
+    --venues-foreground-width: 68%;
+    --venues-foreground-top: clamp(230px, 18vw, 340px);
+    --venues-foreground-left: -1%;
     --venues-player-shift: 0px;
 }
 .mskba-page-builder .mskba-home-story__art {
@@ -39,15 +39,39 @@
     /* Scale by width, not by the sum of Hero and Venues heights. */
     object-fit: contain;
     object-position: left top;
-    transform: translate3d(0, var(--venues-parallax-shift, 0px), 0);
-    transform-origin: center top;
+    /* Each photo has independently authored size and placement.
+       Parallax shifts only the Y offset; the same asset stays in the scene. */
+    transform: translate3d(
+        var(--venues-layer-shift-x, 0px),
+        calc(var(--venues-layer-shift-y, 0px) + var(--venues-parallax-shift, 0px)),
+        0
+    ) scale(var(--venues-layer-scale, 1));
+    transform-origin: left top;
     will-change: transform;
     user-select: none;
 }
 .mskba-page-builder .mskba-home-story__art-layer--backstage { z-index: 0; }
-.mskba-page-builder .mskba-home-story__art-layer--fence { z-index: 1; }
-.mskba-page-builder .mskba-home-story__art-layer--hoop { z-index: 2; }
-.mskba-page-builder .mskba-home-story__art-layer--player { z-index: 3; }
+.mskba-page-builder .mskba-home-story__art-layer--fence {
+    z-index: 1;
+    --venues-layer-scale: .88;
+    --venues-layer-shift-x: -6px;
+    --venues-layer-shift-y: 56px;
+}
+.mskba-page-builder .mskba-home-story__art-layer--hoop {
+    z-index: 2;
+    --venues-layer-scale: .90;
+    --venues-layer-shift-x: 6px;
+    --venues-layer-shift-y: 64px;
+}
+.mskba-page-builder .mskba-home-story__art-layer--player {
+    z-index: 3;
+    --venues-layer-scale: .67;
+    --venues-layer-shift-x: 26px;
+    --venues-layer-shift-y: 118px;
+    /* Feather the flat bottom edge of the transparent PNG into the scenery. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 100%);
+}
 
 /* Soft white fade is a readability layer, not an opaque second section. */
 .mskba-page-builder .mskba-home-story__art-veil {
@@ -85,8 +109,8 @@
     box-sizing: border-box;
     display: flex;
     align-items: flex-start;
-    min-height: clamp(540px, 40vw, 680px);
-    padding: clamp(80px, 6.6vw, 112px) 0 clamp(100px, 8vw, 140px);
+    min-height: clamp(620px, 44vw, 760px);
+    padding: clamp(88px, 7vw, 120px) 0 clamp(120px, 9vw, 160px);
     color: #111318;
 }
 .mskba-page-builder .mskba-venues-scene__inner {
@@ -222,6 +246,15 @@
         --venues-foreground-width: 100%;
         --venues-foreground-top: clamp(190px, 26vw, 285px);
     }
+    /* The scale tuning above is for desktop art direction. Tablet and phone
+       keep their independently approved crop rather than scaling it again. */
+    .mskba-page-builder .mskba-home-story__art-layer--fence,
+    .mskba-page-builder .mskba-home-story__art-layer--hoop,
+    .mskba-page-builder .mskba-home-story__art-layer--player {
+        --venues-layer-scale: 1;
+        --venues-layer-shift-x: 0px;
+        --venues-layer-shift-y: 0px;
+    }
     .mskba-page-builder .mskba-venues-scene {
         min-height: 620px;
         padding-top: 115px;
@@ -321,8 +354,8 @@
 }
 .mskba-page-builder .mskba-venues-scene__ball-target {
     position: absolute;
-    left: 38%;
-    top: 66px;
+    left: 34.5%;
+    top: 138px;
     width: 0;
     height: 0;
     pointer-events: none;
@@ -331,8 +364,8 @@
 }
 @media (max-width: 1050px) {
     .mskba-page-builder .mskba-venues-scene__ball-target {
-        left: 39%;
-        top: 78px;
+        left: 36%;
+        top: 154px;
     }
 }
 @media (max-width: 640px) {
