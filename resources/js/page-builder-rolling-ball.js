@@ -45,6 +45,9 @@ function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
     const scene = root.closest('.mskba-hero-scene');
     const slider = scene?.querySelector('[data-mskba-hero-slider]');
+    const story = scene?.closest?.('[data-mskba-home-story]') || null;
+    const venues = story?.querySelector?.('[data-mskba-venues-scene]') || null;
+    const ballTarget = venues?.querySelector?.('[data-mskba-ball-target]') || null;
     const sprite = root.querySelector('img.mskba-rolling-ball__sprite');
     if (!scene || !slider || !sprite) return;
     root.dataset.rollingBallReady = '1';
@@ -78,8 +81,70 @@ function initRollingBall(root) {
     let activeProfile = rollingBallProfiles.mobile;
     let measuredWidth = null;
     let scheduledFrame = 0;
+    let assignedToStory = false;
+
+    // The ball has exactly one DOM node. Reparent only when crossing a scene
+    // boundary; never create a second animated sprite or pin it to the window.
+    function assignOwner(toStory) {
+        if (toStory && !assignedToStory) {
+            story.append(root);
+            assignedToStory = true;
+        } else if (!toStory && assignedToStory) {
+            slider.append(root);
+            assignedToStory = false;
+        }
+    }
+
+    // The marker is part of the responsive Venues composition. Coordinate
+    // subtraction cancels native scrolling; ball stays with the document.
+    function paintVenues(scrollPosition) {
+        if (!story || !venues || !ballTarget) return false;
+        const transitionStart = start + distance;
+        if (scrollPosition <= transitionStart) {
+            assignOwner(false);
+            return false;
+        }
+        const venueRect = venues.getBoundingClientRect();
+        const transitionLength = Math.max(220, Math.min(440, venueRect.height * .46));
+        const p = rollingBallReducedMotion.matches ? 1
+            : rollingBallClamp((scrollPosition - transitionStart) / transitionLength, 0, 1);
+
+        const storyRect = story.getBoundingClientRect();
+        const sliderRect = slider.getBoundingClientRect();
+        const markerRect = ballTarget.getBoundingClientRect();
+        const startX = sliderRect.left - storyRect.left
+            + sliderRect.width * activeProfile.to[0] / 1000;
+        const startY = sliderRect.top - storyRect.top
+            + sliderRect.height * activeProfile.to[1] / 1000;
+
+        // Apply the player's own parallax offset to the ball's destination.
+        // Both use the same section-progress geometry and speed profile.
+        const sceneProgress = rollingBallClamp(
+            (window.innerHeight - venueRect.top) /
+                Math.max(1, window.innerHeight + venueRect.height), 0, 1);
+        const factor = storyRect.width <= 640 ? .32 : storyRect.width <= 1050 ? .58 : 1;
+        const playerShift = rollingBallReducedMotion.matches ? 0 : -sceneProgress * 74 * factor;
+        const endX = markerRect.left - storyRect.left;
+        const endY = markerRect.top - storyRect.top + playerShift;
+        const x = startX + (endX - startX) * p;
+        const y = startY + (endY - startY) * p;
+
+        assignOwner(true);
+        root.style.left = x.toFixed(2) + 'px';
+        root.style.top = y.toFixed(2) + 'px';
+        const endingScale = sliderRect.width <= 640 ? .52 : sliderRect.width <= 1050 ? .5 : .48;
+        root.style.setProperty('--ball-scale', (1 + (endingScale - 1) * p).toFixed(4));
+        root.style.setProperty('--ball-brightness', (1.02 - .1 * p).toFixed(4));
+        root.style.setProperty('--ball-saturation', '1');
+        const frame = p >= 1 ? 0 : Math.floor(p * rollingBallSpriteFrames) % rollingBallSpriteFrames;
+        root.style.setProperty('--ball-frame-x', `${(frame % 4) * 100 / 3}%`);
+        root.style.setProperty('--ball-frame-y', `${Math.floor(frame / 4) * 100 / 3}%`);
+        return true;
+    }
 
     function paint(progress) {
+        if (paintVenues(window.scrollY)) return;
+
         const p = rollingBallReducedMotion.matches ? 1 : progress;
         const travel = p;
         // Both axes use the same progress: geometrically a straight line.
@@ -137,6 +202,9 @@ function initRollingBall(root) {
         measuredWidth = rect.width;
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
+        // CSS sprite remains the same size when moving from a Hero container
+        // query to the outer story; only scale is animated.
+        root.style.setProperty('--ball-tile-size', activeProfile.tileSize + 'px');
         // If Hero is already within the initial viewport (homepage), start
         // at scrollY=0 rather than waiting for a fixed header offset.
         // Below-the-fold scenes start when they approach the viewport.
