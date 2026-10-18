@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 const source = readFileSync(new URL('../../resources/js/page-builder-rolling-ball.js', import.meta.url), 'utf8');
 
-function makeScene() {
+function makeScene({ documentHeight } = {}) {
     const frames = [];
     const events = {};
     const props = {};
@@ -64,7 +64,10 @@ function makeScene() {
     };
     runInNewContext(source, {
         window: win,
-        document: { querySelectorAll: () => [root] },
+        document: {
+            querySelectorAll: () => [root],
+            documentElement: documentHeight ? { scrollHeight: documentHeight } : undefined,
+        },
         location: { href: 'https://dev.mskba.ru/' },
         URL,
     }, { filename: 'page-builder-rolling-ball.js' });
@@ -122,4 +125,19 @@ test('Venues handoff scroll remains deterministic for the same absolute page pos
     scene.scroll(850);
     const reverse = scene.scroll(320);
     assert.deepEqual(reverse, first, 'no accumulated swipe progress or time-based follower');
+});
+
+test('short end-of-page scroll range still lands the ball at the actual player marker', () => {
+    // Viewport is 800px high, page height 1104px -> maxScroll=304.
+    // Hero uses its existing 189px. Only 115px remain for the second route.
+    const scene = makeScene({ documentHeight: 1104 });
+    assert.equal(scene.scroll(189).parent, 'slider');
+    const landed = scene.scroll(304);
+    assert.equal(landed.parent, 'story');
+    assert.equal(landed.x, 500);
+    assert.equal(landed.scale, .48);
+    assert.equal(landed.frameX, '0%');
+    assert.equal(landed.frameY, '0%');
+    assert.equal(scene.scroll(189).parent, 'slider',
+        'reverse native scroll restores the unchanged first-scene endpoint');
 });
