@@ -5,7 +5,7 @@
 // Future first-party browser sessions should use a separate, explicit
 // origin/credential policy rather than broadening this public API policy.
 return [
-    'paths' => ['api/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
     'allowed_origins' => ['*'],
     'allowed_origins_patterns' => [],
