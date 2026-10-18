@@ -89,9 +89,15 @@ final class PageBuilderVenuesSceneTest extends TestCase
         $this->assertStringContainsString('position: absolute;', $css);
         $this->assertStringContainsString('@media (max-width: 1050px)', $css);
         $this->assertStringContainsString('@media (max-width: 640px)', $css);
-        $this->assertStringContainsString('--venues-foreground-width: 74%;', $css,
+        $this->assertStringContainsString('--venues-foreground-width: 68%;', $css,
             'artwork needs an explicit authored scale independent of asset dimensions');
         $this->assertStringContainsString('--venues-foreground-top:', $css);
+        $this->assertStringContainsString('--venues-layer-scale: .67;', $css);
+        $this->assertStringContainsString('--venues-layer-scale: .88;', $css);
+        $this->assertStringContainsString('--venues-layer-scale: .90;', $css);
+        $this->assertStringContainsString('--venues-layer-shift-y: 118px;', $css);
+        $this->assertStringContainsString('--venues-layer-scale: 1;', $css,
+            'tablet and mobile must not inherit desktop foreground reductions');
         $this->assertStringContainsString('object-fit: contain;', $css,
             'transparent foregrounds must never use cover against section height');
         $this->assertStringContainsString('grid-template-columns: repeat(4, minmax(0, 1fr))', $css);

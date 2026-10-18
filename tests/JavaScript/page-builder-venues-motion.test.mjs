@@ -73,7 +73,9 @@ test('short desktop page reaches headline landing and highlights by real scroll 
     assert.equal(bottom.ghost, 0, 'gray PLOSHCHADKI must finish at its authored x');
     assert.equal(bottom.highlights, 1, 'highlights must be visible before the page stops');
     assert.equal(bottom.layerShifts[0], 0, 'backdrop is stable');
-    assert.equal(bottom.layerShifts[3], -96, 'foreground parallax must travel all the way');
+    assert.equal(bottom.layerShifts[3], -142, 'the player rises more strongly than the hoop and fence');
+    assert.equal(bottom.layerShifts[1], -44);
+    assert.equal(bottom.layerShifts[2], -74);
     assert.equal(bottom.player, bottom.layerShifts[3], 'ball target and player share the same transform');
 });
 

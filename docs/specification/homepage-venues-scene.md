@@ -170,3 +170,33 @@ the ball still reaches the hand marker at the last available scroll position.
 No scrolling is synthesized; this is a deterministic target interpolation.
 A dedicated Node regression test asserts the ball is at its destination at
 maxScroll=304 and returns to the unchanged Hero pose on reverse scroll.
+
+## Desktop visual tuning — athlete jump and foreground parallax (2026-10-19)
+
+Following browser-vs-design review the desktop foreground canvas is now
+68% wide, starting at `clamp(230px, 18vw, 340px)` and 1% left of the story.
+Each transparent image uses an individually authored **left-top transform origin**
+so all scale/translation values share explicit, testable semantics:
+
+- fence: `scale(.88)`, base offset `(-6px,+56px)`;
+- hoop: `scale(.90)`, base offset `(+6px,+64px)`;
+- player: `scale(.67)`, base offset `(+26px,+118px)`;
+- backdrop stays full-bleed and unscaled.
+
+Depth response at full progress: 0px background, 44px fence, 74px hoop,
+142px player, all upward. The player's larger rise is deliberate: it conveys
+a jump. The same player progress continues to drive the hand-target offset for
+the existing one-node Ball Director. Desktop ball target is approximately
+`left:34.5%;top:138px`; tablet has an independent target. These anchors
+require visual confirmation against the photographed hand at DEV before
+calling this composition pixel-perfect.
+
+The desktop per-layer scaling is reset for widths <=1050px so the previously
+separate tablet/mobile crop does not inherit an accidental second shrink.
+The athlete PNG's hard bottom edge is feathered to reduce visible compositing
+seams when it enters the backdrop.
+
+The temporary `scrollTop` diagnostic overlay and its unused public script
+were removed from staging now that the scroll event investigation is complete.
+No database, page-content snapshots, Filament settings, `main`, or production
+were changed by this PR.
