@@ -127,7 +127,7 @@ final class DesignThemeBackofficeTest extends TestCase
         $this->get(route('design-themes.ui-kit', $draft).'?embed=1')
             ->assertOk()
             ->assertSee('Кнопки, статусы и фильтры')
-            ->assertDontSee('data-kit-frame', false);
+            ->assertDontSee('<iframe class="ui-kit-frame"', false);
     }
 
     public function test_ordinary_user_cannot_edit_or_preview_themes(): void
