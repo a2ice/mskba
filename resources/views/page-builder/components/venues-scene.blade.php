@@ -3,10 +3,11 @@
     aria-labelledby="mskba-venues-scene-title">
     {{-- Marker for Ball Director v2: one responsive point in scene coordinates. --}}
     <span class="mskba-venues-scene__ball-target" data-mskba-ball-target aria-hidden="true"></span>
+    {{-- Full-bleed decorative heading: not constrained by the content shell. --}}
+    <span class="mskba-venues-scene__ghost" aria-hidden="true">ПЛОЩАДКИ</span>
     <div class="container mskba-venues-scene__inner">
         <div class="mskba-venues-scene__visual-space" aria-hidden="true"></div>
         <div class="mskba-venues-scene__copy">
-            <span class="mskba-venues-scene__ghost" aria-hidden="true">ПЛОЩАДКИ</span>
             <p class="mskba-venues-scene__eyebrow">ИГРАЙ В ЛЮБОМ РАЙОНЕ</p>
             <h2 class="mskba-venues-scene__title" id="mskba-venues-scene-title">ПЛОЩАДКИ</h2>
             <p class="mskba-venues-scene__description">
