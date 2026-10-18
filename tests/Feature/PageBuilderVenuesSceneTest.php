@@ -28,6 +28,8 @@ final class PageBuilderVenuesSceneTest extends TestCase
 
         $this->assertSame(4, substr_count($art, 'mskba-home-story__art-layer--'));
         $this->assertStringContainsString('data-mskba-venues-scene', $scene);
+        $this->assertStringContainsString('data-mskba-ball-target', $scene);
+        $this->assertStringContainsString('mskba-venues-scene__ghost', $scene);
         $this->assertStringContainsString('aria-labelledby="mskba-venues-scene-title"', $scene);
         $this->assertStringContainsString('Найти площадку', $scene);
         $this->assertStringContainsString('Бронирование', $scene);
@@ -82,5 +84,9 @@ final class PageBuilderVenuesSceneTest extends TestCase
         $this->assertStringContainsString('position: absolute;', $css);
         $this->assertStringContainsString('@media (max-width: 1050px)', $css);
         $this->assertStringContainsString('@media (max-width: 640px)', $css);
+        $this->assertStringContainsString('object-fit: contain;', $css,
+            'transparent foregrounds must never use cover against section height');
+        $this->assertStringContainsString('grid-template-columns: repeat(4, minmax(0, 1fr))', $css);
+        $this->assertStringContainsString('max-width: 100%;', $css);
     }
 }

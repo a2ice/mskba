@@ -1,6 +1,8 @@
-{{-- PR 1: static responsive composition. Scroll effects and Ball Director handoff follow separately. --}}
+{{-- Single venues scene; scroll animation progressive-enhancement leaves all content accessible. --}}
 <section class="mskba-venues-scene" id="venues-intro" data-mskba-venues-scene
     aria-labelledby="mskba-venues-scene-title">
+    {{-- Marker for Ball Director v2: one responsive point in scene coordinates. --}}
+    <span class="mskba-venues-scene__ball-target" data-mskba-ball-target aria-hidden="true"></span>
     <div class="container mskba-venues-scene__inner">
         <div class="mskba-venues-scene__visual-space" aria-hidden="true"></div>
         <div class="mskba-venues-scene__copy">

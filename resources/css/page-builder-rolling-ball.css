@@ -25,6 +25,7 @@
     height: 0;
     pointer-events: none;
     --ball-scale: .525;
+    --ball-tile-size: 122px;
     --ball-brightness: .57;
     --ball-saturation: .74;
     /* Photo tiles now use 226px of a 256px atlas cell, aligned by silhouette. */
@@ -39,8 +40,8 @@
     content: "";
     display: block;
     position: absolute;
-    width: 122px;
-    height: 122px;
+    width: var(--ball-tile-size, 122px);
+    height: var(--ball-tile-size, 122px);
     left: 0;
     top: 0;
     background-image: var(--ball-image, url('/images/ball-16.webp?v=photo-20261017-centered-v2'));
@@ -79,7 +80,7 @@
         top: 42.5%;
         --ball-scale: .43;
     }
-    .mskba-page-builder .mskba-rolling-ball::before { width: 165px; height: 165px; }
+    .mskba-page-builder .mskba-rolling-ball::before { width: var(--ball-tile-size, 165px); height: var(--ball-tile-size, 165px); }
 }
 @container mskba-rolling-scene (min-width: 1051px) {
     .mskba-page-builder .mskba-rolling-ball {
@@ -87,7 +88,7 @@
         top: 44%;
         --ball-scale: .22;
     }
-    .mskba-page-builder .mskba-rolling-ball::before { width: 195px; height: 195px; }
+    .mskba-page-builder .mskba-rolling-ball::before { width: var(--ball-tile-size, 195px); height: var(--ball-tile-size, 195px); }
 }
 @media (prefers-reduced-motion: reduce) {
     .mskba-page-builder .mskba-rolling-ball::before { will-change: auto; }

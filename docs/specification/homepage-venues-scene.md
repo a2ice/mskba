@@ -81,3 +81,39 @@ before spatial tracking and animation are added.
 Known limitations: final visual alignment has not yet been approved on a
 physical iPhone; all four existing PNGs total about 6.6 MB, so optimized
 variants should be prepared before moving this composition to production.
+
+## Follow-up: scroll layout correction and Ball Director v2 (PR 2/3)
+
+Visual acceptance of PR 1 identified oversized foreground artwork, clipped
+background ghost headline, and highlights wider than the text shell.
+
+The follow-up switches all transparent foreground PNGs from full-story-height
+`object-fit: cover` to **width-based intrinsic aspect ratio** with `height:auto`
+and `object-fit:contain`. The sky layer still fills the whole scene independently.
+The global story remains the height owner and clips decorative overflow.
+
+The highlights always stay within their right-hand grid column; links use
+minmax(0,1fr), narrowed icon/text gaps, and desktop 4-column/tablet/mobile
+2-column layouts. The background title is right-anchored inside the text shell
+and uses a capped responsive font size rather than extending outside viewport.
+
+`page-builder-venues-motion.js` computes deterministic absolute progress
+from the current section bounding box. Four layers move at distinct relative
+speeds (less on mobile), the ghost title enters from the right, and highlights
+reveal near progress 0.5. There is no scroll hijack, automatic scroll or time
+simulation. If JS is absent or reduced motion is requested, content stays visible.
+
+The existing `page-builder-rolling-ball.js` retains first-scene motion exactly
+until the Hero landing. After that threshold it reparents the same DOM ball
+into `mskba-home-story` and interpolates its real page coordinates to the
+`data-mskba-ball-target` marker in Venues. Its scale decreases to 0.48 desktop,
+0.50 tablet or 0.52 mobile (relative to its original sprite profile).
+After reaching the target it remains scene-relative, and scroll reversal returns
+the same ball to the original slider with no duplicated sprite.
+The CSS custom `--ball-tile-size` avoids an abrupt tile-size change when
+leaving the Hero container-query context.
+
+Acceptance is still required on physical devices for final composition
+registration of athlete, basket and ball hand, as these image assets have
+not been re-exported and the target marker is currently a responsive code
+parameter. Published Page Builder HTML and DB remain unchanged; staging-only.
