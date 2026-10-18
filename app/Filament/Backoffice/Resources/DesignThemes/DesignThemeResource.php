@@ -201,7 +201,8 @@ final class DesignThemeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('name')->label('Тема')->weight('bold')->searchable(),
+            TextColumn::make('name')->label('Тема')->weight('bold')->searchable()
+                ->url(fn (DesignTheme $record): string => self::getUrl('edit', ['record' => $record])),
             TextColumn::make('slug')->label('Код')->copyable(),
             TextColumn::make('mode')->label('Режим')->formatStateUsing(fn (string $state) => $state === 'light' ? 'Светлая' : 'Тёмная'),
             IconColumn::make('is_system')->label('Системная')->boolean(),
@@ -243,6 +244,9 @@ final class DesignThemeResource extends Resource
                     ->restore($record, (int) $data['revision_id'])),
             Action::make('preview')->label('Предпросмотр')->icon('heroicon-o-eye')
                 ->url(fn (DesignTheme $record) => route('design-themes.preview', $record))
+                ->openUrlInNewTab(),
+            Action::make('uiKit')->label('UI Kit / Гайдлайн')->icon('heroicon-o-swatch')
+                ->url(fn (DesignTheme $record): string => route('design-themes.ui-kit', $record))
                 ->openUrlInNewTab(),
             Action::make('default')->label('Для всех')->icon('heroicon-o-check-circle')
                 ->visible(fn (DesignTheme $record): bool => self::canCreate()
