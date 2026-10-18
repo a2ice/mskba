@@ -202,7 +202,9 @@ final class DesignThemeResource extends Resource
     {
         return $table->columns([
             TextColumn::make('name')->label('Тема')->weight('bold')->searchable()
-                ->url(fn (DesignTheme $record): string => self::getUrl('edit', ['record' => $record])),
+                ->url(fn (DesignTheme $record): string => self::canEdit($record)
+                    ? self::getUrl('edit', ['record' => $record])
+                    : route('design-themes.ui-kit', $record)),
             TextColumn::make('slug')->label('Код')->copyable(),
             TextColumn::make('mode')->label('Режим')->formatStateUsing(fn (string $state) => $state === 'light' ? 'Светлая' : 'Тёмная'),
             IconColumn::make('is_system')->label('Системная')->boolean(),
