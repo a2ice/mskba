@@ -19,10 +19,6 @@
 
 @push('scripts')
     @vite('resources/js/page-builder.js')
-    {{-- Temporary DEV-only probe: never render on production or non-home pages. --}}
-    @if (app()->environment('staging') && request()->path() === '/')
-        <script defer src="{{ asset('js/scrolltop-debug.js') }}"></script>
-    @endif
     @foreach ($builderScripts as $scriptUrl)
         <script defer src="{{ $scriptUrl }}"></script>
     @endforeach
