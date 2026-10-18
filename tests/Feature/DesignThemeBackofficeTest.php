@@ -29,7 +29,7 @@ final class DesignThemeBackofficeTest extends TestCase
             ->assertSee('UI Kit: Ночная арена')
             ->assertSee('data-kit-frame', false)
             ->assertSee('data-theme-picker', false)
-            ->assertSee('court_day');
+            ->assertSee('Светлый паркет');
         $this->get(route('design-themes.ui-kit', $night).'?embed=1')->assertOk()
             ->assertSee('Кнопки, статусы и фильтры')
             ->assertSee('data-kit-dialog-open', false)
@@ -118,7 +118,7 @@ final class DesignThemeBackofficeTest extends TestCase
 
         $this->actingAs($actor)->get(route('design-themes.ui-kit', $draft))
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
             ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
             ->assertSee('draft_ui_kit')
