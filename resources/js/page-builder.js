@@ -1,4 +1,5 @@
 import './page-builder-rolling-ball.js';
+import './page-builder-venues-motion.js';
 import './page-builder-hero-slider.js';
 
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.
