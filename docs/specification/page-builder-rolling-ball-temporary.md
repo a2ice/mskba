@@ -63,11 +63,11 @@ avoid the previous sprite from browser cache. The rendered image must be
 ## Current behavior
 
 - **Straight diagonal roll** on the wood floor, not a Bezier arc. Both
-  screen coordinates use exactly the same eased progress. Starting (x,y)
+  screen coordinates use exactly the same linear progress. Starting (x,y)
   and finishing (x,y) percentages of the rendered Hero:
-  - mobile: (85%, 40.5%) → (20.5%, 100%), scale 0.525 → 1 (initial scale reduced by 30%, final unchanged);
-  - tablet: (78.5%, 42.5%) → (29%, 100%), scale 0.43 → 1;
-  - desktop: (74.5%, 44%) → (31.5%, 100%), scale 0.22 → 1.
+  - mobile: (15%, 40.5%) → (79.5%, 100%), scale 0.525 → 1 (initial scale reduced by 30%, final unchanged);
+  - tablet: (21.5%, 42.5%) → (71%, 100%), scale 0.43 → 1;
+  - desktop: (25.5%, 44%) → (68.5%, 100%), scale 0.22 → 1.
   The end point remains half the ball outside the bottom of the Hero.
 - Sprite frames and ball coordinates are **pure functions of the same
   clamped native page scroll position**. No 55ms exponential follower and no
@@ -84,8 +84,8 @@ avoid the previous sprite from browser cache. The rendered image must be
   viewport or capturing screen pixels; reverse scroll reconstructs the same
   frames and coordinates. Reduced motion remains at the settled state.
 - Only brightness progression is eased; that does not affect the position or
-  frame progression. The photographed order 0..15 determines rotation
-  direction; no extra CSS rotation.
+  frame progression. The photographed frames now play in reverse order (0, 15, ..., 1, 0)
+  to match the mirrored left-to-right roll; no image flip or extra CSS rotation.
 - Scroll-linear animation is deliberately a **visual** model, not a no-slip
   3D simulation; the earlier changing-angular-velocity algorithm caused
   inconsistent frame cadence during scale-up.

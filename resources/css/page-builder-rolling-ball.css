@@ -19,7 +19,7 @@
 .mskba-page-builder .mskba-rolling-ball {
     position: absolute;
     z-index: 3;
-    left: 85%;
+    left: 15%;
     top: 40.5%;
     width: 0;
     height: 0;
@@ -75,7 +75,7 @@
 }
 @container mskba-rolling-scene (min-width: 641px) {
     .mskba-page-builder .mskba-rolling-ball {
-        left: 78.5%;
+        left: 21.5%;
         top: 42.5%;
         --ball-scale: .43;
     }
@@ -83,7 +83,7 @@
 }
 @container mskba-rolling-scene (min-width: 1051px) {
     .mskba-page-builder .mskba-rolling-ball {
-        left: 74.5%;
+        left: 25.5%;
         top: 44%;
         --ball-scale: .22;
     }
