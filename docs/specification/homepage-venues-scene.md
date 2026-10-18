@@ -117,3 +117,56 @@ Acceptance is still required on physical devices for final composition
 registration of athlete, basket and ball hand, as these image assets have
 not been re-exported and the target marker is currently a responsive code
 parameter. Published Page Builder HTML and DB remain unchanged; staging-only.
+
+## Corrective PR: reference-scale artwork and reachable timeline (2026-10-19)
+
+The prior follow-up still painted three transparent source PNGs at **100% of
+the browser width**, not at their actual display size in the approved mockup.
+The position/scale of the foreground art are now explicit shared responsive
+design tokens, not inferred from image naturalWidth or the section height:
+
+- Desktop: foreground PNGs occupy 74% of the story width, origin below Hero
+  at `clamp(185px,15.5vw,300px)`.
+- Tablet: foreground is 100% and moves to a tablet-specific origin.
+- Mobile: foreground uses a cropped 160% canvas starting after the mobile Hero,
+  without shrinking the text; the scene remains full-bleed and clips artwork.
+- Sky/backstage independently fills the whole story and is not resized with
+  the transparent fence/hoop/player images.
+
+The translucent full-width PLOSHCHADKI is a **direct child** of the Venues
+section. Its final left anchor is 46% of the viewport-width story, not tied to
+the narrow content shell. It clips with the story without creating overflow.
+
+The previous intersection-like progress
+`(viewportHeight - venuesRect.top)/(viewportHeight + venuesHeight)`
+was mathematically unable to reach 1 on a short terminal homepage. The new
+timeline projects the section into document coordinates and bounds the
+effective end by `document.scrollHeight - cachedViewportHeight`. Thus the
+last physically reachable page scroll always finishes heading movement,
+highlights reveal and depth parallax. A page with no scroll immediately
+shows essential content. This also permits reverse scroll determinism and
+prevents iOS Safari toolbar height changes from altering the timeline.
+
+The ball's hand marker inherits exactly the player's current parallax CSS
+shift. Ball Director uses its already-transformed `getBoundingClientRect`,
+and does not apply another independent shift. On each native scroll event,
+Venues motion registers its updated CSS before Ball Director recomputes the
+ball target. Still only one DOM ball and no easing timer.
+
+Regression test `page-builder-venues-motion.test.mjs` models a short
+1170px page in an 866px viewport with 304px actual scroll range, verifies
+progress=1, ghost final offset=0, all highlights revealed and foreground
+parallax completing its authored shift at scroll-bottom.
+
+Pixel-perfect coordinates still require a visual check on DEV at 1440/390
+and a screenshot/video from the actual browser before acceptance; tests alone
+cannot validate composition against the supplied design image.
+
+The same finite-scroll guard also applies to Ball Director's **second** leg:
+nominal 220–440px transition is capped by
+`document.scrollHeight - cachedViewportHeight - heroTransitionEnd`.
+If only 115px of native scroll remain after the 189px first-scene path,
+the ball still reaches the hand marker at the last available scroll position.
+No scrolling is synthesized; this is a deterministic target interpolation.
+A dedicated Node regression test asserts the ball is at its destination at
+maxScroll=304 and returns to the unchanged Hero pose on reverse scroll.

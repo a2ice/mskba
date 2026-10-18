@@ -14,6 +14,12 @@
     --venues-ghost-shift: 0px;
     --venues-highlights-opacity: 1;
     --venues-highlights-lift: 0px;
+    /* All transparent PNGs share a canvas. Scale/crop the canvas deliberately,
+       instead of trusting the PNG dimensions to match the approved mockup. */
+    --venues-foreground-width: 74%;
+    --venues-foreground-top: clamp(185px, 15.5vw, 300px);
+    --venues-foreground-left: 0px;
+    --venues-player-shift: 0px;
 }
 .mskba-page-builder .mskba-home-story__art {
     position: absolute;
@@ -25,9 +31,9 @@
 .mskba-page-builder .mskba-home-story__art-layer {
     position: absolute;
     display: block;
-    top: 0;
-    left: 0;
-    width: 100%;
+    top: var(--venues-foreground-top);
+    left: var(--venues-foreground-left);
+    width: var(--venues-foreground-width);
     height: auto;
     max-width: none;
     /* Scale by width, not by the sum of Hero and Venues heights. */
@@ -101,12 +107,15 @@
 }
 .mskba-page-builder .mskba-venues-scene__ghost {
     position: absolute;
-    z-index: -1;
-    top: -98px;
-    right: 0;
-    left: auto;
+    z-index: 1;
+    /* Anchor in the full-bleed scene, not inside the 47% content column. */
+    top: 38px;
+    left: 46%;
+    right: auto;
+    width: max-content;
+    max-width: none;
     color: rgba(40, 47, 60, .055);
-    font-size: clamp(70px, 8.3vw, 140px);
+    font-size: clamp(80px, 8.3vw, 140px);
     line-height: 1;
     font-weight: 950;
     letter-spacing: -.065em;
@@ -210,6 +219,8 @@
 @media (max-width: 1050px) {
     .mskba-page-builder .mskba-home-story {
         --venues-art-object-position: 39% center;
+        --venues-foreground-width: 100%;
+        --venues-foreground-top: clamp(190px, 26vw, 285px);
     }
     .mskba-page-builder .mskba-venues-scene {
         min-height: 620px;
@@ -220,9 +231,9 @@
     }
     .mskba-page-builder .mskba-venues-scene__copy { padding-left: 0; }
     .mskba-page-builder .mskba-venues-scene__ghost {
-        top: -67px;
-        right: 0;
-        left: auto;
+        top: 65px;
+        left: 43%;
+        right: auto;
         font-size: clamp(66px, 8.6vw, 105px);
     }
     .mskba-page-builder .mskba-venues-scene__title {
@@ -238,6 +249,9 @@
 @media (max-width: 640px) {
     .mskba-page-builder .mskba-home-story {
         --venues-art-object-position: 26% center;
+        --venues-foreground-width: 160%;
+        --venues-foreground-top: clamp(390px, 112vw, 560px);
+        --venues-foreground-left: -24%;
     }
     .mskba-page-builder .mskba-home-story__art-veil {
         background:
@@ -263,9 +277,9 @@
         max-width: 100%;
     }
     .mskba-page-builder .mskba-venues-scene__ghost {
-        top: -43px;
-        right: 0;
-        left: auto;
+        top: 0;
+        left: 5%;
+        right: auto;
         font-size: clamp(48px, 11vw, 75px);
         opacity: .8;
     }
@@ -297,6 +311,9 @@
 /* The sky spans the whole section; independent transparent foreground layers
    share a width-scaled composition and cannot zoom with section height. */
 .mskba-page-builder .mskba-home-story__art-layer--backstage {
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center top;
@@ -309,6 +326,8 @@
     width: 0;
     height: 0;
     pointer-events: none;
+    /* Same transform as the player photo: their landing point cannot diverge. */
+    transform: translate3d(0, var(--venues-player-shift), 0);
 }
 @media (max-width: 1050px) {
     .mskba-page-builder .mskba-venues-scene__ball-target {
@@ -334,4 +353,15 @@
     .mskba-page-builder .mskba-home-story__art-layer,
     .mskba-page-builder .mskba-venues-scene__ghost,
     .mskba-page-builder .mskba-venues-scene__highlights { will-change: auto; }
+}
+
+/* The text block and highlights paint over the full-width ghost title.
+   The decorative word belongs to the Venues section but is not shell-sized. */
+.mskba-page-builder .mskba-venues-scene__copy {
+    z-index: 2;
+}
+@media (max-width: 640px) {
+    .mskba-page-builder .mskba-venues-scene__ghost {
+        max-width: none;
+    }
 }

@@ -1,5 +1,6 @@
-import './page-builder-rolling-ball.js';
+// Resolve parallax and update the transformed player anchor before Ball Director.
 import './page-builder-venues-motion.js';
+import './page-builder-rolling-ball.js';
 import './page-builder-hero-slider.js';
 
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.

@@ -29,6 +29,11 @@ final class PageBuilderVenuesSceneTest extends TestCase
         $this->assertSame(4, substr_count($art, 'mskba-home-story__art-layer--'));
         $this->assertStringContainsString('data-mskba-venues-scene', $scene);
         $this->assertStringContainsString('data-mskba-ball-target', $scene);
+        $this->assertLessThan(
+            strpos($scene, 'mskba-venues-scene__inner'),
+            strpos($scene, 'mskba-venues-scene__ghost'),
+            'decorative title must be a full-width section child before the boxed shell',
+        );
         $this->assertStringContainsString('mskba-venues-scene__ghost', $scene);
         $this->assertStringContainsString('aria-labelledby="mskba-venues-scene-title"', $scene);
         $this->assertStringContainsString('Найти площадку', $scene);
@@ -84,6 +89,9 @@ final class PageBuilderVenuesSceneTest extends TestCase
         $this->assertStringContainsString('position: absolute;', $css);
         $this->assertStringContainsString('@media (max-width: 1050px)', $css);
         $this->assertStringContainsString('@media (max-width: 640px)', $css);
+        $this->assertStringContainsString('--venues-foreground-width: 74%;', $css,
+            'artwork needs an explicit authored scale independent of asset dimensions');
+        $this->assertStringContainsString('--venues-foreground-top:', $css);
         $this->assertStringContainsString('object-fit: contain;', $css,
             'transparent foregrounds must never use cover against section height');
         $this->assertStringContainsString('grid-template-columns: repeat(4, minmax(0, 1fr))', $css);
