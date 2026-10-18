@@ -24,7 +24,7 @@
     width: 0;
     height: 0;
     pointer-events: none;
-    --ball-scale: .75;
+    --ball-scale: .525;
     --ball-brightness: .57;
     --ball-saturation: .74;
     /* Photo tiles now use 226px of a 256px atlas cell, aligned by silhouette. */
