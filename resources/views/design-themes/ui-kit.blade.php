@@ -68,7 +68,7 @@
 <body class="ui-kit-body">
 @if (! $embedded)
     <main class="ui-kit-shell">
-        <a class="ui-kit-back" href="{{ \App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource::getUrl('index') }}">← Темы оформления</a>
+        <a class="ui-kit-back" href="{{ \App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource::getUrl('index', panel: 'backoffice') }}">← Темы оформления</a>
         <p class="eyebrow accent" style="margin-top:24px">MSKBA / DESIGN SYSTEM</p>
         <h1 class="ui-kit-heading">UI Kit: {{ $theme->name }}</h1>
         <p class="ui-kit-description">Интерактивная витрина элементов с реальными токенами выбранной темы. Предпросмотр не изменяет настройки портала и ничего не сохраняет.</p>
@@ -94,7 +94,7 @@
                 <a class="button secondary" href="{{ route('design-themes.preview', $theme) }}">Предпросмотр темы</a>
                 <a class="button secondary" href="{{ route('design-themes.ui-kit', $theme) }}?embed=1" target="_blank" rel="noopener">Открыть отдельно ↗</a>
                 @if (\App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource::canEdit($theme))
-                    <a class="button primary" href="{{ \App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource::getUrl('edit', ['record' => $theme]) }}">Настроить тему</a>
+                    <a class="button primary" href="{{ \App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource::getUrl('edit', ['record' => $theme], panel: 'backoffice') }}">Настроить тему</a>
                 @endif
             </div>
         </div>
