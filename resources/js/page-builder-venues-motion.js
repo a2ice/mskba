@@ -32,7 +32,7 @@ function initVenuesMotion(story) {
     const layers = [...story.querySelectorAll('.mskba-home-story__art-layer')];
     // Backdrop stays registered to the story. Intermediate layers and player
     // move progressively more, but all keep the same scaled PNG canvas.
-    const travelPx = [0, 32, 62, 96];
+    const travelPx = [0, 44, 74, 142]; // distant fence, hoop and athlete's jump
     let pendingFrame = false;
     let measuredWidth = 0;
     let stableViewportHeight = window.innerHeight;
