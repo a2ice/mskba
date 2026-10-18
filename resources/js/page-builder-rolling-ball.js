@@ -80,6 +80,7 @@ function initRollingBall(root) {
     let distance = 270;
     let activeProfile = rollingBallProfiles.mobile;
     let measuredWidth = null;
+    let stableViewportHeight = window.innerHeight;
     let scheduledFrame = 0;
     let assignedToStory = false;
 
@@ -105,7 +106,14 @@ function initRollingBall(root) {
             return false;
         }
         const venueRect = venues.getBoundingClientRect();
-        const transitionLength = Math.max(220, Math.min(440, venueRect.height * .46));
+        const nominalLength = Math.max(220, Math.min(440, venueRect.height * .46));
+        // A short terminal page can have less scroll left after Hero than
+        // nominalLength. The ball must still land by the last reachable pixel.
+        const scrollHeight = document.documentElement?.scrollHeight;
+        const remaining = Number.isFinite(scrollHeight)
+            ? Math.max(0, scrollHeight - stableViewportHeight - transitionStart)
+            : nominalLength;
+        const transitionLength = Math.max(1, Math.min(nominalLength, remaining));
         const p = rollingBallReducedMotion.matches ? 1
             : rollingBallClamp((scrollPosition - transitionStart) / transitionLength, 0, 1);
 
@@ -117,9 +125,7 @@ function initRollingBall(root) {
         const startY = sliderRect.top - storyRect.top
             + sliderRect.height * activeProfile.to[1] / 1000;
 
-        // Apply the player's own parallax offset to the ball's destination.
-        // Both use the same section-progress geometry and speed profile.
-        // Marker carries the very same player-parallax transform as the image.
+        // The marker inherits exactly the player's parallax transform.
         const endX = markerRect.left - storyRect.left;
         const endY = markerRect.top - storyRect.top;
         const x = startX + (endX - startX) * p;
@@ -196,6 +202,7 @@ function initRollingBall(root) {
             return;
         }
         measuredWidth = rect.width;
+        stableViewportHeight = window.innerHeight;
         const band = rect.width <= 640 ? 'mobile' : rect.width <= 1050 ? 'tablet' : 'desktop';
         activeProfile = rollingBallProfiles[band];
         // CSS sprite remains the same size when moving from a Hero container
