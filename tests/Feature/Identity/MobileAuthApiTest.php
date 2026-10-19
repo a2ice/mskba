@@ -17,6 +17,9 @@ final class MobileAuthApiTest extends TestCase
         $user = User::factory()->create([
             'username' => $username,
             'password' => $password,
+            // A regular login must not inherit the factory's randomized
+            // temporary-password flag (the factory deliberately randomizes it).
+            'is_temporary_password' => false,
             'status' => UserStatusEnum::UNCONFIRMED->value,
         ]);
         $user->createProfile(['first_name' => 'Тест', 'last_name' => 'Игрок']);
