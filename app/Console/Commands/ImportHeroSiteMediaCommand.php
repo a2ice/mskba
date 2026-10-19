@@ -19,7 +19,7 @@ use Throwable;
  */
 final class ImportHeroSiteMediaCommand extends Command
 {
-    protected $signature = 'site-media:import-hero {--apply : Import sources (without this flag only audit)}';
+    protected $signature = 'site-media:import-hero {--apply : Import sources (without this flag only audit)} {--skip-missing : Report missing sources without blocking rollout}';
     protected $description = 'Inventory and import legacy Hero Slider/Page Builder images into the media library';
 
     public function handle(SiteMediaManager $manager): int
@@ -89,6 +89,6 @@ final class ImportHeroSiteMediaCommand extends Command
             }
         }
         $this->info('Referenced: '.count($references).'; imported: '.$imported.'; missing/errors: '.$missing);
-        return $missing > 0 ? self::FAILURE : self::SUCCESS;
+        return $missing > 0 && ! $this->option('skip-missing') ? self::FAILURE : self::SUCCESS;
     }
 }
