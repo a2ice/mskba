@@ -2,6 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Media\Application\Services\SiteMediaManager;
 use App\Modules\Media\Domain\Models\SiteMediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,6 +60,31 @@ final class SiteMediaLibraryTest extends TestCase
         $b = $manager->importBytes($contents, 'Layer', 'layer.png', legacyPath: '/images/layer.png');
         $this->assertSame($a->id, $b->id);
         $this->assertSame($contents, Storage::disk('public')->get($a->currentMedia->path));
+    }
+
+    public function test_superadmin_can_open_filament_media_and_folder_pages(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $folder = SiteMediaFolder::query()->create(['name' => 'Hero', 'slug' => 'hero-slider']);
+        $asset = app(SiteMediaManager::class)->upload(UploadedFile::fake()->image('hero.png', 400, 200), $folder->id);
+
+        $this->actingAs($admin)->get(SiteMediaAssetResource::getUrl('index'))->assertOk();
+        $this->get(SiteMediaAssetResource::getUrl('edit', ['record' => $asset]))->assertOk();
+        $this->get(SiteMediaFolderResource::getUrl('index'))->assertOk();
+        $this->get(SiteMediaFolderResource::getUrl('edit', ['record' => $folder]))->assertOk();
+    }
+
+    public function test_regular_user_cannot_open_media_backoffice(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+        ]);
+        $this->actingAs($user)->get(SiteMediaAssetResource::getUrl('index'))->assertForbidden();
     }
 
     public function test_missing_asset_returns_404(): void
