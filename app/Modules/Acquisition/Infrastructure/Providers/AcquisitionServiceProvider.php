@@ -23,7 +23,8 @@ final class AcquisitionServiceProvider extends ServiceProvider
         });
 
         Event::listen(UserFirstLogin::class, function (UserFirstLogin $event) use ($referrals): void {
-            if (! app()->bound('request')) {
+            // API sign-in is stateless: first-login events must not require a web session.
+            if (! app()->bound('request') || ! request()->hasSession()) {
                 return;
             }
 

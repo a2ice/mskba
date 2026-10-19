@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
@@ -39,7 +40,7 @@ use Filament\Panel;
 class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
-    use Auditable, HasFactory, Notifiable, SoftDeletes;
+    use Auditable, HasFactory, HasApiTokens, Notifiable, SoftDeletes;
 
     protected static function newFactory(): UserFactory
     {
