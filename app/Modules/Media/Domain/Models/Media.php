@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\Storage;
     'description',
     'mime',
     'size',
+    'width',
+    'height',
     'is_featured',
     'sort_order',
 ])]
@@ -67,6 +69,8 @@ class Media extends Model
         return [
             'is_featured' => 'boolean',
             'size' => 'integer',
+            'width' => 'integer',
+            'height' => 'integer',
             'sort_order' => 'integer',
         ];
     }

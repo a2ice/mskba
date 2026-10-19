@@ -3,6 +3,7 @@
 namespace App\Modules\Media\Infrastructure\Providers;
 
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Media\Domain\Models\SiteMediaAsset;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Profile;
@@ -22,6 +23,7 @@ class MediaServiceProvider extends ServiceProvider
     {
         Relation::enforceMorphMap([
             'profile' => Profile::class,
+            'site_media_asset' => SiteMediaAsset::class,
             'event' => Event::class,
             'game' => Game::class,
             'venue' => Venue::class,

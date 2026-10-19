@@ -8,6 +8,8 @@ use App\Filament\Backoffice\Resources\ManagerSpecializations\ManagerSpecializati
 use App\Filament\Backoffice\Resources\SystemRoleProfiles\SystemRoleProfileResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
@@ -51,6 +53,8 @@ final class BackofficePanelProvider extends PanelProvider
                 BuilderPageResource::class,
                 BuilderTemplateResource::class,
                 BuilderComponentResource::class,
+                SiteMediaAssetResource::class,
+                SiteMediaFolderResource::class,
                 BackofficeUserResource::class,
                 SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,

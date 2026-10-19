@@ -1068,6 +1068,12 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
     });
 });
 
+// Stable public image identity; the actual blob changes without editing Page Builder links.
+Route::get('/media/site/{uuid}', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'show'])
+    ->whereUuid('uuid')->name('site-media.show');
+Route::get('/backoffice/site-media/{uuid}/previous', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'previous'])
+    ->middleware('auth:web')->whereUuid('uuid')->name('site-media.previous');
+
 // Only run after ALL explicit routes (including routes in other files).
 // Laravel prioritizes fallback routes after normal matching.
 Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {

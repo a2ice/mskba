@@ -26,6 +26,12 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_STYLE_MANAGE = 'backoffice.button_style.manage';
     case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
+    case BACKOFFICE_SITE_MEDIA_VIEW = 'backoffice.site_media.view';
+    case BACKOFFICE_SITE_MEDIA_UPLOAD = 'backoffice.site_media.upload';
+    case BACKOFFICE_SITE_MEDIA_EDIT = 'backoffice.site_media.edit';
+    case BACKOFFICE_SITE_MEDIA_DELETE = 'backoffice.site_media.delete';
+    case BACKOFFICE_SITE_MEDIA_RESTORE = 'backoffice.site_media.restore';
+    case BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE = 'backoffice.site_media.folder_manage';
     case BACKOFFICE_BUILDER_VIEW = 'backoffice.page_builder.view';
     case BACKOFFICE_BUILDER_EDIT = 'backoffice.page_builder.edit';
     case BACKOFFICE_BUILDER_PUBLISH = 'backoffice.page_builder.publish';
@@ -49,6 +55,12 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE,
             self::BACKOFFICE_THEME_VIEW,
             self::BACKOFFICE_THEME_MANAGE,
+            self::BACKOFFICE_SITE_MEDIA_VIEW,
+            self::BACKOFFICE_SITE_MEDIA_UPLOAD,
+            self::BACKOFFICE_SITE_MEDIA_EDIT,
+            self::BACKOFFICE_SITE_MEDIA_DELETE,
+            self::BACKOFFICE_SITE_MEDIA_RESTORE,
+            self::BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE,
             self::BACKOFFICE_BUILDER_VIEW,
             self::BACKOFFICE_BUILDER_EDIT,
             self::BACKOFFICE_BUILDER_PUBLISH,
@@ -90,6 +102,12 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE => 'Создание, изменение и удаление CSS-классов',
             self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
+            self::BACKOFFICE_SITE_MEDIA_VIEW => 'Просмотр медиабиблиотеки сайта',
+            self::BACKOFFICE_SITE_MEDIA_UPLOAD => 'Загрузка изображений сайта',
+            self::BACKOFFICE_SITE_MEDIA_EDIT => 'Редактирование и замена изображений сайта',
+            self::BACKOFFICE_SITE_MEDIA_DELETE => 'Удаление изображений сайта',
+            self::BACKOFFICE_SITE_MEDIA_RESTORE => 'Восстановление предыдущей версии изображения',
+            self::BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE => 'Управление папками медиабиблиотеки',
             self::BACKOFFICE_BUILDER_VIEW => 'Просмотр страниц, шаблонов и компонентов',
             self::BACKOFFICE_BUILDER_EDIT => 'Редактирование черновиков конструктора страниц',
             self::BACKOFFICE_BUILDER_PUBLISH => 'Публикация и восстановление страниц и компонентов',

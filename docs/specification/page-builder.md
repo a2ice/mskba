@@ -210,3 +210,7 @@ public subset of event and team fields in anonymous responses.
    routes cannot be intercepted.
 5. New `/about-cms` works via fallback; draft edits never change public HTML.
 6. Run route cache, full CI and browser acceptance on DEV; not production.
+
+## Site Media Library
+
+Новая медиабиблиотека для изображений оформления, логические папки и выбор UUID-ассетов в Hero Slider описаны в [Site Media Library](site-media-library.md). Поля FileUpload и старые JSON остаются совместимыми; импорт выполняется явной CLI-командой, без автоматической публикации страниц.

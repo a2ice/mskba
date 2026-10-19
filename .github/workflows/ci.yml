@@ -336,6 +336,10 @@ jobs:
               $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan filament:assets --no-interaction
             fi
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
+            # Import currently referenced Hero/Page Builder images into writable permanent storage.
+            # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.
+            # Any absent Git/old-user asset is reported explicitly without blocking initial rollout.
+            $COMPOSE run --rm -T --no-deps --user www-data phpfpm php artisan site-media:import-hero --apply --skip-missing
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             # Staging FAQ defaults: idempotent, never overwrite editorial content.
