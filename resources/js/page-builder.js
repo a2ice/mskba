@@ -1,5 +1,5 @@
-// Resolve parallax and update the transformed player anchor before Ball Director.
-import './page-builder-venues-motion.js';
+// Venues parallax/entrance effects are paused until static layout approval.
+// Existing Hero/Ball scroll behavior remains active.
 import './page-builder-rolling-ball.js';
 import './page-builder-hero-slider.js';
 
