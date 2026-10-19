@@ -1,0 +1,34 @@
+name: Mobile Auth Minimal Composer Lock (temporary)
+on:
+  push:
+    branches:
+      - feature/mobile-auth-v1-20261019
+    paths:
+      - .github/workflows/mobile-auth-lock-temp.yml
+permissions:
+  contents: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          extensions: mbstring, sqlite3, pdo_sqlite, gd, intl, zip
+      - name: Restore base lock and add only Sanctum
+        run: |
+          git fetch origin dev
+          git show origin/dev:composer.lock > composer.lock
+          composer update laravel/sanctum --minimal-changes --with-all-dependencies --no-interaction --no-progress --prefer-dist
+      - name: Commit minimal dependency lock
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add composer.lock
+          git diff --cached --quiet && exit 0
+          git commit -m 'build(auth): minimize Sanctum lock diff'
+          git push origin HEAD:feature/mobile-auth-v1-20261019
