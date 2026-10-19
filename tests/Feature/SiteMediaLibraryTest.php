@@ -7,6 +7,7 @@ use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Content\Application\Services\HeroSliderSettings;
 use App\Modules\Media\Application\Services\SiteMediaManager;
 use App\Modules\Media\Domain\Models\SiteMediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,6 +79,24 @@ final class SiteMediaLibraryTest extends TestCase
         $this->get(SiteMediaAssetResource::getUrl('edit', ['record' => $asset]))->assertOk();
         $this->get(SiteMediaFolderResource::getUrl('index'))->assertOk();
         $this->get(SiteMediaFolderResource::getUrl('edit', ['record' => $folder]))->assertOk();
+    }
+
+    public function test_hero_layers_accept_existing_library_images_without_legacy_uploads(): void
+    {
+        Storage::fake('public');
+        $asset = app(SiteMediaManager::class)->upload(UploadedFile::fake()->image('hero.png', 400, 200));
+        HeroSliderSettings::validate([[
+            'layout' => 'layers',
+            'elements' => [
+                ['type' => 'image', 'name' => 'Фото', 'image_site_asset' => $asset->uuid],
+                ['type' => 'links', 'name' => 'Ссылки', 'links' => [
+                    ['label' => 'Площадки', 'url' => '/venues', 'icon' => 'custom',
+                        'image_site_asset' => $asset->uuid],
+                ]],
+            ],
+        ]], []);
+
+        $this->assertTrue(true);
     }
 
     public function test_regular_user_cannot_open_media_backoffice(): void

@@ -181,7 +181,8 @@ final class HeroSliderSettings
                     if ($type === 'button' && trim((string) ($layer['url'] ?? '')) === '') {
                         $validator->errors()->add("{$prefix}.url", 'Кнопке нужна внутренняя ссылка.');
                     }
-                    if ($type === 'image' && trim((string) ($layer['image'] ?? '')) === '') {
+                    if ($type === 'image' && trim((string) ($layer['image'] ?? '')) === ''
+                        && empty($layer['image_site_asset'])) {
                         $validator->errors()->add("{$prefix}.image", 'Выбери изображение.');
                     }
                     if ($type === 'links') {
@@ -191,7 +192,8 @@ final class HeroSliderSettings
                         } else {
                             foreach ($links as $itemIndex => $item) {
                                 if (is_array($item) && ($item['icon'] ?? null) === 'custom'
-                                    && trim((string) ($item['image'] ?? '')) === '') {
+                                    && trim((string) ($item['image'] ?? '')) === ''
+                                    && empty($item['image_site_asset'])) {
                                     $validator->errors()->add("{$prefix}.links.{$itemIndex}.image", 'Загрузи иконку ссылки.');
                                 }
                             }
