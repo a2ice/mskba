@@ -200,3 +200,43 @@ The temporary `scrollTop` diagnostic overlay and its unused public script
 were removed from staging now that the scroll event investigation is complete.
 No database, page-content snapshots, Filament settings, `main`, or production
 were changed by this PR.
+
+## Static composition checkpoint (2026-10-19)
+
+Visual review showed that scroll effects were obscuring a more fundamental layout
+problem: the Venues section was being treated as a shallow band at the *start*
+of a tall story, its athlete PNG was in the full-bleed graphic layer, and its
+decorative heading and ball target were outside the content shell.
+
+The current DEV-only checkpoint intentionally prioritizes exact DOM/layout
+structure before restoring motion:
+
+- `mskba-home-story` is a normal document-flow flex column; `mskba-venues-scene`
+  is its **last/bottom-aligned** child. No absolute-positioned section.
+  The inner visual column reserves scene height; the copy is bottom-aligned
+  with bounded bottom padding rather than adding blank space below it.
+- `mskba-home-story__art` contains **only** three full-bleed graphics:
+  background, fence and hoop. All are motionless for now.
+- Inside `section#venues-intro > .container.mskba-venues-scene__inner` are
+  the player image, hand marker, decorative gray title, section headline,
+  description, CTA and four highlights. The player lives inside the left
+  visual column, and the right text/highlights remain inside the same shell.
+- The decorative title is at its final authored `right:0` coordinate
+  within that shell. Highlights are always visible. No scroll-triggered fade,
+  no ghost-title fly-in and no depth parallax.
+- `page-builder-venues-motion.js` remains in the repository for future work
+  but is **not imported by the active Page Builder entry**. When the static
+  scene is visually accepted, its motion can be reworked against this geometry
+  in a separate PR.
+- The Hero ball remains a single sprite. During its existing second-leg
+  transition it now reparents inside `[data-mskba-venues-visual]` rather
+  than onto the root story; start and end points are measured in that one
+  coordinate space so the ball remains part of the boxed content.
+- The staging-only guard in the Blade page renderer is unchanged. No DB/Filament
+  content updates, and no production/main changes.
+
+QA must check at 1440/1024/768/390/360: (1) no content outside the boxed
+shell, (2) no empty space below the section's meaningful content, (3) correct
+artwork depth order, (4) Hero remains unchanged, and (5) ball continuity.
+Actual pixel-perfect registration of player hand, hoop and ball is still
+subject to browser screenshot acceptance.
