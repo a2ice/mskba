@@ -48,7 +48,8 @@ final class SiteMediaLibraryTest extends TestCase
     public function test_import_is_idempotent_and_does_not_change_file_bytes(): void
     {
         Storage::fake('public');
-        $contents = file_get_contents(UploadedFile::fake()->image('layer.png', 200, 100)->getRealPath());
+        $file = UploadedFile::fake()->image('layer.png', 200, 100);
+        $contents = file_get_contents($file->getRealPath());
         $manager = app(SiteMediaManager::class);
         $a = $manager->importBytes($contents, 'Layer', 'layer.png', legacyPath: '/images/layer.png');
         $b = $manager->importBytes($contents, 'Layer', 'layer.png', legacyPath: '/images/layer.png');
