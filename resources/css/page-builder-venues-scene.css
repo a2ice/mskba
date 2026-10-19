@@ -1,32 +1,27 @@
 /*
- * Shared artwork starts directly under the site header, passes behind Hero,
- * and ends with the venues introduction. The four artwork PNGs keep their
- * shared *width-based* coordinate system: height never stretches the artwork.
+ * Static composition QA: background/fence/hoop occupy the full-bleed story;
+ * player, typography, CTA, highlights and ball target live in its boxed shell.
+ * No scroll/parallax transforms on the scene. Preserve native Hero scroll.
  */
 .mskba-page-builder .mskba-home-story {
     position: relative;
+    display: flex;
+    flex-direction: column;
     isolation: isolate;
     width: 100%;
     min-width: 0;
-    background: #f5f6f8;
     overflow: clip;
-    --venues-art-object-position: center center;
-    --venues-ghost-shift: 0px;
-    --venues-highlights-opacity: 1;
-    --venues-highlights-lift: 0px;
-    /* All transparent PNGs share a canvas. Scale/crop the canvas deliberately,
-       instead of trusting the PNG dimensions to match the approved mockup. */
+    background: #f5f6f8;
     --venues-foreground-width: 68%;
     --venues-foreground-top: clamp(230px, 18vw, 340px);
     --venues-foreground-left: -1%;
-    --venues-player-shift: 0px;
 }
 .mskba-page-builder .mskba-home-story__art {
     position: absolute;
     inset: 0;
     z-index: 0;
-    pointer-events: none;
     overflow: hidden;
+    pointer-events: none;
 }
 .mskba-page-builder .mskba-home-story__art-layer {
     position: absolute;
@@ -36,21 +31,26 @@
     width: var(--venues-foreground-width);
     height: auto;
     max-width: none;
-    /* Scale by width, not by the sum of Hero and Venues heights. */
     object-fit: contain;
     object-position: left top;
-    /* Each photo has independently authored size and placement.
-       Parallax shifts only the Y offset; the same asset stays in the scene. */
     transform: translate3d(
         var(--venues-layer-shift-x, 0px),
-        calc(var(--venues-layer-shift-y, 0px) + var(--venues-parallax-shift, 0px)),
+        var(--venues-layer-shift-y, 0px),
         0
     ) scale(var(--venues-layer-scale, 1));
     transform-origin: left top;
-    will-change: transform;
     user-select: none;
 }
-.mskba-page-builder .mskba-home-story__art-layer--backstage { z-index: 0; }
+.mskba-page-builder .mskba-home-story__art-layer--backstage {
+    z-index: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    transform: none;
+}
 .mskba-page-builder .mskba-home-story__art-layer--fence {
     z-index: 1;
     --venues-layer-scale: .88;
@@ -63,93 +63,108 @@
     --venues-layer-shift-x: 6px;
     --venues-layer-shift-y: 64px;
 }
-.mskba-page-builder .mskba-home-story__art-layer--player {
-    z-index: 3;
-    --venues-layer-scale: .67;
-    --venues-layer-shift-x: 26px;
-    --venues-layer-shift-y: 118px;
-    /* Feather the flat bottom edge of the transparent PNG into the scenery. */
-    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 100%);
-}
-
-/* Soft white fade is a readability layer, not an opaque second section. */
 .mskba-page-builder .mskba-home-story__art-veil {
     position: absolute;
     inset: 0;
-    z-index: 4;
-    background: linear-gradient(
-        90deg,
+    z-index: 3;
+    background: linear-gradient(90deg,
         transparent 0%,
-        rgba(248, 249, 251, .06) 42%,
-        rgba(248, 249, 251, .73) 59%,
-        rgba(248, 249, 251, .95) 83%,
-        #f8f9fb 100%
-    );
+        rgba(248,249,251,.06) 42%,
+        rgba(248,249,251,.73) 59%,
+        rgba(248,249,251,.95) 83%,
+        #f8f9fb 100%);
 }
 .mskba-page-builder .mskba-home-story__hero-slot {
     position: relative;
     z-index: 5;
+    flex: none;
     min-width: 0;
 }
-/* During ownership handoff the same ball is drawn above the Hero surface.
-   Otherwise its upper half would disappear behind the Hero stacking context
-   on the very first pixel after crossing the boundary. */
-.mskba-page-builder .mskba-home-story > .mskba-rolling-ball {
-    z-index: 6;
-}
-/* The previous Page Builder markup uses bg-lightgrey on #hero. The artwork
- * must be visible beneath that Hero, but the original slider stays opaque. */
 .mskba-page-builder .mskba-home-story__hero-slot #hero {
     background: transparent !important;
 }
+
+/* Venues is the last normal-flow child, flush with the story's bottom.
+ * Its player/visual column reserves the space; content aligns to its bottom.
+ * No extra empty region is manufactured by large bottom padding. */
 .mskba-page-builder .mskba-venues-scene {
     position: relative;
     z-index: 4;
-    box-sizing: border-box;
     display: flex;
-    align-items: flex-start;
-    min-height: clamp(620px, 44vw, 760px);
-    padding: clamp(88px, 7vw, 120px) 0 clamp(120px, 9vw, 160px);
+    flex: 1 0 auto;
+    align-items: flex-end;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: clamp(560px, 45vw, 720px);
+    margin-top: auto;
+    padding: 24px 0 clamp(38px, 4vw, 68px);
     color: #111318;
 }
 .mskba-page-builder .mskba-venues-scene__inner {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 53%) minmax(0, 47%);
-    align-items: start;
+    align-items: end;
     width: 100%;
+    min-width: 0;
 }
 .mskba-page-builder .mskba-venues-scene__visual-space {
+    position: relative;
+    align-self: end;
     min-width: 0;
+    min-height: clamp(380px, 41vw, 610px);
+}
+.mskba-page-builder .mskba-venues-scene__player {
+    position: absolute;
+    left: -18%;
+    bottom: -42px;
+    display: block;
+    width: 165%;
+    height: auto;
+    max-width: none;
+    object-fit: contain;
+    object-position: left bottom;
+    transform: scale(.67);
+    transform-origin: left bottom;
+    pointer-events: none;
+    user-select: none;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 87%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 87%, transparent 100%);
+}
+.mskba-page-builder .mskba-venues-scene__ball-target {
+    position: absolute;
+    left: 66%;
+    top: 12%;
+    width: 0;
+    height: 0;
     pointer-events: none;
 }
-.mskba-page-builder .mskba-venues-scene__copy {
-    position: relative;
-    min-width: 0;
-    z-index: 1;
-    padding: 0 0 0 12px;
+.mskba-page-builder .mskba-venues-scene__visual-space > .mskba-rolling-ball {
+    z-index: 5;
 }
 .mskba-page-builder .mskba-venues-scene__ghost {
     position: absolute;
-    z-index: 1;
-    /* Anchor in the full-bleed scene, not inside the 47% content column. */
-    top: 38px;
-    left: 46%;
-    right: auto;
-    width: max-content;
-    max-width: none;
-    color: rgba(40, 47, 60, .055);
-    font-size: clamp(80px, 8.3vw, 140px);
+    z-index: 0;
+    top: 0;
+    right: 0;
+    max-width: 100%;
+    color: rgba(40,47,60,.055);
+    font-size: clamp(54px, 8.3vw, 132px);
     line-height: 1;
     font-weight: 950;
     letter-spacing: -.065em;
     white-space: nowrap;
     pointer-events: none;
-    transform: translate3d(var(--venues-ghost-shift), 0, 0);
-    will-change: transform;
+    /* Static final design position: no offscreen starting transform. */
+    transform: none;
+}
+.mskba-page-builder .mskba-venues-scene__copy {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    padding-left: 12px;
 }
 .mskba-page-builder .mskba-venues-scene__eyebrow {
-    position: relative;
     margin: 0 0 12px;
     color: #ff690f;
     font-size: clamp(12px, 1vw, 16px);
@@ -158,13 +173,12 @@
     letter-spacing: .02em;
 }
 .mskba-page-builder .mskba-venues-scene__title {
-    position: relative;
     margin: 0;
+    color: #08090c;
     font-size: clamp(48px, 4.6vw, 82px);
     line-height: 1.03;
     font-weight: 950;
     letter-spacing: -.055em;
-    color: #08090c;
 }
 .mskba-page-builder .mskba-venues-scene__description {
     max-width: 510px;
@@ -183,7 +197,7 @@
     padding: 13px 24px;
     background: linear-gradient(120deg, #ff9019, #ff590b);
     border-radius: 999px;
-    box-shadow: 0 10px 24px rgba(255, 102, 8, .23);
+    box-shadow: 0 10px 24px rgba(255,102,8,.23);
     color: #fff !important;
     font-size: 15px;
     font-weight: 750;
@@ -212,9 +226,9 @@
     min-width: 0;
     gap: clamp(4px, .55vw, 10px);
     margin-top: 34px;
-    opacity: var(--venues-highlights-opacity);
-    transform: translate3d(0, var(--venues-highlights-lift), 0);
-    will-change: opacity, transform;
+    /* Essential content stays visible at every scroll position. */
+    opacity: 1;
+    transform: none;
 }
 .mskba-page-builder .mskba-venues-scene__highlights a {
     display: grid;
@@ -230,9 +244,7 @@
     line-height: 1.3;
     text-decoration: none;
 }
-.mskba-page-builder .mskba-venues-scene__highlights a:hover {
-    color: #fc660c;
-}
+.mskba-page-builder .mskba-venues-scene__highlights a:hover { color: #fc660c; }
 .mskba-page-builder .mskba-venues-scene__highlights svg {
     display: block;
     width: 25px;
@@ -242,35 +254,40 @@
 
 @media (max-width: 1050px) {
     .mskba-page-builder .mskba-home-story {
-        --venues-art-object-position: 39% center;
         --venues-foreground-width: 100%;
         --venues-foreground-top: clamp(190px, 26vw, 285px);
     }
-    /* The scale tuning above is for desktop art direction. Tablet and phone
-       keep their independently approved crop rather than scaling it again. */
     .mskba-page-builder .mskba-home-story__art-layer--fence,
-    .mskba-page-builder .mskba-home-story__art-layer--hoop,
-    .mskba-page-builder .mskba-home-story__art-layer--player {
+    .mskba-page-builder .mskba-home-story__art-layer--hoop {
         --venues-layer-scale: 1;
         --venues-layer-shift-x: 0px;
         --venues-layer-shift-y: 0px;
     }
     .mskba-page-builder .mskba-venues-scene {
-        min-height: 620px;
-        padding-top: 115px;
+        min-height: 600px;
+        padding-bottom: 46px;
     }
     .mskba-page-builder .mskba-venues-scene__inner {
         grid-template-columns: minmax(0, 47%) minmax(0, 53%);
     }
-    .mskba-page-builder .mskba-venues-scene__copy { padding-left: 0; }
-    .mskba-page-builder .mskba-venues-scene__ghost {
-        top: 65px;
-        left: 43%;
-        right: auto;
-        font-size: clamp(66px, 8.6vw, 105px);
+    .mskba-page-builder .mskba-venues-scene__visual-space {
+        min-height: 500px;
     }
+    .mskba-page-builder .mskba-venues-scene__player {
+        left: -24%;
+        width: 185%;
+        transform: scale(.75);
+    }
+    .mskba-page-builder .mskba-venues-scene__ball-target {
+        left: 63%;
+        top: 14%;
+    }
+    .mskba-page-builder .mskba-venues-scene__copy { padding-left: 0; }
     .mskba-page-builder .mskba-venues-scene__title {
         font-size: clamp(42px, 6vw, 62px);
+    }
+    .mskba-page-builder .mskba-venues-scene__ghost {
+        font-size: clamp(62px, 8.4vw, 100px);
     }
     .mskba-page-builder .mskba-venues-scene__highlights {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -278,47 +295,47 @@
     }
     .mskba-page-builder .mskba-venues-scene__highlights a { font-size: 12px; }
 }
-
 @media (max-width: 640px) {
     .mskba-page-builder .mskba-home-story {
-        --venues-art-object-position: 26% center;
         --venues-foreground-width: 160%;
         --venues-foreground-top: clamp(390px, 112vw, 560px);
         --venues-foreground-left: -24%;
     }
     .mskba-page-builder .mskba-home-story__art-veil {
         background:
-            linear-gradient(to bottom,
-                transparent 0%,
-                transparent 32%,
-                rgba(248, 249, 251, .13) 47%,
-                rgba(248, 249, 251, .87) 69%,
-                #f8f9fb 88%),
-            linear-gradient(to right,
-                rgba(248, 249, 251, .08), transparent 35%);
+            linear-gradient(to bottom, transparent 0%, transparent 32%,
+                rgba(248,249,251,.13) 47%, rgba(248,249,251,.87) 69%, #f8f9fb 88%),
+            linear-gradient(to right, rgba(248,249,251,.08), transparent 35%);
     }
     .mskba-page-builder .mskba-venues-scene {
         min-height: 0;
-        padding: clamp(380px, 108vw, 540px) 0 72px;
+        padding: 0 0 50px;
     }
-    .mskba-page-builder .mskba-venues-scene__inner {
-        display: block;
+    .mskba-page-builder .mskba-venues-scene__inner { display: block; }
+    .mskba-page-builder .mskba-venues-scene__visual-space {
+        min-height: clamp(300px, 100vw, 450px);
     }
-    .mskba-page-builder .mskba-venues-scene__visual-space { display: none; }
-    .mskba-page-builder .mskba-venues-scene__copy {
-        padding: 16px 0 0;
-        max-width: 100%;
+    .mskba-page-builder .mskba-venues-scene__player {
+        left: -25%;
+        bottom: -30px;
+        width: 170%;
+        transform: scale(.87);
+    }
+    .mskba-page-builder .mskba-venues-scene__ball-target {
+        left: 58%;
+        top: 13%;
     }
     .mskba-page-builder .mskba-venues-scene__ghost {
-        top: 0;
-        left: 5%;
-        right: auto;
-        font-size: clamp(48px, 11vw, 75px);
-        opacity: .8;
+        top: auto;
+        bottom: 305px;
+        right: 0;
+        font-size: clamp(42px, 11vw, 68px);
     }
-    .mskba-page-builder .mskba-venues-scene__eyebrow {
-        font-size: 11px;
+    .mskba-page-builder .mskba-venues-scene__copy {
+        padding: 18px 0 0;
+        max-width: 100%;
     }
+    .mskba-page-builder .mskba-venues-scene__eyebrow { font-size: 11px; }
     .mskba-page-builder .mskba-venues-scene__title {
         font-size: clamp(40px, 12vw, 56px);
     }
@@ -333,68 +350,12 @@
         margin-top: 28px;
     }
     .mskba-page-builder .mskba-venues-scene__highlights a {
-        font-size: 12px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .mskba-page-builder .mskba-venues-scene__cta { transition: none; }
-}
-
-/* The sky spans the whole section; independent transparent foreground layers
-   share a width-scaled composition and cannot zoom with section height. */
-.mskba-page-builder .mskba-home-story__art-layer--backstage {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center top;
-    will-change: transform;
-}
-.mskba-page-builder .mskba-venues-scene__ball-target {
-    position: absolute;
-    left: 34.5%;
-    top: 138px;
-    width: 0;
-    height: 0;
-    pointer-events: none;
-    /* Same transform as the player photo: their landing point cannot diverge. */
-    transform: translate3d(0, var(--venues-player-shift), 0);
-}
-@media (max-width: 1050px) {
-    .mskba-page-builder .mskba-venues-scene__ball-target {
-        left: 36%;
-        top: 154px;
-    }
-}
-@media (max-width: 640px) {
-    .mskba-page-builder .mskba-venues-scene__ball-target {
-        left: 47%;
-        top: 230px;
-    }
-    .mskba-page-builder .mskba-venues-scene__highlights a {
         grid-template-columns: 25px minmax(0, 1fr);
         gap: 7px;
+        font-size: 12px;
         overflow-wrap: normal;
-    }
-    .mskba-page-builder .mskba-venues-scene__ghost {
-        max-width: calc(100vw - 24px);
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .mskba-page-builder .mskba-home-story__art-layer,
-    .mskba-page-builder .mskba-venues-scene__ghost,
-    .mskba-page-builder .mskba-venues-scene__highlights { will-change: auto; }
-}
-
-/* The text block and highlights paint over the full-width ghost title.
-   The decorative word belongs to the Venues section but is not shell-sized. */
-.mskba-page-builder .mskba-venues-scene__copy {
-    z-index: 2;
-}
-@media (max-width: 640px) {
-    .mskba-page-builder .mskba-venues-scene__ghost {
-        max-width: none;
-    }
+    .mskba-page-builder .mskba-venues-scene__cta { transition: none; }
 }
