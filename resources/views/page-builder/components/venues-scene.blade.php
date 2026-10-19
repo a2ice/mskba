@@ -1,12 +1,15 @@
-{{-- Single venues scene; scroll animation progressive-enhancement leaves all content accessible. --}}
+{{-- Static layout acceptance: ALL content, including the player, stays in the boxed shell.
+     The sky/fence/hoop are independent full-bleed siblings of this section. --}}
 <section class="mskba-venues-scene" id="venues-intro" data-mskba-venues-scene
     aria-labelledby="mskba-venues-scene-title">
-    {{-- Marker for Ball Director v2: one responsive point in scene coordinates. --}}
-    <span class="mskba-venues-scene__ball-target" data-mskba-ball-target aria-hidden="true"></span>
-    {{-- Full-bleed decorative heading: not constrained by the content shell. --}}
-    <span class="mskba-venues-scene__ghost" aria-hidden="true">ПЛОЩАДКИ</span>
     <div class="container mskba-venues-scene__inner">
-        <div class="mskba-venues-scene__visual-space" aria-hidden="true"></div>
+        <div class="mskba-venues-scene__visual-space" data-mskba-venues-visual aria-hidden="true">
+            <img class="mskba-venues-scene__player"
+                src="{{ asset('images/court_day/homepage/layer-4-player.png') }}"
+                alt="" decoding="async" loading="lazy">
+            <span class="mskba-venues-scene__ball-target" data-mskba-ball-target></span>
+        </div>
+        <span class="mskba-venues-scene__ghost" aria-hidden="true">ПЛОЩАДКИ</span>
         <div class="mskba-venues-scene__copy">
             <p class="mskba-venues-scene__eyebrow">ИГРАЙ В ЛЮБОМ РАЙОНЕ</p>
             <h2 class="mskba-venues-scene__title" id="mskba-venues-scene-title">ПЛОЩАДКИ</h2>
