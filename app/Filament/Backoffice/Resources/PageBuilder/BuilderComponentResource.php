@@ -8,6 +8,7 @@ use App\Filament\Backoffice\Resources\PageBuilder\Pages\CreateBuilderComponent;
 use App\Filament\Backoffice\Resources\PageBuilder\Pages\EditBuilderComponent;
 use App\Filament\Backoffice\Resources\PageBuilder\Pages\ListBuilderComponents;
 use App\Modules\Content\Domain\Models\PageBuilderComponent;
+use App\Modules\Media\Domain\Models\SiteMediaAsset;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
@@ -120,9 +121,13 @@ final class BuilderComponentResource extends Resource
                                         FileUpload::make('background_image')->label('Фон · desktop')
                                             ->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
                                             ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(4096),
+                                        Select::make('background_image_site_asset')->label('Или из медиабиблиотеки · desktop')
+                                            ->options(fn (): array => self::libraryOptions())->searchable()->native(false),
                                         FileUpload::make('background_image_mobile')->label('Фон · mobile')
                                             ->image()->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
                                             ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(3072),
+                                        Select::make('background_image_mobile_site_asset')->label('Или из медиабиблиотеки · mobile')
+                                            ->options(fn (): array => self::libraryOptions())->searchable()->native(false),
                                         Select::make('background_preset')->label('Встроенный фон (при отсутствии изображения)')
                                             ->native(false)->options(['indoor' => 'Баскетбольная арена'])
                                             ->helperText('Для старых слайдов, перенесённых из прежнего редактора. Загрузка изображения всегда имеет приоритет.'),
@@ -189,19 +194,25 @@ final class BuilderComponentResource extends Resource
                                                         ])->default('court')->required(),
                                                     FileUpload::make('image')->label('Своя иконка (PNG/WebP)')
                                                         ->visible(fn (Get $get): bool => $get('icon') === 'custom')
-                                                        ->required(fn (Get $get): bool => $get('icon') === 'custom')
+                                                        ->required(fn (Get $get): bool => $get('icon') === 'custom' && blank($get('image_site_asset')))
                                                         ->image()->acceptedFileTypes(['image/png', 'image/webp', 'image/jpeg', 'image/avif'])
                                                         ->disk('public')->directory('page-builder/hero')
                                                         ->visibility('public')->maxSize(1024),
+                                                    Select::make('image_site_asset')->label('Или иконка из медиабиблиотеки')
+                                                        ->visible(fn (Get $get): bool => $get('icon') === 'custom')
+                                                        ->options(fn (): array => self::libraryOptions())->searchable()->native(false),
                                                 ])->columns(2),
                                             TextInput::make('url')->label('Внутренняя ссылка кнопки')
                                                 ->visible(fn (Get $get): bool => $get('type') === 'button')
                                                 ->required(fn (Get $get): bool => $get('type') === 'button'),
                                             FileUpload::make('image')->label('Изображение')
                                                 ->visible(fn (Get $get): bool => $get('type') === 'image')
-                                                ->required(fn (Get $get): bool => $get('type') === 'image')
+                                                ->required(fn (Get $get): bool => $get('type') === 'image' && blank($get('image_site_asset')))
                                                 ->image()->acceptedFileTypes(['image/jpeg','image/png','image/webp','image/avif'])
                                                 ->disk('public')->directory('page-builder/hero')->visibility('public')->maxSize(4096),
+                                            Select::make('image_site_asset')->label('Или изображение из медиабиблиотеки')
+                                                ->visible(fn (Get $get): bool => $get('type') === 'image')
+                                                ->options(fn (): array => self::libraryOptions())->searchable()->native(false),
                                             TextInput::make('alt')->label('Альтернативный текст изображения')
                                                 ->maxLength(140)->visible(fn (Get $get): bool => $get('type') === 'image')
                                                 ->helperText('Для декоративной картинки оставь пустым.'),
@@ -256,6 +267,12 @@ final class BuilderComponentResource extends Resource
                 ->hidden(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
                 ->columnSpanFull(),
         ]);
+    }
+
+    private static function libraryOptions(): array
+    {
+        return SiteMediaAsset::query()->orderBy('title')->get(['uuid', 'title'])
+            ->pluck('title', 'uuid')->all();
     }
 
     private static function animationOptions(): array
