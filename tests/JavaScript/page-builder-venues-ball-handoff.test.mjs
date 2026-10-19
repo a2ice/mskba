@@ -37,14 +37,20 @@ function makeScene({ documentHeight } = {}) {
     const marker = {
         getBoundingClientRect: () => ({ left: 500, top: 700 - win.scrollY }),
     };
+    const visual = {
+        append: el => { assert.equal(el, root); parent = 'visual'; },
+        getBoundingClientRect: () => ({
+            left: 100, top: 560 - win.scrollY, width: 600, height: 620,
+        }),
+    };
     const venues = {
-        querySelector: selector => selector === '[data-mskba-ball-target]' ? marker : null,
+        querySelector: selector => selector === '[data-mskba-ball-target]' ? marker
+            : selector === '[data-mskba-venues-visual]' ? visual : null,
         getBoundingClientRect: () => ({
             left: 0, top: 620 - win.scrollY, width: 1280, height: 600,
         }),
     };
     const story = {
-        append: el => { assert.equal(el, root); parent = 'story'; },
         querySelector: selector => selector === '[data-mskba-venues-scene]' ? venues : null,
         getBoundingClientRect: () => ({
             left: 0, top: -win.scrollY, width: 1280, height: 1220,
@@ -99,14 +105,14 @@ test('the single ball transfers from Hero to Venues without a boundary jump and 
     assert.equal(lastHero.tileSize, '195px');
 
     const handoff = scene.scroll(190);
-    assert.equal(handoff.parent, 'story');
-    assert.ok(Math.abs(handoff.x - 785) < 2, 'the first transferred x must match Hero landing');
-    assert.ok(Math.abs(handoff.y - 620) < 2, 'the first transferred y must match Hero landing');
+    assert.equal(handoff.parent, 'visual', 'the ball must remain within the boxed player column');
+    assert.ok(Math.abs(handoff.x - 685) < 2, 'first handoff x must match Hero landing in visual coordinates');
+    assert.ok(Math.abs(handoff.y - 60) < 2, 'first handoff y must match Hero landing in visual coordinates');
     assert.ok(handoff.scale < 1 && handoff.scale > .99);
 
     const landed = scene.scroll(1000);
-    assert.equal(landed.parent, 'story');
-    assert.equal(landed.x, 500);
+    assert.equal(landed.parent, 'visual');
+    assert.equal(landed.x, 400);
     assert.equal(landed.scale, .48);
     assert.equal(landed.frameX, '0%');
     assert.equal(landed.frameY, '0%');
@@ -133,8 +139,8 @@ test('short end-of-page scroll range still lands the ball at the actual player m
     const scene = makeScene({ documentHeight: 1104 });
     assert.equal(scene.scroll(189).parent, 'slider');
     const landed = scene.scroll(304);
-    assert.equal(landed.parent, 'story');
-    assert.equal(landed.x, 500);
+    assert.equal(landed.parent, 'visual');
+    assert.equal(landed.x, 400);
     assert.equal(landed.scale, .48);
     assert.equal(landed.frameX, '0%');
     assert.equal(landed.frameY, '0%');
