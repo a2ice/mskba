@@ -84,9 +84,12 @@ final class SiteMediaAssetResource extends Resource
             TextColumn::make('folder.name')->label('Папка')->placeholder('Без папки')->sortable(),
             TextColumn::make('currentMedia.mime')->label('Формат'),
             TextColumn::make('currentMedia.size')->label('Размер, байт')->numeric(),
+            TextColumn::make('resolution')->label('Размер, px')->getStateUsing(
+                fn (SiteMediaAsset $record): string => $record->currentMedia?->width.' × '.$record->currentMedia?->height),
             TextColumn::make('public_url')->label('Публичный URL')
                 ->getStateUsing(fn (SiteMediaAsset $record): string => $record->publicUrl())
-                ->copyable()->copyMessage('URL скопирован'),
+                ->copyable()->copyMessage('URL скопирован')
+                ->url(fn (SiteMediaAsset $record): string => $record->publicUrl(), shouldOpenInNewTab: true),
             TextColumn::make('updated_at')->label('Обновлено')->dateTime('d.m.Y H:i')->sortable(),
         ])->filters([
             SelectFilter::make('folder_id')->label('Папка')->options(fn (): array => self::folderOptions()),

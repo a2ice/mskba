@@ -44,6 +44,11 @@ final class EditSiteMediaAsset extends EditRecord
                     app(SiteMediaManager::class)->optimize($this->record);
                     Notification::make()->title('Создана оптимизированная версия')->success()->send();
                 }),
+            Action::make('previous')->label('Посмотреть предыдущую')->icon('heroicon-o-eye')
+                ->visible(fn (): bool => SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_VIEW)
+                    && $this->record->previous_media_id !== null)
+                ->url(fn (): string => route('site-media.previous', ['uuid' => $this->record->uuid]))
+                ->openUrlInNewTab(),
             Action::make('restore')->label('Вернуть предыдущую версию')->icon('heroicon-o-arrow-uturn-left')
                 ->visible(fn (): bool => SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_RESTORE)
                     && $this->record->previous_media_id !== null)

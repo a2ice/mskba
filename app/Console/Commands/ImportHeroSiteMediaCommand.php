@@ -62,9 +62,16 @@ final class ImportHeroSiteMediaCommand extends Command
                 $this->line('EXISTS   '.$source);
                 continue;
             }
+            if (str_contains($source, '..') || str_contains($source, '//')) {
+                $missing++;
+                $this->warn('UNSAFE  '.$source);
+                continue;
+            }
             if (str_starts_with($source, '/images/')) {
-                $absolute = public_path(ltrim($source, '/'));
-                $contents = is_file($absolute) ? file_get_contents($absolute) : false;
+                $root = realpath(public_path('images'));
+                $absolute = realpath(public_path(ltrim($source, '/')));
+                $contents = $root && $absolute && str_starts_with($absolute, $root.DIRECTORY_SEPARATOR)
+                    && is_file($absolute) ? file_get_contents($absolute) : false;
             } else {
                 $contents = Storage::disk('public')->exists($source)
                     ? Storage::disk('public')->get($source) : false;

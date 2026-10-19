@@ -160,7 +160,7 @@ final class SiteMediaManager
         });
     }
 
-    /** @return array{contents:string,mime:string,extension:string} */
+    /** @return array{contents:string,mime:string,extension:string,width:int,height:int} */
     private function prepare(string $contents, bool $optimize): array
     {
         if ($contents === '' || strlen($contents) > self::MAX_BYTES) {
@@ -175,10 +175,11 @@ final class SiteMediaManager
         }
         if ($optimize) {
             $image = $this->normalizer->normalize($contents, self::MAX_DIMENSION, self::MAX_BYTES);
-            return ['contents' => $image['contents'], 'mime' => 'image/webp', 'extension' => 'webp'];
+            return ['contents' => $image['contents'], 'mime' => 'image/webp', 'extension' => 'webp',
+                'width' => $image['width'], 'height' => $image['height']];
         }
 
-        return ['contents' => $contents, 'mime' => $mime, 'extension' => match ($mime) {
+        return ['contents' => $contents, 'mime' => $mime, 'width' => $info[0], 'height' => $info[1], 'extension' => match ($mime) {
             'image/png' => 'png', 'image/webp' => 'webp', default => 'jpg',
         }];
     }
@@ -195,13 +196,13 @@ final class SiteMediaManager
         }
     }
 
-    /** @param array{contents:string,mime:string,extension:string} $data */
+    /** @param array{contents:string,mime:string,extension:string,width:int,height:int} $data */
     private function version(SiteMediaAsset $asset, string $path, array $data): Media
     {
         return $asset->versions()->create([
             'collection' => 'site_assets', 'source' => 'upload', 'disk' => 'public',
             'path' => $path, 'mime' => $data['mime'], 'size' => strlen($data['contents']),
-            'title' => $asset->title,
+            'title' => $asset->title, 'width' => $data['width'], 'height' => $data['height'],
         ]);
     }
 }

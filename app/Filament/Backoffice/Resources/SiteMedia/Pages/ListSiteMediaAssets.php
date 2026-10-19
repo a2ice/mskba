@@ -25,10 +25,10 @@ final class ListSiteMediaAssets extends ListRecords
             Action::make('upload')->label('Загрузить изображение')->icon('heroicon-o-arrow-up-tray')
                 ->visible(fn (): bool => SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_UPLOAD))
                 ->schema([
-                    FileUpload::make('file')->label('Изображение')->required()->image()
+                    FileUpload::make('files')->label('Изображения')->required()->image()->multiple()
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->maxSize(10240)->storeFiles(false),
-                    TextInput::make('title')->label('Название')->maxLength(180),
+                    TextInput::make('title')->label('Название (если выбран один файл)')->maxLength(180),
                     Select::make('folder_id')->label('Папка')
                         ->options(fn (): array => SiteMediaAssetResource::folderOptions())->searchable()->native(false),
                     Toggle::make('optimize')->label('Оптимизировать в WebP')
@@ -37,11 +37,15 @@ final class ListSiteMediaAssets extends ListRecords
                 ])
                 ->action(function (array $data): void {
                     abort_unless(SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_UPLOAD), 403);
-                    $file = $data['file'] ?? null;
-                    abort_unless($file instanceof UploadedFile, 422);
-                    app(SiteMediaManager::class)->upload($file, $data['folder_id'] ?: null, $data['title'] ?? null,
-                        (bool) ($data['optimize'] ?? false));
-                    Notification::make()->title('Изображение загружено')->success()->send();
+                    $files = $data['files'] ?? [];
+                    abort_unless(is_array($files) && $files !== [], 422);
+                    foreach ($files as $file) {
+                        abort_unless($file instanceof UploadedFile, 422);
+                        app(SiteMediaManager::class)->upload($file, $data['folder_id'] ?: null,
+                            count($files) === 1 ? ($data['title'] ?? null) : null,
+                            (bool) ($data['optimize'] ?? false));
+                    }
+                    Notification::make()->title('Загружено изображений: '.count($files))->success()->send();
                 }),
             Action::make('folders')->label('Папки')->icon('heroicon-o-folder')
                 ->url(fn (): string => SiteMediaFolderResource::getUrl('index')),

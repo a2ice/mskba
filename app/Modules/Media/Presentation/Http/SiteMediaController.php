@@ -3,6 +3,9 @@
 namespace App\Modules\Media\Presentation\Http;
 
 use App\Modules\Media\Domain\Models\SiteMediaAsset;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Media\Domain\Models\Media;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +15,20 @@ final class SiteMediaController
     public function show(Request $request, string $uuid): Response
     {
         $asset = SiteMediaAsset::query()->where('uuid', $uuid)->firstOrFail();
-        $media = $asset->currentMedia;
+        return $this->serve($request, $asset->currentMedia);
+    }
+
+    public function previous(Request $request, string $uuid): Response
+    {
+        $user = auth('web')->user();
+        abort_unless($user && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_ACCESS)
+            && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_SITE_MEDIA_VIEW), 403);
+        $asset = SiteMediaAsset::query()->where('uuid', $uuid)->firstOrFail();
+        return $this->serve($request, $asset->previousMedia);
+    }
+
+    private function serve(Request $request, ?Media $media): Response
+    {
         abort_unless($media && $media->disk === 'public' && Storage::disk('public')->exists($media->path), 404);
         $etag = '"site-media-'.$media->id.'"';
         $headers = [

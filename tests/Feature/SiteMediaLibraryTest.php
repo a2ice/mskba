@@ -30,6 +30,8 @@ final class SiteMediaLibraryTest extends TestCase
 
         $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png');
         $this->assertSame(1, $asset->versions()->count());
+        $this->assertSame(256, $asset->currentMedia->width);
+        $this->assertSame(256, $asset->currentMedia->height);
 
         $asset = $manager->replace($asset, UploadedFile::fake()->image('ball2.jpg', 512, 256));
         $second = $asset->currentMedia->path;

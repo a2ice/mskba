@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::table('media', function (Blueprint $table): void {
+            $table->unsignedInteger('width')->nullable();
+            $table->unsignedInteger('height')->nullable();
+        });
         Schema::create('site_media_folders', function (Blueprint $table): void {
             $table->id();
             $table->string('name', 150);
@@ -37,5 +41,8 @@ return new class extends Migration
     {
         Schema::dropIfExists('site_media_assets');
         Schema::dropIfExists('site_media_folders');
+        Schema::table('media', function (Blueprint $table): void {
+            $table->dropColumn(['width', 'height']);
+        });
     }
 };
