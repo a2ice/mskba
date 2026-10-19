@@ -21,19 +21,24 @@ final class PageBuilderVenuesSceneTest extends TestCase
             'layer-1-backstage.png',
             'layer-2-fense.png',
             'layer-3-hoop.png',
-            'layer-4-player.png',
         ] as $asset) {
             $this->assertStringContainsString('/images/court_day/homepage/'.$asset, $art);
         }
 
-        $this->assertSame(4, substr_count($art, 'mskba-home-story__art-layer--'));
+        $this->assertSame(3, substr_count($art, 'mskba-home-story__art-layer--'));
+        $this->assertStringNotContainsString('layer-4-player.png', $art,
+            'player must not be part of the full-bleed backdrop');
+        $this->assertStringContainsString('/images/court_day/homepage/layer-4-player.png', $scene);
         $this->assertStringContainsString('data-mskba-venues-scene', $scene);
         $this->assertStringContainsString('data-mskba-ball-target', $scene);
-        $this->assertLessThan(
-            strpos($scene, 'mskba-venues-scene__inner'),
-            strpos($scene, 'mskba-venues-scene__ghost'),
-            'decorative title must be a full-width section child before the boxed shell',
-        );
+        $shell = strpos($scene, 'mskba-venues-scene__inner');
+        $player = strpos($scene, 'mskba-venues-scene__player');
+        $ghost = strpos($scene, 'mskba-venues-scene__ghost');
+        $copy = strpos($scene, 'mskba-venues-scene__copy');
+        $this->assertNotFalse($shell);
+        $this->assertTrue($shell < $player && $player < $ghost && $ghost < $copy,
+            'player, background heading and text must be children of the boxed shell');
+        $this->assertStringContainsString('data-mskba-venues-visual', $scene);
         $this->assertStringContainsString('mskba-venues-scene__ghost', $scene);
         $this->assertStringContainsString('aria-labelledby="mskba-venues-scene-title"', $scene);
         $this->assertStringContainsString('Найти площадку', $scene);
@@ -92,12 +97,17 @@ final class PageBuilderVenuesSceneTest extends TestCase
         $this->assertStringContainsString('--venues-foreground-width: 68%;', $css,
             'artwork needs an explicit authored scale independent of asset dimensions');
         $this->assertStringContainsString('--venues-foreground-top:', $css);
-        $this->assertStringContainsString('--venues-layer-scale: .67;', $css);
+        $this->assertStringContainsString('mskba-venues-scene__player', $css);
+        $this->assertStringContainsString('transform: scale(.67);', $css);
         $this->assertStringContainsString('--venues-layer-scale: .88;', $css);
         $this->assertStringContainsString('--venues-layer-scale: .90;', $css);
-        $this->assertStringContainsString('--venues-layer-shift-y: 118px;', $css);
-        $this->assertStringContainsString('--venues-layer-scale: 1;', $css,
-            'tablet and mobile must not inherit desktop foreground reductions');
+        $this->assertStringContainsString('align-items: flex-end;', $css,
+            'content must align to the bottom of the story');
+        $this->assertStringContainsString('opacity: 1;', $css,
+            'all four highlights must remain visible without scrolling effects');
+        $entrypoint = file_get_contents(resource_path('js/page-builder.js'));
+        $this->assertStringNotContainsString("import './page-builder-venues-motion.js';", $entrypoint,
+            'do not activate venue scroll/parallax while accepting static composition');
         $this->assertStringContainsString('object-fit: contain;', $css,
             'transparent foregrounds must never use cover against section height');
         $this->assertStringContainsString('grid-template-columns: repeat(4, minmax(0, 1fr))', $css);
