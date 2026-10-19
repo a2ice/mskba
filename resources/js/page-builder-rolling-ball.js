@@ -48,6 +48,7 @@ function initRollingBall(root) {
     const story = scene?.closest?.('[data-mskba-home-story]') || null;
     const venues = story?.querySelector?.('[data-mskba-venues-scene]') || null;
     const ballTarget = venues?.querySelector?.('[data-mskba-ball-target]') || null;
+    const ballHost = venues?.querySelector?.('[data-mskba-venues-visual]') || null;
     const sprite = root.querySelector('img.mskba-rolling-ball__sprite');
     if (!scene || !slider || !sprite) return;
     root.dataset.rollingBallReady = '1';
@@ -82,24 +83,25 @@ function initRollingBall(root) {
     let measuredWidth = null;
     let stableViewportHeight = window.innerHeight;
     let scheduledFrame = 0;
-    let assignedToStory = false;
+    let assignedToVisual = false;
 
-    // The ball has exactly one DOM node. Reparent only when crossing a scene
-    // boundary; never create a second animated sprite or pin it to the window.
-    function assignOwner(toStory) {
-        if (toStory && !assignedToStory) {
-            story.append(root);
-            assignedToStory = true;
-        } else if (!toStory && assignedToStory) {
+    // Keep the same ball inside the same boxed scene as the athlete and copy.
+    // Moving between the Hero slider and the player column preserves a single
+    // DOM sprite, without a fixed-position overlay outside the content shell.
+    function assignOwner(toVisual) {
+        if (toVisual && !assignedToVisual) {
+            ballHost.append(root);
+            assignedToVisual = true;
+        } else if (!toVisual && assignedToVisual) {
             slider.append(root);
-            assignedToStory = false;
+            assignedToVisual = false;
         }
     }
 
     // The marker is part of the responsive Venues composition. Coordinate
     // subtraction cancels native scrolling; ball stays with the document.
     function paintVenues(scrollPosition) {
-        if (!story || !venues || !ballTarget) return false;
+        if (!story || !venues || !ballTarget || !ballHost) return false;
         const transitionStart = start + distance;
         if (scrollPosition <= transitionStart) {
             assignOwner(false);
@@ -117,17 +119,18 @@ function initRollingBall(root) {
         const p = rollingBallReducedMotion.matches ? 1
             : rollingBallClamp((scrollPosition - transitionStart) / transitionLength, 0, 1);
 
-        const storyRect = story.getBoundingClientRect();
+        const visualRect = ballHost.getBoundingClientRect();
         const sliderRect = slider.getBoundingClientRect();
         const markerRect = ballTarget.getBoundingClientRect();
-        const startX = sliderRect.left - storyRect.left
+        const startX = sliderRect.left - visualRect.left
             + sliderRect.width * activeProfile.to[0] / 1000;
-        const startY = sliderRect.top - storyRect.top
+        const startY = sliderRect.top - visualRect.top
             + sliderRect.height * activeProfile.to[1] / 1000;
 
-        // The marker inherits exactly the player's parallax transform.
-        const endX = markerRect.left - storyRect.left;
-        const endY = markerRect.top - storyRect.top;
+        // The hand marker and ball share a static coordinate space inside the
+        // content shell; no separate parallax compensation is applied.
+        const endX = markerRect.left - visualRect.left;
+        const endY = markerRect.top - visualRect.top;
         const x = startX + (endX - startX) * p;
         const y = startY + (endY - startY) * p;
 
