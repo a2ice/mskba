@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-const script = readFileSync(new URL('../../resources/js/page-builder-rolling-ball.js', import.meta.url), 'utf8');
+const script = readFileSync(new URL('../../docs/page-builder/filament-home/ball.js', import.meta.url), 'utf8');
 
 function createHarness() {
     const listeners = {};
