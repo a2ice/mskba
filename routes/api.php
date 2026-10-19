@@ -6,6 +6,8 @@ use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationReference
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebhookController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\PaymentWebhookController;
 use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\ListPublicVenuesController;
+use App\Modules\Identity\Infrastructure\Http\Middleware\EnsureActiveMobileApiUser;
+use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/integrations/telegram/webhook', TelegramWebhookController::class)
@@ -39,3 +41,21 @@ Route::get('/v1/venues', ListPublicVenuesController::class)
 Route::get('/get_venues', ListPublicVenuesController::class)
     ->middleware('throttle:60,1')
     ->name('api.legacy.get_venues');
+
+/*
+ * Platform-neutral credential/token API for trusted first-party mobile clients.
+ * No web session or CSRF cookie is required for these routes.
+ */
+Route::post('/v1/auth/login', [MobileAuthController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('api.v1.auth.login');
+
+Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(function (): void {
+    Route::get('/v1/me', [MobileAuthController::class, 'me'])
+        ->middleware('throttle:60,1')
+        ->name('api.v1.me');
+
+    Route::post('/v1/auth/logout', [MobileAuthController::class, 'logout'])
+        ->middleware('throttle:20,1')
+        ->name('api.v1.auth.logout');
+});
