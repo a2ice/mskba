@@ -1,6 +1,4 @@
-// TEMP TODO: superadmin-configurable trusted effect, not arbitrary stored JS.
-// Opt-in via .mskba-hero-scene and .mskba-rolling-ball. The ball is shared by
-// all slides and lives inside the slider root for correct z-index interleaving.
+// Filament → Главная → JS: single scroll-driven ball shared by Hero slides.
 const rollingBallReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 // First-scene profiles use the *rendered hero width*, not the device name.
 // The 0..1000 coordinate system preserves the same responsive DOM wrapper.
@@ -45,10 +43,10 @@ function initRollingBall(root) {
     if (root.dataset.rollingBallReady === '1') return;
     const scene = root.closest('.mskba-hero-scene');
     const slider = scene?.querySelector('[data-mskba-hero-slider]');
-    const story = scene?.closest?.('[data-mskba-home-story]') || null;
-    const venues = story?.querySelector?.('[data-mskba-venues-scene]') || null;
-    const ballTarget = venues?.querySelector?.('[data-mskba-ball-target]') || null;
-    const ballHost = venues?.querySelector?.('[data-mskba-venues-visual]') || null;
+    const story = scene?.closest?.('.mskba-home-story') || null;
+    const venues = story?.querySelector?.('#venues-intro') || null;
+    const ballTarget = venues?.querySelector?.('.mskba-venues-scene__ball-target') || null;
+    const ballHost = venues?.querySelector?.('.mskba-venues-scene__visual-space') || null;
     const sprite = root.querySelector('img.mskba-rolling-ball__sprite');
     if (!scene || !slider || !sprite) return;
     root.dataset.rollingBallReady = '1';

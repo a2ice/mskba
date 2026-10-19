@@ -1,6 +1,4 @@
-// Venues parallax/entrance effects are paused until static layout approval.
-// Existing Hero/Ball scroll behavior remains active.
-import './page-builder-rolling-ball.js';
+// Hero Slider component runtime remains shared; homepage ball JS belongs to Filament.
 import './page-builder-hero-slider.js';
 
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.

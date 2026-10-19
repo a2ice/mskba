@@ -1,6 +1,4 @@
-/* TEMP TODO: expose trusted effect settings to superadmins without executing stored JS.
-   Page Builder still owns the opt-in markup; JS moves the decorative ball
-   into the slider root, never into an individual slide. */
+/* Filament → Главная → CSS: source-of-truth for the decorative hero ball. */
 .mskba-page-builder .mskba-hero-scene {
     position: relative;
     overflow: visible;

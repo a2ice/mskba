@@ -1,3 +1,8 @@
+> **Исторический документ.** Инъекция Venues через Blade и Vite-версии CSS/JS мяча
+> удаляются в рамках Filament-owned миграции. Актуальная процедура:
+> [docs/page-builder/filament-home/README.md](../page-builder/filament-home/README.md).
+> Нельзя использовать изложенную ниже старую схему как инструкцию для текущего DEV.
+
 # Temporary independent scroll-ball overlay (MSKBA Page Builder)
 
 > TODO: decide superadmin-only UI for trusted JS/animation parameters and safe asset management.
