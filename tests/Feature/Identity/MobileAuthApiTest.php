@@ -104,10 +104,17 @@ final class MobileAuthApiTest extends TestCase
 
         $this->withToken($a)->postJson(route('api.v1.auth.logout'))
             ->assertOk();
-        $this->withToken($a)->getJson(route('api.v1.me'))->assertUnauthorized();
-        $this->withToken($b)->getJson(route('api.v1.me'))
-            ->assertOk();
         $this->assertDatabaseCount('personal_access_tokens', 1);
+        $this->assertNull(\Laravel\Sanctum\PersonalAccessToken::findToken($a));
+        $this->assertNotNull(\Laravel\Sanctum\PersonalAccessToken::findToken($b));
+
+        // Within one PHPUnit app instance, auth guards may cache the last
+        // authenticated user. Each real HTTP request gets a fresh guard.
+        $this->app['auth']->forgetGuards();
+        $this->withToken($a)->getJson(route('api.v1.me'))->assertUnauthorized();
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($b)->getJson(route('api.v1.me'))->assertOk();
     }
 
     public function test_expired_token_is_rejected(): void
