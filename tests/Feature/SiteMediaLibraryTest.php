@@ -6,6 +6,9 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Content\Application\Services\HeroSliderSettings;
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
+use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
+use Filament\Facades\Filament;
 use App\Modules\Media\Application\Services\SiteMediaManager;
 use App\Modules\Media\Domain\Models\SiteMediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,10 +76,11 @@ final class SiteMediaLibraryTest extends TestCase
         $folder = SiteMediaFolder::query()->create(['name' => 'Hero', 'slug' => 'hero-slider']);
         $asset = app(SiteMediaManager::class)->upload(UploadedFile::fake()->image('hero.png', 400, 200), $folder->id);
 
-        $this->actingAs($admin)->get('/backoffice/site-media-assets')->assertOk();
-        $this->get('/backoffice/site-media-assets/'.$asset->id.'/edit')->assertOk();
-        $this->get('/backoffice/site-media-folders')->assertOk();
-        $this->get('/backoffice/site-media-folders/'.$folder->id.'/edit')->assertOk();
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $this->actingAs($admin)->get(SiteMediaAssetResource::getUrl('index'))->assertOk();
+        $this->get(SiteMediaAssetResource::getUrl('edit', ['record' => $asset]))->assertOk();
+        $this->get(SiteMediaFolderResource::getUrl('index'))->assertOk();
+        $this->get(SiteMediaFolderResource::getUrl('edit', ['record' => $folder]))->assertOk();
     }
 
     public function test_hero_layers_accept_existing_library_images_without_legacy_uploads(): void
@@ -103,7 +107,8 @@ final class SiteMediaLibraryTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::USER,
         ]);
-        $this->actingAs($user)->get('/backoffice/site-media-assets')->assertForbidden();
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $this->actingAs($user)->get(SiteMediaAssetResource::getUrl('index'))->assertForbidden();
     }
 
     public function test_missing_asset_returns_404(): void
