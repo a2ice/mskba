@@ -1,0 +1,47 @@
+name: Backup MSKBA dev before Venues Map
+
+on:
+  push:
+    branches:
+      - ops/pre-venues-map-db-backup-20261020
+    paths:
+      - ".github/workflows/backup-dev-venues-map-20261020.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Preserve dev PostgreSQL without modifying the application
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 12m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            test -f .env
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            umask 077
+            BACKUP_DIR="/home/deploy/mskba-page-builder-backups/venues-map-20261020-$(date -u +%Y%m%dT%H%M%SZ)"
+            mkdir -p -m 700 "$BACKUP_DIR"
+            DUMP="$BACKUP_DIR/mskba-dev-pre-venues-map.dump"
+            "${COMPOSE[@]}" exec -T db sh -c 'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' > "$DUMP"
+            test -s "$DUMP"
+            test "$(stat -c %s "$DUMP")" -gt 1024
+            "${COMPOSE[@]}" exec -T db pg_restore -l < "$DUMP" > "$BACKUP_DIR/pg_restore.list"
+            test -s "$BACKUP_DIR/pg_restore.list"
+            sha256sum "$DUMP" > "$BACKUP_DIR/SHA256SUMS"
+            printf 'source_dev_git_sha=%s\n' "$(git rev-parse HEAD)" > "$BACKUP_DIR/metadata.txt"
+            printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$BACKUP_DIR/metadata.txt"
+            printf 'backup_dir=%s\n' "$BACKUP_DIR"
+            printf 'dump_bytes=%s\n' "$(stat -c %s "$DUMP")"
+            printf 'backup_verification=OK\n"
