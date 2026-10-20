@@ -119,10 +119,15 @@ final class DesignThemeCss
 
         // Applied after the editable legacy CSS to ensure visual controls win
         // while retaining backwards-compatible custom properties and revisions.
+        $publishedCss = app(DesignThemeCodeManager::class)->activeSource($theme, 'css');
+
+        // Shared theme CSS is global (not Page Builder-scoped), always appended
+        // after the palette/tokens. Draft source is never delivered publicly.
         return "/* MSKBA appearance: {$theme->slug} */\n:root {\n    "
             .implode("\n    ", $declarations)."\n}\n"
             .trim((string) $theme->css_code)."\n:root {\n    "
-            .implode("\n    ", $fontDeclarations)."\n}\n";
+            .implode("\n    ", $fontDeclarations)."\n}\n"
+            .($publishedCss === null ? '' : "\n/* Theme CSS: published */\n".$publishedCss."\n");
     }
 
     public function revision(DesignTheme $theme): string

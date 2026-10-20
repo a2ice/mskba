@@ -16,6 +16,11 @@ final class DesignTheme extends Model
         return ['colors' => 'array', 'is_system' => 'boolean', 'is_published' => 'boolean'];
     }
 
+    public function codeAssets(): HasMany
+    {
+        return $this->hasMany(DesignThemeCodeAsset::class, 'design_theme_id');
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(DesignThemeRevision::class);

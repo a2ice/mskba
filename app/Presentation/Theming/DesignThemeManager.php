@@ -66,6 +66,22 @@ final class DesignThemeManager
         ]);
     }
 
+    public function jsUrl(DesignTheme $theme): ?string
+    {
+        if (! $theme->is_published) {
+            return null;
+        }
+        $asset = app(DesignThemeCodeManager::class)->asset($theme, 'js');
+        if (! $asset?->is_enabled || ! $asset->published_hash || $asset->published_source === null) {
+            return null;
+        }
+
+        return route('design-themes.script', [
+            'theme' => $theme->slug,
+            'hash' => $asset->published_hash,
+        ]);
+    }
+
     public function options(): array
     {
         return DesignTheme::query()->where('is_published', true)
