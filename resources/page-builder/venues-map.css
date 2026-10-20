@@ -25,7 +25,7 @@
 .mskba-venues-map__reset { min-height: 40px; padding: 10px 15px; border: 0; border-radius: 8px; background: transparent; color: #3e5f83; font: 700 12px/1.2 inherit; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .mskba-venues-map__reset:hover,.mskba-venues-map__select:hover { background: #f0f4f9; }
 .mskba-venues-map__pin { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50% 50% 50% 5px; transform: rotate(-45deg); background: #ff7711; border: 2px solid #fff; box-shadow: 0 3px 12px rgba(10,25,40,.3); font-size: 22px; line-height: 1; }
-.mskba-venues-map__pin span { transform: rotate(45deg); }
+.mskba-venues-map__pin span { display: block; width: 30px; height: 30px; transform: rotate(45deg); background: url('/images/logo-mark-100.png') center / contain no-repeat; }
 .mskba-venues-map__pin.is-active { background: #ff4a00; box-shadow: 0 0 0 5px rgba(255,103,13,.2),0 5px 16px rgba(10,25,40,.3); }
 .mskba-venues-map__cluster { display: grid; place-items: center; width: 44px; height: 44px; border: 5px solid #fff; border-radius: 50%; background: linear-gradient(135deg,#ff901e,#ff5a00); box-shadow: 0 4px 15px rgba(28,55,76,.28); color: #fff; font-size: 15px; font-weight: 800; }
 .mskba-venues-map__popup { max-width: 300px; color: #17212b; font-family: var(--theme-font-family,Inter,Arial,sans-serif); }
