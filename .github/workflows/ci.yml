@@ -146,6 +146,9 @@ jobs:
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
         run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs
 
+      - name: Validate dynamic Page Builder venues-map JavaScript syntax
+        run: node --check resources/page-builder/venues-map.js
+
       - name: Build frontend
         # Do not bake localhost:8000 and sample Reverb credentials from .env.example
         # into assets shipped to https://dev.mskba.ru. The app theme reads the
@@ -336,6 +339,13 @@ jobs:
               $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan filament:assets --no-interaction
             fi
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
+            # Venues map initial installation is one-time, backup guarded and idempotent.
+            # Never rewrite later changes from Filament on subsequent deploys.
+            MAP_BACKUP='/home/deploy/mskba-page-builder-backups/venues-map-20261020-20261020T144814Z'
+            test -s "$MAP_BACKUP/mskba-dev-pre-venues-map.dump" || { echo '::error::Required pre-venues-map database backup missing'; exit 1; }
+            ( cd "$MAP_BACKUP" && sha256sum -c SHA256SUMS )
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:publish --apply
+
             # Import currently referenced Hero/Page Builder images into writable permanent storage.
             # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.
             # Any absent Git/old-user asset is reported explicitly without blocking initial rollout.
