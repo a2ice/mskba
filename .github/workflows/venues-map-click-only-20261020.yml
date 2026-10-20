@@ -1,0 +1,60 @@
+name: One-time MSKBA click-only venue popup publication
+
+on:
+  push:
+    branches:
+      - ops/publish-venues-map-click-only-20261020
+    paths:
+      - .github/workflows/venues-map-click-only-20261020.yml
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 18
+    steps:
+      - name: Verify existing V2, preserve dev database and publish JS only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml
+            test "$(git rev-parse HEAD)" = '1a9c399fd60b931e4063d2c1091c75536296873d' || {
+              echo 'Deployed dev code does not match tested commit'; exit 1;
+            }
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            "${COMPOSE[@]}" config --quiet
+            CHECK="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:click-only --check)"
+            if [ "$CHECK" = 'ALREADY' ]; then
+              echo 'Click-only map script already published; no operation.'
+              exit 0
+            fi
+            test "$CHECK" = 'READY' || { echo 'Map JS baseline mismatch; refusing update'; exit 1; }
+            umask 077
+            BACKUP_DIR="/home/deploy/mskba-page-builder-backups/venues-map-click-only-$(date -u +%Y%m%dT%H%M%SZ)"
+            mkdir -p -m 700 "$BACKUP_DIR"
+            DUMP="$BACKUP_DIR/mskba-dev-pre-map-click-only.dump"
+            "${COMPOSE[@]}" exec -T db sh -c \
+              'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' > "$DUMP"
+            test -s "$DUMP"
+            test "$(stat -c %s "$DUMP")" -gt 1024
+            "${COMPOSE[@]}" exec -T db pg_restore -l < "$DUMP" > "$BACKUP_DIR/pg_restore.list"
+            test -s "$BACKUP_DIR/pg_restore.list"
+            sha256sum "$DUMP" > "$BACKUP_DIR/SHA256SUMS"
+            ( cd "$BACKUP_DIR" && sha256sum -c SHA256SUMS )
+            echo "BACKUP VERIFIED: $BACKUP_DIR"
+            APPLY="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:click-only --apply)"
+            test "$APPLY" = 'PUBLISHED' || { echo 'Map JS publication did not complete'; exit 1; }
+            AFTER="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:click-only --check)"
+            test "$AFTER" = 'ALREADY' || { echo 'Unexpected JS state after publication'; exit 1; }
+            echo 'PASS: venue popup now opens only on marker clicks; V2 JS is saved for rollback.'
