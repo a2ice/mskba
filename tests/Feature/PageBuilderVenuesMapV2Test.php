@@ -20,6 +20,12 @@ final class PageBuilderVenuesMapV2Test extends TestCase
         $this->assertStringContainsString("marker.events.add('click'", $javascript);
         $this->assertStringContainsString("cardMount.replaceChildren(makeCard(", $javascript);
         $this->assertStringNotContainsString('balloonContent:', $javascript);
+        $this->assertStringNotContainsString('openCard(items[0].venue,items[0].marker)', $javascript);
+        $this->assertStringContainsString('openCard(venue,marker)', $javascript);
+        $this->assertStringContainsString(
+            'openCard(items[0].venue,items[0].marker)',
+            file_get_contents(resource_path('page-builder/versions/venues-map-v2.js')),
+        );
         $this->assertStringNotContainsString('★ 4.8', $javascript);
         $this->assertStringNotContainsString("'Открыто'", $javascript);
         $this->assertStringContainsString('Фото площадки пока нет', $javascript);
