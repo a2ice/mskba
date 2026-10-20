@@ -41,6 +41,9 @@
   root.querySelectorAll('.mskba-venues-map__feature-icon').forEach((slot, index) => {
     slot.replaceChildren(icon(['pin','sliders','star','calendar'][index]));
   });
+  const escapeHint = value => String(value || '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[ch]);
   const safeUrl = (value, fallback) => {
     try {
       const url = new URL(String(value || ''), location.origin);
@@ -256,7 +259,7 @@
     const items = venues.map(venue => {
       const marker = new ym.Placemark(
         [Number(venue.latitude),Number(venue.longitude)],
-        {hintContent:venue.name || 'Площадка'},
+        {hintContent:escapeHint(venue.name || 'Площадка')},
         { ...pinOptions,iconLayout:regularLayout }
       );
       marker.events.add('click',() => openCard(venue,marker));
