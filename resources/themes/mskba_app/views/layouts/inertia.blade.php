@@ -9,6 +9,9 @@
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
     @vite(['resources/themes/mskba_app/css/app.css', 'resources/themes/mskba_app/js/app.js', 'resources/themes/mskba_app/js/inertia.js'])
         <link id="mskba-appearance-css" rel="stylesheet" href="{{ app(\App\Presentation\Theming\DesignThemeManager::class)->cssUrl($appearanceTheme) }}">
+        @if ($themeScript = app(\App\Presentation\Theming\DesignThemeManager::class)->jsUrl($appearanceTheme))
+            <script defer src="{{ $themeScript }}"></script>
+        @endif
     @inertiaHead
 </head>
 <body>

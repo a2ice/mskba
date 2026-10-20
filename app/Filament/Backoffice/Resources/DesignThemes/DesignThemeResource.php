@@ -157,7 +157,7 @@ final class DesignThemeResource extends Resource
                 ->description('Применяется к фону, тексту, формам, кнопкам, сообщениям и статусным компонентам.')
                 ->columns(3)->schema($colors),
             Section::make('Расширенные CSS-токены')
-                ->description('Разрешены переменные в единственном блоке :root. Здесь настраиваются шрифты, границы, радиусы, тени, оверлеи и световые эффекты. Глобальные селекторы, @import и url() запрещены.')
+                ->description('Только переменные в блоке :root. Для глобальных CSS-классов и JavaScript используй кнопки CSS / JS в шапке этой страницы. Токены сохраняются отдельно от кода темы.')
                 ->schema([
                     CodeEditor::make('css_code')->label('CSS переменных')->language(Language::Css)
                         ->default(config('design_palettes.night.css_code'))->columnSpanFull(),

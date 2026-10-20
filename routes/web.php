@@ -137,6 +137,10 @@ Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 Route::get('/assets/design-themes/{theme}/{revision}.css', \App\Presentation\Theming\DesignThemeStylesheetController::class)
     ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('revision', '[a-f0-9]{16}')
     ->name('design-themes.css');
+Route::get('/assets/design-themes/{theme}/{hash}.js', \App\Presentation\Theming\DesignThemeScriptController::class)
+    ->middleware('throttle:120,1')
+    ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('hash', '[a-f0-9]{64}')
+    ->name('design-themes.script');
 Route::get('/backoffice/design-themes/preview/{theme}', \App\Presentation\Theming\DesignThemePreviewController::class)
     ->middleware('auth')->name('design-themes.preview');
 Route::get('/backoffice/design-themes/ui-kit/{theme}', \App\Presentation\Theming\DesignThemeUiKitController::class)
