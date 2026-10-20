@@ -336,6 +336,13 @@ jobs:
               $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan filament:assets --no-interaction
             fi
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
+            # Venues map initial installation is one-time, backup guarded and idempotent.
+            # Never rewrite later changes from Filament on subsequent deploys.
+            MAP_BACKUP='/home/deploy/mskba-page-builder-backups/venues-map-20261020-20261020T144814Z'
+            test -s "$MAP_BACKUP/mskba-dev-pre-venues-map.dump" || { echo '::error::Required pre-venues-map database backup missing'; exit 1; }
+            ( cd "$MAP_BACKUP" && sha256sum -c SHA256SUMS )
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:publish --apply
+
             # Import currently referenced Hero/Page Builder images into writable permanent storage.
             # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.
             # Any absent Git/old-user asset is reported explicitly without blocking initial rollout.
