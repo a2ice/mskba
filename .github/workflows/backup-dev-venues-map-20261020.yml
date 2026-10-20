@@ -13,6 +13,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    environment: development
     timeout-minutes: 15
     steps:
       - name: Preserve dev PostgreSQL without modifying the application
@@ -44,4 +45,4 @@ jobs:
             printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$BACKUP_DIR/metadata.txt"
             printf 'backup_dir=%s\n' "$BACKUP_DIR"
             printf 'dump_bytes=%s\n' "$(stat -c %s "$DUMP")"
-            printf 'backup_verification=OK\n"
+            printf 'backup_verification=OK\n'
