@@ -123,7 +123,7 @@
       map.behaviors.enable('multiTouch');
     }
     const pinLayout = ym.templateLayoutFactory.createClass(
-      '<div class="mskba-venues-map__pin"><span>🏀</span></div>'
+      '<div class="mskba-venues-map__pin"><span></span></div>'
     );
     const clusterer = new ym.Clusterer({
       preset: 'islands#invertedOrangeClusterIcons',
