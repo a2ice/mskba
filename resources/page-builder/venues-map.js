@@ -213,7 +213,7 @@
     const isMobile = matchMedia('(max-width:767px)').matches;
     const map = new ym.Map(canvas,{
       center: isMobile ? [55.77,37.55] : [55.78,37.42],
-      zoom: isMobile ? 10 : 10.5, controls: ['zoomControl']
+      zoom: isMobile ? 9 : 9.5, controls: ['zoomControl']
     },{suppressMapOpenBlock:true});
     map.behaviors.disable('scrollZoom');
     if (matchMedia('(pointer: coarse)').matches) {
