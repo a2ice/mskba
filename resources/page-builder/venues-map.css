@@ -86,8 +86,12 @@
 .mskba-venues-map__select:disabled { cursor: default; color: #4b5870; opacity: 1; }
 .mskba-venues-map__select:hover:not(:disabled) { background: #f3f7fb; }
 .mskba-venues-map__filter-wrap::after {
-  content: '⌄'; position: absolute; right: 6px; top: 8px; color: #597393;
-  font-size: 17px; pointer-events: none;
+  content: ''; position: absolute; right: 9px; top: 50%;
+  width: 7px; height: 7px;
+  border-right: 1.5px solid #597393;
+  border-bottom: 1.5px solid #597393;
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
 }
 .mskba-venues-map__reset {
   flex: 0 0 auto; min-height: 40px; display: inline-flex;
