@@ -282,9 +282,8 @@
       say(visible.length ? 'Площадок на карте: '+visible.length : 'По выбранным фильтрам площадок не найдено');
     }
     refresh();
-    // Matches the approved screenshot: first real venue shown as a preview
-    // on desktop, while mobile starts without an obstructing overlay.
-    if (!isMobile && items.length) openCard(items[0].venue,items[0].marker);
+    // Start with the map unobstructed. The user opens a venue card by
+    // clicking a marker; never show a popup on initial page load.
 
     const observer = typeof ResizeObserver === 'function'
       ? new ResizeObserver(() => { if (canvas.isConnected && canvas.offsetWidth) map.container.fitToViewport(); })
