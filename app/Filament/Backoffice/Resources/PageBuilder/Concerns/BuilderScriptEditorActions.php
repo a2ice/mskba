@@ -39,12 +39,16 @@ trait BuilderScriptEditorActions
                 ->outlined()
                 ->visible(fn (): bool => static::getResource()::canViewCss())
                 ->modalHeading('CSS · стили')
+                ->extraModalWindowAttributes(['class' => 'mskba-code-modal'])
+                ->stickyModalHeader()
+                ->stickyModalFooter()
                 ->modalDescription(fn (): string => $this->getRecord()->published_at === null
                     ? 'Страница ещё не опубликована. CSS сохранится как черновик; впервые он станет публичным вместе со страницей.'
                     : 'Редактируй CSS независимо от HTML и настроек. Публикация обновит только стили; при изменении предыдущая версия останется для отката.')
                 ->form([
                     CodeEditor::make('source')->label('Исходный CSS')
                         ->language(Language::Css)
+                        ->extraAttributes(['class' => 'mskba-code-editor'])
                         ->disabled(fn (): bool => ! static::getResource()::canEditCss())
                         ->columnSpanFull(),
                 ])
@@ -90,6 +94,9 @@ trait BuilderScriptEditorActions
                 ->outlined()
                 ->visible(fn (): bool => static::getResource()::canViewJs())
                 ->modalHeading('JavaScript · редактор')
+                ->extraModalWindowAttributes(['class' => 'mskba-code-modal'])
+                ->stickyModalHeader()
+                ->stickyModalFooter()
                 ->modalDescription(function (): string {
                     $script = $this->scriptAsset();
                     if ($script?->is_enabled) {
@@ -101,6 +108,7 @@ trait BuilderScriptEditorActions
                 ->form([
                     CodeEditor::make('source')->label('Исходный JavaScript')
                         ->language(Language::JavaScript)
+                        ->extraAttributes(['class' => 'mskba-code-editor'])
                         ->disabled(fn (): bool => ! static::getResource()::canEditJs())
                         ->columnSpanFull(),
                 ])
