@@ -146,4 +146,27 @@ final class PageBuilderCodeModalWorkflowTest extends TestCase
         $this->assertSame('console.log("unified modal");', $script->published_js);
     }
 
+
+    public function test_code_modals_have_bounded_code_scrolling_without_changing_publishing(): void
+    {
+        $this->actingAs($this->admin());
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $page = $this->publishedHome();
+
+        $this->get('/backoffice/page-builder/builder-pages/'.$page->id.'/edit')
+            ->assertOk()
+            ->assertSee('max-height: 95dvh', false)
+            ->assertSee('.mskba-code-modal .mskba-code-editor .cm-editor', false);
+
+        foreach (['editBuilderCss', 'editBuilderJs'] as $action) {
+            $mounted = Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+                ->mountAction($action)
+                ->assertMountedActionModalSee($action === 'editBuilderCss' ? 'Исходный CSS' : 'Исходный JavaScript');
+
+            $modal = $mounted->instance()->getMountedAction();
+            $this->assertSame('mskba-code-modal', $modal->getExtraModalWindowAttributes()['class'] ?? null);
+            $this->assertTrue($modal->isModalHeaderSticky());
+            $this->assertTrue($modal->isModalFooterSticky());
+        }
+    }
 }
