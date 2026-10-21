@@ -29,10 +29,14 @@ final class EditDesignTheme extends EditRecord
             ->outlined()
             ->visible(fn (): bool => DesignThemeResource::canView($this->record))
             ->modalHeading($name.' · код темы «'.$this->record->name.'»')
+            ->extraModalWindowAttributes(['class' => 'mskba-code-modal'])
+            ->stickyModalHeader()
+            ->stickyModalFooter()
             ->modalDescription('Глобальный код только выбранной темы. Редактор независим от токенов, страницы и компонентов. Черновики не исполняются публично; публикация создаёт версию для отката.')
             ->form([
                 CodeEditor::make('source')->label('Исходный '.$name)
                     ->language($css ? Language::Css : Language::JavaScript)
+                    ->extraAttributes(['class' => 'mskba-code-editor'])
                     ->disabled(fn (): bool => ! DesignThemeResource::canEdit($this->record))
                     ->columnSpanFull(),
                 Select::make('revision_id')->label('Восстановить опубликованную версию')
