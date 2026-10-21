@@ -13,7 +13,7 @@ final class AccountConversationRailController extends Controller
     {
         $active = $request->query('active', '');
         abort_unless(is_string($active) && strlen($active) <= 64 &&
-            ($active === '' || preg_match('/^(?:profile|direct|team|support)-[0-9]+$|^system$/', $active)), 422);
+            ($active === '' || preg_match('/^(?:profile|direct|team|support|operator)-[0-9]+$|^system$/', $active)), 422);
 
         return response()->json([
             'html' => view('theme::pages.account.partials.conversation-rail-items', [
