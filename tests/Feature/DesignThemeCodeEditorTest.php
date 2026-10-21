@@ -147,10 +147,14 @@ final class DesignThemeCodeEditorTest extends TestCase
         $theme = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
 
         foreach (['editThemeCss', 'editThemeJs'] as $action) {
-            Livewire::test(EditDesignTheme::class, ['record' => $theme->getRouteKey()])
+            $mounted = Livewire::test(EditDesignTheme::class, ['record' => $theme->getRouteKey()])
                 ->mountAction($action)
-                ->assertSee('mskba-code-modal', false)
-                ->assertSee('mskba-code-editor', false);
+                ->assertMountedActionModalSee($action === 'editThemeCss' ? 'Исходный CSS' : 'Исходный JS');
+
+            $modal = $mounted->instance()->getMountedAction();
+            $this->assertSame('mskba-code-modal', $modal->getExtraModalWindowAttributes()['class'] ?? null);
+            $this->assertTrue($modal->isModalHeaderSticky());
+            $this->assertTrue($modal->isModalFooterSticky());
         }
     }
 }
