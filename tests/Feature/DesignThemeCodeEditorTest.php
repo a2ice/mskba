@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Backoffice\Resources\DesignThemes\Pages\EditDesignTheme;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\DesignTheme;
 use App\Presentation\Theming\DesignThemeCodeManager;
 use App\Presentation\Theming\DesignThemeManager;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -134,6 +137,20 @@ final class DesignThemeCodeEditorTest extends TestCase
             $this->fail('Ordinary user could publish theme code');
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
+        }
+    }
+
+    public function test_theme_css_and_js_modals_use_scrolling_code_editor_layout(): void
+    {
+        $this->actingAs($this->admin());
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $theme = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+
+        foreach (['editThemeCss', 'editThemeJs'] as $action) {
+            Livewire::test(EditDesignTheme::class, ['record' => $theme->getRouteKey()])
+                ->mountAction($action)
+                ->assertSee('mskba-code-modal', false)
+                ->assertSee('mskba-code-editor', false);
         }
     }
 }
