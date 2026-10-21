@@ -3,9 +3,9 @@
      Kept outside Page Builder / user theme CSS, so it works in the Filament panel. --}}
 <style>
     .fi-modal-window.mskba-code-modal {
-        max-height: 95vh;
-        max-height: 95dvh;
-        overflow: hidden;
+        max-height: 95vh !important;
+        max-height: 95dvh !important;
+        overflow: hidden !important;
     }
 
     .fi-modal-window.mskba-code-modal > .fi-modal-header,
