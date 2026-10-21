@@ -62,6 +62,7 @@ final class BackofficePanelProvider extends PanelProvider
                 OperatorUserResource::class,
                 OperatorConversationResource::class,
             ])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
             // Filament's support chat uses the same browser-safe Reverb key
             // as the portal, never a private app secret or compiled .env.
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
