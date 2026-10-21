@@ -159,10 +159,14 @@ final class PageBuilderCodeModalWorkflowTest extends TestCase
             ->assertSee('.mskba-code-modal .mskba-code-editor .cm-editor', false);
 
         foreach (['editBuilderCss', 'editBuilderJs'] as $action) {
-            Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
+            $mounted = Livewire::test(EditBuilderPage::class, ['record' => $page->getRouteKey()])
                 ->mountAction($action)
-                ->assertSee('mskba-code-modal', false)
-                ->assertSee('mskba-code-editor', false);
+                ->assertMountedActionModalSee($action === 'editBuilderCss' ? 'Исходный CSS' : 'Исходный JavaScript');
+
+            $modal = $mounted->instance()->getMountedAction();
+            $this->assertSame('mskba-code-modal', $modal->getExtraModalWindowAttributes()['class'] ?? null);
+            $this->assertTrue($modal->isModalHeaderSticky());
+            $this->assertTrue($modal->isModalFooterSticky());
         }
     }
 }
