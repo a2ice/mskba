@@ -17,6 +17,7 @@ use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel;
 use App\Presentation\Theming\ThemeResolver;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -281,5 +282,57 @@ final class OperatorConversationsTest extends TestCase
         $customer = $this->user();
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(OperatorConversationMessaging::class)->start($admin, $customer, 'Оператор без права');
+    }
+
+    public function test_operator_conversation_rail_refresh_accepts_operator_active_identifier(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $operator = $this->user(UserSystemRoleEnum::EDITOR);
+        $customer = $this->user();
+        $this->grant($super, $operator);
+        $conversation = app(OperatorConversationMessaging::class)
+            ->start($operator, $customer, 'Сообщение для проверки списка');
+
+        $rail = route('account.notifications.rail');
+        $response = $this->actingAs($customer)
+            ->getJson($rail.'?active=operator-'.$conversation->id)
+            ->assertOk()
+            ->assertJsonStructure(['html']);
+
+        $this->assertStringContainsString(
+            'data-rail-conversation="operator-'.$conversation->id.'"',
+            $response->json('html'),
+        );
+        $this->getJson($rail.'?active=operator-invalid')->assertUnprocessable();
+    }
+
+    public function test_private_conversation_channels_have_callable_authorizers_and_enforce_operator_access(): void
+    {
+        $channels = Broadcast::getChannels();
+        foreach ([
+            'request-threads.{id}',
+            'direct-conversations.{id}',
+            'support-tickets.{id}',
+            'operator-conversations.{id}',
+        ] as $name) {
+            $this->assertArrayHasKey($name, $channels);
+            $this->assertIsCallable($channels[$name], $name.' must have an invokable broadcast handler');
+        }
+
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $operator = $this->user(UserSystemRoleEnum::EDITOR);
+        $customer = $this->user();
+        $outsider = $this->user();
+        $this->grant($super, $operator);
+        $conversation = app(OperatorConversationMessaging::class)
+            ->start($operator, $customer, 'Приватный операторский диалог');
+
+        $authorize = $channels['operator-conversations.{id}'];
+        $this->assertTrue($authorize($customer, (string) $conversation->id));
+        $this->assertTrue($authorize($operator, (string) $conversation->id));
+        $this->assertFalse($authorize($outsider, (string) $conversation->id));
+
+        app(GlobalOperationalPermissionManager::class)->sync($super, $operator, [], []);
+        $this->assertFalse($authorize($operator, (string) $conversation->id));
     }
 }
