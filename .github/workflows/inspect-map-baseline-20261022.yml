@@ -1,0 +1,27 @@
+name: Inspect venues-map Filament baseline (read only)
+on:
+  push:
+    branches: [ops/publish-container-map-plate-20261022]
+    paths: [.github/workflows/inspect-map-baseline-20261022.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 8
+    steps:
+      - name: Check content fingerprint of map drafts and publications
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            "${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); $c=\\App\\Modules\\Content\\Domain\\Models\\PageBuilderComponent::query()->where("slug","venues-map")->firstOrFail(); foreach (["html","css"] as $type) {  $file=resource_path("page-builder/versions/venues-map-pre-container-20261022.".$type);  $expected=file_get_contents($file);  foreach(["draft_","published_"] as $prefix) {   $key=$prefix.$type;   $actual=(string)$c->{$key};   $diff="equal";   if($actual!==$expected) {    $n=min(strlen($actual),strlen($expected));$i=0;    while($i<$n && $actual[$i]===$expected[$i]) $i++;    $diff=(string)$i;   }   echo $key." match=".($actual===$expected?"YES":"NO")." actual_len=".strlen($actual)." expected_len=".strlen($expected)." first_diff=".$diff." hash=".substr(hash("sha256",$actual),0,12)."\\n";  } } '
