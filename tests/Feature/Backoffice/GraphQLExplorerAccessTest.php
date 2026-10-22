@@ -15,6 +15,13 @@ final class GraphQLExplorerAccessTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // This feature test runs before Vite builds the new GraphiQL bundle.
+        $this->withoutVite();
+    }
+
     private function user(Role $role, UserStatusEnum $status = UserStatusEnum::CONFIRMED): User
     {
         $user = User::factory()->create([
