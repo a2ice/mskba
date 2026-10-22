@@ -1,0 +1,90 @@
+name: One-time install MSKBA homepage tournaments scene
+
+on:
+  push:
+    branches:
+      - ops/install-home-tournaments-scene-20261022
+    paths:
+      - .github/workflows/install-home-tournaments-scene-20261022.yml
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 20
+    steps:
+      - name: Guard homepage, back up complete dev DB and publish tournament component in Filament
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 17m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml
+            test "$(git rev-parse HEAD)" = '3e2cc7c76da42f4c3380486ec00b042d7618887f' || {
+              echo 'Unexpected deployed commit, refusing Page Builder installation'; exit 1;
+            }
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            "${COMPOSE[@]}" config --quiet
+            set +e
+            CHECK="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:tournaments-scene:install --check 2>&1)"
+            CODE=$?
+            set -e
+            if [ "$CODE" -ne 0 ]; then
+              echo 'Homepage pre-install guard refused changes:'
+              printf '%s\n' "$CHECK" | tail -n 12
+              exit 1
+            fi
+            STATUS="$(printf '%s\n' "$CHECK" | grep -E '^(READY|ALREADY)$' | tail -n 1)"
+            if [ "$STATUS" = 'ALREADY' ]; then
+              echo 'Tournament scene already installed. Nothing changed.'
+              exit 0
+            fi
+            test "$STATUS" = 'READY' || { echo 'Could not verify live homepage baseline'; exit 1; }
+
+            umask 077
+            BACKUP_DIR="/home/deploy/mskba-page-builder-backups/home-tournaments-scene-$(date -u +%Y%m%dT%H%M%SZ)"
+            mkdir -p -m 700 "$BACKUP_DIR"
+            DUMP="$BACKUP_DIR/dev-before-tournaments-scene.dump"
+            "${COMPOSE[@]}" exec -T db sh -c \
+              'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' > "$DUMP"
+            test -s "$DUMP"
+            test "$(stat -c %s "$DUMP")" -gt 1024
+            "${COMPOSE[@]}" exec -T db pg_restore -l < "$DUMP" > "$BACKUP_DIR/pg_restore.list"
+            test -s "$BACKUP_DIR/pg_restore.list"
+            sha256sum "$DUMP" > "$BACKUP_DIR/SHA256SUMS"
+            ( cd "$BACKUP_DIR" && sha256sum -c SHA256SUMS )
+            echo "BACKUP VERIFIED: $BACKUP_DIR"
+
+            set +e
+            APPLY="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:tournaments-scene:install --apply 2>&1)"
+            CODE=$?
+            set -e
+            if [ "$CODE" -ne 0 ]; then
+              echo 'Component installation stopped:'
+              printf '%s\n' "$APPLY" | tail -n 12
+              exit 1
+            fi
+            RESULT="$(printf '%s\n' "$APPLY" | grep -E '^PUBLISHED$' | tail -n 1)"
+            test "$RESULT" = 'PUBLISHED' || { echo 'Publisher did not confirm PUBLISHED'; exit 1; }
+
+            AFTER="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:tournaments-scene:install --check 2>&1)"
+            printf '%s\n' "$AFTER" | grep -qx 'ALREADY' || {
+              echo 'Post-install state verification failed'; exit 1;
+            }
+            PAGE="$(mktemp)"
+            trap 'rm -f "$PAGE"' EXIT
+            curl -fsS --max-time 20 -H 'Accept: text/html' 'https://dev.mskba.ru/' -o "$PAGE"
+            grep -q 'class="mskba-tournaments"' "$PAGE" || { echo 'New tournaments component not visible on homepage'; exit 1; }
+            grep -q 'mskba-tournaments__listing' "$PAGE" || { echo 'Tournament list panel missing'; exit 1; }
+            curl -fsS --max-time 20 'https://dev.mskba.ru/api/v1/home/tournaments-scene' |
+              python3 -c 'import json,sys; d=json.load(sys.stdin); assert set(d["assets"])=={"background","rim","ball"}; assert isinstance(d["tournaments"],list); print("Tournament feed OK; upcoming count:",len(d["tournaments"]))'
+            echo 'PASS: tournament scene component created in Filament, page published, and feed verified.'
