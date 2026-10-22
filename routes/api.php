@@ -7,6 +7,7 @@ use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebhookController
 use App\Modules\VenueBooking\Presentation\Http\Controllers\PaymentWebhookController;
 use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\ListPublicVenuesController;
 use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\HomepageVenueMapController;
+use App\Modules\Tournament\Presentation\Http\Controllers\Api\V1\HomepageTournamentsSceneController;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnsureActiveMobileApiUser;
 use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileAuthController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,11 @@ Route::get('/v1/venues', ListPublicVenuesController::class)
 Route::get('/v1/home/venues-map', HomepageVenueMapController::class)
     ->middleware('throttle:60,1')
     ->name('api.v1.home.venues-map');
+
+// Public read-only homepage tournaments listing and named scene-art lookup.
+Route::get('/v1/home/tournaments-scene', HomepageTournamentsSceneController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.v1.home.tournaments-scene');
 
 // Compatibility with the first iOS integration path; same contract and rules.
 Route::get('/get_venues', ListPublicVenuesController::class)
