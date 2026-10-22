@@ -1,0 +1,73 @@
+name: One-time publish reconciled MSKBA Venues Map V5
+
+on:
+  push:
+    branches:
+      - ops/publish-live-map-v5-container-20261022
+    paths:
+      - .github/workflows/publish-live-map-v5-container-20261022.yml
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 18
+    steps:
+      - name: Publish only V5 map HTML/CSS after live V4 drift checks and full database backup
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml
+            test "$(git rev-parse HEAD)" = '9f42ec183c429009c90c0dc875082638df623023' || {
+              echo 'Wrong deployed code revision'; exit 1;
+            }
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            "${COMPOSE[@]}" config --quiet
+            set +e
+            CHECK="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:container-plate --check 2>&1)"
+            CODE=$?
+            set -e
+            if [ "$CODE" -ne 0 ]; then
+              echo 'Map baseline check refused publishing:'
+              printf '%s\n' "$CHECK" | tail -n 10
+              exit 1
+            fi
+            if [ "$CHECK" = 'ALREADY' ]; then
+              echo 'V5 map already published. No changes required.'
+              exit 0
+            fi
+            test "$CHECK" = 'READY' || { echo 'Map source differs from live V4 baseline'; exit 1; }
+            umask 077
+            BACKUP_DIR="/home/deploy/mskba-page-builder-backups/map-live-v4-to-v5-$(date -u +%Y%m%dT%H%M%SZ)"
+            mkdir -p -m 700 "$BACKUP_DIR"
+            DUMP="$BACKUP_DIR/dev-before-map-v5-container.dump"
+            "${COMPOSE[@]}" exec -T db sh -c \
+              'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --no-owner --no-acl' > "$DUMP"
+            test -s "$DUMP"
+            test "$(stat -c %s "$DUMP")" -gt 1024
+            "${COMPOSE[@]}" exec -T db pg_restore -l < "$DUMP" > "$BACKUP_DIR/pg_restore.list"
+            test -s "$BACKUP_DIR/pg_restore.list"
+            sha256sum "$DUMP" > "$BACKUP_DIR/SHA256SUMS"
+            (cd "$BACKUP_DIR" && sha256sum -c SHA256SUMS)
+            echo "BACKUP VERIFIED: $BACKUP_DIR"
+            APPLY="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:container-plate --apply)"
+            test "$APPLY" = 'PUBLISHED' || { echo 'Map V5 publication did not complete'; exit 1; }
+            AFTER="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:container-plate --check)"
+            test "$AFTER" = 'ALREADY' || { echo 'Unrecognized post-publication state'; exit 1; }
+            PAGE="$(mktemp)"
+            trap 'rm -f "$PAGE"' EXIT
+            curl -fsS --max-time 20 -H 'Accept: text/html' https://dev.mskba.ru/ -o "$PAGE"
+            grep -q 'mskba-venues-map-section__container' "$PAGE" || { echo 'V5 container card is not present in public HTML'; exit 1; }
+            grep -q 'mskba-venues-map__canvas' "$PAGE" || { echo 'Yandex map canvas not present'; exit 1; }
+            echo 'PASS: reconciled V5 map card published, live V4 archived, only venues-map component changed.'
