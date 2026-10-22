@@ -74,11 +74,22 @@ final class SiteMediaAssetResource extends Resource
         ]);
     }
 
+    /**
+     * Filament image columns require an absolute HTTP URL for routed media;
+     * root-relative /media/site/UUID would be interpreted as a storage path.
+     */
+    public static function previewUrl(SiteMediaAsset $record): string
+    {
+        return url($record->publicUrl());
+    }
+
     public static function table(Table $table): Table
     {
         return $table->columns([
             ImageColumn::make('preview')->label('Превью')
-                ->getStateUsing(fn (SiteMediaAsset $record): string => $record->publicUrl())
+                // ImageColumn treats a relative value as a path on its storage disk.
+                // Our /media/site/{uuid} route is a Laravel HTTP endpoint instead.
+                ->getStateUsing(fn (SiteMediaAsset $record): string => self::previewUrl($record))
                 ->square()->height(64),
             TextColumn::make('title')->label('Изображение')->searchable()->sortable(),
             TextColumn::make('folder.name')->label('Папка')->placeholder('Без папки')->sortable(),
