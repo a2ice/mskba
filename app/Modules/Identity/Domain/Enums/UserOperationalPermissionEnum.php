@@ -33,6 +33,7 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_SITE_MEDIA_RESTORE = 'backoffice.site_media.restore';
     case BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE = 'backoffice.site_media.folder_manage';
     case BACKOFFICE_GRAPHQL_EXPLORER_VIEW = 'backoffice.graphql_explorer.view';
+    case BACKOFFICE_REST_API_EXPLORER_VIEW = 'backoffice.rest_api_explorer.view';
     case BACKOFFICE_BUILDER_VIEW = 'backoffice.page_builder.view';
     case BACKOFFICE_BUILDER_EDIT = 'backoffice.page_builder.edit';
     case BACKOFFICE_BUILDER_PUBLISH = 'backoffice.page_builder.publish';
@@ -63,6 +64,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_SITE_MEDIA_RESTORE,
             self::BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE,
             self::BACKOFFICE_GRAPHQL_EXPLORER_VIEW,
+            self::BACKOFFICE_REST_API_EXPLORER_VIEW,
             self::BACKOFFICE_BUILDER_VIEW,
             self::BACKOFFICE_BUILDER_EDIT,
             self::BACKOFFICE_BUILDER_PUBLISH,
@@ -111,6 +113,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_SITE_MEDIA_RESTORE => 'Восстановление предыдущей версии изображения',
             self::BACKOFFICE_SITE_MEDIA_FOLDER_MANAGE => 'Управление папками медиабиблиотеки',
             self::BACKOFFICE_GRAPHQL_EXPLORER_VIEW => 'Доступ к GraphQL Explorer в Filament',
+            self::BACKOFFICE_REST_API_EXPLORER_VIEW => 'Доступ к REST API / Swagger UI в Filament',
             self::BACKOFFICE_BUILDER_VIEW => 'Просмотр страниц, шаблонов и компонентов',
             self::BACKOFFICE_BUILDER_EDIT => 'Редактирование черновиков конструктора страниц',
             self::BACKOFFICE_BUILDER_PUBLISH => 'Публикация и восстановление страниц и компонентов',
