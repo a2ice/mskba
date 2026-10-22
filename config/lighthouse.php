@@ -26,7 +26,7 @@ return [
         'path' => base_path('bootstrap/cache/lighthouse-schema.php'),
     ],
     'security' => [
-        'max_query_complexity' => 150,
+        'max_query_complexity' => 1500,
         'max_query_depth' => 7,
         'disable_introspection' => (bool) env(
             'LIGHTHOUSE_SECURITY_DISABLE_INTROSPECTION',
