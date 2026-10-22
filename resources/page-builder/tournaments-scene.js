@@ -36,7 +36,7 @@
     if (typeof value !== 'string') return '/tournaments';
     try {
       const url = new URL(value, location.origin);
-      return url.origin === location.origin && /^\/tournaments\/[A-Za-z0-9-]+\/?$/.test(url.pathname)
+      return url.origin === location.origin && /^\/tournaments\/[^/?#]+\/?$/.test(url.pathname)
         ? url.pathname
         : '/tournaments';
     } catch (_) { return '/tournaments'; }
