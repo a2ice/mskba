@@ -2,35 +2,28 @@
 
 namespace App\Modules\Identity\Infrastructure\Http\Middleware;
 
-use App\Modules\Identity\Domain\Enums\UserStatusEnum;
-use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Application\Services\MobileTokenAuthorizer;
 use Closure;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
-use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Reject stateful web-session fallback and any revoked/blocked identity. */
+/** Reject cookie/web-session fallback; share the exact token rules with GraphQL. */
 final class EnsureActiveMobileApiUser
 {
+    public function __construct(private readonly MobileTokenAuthorizer $authorizer) {}
+
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-        $token = $user?->currentAccessToken();
-
-        if (! $user instanceof User || ! $token instanceof PersonalAccessToken) {
-            return response()->json(['message' => 'Требуется Bearer-токен пользователя.'], 401);
-        }
-
-        $canonical = $user->canonical();
-        if ((int) $canonical->id !== (int) $user->id
-            || User::query()->whereIn('id', $canonical->identityIds())
-                ->where('status', UserStatusEnum::BLOCKED->value)->exists()) {
-            return response()->json(['message' => 'Доступ к аккаунту заблокирован.'], 403);
-        }
-
-        $required = $request->routeIs('api.v1.auth.logout') ? 'auth:logout' : 'profile:read';
-        if (! $token->can($required)) {
-            return response()->json(['message' => 'Недостаточно прав токена.'], 403);
+        try {
+            $this->authorizer->authenticatedUser(
+                $request->routeIs('api.v1.auth.logout') ? 'auth:logout' : 'profile:read',
+            );
+        } catch (AuthenticationException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 401);
+        } catch (AuthorizationException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 403);
         }
 
         return $next($request);
