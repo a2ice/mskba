@@ -1,0 +1,26 @@
+name: Inspect staging homepage for tournament section (read only)
+on:
+  push:
+    branches: [feat/home-tournaments-scene-20261022]
+    paths: [.github/workflows/inspect-tournaments-home-20261022.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 8
+    steps:
+      - name: Inspect only public Page Builder homepage publication and section offsets
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
+            "${COMPOSE[@]}" exec -T phpfpm php -r 'require "vendor/autoload.php"; $app=require "bootstrap/app.php"; $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap(); $pages=\App\Modules\Content\Domain\Models\PageBuilderPage::query()->where("published_path","/")->get(); foreach($pages as $page) {echo "PAGE_ID=".$page->id." NAME=".$page->name." TEMPLATE=".$page->template_id." PUBLISHED_TEMPLATE=".$page->published_template_id."\n"; foreach(["draft_html","published_html"] as $key){$html=(string)$page->{$key};$at=strpos($html,"id=\"tournaments\"");if($at===false)$at=strpos($html,"tournaments");echo $key." LEN=".strlen($html)." HASH=".hash("sha256",$html)." TOURNAMENT_AT=".($at===false?"NONE":$at)." EXCERPT=".($at===false?"":base64_encode(substr($html,max(0,$at-80),1200)))."\n";}if($page->template_id){$template=\App\Modules\Content\Domain\Models\PageBuilderTemplate::find($page->template_id);echo "TEMPLATE_LEN=".strlen((string)$template?->published_html)." TOURNAMENT=".str_contains((string)$template?->published_html,"tournaments")."\n";}} $f=\App\Modules\Media\Domain\Models\SiteMediaFolder::query()->where("slug","home-tournaments-section")->first();echo "MEDIA_FOLDER=".($f?->id??"ABSENT")."\n";'
