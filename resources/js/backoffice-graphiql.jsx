@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { GraphiQL } from 'graphiql';
 import { createGraphiQLFetcher } from '@graphiql/toolkit';
 import 'graphiql/style.css';
+import '../css/backoffice-graphiql.css';
 
-const defaultQuery = \`# Публичные площадки MSKBA. Выберите поля и нажмите Run.
+const defaultQuery = `# Публичные площадки MSKBA. Выберите поля и нажмите Run.
 query Venues {
   venues(first: 2) {
     edges {
@@ -20,7 +21,7 @@ query Venues {
       endCursor
     }
   }
-}\`;
+}`;
 
 function initializeGraphiQL() {
   const element = document.getElementById('mskba-graphiql-root');
@@ -49,7 +50,7 @@ function initializeGraphiQL() {
       const headers = new Headers(options.headers ?? {});
       // Each invocation reads the token from in-memory state; do not persist it.
       if (token) {
-        headers.set('Authorization', \`Bearer \${token}\`);
+        headers.set('Authorization', `Bearer ${token}`);
       } else {
         headers.delete('Authorization');
       }
@@ -70,10 +71,10 @@ function initializeGraphiQL() {
 
   // Livewire can replace the Filament page during SPA navigation.
   document.addEventListener('livewire:navigating', () => {
-    if (!element.isConnected) {
-      root.unmount();
-      token = '';
-    }
+    root.unmount();
+    token = '';
+    if (tokenInput) tokenInput.value = '';
+    delete element.dataset.mounted;
   }, { once: true });
 }
 
