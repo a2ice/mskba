@@ -1,9 +1,25 @@
 /* MSKBA Venues Map V2 — aligned with MSKBA UI-kit and approved map concept.
  * All styling is scoped to this Page Builder component.
  */
+/* Constrained plate: only the previous Venues scene remains full-bleed. */
+.mskba-venues-map-section {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  padding: 28px 0 36px;
+  background: #f7f9fc;
+}
+.mskba-venues-map-section__container {
+  position: relative;
+  min-width: 0;
+}
 .mskba-venues-map {
-  position: relative; isolation: isolate; width: 100%; min-height: 510px;
-  overflow: hidden; background: #edf3f6; color: #12171f;
+  position: relative; isolation: isolate; width: 100%; min-width: 0;
+  min-height: 510px; overflow: hidden;
+  border-radius: 21px;
+  border: 1px solid rgba(36, 60, 90, .09);
+  box-shadow: 0 10px 32px rgba(26, 48, 69, .10), 0 2px 7px rgba(26, 48, 69, .035);
+  background: #edf3f6; color: #12171f;
   font-family: var(--theme-font-family, Inter, Arial, sans-serif);
 }
 .mskba-venues-map__canvas {
@@ -19,6 +35,8 @@
 }
 .mskba-venues-map__container {
   position: relative; z-index: 2; min-height: 510px;
+  width: 100%; min-width: 0;
+  padding: 0 clamp(24px, 3vw, 43px);
   display: flex; align-items: center; pointer-events: none;
 }
 .mskba-venues-map__copy {
@@ -196,7 +214,9 @@
   .mskba-venues-map__filters { bottom: 16px; }
 }
 @media (max-width:767px) {
-  .mskba-venues-map { min-height: 735px; }
+  .mskba-venues-map-section { padding: 18px 0 26px; }
+  .mskba-venues-map { min-height: 735px; border-radius: 17px; }
+  .mskba-venues-map__container { padding: 0 20px; }
   .mskba-venues-map__container { min-height: 735px; align-items: flex-start; }
   .mskba-venues-map__copy { max-width: 100%; padding: 30px 0 95px; }
   .mskba-venues-map__title { max-width: 420px; font-size: clamp(34px,8.3vw,46px); }
@@ -219,6 +239,16 @@
   }
   .mskba-venues-map__filters::-webkit-scrollbar { display: none; }
   .mskba-venues-map__select { max-width: 165px; }
+}
+@media (min-width:768px) and (max-width:991px) {
+  .mskba-venues-map__container { padding-left: 28px; padding-right: 28px; }
+  .mskba-venues-map__copy { max-width: 480px; }
+  .mskba-venues-map__filters { max-width: calc(100% - 56px); }
+}
+@media (max-width:450px) {
+  .mskba-venues-map__container { padding: 0 16px; }
+  .mskba-venues-map__card-anchor { left: 0; right: 0; }
+  .mskba-venues-map__filters { left: 0; right: 0; }
 }
 @media (prefers-reduced-motion:reduce) {
   .mskba-venues-map__cta { transition: none; }
