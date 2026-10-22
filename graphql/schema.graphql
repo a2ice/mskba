@@ -1,0 +1,67 @@
+"""
+MSKBA read-only GraphQL API (v1).
+The same published venue and personal account data are available via REST v1.
+"""
+type Query {
+    "Published, non-deleted basketball venues ordered by stable numeric ID."
+    venues(first: Int = 30, after: String): VenueConnection!
+
+    "One published venue by its numeric ID."
+    venue(id: ID!): Venue
+
+    "Current MSKBA user. Requires an active Bearer token with profile:read."
+    me: Me!
+}
+
+type VenueConnection {
+    edges: [VenueEdge!]!
+    pageInfo: VenuePageInfo!
+}
+
+type VenueEdge {
+    cursor: String!
+    node: Venue!
+}
+
+type VenuePageInfo {
+    hasNextPage: Boolean!
+    endCursor: String
+}
+
+"""
+Whitelisted public venue fields. No Eloquent model attributes or sensitive
+ownership, moderation, contract or payment fields leak through GraphQL.
+"""
+type Venue {
+    id: ID!
+    name: String!
+    alias: String!
+    type: String!
+    typeLabel: String!
+    status: String!
+    operationalStatus: String!
+    shortDescription: String
+    address: String
+    latitude: Float
+    longitude: Float
+    imageUrl: String
+    url: String!
+}
+
+"Only own, token-authorized account information; never a generic users lookup."
+type Me {
+    id: ID!
+    username: String!
+    status: String!
+    profile: MeProfile
+    participationRoles: [String!]!
+}
+
+type MeProfile {
+    firstName: String
+    lastName: String
+    middleName: String
+    gender: String
+    birthDate: String
+    avatarUrl: String
+}
