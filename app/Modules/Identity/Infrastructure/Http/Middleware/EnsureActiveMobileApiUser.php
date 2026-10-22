@@ -12,10 +12,12 @@ use Symfony\Component\HttpFoundation\Response;
 /** Reject cookie/web-session fallback; share the exact token rules with GraphQL. */
 final class EnsureActiveMobileApiUser
 {
+    public function __construct(private readonly MobileTokenAuthorizer $authorizer) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         try {
-            app(MobileTokenAuthorizer::class)->authenticatedUser(
+            $this->authorizer->authenticatedUser(
                 $request->routeIs('api.v1.auth.logout') ? 'auth:logout' : 'profile:read',
             );
         } catch (AuthenticationException $exception) {
