@@ -26,8 +26,12 @@
         "qrcode": "^1.5.4",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
+        "swagger-ui-dist": "^5.33.3",
         "three": "0.184.0",
         "tom-select": "^2.6.1",
         "vue": "^3.5.43"
+    },
+    "scarfSettings": {
+        "enabled": false
     }
 }
