@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\CursorPaginator;
 
@@ -21,7 +22,7 @@ final class ListPublicVenuesHandler
         return $this->publicQuery()->find($id);
     }
 
-    private function publicQuery(): \Illuminate\Database\Eloquent\Builder
+    private function publicQuery(): Builder
     {
         return Venue::query()
             ->where('status', VenueStatusEnum::CONFIRMED->value)
@@ -32,7 +33,6 @@ final class ListPublicVenuesHandler
                     ->orderByDesc('is_featured')
                     ->orderBy('sort_order')
                     ->orderBy('id'),
-            ])
-            ;
+            ]);
     }
 }
