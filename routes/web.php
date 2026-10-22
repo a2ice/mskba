@@ -1078,6 +1078,12 @@ Route::get('/media/site/{uuid}', [\App\Modules\Media\Presentation\Http\SiteMedia
 Route::get('/backoffice/site-media/{uuid}/previous', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'previous'])
     ->middleware('auth:web')->whereUuid('uuid')->name('site-media.previous');
 
+// OpenAPI source is available only to confirmed, permitted Filament developers.
+// Unlike /api/v1/*, this is NOT a public API route.
+Route::get('/backoffice/rest-api/openapi.json',
+    \App\Http\Controllers\Backoffice\OpenApiDocumentController::class)
+    ->middleware('auth:web')->name('backoffice.rest-api.openapi');
+
 // Only run after ALL explicit routes (including routes in other files).
 // Laravel prioritizes fallback routes after normal matching.
 Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {

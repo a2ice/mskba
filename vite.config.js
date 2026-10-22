@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/backoffice-support-chat.js',
                 'resources/js/backoffice-graphiql.jsx',
+                'resources/js/backoffice-swagger.js',
                 'resources/css/page-builder.css',
                 'resources/js/page-builder.js',
                 'resources/themes/mskba_dark/css/app.css',
