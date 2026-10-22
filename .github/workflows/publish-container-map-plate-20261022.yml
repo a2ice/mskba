@@ -34,7 +34,15 @@ jobs:
             }
             COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
             "${COMPOSE[@]}" config --quiet
-            CHECK="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:container-plate --check)"
+            set +e
+            CHECK="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:container-plate --check 2>&1)"
+            STATUS=$?
+            set -e
+            if [ "$STATUS" -ne 0 ]; then
+              echo 'Map CMS drift or command error:'
+              printf '%s\n' "$CHECK" | tail -n 14
+              exit 1
+            fi
             if [ "$CHECK" = 'ALREADY' ]; then
               echo 'Constrained map plate is already published; no changes needed.'
               exit 0
