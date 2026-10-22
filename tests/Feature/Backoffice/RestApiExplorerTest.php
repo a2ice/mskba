@@ -40,11 +40,15 @@ final class RestApiExplorerTest extends TestCase
             ->assertSee('mskba-swagger-ui')
             ->assertSee('REST API');
 
-        $this->get('/backoffice/rest-api/openapi.json')
-            ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store')
+        $document = $this->get('/backoffice/rest-api/openapi.json');
+        $document->assertOk()
             ->assertJsonPath('openapi', '3.1.0')
             ->assertJsonStructure(['paths' => ['/api/v1/auth/login', '/api/v1/me', '/api/v1/venues']]);
+
+        // Symfony may reorder directives, but the response must remain private.
+        $cache = (string) $document->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cache);
+        $this->assertStringContainsString('no-store', $cache);
     }
 
     public function test_admin_is_denied_to_page_and_raw_spec_by_default(): void
