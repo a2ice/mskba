@@ -70,7 +70,7 @@ final class InstallHomepageTournamentsScene extends Command
                     || $page->draft_html !== $page->published_html) {
                     throw new RuntimeException('Homepage HTML has changed since inspection. No overwrite.');
                 }
-                $pattern = '~<section\s+id="tournaments"\b[^>]*>[\s\S]*?</section>~i';
+                $pattern = '~<section\s+id="tournaments"(?=\s|>)[^>]*>[\s\S]*?</section>~i';
                 $matches = [];
                 if (preg_match_all($pattern, (string) $page->published_html, $matches) !== 1
                     || ! str_contains($matches[0][0] ?? '', 'bordered-plate')) {

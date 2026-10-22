@@ -40,6 +40,13 @@ final class HomepageTournamentsSceneTest extends TestCase
         $this->assertStringContainsString('href="/tournaments"', $html);
     }
 
+    public function test_legacy_home_section_pattern_accepts_quoted_id_attribute(): void
+    {
+        $source = file_get_contents(app_path('Console/Commands/InstallHomepageTournamentsScene.php'));
+        $this->assertStringContainsString('id="tournaments"(?=\\s|>)', $source);
+        $this->assertStringNotContainsString('id="tournaments"\\b', $source);
+    }
+
     public function test_publisher_refuses_to_modify_other_environments(): void
     {
         $this->artisan('mskba:tournaments-scene:install', ['--apply' => true])
