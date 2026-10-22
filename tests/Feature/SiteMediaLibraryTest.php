@@ -54,6 +54,24 @@ final class SiteMediaLibraryTest extends TestCase
         $this->assertSame($url, $asset->fresh()->publicUrl());
     }
 
+    public function test_filament_preview_uses_absolute_public_media_route(): void
+    {
+        Storage::fake('public');
+
+        $asset = app(SiteMediaManager::class)->upload(
+            UploadedFile::fake()->image('preview.png', 180, 120),
+        );
+
+        $relativeUrl = $asset->publicUrl();
+        $previewUrl = SiteMediaAssetResource::previewUrl($asset);
+
+        $this->assertStringStartsWith('/media/site/', $relativeUrl);
+        $this->assertSame(url($relativeUrl), $previewUrl);
+        $this->assertNotFalse(filter_var($previewUrl, FILTER_VALIDATE_URL));
+        $this->assertStringNotContainsString('/storage/media/site/', $previewUrl);
+        $this->get($relativeUrl)->assertOk()->assertHeader('Content-Type', 'image/png');
+    }
+
     public function test_import_is_idempotent_and_does_not_change_file_bytes(): void
     {
         Storage::fake('public');
