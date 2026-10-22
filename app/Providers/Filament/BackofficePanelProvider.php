@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Backoffice\Pages\GraphQLExplorer;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\ManagerSpecializations\ManagerSpecializationResource;
@@ -89,7 +90,7 @@ final class BackofficePanelProvider extends PanelProvider
 })();
 </script>
 HTML))
-            ->pages([Dashboard::class])
+            ->pages([Dashboard::class, GraphQLExplorer::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class,

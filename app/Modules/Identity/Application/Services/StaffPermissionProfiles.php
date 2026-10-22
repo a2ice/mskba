@@ -101,6 +101,7 @@ final class StaffPermissionProfiles
                 Permission::BACKOFFICE_STYLE_MANAGE,
                 Permission::BACKOFFICE_STYLE_VIEW, Permission::BACKOFFICE_THEME_VIEW,
                 Permission::BACKOFFICE_BUILDER_VIEW,
+                Permission::BACKOFFICE_GRAPHQL_EXPLORER_VIEW,
             ], true);
         }
 
