@@ -32,8 +32,8 @@ final class PublishVenuesMapContainerPlate extends Command
         }
 
         try {
-            $oldHtml = $this->read('versions/venues-map-pre-container-20261022.html');
-            $oldCss = $this->read('versions/venues-map-pre-container-20261022.css');
+            $oldHtml = $this->read('versions/venues-map-live-v4-20261022.html');
+            $oldCss = $this->read('versions/venues-map-live-v4-20261022.css');
             $newHtml = $this->read('venues-map.html');
             $newCss = $this->read('venues-map.css');
             $expectedJsHash = hash('sha256', $this->read('venues-map.js'));
