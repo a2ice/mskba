@@ -149,6 +149,6 @@ final class GraphQLApiTest extends TestCase
     public function test_graphql_query_depth_is_bounded(): void
     {
         $this->assertSame(7, config('lighthouse.security.max_query_depth'));
-        $this->assertSame(150, config('lighthouse.security.max_query_complexity'));
+        $this->assertSame(1500, config('lighthouse.security.max_query_complexity'));
     }
 }
