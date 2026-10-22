@@ -29,7 +29,7 @@ jobs:
             grep -qx 'APP_ENV=staging' .env
             grep -qx 'APP_URL=https://dev.mskba.ru' .env
             test -f compose.dev.local.yaml
-            test "$(git rev-parse HEAD)" = '3e2cc7c76da42f4c3380486ec00b042d7618887f' || {
+            test "$(git rev-parse HEAD)" = 'a4ee9337afb37a96cfca2fa55b9b220c2376de1b' || {
               echo 'Unexpected deployed commit, refusing Page Builder installation'; exit 1;
             }
             COMPOSE=(docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml)
@@ -77,7 +77,18 @@ jobs:
             test "$RESULT" = 'PUBLISHED' || { echo 'Publisher did not confirm PUBLISHED'; exit 1; }
 
             AFTER="$("${COMPOSE[@]}" run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:tournaments-scene:install --check 2>&1)"
-            printf '%s\n' "$AFTER" | grep -qx 'ALREADY' || {
+            printf '%s\n' "$AFTER" | grep -q '^ALREADY || {
+              echo 'Post-install state verification failed'; exit 1;
+            }
+            PAGE="$(mktemp)"
+            trap 'rm -f "$PAGE"' EXIT
+            curl -fsS --max-time 20 -H 'Accept: text/html' 'https://dev.mskba.ru/' -o "$PAGE"
+            grep -q 'class="mskba-tournaments"' "$PAGE" || { echo 'New tournaments component not visible on homepage'; exit 1; }
+            grep -q 'mskba-tournaments__listing' "$PAGE" || { echo 'Tournament list panel missing'; exit 1; }
+            curl -fsS --max-time 20 'https://dev.mskba.ru/api/v1/home/tournaments-scene' |
+              python3 -c 'import json,sys; d=json.load(sys.stdin); assert set(d["assets"])=={"background","rim","ball"}; assert isinstance(d["tournaments"],list); print("Tournament feed OK; upcoming count:",len(d["tournaments"]))'
+            echo 'PASS: tournament scene component created in Filament, page published, and feed verified.'
+ || {
               echo 'Post-install state verification failed'; exit 1;
             }
             PAGE="$(mktemp)"
