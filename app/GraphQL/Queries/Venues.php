@@ -5,10 +5,9 @@ namespace App\GraphQL\Queries;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\UseCases\ListPublicVenuesHandler;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Modules\Venue\Presentation\Http\Resources\PublicVenueResource;
+use App\GraphQL\Support\VenuePresenter;
 use GraphQL\Error\Error;
 use Illuminate\Pagination\Cursor;
-use Illuminate\Http\Request;
 
 final class Venues
 {
@@ -54,7 +53,7 @@ final class Venues
         $request = request();
         $edges = array_map(fn (Venue $venue): array => [
             'cursor' => $page->getCursorForItem($venue)->encode(),
-            'node' => Venue::graphql($venue, $this->formatter, $request),
+            'node' => VenuePresenter::present($venue, $this->formatter, $request),
         ], $page->items());
 
         return [
