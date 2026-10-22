@@ -36,7 +36,10 @@ final class VenuesMapContainerPlateTest extends TestCase
         $this->assertStringContainsString('.mskba-venues-map-section', $css);
         $this->assertStringContainsString('border-radius: 21px', $css);
         $this->assertStringContainsString('overflow: hidden', $css);
-        $this->assertStringContainsString('padding: 0 clamp(24px, 3vw, 43px)', $css);
+        $this->assertStringContainsString('padding: 0 clamp(24px,3vw,43px)', $css);
+        $this->assertStringNotContainsString('mskba-map-top-extension', $css);
+        $this->assertStringNotContainsString('mskba-map-bottom-extension', $css);
+        $this->assertStringNotContainsString('.mskba-venues-map__scrim::before', $css);
         $this->assertStringNotContainsString(
             'openCard(items[0].venue,items[0].marker)', $js,
         );
@@ -54,7 +57,7 @@ final class VenuesMapContainerPlateTest extends TestCase
     {
         foreach (['html', 'css'] as $extension) {
             $previous = resource_path(
-                'page-builder/versions/venues-map-pre-container-20261022.'.$extension,
+                'page-builder/versions/venues-map-live-v4-20261022.'.$extension,
             );
             $current = resource_path('page-builder/venues-map.'.$extension);
             $this->assertFileExists($previous);
