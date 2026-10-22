@@ -4,11 +4,24 @@ namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\CursorPaginator;
 
 final class ListPublicVenuesHandler
 {
-    public function handle(int $limit): CursorPaginator
+    public function handle(int $limit, ?Cursor $cursor = null): CursorPaginator
+    {
+        return $this->publicQuery()
+            ->orderBy('id')
+            ->cursorPaginate($limit, ['*'], 'cursor', $cursor);
+    }
+
+    public function find(int $id): ?Venue
+    {
+        return $this->publicQuery()->find($id);
+    }
+
+    private function publicQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return Venue::query()
             ->where('status', VenueStatusEnum::CONFIRMED->value)
@@ -20,8 +33,6 @@ final class ListPublicVenuesHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
             ])
-            // The primary key is unique, non-null and indexed: a stable cursor key.
-            ->orderBy('id')
-            ->cursorPaginate($limit);
+            ;
     }
 }
