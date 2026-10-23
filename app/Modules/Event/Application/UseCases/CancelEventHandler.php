@@ -11,6 +11,8 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -19,15 +21,19 @@ final class CancelEventHandler
 {
     public function __construct(private readonly EventManagementAccess $access) {}
 
-    public function handle(string $identifier, Actor $actor, ?string $reason = null): Event
+    public function handle(string $identifier, Actor $actor, ?string $reason = null, bool $asBackoffice = false): Event
     {
         $reference = Event::query()->whereRouteIdentifier($identifier)->firstOrFail(['id', 'venue_id']);
 
-        $event = DB::transaction(function () use ($reference, $actor, $reason): Event {
+        $event = DB::transaction(function () use ($reference, $actor, $reason, $asBackoffice): Event {
             // Соблюдаем общий порядок блокировок бронирования: venue -> event -> booking.
             Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::CANCEL_EVENT);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::CANCEL_EVENT);
+            } else {
+                $this->assertBackofficeEventManage($actor);
+            }
             if ($event->trainingSession()->exists()) {
                 throw new InvalidArgumentException('Связанное с секцией мероприятие отменяется через занятие.');
             }
@@ -81,5 +87,14 @@ final class CancelEventHandler
         event(new EventChanged($event->id));
 
         return $event;
+    }
+
+    private function assertBackofficeEventManage(Actor $actor): void
+    {
+        $user = $actor->user?->canonical();
+        $permissions = app(BackofficePermissionManager::class);
+        abort_unless($user !== null
+            && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+            && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
     }
 }

@@ -13,6 +13,7 @@ use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Filament\Backoffice\Resources\Events\EventResource;
 use App\Filament\Backoffice\Resources\Venues\AmenityResource;
 use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
 use App\Filament\Backoffice\Resources\Geography\CityResource;
@@ -66,6 +67,7 @@ final class BackofficePanelProvider extends PanelProvider
                 SiteMediaAssetResource::class,
                 SiteMediaFolderResource::class,
                 VenueResource::class,
+                EventResource::class,
                 AmenityResource::class,
                 VenueModerationResource::class,
                 CityResource::class,

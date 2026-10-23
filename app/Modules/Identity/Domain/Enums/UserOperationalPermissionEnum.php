@@ -28,6 +28,7 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
     case BACKOFFICE_VENUE_MANAGE = 'backoffice.venue.manage';
     case BACKOFFICE_VENUE_MODERATE = 'backoffice.venue.moderate';
+    case BACKOFFICE_EVENT_MANAGE = 'backoffice.event.manage';
     case BACKOFFICE_SITE_MEDIA_VIEW = 'backoffice.site_media.view';
     case BACKOFFICE_SITE_MEDIA_UPLOAD = 'backoffice.site_media.upload';
     case BACKOFFICE_SITE_MEDIA_EDIT = 'backoffice.site_media.edit';
@@ -61,6 +62,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_MANAGE,
             self::BACKOFFICE_VENUE_MANAGE,
             self::BACKOFFICE_VENUE_MODERATE,
+            self::BACKOFFICE_EVENT_MANAGE,
             self::BACKOFFICE_SITE_MEDIA_VIEW,
             self::BACKOFFICE_SITE_MEDIA_UPLOAD,
             self::BACKOFFICE_SITE_MEDIA_EDIT,
@@ -112,6 +114,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
             self::BACKOFFICE_VENUE_MANAGE => 'Создание, изменение и удаление площадок и справочников в Filament',
             self::BACKOFFICE_VENUE_MODERATE => 'Рассмотрение заявок модерации площадок и разрешение дублей в Filament',
+            self::BACKOFFICE_EVENT_MANAGE => 'Управление мероприятиями, участниками и их бронированиями в Filament',
             self::BACKOFFICE_SITE_MEDIA_VIEW => 'Просмотр медиабиблиотеки сайта',
             self::BACKOFFICE_SITE_MEDIA_UPLOAD => 'Загрузка изображений сайта',
             self::BACKOFFICE_SITE_MEDIA_EDIT => 'Редактирование и замена изображений сайта',

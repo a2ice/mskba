@@ -1,3 +1,4 @@
+import './page-builder-today-event-map.js';
 // Hero Slider component runtime remains shared; homepage ball JS belongs to Filament.
 import './page-builder-hero-slider.js';
 

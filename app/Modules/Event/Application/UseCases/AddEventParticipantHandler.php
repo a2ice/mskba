@@ -14,6 +14,8 @@ use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -26,11 +28,19 @@ final class AddEventParticipantHandler
         private readonly EventIdentityParticipationService $identityParticipation,
     ) {}
 
-    public function handle(string $identifier, Actor $actor, int $userId): Event
+    public function handle(string $identifier, Actor $actor, int $userId, bool $asBackoffice = false): Event
     {
-        $event = DB::transaction(function () use ($identifier, $actor, $userId): Event {
+        $event = DB::transaction(function () use ($identifier, $actor, $userId, $asBackoffice): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            } else {
+                $user = $actor->user?->canonical();
+                $permissions = app(BackofficePermissionManager::class);
+                abort_unless($user !== null
+                    && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+                    && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
+            }
             $this->assertCanChangeParticipants($event);
 
             $viewer = $actor->user?->canonical();
