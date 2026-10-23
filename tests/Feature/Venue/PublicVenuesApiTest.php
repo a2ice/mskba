@@ -78,14 +78,50 @@ class PublicVenuesApiTest extends TestCase
         $this->assertSame($venues->pluck('id')->all(), $collected);
     }
 
-    public function test_legacy_route_has_identical_public_contract(): void
+    public function test_show_public_venue_returns_a_single_object_with_the_same_fields_as_the_list(): void
     {
-        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'raw_address' => 'Москва, Керамический проезд, 47А',
+        ]);
 
-        $this->getJson(route('api.legacy.get_venues'))
+        $list = $this->getJson(route('api.v1.venues.index'))
+            ->assertOk()->json('data.0');
+
+        $this->withHeader('Origin', 'https://external.example')
+            ->getJson(route('api.v1.venues.show', ['venue' => $venue->id]))
             ->assertOk()
-            ->assertJsonPath('data.0.id', $venue->id)
-            ->assertJsonStructure(['data', 'meta' => ['limit', 'has_more', 'next_cursor'], 'links' => ['next']]);
+            ->assertHeader('Access-Control-Allow-Origin', '*')
+            ->assertHeaderMissing('Access-Control-Allow-Credentials')
+            ->assertExactJson(['data' => $list])
+            ->assertJsonPath('data.name', 'Школа №1794')
+            ->assertJsonPath('data.id', $venue->id)
+            ->assertJsonStructure(['data' => [
+                'id', 'name', 'alias', 'type', 'type_label', 'status', 'operational_status',
+                'short_description', 'address', 'latitude', 'longitude', 'image_url', 'url',
+            ]]);
+    }
+
+    public function test_show_returns_404_for_unconfirmed_blocked_deleted_and_missing_venues(): void
+    {
+        $unconfirmed = Venue::factory()->create(['status' => VenueStatusEnum::UNCONFIRMED->value]);
+        $blocked = Venue::factory()->create(['status' => VenueStatusEnum::BLOCKED->value]);
+        $deleted = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $deleted->delete();
+
+        foreach ([$unconfirmed->id, $blocked->id, $deleted->id, 99999999, 0] as $venueId) {
+            $this->getJson(route('api.v1.venues.show', ['venue' => $venueId]))
+                ->assertNotFound()
+                ->assertJsonPath('message', 'Площадка не найдена.');
+        }
+
+        $this->getJson('/api/v1/venues/invalid-id')->assertNotFound();
+    }
+
+    public function test_deprecated_get_venues_route_is_no_longer_available(): void
+    {
+        $this->getJson('/api/get_venues')->assertNotFound();
     }
 
     public function test_invalid_pagination_parameters_return_422(): void
