@@ -25,8 +25,7 @@ final class OpenApiContractTest extends TestCase
 
         $actual = [];
         foreach (Route::getRoutes() as $route) {
-            if (str_starts_with((string) $route->getName(), 'api.v1.')
-                || $route->getName() === 'api.legacy.get_venues') {
+            if (str_starts_with((string) $route->getName(), 'api.v1.')) {
                 foreach (array_filter($route->methods(), fn (string $method): bool => $method !== 'HEAD') as $method) {
                     $actual[] = $method.' '.$route->uri();
                 }
@@ -49,5 +48,20 @@ final class OpenApiContractTest extends TestCase
         $this->assertArrayHasKey('password', $spec['components']['schemas']['LoginRequest']['properties']);
         $this->assertTrue($spec['components']['schemas']['LoginRequest']['properties']['password']['writeOnly']);
         $this->assertArrayNotHasKey('/api/graphql', $spec['paths']);
+        $this->assertArrayNotHasKey('/api/get_venues', $spec['paths']);
+
+        $details = $spec['paths']['/api/v1/venues/{venue}']['get'];
+        $this->assertSame('getPublicVenue', $details['operationId']);
+        $this->assertSame('venue', $details['parameters'][0]['name']);
+        $this->assertTrue($details['parameters'][0]['required']);
+        $this->assertArrayHasKey('404', $details['responses']);
+        $this->assertSame(
+            '#/components/schemas/VenueDetailResponse',
+            $details['responses']['200']['content']['application/json']['schema']['$ref'],
+        );
+        $this->assertSame(
+            '#/components/schemas/Venue',
+            $spec['components']['schemas']['VenueDetailResponse']['properties']['data']['$ref'],
+        );
     }
 }
