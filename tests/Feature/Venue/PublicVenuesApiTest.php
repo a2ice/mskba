@@ -7,6 +7,7 @@ use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -122,6 +123,138 @@ class PublicVenuesApiTest extends TestCase
     public function test_deprecated_get_venues_route_is_no_longer_available(): void
     {
         $this->getJson('/api/get_venues')->assertNotFound();
+    }
+
+    public function test_filters_match_web_catalog_type_operational_status_and_access_rules(): void
+    {
+        $free = Venue::factory()->create([
+            'name' => 'School Free Court',
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $paid = Venue::factory()->create([
+            'name' => 'School Paid Court',
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,
+            'requires_payment' => true,
+            'requires_booking_approval' => false,
+        ]);
+        $approval = Venue::factory()->create([
+            'name' => 'Approval Hall',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => true,
+        ]);
+        $unknown = Venue::factory()->create([
+            'name' => 'Unknown Street Court',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => null,
+            'requires_booking_approval' => false,
+        ]);
+        Venue::factory()->create([
+            'name' => 'School Free Hidden',
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        $checks = [
+            [['type' => 'school'], [$free->id, $paid->id]],
+            [['operational_status' => 'temporarily_closed'], [$paid->id]],
+            [['access' => 'free'], [$free->id]],
+            [['access' => 'paid'], [$paid->id]],
+            [['access' => 'approval'], [$approval->id]],
+            [['type' => 'school', 'operational_status' => 'active', 'access' => 'free'], [$free->id]],
+            [['search' => 'school free'], [$free->id]],
+            [['type' => 'street_court', 'access' => 'free'], []],
+        ];
+
+        foreach ($checks as [$filters, $expected]) {
+            $actual = $this->getJson(route('api.v1.venues.index', $filters))
+                ->assertOk()
+                ->json('data');
+            $this->assertSame($expected, array_column($actual, 'id'), json_encode($filters));
+        }
+
+        // Nullable payment terms are not silently treated as free.
+        $this->getJson(route('api.v1.venues.index', ['type' => 'street_court']))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $unknown->id)
+            ->assertJsonPath('data.0.requires_payment', null)
+            ->assertJsonPath('data.0.has_free_access', false);
+
+        $this->getJson(route('api.v1.venues.index', ['access' => 'free']))
+            ->assertJsonPath('data.0.requires_payment', false)
+            ->assertJsonPath('data.0.requires_booking_approval', false)
+            ->assertJsonPath('data.0.has_free_access', true);
+    }
+
+    public function test_filters_are_preserved_across_cursor_pages_without_unrelated_venues(): void
+    {
+        $schools = collect(range(1, 3))->map(fn (int $n): Venue => Venue::factory()->create([
+            'name' => "School Court {$n}",
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]));
+        Venue::factory()->create([
+            'name' => 'Paid School',
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => true,
+        ]);
+        Venue::factory()->create([
+            'name' => 'Free Hall',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        $filters = ['type' => 'school', 'access' => 'free', 'limit' => 2];
+        $first = $this->getJson(route('api.v1.venues.index', $filters))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.has_more', true);
+
+        $next = $first->json('links.next');
+        $this->assertIsString($next);
+        parse_str((string) parse_url($next, PHP_URL_QUERY), $params);
+        $this->assertSame('school', $params['type']);
+        $this->assertSame('free', $params['access']);
+        $this->assertSame('2', (string) $params['limit']);
+        $this->assertSame($first->json('meta.next_cursor'), $params['cursor']);
+
+        $second = $this->getJson($next)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.has_more', false)
+            ->assertJsonPath('links.next', null);
+
+        $ids = array_merge(array_column($first->json('data'), 'id'), array_column($second->json('data'), 'id'));
+        $this->assertSame($schools->pluck('id')->all(), $ids);
+    }
+
+    public function test_invalid_venue_filter_parameters_return_422(): void
+    {
+        foreach ([
+            ['type' => 'stadium_nonexistent'],
+            ['operational_status' => 'blocked'],
+            ['access' => 'unrestricted'],
+            ['search' => str_repeat('x', 101)],
+        ] as $filters) {
+            $this->getJson(route('api.v1.venues.index', $filters))
+                ->assertUnprocessable()
+                ->assertJsonStructure(['message', 'errors']);
+        }
     }
 
     public function test_invalid_pagination_parameters_return_422(): void
