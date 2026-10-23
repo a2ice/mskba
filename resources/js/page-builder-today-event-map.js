@@ -8,6 +8,8 @@ export function groupTodayEvents(events) {
     const groups = new Map();
 
     for (const event of Array.isArray(events) ? events : []) {
+        if (event.latitude === null || event.latitude === undefined || event.latitude === ''
+            || event.longitude === null || event.longitude === undefined || event.longitude === '') continue;
         const latitude = Number(event.latitude);
         const longitude = Number(event.longitude);
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
@@ -125,14 +127,12 @@ if (homepage) {
     // Page Builder Yandex maps are usually lazy-initialized when the section
     // enters the viewport. Wrap the constructor before that point; do not
     // replace or clear existing venue placemarks.
-    const started = Date.now();
     const ticker = setInterval(() => {
         const ymaps = window.ymaps;
         const NativeMap = ymaps?.Map;
-        if (typeof NativeMap !== 'function') {
-            if (Date.now() - started > 45000) clearInterval(ticker);
-            return;
-        }
+        // The Page Builder lazily loads the map on scroll; it may not even
+        // request Yandex until the user reaches the scene much later.
+        if (typeof NativeMap !== 'function') return;
         clearInterval(ticker);
         if (NativeMap.__mskbaTodayEventsWrapped) return;
 
