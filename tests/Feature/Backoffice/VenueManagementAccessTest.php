@@ -16,6 +16,10 @@ use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
+use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Venue\Application\UseCases\BackofficeVenueModerationHandler;
 use Tests\TestCase;
 
 final class VenueManagementAccessTest extends TestCase
@@ -71,14 +75,14 @@ final class VenueManagementAccessTest extends TestCase
         ]);
     }
 
-    public function test_venue_cannot_be_confirmed_by_direct_admin_write(): void
+    public function test_superadmin_can_confirm_through_real_moderation_in_one_save(): void
     {
         Queue::fake();
-        $this->actingAs($this->account(UserSystemRoleEnum::SUPERADMIN));
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
 
-        $this->expectException(ValidationException::class);
-        app(VenueBackofficeEditor::class)->save([
-            'name' => 'Нельзя подтвердить без заявки',
+        $venue = app(VenueBackofficeEditor::class)->save([
+            'name' => 'Подтверждаемая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'status' => VenueStatusEnum::CONFIRMED->value,
             'raw_address' => 'Москва, другая улица, 1',
@@ -87,6 +91,60 @@ final class VenueManagementAccessTest extends TestCase
             'location_building' => '1',
             'location_latitude' => 55.74,
             'location_longitude' => 37.60,
+        ]);
+
+        $this->assertSame(VenueStatusEnum::CONFIRMED, $venue->status);
+        $this->assertNotNull($venue->created_by_actor_id);
+        $request = $venue->moderationRequests()->firstOrFail();
+        $this->assertSame(ModerationRequestStatusEnum::APPROVED, $request->status);
+        $this->assertSame($super->id, $request->reviewed_by_user_id);
+        $this->assertSame(
+            app(CurrentActorResolver::class)->resolve($super, null)->id,
+            $request->submitted_by_actor_id,
+        );
+        $this->assertCount(2, $request->messages);
+    }
+
+    public function test_quick_confirmation_reviews_existing_pending_request_without_replacing_submitter(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $owner = $this->account(UserSystemRoleEnum::USER);
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $actor->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        $request = $venue->moderationRequests()->create([
+            'type' => \App\Modules\Moderation\Domain\Enums\ModerationTypeEnum::VENUE,
+            'submitted_by_actor_id' => $actor->id,
+            'status' => ModerationRequestStatusEnum::PENDING,
+            'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($super);
+        app(BackofficeVenueModerationHandler::class)->approveImmediately($venue, $super);
+
+        $this->assertSame(1, $venue->moderationRequests()->count());
+        $this->assertSame($actor->id, $request->refresh()->submitted_by_actor_id);
+        $this->assertSame(ModerationRequestStatusEnum::APPROVED, $request->status);
+        $this->assertSame(VenueStatusEnum::CONFIRMED, $venue->refresh()->status);
+    }
+
+    public function test_delegated_manager_cannot_use_superadmin_quick_confirmation(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $manager = $this->account(UserSystemRoleEnum::MANAGER);
+        app(BackofficePermissionManager::class)->sync($super, $manager, [
+            Permission::BACKOFFICE_VENUE_MANAGE->value,
+            Permission::BACKOFFICE_VENUE_MODERATE->value,
+        ]);
+        $this->actingAs($manager);
+
+        $this->expectException(ValidationException::class);
+        app(VenueBackofficeEditor::class)->save([
+            'name' => 'Площадка менеджера',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
         ]);
     }
 

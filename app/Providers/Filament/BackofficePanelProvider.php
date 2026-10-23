@@ -14,6 +14,12 @@ use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Filament\Backoffice\Resources\Venues\AmenityResource;
+use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
+use App\Filament\Backoffice\Resources\Geography\CityResource;
+use App\Filament\Backoffice\Resources\Geography\DistrictResource;
+use App\Filament\Backoffice\Resources\Geography\MetroLineResource;
+use App\Filament\Backoffice\Resources\Geography\MetroStationResource;
+use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
@@ -61,6 +67,12 @@ final class BackofficePanelProvider extends PanelProvider
                 SiteMediaFolderResource::class,
                 VenueResource::class,
                 AmenityResource::class,
+                VenueModerationResource::class,
+                CityResource::class,
+                DistrictResource::class,
+                MetroLineResource::class,
+                MetroStationResource::class,
+                VenueDuplicateResource::class,
                 BackofficeUserResource::class,
                 SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,
