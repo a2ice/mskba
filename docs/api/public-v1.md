@@ -8,11 +8,12 @@ external sites, and server-to-server integrations all use the same HTTPS/JSON co
 | Method | URL | Access |
 | --- | --- | --- |
 | GET | /api/v1/venues | Public, read-only |
-| GET | /api/get_venues | Compatibility alias with identical contract |
+| GET | /api/v1/venues/{venue} | Один опубликованный объект площадки по числовому ID |
 
-The versioned URL is **canonical for new clients**. No app-embedded API secret,
-cookie or user session is required for this public endpoint. Do not depend on
-the requester being iOS or Android.
+Both endpoints are public and versioned. The former `/api/get_venues`
+compatibility alias was retired on DEV when the venue detail method was added.
+Clients must use `/api/v1/venues` for lists. No embedded application secret,
+cookie or user session is required for these public endpoints.
 
 ## Query
 
@@ -94,6 +95,42 @@ do {
 } while (cursor !== null);
 ```
 
+## Single venue: GET /api/v1/venues/{venue}
+
+To fetch one record, supply its numeric `id` (e.g. `1`) from the list response.
+Use the same field structure as one item in `data`, wrapped in a `data` object:
+
+```sh
+curl -sS -H 'Accept: application/json' \\
+  'https://dev.mskba.ru/api/v1/venues/1' | jq .
+```
+
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "Школа №1794",
+    "alias": "shkola-1794",
+    "type": "school",
+    "type_label": "Школа",
+    "status": "confirmed",
+    "operational_status": "active",
+    "short_description": null,
+    "address": "Россия, Москва, Керамический проезд, 47А",
+    "latitude": null,
+    "longitude": null,
+    "image_url": null,
+    "url": "https://dev.mskba.ru/venues/1-shkola-1794"
+  }
+}
+```
+
+This is an illustrative response: actual fields follow the stored DEV fixture.
+Missing, unconfirmed, blocked and soft-deleted venues return HTTP 404 with
+`{"message":"Площадка не найдена."}` (the record's visibility is not disclosed).
+Nonnumeric IDs fail route matching with 404. Per-route throttle is 60/minute.
+No cursor, list metadata or pagination is present for a single venue.
+
 ## Browser compatibility (CORS)
 
 For public `api/*` paths, the response permits any Origin (`*`) but does
@@ -104,16 +141,11 @@ clients. For future cookie-based first-party SPA sessions, define a separate
 restricted-origin, credentials-enabled policy. Never turn on wildcard origins
 and credentialed cookies simultaneously.
 
-## Next phase: user authentication
+## Authentication
 
-Public resources stay public. Private endpoints (user profile, own notifications,
-preferences and mutations) require an authenticated user with authorization checks.
-Consider Laravel Sanctum for first-party native Bearer tokens and same-site SPA
-cookie sessions. Independent external sites asking to act *for users* should
-use an explicit delegated authorization flow (OAuth/OIDC with PKCE) or another
-purpose-built integration, never another site's hard-coded MSKBA user credentials.
-Document token rotation/revocation, device handling, rate limits, and the data
-permissions when user login is implemented.
-
-App Attest / Play Integrity can later be added as defense-in-depth for native
-clients without making the open public catalog depend on either platform.
+The public venue endpoints remain available without a token. Authenticated
+REST operations use Laravel Sanctum: `POST /api/v1/auth/login`,
+`GET /api/v1/me`, `POST /api/v1/auth/logout`. See
+[mobile-auth-v1.md](mobile-auth-v1.md). The versioned OpenAPI contract
+[openapi-v1.json](openapi-v1.json) is exposed through the permission-gated
+Swagger UI in Filament on DEV.
