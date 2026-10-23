@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Filament\Facades\Filament;
 use Tests\TestCase;
 
 final class VenueAddressAutocompleteTest extends TestCase
@@ -80,6 +81,7 @@ final class VenueAddressAutocompleteTest extends TestCase
         ]);
         $user->createProfile([]);
         $this->actingAs($user);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
         $options = app(VenueAddressAutocomplete::class)->search('Москва Тушинская улица 16А');
         $token = (string) array_key_first($options);
