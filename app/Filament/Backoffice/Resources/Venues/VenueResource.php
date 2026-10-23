@@ -143,6 +143,7 @@ final class VenueResource extends Resource
                         ->columns(2)->schema([
                             Select::make('address_yandex_selection')
                                 ->label('Полный адрес')
+                                ->live()
                                 ->placeholder('Начните вводить адрес')
                                 ->searchable()
                                 ->searchDebounce(400)

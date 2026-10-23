@@ -23,8 +23,16 @@ final class VenueAddressAutocomplete
             return [];
         }
 
+        try {
+            $suggestions = $this->suggestions->suggest($query);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
+
         $options = [];
-        foreach ($this->suggestions->suggest($query) as $suggestion) {
+        foreach ($suggestions as $suggestion) {
             if (empty($suggestion['has_house'])) {
                 continue;
             }
