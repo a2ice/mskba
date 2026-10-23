@@ -853,6 +853,15 @@ Deep link имеет allowlisted формат
 
 ## Админка
 
+
+### Filament — география, модерация и перенос функций /admin
+
+`Geography/*Resource` — CRUD `City`, `District`, `MetroLine`, `MetroStation`. Удаление ограничено существующими внешними связями (районы/адреса, станции/локации). `DatabaseSeeder` вызывает самостоятельный `MoscowMetroSeeder`, который импортирует `database/seeders/data/moscow_metro.json` (21 линия и 452 станции); action superadmin на странице линий метро позволяет повторить импорт независимо от сидера пользователей.
+
+`VenueModerationResource` читает только `ModerationRequest(type=venue)`, открывает историю `ModerationMessage` и для правок существующих площадок строит diff через `VenueRevisionDiffBuilder`. Одобрение/отклонение выполняются через `BackofficeVenueModerationHandler` и существующий `ReviewModerationRequestHandler`; новое `backoffice.venue.moderate` отдельно от редактирования. `VenueDuplicateResource` использует существующий `MergeVenueDuplicateHandler` для парного и группового объединения. В `VenueResource` добавлены фильтр pending-модерации, административные статусы, массовая блокировка/разблокировка и мягкое удаление/восстановление.
+
+Superadmin может выбрать `confirmed` прямо в форме `VenueResource`. `VenueBackofficeEditor` никогда не пишет такой статус самостоятельно: в той же транзакции `BackofficeVenueModerationHandler::approveImmediately` открывает актуальную pending-заявку либо создаёт новую с `submitted_by_actor_id` текущего superadmin, затем штатный `ReviewModerationRequestHandler::approve` фиксирует `reviewed_by_user_id`, `reviewed_at` и статус площадки. При неуспешной валидации географии/дублей транзакция откатывается. Для отличающегося от superadmin пользователя быстрый способ недоступен, даже если выданы обычные права модерации.
+
 ### Filament /backoffice — управление площадками
 
 Filament-ресурсы площадок находятся в `app/Filament/Backoffice/Resources/Venues`. Они используют уже существующие `Venue`, `Location/Address`, `Amenity`, `VenueCharacteristic`, `VenueSchedule`, `VenueCourt`, `Media`; отдельная параллельная модель площадки не создаётся. Редактор `VenueBackofficeEditor` выполняет транзакционную запись связей: новые локации создаются через `CreateLocationHandler` без изменения чужих адресов; характеристики и удобства через `VenueFacilitiesSynchronizer`; теги через `VenueTagSynchronizer`; расписание поддерживает интервалы недели и исключения. Создание площадки сохраняет её стандартный primary court и запускает поиск дублей после commit. Галерея управляется через `VenueGalleryManager`, включая лимит трёх фото и `content_version`. Действия Filament — административные прямые изменения; они не заменяют пользовательскую модерацию и не изменяют записи бронирований. Статусы изменяются через существующий `UpdateVenueStatusHandler`: присвоение `confirmed` вручную запрещено, `blocked` и возврат из блокировки сохраняют исходные предметные ограничения. Удаление — soft-delete, восстановление отдельно; физическое удаление отсутствует.

@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Venue\Domain\Models\VenueRevision;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,11 @@ class ModerationRequest extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(ModerationMessage::class);
+    }
+
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class, 'subject_id');
     }
 
     public function venueRevision(): BelongsTo

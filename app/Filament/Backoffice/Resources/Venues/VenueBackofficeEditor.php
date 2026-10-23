@@ -13,6 +13,7 @@ use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
+use App\Modules\Venue\Application\UseCases\BackofficeVenueModerationHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -31,6 +32,7 @@ final class VenueBackofficeEditor
         private readonly VenueUniquenessChecker $uniqueness,
         private readonly VenueProximityService $proximity,
         private readonly UpdateVenueStatusHandler $statusTransitions,
+        private readonly BackofficeVenueModerationHandler $moderation,
     ) {}
 
     /** @return array<string, mixed> */
@@ -117,10 +119,11 @@ final class VenueBackofficeEditor
 
             $location = $this->resolveLocation($venue, $data, $rawAddress);
             $status = VenueStatusEnum::from((string) ($data['status'] ?? VenueStatusEnum::UNCONFIRMED->value));
-            if ($status === VenueStatusEnum::CONFIRMED
-                && ($venue === null || $venue->status !== VenueStatusEnum::CONFIRMED)) {
+            $autoApprove = $status === VenueStatusEnum::CONFIRMED
+                && ($venue === null || $venue->status !== VenueStatusEnum::CONFIRMED);
+            if ($autoApprove && ! $this->moderation->canApproveImmediately($actor)) {
                 throw ValidationException::withMessages([
-                    'data.status' => 'Подтверждение площадки возможно только через одобрение заявки модерации.',
+                    'data.status' => 'Быстрое подтверждение доступно только superadmin.',
                 ]);
             }
 
@@ -171,12 +174,18 @@ final class VenueBackofficeEditor
                 is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [],
             );
             $this->saveSchedule($venue, $data);
-            if ($venue->status !== $status) {
+            if ($venue->status !== $status && ! $autoApprove) {
                 $venue = $this->statusTransitions->handle(
                     $venue, $status, isset($data['status_info']) ? (string) $data['status_info'] : null,
                 );
             }
             $venue->increment('content_version');
+
+            if ($autoApprove) {
+                // Submit and approve an actual moderation request under the same
+                // transaction; a failed review rolls back the entire edit.
+                $this->moderation->approveImmediately($venue, $actor);
+            }
 
             if ($original === null) {
                 FindVenueDuplicatesJob::dispatch($venue->id)->afterCommit();

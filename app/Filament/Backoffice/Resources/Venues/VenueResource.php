@@ -18,6 +18,9 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
@@ -37,6 +40,15 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Notifications\Notification;
+use App\Modules\Venue\Application\UseCases\BackofficeVenueModerationHandler;
+use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
+use App\Modules\Venue\Application\UseCases\BulkChangeVenueDeletionStateHandler;
+use App\Modules\Venue\Application\UseCases\BulkUpdateVenueStatusHandler;
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -88,16 +100,24 @@ final class VenueResource extends Resource
                             ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически. URL использует ID площадки.'),
                         Select::make('type')->label('Тип')->required()->options(self::options(VenueTypeEnum::class)),
                         Select::make('status')->label('Статус модерации')->required()
-                            ->options(fn (?Venue $record): array => $record?->status === VenueStatusEnum::CONFIRMED
-                                ? [
-                                    VenueStatusEnum::CONFIRMED->value => VenueStatusEnum::CONFIRMED->label(),
-                                    VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
-                                ] : [
-                                    VenueStatusEnum::UNCONFIRMED->value => VenueStatusEnum::UNCONFIRMED->label(),
-                                    VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
-                                ])
+                            ->options(function (?Venue $record): array {
+                                $options = $record?->status === VenueStatusEnum::CONFIRMED
+                                    ? [
+                                        VenueStatusEnum::CONFIRMED->value => VenueStatusEnum::CONFIRMED->label(),
+                                        VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
+                                    ] : [
+                                        VenueStatusEnum::UNCONFIRMED->value => VenueStatusEnum::UNCONFIRMED->label(),
+                                        VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
+                                    ];
+                                if (($record === null || $record->status === VenueStatusEnum::UNCONFIRMED)
+                                    && app(BackofficeVenueModerationHandler::class)
+                                        ->canApproveImmediately(auth('web')->user())) {
+                                    $options[VenueStatusEnum::CONFIRMED->value] = 'Подтверждён (через модерацию)';
+                                }
+                                return $options;
+                            })
                             ->default(VenueStatusEnum::UNCONFIRMED->value)
-                            ->helperText('Подтверждение площадки производится только при одобрении заявки модерации.'),
+                            ->helperText('Superadmin может выбрать «Подтверждён»: заявка и её одобрение будут записаны автоматически.'),
                         Textarea::make('status_info')->label('Комментарий к статусу (причина блокировки)')
                             ->maxLength(5000)->columnSpanFull(),
                         Select::make('operational_status')->label('Состояние работы')->required()
@@ -197,10 +217,86 @@ final class VenueResource extends Resource
             SelectFilter::make('type')->label('Тип')->options(self::options(VenueTypeEnum::class)),
             SelectFilter::make('status')->label('Статус')->options(self::options(VenueStatusEnum::class)),
             TrashedFilter::make()->label('Удалённые'),
+            Filter::make('pending_moderation')->label('На модерации')
+                ->query(fn (Builder $query): Builder => $query->whereHas('moderationRequests',
+                    fn (Builder $requests): Builder => $requests->where(
+                        'status', ModerationRequestStatusEnum::PENDING->value))),
         ])->defaultSort('id', 'desc')->recordActions([
             EditAction::make(),
+            Action::make('approve_now')->label('Подтвердить')->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->visible(fn (Venue $record): bool => $record->status === VenueStatusEnum::UNCONFIRMED
+                    && app(BackofficeVenueModerationHandler::class)->canApproveImmediately(auth('web')->user()))
+                ->requiresConfirmation()
+                ->action(function (Venue $record): void {
+                    abort_unless(app(BackofficeVenueModerationHandler::class)
+                        ->canApproveImmediately(auth('web')->user()), 403);
+                    try {
+                        app(BackofficeVenueModerationHandler::class)->approveImmediately($record, auth('web')->user());
+                        Notification::make()->success()->title('Площадка подтверждена через модерацию')->send();
+                    } catch (\InvalidArgumentException $e) {
+                        Notification::make()->danger()->title($e->getMessage())->send();
+                    }
+                }),
+            Action::make('block')->label('Заблокировать')->icon('heroicon-o-no-symbol')
+                ->color('danger')
+                ->visible(fn (Venue $record): bool => self::canEdit($record)
+                    && $record->status !== VenueStatusEnum::BLOCKED)
+                ->schema([Textarea::make('message')->label('Причина блокировки')->required()->maxLength(5000)])
+                ->requiresConfirmation()
+                ->action(function (Venue $record, array $data): void {
+                    abort_unless(self::canEdit($record), 403);
+                    app(UpdateVenueStatusHandler::class)->handle(
+                        $record, VenueStatusEnum::BLOCKED, (string) $data['message']);
+                    Notification::make()->success()->title('Площадка заблокирована')->send();
+                }),
+            Action::make('unblock')->label('Разблокировать')->icon('heroicon-o-lock-open')
+                ->visible(fn (Venue $record): bool => self::canEdit($record)
+                    && $record->status === VenueStatusEnum::BLOCKED)
+                ->requiresConfirmation()
+                ->action(function (Venue $record): void {
+                    abort_unless(self::canEdit($record), 403);
+                    app(UpdateVenueStatusHandler::class)->handle(
+                        $record, VenueStatusEnum::UNCONFIRMED);
+                    Notification::make()->success()->title('Площадка разблокирована')->send();
+                }),
             DeleteAction::make()->requiresConfirmation(),
             RestoreAction::make(),
+        ])->toolbarActions([
+            BulkActionGroup::make([
+                BulkAction::make('block_selected')->label('Заблокировать выбранные')
+                    ->color('danger')->icon('heroicon-o-no-symbol')
+                    ->schema([Textarea::make('message')->label('Причина')->required()->maxLength(5000)])
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records, array $data): void {
+                        abort_unless(self::authorized(), 403);
+                        app(BulkUpdateVenueStatusHandler::class)->handle(
+                            $records->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                            VenueStatusEnum::BLOCKED, (string) $data['message']);
+                    })->deselectRecordsAfterCompletion(),
+                BulkAction::make('unblock_selected')->label('Разблокировать выбранные')
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records): void {
+                        abort_unless(self::authorized(), 403);
+                        app(BulkUpdateVenueStatusHandler::class)->handle(
+                            $records->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                            VenueStatusEnum::UNCONFIRMED);
+                    })->deselectRecordsAfterCompletion(),
+                BulkAction::make('delete_selected')->label('Удалить выбранные')
+                    ->color('danger')->requiresConfirmation()
+                    ->action(function (Collection $records): void {
+                        abort_unless(self::authorized(), 403);
+                        app(BulkChangeVenueDeletionStateHandler::class)->delete(
+                            $records->pluck('id')->map(fn ($id): int => (int) $id)->all());
+                    })->deselectRecordsAfterCompletion(),
+                BulkAction::make('restore_selected')->label('Восстановить выбранные')
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records): void {
+                        abort_unless(self::authorized(), 403);
+                        app(BulkChangeVenueDeletionStateHandler::class)->restore(
+                            $records->pluck('id')->map(fn ($id): int => (int) $id)->all());
+                    })->deselectRecordsAfterCompletion(),
+            ]),
         ]);
     }
 
