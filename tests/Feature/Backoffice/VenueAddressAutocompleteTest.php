@@ -9,11 +9,14 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\City;
+use App\Modules\Location\Application\Services\AddressDisplayFormatter;
+use App\Modules\Venue\Presentation\Http\Resources\PublicVenueResource;
 use App\Modules\Location\Domain\Models\District;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -117,6 +120,11 @@ final class VenueAddressAutocompleteTest extends TestCase
         ]);
 
         $this->assertSame('Тушинская улица, 16А', $venue->raw_address);
+        $public = new PublicVenueResource(
+            $venue->load('location.address', 'media'),
+            app(AddressDisplayFormatter::class),
+        );
+        $this->assertSame('Тушинская улица, 16А', $public->toArray(Request::create('/'))['address']);
         $this->assertSame('125362, Россия, Москва, Тушинская улица, 16А',
             $venue->location->address->full_address);
 
