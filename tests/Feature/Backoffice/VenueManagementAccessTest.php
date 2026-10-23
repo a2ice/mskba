@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -146,6 +148,76 @@ final class VenueManagementAccessTest extends TestCase
             'type' => VenueTypeEnum::STREET_COURT->value,
             'status' => VenueStatusEnum::CONFIRMED->value,
         ]);
+    }
+
+    public function test_existing_venue_without_coordinates_shows_field_errors_instead_of_crashing_on_confirmation(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+
+        $address = Address::factory()->create(['latitude' => null, 'longitude' => null]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+        $venue = Venue::factory()->create([
+            'name' => 'Тушинская тестовая',
+            'location_id' => $location->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $editor = app(VenueBackofficeEditor::class);
+        $data = array_replace([
+            'name' => $venue->name,
+            'alias' => $venue->alias,
+            'type' => $venue->type->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => $venue->operational_status->value,
+            'raw_address' => $address->full_address,
+        ], $editor->fields($venue));
+
+        $data['status'] = VenueStatusEnum::CONFIRMED->value;
+
+        try {
+            $editor->save($data, $venue);
+            $this->fail('Confirmation without coordinates must be rejected as a field validation error.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.location_latitude', $exception->errors());
+            $this->assertArrayHasKey('data.location_longitude', $exception->errors());
+        }
+
+        $this->assertSame(VenueStatusEnum::UNCONFIRMED, $venue->refresh()->status);
+        $this->assertSame(0, $venue->moderationRequests()->count());
+    }
+
+    public function test_existing_venue_can_be_confirmed_after_coordinates_are_added(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->account(UserSystemRoleEnum::SUPERADMIN));
+
+        $address = Address::factory()->create(['latitude' => null, 'longitude' => null]);
+        $venue = Venue::factory()->create([
+            'location_id' => Location::factory()->create(['address_id' => $address->id])->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $editor = app(VenueBackofficeEditor::class);
+        $data = array_replace([
+            'name' => $venue->name,
+            'alias' => $venue->alias,
+            'type' => $venue->type->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => $venue->operational_status->value,
+            'raw_address' => $address->full_address,
+        ], $editor->fields($venue));
+        $data['status'] = VenueStatusEnum::CONFIRMED->value;
+        $data['location_latitude'] = 55.850321;
+        $data['location_longitude'] = 37.439876;
+
+        $confirmed = $editor->save($data, $venue);
+
+        $this->assertSame(VenueStatusEnum::CONFIRMED, $confirmed->status);
+        $this->assertSame(ModerationRequestStatusEnum::APPROVED,
+            $confirmed->moderationRequests()->firstOrFail()->status);
+        $this->assertSame(55.850321, (float) $confirmed->location->address->latitude);
+        $this->assertSame(37.439876, (float) $confirmed->location->address->longitude);
     }
 
     public function test_authorized_editor_creates_full_venue_and_soft_delete_keeps_related_data(): void

@@ -128,6 +128,14 @@ final class VenueBackofficeEditor
                 ]);
             }
 
+            if ($autoApprove && ($location?->address?->latitude === null
+                || $location?->address?->longitude === null)) {
+                throw ValidationException::withMessages([
+                    'data.location_latitude' => 'Для подтверждения площадки необходимо указать широту.',
+                    'data.location_longitude' => 'Для подтверждения площадки необходимо указать долготу.',
+                ]);
+            }
+
             if ($location?->address?->latitude !== null && $location?->address?->longitude !== null
                 && $this->proximity->existsNearCoordinates(
                     type: VenueTypeEnum::from((string) $data['type']),
@@ -184,7 +192,15 @@ final class VenueBackofficeEditor
             if ($autoApprove) {
                 // Submit and approve an actual moderation request under the same
                 // transaction; a failed review rolls back the entire edit.
-                $this->moderation->approveImmediately($venue, $actor);
+                try {
+                    $this->moderation->approveImmediately($venue, $actor);
+                } catch (\InvalidArgumentException $exception) {
+                    // A domain rule must be displayed as a form error instead
+                    // of an unhandled Livewire page-loading exception.
+                    throw ValidationException::withMessages([
+                        'data.status' => $exception->getMessage(),
+                    ]);
+                }
             }
 
             if ($original === null) {
