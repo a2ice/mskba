@@ -26,6 +26,7 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_STYLE_MANAGE = 'backoffice.button_style.manage';
     case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
+    case BACKOFFICE_VENUE_MANAGE = 'backoffice.venue.manage';
     case BACKOFFICE_SITE_MEDIA_VIEW = 'backoffice.site_media.view';
     case BACKOFFICE_SITE_MEDIA_UPLOAD = 'backoffice.site_media.upload';
     case BACKOFFICE_SITE_MEDIA_EDIT = 'backoffice.site_media.edit';
@@ -57,6 +58,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE,
             self::BACKOFFICE_THEME_VIEW,
             self::BACKOFFICE_THEME_MANAGE,
+            self::BACKOFFICE_VENUE_MANAGE,
             self::BACKOFFICE_SITE_MEDIA_VIEW,
             self::BACKOFFICE_SITE_MEDIA_UPLOAD,
             self::BACKOFFICE_SITE_MEDIA_EDIT,
@@ -106,6 +108,7 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_STYLE_MANAGE => 'Создание, изменение и удаление CSS-классов',
             self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
+            self::BACKOFFICE_VENUE_MANAGE => 'Создание, изменение и удаление площадок и связанных справочников в Filament',
             self::BACKOFFICE_SITE_MEDIA_VIEW => 'Просмотр медиабиблиотеки сайта',
             self::BACKOFFICE_SITE_MEDIA_UPLOAD => 'Загрузка изображений сайта',
             self::BACKOFFICE_SITE_MEDIA_EDIT => 'Редактирование и замена изображений сайта',

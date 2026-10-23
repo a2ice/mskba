@@ -421,7 +421,7 @@ final class SupportTicketsTest extends TestCase
             ->assertSee('Управление - ', false)
             ->assertSee('originalSuffix', false);
         $this->get('/backoffice/dashboard-button-styles')->assertOk()
-            ->assertSee('Стили кнопок')->assertSee('Дизайн');
+            ->assertSee('Стили кнопок')->assertSee('Сайт');
         $this->get($base.'/'.$ticket->id)->assertOk()
             ->assertSee('Вопрос об аккаунте')->assertSee('Прошу помочь с подтверждением');
         $this->assertFalse(SupportTicketResource::canCreate());
