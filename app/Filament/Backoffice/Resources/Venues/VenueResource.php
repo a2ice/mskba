@@ -37,6 +37,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -99,7 +100,7 @@ final class VenueResource extends Resource
                             ->regex('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D')
                             ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически. URL использует ID площадки.'),
                         Select::make('type')->label('Тип')->required()->options(self::options(VenueTypeEnum::class)),
-                        Select::make('status')->label('Статус модерации')->required()
+                        Select::make('status')->label('Статус модерации')->required()->live()
                             ->options(function (?Venue $record): array {
                                 $options = $record?->status === VenueStatusEnum::CONFIRMED
                                     ? [
@@ -147,8 +148,12 @@ final class VenueResource extends Resource
                             TextInput::make('location_street')->label('Улица')->maxLength(255),
                             TextInput::make('location_building')->label('Дом / корпус')->maxLength(255),
                             TextInput::make('location_postal_code')->label('Индекс')->maxLength(32),
-                            TextInput::make('location_latitude')->label('Широта')->numeric()->minValue(-90)->maxValue(90),
-                            TextInput::make('location_longitude')->label('Долгота')->numeric()->minValue(-180)->maxValue(180),
+                            TextInput::make('location_latitude')->label('Широта')->numeric()->minValue(-90)->maxValue(90)
+                                ->required(fn (Get $get): bool => $get('status') === VenueStatusEnum::CONFIRMED->value)
+                                ->helperText('Обязательна для подтверждения площадки.'),
+                            TextInput::make('location_longitude')->label('Долгота')->numeric()->minValue(-180)->maxValue(180)
+                                ->required(fn (Get $get): bool => $get('status') === VenueStatusEnum::CONFIRMED->value)
+                                ->helperText('Обязательна для подтверждения площадки.'),
                             Select::make('location_metro_ids')->label('Станции метро')->multiple()->searchable()
                                 ->options(fn (): array => MetroStation::query()->orderBy('name')->pluck('name', 'id')->all())
                                 ->columnSpanFull(),
