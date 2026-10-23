@@ -94,6 +94,7 @@ final class VenueManagementAccessTest extends TestCase
         ]);
 
         $this->assertSame(VenueStatusEnum::CONFIRMED, $venue->status);
+        $this->assertNotNull($venue->created_by_actor_id);
         $request = $venue->moderationRequests()->firstOrFail();
         $this->assertSame(ModerationRequestStatusEnum::APPROVED, $request->status);
         $this->assertSame($super->id, $request->reviewed_by_user_id);

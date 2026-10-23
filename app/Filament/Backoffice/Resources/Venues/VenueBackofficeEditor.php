@@ -4,7 +4,7 @@ namespace App\Filament\Backoffice\Resources\Venues;
 
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
-use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
@@ -33,6 +33,7 @@ final class VenueBackofficeEditor
         private readonly VenueProximityService $proximity,
         private readonly UpdateVenueStatusHandler $statusTransitions,
         private readonly BackofficeVenueModerationHandler $moderation,
+        private readonly CurrentActorResolver $actorResolver,
     ) {}
 
     /** @return array<string, mixed> */
@@ -160,8 +161,7 @@ final class VenueBackofficeEditor
 
             if ($venue === null) {
                 $attributes['status'] = VenueStatusEnum::UNCONFIRMED->value;
-                $attributes['created_by_actor_id'] = Actor::query()
-                    ->where('user_id', $actor->canonical()->id)->value('id');
+                $attributes['created_by_actor_id'] = $this->actorResolver->resolve($actor, null)?->id;
                 $venue = Venue::query()->create($attributes);
             } else {
                 $venue->update($attributes);
