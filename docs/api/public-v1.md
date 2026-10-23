@@ -20,6 +20,20 @@ cookie or user session is required for these public endpoints.
 - `limit`: optional integer, 1–100, default 30.
 - `cursor`: optional opaque string from a previous response's `meta.next_cursor`.
   Never decode, construct, edit, or persist a cursor as a user identifier.
+- `type`: optional, one of `sports_hall`, `school`, `university`,
+  `sports_complex`, `arena`, `street_court`.
+- `operational_status`: optional, `active` (работает) or
+  `temporarily_closed` (временно закрыта). This is **not** publication status.
+- `access`: optional, `free` (no payment and no booking approval),
+  `paid` (payment required), `approval` (booking approval required).
+  `paid` and `approval` can overlap; payment value `null` is unknown and
+  is **not** treated as `free`.
+- `search`: optional, up to 100 characters; terms separated by spaces must
+  all occur in name, raw address or short description (case-insensitive).
+
+Filters can be combined with each other and with `limit`/`cursor` using
+logical AND. All filtering occurs before pagination and `links.next` retains
+the active query parameters.
 
 The ordering is by the unique venue ID ascending. Clients consume all pages until
 `meta.has_more` is `false`; the last page's `meta.next_cursor` and
@@ -42,6 +56,9 @@ HTTP 200 JSON (illustrative values):
       "type_label": "Спортзал",
       "status": "confirmed",
       "operational_status": "active",
+      "requires_payment": false,
+      "requires_booking_approval": false,
+      "has_free_access": true,
       "short_description": "Игровой зал",
       "address": "Москва, улица Примерная, 1",
       "latitude": 55.75,
@@ -67,7 +84,9 @@ HTTP 200 JSON (illustrative values):
 - `type`, `status`, and `operational_status` are stable machine-readable
   enum values; `type_label` is display text and should not be parsed.
 - `address`, `latitude`, `longitude`, `image_url`, and
-  `short_description` may be `null`. URLs are absolute.
+  `short_description` may be `null`. `requires_payment` can also be `null`
+  (unspecified), while `requires_booking_approval` and `has_free_access` are
+  booleans. URLs are absolute.
 - No internal ownership, moderation drafts, roles, contacts or permissions
   are returned.
 - Invalid query parameters produce HTTP 422 JSON validation errors.
@@ -75,6 +94,23 @@ HTTP 200 JSON (illustrative values):
 - API paths use Laravel's JSON exception rendering.
 
 ## Examples
+
+Filter school venues that are active and genuinely free:
+
+```sh
+curl -sS -G 'https://dev.mskba.ru/api/v1/venues' \
+  --data-urlencode 'type=school' \
+  --data-urlencode 'operational_status=active' \
+  --data-urlencode 'access=free' \
+  --data-urlencode 'limit=20' | jq .
+```
+
+Find a venue by name, address or description:
+
+```sh
+curl -sS -G 'https://dev.mskba.ru/api/v1/venues' \
+  --data-urlencode 'search=Москва' | jq .
+```
 
 ```sh
 curl -H 'Accept: application/json' \
@@ -115,6 +151,9 @@ curl -sS -H 'Accept: application/json' \
     "type_label": "Школа",
     "status": "confirmed",
     "operational_status": "active",
+    "requires_payment": null,
+    "requires_booking_approval": false,
+    "has_free_access": false,
     "short_description": null,
     "address": "Россия, Москва, Керамический проезд, 47А",
     "latitude": null,

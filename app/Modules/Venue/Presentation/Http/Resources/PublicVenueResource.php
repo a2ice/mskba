@@ -33,6 +33,9 @@ final class PublicVenueResource extends JsonResource
             'type_label' => $venue->type->label(),
             'status' => $venue->status->value,
             'operational_status' => $venue->operational_status->value,
+            'requires_payment' => $venue->requires_payment,
+            'requires_booking_approval' => $venue->requires_booking_approval,
+            'has_free_access' => $venue->hasFreeAccess(),
             'short_description' => $venue->short_description,
             'address' => $this->addressFormatter->format(
                 $address?->full_address ?? $venue->raw_address,
