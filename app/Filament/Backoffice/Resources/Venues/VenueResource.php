@@ -83,8 +83,7 @@ final class VenueResource extends Resource
                         TextInput::make('name')->label('Название')->required()->minLength(3)->maxLength(255),
                         TextInput::make('alias')->label('URL-алиас')->maxLength(255)
                             ->regex('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D')
-                            ->unique(ignoreRecord: true)
-                            ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически.'),
+                            ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически. URL использует ID площадки.'),
                         Select::make('type')->label('Тип')->required()->options(self::options(VenueTypeEnum::class)),
                         Select::make('status')->label('Статус модерации')->required()
                             ->options(self::options(VenueStatusEnum::class))->default(VenueStatusEnum::UNCONFIRMED->value),
