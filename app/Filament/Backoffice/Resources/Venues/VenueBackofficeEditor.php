@@ -50,6 +50,8 @@ final class VenueBackofficeEditor
                 'marking_condition' => $characteristics?->marking_condition?->value,
             ],
             'location_city' => $address?->city,
+            'location_city_id' => $address?->city_id,
+            'location_district_id' => $address?->district_id,
             'location_street' => $address?->street,
             'location_building' => $address?->building,
             'location_postal_code' => $address?->postal_code,
@@ -171,6 +173,8 @@ final class VenueBackofficeEditor
         $same = $venue !== null
             && trim((string) ($address?->full_address ?? '')) === $rawAddress
             && trim((string) ($address?->city ?? '')) === trim((string) ($data['location_city'] ?? ''))
+            && (int) ($address?->city_id ?? 0) === (int) ($data['location_city_id'] ?? 0)
+            && (int) ($address?->district_id ?? 0) === (int) ($data['location_district_id'] ?? 0)
             && trim((string) ($address?->street ?? '')) === trim((string) ($data['location_street'] ?? ''))
             && trim((string) ($address?->building ?? '')) === trim((string) ($data['location_building'] ?? ''))
             && trim((string) ($address?->postal_code ?? '')) === trim((string) ($data['location_postal_code'] ?? ''))
@@ -187,6 +191,10 @@ final class VenueBackofficeEditor
 
         return $this->locations->handle(new CreateLocationDTO(
             rawAddress: $rawAddress !== '' ? $rawAddress : null,
+            cityId: isset($data['location_city_id']) && $data['location_city_id'] !== ''
+                ? (int) $data['location_city_id'] : null,
+            districtId: isset($data['location_district_id']) && $data['location_district_id'] !== ''
+                ? (int) $data['location_district_id'] : null,
             city: $asString('location_city'),
             street: $asString('location_street'),
             building: $asString('location_building'),

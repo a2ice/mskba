@@ -10,6 +10,8 @@ use App\Filament\Backoffice\Resources\Venues\RelationManagers\PhotosRelationMana
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Location\Domain\Models\MetroStation;
+use App\Modules\Location\Domain\Models\City;
+use App\Modules\Location\Domain\Models\District;
 use App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -107,6 +109,10 @@ final class VenueResource extends Resource
                         ->columns(2)->schema([
                             TextInput::make('raw_address')->label('Адрес для отображения')->maxLength(1000)->columnSpanFull(),
                             TextInput::make('location_city')->label('Город')->maxLength(255),
+                            Select::make('location_city_id')->label('Город из справочника')->searchable()
+                                ->options(fn (): array => City::query()->orderBy('name')->pluck('name', 'id')->all()),
+                            Select::make('location_district_id')->label('Район из справочника')->searchable()
+                                ->options(fn (): array => District::query()->orderBy('name')->pluck('name', 'id')->all()),
                             TextInput::make('location_street')->label('Улица')->maxLength(255),
                             TextInput::make('location_building')->label('Дом / корпус')->maxLength(255),
                             TextInput::make('location_postal_code')->label('Индекс')->maxLength(32),
