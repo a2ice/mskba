@@ -11,6 +11,8 @@ use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
+use App\Modules\Venue\Application\Services\VenueProximityService;
+use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -27,6 +29,8 @@ final class VenueBackofficeEditor
         private readonly VenueFacilitiesSynchronizer $facilities,
         private readonly VenueTagSynchronizer $tags,
         private readonly VenueUniquenessChecker $uniqueness,
+        private readonly VenueProximityService $proximity,
+        private readonly UpdateVenueStatusHandler $statusTransitions,
     ) {}
 
     /** @return array<string, mixed> */
@@ -114,16 +118,30 @@ final class VenueBackofficeEditor
             $location = $this->resolveLocation($venue, $data, $rawAddress);
             $status = VenueStatusEnum::from((string) ($data['status'] ?? VenueStatusEnum::UNCONFIRMED->value));
             if ($status === VenueStatusEnum::CONFIRMED
-                && ($location?->address?->latitude === null || $location?->address?->longitude === null)
                 && ($venue === null || $venue->status !== VenueStatusEnum::CONFIRMED)) {
-                throw ValidationException::withMessages(['data.location_latitude' => 'Для подтверждения новой площадки укажи координаты.']);
+                throw ValidationException::withMessages([
+                    'data.status' => 'Подтверждение площадки возможно только через одобрение заявки модерации.',
+                ]);
+            }
+
+            if ($location?->address?->latitude !== null && $location?->address?->longitude !== null
+                && $this->proximity->existsNearCoordinates(
+                    type: VenueTypeEnum::from((string) $data['type']),
+                    latitude: (float) $location->address->latitude,
+                    longitude: (float) $location->address->longitude,
+                    radiusMeters: $this->proximity->strongRadiusMeters(),
+                    statuses: [VenueStatusEnum::CONFIRMED],
+                    exceptVenueId: $venue?->id,
+                )) {
+                throw ValidationException::withMessages([
+                    'data.raw_address' => 'Рядом уже существует подтверждённая площадка такого типа.',
+                ]);
             }
 
             $attributes = [
                 'name' => $name,
                 'alias' => $alias,
                 'type' => VenueTypeEnum::from((string) $data['type'])->value,
-                'status' => $status->value,
                 'operational_status' => VenueOperationalStatusEnum::from(
                     (string) ($data['operational_status'] ?? VenueOperationalStatusEnum::ACTIVE->value)
                 )->value,
@@ -138,6 +156,7 @@ final class VenueBackofficeEditor
             ];
 
             if ($venue === null) {
+                $attributes['status'] = VenueStatusEnum::UNCONFIRMED->value;
                 $attributes['created_by_actor_id'] = Actor::query()
                     ->where('user_id', $actor->canonical()->id)->value('id');
                 $venue = Venue::query()->create($attributes);
@@ -152,6 +171,11 @@ final class VenueBackofficeEditor
                 is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [],
             );
             $this->saveSchedule($venue, $data);
+            if ($venue->status !== $status) {
+                $venue = $this->statusTransitions->handle(
+                    $venue, $status, isset($data['status_info']) ? (string) $data['status_info'] : null,
+                );
+            }
             $venue->increment('content_version');
 
             if ($original === null) {

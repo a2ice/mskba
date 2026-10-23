@@ -88,7 +88,18 @@ final class VenueResource extends Resource
                             ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически. URL использует ID площадки.'),
                         Select::make('type')->label('Тип')->required()->options(self::options(VenueTypeEnum::class)),
                         Select::make('status')->label('Статус модерации')->required()
-                            ->options(self::options(VenueStatusEnum::class))->default(VenueStatusEnum::UNCONFIRMED->value),
+                            ->options(fn (?Venue $record): array => $record?->status === VenueStatusEnum::CONFIRMED
+                                ? [
+                                    VenueStatusEnum::CONFIRMED->value => VenueStatusEnum::CONFIRMED->label(),
+                                    VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
+                                ] : [
+                                    VenueStatusEnum::UNCONFIRMED->value => VenueStatusEnum::UNCONFIRMED->label(),
+                                    VenueStatusEnum::BLOCKED->value => VenueStatusEnum::BLOCKED->label(),
+                                ])
+                            ->default(VenueStatusEnum::UNCONFIRMED->value)
+                            ->helperText('Подтверждение площадки производится только при одобрении заявки модерации.'),
+                        Textarea::make('status_info')->label('Комментарий к статусу (причина блокировки)')
+                            ->maxLength(5000)->columnSpanFull(),
                         Select::make('operational_status')->label('Состояние работы')->required()
                             ->options(self::options(VenueOperationalStatusEnum::class))
                             ->default(VenueOperationalStatusEnum::ACTIVE->value),

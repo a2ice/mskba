@@ -15,6 +15,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class VenueManagementAccessTest extends TestCase
@@ -67,6 +68,25 @@ final class VenueManagementAccessTest extends TestCase
             'name' => 'Недоступная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
+        ]);
+    }
+
+    public function test_venue_cannot_be_confirmed_by_direct_admin_write(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->account(UserSystemRoleEnum::SUPERADMIN));
+
+        $this->expectException(ValidationException::class);
+        app(VenueBackofficeEditor::class)->save([
+            'name' => 'Нельзя подтвердить без заявки',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'raw_address' => 'Москва, другая улица, 1',
+            'location_city' => 'Москва',
+            'location_street' => 'Другая улица',
+            'location_building' => '1',
+            'location_latitude' => 55.74,
+            'location_longitude' => 37.60,
         ]);
     }
 
