@@ -3,6 +3,7 @@
 namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\Venues\VenueAddressAutocomplete;
+use App\Filament\Backoffice\Resources\Venues\Pages\CreateVenue;
 use App\Filament\Backoffice\Resources\Venues\VenueBackofficeEditor;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -15,6 +16,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 final class VenueAddressAutocompleteTest extends TestCase
@@ -60,6 +62,33 @@ final class VenueAddressAutocompleteTest extends TestCase
         $this->assertSame(55.821, $data['location_latitude']);
         $this->assertSame(37.451, $data['location_longitude']);
         $this->assertContains($station->id, $data['location_metro_ids']);
+    }
+
+    public function test_selecting_yandex_suggestion_updates_livewire_form_fields(): void
+    {
+        config(['integrations.yandex.api_key' => 'test-key']);
+        Http::fake([
+            'suggest-maps.yandex.ru/*' => Http::response(['results' => []]),
+            'geocode-maps.yandex.ru/*' => Http::response($this->yandexResponse()),
+        ]);
+        $user = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->createProfile([]);
+        $this->actingAs($user);
+
+        $options = app(VenueAddressAutocomplete::class)->search('Москва Тушинская улица 16А');
+        $token = (string) array_key_first($options);
+
+        Livewire::test(CreateVenue::class)
+            ->set('data.address_yandex_selection', $token)
+            ->assertSet('data.location_full_address', '125362, Россия, Москва, Тушинская улица, 16А')
+            ->assertSet('data.raw_address', 'Тушинская улица, 16А')
+            ->assertSet('data.location_street', 'Тушинская улица')
+            ->assertSet('data.location_building', '16А')
+            ->assertSet('data.location_latitude', 55.821)
+            ->assertSet('data.location_longitude', 37.451);
     }
 
     public function test_full_and_display_addresses_are_stored_separately_and_preserved_on_edit(): void
