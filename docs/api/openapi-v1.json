@@ -312,7 +312,7 @@
         "tags": [
           "Площадки"
         ],
-        "summary": "List public venues",
+        "summary": "Каталог опубликованных площадок с фильтрами",
         "operationId": "Listpublicvenues",
         "parameters": [
           {
@@ -334,6 +334,64 @@
               "type": "string",
               "maxLength": 512
             }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Тип площадки (те же значения, что на сайте).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sports_hall",
+                "school",
+                "university",
+                "sports_complex",
+                "arena",
+                "street_court"
+              ]
+            },
+            "example": "street_court"
+          },
+          {
+            "name": "operational_status",
+            "in": "query",
+            "required": false,
+            "description": "Текущее состояние: работает либо временно закрыта. Не является статусом модерации (публикуются только confirmed).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "temporarily_closed"
+              ]
+            },
+            "example": "active"
+          },
+          {
+            "name": "access",
+            "in": "query",
+            "required": false,
+            "description": "Условия доступа: free = без оплаты и предварительного подтверждения; paid = требует оплаты; approval = требует подтверждения. paid и approval могут пересекаться.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "free",
+                "paid",
+                "approval"
+              ]
+            },
+            "example": "free"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Поиск по названию, адресу и краткому описанию: все слова должны совпасть; не более 100 символов.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": "Москва"
           }
         ],
         "responses": {
@@ -367,7 +425,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Only confirmed, non-deleted venues. Filters match the web catalog and are applied in SQL before cursor pagination. Empty/omitted filters return all public venues. The next-page URL retains filters."
       }
     },
     "/api/v1/venues/{venue}": {
@@ -496,6 +555,21 @@
           },
           "url": {
             "type": "string"
+          },
+          "requires_payment": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "null = не установлено, поэтому не считается бесплатной или платной площадкой"
+          },
+          "requires_booking_approval": {
+            "type": "boolean",
+            "description": "Требуется согласование доступа"
+          },
+          "has_free_access": {
+            "type": "boolean",
+            "description": "true только если requires_payment=false и requires_booking_approval=false"
           }
         },
         "required": [
@@ -511,7 +585,10 @@
           "latitude",
           "longitude",
           "image_url",
-          "url"
+          "url",
+          "requires_payment",
+          "requires_booking_approval",
+          "has_free_access"
         ]
       },
       "CursorMeta": {
