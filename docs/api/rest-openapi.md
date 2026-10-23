@@ -23,8 +23,9 @@ The served JSON and the Swagger UI use exactly this tracked file. The
 spec has a relative server URL (`/`), so **Try it out** targets the host
 where Swagger UI was opened. No proxy to production is configured.
 
-The spec includes the currently implemented REST v1 routes, plus the
-deprecated `/api/get_venues` mobile compatibility alias. It does **not**
+The spec includes the currently implemented REST v1 routes, including
+`GET /api/v1/venues/{venue}` for one confirmed venue by numeric ID.
+The deprecated `/api/get_venues` alias was removed from DEV. It does **not**
 expose nonexistent `/users`, `/teams`, or write endpoints. Adding new
 features requires new Laravel operations, OpenAPI descriptions and tests.
 
