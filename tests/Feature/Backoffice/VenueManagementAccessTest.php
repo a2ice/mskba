@@ -53,7 +53,7 @@ final class VenueManagementAccessTest extends TestCase
         $this->assertTrue(VenueResource::canViewAny());
         $this->assertTrue(AmenityResource::canViewAny());
         $this->get('/backoffice/venues')->assertOk();
-        $this->get('/backoffice/amenities')->assertOk();
+        $this->get(AmenityResource::getUrl('index'))->assertOk();
         $this->get('/backoffice/design-themes')->assertForbidden();
     }
 
