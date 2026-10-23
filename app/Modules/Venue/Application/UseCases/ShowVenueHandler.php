@@ -281,8 +281,12 @@ final class ShowVenueHandler
 
     private function displayAddress(?Address $address, ?string $rawAddress): string
     {
+        if (trim((string) $rawAddress) !== '') {
+            return $this->addressFormatter->format($rawAddress) ?? '';
+        }
+
         return $this->addressFormatter->format(
-            $address?->full_address ?? $rawAddress,
+            $address?->full_address,
             $address?->city,
             $address?->street,
             $address?->building,

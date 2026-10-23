@@ -74,12 +74,14 @@ final class ListVenuesHandler
                     statusSlug: $venue->status->value,
                     shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
-                    displayAddress: $this->addressFormatter->format(
-                        $venue->location?->address?->full_address ?? $venue->raw_address,
-                        $venue->location?->address?->city,
-                        $venue->location?->address?->street,
-                        $venue->location?->address?->building,
-                    ),
+                    displayAddress: trim((string) $venue->raw_address) !== ''
+                        ? $this->addressFormatter->format($venue->raw_address)
+                        : $this->addressFormatter->format(
+                            $venue->location?->address?->full_address,
+                            $venue->location?->address?->city,
+                            $venue->location?->address?->street,
+                            $venue->location?->address?->building,
+                        ),
                     imageUrl: $venue->media->first()?->publicUrl(),
                     latitude: $venue->location?->address?->latitude !== null ? (float) $venue->location->address->latitude : null,
                     longitude: $venue->location?->address?->longitude !== null ? (float) $venue->location->address->longitude : null,

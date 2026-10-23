@@ -37,12 +37,14 @@ final class PublicVenueResource extends JsonResource
             'requires_booking_approval' => $venue->requires_booking_approval,
             'has_free_access' => $venue->hasFreeAccess(),
             'short_description' => $venue->short_description,
-            'address' => $this->addressFormatter->format(
-                $address?->full_address ?? $venue->raw_address,
-                $address?->city,
-                $address?->street,
-                $address?->building,
-            ),
+            'address' => trim((string) $venue->raw_address) !== ''
+                ? $this->addressFormatter->format($venue->raw_address)
+                : $this->addressFormatter->format(
+                    $address?->full_address,
+                    $address?->city,
+                    $address?->street,
+                    $address?->building,
+                ),
             'latitude' => $address?->latitude === null ? null : (float) $address->latitude,
             'longitude' => $address?->longitude === null ? null : (float) $address->longitude,
             'image_url' => $photo === null ? null : url($photo->publicUrl()),
