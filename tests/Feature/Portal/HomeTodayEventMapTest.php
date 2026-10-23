@@ -67,7 +67,12 @@ final class HomeTodayEventMapTest extends TestCase
 
     public function test_events_without_venue_coordinates_are_not_shown(): void
     {
-        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $address = Address::factory()->create(['latitude' => null, 'longitude' => null]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'location_id' => $location->id,
+        ]);
         Event::factory()->create([
             'venue_id' => $venue->id,
             'starts_at' => now()->addMinutes(10),
