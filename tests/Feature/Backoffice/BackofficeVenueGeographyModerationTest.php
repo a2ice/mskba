@@ -67,6 +67,51 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         }
     }
 
+    public function test_geography_create_and_edit_forms_render_for_all_four_directories(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $city = City::query()->create(['name' => 'Город форм', 'alias' => 'form-city']);
+        $district = District::query()->create([
+            'city_id' => $city->id, 'name' => 'Район форм', 'alias' => 'form-district',
+        ]);
+        $line = MetroLine::query()->create(['name' => 'Линия форм']);
+        $station = MetroStation::query()->create([
+            'metro_line_id' => $line->id, 'name' => 'Станция форм',
+        ]);
+
+        foreach ([
+            [CityResource::class, $city],
+            [DistrictResource::class, $district],
+            [MetroLineResource::class, $line],
+            [MetroStationResource::class, $station],
+        ] as [$resource, $model]) {
+            $this->get($resource::getUrl('create'))->assertOk();
+            $this->get($resource::getUrl('edit', ['record' => $model]))->assertOk();
+        }
+    }
+
+    public function test_pending_venue_moderation_detail_displays_original_submission(): void
+    {
+        $super = $this->user(Role::SUPERADMIN);
+        $owner = $this->user(Role::USER);
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $venue = Venue::factory()->create(['created_by_actor_id' => $actor->id]);
+        $request = $venue->moderationRequests()->create([
+            'type' => ModerationTypeEnum::VENUE,
+            'status' => ModerationRequestStatusEnum::PENDING,
+            'submitted_by_actor_id' => $actor->id,
+            'submitted_at' => now(),
+        ]);
+        $request->messages()->create(['sender_id' => $actor->id, 'message' => 'Проверьте адрес']);
+
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $this->get(VenueModerationResource::getUrl('view', ['record' => $request]))
+            ->assertOk()->assertSee('Проверьте адрес');
+    }
+
     public function test_city_district_line_and_station_deletion_guards_respect_existing_links(): void
     {
         $this->actingAs($this->user(Role::SUPERADMIN));
