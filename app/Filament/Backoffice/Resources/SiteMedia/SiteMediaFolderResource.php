@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 final class SiteMediaFolderResource extends Resource
 {
     protected static ?string $model = SiteMediaFolder::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-folder';
     protected static ?int $navigationSort = 4;
 

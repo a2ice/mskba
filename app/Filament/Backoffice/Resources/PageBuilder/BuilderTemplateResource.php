@@ -23,7 +23,7 @@ final class BuilderTemplateResource extends Resource
     use BuilderPermissions;
 
     protected static ?string $model = PageBuilderTemplate::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Дизайн';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-square-3-stack-3d';
     protected static ?int $navigationSort = 5;
 
