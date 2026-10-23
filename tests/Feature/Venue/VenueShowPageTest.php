@@ -59,6 +59,7 @@ class VenueShowPageTest extends TestCase
             'status' => VenueStatusEnum::CONFIRMED,
             'short_description' => 'Баскетбольный зал для тренировок и игр.',
             'full_description' => 'Полное описание зала, покрытия и условий игры.',
+            'raw_address' => 'Тушинская улица, 16А',
         ]);
 
         $this
@@ -83,7 +84,7 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Площадки рядом')
             ->assertSee('data-venue-nearby-open', false)
             ->assertDontSee('data-venue-nearby-modal', false)
-            ->assertSee($location->address->full_address)
+            ->assertSee('Тушинская улица, 16А')
             ->assertSee('Верхние Лихоборы')
             ->assertSee('title="Серпуховско-Тимирязевская линия"', false)
             ->assertDontSee('venue-metro__line', false)

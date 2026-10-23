@@ -17,6 +17,8 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventResponsibilityPermission;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
@@ -47,13 +49,13 @@ final class UpdateEventHandler
      *     max_participants?: int|null
      * } $data
      */
-    public function handle(string $identifier, Actor $actor, array $data): Event
+    public function handle(string $identifier, Actor $actor, array $data, bool $asBackoffice = false): Event
     {
         $reference = Event::query()->whereRouteIdentifier($identifier)->firstOrFail(['id', 'venue_id', 'venue_court_id']);
         $requestedVenueId = (int) ($data['venue_id'] ?? $reference->venue_id);
         $venueIds = collect([$reference->venue_id, $requestedVenueId])->unique()->sort()->values();
 
-        $event = DB::transaction(function () use ($reference, $requestedVenueId, $venueIds, $actor, $data): Event {
+        $event = DB::transaction(function () use ($reference, $requestedVenueId, $venueIds, $actor, $data, $asBackoffice): Event {
             // Общий порядок для бронирований: venue(s) по id -> event -> booking.
             $venues = Venue::query()
                 ->whereKey($venueIds)
@@ -68,7 +70,11 @@ final class UpdateEventHandler
                 throw new InvalidArgumentException('Мероприятие уже было перенесено. Обновите страницу и повторите действие.');
             }
 
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT);
+            } else {
+                $this->assertBackofficeEventManage($actor);
+            }
             if ($event->trainingSession()->exists()) {
                 throw new InvalidArgumentException('Связанное с секцией мероприятие редактируется через занятие.');
             }
@@ -226,5 +232,14 @@ final class UpdateEventHandler
         event(new EventChanged($event->id));
 
         return $event;
+    }
+
+    private function assertBackofficeEventManage(Actor $actor): void
+    {
+        $user = $actor->user?->canonical();
+        $permissions = app(BackofficePermissionManager::class);
+        abort_unless($user !== null
+            && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+            && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
     }
 }

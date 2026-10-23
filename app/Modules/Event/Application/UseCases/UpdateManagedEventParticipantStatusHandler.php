@@ -10,6 +10,8 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -22,10 +24,19 @@ final class UpdateManagedEventParticipantStatusHandler
         int $participantId,
         Actor $actor,
         EventParticipantStatusEnum $status,
+        bool $asBackoffice = false,
     ): Event {
-        $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status): Event {
+        $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status, $asBackoffice): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            } else {
+                $user = $actor->user?->canonical();
+                $permissions = app(BackofficePermissionManager::class);
+                abort_unless($user !== null
+                    && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+                    && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
+            }
             if (in_array($event->status, [EventStatusEnum::DRAFT, EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
                 || $event->ends_at->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('Состав этого мероприятия уже нельзя изменять.');

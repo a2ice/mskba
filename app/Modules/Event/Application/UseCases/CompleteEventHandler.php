@@ -9,6 +9,8 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -16,14 +18,18 @@ final class CompleteEventHandler
 {
     public function __construct(private readonly EventManagementAccess $access) {}
 
-    public function handle(string $identifier, Actor $actor, ?string $description): Event
+    public function handle(string $identifier, Actor $actor, ?string $description, bool $asBackoffice = false): Event
     {
-        $event = DB::transaction(function () use ($identifier, $actor, $description): Event {
+        $event = DB::transaction(function () use ($identifier, $actor, $description, $asBackoffice): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $permission = $event->completed_at === null
                 ? EventResponsibilityPermissionEnum::COMPLETE_EVENT
                 : EventResponsibilityPermissionEnum::MANAGE_RESULT;
-            $this->access->assertAllows($event, $actor, $permission);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, $permission);
+            } else {
+                $this->assertBackofficeEventManage($actor);
+            }
 
             if ($event->trainingSession()->exists()) {
                 throw new InvalidArgumentException('Связанное с секцией мероприятие завершается через занятие.');
@@ -58,5 +64,14 @@ final class CompleteEventHandler
         event(new EventChanged($event->id));
 
         return $event;
+    }
+
+    private function assertBackofficeEventManage(Actor $actor): void
+    {
+        $user = $actor->user?->canonical();
+        $permissions = app(BackofficePermissionManager::class);
+        abort_unless($user !== null
+            && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+            && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
     }
 }
