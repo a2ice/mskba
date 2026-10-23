@@ -93,6 +93,9 @@ final class VenueManagementAccessTest extends TestCase
             'tags_text' => 'Стритбол, 3х3',
         ]);
 
+        $this->get('/backoffice/venues/create')->assertOk();
+        $this->get('/backoffice/venues/'.$venue->id.'/edit')->assertOk();
+
         $this->assertSame('Тестовая площадка', $venue->name);
         $this->assertFalse($venue->requires_payment);
         $this->assertNotNull($venue->location?->address);
