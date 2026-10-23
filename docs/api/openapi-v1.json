@@ -26,42 +26,52 @@
     }
   ],
   "paths": {
-    "/api/v1/venues": {
-      "get": {
+    "/api/v1/auth/login": {
+      "post": {
         "tags": [
-          "Площадки"
+          "Авторизация"
         ],
-        "summary": "List public venues",
-        "operationId": "Listpublicvenues",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Page size",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 30
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "description": "Opaque cursor from meta.next_cursor",
-            "schema": {
-              "type": "string",
-              "maxLength": 512
+        "summary": "Login with existing MSKBA account",
+        "operationId": "login",
+        "description": "Rate limit 5/minute; returns a personal Sanctum token, valid for 30 days.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "description": "JSON response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VenuePage"
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -89,33 +99,17 @@
         }
       }
     },
-    "/api/get_venues": {
-      "get": {
+    "/api/v1/auth/logout": {
+      "post": {
         "tags": [
-          "Площадки"
+          "Авторизация"
         ],
-        "summary": "Legacy get venues",
-        "operationId": "Legacygetvenues",
-        "parameters": [
+        "summary": "Revoke current device token",
+        "operationId": "logoutCurrentDevice",
+        "description": "Requires Bearer token with auth:logout. Other device tokens are not revoked.",
+        "security": [
           {
-            "name": "limit",
-            "in": "query",
-            "description": "Page size",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 30
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "description": "Opaque cursor from meta.next_cursor",
-            "schema": {
-              "type": "string",
-              "maxLength": 512
-            }
+            "sanctumBearer": []
           }
         ],
         "responses": {
@@ -124,22 +118,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VenuePage"
+                  "$ref": "#/components/schemas/LogoutResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "JSON response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
-                }
-              }
-            }
-          },
-          "429": {
+          "401": {
             "description": "JSON response",
             "content": {
               "application/json": {
@@ -148,57 +132,13 @@
                 }
               }
             }
-          }
-        },
-        "deprecated": true
-      }
-    },
-    "/api/v1/home/venues-map": {
-      "get": {
-        "tags": [
-          "Главная страница"
-        ],
-        "summary": "Homepage venues map",
-        "operationId": "Homepagevenuesmap",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Page size",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 100
-            }
           },
-          {
-            "name": "cursor",
-            "in": "query",
-            "description": "Opaque cursor from meta.next_cursor",
-            "schema": {
-              "type": "string",
-              "maxLength": 512
-            }
-          }
-        ],
-        "responses": {
-          "200": {
+          "403": {
             "description": "JSON response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MapPage"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "JSON response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -247,52 +187,42 @@
         }
       }
     },
-    "/api/v1/auth/login": {
-      "post": {
+    "/api/v1/home/venues-map": {
+      "get": {
         "tags": [
-          "Авторизация"
+          "Главная страница"
         ],
-        "summary": "Login with existing MSKBA account",
-        "operationId": "login",
-        "description": "Rate limit 5/minute; returns a personal Sanctum token, valid for 30 days.",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
+        "summary": "Homepage venues map",
+        "operationId": "Homepagevenuesmap",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from meta.next_cursor",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "JSON response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "JSON response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "JSON response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "$ref": "#/components/schemas/MapPage"
                 }
               }
             }
@@ -377,17 +307,33 @@
         }
       }
     },
-    "/api/v1/auth/logout": {
-      "post": {
+    "/api/v1/venues": {
+      "get": {
         "tags": [
-          "Авторизация"
+          "Площадки"
         ],
-        "summary": "Revoke current device token",
-        "operationId": "logoutCurrentDevice",
-        "description": "Requires Bearer token with auth:logout. Other device tokens are not revoked.",
-        "security": [
+        "summary": "List public venues",
+        "operationId": "Listpublicvenues",
+        "parameters": [
           {
-            "sanctumBearer": []
+            "name": "limit",
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from meta.next_cursor",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
           }
         ],
         "responses": {
@@ -396,33 +342,83 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
+                  "$ref": "#/components/schemas/VenuePage"
                 }
               }
             }
           },
-          "401": {
+          "422": {
             "description": "JSON response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "JSON response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             }
           },
           "429": {
             "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/venues/{venue}": {
+      "get": {
+        "tags": [
+          "Площадки"
+        ],
+        "summary": "Получить опубликованную площадку по ID",
+        "description": "Public, read-only. Shares visibility and fields with GET /api/v1/venues. Returns 404 for missing, unconfirmed, blocked or soft-deleted venues.",
+        "operationId": "getPublicVenue",
+        "security": [],
+        "parameters": [
+          {
+            "name": "venue",
+            "in": "path",
+            "required": true,
+            "description": "Positive numeric MSKBA venue ID (not a cursor or slug).",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Площадка найдена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Нет опубликованной площадки с таким ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "message": "Площадка не найдена."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов (60/мин)",
             "content": {
               "application/json": {
                 "schema": {
@@ -947,6 +943,18 @@
         "required": [
           "message"
         ]
+      },
+      "VenueDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Venue"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "description": "Single published venue in the same field format as a list item."
       }
     }
   }
