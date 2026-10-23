@@ -6,6 +6,7 @@ use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationReference
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebhookController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\PaymentWebhookController;
 use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\ListPublicVenuesController;
+use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\ShowPublicVenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\HomepageVenueMapController;
 use App\Modules\Tournament\Presentation\Http\Controllers\Api\V1\HomepageTournamentsSceneController;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnsureActiveMobileApiUser;
@@ -39,6 +40,12 @@ Route::get('/v1/venues', ListPublicVenuesController::class)
     ->middleware('throttle:60,1')
     ->name('api.v1.venues.index');
 
+// Single published venue, same public fields and visibility rules as the list.
+Route::get('/v1/venues/{venue}', ShowPublicVenueController::class)
+    ->whereNumber('venue')
+    ->middleware('throttle:60,1')
+    ->name('api.v1.venues.show');
+
 // Dedicated read-only public homepage map feed, with real district/surface/amenity filters.
 Route::get('/v1/home/venues-map', HomepageVenueMapController::class)
     ->middleware('throttle:60,1')
@@ -48,11 +55,6 @@ Route::get('/v1/home/venues-map', HomepageVenueMapController::class)
 Route::get('/v1/home/tournaments-scene', HomepageTournamentsSceneController::class)
     ->middleware('throttle:60,1')
     ->name('api.v1.home.tournaments-scene');
-
-// Compatibility with the first iOS integration path; same contract and rules.
-Route::get('/get_venues', ListPublicVenuesController::class)
-    ->middleware('throttle:60,1')
-    ->name('api.legacy.get_venues');
 
 /*
  * Platform-neutral credential/token API for trusted first-party mobile clients.
