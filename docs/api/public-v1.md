@@ -101,7 +101,7 @@ To fetch one record, supply its numeric `id` (e.g. `1`) from the list response.
 Use the same field structure as one item in `data`, wrapped in a `data` object:
 
 ```sh
-curl -sS -H 'Accept: application/json' \\
+curl -sS -H 'Accept: application/json' \
   'https://dev.mskba.ru/api/v1/venues/1' | jq .
 ```
 
