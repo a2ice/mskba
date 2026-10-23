@@ -126,7 +126,15 @@ final class EventResource extends Resource
                         TextInput::make('status')->label('Статус')->disabled()->dehydrated(false)
                             ->formatStateUsing(fn ($state): string => $state instanceof EventStatusEnum
                                 ? $state->label() : (EventStatusEnum::tryFrom((string) $state)?->label() ?? '—')),
-                        TextInput::make('organizerActor.user.username')->label('Организатор')
+                        TextInput::make('organizer_label')->label('Организатор')
+                            ->disabled()->dehydrated(false),
+                    ])->visible(fn (?Event $record): bool => $record !== null),
+                    Section::make('Связанная бронь')->columns(3)->schema([
+                        TextInput::make('booking_record_id')->label('ID брони')
+                            ->disabled()->dehydrated(false),
+                        TextInput::make('booking_status_label')->label('Статус брони')
+                            ->disabled()->dehydrated(false),
+                        TextInput::make('source_booking_id')->label('Внешнее бронирование')
                             ->disabled()->dehydrated(false),
                     ])->visible(fn (?Event $record): bool => $record !== null),
                 ]),

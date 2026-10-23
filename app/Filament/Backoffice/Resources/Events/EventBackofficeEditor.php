@@ -94,9 +94,13 @@ final class EventBackofficeEditor
     /** @return array<string, mixed> */
     public function fields(Event $event): array
     {
-        $event->loadMissing('booking', 'primaryGame');
+        $event->loadMissing('booking', 'sourceBooking', 'primaryGame', 'organizerActor.user');
 
         return [
+            'booking_record_id' => $event->booking?->id,
+            'booking_status_label' => $event->booking?->status?->label() ?? 'Отсутствует',
+            'source_booking_id' => $event->booking_id,
+            'organizer_label' => $event->organizerActor?->user?->username ?? 'Системный актор',
             'duration_minutes' => (int) $event->starts_at->diffInMinutes($event->ends_at),
             'booking_scope' => $event->booking?->scope?->value ?? 'whole',
             'game_format' => $event->primaryGame?->format?->value ?? 'streetball_3x3',
