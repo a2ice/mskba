@@ -98,7 +98,7 @@ final class VenueBackofficeEditor
                 while (Venue::withTrashed()->where('alias', $alias)->exists()) {
                     $alias = $baseAlias.'-'.$suffix++;
                 }
-            } elseif (Venue::withTrashed()->where('alias', $alias)->whereKeyNot($venue->id)->exists()) {
+            } elseif (Venue::withTrashed()->where('alias', $alias)->where('id', '<>', $venue->id)->exists()) {
                 throw ValidationException::withMessages(['data.alias' => 'Этот URL-алиас уже занят.']);
             }
 

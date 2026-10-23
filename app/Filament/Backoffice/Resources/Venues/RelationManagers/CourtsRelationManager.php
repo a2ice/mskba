@@ -102,6 +102,8 @@ final class CourtsRelationManager extends RelationManager
     {
         return DB::table('venue_bookings')->where('venue_court_id', $court->getKey())
             ->where('ends_at', '>', now())->exists()
+            || DB::table('venue_booking_quotes')->where('venue_court_id', $court->getKey())
+                ->where('starts_at', '>', now())->exists()
             || DB::table('events')->where('venue_court_id', $court->getKey())
                 ->where('starts_at', '>', now())->exists();
     }

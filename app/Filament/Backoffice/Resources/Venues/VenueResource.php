@@ -36,9 +36,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 final class VenueResource extends Resource
 {
@@ -70,11 +68,6 @@ final class VenueResource extends Resource
     public static function canDeleteAny(): bool { return false; }
     public static function canForceDelete(Model $record): bool { return false; }
     public static function canForceDeleteAny(): bool { return false; }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->withoutGlobalScopes([SoftDeletingScope::class]);
-    }
 
     private static function options(string $enum): array
     {
@@ -198,8 +191,8 @@ final class VenueResource extends Resource
     public static function getRelations(): array
     {
         return [
-            'courts' => CourtsRelationManager::class,
-            'photos' => PhotosRelationManager::class,
+            CourtsRelationManager::class,
+            PhotosRelationManager::class,
         ];
     }
 
