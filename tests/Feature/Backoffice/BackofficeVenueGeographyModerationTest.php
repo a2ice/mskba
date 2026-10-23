@@ -25,6 +25,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Database\Seeders\MoscowMetroSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Filament\Facades\Filament;
 use Tests\TestCase;
 
 final class BackofficeVenueGeographyModerationTest extends TestCase
@@ -57,6 +58,7 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         ]);
         $this->flushSession();
         $this->actingAs($manager);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
         foreach ([CityResource::class, DistrictResource::class, MetroLineResource::class,
             MetroStationResource::class, VenueModerationResource::class, VenueDuplicateResource::class] as $resource) {
