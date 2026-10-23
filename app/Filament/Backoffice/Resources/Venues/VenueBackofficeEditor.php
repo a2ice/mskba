@@ -56,6 +56,10 @@ final class VenueBackofficeEditor
                 'surface_condition' => $characteristics?->surface_condition,
                 'marking_condition' => $characteristics?->marking_condition?->value,
             ],
+            'location_full_address' => $address?->full_address ?: $venue->raw_address,
+            'address_yandex_selection' => VenueAddressAutocomplete::existing(
+                $address?->full_address ?: $venue->raw_address,
+            ),
             'location_city' => $address?->city,
             'location_city_id' => $address?->city_id,
             'location_district_id' => $address?->district_id,
@@ -118,7 +122,14 @@ final class VenueBackofficeEditor
                 ], static fn (string $part): bool => $part !== ''));
             }
 
-            $location = $this->resolveLocation($venue, $data, $rawAddress);
+            // Address.full_address is the complete Yandex address, whereas
+            // Venue.raw_address is the short public display address.
+            // Keep the old behaviour for clients without the new field.
+            $fullAddress = trim((string) ($data['location_full_address'] ?? ''));
+            if ($fullAddress === '') {
+                $fullAddress = $rawAddress;
+            }
+            $location = $this->resolveLocation($venue, $data, $fullAddress);
             $status = VenueStatusEnum::from((string) ($data['status'] ?? VenueStatusEnum::UNCONFIRMED->value));
             $autoApprove = $status === VenueStatusEnum::CONFIRMED
                 && ($venue === null || $venue->status !== VenueStatusEnum::CONFIRMED);
@@ -212,7 +223,7 @@ final class VenueBackofficeEditor
     }
 
     /** @param array<string, mixed> $data */
-    private function resolveLocation(?Venue $venue, array $data, string $rawAddress): ?\App\Modules\Location\Domain\Models\Location
+    private function resolveLocation(?Venue $venue, array $data, string $fullAddress): ?\App\Modules\Location\Domain\Models\Location
     {
         $venue?->loadMissing('location.address', 'location.metroStations');
         $old = $venue?->location;
@@ -220,7 +231,7 @@ final class VenueBackofficeEditor
         $metro = collect($data['location_metro_ids'] ?? [])->map('intval')->sort()->values()->all();
         $beforeMetro = $old?->metroStations->pluck('id')->map('intval')->sort()->values()->all() ?? [];
         $same = $venue !== null
-            && trim((string) ($address?->full_address ?? '')) === $rawAddress
+            && trim((string) ($address?->full_address ?? '')) === $fullAddress
             && trim((string) ($address?->city ?? '')) === trim((string) ($data['location_city'] ?? ''))
             && (int) ($address?->city_id ?? 0) === (int) ($data['location_city_id'] ?? 0)
             && (int) ($address?->district_id ?? 0) === (int) ($data['location_district_id'] ?? 0)
@@ -239,7 +250,7 @@ final class VenueBackofficeEditor
             isset($data[$key]) && $data[$key] !== '' ? (float) $data[$key] : null;
 
         return $this->locations->handle(new CreateLocationDTO(
-            rawAddress: $rawAddress !== '' ? $rawAddress : null,
+            rawAddress: $fullAddress !== '' ? $fullAddress : null,
             cityId: isset($data['location_city_id']) && $data['location_city_id'] !== ''
                 ? (int) $data['location_city_id'] : null,
             districtId: isset($data['location_district_id']) && $data['location_district_id'] !== ''

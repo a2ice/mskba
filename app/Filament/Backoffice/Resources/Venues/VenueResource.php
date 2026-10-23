@@ -26,6 +26,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -38,6 +39,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -139,7 +141,28 @@ final class VenueResource extends Resource
                     Section::make('Адрес')
                         ->description('Адрес создаётся как отдельная Location/Address. Изменение адреса не переписывает адреса других объектов.')
                         ->columns(2)->schema([
-                            TextInput::make('raw_address')->label('Адрес для отображения')->maxLength(1000)->columnSpanFull(),
+                            Select::make('address_yandex_selection')
+                                ->label('Полный адрес')
+                                ->placeholder('Начните вводить адрес')
+                                ->searchable()
+                                ->searchDebounce(400)
+                                ->searchPrompt('Введите хотя бы три символа для поиска через Яндекс')
+                                ->getSearchResultsUsing(fn (string $search): array =>
+                                    app(VenueAddressAutocomplete::class)->search($search))
+                                ->getOptionLabelUsing(fn (?string $value): ?string =>
+                                    VenueAddressAutocomplete::label($value))
+                                ->afterStateUpdated(function (?string $state, Set $set): void {
+                                    foreach (VenueAddressAutocomplete::fields($state) as $name => $value) {
+                                        $set($name, $value);
+                                    }
+                                })
+                                ->dehydrated(false)
+                                ->helperText('Выберите адрес из подсказок Яндекса — остальные поля заполнятся автоматически.')
+                                ->columnSpanFull(),
+                            Hidden::make('location_full_address'),
+                            TextInput::make('raw_address')->label('Отображаемый адрес')->maxLength(1000)
+                                ->helperText('Улица, дом и строение без индекса и города. Можно изменить вручную.')
+                                ->columnSpanFull(),
                             TextInput::make('location_city')->label('Город')->maxLength(255),
                             Select::make('location_city_id')->label('Город из справочника')->searchable()
                                 ->options(fn (): array => City::query()->orderBy('name')->pluck('name', 'id')->all()),
