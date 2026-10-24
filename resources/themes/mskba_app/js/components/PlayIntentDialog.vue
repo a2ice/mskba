@@ -12,7 +12,7 @@ const windows=reactive({ all:[{part:'any',from:'',to:''}] });
 const days=[{id:1,name:'Пн'},{id:2,name:'Вт'},{id:3,name:'Ср'},{id:4,name:'Чт'},{id:5,name:'Пт'},{id:6,name:'Сб'},{id:7,name:'Вс'}];
 const parts=[{id:'any',label:'Не важно'},{id:'morning',label:'Утро'},{id:'day',label:'День'},{id:'evening',label:'Вечер'},{id:'night',label:'Ночь'}];
 const limits={morning:['06:00','12:00'],day:['12:00','18:00'],evening:['18:00','22:00'],night:['22:00','06:00']};
-let isAuth=Boolean(props.options.authenticated), onceResume=false, requestId=null, restoreFocus=null, overflow='';
+const isAuth=ref(Boolean(props.options.authenticated));let onceResume=false, requestId=null, restoreFocus=null, overflow='';
 const keys=computed(()=>cadence.value==='once'&&dateMode.value==='dates'?dates.value:(dayIds.value.length?dayIds.value:['all']));
 const groups=computed(()=>['all','indoor','outdoor'].map(k=>({key:k,label:{all:'Общие',indoor:'В залах',outdoor:'На улице'}[k],items:amenities.value.filter(a=>a.applies_to===k)})).filter(x=>x.items.length));
 const nameForKey=(k)=>k==='all'?'Любой день':typeof k==='number'?days.find(d=>d.id===k)?.name:k;
@@ -22,7 +22,7 @@ function clockOptions(part,from=null){
     if(!limits[part])return[];
     let start=minute(limits[part][0]), end=minute(limits[part][1]);
     if(part==='night')end+=1440;
-    if(from===null)end-=30;else start=minute(from)+30;
+    if(from===null)end-=30;else start=minute(from)+30+(part==='night'&&minute(from)<360?1440:0);
     const out=[];for(let n=start;n<=end;n+=30)out.push({v:formatTime(n),t:formatTime(n)+(n>=1440?' +1 день':'')});
     return out;
 }
@@ -101,6 +101,7 @@ async function openDialog(){
 }
 function beginLogin(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
+    if(similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
     try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:payload}));}
     catch{error.value='Не удалось сохранить настройки до входа. Проверь настройки браузера.';return;}
@@ -128,15 +129,16 @@ async function save(payload){
 }
 async function submit(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
-    if(!isAuth){beginLogin();return;}
+    if(!isAuth.value){beginLogin();return;}
+    if(similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     await save(serialize());
 }
 async function resume(){
-    if(onceResume||!isAuth||document.querySelector('[data-onboarding-pending]'))return;
+    if(onceResume||!isAuth.value||document.querySelector('[data-onboarding-pending]'))return;
     const pending=readPending();if(!pending)return;
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
-function authSuccess(){isAuth=true;void resume();}
+function authSuccess(){isAuth.value=true;void resume();}
 function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();void openDialog();}}
 function onBackdrop(e){
     if(e.target!==el.value)return;
