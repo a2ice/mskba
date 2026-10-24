@@ -118,6 +118,8 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Активных интересов по этой площадке: ', false)
             ->assertSee('Ты уже отметил интерес к игре здесь')
             ->assertSee('data-play-venue-interest-summary', false)
+            ->assertSee('class="button primary" href="'.route('play-intents.mine').'">Мои интересы</a>', false)
+            ->assertDontSee('Отображается только число интересов')
             ->assertDontSee('private-interest-other');
 
         // Other users' identities are private even though the aggregate is public.
@@ -153,7 +155,8 @@ final class PlayIntentApiTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Расписание:')
+            ->assertSee('Часы работы:')
+            ->assertDontSee('Расписание:')
             ->assertSee('10:00–22:00')
             ->assertDontSee('Нет опубликованных занятых слотов')
             ->assertDontSee('Наличие свободного времени и стоимость уточняются')
@@ -199,8 +202,13 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame('00:00–01:00 (продолжение)', $occupied[1]['slots'][0]['timeLabel'] ?? '(missing next-day slot)');
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
+            ->assertSee('Часы работы')
+            ->assertSee('Слоты')
             ->assertSee('22:00–01:00 (+1 день)')
             ->assertSee('00:00–01:00 (продолжение)')
+            ->assertSee('aria-label="Открыть мероприятие на 22:00–01:00 (+1 день)"', false)
+            ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
+            ->assertDontSee('Игровая тренировка')
             ->assertDontSee('Нет опубликованных занятых слотов');
         $this->travelBack();
     }
