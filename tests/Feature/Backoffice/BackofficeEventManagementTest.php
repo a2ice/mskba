@@ -19,6 +19,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Illuminate\Validation\ValidationException;
 use App\Filament\Backoffice\Resources\Events\Pages\CreateEvent;
 use Tests\TestCase;
 
@@ -115,6 +116,33 @@ final class BackofficeEventManagementTest extends TestCase
             ->where('title', 'Пробная игра с экрана Filament')->firstOrFail();
         $this->assertSame($venue->id, $event->venue_id);
         $this->assertSame(1, $event->booking()->count());
+    }
+
+    public function test_event_conflict_message_is_attached_to_time_field_not_hidden_title_field(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $data = [
+            'title' => 'Первая игра',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(2)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 120,
+        ];
+        app(EventBackofficeEditor::class)->createEvent($data);
+
+        try {
+            app(EventBackofficeEditor::class)->createEvent(array_replace($data, ['title' => 'Пересекающаяся игра']));
+            $this->fail('Expected booking conflict');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.starts_at', $exception->errors());
+            $this->assertArrayNotHasKey('data.title', $exception->errors());
+        }
     }
 
     public function test_livewire_game_creation_sets_up_game_and_booking(): void

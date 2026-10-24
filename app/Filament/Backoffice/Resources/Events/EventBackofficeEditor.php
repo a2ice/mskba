@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Illuminate\Validation\ValidationException;
+use Filament\Notifications\Notification;
 use InvalidArgumentException;
 
 final class EventBackofficeEditor
@@ -132,7 +133,30 @@ final class EventBackofficeEditor
         try {
             return $action();
         } catch (InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(['data.title' => $exception->getMessage()]);
+            $message = $exception->getMessage();
+            $field = match (true) {
+                str_contains($message, 'половин'),
+                str_contains($message, 'зал') => 'data.venue_court_id',
+                str_contains($message, 'длительност'),
+                str_contains($message, 'в течение суток') => 'data.duration_minutes',
+                str_contains($message, 'время'),
+                str_contains($message, 'интервал'),
+                str_contains($message, 'занято'),
+                str_contains($message, 'час') => 'data.starts_at',
+                str_contains($message, 'площадк') => 'data.venue_id',
+                str_contains($message, 'участник') => 'data.max_participants',
+                default => 'data.title',
+            };
+
+            // The user may be on a different Filament tab from the invalid
+            // field. Show the domain reason globally as well as inline.
+            Notification::make()
+                ->danger()
+                ->title('Не удалось сохранить мероприятие')
+                ->body($message)
+                ->send();
+
+            throw ValidationException::withMessages([$field => $message]);
         }
     }
 }
