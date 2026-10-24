@@ -8,6 +8,8 @@ use App\Filament\Backoffice\Resources\Geography\MetroLineResource;
 use App\Filament\Backoffice\Resources\Geography\MetroStationResource;
 use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
 use App\Filament\Backoffice\Resources\Venues\VenueBackofficeEditor;
+use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
+use Livewire\Livewire;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Validation\ValidationException;
@@ -94,6 +96,21 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
             $this->get($resource::getUrl('create'))->assertOk();
             $this->get($resource::getUrl('edit', ['record' => $model]))->assertOk();
         }
+    }
+
+    public function test_editing_venue_amenities_via_livewire_saves_without_navigation_error(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
+        $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
+
+        Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
+            ->set('data.amenity_ids', $ids)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertCount(3, $venue->fresh()->amenities);
     }
 
     public function test_inapplicable_venue_facility_reports_form_validation_instead_of_500(): void

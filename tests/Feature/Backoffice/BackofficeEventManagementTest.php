@@ -117,6 +117,51 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame(1, $event->booking()->count());
     }
 
+    public function test_livewire_game_creation_sets_up_game_and_booking(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Игра 3×3 из админки')
+            ->set('data.type', EventTypeEnum::GAME->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.booking_scope', 'whole')
+            ->set('data.starts_at', now('Europe/Moscow')->addDays(3)->setTime(19, 0)->format('Y-m-d H:i'))
+            ->set('data.duration_minutes', 120)
+            ->set('data.game_format', 'streetball_3x3')
+            ->set('data.game_recruitment_mode', 'preformed_teams')
+            ->set('data.side_a_size', 3)
+            ->set('data.side_b_size', 3)
+            ->set('data.scoring_type', 'streetball')
+            ->set('data.timing_mode', 'whole_game')
+            ->set('data.game_accepts_applications', true)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Игра 3×3 из админки')->firstOrFail();
+        $this->assertSame(1, $event->booking()->count());
+        $this->assertSame(1, $event->games()->count());
+    }
+
+    public function test_default_event_date_is_today_in_moscow_before_evening(): void
+    {
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-10-24 10:53:00', 'Europe/Moscow'));
+        try {
+            $this->assertSame('2026-10-24 19:00', EventResource::defaultStartsAt());
+        } finally {
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
     public function test_duration_select_has_half_hour_steps_up_to_eight_hours(): void
     {
         $options = EventResource::durationOptions();
