@@ -4,6 +4,7 @@ const props = defineProps({ options: { type:Object, required:true } });
 const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
+const interestName=ref('');
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
@@ -46,7 +47,7 @@ function serialize(){
         ));
     }
     const payload={
-        client_request_id:requestId||(requestId=crypto.randomUUID()),venue_id:selectedVenueId.value,
+        client_request_id:requestId||(requestId=crypto.randomUUID()),name:interestName.value.trim() || null,venue_id:selectedVenueId.value,
         include_similar_venues:similar.value,cadence:cadence.value,
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
         dates:cadence.value==='once'&&dateMode.value==='dates'?dates.value:[],
@@ -61,6 +62,7 @@ function serialize(){
     return payload;
 }
 function restore(data){
+    interestName.value=data.name || '';
     selectedVenueId.value=data.venue_id ?? null;
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
     dates.value=data.dates||[];dateMode.value=dates.value.length?'dates':'range';
@@ -148,7 +150,7 @@ async function resume(){
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;selectedVenueId.value=props.options.venueId??null;requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
@@ -194,6 +196,12 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             </div>
             <p v-if="!isAuth" class="app-play-dialog__hint">Для сохранения необходимо войти. <button class="app-play-dialog__text-button" type="button" @click="beginLogin()">Войти или зарегистрироваться</button></p>
             <form id="app-play-intent-form" class="app-play-dialog__form" @submit.prevent="submit">
+                <label class="field-group" for="app-play-intent-name">Название интереса
+                    <input id="app-play-intent-name" v-model="interestName" class="app-play-dialog__name-input"
+                        name="interest_name" type="text" maxlength="80" autocomplete="off"
+                        placeholder="Например, стритбол по выходным">
+                    <span class="caption">Необязательно. Только для твоего удобства, до 80 символов.</span>
+                </label>
                 <fieldset><legend>Как часто хочешь играть?</legend>
                     <label v-for="m in [{v:'flexible',t:'Не важно — любые игры'},{v:'once',t:'Разово — одна игра'},{v:'regular',t:'Регулярно'}]" :key="m.v" class="check-label">
                         <input v-model="cadence" type="radio" name="cadence" :value="m.v">{{m.t}}
