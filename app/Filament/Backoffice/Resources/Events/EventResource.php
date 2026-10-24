@@ -141,15 +141,22 @@ final class EventResource extends Resource
                             // Search results alone do not satisfy Filament validation
                             // for a programmatically hydrated selection.
                             ->options(fn (Get $get): array => ($selected = (int) ($get('organizer_user_id') ?? 0))
-                                ? User::query()->whereKey($selected)->pluck('username', 'id')->all()
+                                ? User::query()->whereKey($selected)->get()->mapWithKeys(
+                                    fn (User $user): array => [$user->id => $user->username ?: 'Пользователь #'.$user->id],
+                                )->all()
                                 : [])
                             ->placeholder('Текущий администратор')
                             ->helperText('Можно не выбирать — организатором станет текущий пользователь.')
                             ->getSearchResultsUsing(fn (string $search): array => User::query()
                                 ->whereLike('username', '%'.$search.'%')
-                                ->limit(30)->pluck('username', 'id')->all())
-                            ->getOptionLabelUsing(fn ($value): ?string => User::query()
-                                ->whereKey($value)->value('username'))
+                                ->limit(30)->get()->mapWithKeys(
+                                    fn (User $user): array => [$user->id => $user->username ?: 'Пользователь #'.$user->id],
+                                )->all())
+                            ->getOptionLabelUsing(function ($value): ?string {
+                                $user = User::query()->find($value);
+
+                                return $user ? ($user->username ?: 'Пользователь #'.$user->id) : null;
+                            })
                             ->visible(fn (?Event $record): bool => $record === null
                                 && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN),
                         Textarea::make('description')->label('Описание')->maxLength(5000)->columnSpanFull(),

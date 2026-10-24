@@ -223,6 +223,21 @@ final class BackofficeEventManagementTest extends TestCase
         }
     }
 
+    public function test_selecting_organizer_without_username_renders_form(): void
+    {
+        $admin = $this->user(Role::SUPERADMIN);
+        $user = $this->user(Role::USER);
+        $user->forceFill(['username' => null])->save();
+
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.organizer_user_id', $user->id)
+            ->assertSee('Пользователь #'.$user->id)
+            ->assertHasNoErrors();
+    }
+
     public function test_superadmin_can_choose_another_event_organizer_in_livewire_form(): void
     {
         Queue::fake();
