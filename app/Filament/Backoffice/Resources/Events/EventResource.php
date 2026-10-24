@@ -19,6 +19,9 @@ use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Filament\Actions\Action;
@@ -31,6 +34,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -116,6 +121,38 @@ final class EventResource extends Resource
         return $venueId > 0 && Venue::query()->whereKey($venueId)->first()?->hasFreeAccess() === true;
     }
 
+    /** @return array<string, string> */
+    public static function participationRoleOptions(): array
+    {
+        return collect(UserParticipationRoleEnum::cases())
+            ->reject(fn (UserParticipationRoleEnum $role): bool => $role === UserParticipationRoleEnum::ORGANIZER)
+            ->mapWithKeys(fn (UserParticipationRoleEnum $role): array => [$role->value => $role->label()])
+            ->all();
+    }
+
+    /** @return list<string> */
+    public static function defaultParticipationRoles(?int $organizerUserId = null): array
+    {
+        $organizer = $organizerUserId
+            ? User::query()->find($organizerUserId)?->canonical()
+            : auth('web')->user()?->canonical();
+
+        if ($organizer === null) {
+            return [UserParticipationRoleEnum::PLAYER->value];
+        }
+
+        $allowed = array_keys(self::participationRoleOptions());
+        $roles = UserParticipationRole::query()
+            ->whereIn('user_id', $organizer->identityIds())
+            ->where('status', UserParticipationRoleStatusEnum::ACTIVE->value)
+            ->whereIn('role', $allowed)
+            ->pluck('role')
+            ->map(fn ($role): string => $role instanceof UserParticipationRoleEnum ? $role->value : (string) $role)
+            ->unique()->values()->all();
+
+        return $roles !== [] ? $roles : [UserParticipationRoleEnum::PLAYER->value];
+    }
+
     public static function defaultEventDate(): string
     {
         return now('Europe/Moscow')->toDateString();
@@ -136,7 +173,11 @@ final class EventResource extends Resource
                             ->options(self::options(EventVisibilityEnum::class))
                             ->default(EventVisibilityEnum::PUBLIC->value),
                         Select::make('organizer_user_id')->label('Организатор')
-                            ->searchable()
+                            ->searchable()->live()
+                            ->afterStateUpdated(fn (Set $set, $state) => $set(
+                                'participation_roles',
+                                self::defaultParticipationRoles((int) ($state ?? 0) ?: null),
+                            ))
                             // Keep the selected option in the current option set.
                             // Search results alone do not satisfy Filament validation
                             // for a programmatically hydrated selection.
@@ -159,8 +200,22 @@ final class EventResource extends Resource
                             })
                             ->visible(fn (?Event $record): bool => $record === null
                                 && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN),
+                        Checkbox::make('organizer_participates')->label('Буду участвовать')
+                            ->default(false)->live()->columnSpanFull()
+                            ->visible(fn (?Event $record): bool => $record === null)
+                            ->helperText('Организация мероприятия не означает участие в нём.'),
+                        CheckboxList::make('participation_roles')->label('В качестве кого')
+                            ->options(self::participationRoleOptions())
+                            ->default(fn (Get $get): array => self::defaultParticipationRoles(
+                                (int) ($get('organizer_user_id') ?? 0) ?: null,
+                            ))
+                            ->required(fn (Get $get): bool => (bool) $get('organizer_participates'))
+                            ->minItems(1)
+                            ->visible(fn (Get $get, ?Event $record): bool =>
+                                $record === null && (bool) $get('organizer_participates'))
+                            ->columns(2)->columnSpanFull(),
                         Textarea::make('description')->label('Описание')->maxLength(5000)->columnSpanFull(),
-                        TextInput::make('max_participants')->label('Максимум участников')
+                        TextInput::make('max_participants')->label('Максимум игроков')
                             ->numeric()->minValue(2)->maxValue(500),
                     ]),
                     Section::make('Состояние')->columns(2)->schema([
@@ -249,7 +304,7 @@ final class EventResource extends Resource
             TextColumn::make('venue.name')->label('Площадка')->searchable(),
             TextColumn::make('starts_at')->label('Начало')->dateTime('d.m.Y H:i')->sortable(),
             TextColumn::make('ends_at')->label('Окончание')->dateTime('d.m.Y H:i'),
-            TextColumn::make('participants_count')->counts('participants')->label('Участников'),
+            TextColumn::make('players_count')->counts(['participants as players_count' => fn ($query) => $query->occupiesPlayerSpot()])->label('Игроков'),
         ])->filters([
             SelectFilter::make('type')->label('Тип')->options(self::options(EventTypeEnum::class)),
             SelectFilter::make('status')->label('Статус')->options(self::options(EventStatusEnum::class)),

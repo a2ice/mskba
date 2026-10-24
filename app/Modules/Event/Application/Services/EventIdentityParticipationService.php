@@ -38,7 +38,17 @@ final class EventIdentityParticipationService
 
     public function confirmedIdentityCount(Event $event): int
     {
-        return count($this->confirmedCanonicalIds($event));
+        $userIds = $event->participants()
+            ->occupiesPlayerSpot()
+            ->where('confirmation_version', $event->participation_confirmation_version)
+            ->pluck('user_id')->all();
+        if ($userIds === []) {
+            return 0;
+        }
+
+        return User::query()->whereIn('id', $userIds)->get()
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->unique()->count();
     }
 
     /**

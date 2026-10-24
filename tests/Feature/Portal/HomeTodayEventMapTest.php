@@ -65,6 +65,52 @@ final class HomeTodayEventMapTest extends TestCase
         }
     }
 
+    public function test_non_player_staff_roles_do_not_consume_remaining_player_places(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-24 12:00:00', 'Europe/Moscow'));
+        try {
+            $address = Address::factory()->create(['latitude' => 55.82, 'longitude' => 37.45]);
+            $venue = Venue::factory()->create([
+                'status' => VenueStatusEnum::CONFIRMED,
+                'location_id' => Location::factory()->create(['address_id' => $address->id])->id,
+            ]);
+            $event = Event::factory()->create([
+                'venue_id' => $venue->id,
+                'type' => EventTypeEnum::TRAINING,
+                'status' => EventStatusEnum::PUBLISHED,
+                'visibility' => EventVisibilityEnum::PUBLIC,
+                'starts_at' => '2026-10-24 18:00:00',
+                'ends_at' => '2026-10-24 20:00:00',
+                'max_participants' => 1,
+            ])->refresh();
+            $staff = User::factory()->create();
+            $event->participants()->create([
+                'user_id' => $staff->id,
+                'role' => 'participant',
+                'status' => 'confirmed',
+                'participation_roles' => ['coach', 'statistician'],
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+
+            $this->getJson(route('home.today-event-map'))
+                ->assertOk()->assertJsonPath('count', 1)
+                ->assertJsonPath('events.0.spots_left', 1);
+
+            $event->participants()->create([
+                'user_id' => User::factory()->create()->id,
+                'role' => 'participant',
+                'status' => 'confirmed',
+                'participation_roles' => ['player', 'coach'],
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+
+            $this->getJson(route('home.today-event-map'))
+                ->assertOk()->assertJsonPath('count', 0);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     public function test_events_without_venue_coordinates_are_not_shown(): void
     {
         $address = Address::factory()->create(['latitude' => null, 'longitude' => null]);

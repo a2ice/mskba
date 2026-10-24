@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -40,16 +41,23 @@ final class JoinEventHandler
                 return $event;
             }
 
-            $confirmedCount = $this->identityParticipation->confirmedIdentityCount($event);
-
-            if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
+            // Accepting an existing invitation preserves the chosen functions.
+            // Ordinary "Пойду" without an invitation is a player signup.
+            $roles = $participant?->participation_roles ?: [UserParticipationRoleEnum::PLAYER->value];
+            if (in_array(UserParticipationRoleEnum::PLAYER->value, $roles, true)
+                && $event->max_participants !== null
+                && $this->identityParticipation->confirmedIdentityCount($event) >= $event->max_participants) {
                 throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
             $participant?->responsibilityPermissions()->delete();
 
             $attributes = [
-                'role' => EventParticipantRoleEnum::PARTICIPANT,
+                // Joining does not revoke the organizer's independent ACL.
+                'role' => $participant?->role === EventParticipantRoleEnum::ORGANIZER
+                    ? EventParticipantRoleEnum::ORGANIZER
+                    : EventParticipantRoleEnum::PARTICIPANT,
+'participation_roles' => $roles,
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'joined_at' => now(),
                 'left_at' => null,

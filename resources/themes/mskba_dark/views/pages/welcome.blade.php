@@ -13,7 +13,7 @@
         ->where('visibility', \App\Modules\Event\Domain\Enums\EventVisibilityEnum::PUBLIC->value)
         ->where('ends_at', '>', now())
         ->with(['venue.location.address', 'venue.media'])
-        ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
+        ->withCount(['participants as participants_count' => fn ($query) => $query->occupiesPlayerSpot()])
         ->orderBy('starts_at')->limit(3)->get();
 
     $upcomingGamesCount = \App\Modules\Event\Domain\Models\Event::query()

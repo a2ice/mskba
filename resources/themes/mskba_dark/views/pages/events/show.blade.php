@@ -28,8 +28,12 @@
     $declinedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::LEFT)
         ->where('confirmation_version', $event->participation_confirmation_version)
+        // An organizer who never opted in did not decline an invitation.
+        ->reject(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER
+            && $participant->participation_roles === [])
         ->values();
-    $confirmedCount = $confirmedParticipants->count();
+    $playerParticipants = $confirmedParticipants->filter(fn ($participant) => $participant->hasPlayerRole());
+    $confirmedCount = $playerParticipants->count();
     $miniGameFormats = $confirmedCount < 2
         ? collect()
         : collect(range(2, min(11, $confirmedCount)))
@@ -325,7 +329,7 @@
             @endif
 
             <section class="event-stat-grid">
-                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong data-event-confirmed-count>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
+                <div><i class="ti ti-users" aria-hidden="true"></i><span>Игроки</span><strong data-event-confirmed-count>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
                 <div><i class="ti ti-ball-basketball" aria-hidden="true"></i><span>Тип</span><strong>{{ $event->type->label() }}</strong></div>
                 <div><i class="ti ti-shield-check" aria-hidden="true"></i><span>Бронирование</span><strong>{{ $bookingLabel }}</strong></div>
             </section>
@@ -645,7 +649,7 @@
                                                 @foreach(['A', 'B'] as $slot)
                                                     <fieldset class="game-side-card">
                                                         <legend>Команда {{ $slot }}</legend>
-                                                        @foreach($confirmedParticipants as $participant)
+                                                        @foreach($playerParticipants as $participant)
                                                             @php
                                                                 $profile = $participant->user->profile;
                                                                 $candidateName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
