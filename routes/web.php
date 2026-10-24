@@ -1102,6 +1102,9 @@ Route::get('/favorites/status',
 Route::post('/favorites/toggle',
     [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'toggle'])
     ->middleware('throttle:30,1')->name('favorites.toggle');
+Route::post('/favorites/preferences',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'updatePreferences'])
+    ->middleware('throttle:30,1')->name('favorites.preferences');
 Route::get('/account/favorites/items',
     [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'index'])
     ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.items');
