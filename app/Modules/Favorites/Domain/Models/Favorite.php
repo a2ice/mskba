@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class Favorite extends Model
 {
+    protected $attributes = [
+        'notify_upcoming_events' => false,
+    ];
+
     protected $fillable = [
         'user_id', 'guest_token_hash', 'entity_type', 'entity_id', 'trashed_at', 'notify_upcoming_events',
     ];
