@@ -41,9 +41,12 @@ final class JoinEventHandler
                 return $event;
             }
 
-            $confirmedCount = $this->identityParticipation->confirmedIdentityCount($event);
-
-            if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
+            // Accepting an existing invitation preserves the chosen functions.
+            // Ordinary "Пойду" without an invitation is a player signup.
+            $roles = $participant?->participation_roles ?: [UserParticipationRoleEnum::PLAYER->value];
+            if (in_array(UserParticipationRoleEnum::PLAYER->value, $roles, true)
+                && $event->max_participants !== null
+                && $this->identityParticipation->confirmedIdentityCount($event) >= $event->max_participants) {
                 throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
@@ -54,10 +57,7 @@ final class JoinEventHandler
                 'role' => $participant?->role === EventParticipantRoleEnum::ORGANIZER
                     ? EventParticipantRoleEnum::ORGANIZER
                     : EventParticipantRoleEnum::PARTICIPANT,
-                'participation_roles' => array_values(array_unique([
-                    ...($participant?->participation_roles ?? []),
-                    UserParticipationRoleEnum::PLAYER->value,
-                ])),
+'participation_roles' => $roles,
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'joined_at' => now(),
                 'left_at' => null,
