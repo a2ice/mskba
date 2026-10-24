@@ -25,7 +25,7 @@ final class FavoriteTargetRegistry
             'venue' => Venue::query()->whereKey($id)->where('status', VenueStatusEnum::CONFIRMED)->first(),
             'event' => Event::query()->whereKey($id)
                 ->where('visibility', EventVisibilityEnum::PUBLIC)
-                ->whereIn('status', [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED])->first(),
+                ->whereIn('status', [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value])->first(),
             'team' => Team::query()->whereKey($id)
                 ->where('status', TeamStatusEnum::ACTIVE)->whereNull('temporary_for_event_id')->first(),
             default => null,
