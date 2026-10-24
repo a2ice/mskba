@@ -13,7 +13,7 @@ final class ClaimGuestFavorites
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() !== null && $request->hasCookie(FavoritesManager::COOKIE_NAME)) {
+        if ($request->user() !== null && $request->cookie(FavoritesManager::COOKIE_NAME) !== null) {
             $this->favorites->claim($request);
         }
 
