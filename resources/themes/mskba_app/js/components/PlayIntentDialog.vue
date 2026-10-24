@@ -5,7 +5,8 @@ const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
-const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any');
+const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
+const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
 const notifyMatches=ref(true), notifyOffers=ref(false), amenities=ref([]), priority=reactive({});
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
@@ -45,12 +46,12 @@ function serialize(){
         ));
     }
     const payload={
-        client_request_id:requestId||(requestId=crypto.randomUUID()),venue_id:props.options.venueId,
+        client_request_id:requestId||(requestId=crypto.randomUUID()),venue_id:selectedVenueId.value,
         include_similar_venues:similar.value,cadence:cadence.value,
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
         dates:cadence.value==='once'&&dateMode.value==='dates'?dates.value:[],
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
-        access_mode:access.value,amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
+        access_mode:access.value,venue_kind:venueKind.value,amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
@@ -60,12 +61,13 @@ function serialize(){
     return payload;
 }
 function restore(data){
-    requestId=data.client_request_id;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
+    selectedVenueId.value=data.venue_id ?? null;
+    requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
     dates.value=data.dates||[];dateMode.value=dates.value.length?'dates':'range';
     formats.value=data.formats||[];duration.value=String(data.duration_minutes||'');
     similar.value=Boolean(data.include_similar_venues);radius.value=data.radius_km||10;
     latitude.value=data.center_latitude??latitude.value;longitude.value=data.center_longitude??longitude.value;
-    access.value=data.access_mode||'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
+    access.value=data.access_mode||'any';venueKind.value=data.venue_kind||'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
@@ -111,7 +113,8 @@ function beginLogin(){
 async function save(payload){
     busy.value=true;error.value='';errors.value={};
     try{
-        const response=await fetch(props.options.endpoints.store,{method:'POST',credentials:'same-origin',
+        const response=await fetch(editingId.value ? props.options.endpoints.base+'/'+editingId.value : props.options.endpoints.store,{
+            method:editingId.value?'PUT':'POST',credentials:'same-origin',
             headers:{'Content-Type':'application/json',Accept:'application/json','X-Requested-With':'XMLHttpRequest',
                 'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
             body:JSON.stringify(payload)});
@@ -124,6 +127,7 @@ async function save(payload){
                 'Не получилось сохранить. Повтори попытку.';return;
         }
         success.value=result.data;sessionStorage.removeItem(STORAGE);
+        window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
     finally{busy.value=false;}
 }
@@ -139,21 +143,27 @@ async function resume(){
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;selectedVenueId.value=props.options.venueId??null;requestId=null;success.value=null;void openDialog();}}
+function onEdit(event){
+    const intent=event.detail?.intent;
+    if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
+    editingId.value=intent.id;success.value=null;error.value='';errors.value={};
+    restore(intent);void openDialog();
+}
 function onBackdrop(e){
     if(e.target!==el.value)return;
     const r=el.value.getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
 }
-onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:auth:success',authSuccess);void resume();});
-onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:auth:success',authSuccess);if(el.value?.open)el.value.close();});
+onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);void resume();});
+onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);if(el.value?.open)el.value.close();});
 </script>
 <template>
 <Teleport to="body">
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?'Настройки приняты':'Хочу здесь играть'}}</h2></div>
+        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?'Настройки приняты':editingId?'Редактировать интерес':'Хочу здесь играть'}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">
@@ -231,6 +241,11 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <button type="button" class="chip" :aria-pressed="!formats.length" @click="formats=[]">Не важно</button>
                     <button v-for="f in ['1x1','2x2','3x3','4x4','5x5']" :key="f" type="button" class="chip" :aria-pressed="formats.includes(f)" @click="toggleFormat(f)">{{f.replace('x','×')}}</button>
                 </div></fieldset>
+                <fieldset><legend>Тип площадки</legend><div class="app-play-dialog__chips">
+                    <button v-for="kind in [{v:'any',t:'Не важно'},{v:'outdoor',t:'Открытая'},{v:'indoor',t:'Крытая'}]"
+                        :key="kind.v" type="button" class="chip" :aria-pressed="venueKind===kind.v"
+                        @click="venueKind=kind.v">{{kind.t}}</button>
+                </div></fieldset>
                 <label class="field-group">Продолжительность игры<span class="select-control"><select v-model="duration">
                     <option value="">Не важно</option><option value="60">1 час</option><option value="90">1,5 часа</option><option value="120">2 часа</option><option value="180">3 часа</option>
                 </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
@@ -268,7 +283,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer">
             <button class="button primary full" type="submit" form="app-play-intent-form" :disabled="busy">
-                {{busy?'Сохраняем…':isAuth?'Сохранить интерес':'Войти и сохранить'}}</button>
+                {{busy?'Сохраняем…':isAuth?(editingId?'Сохранить изменения':'Сохранить интерес'):'Войти и сохранить'}}</button>
         </footer>
     </template>
 </dialog>
