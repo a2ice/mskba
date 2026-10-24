@@ -18,6 +18,8 @@ use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\DB;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Livewire\Livewire;
 use Illuminate\Validation\ValidationException;
 use App\Filament\Backoffice\Resources\Events\Pages\CreateEvent;
@@ -86,6 +88,80 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame('Обновлённая тренировка', $updated->title);
         $this->assertSame('Обновлено в админке', $updated->description);
         $this->assertSame(1, $updated->booking()->count());
+    }
+
+    /**
+     * Mirrors scripts/staging/import-public-venues-fixture-20261019.sh:
+     * direct INSERT into venues bypasses the Eloquent created hook that
+     * normally inserts the primary venue_courts row.
+     */
+    public function test_livewire_creates_event_for_imported_school_1794_without_courts(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venueId = DB::table('venues')->insertGetId([
+            'name' => 'Школа №1794',
+            'alias' => 'shkola-1794',
+            'type' => 'street_court',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => 'active',
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $venue = Venue::query()->findOrFail($venueId);
+        $this->assertSame(0, VenueCourt::query()->where('venue_id', $venue->id)->count());
+
+        $start = now('Europe/Moscow')->addDay()->setTime(19, 0)->format('Y-m-d H:i');
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Игра на Школе 1794')
+            ->set('data.type', EventTypeEnum::TRAINING->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.venue_id', $venue->id)
+            ->assertSee('На площадке нет отдельных игровых зон')
+            ->set('data.booking_scope', 'whole')
+            ->set('data.starts_at', $start)
+            ->set('data.duration_minutes', 90)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Игра на Школе 1794')->firstOrFail();
+        $this->assertSame($venue->id, $event->venue_id);
+        $this->assertNull($event->venue_court_id);
+        $this->assertNull($event->booking->venue_court_id);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $event->booking->status);
+
+        $edited = app(EventBackofficeEditor::class)->updateEvent($event, [
+            'title' => 'Игра на Школе 1794 — обновлено',
+            'venue_id' => $venue->id,
+            'venue_court_id' => null,
+            'booking_scope' => 'whole',
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => $start,
+            'duration_minutes' => 90,
+        ]);
+        $this->assertNull($edited->venue_court_id);
+        $this->assertSame('Игра на Школе 1794 — обновлено', $edited->title);
+
+        try {
+            app(EventBackofficeEditor::class)->createEvent([
+                'title' => 'Дубль',
+                'venue_id' => $venue->id,
+                'type' => EventTypeEnum::TRAINING->value,
+                'visibility' => EventVisibilityEnum::PUBLIC->value,
+                'starts_at' => $start,
+                'duration_minutes' => 90,
+            ]);
+            $this->fail('A legacy venue-wide booking must still prevent double booking.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.starts_at', $exception->errors());
+        }
     }
 
     public function test_livewire_create_form_creates_event_and_its_booking(): void

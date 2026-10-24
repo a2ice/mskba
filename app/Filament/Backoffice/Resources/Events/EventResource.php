@@ -184,9 +184,14 @@ final class EventResource extends Resource
                         Select::make('venue_court_id')->label('Игровая зона / зал')->searchable()
                             ->options(fn (Get $get): array => VenueCourt::query()
                                 ->where('venue_id', $get('venue_id') ?: 0)->orderBy('sort_order')
-                                ->pluck('name', 'id')->all()),
-                        Select::make('booking_scope')->label(fn (Get $get): string =>
-                            self::isFreeAccess($get) ? 'Часть площадки для игры' : 'Объём бронирования')
+                                ->pluck('name', 'id')->all())
+                            ->disabled(fn (Get $get): bool => ! VenueCourt::query()
+                                ->where('venue_id', $get('venue_id') ?: 0)->exists())
+                            ->helperText(fn (Get $get): ?string => $get('venue_id') && ! VenueCourt::query()
+                                ->where('venue_id', $get('venue_id'))->exists()
+                                ? 'На площадке нет отдельных игровых зон. Мероприятие охватит всю площадку.'
+                                : null),
+                        Select::make('booking_scope')->label('Охват площадки')
                             ->options(self::options(VenueBookingScopeEnum::class))->default('whole'),
                         DateTimePicker::make('starts_at')->label('Начало (МСК)')
                             ->default(fn (): string => self::defaultStartsAt())

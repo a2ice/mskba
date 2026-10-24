@@ -46,12 +46,18 @@ final class CreateEventHandler
         $event = DB::transaction(function () use ($actor, $data): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
+            // Some verified venues (including the production -> dev fixture)
+            // predate VenueCourt and have no court rows. NULL court_id means
+            // the entire venue, as supported by the existing schema/availability.
             $court = isset($data['venue_court_id'])
                 ? VenueCourt::query()
                     ->where('venue_id', $venue->id)
                     ->whereKey((int) $data['venue_court_id'])
-                    ->firstOrFail()
-                : ($venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail());
+                    ->first()
+                : ($venue->primaryCourt()->first() ?? $venue->courts()->first());
+            if (isset($data['venue_court_id']) && $court === null) {
+                throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
+            }
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
             $durationMinutes = (int) $data['duration_minutes'];
@@ -75,7 +81,7 @@ final class CreateEventHandler
 
             $event = Event::query()->create([
                 'venue_id' => $venue->id,
-                'venue_court_id' => $court->id,
+                'venue_court_id' => $court?->id,
                 'organizer_actor_id' => $actor->id,
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
@@ -92,7 +98,7 @@ final class CreateEventHandler
 
             $event->booking()->create([
                 'venue_id' => $venue->id,
-                'venue_court_id' => $court->id,
+                'venue_court_id' => $court?->id,
                 'created_by_actor_id' => $actor->id,
                 'status' => $bookingStatus,
                 'scope' => $bookingScope,
