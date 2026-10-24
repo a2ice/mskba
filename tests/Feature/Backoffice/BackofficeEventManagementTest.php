@@ -107,51 +107,59 @@ final class BackofficeEventManagementTest extends TestCase
     {
         // Reproduce a Moscow venue on a UTC app / DB connection.
         // Eloquent date bindings omit offsets, so this catches a +3h drift.
+        $previousAppTimezone = config('app.timezone');
+        $previousPhpTimezone = date_default_timezone_get();
+        date_default_timezone_set('UTC');
         config()->set('app.timezone', 'UTC');
-        Queue::fake();
-        $this->actingAs($this->user(Role::SUPERADMIN));
-        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        try {
+            Queue::fake();
+            $this->actingAs($this->user(Role::SUPERADMIN));
+            Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
-        $venue = Venue::factory()->create([
-            'status' => VenueStatusEnum::CONFIRMED,
-            'requires_payment' => false,
-            'requires_booking_approval' => false,
-        ]);
-        \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
-            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
-        $start = now('Europe/Moscow')->addDays(3)->setTime(22, 0)->format('Y-m-d H:i');
-        $editor = app(EventBackofficeEditor::class);
-        $event = $editor->createEvent([
-            'title' => 'Проверка обновления времени',
-            'venue_id' => $venue->id,
-            'type' => EventTypeEnum::TRAINING->value,
-            'visibility' => EventVisibilityEnum::PUBLIC->value,
-            'starts_at' => $start,
-            'duration_minutes' => 90,
-            'max_participants' => 10,
-        ]);
+            $venue = Venue::factory()->create([
+                'status' => VenueStatusEnum::CONFIRMED,
+                'requires_payment' => false,
+                'requires_booking_approval' => false,
+            ]);
+            \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+                ->for($venue)->create(['timezone' => 'Europe/Moscow']);
+            $start = now('Europe/Moscow')->addDays(3)->setTime(22, 0)->format('Y-m-d H:i');
+            $editor = app(EventBackofficeEditor::class);
+            $event = $editor->createEvent([
+                'title' => 'Проверка обновления времени',
+                'venue_id' => $venue->id,
+                'type' => EventTypeEnum::TRAINING->value,
+                'visibility' => EventVisibilityEnum::PUBLIC->value,
+                'starts_at' => $start,
+                'duration_minutes' => 90,
+                'max_participants' => 10,
+            ]);
 
-        $event->refresh();
-        $this->assertSame('22:00', $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
-        $this->assertSame('22:00', $event->booking->fresh()->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
+            $event->refresh();
+            $this->assertSame('22:00', $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
+            $this->assertSame('22:00', $event->booking->fresh()->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
 
-        Livewire::test(EditEvent::class, ['record' => $event->id])
-            ->assertSet('data.event_time', '22:00')
-            ->set('data.event_time', '19:00')
-            ->call('save')
-            ->assertHasNoErrors();
+            Livewire::test(EditEvent::class, ['record' => $event->id])
+                ->assertSet('data.event_time', '22:00')
+                ->set('data.event_time', '19:00')
+                ->call('save')
+                ->assertHasNoErrors();
 
-        $event->refresh();
-        $this->assertSame('19:00', $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
-        $this->assertSame('19:00', $event->booking->fresh()->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
-        $this->assertSame(
-            $event->starts_at->timestamp,
-            $event->booking->fresh()->starts_at->timestamp,
-            'Linked booking must move with the event.',
-        );
+            $event->refresh();
+            $this->assertSame('19:00', $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
+            $this->assertSame('19:00', $event->booking->fresh()->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
+            $this->assertSame(
+                $event->starts_at->timestamp,
+                $event->booking->fresh()->starts_at->timestamp,
+                'Linked booking must move with the event.',
+            );
 
-        Livewire::test(EditEvent::class, ['record' => $event->id])
-            ->assertSet('data.event_time', '19:00');
+            Livewire::test(EditEvent::class, ['record' => $event->id])
+                ->assertSet('data.event_time', '19:00');
+        } finally {
+            config()->set('app.timezone', $previousAppTimezone);
+            date_default_timezone_set($previousPhpTimezone);
+        }
     }
 
     /**
