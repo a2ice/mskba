@@ -102,6 +102,8 @@ final class EventBackofficeEditor
             'booking_status_label' => $event->booking?->status?->label() ?? 'Отсутствует',
             'source_booking_id' => $event->booking_id,
             'organizer_label' => $event->organizerActor?->user?->username ?? 'Системный актор',
+            'event_date' => $event->starts_at->setTimezone('Europe/Moscow')->format('Y-m-d'),
+            'event_time' => $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'),
             'duration_minutes' => (int) $event->starts_at->diffInMinutes($event->ends_at),
             'booking_scope' => $event->booking?->scope?->value ?? 'whole',
             'game_format' => $event->primaryGame?->format?->value ?? 'streetball_3x3',
@@ -119,7 +121,20 @@ final class EventBackofficeEditor
     private function payload(array $data): array
     {
         $data['duration_minutes'] = (int) ($data['duration_minutes'] ?? 0);
-        $data['starts_at'] = (string) ($data['starts_at'] ?? '');
+        if (array_key_exists('event_date', $data) || array_key_exists('event_time', $data)) {
+            $date = trim((string) ($data['event_date'] ?? ''));
+            $time = trim((string) ($data['event_time'] ?? ''));
+            if ($date === '') {
+                throw ValidationException::withMessages(['data.event_date' => 'Укажите дату мероприятия.']);
+            }
+            if ($time === '') {
+                throw ValidationException::withMessages(['data.event_time' => 'Укажите время начала мероприятия.']);
+            }
+            $data['starts_at'] = $date.' '.substr($time, 0, 5);
+        } else {
+            // Keep supporting existing application-service callers.
+            $data['starts_at'] = (string) ($data['starts_at'] ?? '');
+        }
         $data['booking_scope'] = (string) ($data['booking_scope'] ?? 'whole');
         $data['game_accepts_applications'] = (bool) ($data['game_accepts_applications'] ?? true);
         $data['side_a_size'] = (int) ($data['side_a_size'] ?? 3);
@@ -142,7 +157,7 @@ final class EventBackofficeEditor
                 str_contains($message, 'время'),
                 str_contains($message, 'интервал'),
                 str_contains($message, 'занято'),
-                str_contains($message, 'час') => 'data.starts_at',
+                str_contains($message, 'час') => 'data.event_time',
                 str_contains($message, 'площадк') => 'data.venue_id',
                 str_contains($message, 'участник') => 'data.max_participants',
                 default => 'data.title',

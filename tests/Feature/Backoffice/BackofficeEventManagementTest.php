@@ -124,7 +124,8 @@ final class BackofficeEventManagementTest extends TestCase
             ->set('data.venue_id', $venue->id)
             ->assertSee('На площадке нет отдельных игровых зон')
             ->set('data.booking_scope', 'whole')
-            ->set('data.starts_at', $start)
+            ->set('data.event_date', substr($start, 0, 10))
+            ->set('data.event_time', substr($start, 11, 5))
             ->set('data.duration_minutes', 90)
             ->call('create')
             ->assertHasNoErrors();
@@ -160,7 +161,7 @@ final class BackofficeEventManagementTest extends TestCase
             ]);
             $this->fail('A legacy venue-wide booking must still prevent double booking.');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('data.starts_at', $exception->errors());
+            $this->assertArrayHasKey('data.event_time', $exception->errors());
         }
     }
 
@@ -183,7 +184,8 @@ final class BackofficeEventManagementTest extends TestCase
             ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
             ->set('data.venue_id', $venue->id)
             ->set('data.booking_scope', 'whole')
-            ->set('data.starts_at', $starts)
+            ->set('data.event_date', substr($starts, 0, 10))
+            ->set('data.event_time', substr($starts, 11, 5))
             ->set('data.duration_minutes', 180)
             ->call('create')
             ->assertHasNoErrors();
@@ -241,7 +243,8 @@ final class BackofficeEventManagementTest extends TestCase
             ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
             ->set('data.organizer_user_id', $organizer->id)
             ->set('data.venue_id', $venue->id)
-            ->set('data.starts_at', now('Europe/Moscow')->addDays(2)->setTime(18, 0)->format('Y-m-d H:i'))
+            ->set('data.event_date', now('Europe/Moscow')->addDays(2)->format('Y-m-d'))
+            ->set('data.event_time', '18:00')
             ->set('data.duration_minutes', 90)
             ->call('create')
             ->assertHasNoErrors();
@@ -268,7 +271,8 @@ final class BackofficeEventManagementTest extends TestCase
             ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
             ->set('data.venue_id', $venue->id)
             ->set('data.booking_scope', 'whole')
-            ->set('data.starts_at', now('Europe/Moscow')->addDays(3)->setTime(19, 0)->format('Y-m-d H:i'))
+            ->set('data.event_date', now('Europe/Moscow')->addDays(3)->format('Y-m-d'))
+            ->set('data.event_time', '19:00')
             ->set('data.duration_minutes', 120)
             ->set('data.game_format', 'streetball_3x3')
             ->set('data.game_recruitment_mode', 'preformed_teams')
@@ -290,10 +294,23 @@ final class BackofficeEventManagementTest extends TestCase
     {
         \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-10-24 10:53:00', 'Europe/Moscow'));
         try {
-            $this->assertSame('2026-10-24 19:00', EventResource::defaultStartsAt());
+            $this->assertSame('2026-10-24', EventResource::defaultEventDate());
         } finally {
             \Carbon\Carbon::setTestNow();
         }
+    }
+
+    public function test_create_form_requires_explicit_time_but_prefills_todays_date(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateEvent::class)
+            ->assertSet('data.event_date', EventResource::defaultEventDate())
+            ->assertSet('data.event_time', null)
+            ->set('data.title', 'Без времени')
+            ->call('create')
+            ->assertHasErrors(['data.event_time' => 'required']);
     }
 
     public function test_duration_select_has_half_hour_steps_up_to_eight_hours(): void
