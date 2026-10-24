@@ -57,7 +57,8 @@ function initCatalogMap(catalog, getPromise, setPromise) {
                 return new window.ymaps.Placemark(coordinates, {
                     hintContent: point.name,
                     balloonContentHeader: point.name,
-                    balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
+                    balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>` +
+                        `<button type="button" class="mskba-favorite-heart" data-favorite-venue="${Number(point.id)}" title="Добавить в избранное" aria-pressed="false" aria-label="Добавить в избранное">♡</button>`, 
                 }, { preset: 'islands#orangeSportIcon' });
             });
             const clusterer = new window.ymaps.Clusterer({
