@@ -7,7 +7,6 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'event_id',
     'user_id',
     'role',
-    'participation_role',
+    'participation_roles',
     'status',
     'joined_at',
     'left_at',
@@ -55,7 +54,7 @@ class EventParticipant extends Model
     {
         return [
             'role' => EventParticipantRoleEnum::class,
-            'participation_role' => UserParticipationRoleEnum::class,
+            'participation_roles' => 'array',
             'status' => EventParticipantStatusEnum::class,
             'joined_at' => 'immutable_datetime',
             'left_at' => 'immutable_datetime',
