@@ -53,7 +53,7 @@ final class UpdateManagedEventParticipantStatusHandler
 
             if ($status === EventParticipantStatusEnum::CONFIRMED) {
                 $confirmedCount = $event->participants()
-                    ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                    ->occupiesPlayerSpot()
                     ->where('confirmation_version', $event->participation_confirmation_version)
                     ->count();
                 if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
