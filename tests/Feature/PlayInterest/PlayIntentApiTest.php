@@ -226,6 +226,75 @@ final class PlayIntentApiTest extends TestCase
             ->assertJsonPath('meta.reservation_created', false);
     }
 
+    public function test_venue_kind_is_validated_persisted_and_filters_real_venue_types(): void
+    {
+        $user = User::factory()->create();
+        $indoor = Venue::factory()->create([
+            'type' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::SPORTS_HALL->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+        $outdoor = Venue::factory()->create([
+            'type' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::STREET_COURT->value,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($outdoor), 'venue_kind' => 'outdoor',
+        ])->assertCreated()->assertJsonPath('data.venue_kind', 'outdoor');
+        $id = PlayIntent::query()->sole()->id;
+        $this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->assertJsonPath('data.0.venue_id', $outdoor->id);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($indoor), 'venue_kind' => 'outdoor',
+        ])->assertOk()->assertJsonPath('data.venue_kind', 'outdoor');
+        $this->assertDatabaseCount('play_intents', 1);
+        $this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->assertJsonCount(0, 'data');
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($indoor), 'venue_kind' => 'indoor',
+        ])->assertOk()->assertJsonPath('data.venue_kind', 'indoor');
+        $this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->assertJsonPath('data.0.venue_id', $indoor->id);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($indoor), 'venue_kind' => 'invalid',
+        ])->assertUnprocessable()->assertJsonValidationErrors('venue_kind');
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
+    public function test_editing_paused_interest_preserves_its_paused_status(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $id = $this->actingAs($user)->postJson(route('play-intents.store'), $this->payload($venue))
+            ->assertCreated()->json('data.id');
+        $this->patchJson(route('play-intents.pause', $id))->assertOk();
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($venue),
+            'venue_kind' => 'outdoor',
+            'formats' => ['3x3'],
+        ])->assertOk()->assertJsonPath('data.status', 'paused')
+            ->assertJsonPath('data.venue_kind', 'outdoor');
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
+    public function test_account_interest_navigation_uses_account_breadcrumbs(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('play-intents.mine'))
+            ->assertOk()
+            ->assertSee('Мои интересы')
+            ->assertSee('data-mskba-play-intent-root', false)
+            ->assertDontSee('>Index<', false);
+    }
+
     public function test_recommendations_explain_that_availability_is_not_yet_checked(): void
     {
         $user = User::factory()->create();
