@@ -34,7 +34,16 @@
         </div>
         <div class="app-venue-intro panel">
             <p class="eyebrow accent">MSKBA / ПЛОЩАДКА</p>
-            <h1 id="app-venue-title">{{ $venue->name }}</h1>
+            <div class="app-venue-intro__title-row">
+                <h1 id="app-venue-title">{{ $venue->name }}</h1>
+                @if($canStartInterest)
+                    <button type="button" class="mskba-favorite-heart"
+                        data-favorite-venue="{{ $venue->id }}" title="Добавить в избранное"
+                        aria-label="Добавить в избранное" aria-pressed="false">
+                        <svg aria-hidden="true"><use href="#heart"/></svg>
+                    </button>
+                @endif
+            </div>
             @if($venueAddress)<p class="app-venue-intro__address"><svg aria-hidden="true"><use href="#pin"/></svg>{{ $venueAddress }}</p>@endif
             <div class="app-venue-intro__badges">
                 <span class="badge">{{ $venue->type }}</span>
