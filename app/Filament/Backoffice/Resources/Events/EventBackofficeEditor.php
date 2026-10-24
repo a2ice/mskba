@@ -150,7 +150,15 @@ final class EventBackofficeEditor
             if ($time === '') {
                 throw ValidationException::withMessages(['data.event_time' => 'Укажите время начала мероприятия.']);
             }
-            $data['starts_at'] = $date.' '.substr($time, 0, 5);
+            // A legacy Filament TimePicker may dehydrate into a full date-time
+            // string instead of HH:mm. Never truncate its FIRST five bytes:
+            // that would use the date as a time and silently discard edits.
+            if (preg_match('/^(?:\\d{4}-\\d{2}-\\d{2}[ T])?((?:[01]\\d|2[0-3]):[0-5]\\d)(?::[0-5]\\d)?$/D', $time, $matches) !== 1) {
+                throw ValidationException::withMessages([
+                    'data.event_time' => 'Укажите корректное время в формате ЧЧ:ММ.',
+                ]);
+            }
+            $data['starts_at'] = $date.' '.$matches[1];
         } else {
             // Keep supporting existing application-service callers.
             $data['starts_at'] = (string) ($data['starts_at'] ?? '');
