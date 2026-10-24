@@ -11,10 +11,10 @@
     <section class="panel app-play-interests" data-play-interests
         data-list-url="{{ route('play-intents.index') }}"
         data-pause-url="{{ url('/account/play-intents') }}"
-        data-venues-url="{{ route('venues.index') }}">
+        data-venues-url="{{ route('venues.search') }}">
         <div class="app-play-interests__top">
             <h2>Мои интересы</h2>
-            <a class="button secondary" href="{{ route('venues.index') }}">Найти площадку</a>
+            <a class="button secondary" href="{{ route('venues.search') }}">Найти площадку</a>
         </div>
         <div data-play-interests-list role="region" aria-live="polite">
             <p class="muted">Загружаем интересы…</p>
