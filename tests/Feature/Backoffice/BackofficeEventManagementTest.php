@@ -345,6 +345,18 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame('8 ч', $options[480]);
     }
 
+    public function test_livewire_attendance_checkbox_reveals_default_player_role(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateEvent::class)
+            ->assertSet('data.organizer_participates', false)
+            ->set('data.organizer_participates', true)
+            ->assertSet('data.participation_roles', ['player'])
+            ->assertSee('В качестве кого');
+    }
+
     public function test_default_attendance_checkboxes_use_all_active_profile_roles_and_fallback_player(): void
     {
         $organizer = $this->user(Role::USER);
