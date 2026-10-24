@@ -24,8 +24,9 @@ if (root) {
             ? intent.weekdays.map(n=>days[Number(n)-1]).filter(Boolean).join(', ') : 'любые дни';
         const frequency = cadenceNames[intent.cadence] || intent.cadence;
         const dates = intent.dates?.length ? intent.dates.join(', ') : '';
+        const venueKind = {any:'любая площадка',indoor:'крытая площадка',outdoor:'открытая площадка'}[intent.venue_kind || 'any'];
         return [frequency, dates || dayLabel, (intent.formats || []).length
-            ? intent.formats.join(', ').replaceAll('x','×') : 'любой формат'].join(' · ');
+            ? intent.formats.join(', ').replaceAll('x','×') : 'любой формат', venueKind].join(' · ');
     };
     const button = (text, action) => {
         const b = make('button',text,'button secondary');b.type='button';
@@ -47,6 +48,11 @@ if (root) {
                 head.append(make('strong','Интерес №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
                 card.append(head,make('p',summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
+                if(!['cancelled','completed'].includes(intent.effective_status)) {
+                    actions.append(button('Редактировать',()=>{
+                        window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
+                    }));
+                }
                 if(intent.effective_status === 'active') {
                     actions.append(button('Приостановить',async()=>{
                         try{await request(root.dataset.pauseUrl+'/'+intent.id+'/pause','PATCH');await load();}
@@ -91,5 +97,6 @@ if (root) {
             }
         } catch (e) { showError(e.message); }
     }
+    window.addEventListener('mskba:play-intent:saved',()=>{void load();});
     void load();
 }

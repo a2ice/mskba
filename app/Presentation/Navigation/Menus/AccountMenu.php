@@ -22,6 +22,7 @@ final class AccountMenu implements MenuHandler
         'account.roles' => 'people',
         'account.teams' => 'people',
         'account.my-games' => 'ball',
+        'play-intents.mine' => 'ball',
         'account.my-trainings' => 'clock',
         'account.sports-sections.index' => 'people',
         'account.venues' => 'pin',
@@ -111,7 +112,7 @@ final class AccountMenu implements MenuHandler
         // Navigation is an invitation to participate, not a report of existing relations.
         // Roles only control menu visibility; domain permissions are enforced by handlers.
         $roleSections = [
-            UserParticipationRoleEnum::PLAYER->value => ['teams', 'games', 'trainings'],
+            UserParticipationRoleEnum::PLAYER->value => ['interests', 'teams', 'games', 'trainings'],
             UserParticipationRoleEnum::COACH->value => ['sections', 'trainings', 'teams'],
             UserParticipationRoleEnum::VENUE_RELATED->value => ['venues', 'bookings', 'schedule'],
             UserParticipationRoleEnum::ORGANIZER->value => ['events', 'tournaments'],
@@ -120,6 +121,7 @@ final class AccountMenu implements MenuHandler
             UserParticipationRoleEnum::MEDIA->value => ['materials', 'events'],
         ];
         $definitions = [
+            'interests' => ['Хочу играть', 'play-intents.mine', 'play-intents.mine'],
             'teams' => ['Мои команды', 'account.teams', 'account.teams'],
             'games' => ['Мои игры', 'account.my-games', 'account.my-games'],
             'trainings' => ['Мои тренировки', 'account.my-trainings', 'account.my-trainings'],

@@ -5,6 +5,7 @@ namespace App\Modules\PlayInterest\Application\Services;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -35,6 +36,13 @@ final class RecommendVenuesForIntent
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE)
             ->with(['location.address', 'amenities:id,name,alias,is_active', 'primaryCourt'])
             ->orderBy('id');
+
+        // Open-air is a domain venue type, not an operational open/closed flag.
+        if ($intent->venue_kind === 'outdoor') {
+            $query->where('type', VenueTypeEnum::STREET_COURT);
+        } elseif ($intent->venue_kind === 'indoor') {
+            $query->where('type', '!=', VenueTypeEnum::STREET_COURT);
+        }
 
         if (! $isSimilar) {
             $query->whereKey($intent->venue_id);

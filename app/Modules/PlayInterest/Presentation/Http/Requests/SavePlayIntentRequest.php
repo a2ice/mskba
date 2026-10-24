@@ -41,6 +41,7 @@ final class SavePlayIntentRequest extends FormRequest
             'formats.*' => ['required', Rule::in(['1x1', '2x2', '3x3', '4x4', '5x5']), 'distinct'],
             'duration_minutes' => ['nullable', 'integer', 'between:30,480', 'multiple_of:30'],
             'access_mode' => ['sometimes', Rule::in(['any', 'free', 'paid'])],
+            'venue_kind' => ['sometimes', Rule::in(['any', 'indoor', 'outdoor'])],
             'amenity_preferences' => ['sometimes', 'array', 'max:80'],
             'amenity_preferences.*.amenity_id' => [
                 'required', 'integer',

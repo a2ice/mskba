@@ -83,10 +83,11 @@ final class PlayIntentManager
                 'formats' => $input['formats'] ?? [],
                 'duration_minutes' => $input['duration_minutes'] ?? null,
                 'access_mode' => $input['access_mode'] ?? 'any',
+                'venue_kind' => $input['venue_kind'] ?? 'any',
                 'amenity_preferences' => $input['amenity_preferences'] ?? [],
                 'notify_matches' => (bool) ($input['notify_matches'] ?? true),
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),
-                'status' => 'active',
+                'status' => $intent->exists && $intent->status === 'paused' ? 'paused' : 'active',
                 'expires_at' => $expires,
             ]);
             $intent->save();

@@ -143,7 +143,7 @@ final class PlayIntentController extends Controller
         $data = $intent->only([
             'id', 'client_request_id', 'venue_id', 'include_similar_venues', 'center_latitude', 'center_longitude',
             'radius_km', 'cadence', 'weekdays', 'dates', 'windows', 'period_from', 'period_until',
-            'formats', 'duration_minutes', 'access_mode', 'amenity_preferences',
+            'formats', 'duration_minutes', 'access_mode', 'venue_kind', 'amenity_preferences',
             'notify_matches', 'notify_offers', 'status', 'expires_at', 'created_at', 'updated_at',
         ]);
         $data['effective_status'] = $intent->status === 'active' && $intent->expires_at?->isPast()
