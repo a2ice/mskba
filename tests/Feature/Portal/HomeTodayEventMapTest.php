@@ -82,7 +82,7 @@ final class HomeTodayEventMapTest extends TestCase
                 'starts_at' => '2026-10-24 18:00:00',
                 'ends_at' => '2026-10-24 20:00:00',
                 'max_participants' => 1,
-            ]);
+            ])->refresh();
             $staff = User::factory()->create();
             $event->participants()->create([
                 'user_id' => $staff->id,
