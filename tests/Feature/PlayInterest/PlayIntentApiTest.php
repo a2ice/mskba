@@ -130,6 +130,36 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Ты уже отметил интерес к игре здесь');
     }
 
+    public function test_free_venue_schedule_displays_published_hours_not_booking_warnings(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-24 10:00:00', 'Europe/Moscow'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Бесплатная уличная площадка',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $schedule = \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        \App\Modules\Venue\Domain\Models\VenueScheduleInterval::factory()
+            ->for($schedule, 'schedule')->create([
+                'day_of_week' => 6,
+                'starts_at' => '10:00', 'ends_at' => '22:00',
+            ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Расписание: ')
+            ->assertSee('10:00–22:00')
+            ->assertDontSee('Нет опубликованных занятых слотов')
+            ->assertDontSee('Наличие свободного времени и стоимость уточняются')
+            ->assertDontSee('Подтверждённых данных о свободных интервалах');
+    }
+
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
     {
         $user = User::factory()->create();
