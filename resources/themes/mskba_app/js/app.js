@@ -28,6 +28,7 @@ import PlayIntentDialog from './components/PlayIntentDialog.vue';
 import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './account-favorites.js';
+import './venue-favorites.js';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
 if (authRoot) {
