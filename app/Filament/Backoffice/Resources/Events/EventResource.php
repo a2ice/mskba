@@ -29,7 +29,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -259,8 +258,8 @@ final class EventResource extends Resource
                         DatePicker::make('event_date')->label('Дата')
                             ->default(fn (): string => self::defaultEventDate())
                             ->required()->native(false),
-                        TimePicker::make('event_time')->label('Время')
-                            ->required()->seconds(false)->native(false),
+                        TextInput::make('event_time')->label('Время')
+                            ->type('time')->required()->rule('date_format:H:i'),
                         Select::make('duration_minutes')->label('Продолжительность')
                             ->options(self::durationOptions())->native(false)
                             ->required()->default(90),
