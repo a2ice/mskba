@@ -65,7 +65,7 @@ final readonly class RecommendPlayableSlots
 
             // Consider a venue's actual rooms independently; a booking of one
             // room must not remove a second available room from recommendations.
-            foreach ($venue->courts->whereNull('deleted_at') as $court) {
+            foreach ($venue->courts->whereNull('deleted_at')->where('allows_whole', true) as $court) {
                 foreach ($shifts as $shift) {
                     $from = $wantedAt->addMinutes($shift);
                     $to = $from->addMinutes($durationMinutes);
