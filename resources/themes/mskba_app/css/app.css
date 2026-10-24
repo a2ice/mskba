@@ -32,3 +32,6 @@
     outline:1px solid var(--control-line)!important;outline-offset:2px!important;
     box-shadow:none!important
 }
+
+/* User play interests and venue detail page (task 286). */
+@import './play-interest.css';
