@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -30,6 +31,26 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class EventParticipant extends Model
 {
+    /**
+     * The player-seat count is independent from organizer privileges.
+     * Legacy regular participants without activity metadata are players;
+     * legacy organizers without an explicit player role are not assumed to play.
+     *
+     * @param Builder<EventParticipant> $query
+     */
+    public function scopeOccupiesPlayerSpot(Builder $query): Builder
+    {
+        return $query
+            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+            ->where(function (Builder $roles): void {
+                $roles->whereJsonContains('participation_roles', 'player')
+                    ->orWhere(function (Builder $legacy): void {
+                        $legacy->whereNull('participation_roles')
+                            ->where('role', EventParticipantRoleEnum::PARTICIPANT->value);
+                    });
+            });
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
