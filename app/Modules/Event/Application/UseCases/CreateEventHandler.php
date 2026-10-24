@@ -54,15 +54,21 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Неверно указано участие организатора.');
         }
 
-        $activityRole = isset($data['participation_role']) && is_string($data['participation_role'])
-            ? UserParticipationRoleEnum::tryFrom($data['participation_role'])
-            : null;
-        if ($explicitChoice && $organizerParticipates
-            && ($activityRole === null || $activityRole === UserParticipationRoleEnum::ORGANIZER)) {
-            throw new InvalidArgumentException('Выберите, в качестве кого организатор будет участвовать.');
+        $roles = $data['participation_roles'] ?? null;
+        if ($explicitChoice && $organizerParticipates && (! is_array($roles) || $roles === [])) {
+            throw new InvalidArgumentException('Выберите хотя бы одну роль участия.');
         }
+        if ($roles !== null && (! is_array($roles)
+            || array_any($roles, fn ($role): bool => ! is_string($role)
+                || UserParticipationRoleEnum::tryFrom($role) === null
+                || $role === UserParticipationRoleEnum::ORGANIZER->value))) {
+            throw new InvalidArgumentException('Выбрана недопустимая роль участия.');
+        }
+        $roles = $organizerParticipates
+            ? array_values(array_unique($roles ?? [UserParticipationRoleEnum::PLAYER->value]))
+            : [];
 
-        $event = DB::transaction(function () use ($actor, $data, $organizerParticipates, $activityRole): Event {
+        $event = DB::transaction(function () use ($actor, $data, $organizerParticipates, $roles): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
             // Some verified venues (including the production -> dev fixture)
@@ -128,7 +134,7 @@ final class CreateEventHandler
             $event->participants()->create([
                 'user_id' => $actor->user_id,
                 'role' => EventParticipantRoleEnum::ORGANIZER,
-                'participation_role' => $organizerParticipates ? $activityRole : null,
+                'participation_roles' => $roles,
                 'status' => $organizerParticipates
                     ? EventParticipantStatusEnum::CONFIRMED
                     : EventParticipantStatusEnum::LEFT,
