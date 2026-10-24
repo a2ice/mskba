@@ -20,7 +20,7 @@
             @if($hero)
                 <img class="app-venue-gallery__main" src="{{ $hero }}" alt="Площадка {{ $venue->name }}" loading="eager">
             @else
-                <div class="app-venue-gallery__missing"><svg aria-hidden="true"><use href="#photo"/></svg><span>Фотографии площадки пока не загружены</span></div>
+                <div class="app-venue-gallery__missing"><svg aria-hidden="true"><use href="#ball"/></svg><span>Фотографии площадки пока не загружены</span></div>
             @endif
             @if(count($venue->featuredMedia) > 1)
                 <div class="app-venue-gallery__thumbs">
@@ -35,7 +35,7 @@
         <div class="app-venue-intro panel">
             <p class="eyebrow accent">MSKBA / ПЛОЩАДКА</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
-            @if($venueAddress)<p class="app-venue-intro__address"><svg aria-hidden="true"><use href="#map-pin"/></svg>{{ $venueAddress }}</p>@endif
+            @if($venueAddress)<p class="app-venue-intro__address"><svg aria-hidden="true"><use href="#pin"/></svg>{{ $venueAddress }}</p>@endif
             <div class="app-venue-intro__badges">
                 <span class="badge">{{ $venue->type }}</span>
                 @foreach(array_slice($venue->amenities, 0, 3) as $amenity)<span class="badge">{{ $amenity->name }}</span>@endforeach
@@ -43,7 +43,7 @@
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-play-intent-open @disabled(!$canStartInterest)>
-                    <svg aria-hidden="true"><use href="#heart"/></svg> Хочу здесь играть
+                    <svg aria-hidden="true"><use href="#ball"/></svg> Хочу здесь играть
                 </button>
                 <a class="button secondary large" href="#app-venue-schedule">Расписание и бронь</a>
             </div>
