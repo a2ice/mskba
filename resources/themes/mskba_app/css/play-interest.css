@@ -98,3 +98,15 @@
 @media(prefers-reduced-motion:reduce){
  .app-play-dialog__chips .chip{transition:none}
 }
+
+
+.app-play-interests{padding:clamp(18px,3vw,28px);display:grid;gap:20px}
+.app-play-interests__top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.app-play-interests__top h2{font-size:22px}
+.app-play-interests__empty{padding:24px;display:grid;gap:6px;border:1px dashed var(--control-line);border-radius:16px}
+.app-play-interests__item{display:grid;gap:12px;padding:18px 0;border-top:1px solid var(--line)}
+.app-play-interests__item-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.app-play-interests__actions{display:flex;flex-wrap:wrap;gap:8px}
+.app-play-interests__results{font-size:13px}
+.app-play-interests__results ul{list-style:none;margin:0;padding:8px 0;display:grid;gap:9px}
+.app-play-interests__results li a{color:var(--accent);font-weight:650;text-decoration:underline}
