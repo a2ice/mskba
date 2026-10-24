@@ -48,8 +48,28 @@ final class FavoritesController extends Controller
 
         return response()->json([
             'state' => $favorite->trashed_at === null ? 'active' : 'trashed',
+            'notify_upcoming_events' => $favorite->notify_upcoming_events,
             'type' => $type,
             'id' => $id,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function updatePreferences(
+        Request $request,
+        FavoritesManager $favorites,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'venue_id' => ['required', 'integer', 'min:1'],
+            'notify_upcoming_events' => ['required', 'boolean'],
+        ]);
+        $favorite = $favorites->setUpcomingEventNotifications(
+            $request, (int) $validated['venue_id'],
+            (bool) $validated['notify_upcoming_events'],
+        );
+
+        return response()->json([
+            'state' => 'active',
+            'notify_upcoming_events' => $favorite->notify_upcoming_events,
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -83,6 +103,7 @@ final class FavoritesController extends Controller
                     'type_label' => FavoriteTargetRegistry::TYPES[$item->entity_type] ?? 'Другое',
                     'entity_id' => $item->entity_id,
                     'state' => $item->trashed_at === null ? 'active' : 'trashed',
+                    'notify_upcoming_events' => $item->notify_upcoming_events,
                     ...$registry->describe($item->entity_type, $item->entity_id),
                 ];
             })->values()->all();
