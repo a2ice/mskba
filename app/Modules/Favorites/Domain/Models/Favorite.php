@@ -18,6 +18,7 @@ final class Favorite extends Model
             'user_id' => 'integer',
             'entity_id' => 'integer',
             'trashed_at' => 'immutable_datetime',
+            'notify_upcoming_events' => 'boolean',
         ];
     }
 
