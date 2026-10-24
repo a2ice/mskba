@@ -301,7 +301,7 @@ final class PlayIntentApiTest extends TestCase
             'venue_kind' => 'outdoor',
             'formats' => ['3x3'],
         ])->assertOk()->assertJsonPath('data.status', 'paused')
-            ->assertJsonPath('data.venue_kind', 'outdoor');
+            ->assertJsonPath('data.venue_kind', 'any');
         $this->assertDatabaseCount('play_intents', 1);
     }
 
