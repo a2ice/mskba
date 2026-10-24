@@ -295,6 +295,49 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('>Index<', false);
     }
 
+    public function test_optional_interest_name_can_be_created_renamed_and_cleared_without_creating_a_duplicate(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue),
+            'name' => '  Игры зимой  ',
+        ])->assertCreated()->assertJsonPath('data.name', 'Игры зимой');
+
+        $id = PlayIntent::query()->sole()->id;
+        $this->getJson(route('play-intents.index'))
+            ->assertOk()->assertJsonPath('data.0.name', 'Игры зимой');
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($venue),
+            'name' => 'Стритбол по выходным',
+        ])->assertOk()->assertJsonPath('data.name', 'Стритбол по выходным');
+        $this->assertDatabaseCount('play_intents', 1);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($venue),
+            'name' => '     ',
+        ])->assertOk()->assertJsonPath('data.name', null);
+        $this->assertDatabaseHas('play_intents', ['id' => $id, 'name' => null]);
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
+    public function test_interest_name_is_optional_and_limited_to_eighty_characters(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), $this->payload($venue))
+            ->assertCreated()->assertJsonPath('data.name', null);
+
+        $this->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'name' => str_repeat('И', 81),
+        ])->assertUnprocessable()->assertJsonValidationErrors('name');
+
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
     public function test_recommendations_explain_that_availability_is_not_yet_checked(): void
     {
         $user = User::factory()->create();
