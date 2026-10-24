@@ -60,7 +60,23 @@ final class EventBackofficeEditor
         }
 
         return $this->validation(function () use ($actor, $data): Event {
-            return $this->create->handle($actor, $this->payload($data));
+            $payload = $this->payload($data);
+            $payload['organizer_participates'] = (bool) ($data['organizer_participates'] ?? false);
+            if ($payload['organizer_participates']) {
+                $roles = $data['participation_roles'] ?? null;
+                $allowed = array_keys(EventResource::participationRoleOptions());
+                if (! is_array($roles) || $roles === []
+                    || count($roles) !== count(array_unique($roles))
+                    || collect($roles)->contains(fn ($role): bool =>
+                        ! is_string($role) || ! in_array($role, $allowed, true))) {
+                    throw ValidationException::withMessages([
+                        'data.participation_roles' => 'Выберите хотя бы одну допустимую роль участия.',
+                    ]);
+                }
+                $payload['participation_roles'] = $roles;
+            }
+
+            return $this->create->handle($actor, $payload);
         });
     }
 
