@@ -130,6 +130,8 @@
         'venueLongitude' => $venue->address?->longitude,
         'authenticated' => auth()->check(),
         'endpoints' => [
+            'favoritesStatus' => route('favorites.status'),
+            'favoritesToggle' => route('favorites.toggle'),
             'store' => route('play-intents.store'),
             'amenities' => route('play-intents.amenities'),
             'mine' => route('play-intents.mine'),
