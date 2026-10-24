@@ -170,6 +170,10 @@ final class AccountContactsDialogTest extends TestCase
         config()->set('mail.default', 'smtp');
         \Illuminate\Support\Facades\Mail::fake();
 
+        // Pin the application clock: separate HTTP requests must not
+        // consume a real-world second and turn the expected 60 into 59.
+        $this->travelTo(now()->startOfSecond());
+
         $user = $this->user();
         $contact = $user->contacts()->create([
             'type' => ContactTypeEnum::EMAIL, 'value' => 'ajax-code@example.test',
