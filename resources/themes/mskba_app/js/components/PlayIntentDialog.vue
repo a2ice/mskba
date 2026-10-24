@@ -74,7 +74,7 @@ function restore(data){
     formats.value=data.formats||[];duration.value=String(data.duration_minutes||'');
     similar.value=Boolean(data.include_similar_venues);radius.value=data.radius_km||10;
     latitude.value=data.center_latitude??latitude.value;longitude.value=data.center_longitude??longitude.value;
-    access.value=data.access_mode||'any';venueKind.value=data.venue_kind||'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
+    access.value=data.access_mode||'any';venueKind.value=data.include_similar_venues ? (data.venue_kind||'any') : 'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
