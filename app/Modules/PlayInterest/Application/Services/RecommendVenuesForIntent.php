@@ -58,9 +58,8 @@ final class RecommendVenuesForIntent
         $matches = [];
 
         // Iterator avoids loading the whole venue catalog into application memory.
-        foreach ($query->cursor() as $venue) {
+        foreach ($query->lazy(100) as $venue) {
             /** @var Venue $venue */
-            $venue->loadMissing(['location.address', 'amenities', 'primaryCourt']);
             $lat = $venue->location?->address?->latitude;
             $lon = $venue->location?->address?->longitude;
             $distance = null;
