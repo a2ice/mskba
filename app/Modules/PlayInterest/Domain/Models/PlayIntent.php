@@ -13,7 +13,7 @@ final class PlayIntent extends Model
         'user_id', 'venue_id', 'client_request_id', 'include_similar_venues', 'center_latitude',
         'center_longitude', 'radius_km', 'cadence', 'weekdays', 'dates', 'windows',
         'period_from', 'period_until', 'formats', 'duration_minutes',
-        'access_mode', 'amenity_preferences', 'notify_matches', 'notify_offers',
+        'access_mode', 'venue_kind', 'amenity_preferences', 'notify_matches', 'notify_offers',
         'status', 'expires_at',
     ];
 
