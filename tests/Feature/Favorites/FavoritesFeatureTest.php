@@ -131,6 +131,66 @@ final class FavoritesFeatureTest extends TestCase
             ->assertOk()->assertJsonCount(2, 'data');
     }
 
+    public function test_notification_preference_requires_explicit_apply_and_is_private(): void
+    {
+        $venue = $this->venue();
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $this->actingAs($user);
+        $this->toggle('venue', $venue->id)->assertOk()
+            ->assertJsonPath('notify_upcoming_events', false);
+
+        $this->postJson(route('favorites.preferences'), [
+            'venue_id' => $venue->id,
+            'notify_upcoming_events' => true,
+        ])->assertOk()->assertJsonPath('notify_upcoming_events', true);
+        $this->assertDatabaseHas('favorites', [
+            'user_id' => $user->id, 'entity_type' => 'venue',
+            'entity_id' => $venue->id, 'notify_upcoming_events' => true,
+        ]);
+
+        $this->actingAs($other)->postJson(route('favorites.preferences'), [
+            'venue_id' => $venue->id,
+            'notify_upcoming_events' => true,
+        ])->assertNotFound();
+
+        $this->actingAs($user);
+        $this->toggle('venue', $venue->id)->assertOk()->assertJsonPath('state', 'trashed');
+        $this->postJson(route('favorites.preferences'), [
+            'venue_id' => $venue->id, 'notify_upcoming_events' => true,
+        ])->assertNotFound();
+    }
+
+    public function test_upcoming_event_notification_is_sent_once_only_after_opt_in(): void
+    {
+        $venue = $this->venue();
+        $user = User::factory()->create();
+        $event = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'visibility' => \App\Modules\Event\Domain\Enums\EventVisibilityEnum::PUBLIC->value,
+            'status' => \App\Modules\Event\Domain\Enums\EventStatusEnum::PUBLISHED->value,
+            'starts_at' => now()->addDays(2),
+        ]);
+
+        $notifier = app(\App\Modules\Favorites\Application\Services\NotifyFavoriteVenueFollowers::class);
+        $notifier->forEvent($event);
+        $this->assertDatabaseCount('favorite_notification_deliveries', 0);
+
+        $this->actingAs($user);
+        $this->toggle('venue', $venue->id)->assertOk();
+        $this->postJson(route('favorites.preferences'), [
+            'venue_id' => $venue->id, 'notify_upcoming_events' => true,
+        ])->assertOk();
+
+        $notifier->forEvent($event);
+        $notifier->forEvent($event);
+        $this->assertDatabaseCount('favorite_notification_deliveries', 1);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $user->id,
+            'title' => 'Новая игра или тренировка на избранной площадке',
+        ]);
+    }
+
     public function test_guest_active_item_restores_an_account_item_in_the_trash(): void
     {
         $venue = $this->venue();
