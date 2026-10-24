@@ -38,6 +38,15 @@ class EventParticipant extends Model
      *
      * @param Builder<EventParticipant> $query
      */
+    public function hasPlayerRole(): bool
+    {
+        if (is_array($this->participation_roles)) {
+            return in_array('player', $this->participation_roles, true);
+        }
+
+        return $this->role === EventParticipantRoleEnum::PARTICIPANT;
+    }
+
     public function scopeOccupiesPlayerSpot(Builder $query): Builder
     {
         return $query
