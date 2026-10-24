@@ -1,21 +1,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupTodayEvents, safeEventLink } from '../../resources/js/page-builder-today-event-map.js';
+import { groupTodayEvents, safeEventLink, venueIdFromLink, eventCardData } from '../../resources/js/page-builder-today-event-map.js';
 
-test('today event marker groups multiple events at the same venue', () => {
-    const groups = groupTodayEvents([
-        { id: 11, venue_id: 1, latitude: 55.82, longitude: 37.45, title: 'Игра' },
-        { id: 12, venue_id: 1, latitude: 55.82, longitude: 37.45, title: 'Тренировка' },
-        { id: 13, venue_id: 2, latitude: 55.7, longitude: 37.6, title: 'Другая' },
-        { id: 14, venue_id: 3, latitude: null, longitude: 37.6, title: 'Без координат' },
-    ]);
-    assert.equal(groups.length, 2);
-    assert.deepEqual(groups[0].events.map((event) => event.id), [11, 12]);
-    assert.equal(groups[1].events[0].id, 13);
+globalThis.window = { location: { origin: 'https://dev.mskba.ru' } };
+
+test('same venue has multiple events in its existing popup; unrelated venues do not', () => {
+    const events = [
+        { id: 11, venue_id: 1, title: 'Игра', starts_at: '18:00', url: '/events/11-igra' },
+        { id: 12, venue_id: 1, title: 'Тренировка', starts_at: '17:00', url: '/events/12-training' },
+        { id: 13, venue_id: 2, title: 'Другая', starts_at: '19:00', url: '/events/13-other' },
+        { id: 14, venue_id: 3, title: 'Bad', starts_at: '19:00', url: 'javascript:alert(1)' },
+    ];
+    const groups = groupTodayEvents(events);
+    assert.equal(groups.length, 3);
+    assert.deepEqual(eventCardData(events, 1).map(x => x.id), [12, 11]);
+    assert.deepEqual(eventCardData(events, 2).map(x => x.id), [13]);
+    assert.equal(eventCardData(events, 3).length, 0);
+    assert.equal(eventCardData(events, null).length, 0);
 });
 
-test('only local canonical event routes may appear in map balloons', () => {
-    globalThis.window = { location: { origin: 'https://dev.mskba.ru' } };
+test('venue id comes from the actual public venue link, not from DOM text', () => {
+    assert.equal(venueIdFromLink('https://dev.mskba.ru/venues/1-shkola-1794'), 1);
+    assert.equal(venueIdFromLink('/venues/16'), 16);
+    assert.equal(venueIdFromLink('/events/16'), null);
+    assert.equal(venueIdFromLink('https://attacker.example/venues/1'), null);
+});
+
+test('event action accepts only same-origin event detail pages', () => {
     assert.equal(safeEventLink('/events/10-test'), '/events/10-test');
     assert.equal(safeEventLink('https://evil.example/events/10'), null);
     assert.equal(safeEventLink('javascript:alert(1)'), null);

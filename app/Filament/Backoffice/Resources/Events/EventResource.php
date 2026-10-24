@@ -25,7 +25,8 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -43,7 +44,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\CarbonImmutable;
 
 final class EventResource extends Resource
 {
@@ -116,14 +116,9 @@ final class EventResource extends Resource
         return $venueId > 0 && Venue::query()->whereKey($venueId)->first()?->hasFreeAccess() === true;
     }
 
-    public static function defaultStartsAt(): string
+    public static function defaultEventDate(): string
     {
-        $now = CarbonImmutable::now('Europe/Moscow');
-        $todayEvening = $now->setTime(19, 0);
-        $start = $now->lessThan($todayEvening)
-            ? $todayEvening : $now->addMinutes(30)->ceilMinutes(30);
-
-        return $start->format('Y-m-d H:i');
+        return now('Europe/Moscow')->toDateString();
     }
 
     public static function form(Schema $schema): Schema
@@ -142,6 +137,12 @@ final class EventResource extends Resource
                             ->default(EventVisibilityEnum::PUBLIC->value),
                         Select::make('organizer_user_id')->label('Организатор')
                             ->searchable()
+                            // Keep the selected option in the current option set.
+                            // Search results alone do not satisfy Filament validation
+                            // for a programmatically hydrated selection.
+                            ->options(fn (Get $get): array => ($selected = (int) ($get('organizer_user_id') ?? 0))
+                                ? User::query()->whereKey($selected)->pluck('username', 'id')->all()
+                                : [])
                             ->placeholder('Текущий администратор')
                             ->helperText('Можно не выбирать — организатором станет текущий пользователь.')
                             ->getSearchResultsUsing(fn (string $search): array => User::query()
@@ -193,13 +194,15 @@ final class EventResource extends Resource
                                 : null),
                         Select::make('booking_scope')->label('Охват площадки')
                             ->options(self::options(VenueBookingScopeEnum::class))->default('whole'),
-                        DateTimePicker::make('starts_at')->label('Начало (МСК)')
-                            ->default(fn (): string => self::defaultStartsAt())
-                            ->required()->seconds(false),
+                        DatePicker::make('event_date')->label('Дата')
+                            ->default(fn (): string => self::defaultEventDate())
+                            ->required()->native(false),
+                        TimePicker::make('event_time')->label('Время')
+                            ->required()->seconds(false)->native(false),
                         Select::make('duration_minutes')->label('Продолжительность')
                             ->options(self::durationOptions())->native(false)
                             ->required()->default(90)
-                            ->helperText('Шаг — 30 минут, максимум 8 часов. Для свободных площадок вариант без заданного окончания требует отдельного режима, чтобы не создавать фиктивную бронь.'),
+                            ->helperText('От 30 минут до 8 часов, с шагом 30 минут.'),
                     ]),
                 ]),
                 Tab::make('Параметры игры')->visible(
