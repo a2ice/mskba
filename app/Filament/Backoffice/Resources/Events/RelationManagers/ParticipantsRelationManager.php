@@ -40,8 +40,8 @@ final class ParticipantsRelationManager extends RelationManager
     {
         return $table->columns([
             TextColumn::make('user.username')->label('Пользователь')->searchable(),
-            TextColumn::make('participation_roles')->label('В качестве кого')
-                ->formatStateUsing(fn ($state, EventParticipant $record): string => implode(', ', array_map(
+            TextColumn::make('activity_roles_label')->label('В качестве кого')
+                ->state(fn (EventParticipant $record): string => implode(', ', array_map(
                     fn (string $role): string => \App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum::tryFrom($role)?->label() ?? $role,
                     $record->participation_roles ?? [],
                 )) ?: '—'),
