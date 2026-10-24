@@ -52,9 +52,9 @@
 
 ## Предварительная техника (не утверждённая схема)
 
-Контекст/агрегат \`PlayIntent\` (пользователь, необязательная preferred venue, геозона/радиус, статусы, срок актуальности, preferences/requirements, notification choices) + нормализованные временные окна/форматы. Matching — отдельная application-логика, не модификация Event. Сущность \`PlayOpportunity\` как фиксируемая потенциальная группа — граница этапа 287; на этапе 286 вычисляемые совпадения могут оставаться проекциями.
+Контекст/агрегат `PlayIntent` (пользователь, необязательная preferred venue, геозона/радиус, статусы, срок актуальности, preferences/requirements, notification choices) + нормализованные временные окна/форматы. Matching — отдельная application-логика, не модификация Event. Сущность `PlayOpportunity` как фиксируемая потенциальная группа — граница этапа 287; на этапе 286 вычисляемые совпадения могут оставаться проекциями.
 
-Реиспользовать \`SearchVenuesHandler\`, \`FindNearbyVenuesHandler\`, \`Venue/Amenity\`, \`VenueCourt\`, \`GetVenueAvailability\`, \`VenueEventAvailability\`, \`UserNotification\`. Обязательно проверить расхождение старой venue-level availability в поиске и court-aware бронирования в \`VenueBooking\`. Данные для публичного API и Vue/Inertia формировать через application endpoints/DTO, не копировать бизнес-логику в тему.
+Реиспользовать `SearchVenuesHandler`, `FindNearbyVenuesHandler`, `Venue/Amenity`, `VenueCourt`, `GetVenueAvailability`, `VenueEventAvailability`, `UserNotification`. Обязательно проверить расхождение старой venue-level availability в поиске и court-aware бронирования в `VenueBooking`. Данные для публичного API и Vue/Inertia формировать через application endpoints/DTO, не копировать бизнес-логику в тему.
 
 ## Минимальные критерии приёмки (уточняются после UX)
 
