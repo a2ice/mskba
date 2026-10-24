@@ -110,8 +110,11 @@ final class UpdateEventHandler
                 ? VenueCourt::query()
                     ->where('venue_id', $targetVenue->id)
                     ->whereKey($requestedCourtId)
-                    ->firstOrFail()
-                : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->firstOrFail());
+                    ->first()
+                : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->first());
+            if ($requestedCourtId !== null && $targetCourt === null) {
+                throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
+            }
 
             $timezone = $targetVenue->schedule()->value('timezone')
                 ?: config('app.timezone', 'Europe/Moscow');
@@ -138,7 +141,7 @@ final class UpdateEventHandler
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? $booking->scope?->value ?? VenueBookingScopeEnum::WHOLE->value);
             $bookingChanged = $bookingDataProvided && (
                 $targetVenue->id !== $event->venue_id
-                || $targetCourt->id !== ($booking->venue_court_id ?? $event->venue_court_id)
+                || $targetCourt?->id !== ($booking->venue_court_id ?? $event->venue_court_id)
                 || $bookingScope !== ($booking->scope ?? VenueBookingScopeEnum::WHOLE)
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
@@ -189,7 +192,7 @@ final class UpdateEventHandler
                 'description' => $data['description'] ?? null,
                 'max_participants' => $maxParticipants,
                 'venue_id' => $targetVenue->id,
-                'venue_court_id' => $bookingDataProvided ? $targetCourt->id : $event->venue_court_id,
+                'venue_court_id' => $bookingDataProvided ? $targetCourt?->id : $event->venue_court_id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'participation_confirmation_version' => $bookingChanged
@@ -200,7 +203,7 @@ final class UpdateEventHandler
             if ($bookingChanged) {
                 $booking->forceFill([
                     'venue_id' => $targetVenue->id,
-                    'venue_court_id' => $targetCourt->id,
+                    'venue_court_id' => $targetCourt?->id,
                     'status' => VenueBookingStatusEnum::CONFIRMED,
                     'scope' => $bookingScope,
                     'starts_at' => $startsAt,
