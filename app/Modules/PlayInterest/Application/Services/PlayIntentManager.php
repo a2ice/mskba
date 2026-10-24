@@ -68,6 +68,7 @@ final class PlayIntentManager
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
+                'name' => $input['name'] ?? null,
                 'client_request_id' => $intent->client_request_id ?: ($input['client_request_id'] ?? null),
                 'venue_id' => $input['venue_id'] ?? null,
                 'include_similar_venues' => (bool) ($input['include_similar_venues'] ?? false),
