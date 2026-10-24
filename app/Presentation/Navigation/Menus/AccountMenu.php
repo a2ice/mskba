@@ -23,6 +23,7 @@ final class AccountMenu implements MenuHandler
         'account.teams' => 'people',
         'account.my-games' => 'ball',
         'play-intents.mine' => 'ball',
+        'favorites.mine' => 'save',
         'account.my-trainings' => 'clock',
         'account.sports-sections.index' => 'people',
         'account.venues' => 'pin',
@@ -203,6 +204,8 @@ final class AccountMenu implements MenuHandler
             $groupItem['icon'] ??= 'ball';
             $items[] = $groupItem;
         }
+
+        $items[] = $this->link('Избранное', 'favorites.mine');
 
         $items[] = [
             ...$this->link('Сообщения', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
