@@ -35,10 +35,17 @@ final class ParticipantsRelationManager extends RelationManager
     {
         return $table->columns([
             TextColumn::make('user.username')->label('Пользователь')->searchable(),
+            TextColumn::make('participation_roles')->label('В качестве кого')
+                ->formatStateUsing(fn ($state, EventParticipant $record): string => implode(', ', array_map(
+                    fn (string $role): string => \App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum::tryFrom($role)?->label() ?? $role,
+                    $record->participation_roles ?? [],
+                )) ?: '—'),
             TextColumn::make('role')->label('Роль')->formatStateUsing(
                 fn ($state): string => $state instanceof EventParticipantRoleEnum ? $state->label() : '—'),
             TextColumn::make('status')->label('Статус')->badge()->formatStateUsing(
-                fn ($state): string => $state instanceof EventParticipantStatusEnum ? $state->label() : '—'),
+                fn ($state, EventParticipant $record): string => $record->role === EventParticipantRoleEnum::ORGANIZER
+                    && $record->status === EventParticipantStatusEnum::LEFT
+                    ? 'Не участвует' : ($state instanceof EventParticipantStatusEnum ? $state->label() : '—')),
             TextColumn::make('joined_at')->label('Записался')->dateTime('d.m.Y H:i'),
         ])->recordActions([
             Action::make('changeStatus')->label('Изменить участие')
