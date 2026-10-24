@@ -146,8 +146,14 @@ final class UpdateEventHandler
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
             );
-            $startsAt = $bookingChanged ? $localStart : $event->starts_at;
-            $endsAt = $bookingChanged ? $localStart->addMinutes($durationMinutes) : $event->ends_at;
+            // SQL timestamp bindings have no explicit offset. Persist wall
+            // values in the DB session timezone, not necessarily the venue's
+            // timezone (e.g. Moscow venue on a UTC connection).
+            $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+            $startsAt = $bookingChanged ? $localStart->setTimezone($databaseTimezone) : $event->starts_at;
+            $endsAt = $bookingChanged
+                ? $localStart->addMinutes($durationMinutes)->setTimezone($databaseTimezone)
+                : $event->ends_at;
 
             if ($bookingChanged) {
                 if ($event->booking_id !== null) {

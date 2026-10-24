@@ -100,7 +100,7 @@
                 <button type="button" class="button primary" data-play-intent-open @disabled(!$canStartInterest)>Хочу здесь играть</button>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
-                <header class="app-venue-block__header"><h2>Расписание площадки</h2></header>
+                <header class="app-venue-block__header"><h2>Часы работы</h2></header>
                 @if(count($venue->courts) > 0)
                     <div class="app-venue-block__court-list">
                         @foreach($venue->courts as $court)
