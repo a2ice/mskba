@@ -61,6 +61,7 @@ final class SetEventParticipationHandler
 
             $attributes = [
                 'role' => EventParticipantRoleEnum::PARTICIPANT,
+                'participation_roles' => $participant?->participation_roles ?: ['player'],
                 'status' => $status,
                 'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                 'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
