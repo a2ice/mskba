@@ -36,7 +36,6 @@ class EventParticipant extends Model
      * Legacy regular participants without activity metadata are players;
      * legacy organizers without an explicit player role are not assumed to play.
      *
-     * @param Builder<EventParticipant> $query
      */
     public function hasPlayerRole(): bool
     {
@@ -47,6 +46,7 @@ class EventParticipant extends Model
         return $this->role === EventParticipantRoleEnum::PARTICIPANT;
     }
 
+    /** @param Builder<EventParticipant> $query */
     public function scopeOccupiesPlayerSpot(Builder $query): Builder
     {
         return $query
