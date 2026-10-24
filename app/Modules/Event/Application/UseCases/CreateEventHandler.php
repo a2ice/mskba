@@ -108,6 +108,7 @@ final class CreateEventHandler
                 'venue_id' => $venue->id,
                 'venue_court_id' => $court?->id,
                 'organizer_actor_id' => $actor->id,
+                'participation_confirmation_version' => 1,
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
                 'type' => EventTypeEnum::from($data['type']),
