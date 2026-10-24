@@ -171,6 +171,10 @@ final class PlayIntentApiTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
+        // The real venue has a Moscow schedule; without it this handler
+        // intentionally uses the application's default timezone.
+        \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
         $from = \Carbon\CarbonImmutable::parse('2026-10-24 22:00:00', 'Europe/Moscow')->utc();
         $until = \Carbon\CarbonImmutable::parse('2026-10-25 01:00:00', 'Europe/Moscow')->utc();
         $event = \App\Modules\Event\Domain\Models\Event::factory()->create([
