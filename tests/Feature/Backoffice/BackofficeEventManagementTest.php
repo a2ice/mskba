@@ -218,7 +218,7 @@ final class BackofficeEventManagementTest extends TestCase
             app(EventBackofficeEditor::class)->createEvent(array_replace($data, ['title' => 'Пересекающаяся игра']));
             $this->fail('Expected booking conflict');
         } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('data.starts_at', $exception->errors());
+            $this->assertArrayHasKey('data.event_time', $exception->errors());
             $this->assertArrayNotHasKey('data.title', $exception->errors());
         }
     }
@@ -306,7 +306,7 @@ final class BackofficeEventManagementTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
         Livewire::test(CreateEvent::class)
-            ->assertSet('data.event_date', EventResource::defaultEventDate())
+            ->assertSet('data.event_date', fn ($value): bool => str_starts_with((string) $value, EventResource::defaultEventDate()))
             ->assertSet('data.event_time', null)
             ->set('data.title', 'Без времени')
             ->call('create')

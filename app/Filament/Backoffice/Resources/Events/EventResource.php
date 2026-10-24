@@ -137,6 +137,12 @@ final class EventResource extends Resource
                             ->default(EventVisibilityEnum::PUBLIC->value),
                         Select::make('organizer_user_id')->label('Организатор')
                             ->searchable()
+                            // Keep the selected option in the current option set.
+                            // Search results alone do not satisfy Filament validation
+                            // for a programmatically hydrated selection.
+                            ->options(fn (Get $get): array => ($selected = (int) ($get('organizer_user_id') ?? 0))
+                                ? User::query()->whereKey($selected)->pluck('username', 'id')->all()
+                                : [])
                             ->placeholder('Текущий администратор')
                             ->helperText('Можно не выбирать — организатором станет текущий пользователь.')
                             ->getSearchResultsUsing(fn (string $search): array => User::query()

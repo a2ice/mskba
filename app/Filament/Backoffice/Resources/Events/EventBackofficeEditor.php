@@ -122,7 +122,7 @@ final class EventBackofficeEditor
     {
         $data['duration_minutes'] = (int) ($data['duration_minutes'] ?? 0);
         if (array_key_exists('event_date', $data) || array_key_exists('event_time', $data)) {
-            $date = trim((string) ($data['event_date'] ?? ''));
+            $date = substr(trim((string) ($data['event_date'] ?? '')), 0, 10);
             $time = trim((string) ($data['event_time'] ?? ''));
             if ($date === '') {
                 throw ValidationException::withMessages(['data.event_date' => 'Укажите дату мероприятия.']);
