@@ -4,6 +4,8 @@ namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\Events\EventBackofficeEditor;
 use App\Filament\Backoffice\Resources\Events\EventResource;
+use App\Filament\Backoffice\Resources\Events\RelationManagers\ParticipantsRelationManager;
+use App\Modules\Event\Application\UseCases\UpdateManagedEventParticipantStatusHandler;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -524,6 +526,139 @@ final class BackofficeEventManagementTest extends TestCase
         );
         app(JoinEventHandler::class)->handle($event->routeIdentifier(), $player);
         $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+    }
+
+    public function test_editing_participant_roles_preserves_status_and_only_player_role_occupies_one_spot(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $coach = $this->user(Role::USER);
+        $another = $this->user(Role::USER);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Редактирование ролей без двойного счёта',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(9)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'max_participants' => 1,
+            'organizer_participates' => false,
+        ]);
+        $actor = $event->organizerActor;
+        $invite = app(AddEventParticipantHandler::class);
+        $editor = app(UpdateManagedEventParticipantStatusHandler::class);
+        $invite->handle($event->routeIdentifier(), $actor, $coach->id,
+            asBackoffice: true, participationRoles: ['coach']);
+        $record = $event->participants()->where('user_id', $coach->id)->firstOrFail();
+        $this->assertSame(['coach'], ParticipantsRelationManager::participationRolesForEdit($record));
+
+        // Edit only functions, without changing tentative status.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::TENTATIVE, asBackoffice: true,
+            participationRoles: ['coach', 'statistician']);
+        $this->assertSame(EventParticipantStatusEnum::TENTATIVE, $record->refresh()->status);
+        $this->assertSame(['coach', 'statistician'], $record->participation_roles);
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['coach', 'statistician']);
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        // Adding 'player' to already-confirmed staff consumes exactly one place.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['coach', 'statistician', 'player']);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        $invite->handle($event->routeIdentifier(), $actor, $another->id,
+            asBackoffice: true, participationRoles: ['media']);
+        $other = $event->participants()->where('user_id', $another->id)->firstOrFail();
+        $editor->handle($event->routeIdentifier(), $other->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['media']);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        // A full player roster prevents a staff member changing into a player.
+        try {
+            $editor->handle($event->routeIdentifier(), $other->id, $actor,
+                EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+                participationRoles: ['media', 'player']);
+            $this->fail('Confirmed staff must not exceed player capacity.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertStringContainsString('Все места', $exception->getMessage());
+        }
+        $this->assertSame(['media'], $other->refresh()->participation_roles);
+
+        // Releasing player status from the first participant opens the seat.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['coach', 'statistician']);
+        $editor->handle($event->routeIdentifier(), $other->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['media', 'player']);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $this->assertEqualsCanonicalizing(['media', 'player'],
+            ParticipantsRelationManager::participationRolesForEdit($other->refresh()));
+    }
+
+    public function test_editing_legacy_participant_prefills_player_but_role_free_status_change_preserves_null(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $invitee = $this->user(Role::USER);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Редактирование старого участия',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(10)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'organizer_participates' => false,
+        ]);
+        app(AddEventParticipantHandler::class)->handle($event->routeIdentifier(),
+            $event->organizerActor, $invitee->id, asBackoffice: true);
+        $participant = $event->participants()->where('user_id', $invitee->id)->firstOrFail();
+        $participant->forceFill(['participation_roles' => null])->save();
+        $this->assertSame(['player'], ParticipantsRelationManager::participationRolesForEdit($participant->refresh()));
+
+        // Existing status-only callers must keep legacy NULL roles untouched.
+        app(UpdateManagedEventParticipantStatusHandler::class)->handle(
+            $event->routeIdentifier(), $participant->id, $event->organizerActor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true);
+        $this->assertNull($participant->refresh()->participation_roles);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        // Backoffice may explicitly classify that old record as staff instead.
+        app(UpdateManagedEventParticipantStatusHandler::class)->handle(
+            $event->routeIdentifier(), $participant->id, $event->organizerActor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['referee']);
+        $this->assertSame(['referee'], $participant->refresh()->participation_roles);
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        try {
+            app(UpdateManagedEventParticipantStatusHandler::class)->handle(
+                $event->routeIdentifier(), $participant->id, $event->organizerActor,
+                EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+                participationRoles: []);
+            $this->fail('Empty role selection must be rejected.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertStringContainsString('Выберите хотя бы одну', $exception->getMessage());
+        }
+        $this->assertSame(['referee'], $participant->refresh()->participation_roles);
     }
 
     public function test_inviting_participant_without_selected_role_fails_on_server(): void
