@@ -5,7 +5,7 @@ const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref('');
-const favoriteState=ref('none'), favoriteBusy=ref(false), favoriteError=ref('');
+const favoriteState=ref('none'), favoriteBusy=ref(false), favoriteLoading=ref(false), favoriteError=ref('');
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
@@ -100,7 +100,7 @@ function close(forAuth=false){
 async function fetchFavoriteState(){
     const id=Number(selectedVenueId.value);
     if(!id||!props.options.endpoints.favoritesStatus)return;
-    favoriteError.value='';
+    favoriteError.value='';favoriteState.value='none';favoriteLoading.value=true;
     try{
         const url=new URL(props.options.endpoints.favoritesStatus,location.origin);
         url.searchParams.set('type','venue');url.searchParams.set('id',String(id));
@@ -108,10 +108,11 @@ async function fetchFavoriteState(){
         if(!r.ok)throw new Error();
         favoriteState.value=(await r.json()).state||'none';
     }catch{favoriteError.value='Не удалось проверить избранное.';}
+    finally{favoriteLoading.value=false;}
 }
 async function toggleFavorite(){
     const id=Number(selectedVenueId.value);
-    if(!id||favoriteBusy.value||!props.options.endpoints.favoritesToggle)return;
+    if(!id||favoriteBusy.value||favoriteLoading.value||favoriteError.value||!props.options.endpoints.favoritesToggle)return;
     favoriteBusy.value=true;favoriteError.value='';
     try{
         const response=await fetch(props.options.endpoints.favoritesToggle,{
@@ -218,9 +219,9 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             <div v-if="selectedVenueId && options.endpoints.favoritesToggle" class="app-play-dialog__favorite">
                 <button type="button" class="app-play-dialog__favorite-button"
                     :aria-pressed="favoriteState==='active'"
-                    :disabled="favoriteBusy" @click="toggleFavorite">
+                    :disabled="favoriteBusy || favoriteLoading || !!favoriteError" @click="toggleFavorite">
                     <svg aria-hidden="true"><use href="#heart"/></svg>
-                    {{ favoriteState==='active' ? 'Убрать из избранного' : favoriteState==='trashed' ? 'Восстановить из корзины' : 'Добавить в избранное' }}
+                    {{ favoriteLoading ? 'Проверяем избранное…' : favoriteState==='active' ? 'Убрать из избранного' : favoriteState==='trashed' ? 'Восстановить из корзины' : 'Добавить в избранное' }}
                 </button>
                 <span v-if="favoriteState==='active' && !isAuth" class="caption">Сохранится в аккаунте после входа</span>
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
