@@ -7,6 +7,10 @@ use App\Filament\Backoffice\Resources\Geography\DistrictResource;
 use App\Filament\Backoffice\Resources\Geography\MetroLineResource;
 use App\Filament\Backoffice\Resources\Geography\MetroStationResource;
 use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
+use App\Filament\Backoffice\Resources\Venues\VenueBackofficeEditor;
+use App\Modules\Venue\Domain\Models\Amenity;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use Illuminate\Validation\ValidationException;
 use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -89,6 +93,28 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         ] as [$resource, $model]) {
             $this->get($resource::getUrl('create'))->assertOk();
             $this->get($resource::getUrl('edit', ['record' => $model]))->assertOk();
+        }
+    }
+
+    public function test_inapplicable_venue_facility_reports_form_validation_instead_of_500(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::STREET_COURT]);
+        $shower = Amenity::query()->where('alias', 'shower')->firstOrFail();
+
+        try {
+            app(VenueBackofficeEditor::class)->save([
+                'name' => $venue->name,
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'status' => $venue->status->value,
+                'access_type' => 'unknown',
+                'amenity_ids' => [$shower->id],
+                ...app(VenueBackofficeEditor::class)->fields($venue),
+                'amenity_ids' => [$shower->id],
+            ], $venue);
+            $this->fail('Expected inline validation error');
+        } catch (ValidationException $error) {
+            $this->assertArrayHasKey('data.amenity_ids', $error->errors());
         }
     }
 

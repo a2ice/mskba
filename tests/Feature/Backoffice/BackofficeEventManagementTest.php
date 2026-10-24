@@ -18,6 +18,8 @@ use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Livewire;
+use App\Filament\Backoffice\Resources\Events\Pages\CreateEvent;
 use Tests\TestCase;
 
 final class BackofficeEventManagementTest extends TestCase
@@ -83,6 +85,46 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame('Обновлённая тренировка', $updated->title);
         $this->assertSame('Обновлено в админке', $updated->description);
         $this->assertSame(1, $updated->booking()->count());
+    }
+
+    public function test_livewire_create_form_creates_event_and_its_booking(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $starts = now('Europe/Moscow')->addDays(2)->setTime(19, 0)->format('Y-m-d H:i');
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Пробная игра с экрана Filament')
+            ->set('data.type', EventTypeEnum::TRAINING->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.booking_scope', 'whole')
+            ->set('data.starts_at', $starts)
+            ->set('data.duration_minutes', 180)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Пробная игра с экрана Filament')->firstOrFail();
+        $this->assertSame($venue->id, $event->venue_id);
+        $this->assertSame(1, $event->booking()->count());
+    }
+
+    public function test_duration_select_has_half_hour_steps_up_to_eight_hours(): void
+    {
+        $options = EventResource::durationOptions();
+        $this->assertCount(16, $options);
+        $this->assertSame('30 минут', $options[30]);
+        $this->assertSame('1 ч', $options[60]);
+        $this->assertSame('1 ч 30 мин', $options[90]);
+        $this->assertSame('8 ч', $options[480]);
     }
 
     public function test_event_management_is_delegated_separately_from_venue_management(): void

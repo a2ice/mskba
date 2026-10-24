@@ -43,6 +43,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\CarbonImmutable;
 
 final class EventResource extends Resource
 {
@@ -94,6 +95,37 @@ final class EventResource extends Resource
         )->all();
     }
 
+    /** @return array<int, string> */
+    public static function durationOptions(): array
+    {
+        $options = [];
+        foreach (range(30, 480, 30) as $minutes) {
+            $hours = intdiv($minutes, 60);
+            $part = $minutes % 60;
+            $options[$minutes] = $hours === 0 ? '30 минут'
+                : ($part === 0 ? "{$hours} ч" : "{$hours} ч 30 мин");
+        }
+
+        return $options;
+    }
+
+    public static function isFreeAccess(Get $get): bool
+    {
+        $venueId = (int) ($get('venue_id') ?? 0);
+
+        return $venueId > 0 && Venue::query()->whereKey($venueId)->first()?->hasFreeAccess() === true;
+    }
+
+    public static function defaultStartsAt(): string
+    {
+        $now = CarbonImmutable::now('Europe/Moscow');
+        $todayEvening = $now->setTime(19, 0);
+        $start = $now->lessThan($todayEvening)
+            ? $todayEvening : $now->addMinutes(30)->ceilMinutes(30);
+
+        return $start->format('Y-m-d H:i');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
@@ -139,9 +171,12 @@ final class EventResource extends Resource
                     ])->visible(fn (?Event $record): bool => $record !== null),
                 ]),
                 Tab::make('Площадка и время')->schema([
-                    Section::make('Бронирование')->description(
-                        'При создании слот резервируется штатным обработчиком. Занятость зала проверяется до сохранения.'
-                    )->columns(2)->schema([
+                    Section::make(fn (Get $get): string => self::isFreeAccess($get)
+                        ? 'Использование площадки' : 'Бронирование площадки')
+                        ->description(fn (Get $get): string => self::isFreeAccess($get)
+                            ? 'Свободная площадка: дополнительное согласование не требуется. Указанный интервал используется для планирования мероприятия.'
+                            : 'Мероприятие связано с заявкой на бронирование. Доступность зала проверяется перед сохранением.')
+                        ->columns(2)->schema([
                         Select::make('venue_id')->label('Площадка')->required()->searchable()->live()
                             ->options(fn (): array => Venue::query()->orderBy('name')->pluck('name', 'id')->all())
                             ->afterStateUpdated(fn (Set $set): mixed => $set('venue_court_id', null)),
@@ -149,11 +184,16 @@ final class EventResource extends Resource
                             ->options(fn (Get $get): array => VenueCourt::query()
                                 ->where('venue_id', $get('venue_id') ?: 0)->orderBy('sort_order')
                                 ->pluck('name', 'id')->all()),
-                        Select::make('booking_scope')->label('Бронирование')
+                        Select::make('booking_scope')->label(fn (Get $get): string =>
+                            self::isFreeAccess($get) ? 'Часть площадки для игры' : 'Объём бронирования')
                             ->options(self::options(VenueBookingScopeEnum::class))->default('whole'),
-                        DateTimePicker::make('starts_at')->label('Начало (МСК)')->required()->seconds(false),
-                        TextInput::make('duration_minutes')->label('Длительность, минут')->numeric()
-                            ->required()->minValue(1)->maxValue(1440)->default(90),
+                        DateTimePicker::make('starts_at')->label('Начало (МСК)')
+                            ->default(fn (): string => self::defaultStartsAt())
+                            ->required()->seconds(false),
+                        Select::make('duration_minutes')->label('Продолжительность')
+                            ->options(self::durationOptions())->native(false)
+                            ->required()->default(90)
+                            ->helperText('Шаг — 30 минут, максимум 8 часов. Для свободных площадок вариант без заданного окончания требует отдельного режима, чтобы не создавать фиктивную бронь.'),
                     ]),
                 ]),
                 Tab::make('Параметры игры')->visible(

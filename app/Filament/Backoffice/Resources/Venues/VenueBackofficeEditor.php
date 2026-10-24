@@ -188,10 +188,16 @@ final class VenueBackofficeEditor
 
             $tagNames = preg_split('/[,;\n]+/u', (string) ($data['tags_text'] ?? '')) ?: [];
             $this->tags->sync($venue, array_map('trim', $tagNames));
-            $this->facilities->sync($venue,
-                is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
-                is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [],
-            );
+            try {
+                $this->facilities->sync($venue,
+                    is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
+                    is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [],
+                );
+            } catch (\InvalidArgumentException $exception) {
+                throw ValidationException::withMessages([
+                    'data.amenity_ids' => $exception->getMessage(),
+                ]);
+            }
             $this->saveSchedule($venue, $data);
             if ($venue->status !== $status && ! $autoApprove) {
                 $venue = $this->statusTransitions->handle(
