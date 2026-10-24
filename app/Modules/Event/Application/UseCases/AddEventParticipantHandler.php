@@ -34,10 +34,11 @@ final class AddEventParticipantHandler
         // Keep existing web invitations as player by default. Backoffice may
         // explicitly select multiple event-specific functions.
         $roles = $participationRoles ?? [UserParticipationRoleEnum::PLAYER->value];
-        if ($roles === [] || count($roles) !== count(array_unique($roles))
+        if (! is_array($roles) || $roles === []
             || collect($roles)->contains(fn ($role): bool => ! is_string($role)
                 || ($case = UserParticipationRoleEnum::tryFrom($role)) === null
-                || $case === UserParticipationRoleEnum::ORGANIZER)) {
+                || $case === UserParticipationRoleEnum::ORGANIZER)
+            || count($roles) !== count(array_unique($roles))) {
             throw new InvalidArgumentException('Выберите хотя бы одну допустимую роль участия.');
         }
 
