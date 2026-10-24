@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +26,21 @@ final class UpdateManagedEventParticipantStatusHandler
         Actor $actor,
         EventParticipantStatusEnum $status,
         bool $asBackoffice = false,
+        ?array $participationRoles = null,
     ): Event {
-        $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status, $asBackoffice): Event {
+        // Null keeps the original status-only API contract; an explicit array
+        // replaces the event-specific functions (even when status is unchanged).
+        if ($participationRoles !== null && (
+            $participationRoles === []
+            || collect($participationRoles)->contains(fn ($role): bool => ! is_string($role)
+                || ($case = UserParticipationRoleEnum::tryFrom($role)) === null
+                || $case === UserParticipationRoleEnum::ORGANIZER)
+            || count($participationRoles) !== count(array_unique($participationRoles))
+        )) {
+            throw new InvalidArgumentException('Выберите хотя бы одну допустимую роль участия.');
+        }
+
+        $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status, $asBackoffice, $participationRoles): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             if (! $asBackoffice) {
                 $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
@@ -46,12 +60,23 @@ final class UpdateManagedEventParticipantStatusHandler
             if ($participant->role === EventParticipantRoleEnum::ORGANIZER) {
                 throw new InvalidArgumentException('Статус организатора этим действием не изменяется.');
             }
-            if ($participant->status === $status
-                && $participant->confirmation_version === $event->participation_confirmation_version) {
-                throw new InvalidArgumentException('У пользователя уже установлен этот статус.');
+            $roles = $participationRoles ?? $participant->participation_roles;
+            $sameStatus = $participant->status === $status
+                && $participant->confirmation_version === $event->participation_confirmation_version;
+            if ($sameStatus && ($participationRoles === null || $participationRoles === $participant->participation_roles)) {
+                throw new InvalidArgumentException('Статус и роли участника не изменились.');
             }
 
-            if ($status === EventParticipantStatusEnum::CONFIRMED && $participant->hasPlayerRole()) {
+            // Check capacity only on the transition INTO a confirmed player seat.
+            // A confirmed player editing an additional coach/referee role uses
+            // the same single seat; a confirmed staff member becoming a player
+            // must acquire a free seat. Legacy NULL roles counted as players.
+            $hadPlayerSeat = $participant->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version
+                && $participant->hasPlayerRole();
+            $willHavePlayerSeat = $status === EventParticipantStatusEnum::CONFIRMED
+                && ($roles === null || in_array(UserParticipationRoleEnum::PLAYER->value, $roles, true));
+            if ($willHavePlayerSeat && ! $hadPlayerSeat) {
                 $confirmedCount = $event->participants()
                     ->occupiesPlayerSpot()
                     ->where('confirmation_version', $event->participation_confirmation_version)
@@ -62,6 +87,7 @@ final class UpdateManagedEventParticipantStatusHandler
             }
 
             $participant->forceFill([
+                ...($participationRoles === null ? [] : ['participation_roles' => $participationRoles]),
                 'status' => $status,
                 'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                 'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
