@@ -105,6 +105,9 @@ final class BackofficeEventManagementTest extends TestCase
 
     public function test_editing_event_start_time_persists_new_moscow_clock_and_moves_linked_booking(): void
     {
+        // Reproduce a Moscow venue on a UTC app / DB connection.
+        // Eloquent date bindings omit offsets, so this catches a +3h drift.
+        config()->set('app.timezone', 'UTC');
         Queue::fake();
         $this->actingAs($this->user(Role::SUPERADMIN));
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
@@ -114,6 +117,8 @@ final class BackofficeEventManagementTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
+        \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
         $start = now('Europe/Moscow')->addDays(3)->setTime(22, 0)->format('Y-m-d H:i');
         $editor = app(EventBackofficeEditor::class);
         $event = $editor->createEvent([
@@ -125,6 +130,10 @@ final class BackofficeEventManagementTest extends TestCase
             'duration_minutes' => 90,
             'max_participants' => 10,
         ]);
+
+        $event->refresh();
+        $this->assertSame('22:00', $event->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
+        $this->assertSame('22:00', $event->booking->fresh()->starts_at->setTimezone('Europe/Moscow')->format('H:i'));
 
         Livewire::test(EditEvent::class, ['record' => $event->id])
             ->assertSet('data.event_time', '22:00')
