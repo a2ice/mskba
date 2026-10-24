@@ -39,7 +39,7 @@
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             if(Number(btn.dataset.favoriteVenue)!==id) return;
             btn.classList.add('mskba-favorite-heart');
-            btn.innerHTML = svg;
+            if (!btn.querySelector('svg path')) btn.innerHTML = svg;
             btn.setAttribute('aria-pressed',String(state==='active'));
             btn.setAttribute('aria-label',getName(state));
             btn.title=state==='active'?'Добавлено в избранное':getName(state);
@@ -144,9 +144,7 @@
         }
         dialog.dataset.venueId=String(id);
         dialog.querySelector('.mskba-favorites-confirm__error').hidden=true;
-        dialog.querySelector('input[type=checkbox]').checked=known.get(id)?.notify_upcoming_events!==false ||
-            known.get(id)?.justAdded===true;
-        // Always propose opt-in on each new addition, even if previously unchecked.
+        // Propose opt-in; actual subscription is saved only after Apply.
         dialog.querySelector('input[type=checkbox]').checked=true;
         if(dialog.open)dialog.close();
         dialog.showModal();
