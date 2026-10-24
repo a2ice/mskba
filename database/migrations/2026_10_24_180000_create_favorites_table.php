@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('entity_type', 32);
             $table->unsignedBigInteger('entity_id');
             $table->timestampTz('trashed_at')->nullable();
+            $table->boolean('notify_upcoming_events')->default(false);
             $table->timestampsTz();
 
             $table->unique(['user_id', 'entity_type', 'entity_id'], 'favorites_user_entity_unique');
