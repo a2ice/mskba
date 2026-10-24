@@ -59,7 +59,7 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Выберите хотя бы одну роль участия.');
         }
         if ($roles !== null && (! is_array($roles)
-            || array_any($roles, fn ($role): bool => ! is_string($role)
+            || collect($roles)->contains(fn ($role): bool => ! is_string($role)
                 || UserParticipationRoleEnum::tryFrom($role) === null
                 || $role === UserParticipationRoleEnum::ORGANIZER->value))) {
             throw new InvalidArgumentException('Выбрана недопустимая роль участия.');
