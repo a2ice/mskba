@@ -25,6 +25,7 @@ final class PlayIntentController extends Controller
                 ->orderByDesc('updated_at')
                 ->orderByDesc('id')
                 ->limit(100)
+                ->with('venue')
                 ->get()
                 ->map(fn (PlayIntent $intent): array => $this->serialize($intent))
                 ->values()
@@ -140,6 +141,8 @@ final class PlayIntentController extends Controller
     /** @return array<string, mixed> */
     private function serialize(PlayIntent $intent): array
     {
+        $intent->loadMissing('venue');
+        $venue = $intent->venue;
         $data = $intent->only([
             'id', 'client_request_id', 'name', 'venue_id', 'include_similar_venues', 'center_latitude', 'center_longitude',
             'radius_km', 'cadence', 'weekdays', 'dates', 'windows', 'period_from', 'period_until',
@@ -148,6 +151,13 @@ final class PlayIntentController extends Controller
         ]);
         $data['effective_status'] = $intent->status === 'active' && $intent->expires_at?->isPast()
             ? 'expired' : $intent->status;
+        // The owner can see which venue was chosen; this is not a public
+        // directory of users interested in a venue.
+        $data['venue'] = $venue === null ? null : [
+            'id' => (int) $venue->id,
+            'name' => $venue->name,
+            'url' => route('venues.show', $venue->routeIdentifier()),
+        ];
 
         return $data;
     }
