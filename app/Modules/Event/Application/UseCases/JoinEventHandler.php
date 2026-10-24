@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -49,7 +50,11 @@ final class JoinEventHandler
             $participant?->responsibilityPermissions()->delete();
 
             $attributes = [
-                'role' => EventParticipantRoleEnum::PARTICIPANT,
+                // Joining does not revoke the organizer's independent ACL.
+                'role' => $participant?->role === EventParticipantRoleEnum::ORGANIZER
+                    ? EventParticipantRoleEnum::ORGANIZER
+                    : EventParticipantRoleEnum::PARTICIPANT,
+                'participation_role' => $participant?->participation_role ?? UserParticipationRoleEnum::PLAYER,
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'joined_at' => now(),
                 'left_at' => null,
