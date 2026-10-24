@@ -28,6 +28,9 @@
     $declinedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::LEFT)
         ->where('confirmation_version', $event->participation_confirmation_version)
+        // An organizer who never opted in did not decline an invitation.
+        ->reject(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER
+            && $participant->participation_roles === [])
         ->values();
     $playerParticipants = $confirmedParticipants->filter(fn ($participant) => $participant->hasPlayerRole());
     $confirmedCount = $playerParticipants->count();
