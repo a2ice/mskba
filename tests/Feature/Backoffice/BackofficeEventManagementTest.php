@@ -18,6 +18,9 @@ use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Livewire;
+use Illuminate\Validation\ValidationException;
+use App\Filament\Backoffice\Resources\Events\Pages\CreateEvent;
 use Tests\TestCase;
 
 final class BackofficeEventManagementTest extends TestCase
@@ -83,6 +86,148 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame('Обновлённая тренировка', $updated->title);
         $this->assertSame('Обновлено в админке', $updated->description);
         $this->assertSame(1, $updated->booking()->count());
+    }
+
+    public function test_livewire_create_form_creates_event_and_its_booking(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $starts = now('Europe/Moscow')->addDays(2)->setTime(19, 0)->format('Y-m-d H:i');
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Пробная игра с экрана Filament')
+            ->set('data.type', EventTypeEnum::TRAINING->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.booking_scope', 'whole')
+            ->set('data.starts_at', $starts)
+            ->set('data.duration_minutes', 180)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Пробная игра с экрана Filament')->firstOrFail();
+        $this->assertSame($venue->id, $event->venue_id);
+        $this->assertSame(1, $event->booking()->count());
+    }
+
+    public function test_event_conflict_message_is_attached_to_time_field_not_hidden_title_field(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $data = [
+            'title' => 'Первая игра',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(2)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 120,
+        ];
+        app(EventBackofficeEditor::class)->createEvent($data);
+
+        try {
+            app(EventBackofficeEditor::class)->createEvent(array_replace($data, ['title' => 'Пересекающаяся игра']));
+            $this->fail('Expected booking conflict');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.starts_at', $exception->errors());
+            $this->assertArrayNotHasKey('data.title', $exception->errors());
+        }
+    }
+
+    public function test_superadmin_can_choose_another_event_organizer_in_livewire_form(): void
+    {
+        Queue::fake();
+        $super = $this->user(Role::SUPERADMIN);
+        $organizer = $this->user(Role::USER);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Тренировка другого организатора')
+            ->set('data.type', EventTypeEnum::TRAINING->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.organizer_user_id', $organizer->id)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.starts_at', now('Europe/Moscow')->addDays(2)->setTime(18, 0)->format('Y-m-d H:i'))
+            ->set('data.duration_minutes', 90)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Тренировка другого организатора')->firstOrFail();
+        $this->assertSame($organizer->id, $event->organizerActor->user_id);
+    }
+
+    public function test_livewire_game_creation_sets_up_game_and_booking(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Игра 3×3 из админки')
+            ->set('data.type', EventTypeEnum::GAME->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.booking_scope', 'whole')
+            ->set('data.starts_at', now('Europe/Moscow')->addDays(3)->setTime(19, 0)->format('Y-m-d H:i'))
+            ->set('data.duration_minutes', 120)
+            ->set('data.game_format', 'streetball_3x3')
+            ->set('data.game_recruitment_mode', 'preformed_teams')
+            ->set('data.side_a_size', 3)
+            ->set('data.side_b_size', 3)
+            ->set('data.scoring_type', 'streetball')
+            ->set('data.timing_mode', 'whole_game')
+            ->set('data.game_accepts_applications', true)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Игра 3×3 из админки')->firstOrFail();
+        $this->assertSame(1, $event->booking()->count());
+        $this->assertSame(1, $event->games()->count());
+    }
+
+    public function test_default_event_date_is_today_in_moscow_before_evening(): void
+    {
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-10-24 10:53:00', 'Europe/Moscow'));
+        try {
+            $this->assertSame('2026-10-24 19:00', EventResource::defaultStartsAt());
+        } finally {
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
+    public function test_duration_select_has_half_hour_steps_up_to_eight_hours(): void
+    {
+        $options = EventResource::durationOptions();
+        $this->assertCount(16, $options);
+        $this->assertSame('30 минут', $options[30]);
+        $this->assertSame('1 ч', $options[60]);
+        $this->assertSame('1 ч 30 мин', $options[90]);
+        $this->assertSame('8 ч', $options[480]);
     }
 
     public function test_event_management_is_delegated_separately_from_venue_management(): void

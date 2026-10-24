@@ -10,12 +10,38 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class VenueFacilitiesManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_reselecting_soft_deleted_amenity_restores_unique_pivot_instead_of_inserting_duplicate(): void
+    {
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
+        $amenity = Amenity::query()->where('alias', 'parking')->firstOrFail();
+        DB::table('venue_amenities')->insert([
+            'venue_id' => $venue->id,
+            'amenity_id' => $amenity->id,
+            'deleted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(VenueFacilitiesSynchronizer::class)->sync($venue, [], [$amenity->id]);
+
+        $this->assertSame(1, DB::table('venue_amenities')
+            ->where('venue_id', $venue->id)
+            ->where('amenity_id', $amenity->id)->count());
+        $this->assertDatabaseHas('venue_amenities', [
+            'venue_id' => $venue->id,
+            'amenity_id' => $amenity->id,
+            'deleted_at' => null,
+        ]);
+    }
 
     public function test_bootstrap_owner_can_save_characteristics_and_applicable_amenities(): void
     {

@@ -7,6 +7,12 @@ use App\Filament\Backoffice\Resources\Geography\DistrictResource;
 use App\Filament\Backoffice\Resources\Geography\MetroLineResource;
 use App\Filament\Backoffice\Resources\Geography\MetroStationResource;
 use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
+use App\Filament\Backoffice\Resources\Venues\VenueBackofficeEditor;
+use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
+use Livewire\Livewire;
+use App\Modules\Venue\Domain\Models\Amenity;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use Illuminate\Validation\ValidationException;
 use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -89,6 +95,67 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         ] as [$resource, $model]) {
             $this->get($resource::getUrl('create'))->assertOk();
             $this->get($resource::getUrl('edit', ['record' => $model]))->assertOk();
+        }
+    }
+
+    public function test_editing_venue_amenities_via_livewire_saves_without_navigation_error(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
+        $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
+
+        Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
+            ->set('data.amenity_ids', $ids)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertCount(3, $venue->fresh()->amenities);
+    }
+
+    public function test_inapplicable_venue_facility_reports_form_validation_instead_of_500(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::STREET_COURT]);
+        $shower = Amenity::query()->where('alias', 'shower')->firstOrFail();
+
+        try {
+            app(VenueBackofficeEditor::class)->save([
+                'name' => $venue->name,
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'status' => $venue->status->value,
+                'access_type' => 'unknown',
+                'amenity_ids' => [$shower->id],
+                ...app(VenueBackofficeEditor::class)->fields($venue),
+                'amenity_ids' => [$shower->id],
+            ], $venue);
+            $this->fail('Expected inline validation error');
+        } catch (ValidationException $error) {
+            $this->assertArrayHasKey('data.amenity_ids', $error->errors());
+        }
+    }
+
+    public function test_lighting_fence_and_hoop_nets_are_valid_for_indoor_and_outdoor_venues(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
+        $this->assertCount(3, $ids);
+        $this->assertSame(3, Amenity::query()
+            ->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])
+            ->where('applies_to', 'all')->count());
+
+        $editor = app(VenueBackofficeEditor::class);
+        foreach ([VenueTypeEnum::SPORTS_HALL, VenueTypeEnum::STREET_COURT] as $type) {
+            $venue = Venue::factory()->create(['type' => $type]);
+            $editor->save(array_replace([
+                'name' => $venue->name,
+                'type' => $type->value,
+                'status' => $venue->status->value,
+                'access_type' => 'unknown',
+                'amenity_ids' => $ids,
+            ], $editor->fields($venue), ['amenity_ids' => $ids]), $venue);
+
+            $this->assertCount(3, $venue->fresh()->amenities);
         }
     }
 
