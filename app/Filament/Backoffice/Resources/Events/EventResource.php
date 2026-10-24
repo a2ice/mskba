@@ -263,8 +263,7 @@ final class EventResource extends Resource
                             ->required()->seconds(false)->native(false),
                         Select::make('duration_minutes')->label('Продолжительность')
                             ->options(self::durationOptions())->native(false)
-                            ->required()->default(90)
-                            ->helperText('От 30 минут до 8 часов, с шагом 30 минут.'),
+                            ->required()->default(90),
                     ]),
                 ]),
                 Tab::make('Параметры игры')->visible(
