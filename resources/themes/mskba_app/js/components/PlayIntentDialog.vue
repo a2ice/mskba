@@ -5,6 +5,7 @@ const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref('');
+const favoriteState=ref('none'), favoriteBusy=ref(false), favoriteError=ref('');
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
@@ -96,11 +97,40 @@ function close(forAuth=false){
     el.value?.close();visible.value=false;document.body.style.overflow=overflow;
     if(!forAuth)restoreFocus?.focus?.({preventScroll:true});
 }
+async function fetchFavoriteState(){
+    const id=Number(selectedVenueId.value);
+    if(!id||!props.options.endpoints.favoritesStatus)return;
+    favoriteError.value='';
+    try{
+        const url=new URL(props.options.endpoints.favoritesStatus,location.origin);
+        url.searchParams.set('type','venue');url.searchParams.set('id',String(id));
+        const r=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});
+        if(!r.ok)throw new Error();
+        favoriteState.value=(await r.json()).state||'none';
+    }catch{favoriteError.value='Не удалось проверить избранное.';}
+}
+async function toggleFavorite(){
+    const id=Number(selectedVenueId.value);
+    if(!id||favoriteBusy.value||!props.options.endpoints.favoritesToggle)return;
+    favoriteBusy.value=true;favoriteError.value='';
+    try{
+        const response=await fetch(props.options.endpoints.favoritesToggle,{
+            method:'POST',credentials:'same-origin',
+            headers:{Accept:'application/json','Content-Type':'application/json',
+                'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+            body:JSON.stringify({type:'venue',id}),
+        });
+        if(!response.ok)throw new Error();
+        favoriteState.value=(await response.json()).state;
+    }catch{favoriteError.value='Не удалось изменить избранное. Попробуй ещё раз.';}
+    finally{favoriteBusy.value=false;}
+}
 async function openDialog(){
     if(visible.value)return;
     restoreFocus=document.activeElement;overflow=document.body.style.overflow;visible.value=true;
     await nextTick();el.value?.showModal();document.body.style.overflow='hidden';
     heading.value?.focus({preventScroll:true});
+    void fetchFavoriteState();
     if(!amenities.value.length){
         try{
             const r=await fetch(props.options.endpoints.amenities,{credentials:'same-origin',headers:{Accept:'application/json'}});
@@ -149,7 +179,7 @@ async function resume(){
     const pending=readPending();if(!pending)return;
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
-function authSuccess(){isAuth.value=true;void resume();}
+function authSuccess(){isAuth.value=true;void fetchFavoriteState();void resume();}
 function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
@@ -185,6 +215,16 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
     </template>
     <template v-else>
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
+            <div v-if="selectedVenueId && options.endpoints.favoritesToggle" class="app-play-dialog__favorite">
+                <button type="button" class="app-play-dialog__favorite-button"
+                    :aria-pressed="favoriteState==='active'"
+                    :disabled="favoriteBusy" @click="toggleFavorite">
+                    <svg aria-hidden="true"><use href="#heart"/></svg>
+                    {{ favoriteState==='active' ? 'Убрать из избранного' : favoriteState==='trashed' ? 'Восстановить из корзины' : 'Добавить в избранное' }}
+                </button>
+                <span v-if="favoriteState==='active' && !isAuth" class="caption">Сохранится в аккаунте после входа</span>
+                <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
+            </div>
             <div class="app-play-dialog__info">
                 <p>Укажи удобное время и формат. MSKBA поможет найти игроков и подходящие игры без обязательств.</p>
                 <div v-if="expanded" class="app-play-dialog__info-details mskba-scroll">
