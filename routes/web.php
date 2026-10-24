@@ -1099,6 +1099,9 @@ Route::get('/account/play-interests', function (\App\Presentation\Theming\ThemeR
 Route::get('/favorites/status',
     [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'status'])
     ->middleware('throttle:60,1')->name('favorites.status');
+Route::get('/favorites/venue-statuses',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'venueStatuses'])
+    ->middleware('throttle:60,1')->name('favorites.venue-statuses');
 Route::post('/favorites/toggle',
     [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'toggle'])
     ->middleware('throttle:30,1')->name('favorites.toggle');
