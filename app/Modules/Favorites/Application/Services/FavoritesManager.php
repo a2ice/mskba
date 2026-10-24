@@ -90,6 +90,20 @@ final class FavoritesManager
         });
     }
 
+    public function setUpcomingEventNotifications(Request $request, int $venueId, bool $enabled): Favorite
+    {
+        $item = $this->owned($request)
+            ->where('entity_type', 'venue')
+            ->where('entity_id', $venueId)
+            ->whereNull('trashed_at')
+            ->firstOrFail();
+
+        abort_if($this->user($request)?->isBlocked(), 403);
+        $item->forceFill(['notify_upcoming_events' => $enabled])->save();
+
+        return $item;
+    }
+
     /**
      * Runs on the first authenticated web request carrying the anonymous token.
      * A previously active authenticated favorite always stays active; an active
