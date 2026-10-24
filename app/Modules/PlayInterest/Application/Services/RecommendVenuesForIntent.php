@@ -37,11 +37,21 @@ final class RecommendVenuesForIntent
             ->with(['location.address', 'amenities:id,name,alias,is_active', 'primaryCourt'])
             ->orderBy('id');
 
-        // Open-air is a domain venue type, not an operational open/closed flag.
-        if ($intent->venue_kind === 'outdoor') {
-            $query->where('type', VenueTypeEnum::STREET_COURT);
-        } elseif ($intent->venue_kind === 'indoor') {
-            $query->where('type', '!=', VenueTypeEnum::STREET_COURT);
+        // The venue chosen by "Хочу здесь играть" remains a candidate.
+        // Type preference applies to *alternatives* only, and only when
+        // the user opted into searching for similar venues.
+        if ($isSimilar && in_array($intent->venue_kind, ['outdoor', 'indoor'], true)) {
+            $outdoor = $intent->venue_kind === 'outdoor';
+            $query->where(function (Builder $q) use ($outdoor, $intent): void {
+                if ($outdoor) {
+                    $q->where('type', VenueTypeEnum::STREET_COURT);
+                } else {
+                    $q->where('type', '!=', VenueTypeEnum::STREET_COURT);
+                }
+                if ($intent->venue_id !== null) {
+                    $q->orWhereKey($intent->venue_id);
+                }
+            });
         }
 
         if (! $isSimilar) {

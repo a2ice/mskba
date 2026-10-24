@@ -84,7 +84,7 @@ final class PlayIntentManager
                 'formats' => $input['formats'] ?? [],
                 'duration_minutes' => $input['duration_minutes'] ?? null,
                 'access_mode' => $input['access_mode'] ?? 'any',
-                'venue_kind' => $input['venue_kind'] ?? 'any',
+                'venue_kind' => ($input['include_similar_venues'] ?? false) ? ($input['venue_kind'] ?? 'any') : 'any',
                 'amenity_preferences' => $input['amenity_preferences'] ?? [],
                 'notify_matches' => (bool) ($input['notify_matches'] ?? true),
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),

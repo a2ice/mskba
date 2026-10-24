@@ -52,7 +52,7 @@ function serialize(){
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
         dates:cadence.value==='once'&&dateMode.value==='dates'?dates.value:[],
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
-        access_mode:access.value,venue_kind:venueKind.value,amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
+        access_mode:access.value,venue_kind:similar.value?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
@@ -74,7 +74,7 @@ function restore(data){
     formats.value=data.formats||[];duration.value=String(data.duration_minutes||'');
     similar.value=Boolean(data.include_similar_venues);radius.value=data.radius_km||10;
     latitude.value=data.center_latitude??latitude.value;longitude.value=data.center_longitude??longitude.value;
-    access.value=data.access_mode||'any';venueKind.value=data.venue_kind||'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
+    access.value=data.access_mode||'any';venueKind.value=data.include_similar_venues ? (data.venue_kind||'any') : 'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
@@ -254,17 +254,17 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <button type="button" class="chip" :aria-pressed="!formats.length" @click="formats=[]">Не важно</button>
                     <button v-for="f in ['1x1','2x2','3x3','4x4','5x5']" :key="f" type="button" class="chip" :aria-pressed="formats.includes(f)" @click="toggleFormat(f)">{{f.replace('x','×')}}</button>
                 </div></fieldset>
-                <fieldset><legend>Тип площадки</legend><div class="app-play-dialog__chips">
-                    <button v-for="kind in [{v:'any',t:'Не важно'},{v:'outdoor',t:'Открытая'},{v:'indoor',t:'Крытая'}]"
-                        :key="kind.v" type="button" class="chip" :aria-pressed="venueKind===kind.v"
-                        @click="venueKind=kind.v">{{kind.t}}</button>
-                </div></fieldset>
                 <label class="field-group">Продолжительность игры<span class="select-control"><select v-model="duration">
                     <option value="">Не важно</option><option value="60">1 час</option><option value="90">1,5 часа</option><option value="120">2 часа</option><option value="180">3 часа</option>
                 </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
                 <label class="check-label"><input v-model="similar" type="checkbox"><strong>Подбирать похожие площадки</strong></label>
                 <div v-if="similar" class="app-play-dialog__similar">
                     <label class="field-group">Радиус: {{radius}} км<input v-model.number="radius" type="range" min="1" max="30"></label>
+                <fieldset><legend>Тип площадки</legend><div class="app-play-dialog__chips">
+                    <button v-for="kind in [{v:'any',t:'Не важно'},{v:'outdoor',t:'Открытая'},{v:'indoor',t:'Крытая'}]"
+                        :key="kind.v" type="button" class="chip" :aria-pressed="venueKind===kind.v"
+                        @click="venueKind=kind.v">{{kind.t}}</button>
+                </div></fieldset>
                     <div v-if="!options.venueLatitude||!options.venueLongitude" class="app-play-dialog__time-range">
                         <label class="field-group">Широта<input v-model="latitude" type="number" min="-90" max="90" step="0.0000001"></label>
                         <label class="field-group">Долгота<input v-model="longitude" type="number" min="-180" max="180" step="0.0000001"></label>
