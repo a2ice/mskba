@@ -33,8 +33,8 @@ class EventParticipant extends Model
 {
     /**
      * The player-seat count is independent from organizer privileges.
-     * Legacy regular participants without activity metadata are players;
-     * legacy organizers without an explicit player role are not assumed to play.
+     * Legacy confirmed participants (including organizers) had no activity
+     * metadata: preserve their old player-seat counts until explicitly edited.
      *
      */
     public function hasPlayerRole(): bool
@@ -43,7 +43,7 @@ class EventParticipant extends Model
             return in_array('player', $this->participation_roles, true);
         }
 
-        return $this->role === EventParticipantRoleEnum::PARTICIPANT;
+        return true; // Backward compatibility for pre-migration participants.
     }
 
     /** @param Builder<EventParticipant> $query */
@@ -53,10 +53,7 @@ class EventParticipant extends Model
             ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
             ->where(function (Builder $roles): void {
                 $roles->whereJsonContains('participation_roles', 'player')
-                    ->orWhere(function (Builder $legacy): void {
-                        $legacy->whereNull('participation_roles')
-                            ->where('role', EventParticipantRoleEnum::PARTICIPANT->value);
-                    });
+                    ->orWhereNull('participation_roles');
             });
     }
 
