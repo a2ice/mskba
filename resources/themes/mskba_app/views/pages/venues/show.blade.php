@@ -121,19 +121,21 @@
         </aside>
     </div>
 </section>
-<div data-mskba-play-intent-root
-    data-options='@json([
-        "venueId" => $venue->id,
-        "venueName" => $venue->name,
-        "venueType" => $venue->typeSlug,
-        "venueLatitude" => $venue->address?->latitude,
-        "venueLongitude" => $venue->address?->longitude,
-        "authenticated" => auth()->check(),
-        "endpoints" => [
-            "store" => route("play-intents.store"),
-            "amenities" => route("play-intents.amenities"),
-            "mine" => route("play-intents.mine"),
+@php
+    $playIntentOptions = [
+        'venueId' => $venue->id,
+        'venueName' => $venue->name,
+        'venueType' => $venue->typeSlug,
+        'venueLatitude' => $venue->address?->latitude,
+        'venueLongitude' => $venue->address?->longitude,
+        'authenticated' => auth()->check(),
+        'endpoints' => [
+            'store' => route('play-intents.store'),
+            'amenities' => route('play-intents.amenities'),
+            'mine' => route('play-intents.mine'),
         ],
-    ])'></div>
+    ];
+@endphp
+<div data-mskba-play-intent-root data-options='@json($playIntentOptions)'></div>
 @endif
 @endsection
