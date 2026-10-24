@@ -12,6 +12,11 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -35,10 +40,17 @@ final class ParticipantsRelationManager extends RelationManager
     {
         return $table->columns([
             TextColumn::make('user.username')->label('Пользователь')->searchable(),
+            TextColumn::make('activity_roles_label')->label('В качестве кого')
+                ->state(fn (EventParticipant $record): string => implode(', ', array_map(
+                    fn (string $role): string => \App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum::tryFrom($role)?->label() ?? $role,
+                    $record->participation_roles ?? [],
+                )) ?: '—'),
             TextColumn::make('role')->label('Роль')->formatStateUsing(
                 fn ($state): string => $state instanceof EventParticipantRoleEnum ? $state->label() : '—'),
             TextColumn::make('status')->label('Статус')->badge()->formatStateUsing(
-                fn ($state): string => $state instanceof EventParticipantStatusEnum ? $state->label() : '—'),
+                fn ($state, EventParticipant $record): string => $record->role === EventParticipantRoleEnum::ORGANIZER
+                    && $record->status === EventParticipantStatusEnum::LEFT
+                    ? 'Не участвует' : ($state instanceof EventParticipantStatusEnum ? $state->label() : '—')),
             TextColumn::make('joined_at')->label('Записался')->dateTime('d.m.Y H:i'),
         ])->recordActions([
             Action::make('changeStatus')->label('Изменить участие')
@@ -64,21 +76,38 @@ final class ParticipantsRelationManager extends RelationManager
                 ->visible(fn (): bool => EventResource::authorized()
                     && $this->getOwnerRecord()->ends_at->isFuture())
                 ->schema([
-                    Select::make('user_id')->label('Пользователь')->required()->searchable()
+                    Select::make('user_id')->label('Пользователь')->required()->searchable()->live()
+                        ->afterStateUpdated(fn (Set $set, $state) => $set(
+                            'participation_roles',
+                            $state ? EventResource::defaultParticipationRoles((int) $state) : [],
+                        ))
                         ->getSearchResultsUsing(fn (string $search): array => User::query()
                             ->whereLike('username', '%'.$search.'%')
                             ->limit(30)->pluck('username', 'id')->all())
                         ->getOptionLabelUsing(fn ($value): ?string => User::query()
                             ->whereKey($value)->value('username')),
+                    CheckboxList::make('participation_roles')->label('В качестве кого')
+                        ->options(EventResource::participationRoleOptions())
+                        ->default([])
+                        ->required()->minItems(1)
+                        ->visible(fn (Get $get): bool => (int) ($get('user_id') ?? 0) > 0)
+                        ->helperText('Можно выбрать несколько ролей. Игрок занимает место после подтверждения участия; остальные роли — нет.')
+                        ->columns(2),
                 ])
                 ->action(function (array $data): void {
                     abort_unless(EventResource::authorized(), 403);
                     $actor = app(CurrentActorResolver::class)->resolve(auth('web')->user(), null);
                     abort_unless($actor !== null, 403);
-                    app(AddEventParticipantHandler::class)->handle(
-                        $this->getOwnerRecord()->routeIdentifier(), $actor, (int) $data['user_id'],
-                        asBackoffice: true);
-                    Notification::make()->success()->title('Участник добавлен')->send();
+                    try {
+                        app(AddEventParticipantHandler::class)->handle(
+                            $this->getOwnerRecord()->routeIdentifier(), $actor, (int) $data['user_id'],
+                            asBackoffice: true,
+                            participationRoles: $data['participation_roles'] ?? [],
+                        );
+                    } catch (InvalidArgumentException $exception) {
+                        throw ValidationException::withMessages(['participation_roles' => $exception->getMessage()]);
+                    }
+                    Notification::make()->success()->title('Приглашение участнику добавлено')->send();
                 }),
         ]);
     }

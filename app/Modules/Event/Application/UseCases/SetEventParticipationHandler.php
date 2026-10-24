@@ -46,13 +46,13 @@ final class SetEventParticipationHandler
                 throw new InvalidArgumentException('Организатор не может изменить участие в собственном мероприятии.');
             }
 
+            $roles = $participant?->participation_roles ?: ['player'];
             if ($status === EventParticipantStatusEnum::CONFIRMED
-                && $participant?->status !== EventParticipantStatusEnum::CONFIRMED) {
-                $confirmedCount = $this->identityParticipation->confirmedIdentityCount($event);
-
-                if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
-                    throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
-                }
+                && $participant?->status !== EventParticipantStatusEnum::CONFIRMED
+                && in_array('player', $roles, true)
+                && $event->max_participants !== null
+                && $this->identityParticipation->confirmedIdentityCount($event) >= $event->max_participants) {
+                throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
             if ($status !== EventParticipantStatusEnum::CONFIRMED) {
@@ -61,6 +61,7 @@ final class SetEventParticipationHandler
 
             $attributes = [
                 'role' => EventParticipantRoleEnum::PARTICIPANT,
+'participation_roles' => $roles,
                 'status' => $status,
                 'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                 'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,

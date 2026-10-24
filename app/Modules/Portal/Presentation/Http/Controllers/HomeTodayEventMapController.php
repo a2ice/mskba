@@ -35,7 +35,7 @@ final class HomeTodayEventMapController extends Controller
                     ->whereNotNull('latitude')->whereNotNull('longitude')))
             ->with(['venue.location.address', 'venue.media', 'primaryGame'])
             ->withCount(['participants as confirmed_participants_count' => fn ($participants) => $participants
-                ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                ->occupiesPlayerSpot()
                 ->whereColumn('confirmation_version', 'events.participation_confirmation_version')])
             ->orderBy('starts_at')->limit(200)->get()
             ->filter(function (Event $event): bool {

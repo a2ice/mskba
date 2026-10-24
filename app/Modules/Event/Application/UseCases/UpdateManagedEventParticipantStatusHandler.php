@@ -51,9 +51,9 @@ final class UpdateManagedEventParticipantStatusHandler
                 throw new InvalidArgumentException('У пользователя уже установлен этот статус.');
             }
 
-            if ($status === EventParticipantStatusEnum::CONFIRMED) {
+            if ($status === EventParticipantStatusEnum::CONFIRMED && $participant->hasPlayerRole()) {
                 $confirmedCount = $event->participants()
-                    ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                    ->occupiesPlayerSpot()
                     ->where('confirmation_version', $event->participation_confirmation_version)
                     ->count();
                 if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {

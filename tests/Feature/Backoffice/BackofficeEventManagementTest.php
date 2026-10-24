@@ -7,11 +7,21 @@ use App\Filament\Backoffice\Resources\Events\EventResource;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
+use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
+use App\Modules\Event\Application\UseCases\JoinEventHandler;
+use App\Modules\Event\Application\UseCases\SetEventParticipationHandler;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum as Role;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -336,6 +346,217 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame('1 ч', $options[60]);
         $this->assertSame('1 ч 30 мин', $options[90]);
         $this->assertSame('8 ч', $options[480]);
+    }
+
+    public function test_livewire_attendance_checkbox_reveals_default_player_role(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateEvent::class)
+            ->assertSet('data.organizer_participates', false)
+            ->set('data.organizer_participates', true)
+            ->assertSet('data.participation_roles', ['player'])
+            ->assertSee('В качестве кого');
+    }
+
+    public function test_default_attendance_checkboxes_use_all_active_profile_roles_and_fallback_player(): void
+    {
+        $organizer = $this->user(Role::USER);
+        $this->assertSame(['player'], EventResource::defaultParticipationRoles($organizer->id));
+
+        foreach (['coach', 'statistician'] as $role) {
+            UserParticipationRole::query()->create([
+                'user_id' => $organizer->id,
+                'role' => $role,
+                'assigner' => UserParticipationRoleAssignerEnum::USER,
+            ]);
+        }
+
+        $this->assertEqualsCanonicalizing(
+            ['coach', 'statistician'],
+            EventResource::defaultParticipationRoles($organizer->id),
+        );
+        $this->assertArrayNotHasKey('organizer', EventResource::participationRoleOptions());
+    }
+
+    public function test_organizer_can_manage_event_without_attending_or_occupying_player_seat(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Организую без участия',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(3)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'organizer_participates' => false,
+            'participation_roles' => ['player'],
+        ]);
+
+        $participant = $event->participants()->firstOrFail();
+        $this->assertSame($organizer->id, $event->organizerActor->user_id);
+        $this->assertSame(EventParticipantRoleEnum::ORGANIZER, $participant->role);
+        $this->assertSame(EventParticipantStatusEnum::LEFT, $participant->status);
+        $this->assertSame([], $participant->participation_roles);
+        $this->assertSame(0, $event->participants()->occupiesPlayerSpot()->count());
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $this->assertTrue(app(EventManagementAccess::class)->allows(
+            $event, $event->organizerActor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
+        ));
+    }
+
+    public function test_multiple_organizer_roles_count_one_player_only_when_player_is_selected(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $data = [
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(3)->setTime(17, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'organizer_participates' => true,
+        ];
+
+        $staffEvent = app(EventBackofficeEditor::class)->createEvent([
+            ...$data,
+            'title' => 'Тренер и статист',
+            'participation_roles' => ['coach', 'statistician'],
+        ]);
+        $this->assertSame(['coach', 'statistician'], $staffEvent->participants()->firstOrFail()->participation_roles);
+        $this->assertSame(0, $staffEvent->participants()->occupiesPlayerSpot()->count());
+
+        $playerEvent = app(EventBackofficeEditor::class)->createEvent([
+            ...$data,
+            'title' => 'Игрок и тренер',
+            'starts_at' => now('Europe/Moscow')->addDays(4)->setTime(17, 0)->format('Y-m-d H:i'),
+            'participation_roles' => ['player', 'coach'],
+        ]);
+        $this->assertSame(1, $playerEvent->participants()->occupiesPlayerSpot()->count());
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($playerEvent));
+
+        try {
+            app(EventBackofficeEditor::class)->createEvent([
+                ...$data,
+                'title' => 'Не указаны роли',
+                'starts_at' => now('Europe/Moscow')->addDays(5)->setTime(17, 0)->format('Y-m-d H:i'),
+                'participation_roles' => [],
+            ]);
+            $this->fail('Enabled attendance requires at least one role.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data.participation_roles', $exception->errors());
+        }
+    }
+
+    public function test_event_invitation_preserves_multiple_staff_roles_and_does_not_fill_player_spot(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $coach = $this->user(Role::USER);
+        $statistician = $this->user(Role::USER);
+        $player = $this->user(Role::USER);
+        $this->actingAs($organizer);
+
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Приглашения разных ролей',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(7)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'max_participants' => 1,
+            'organizer_participates' => false,
+        ]);
+
+        app(AddEventParticipantHandler::class)->handle(
+            $event->routeIdentifier(), $event->organizerActor, $coach->id,
+            asBackoffice: true, participationRoles: ['coach', 'media'],
+        );
+        app(AddEventParticipantHandler::class)->handle(
+            $event->routeIdentifier(), $event->organizerActor, $statistician->id,
+            asBackoffice: true, participationRoles: ['statistician'],
+        );
+        $this->assertSame(
+            EventParticipantStatusEnum::TENTATIVE,
+            $event->participants()->where('user_id', $coach->id)->firstOrFail()->status,
+        );
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        // Both existing invitation acceptance workflows must preserve the
+        // selected staff roles and should never allocate a player slot.
+        app(JoinEventHandler::class)->handle($event->routeIdentifier(), $coach);
+        app(SetEventParticipationHandler::class)->handle(
+            $event->routeIdentifier(), $statistician, EventParticipantStatusEnum::CONFIRMED,
+        );
+        $this->assertSame(
+            ['coach', 'media'],
+            $event->participants()->where('user_id', $coach->id)->firstOrFail()->participation_roles,
+        );
+        $this->assertSame(
+            ['statistician'],
+            $event->participants()->where('user_id', $statistician->id)->firstOrFail()->participation_roles,
+        );
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        app(AddEventParticipantHandler::class)->handle(
+            $event->routeIdentifier(), $event->organizerActor, $player->id,
+            asBackoffice: true, participationRoles: ['player', 'coach'],
+        );
+        app(JoinEventHandler::class)->handle($event->routeIdentifier(), $player);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+    }
+
+    public function test_inviting_participant_without_selected_role_fails_on_server(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $attendee = $this->user(Role::USER);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Проверка ролей приглашения',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(8)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'organizer_participates' => false,
+        ]);
+
+        try {
+            app(AddEventParticipantHandler::class)->handle(
+                $event->routeIdentifier(), $event->organizerActor, $attendee->id,
+                asBackoffice: true, participationRoles: [],
+            );
+            $this->fail('A blank invitation role set must be rejected.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Выберите хотя бы одну', $e->getMessage());
+        }
+        $this->assertFalse($event->participants()->where('user_id', $attendee->id)->exists());
     }
 
     public function test_event_management_is_delegated_separately_from_venue_management(): void

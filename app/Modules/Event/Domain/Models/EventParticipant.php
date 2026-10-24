@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'event_id',
     'user_id',
     'role',
+    'participation_roles',
     'status',
     'joined_at',
     'left_at',
@@ -29,6 +31,32 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class EventParticipant extends Model
 {
+    /**
+     * The player-seat count is independent from organizer privileges.
+     * Legacy confirmed participants (including organizers) had no activity
+     * metadata: preserve their old player-seat counts until explicitly edited.
+     *
+     */
+    public function hasPlayerRole(): bool
+    {
+        if (is_array($this->participation_roles)) {
+            return in_array('player', $this->participation_roles, true);
+        }
+
+        return true; // Backward compatibility for pre-migration participants.
+    }
+
+    /** @param Builder<EventParticipant> $query */
+    public function scopeOccupiesPlayerSpot(Builder $query): Builder
+    {
+        return $query
+            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+            ->where(function (Builder $roles): void {
+                $roles->whereJsonContains('participation_roles', 'player')
+                    ->orWhereNull('participation_roles');
+            });
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
@@ -53,6 +81,7 @@ class EventParticipant extends Model
     {
         return [
             'role' => EventParticipantRoleEnum::class,
+            'participation_roles' => 'array',
             'status' => EventParticipantStatusEnum::class,
             'joined_at' => 'immutable_datetime',
             'left_at' => 'immutable_datetime',

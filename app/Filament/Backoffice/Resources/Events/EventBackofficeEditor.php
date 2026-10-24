@@ -60,7 +60,27 @@ final class EventBackofficeEditor
         }
 
         return $this->validation(function () use ($actor, $data): Event {
-            return $this->create->handle($actor, $this->payload($data));
+            $payload = $this->payload($data);
+            // Preserve legacy behavior for direct callers that do not send
+            // the checkbox. The Filament creation form always sends it.
+            if (array_key_exists('organizer_participates', $data)) {
+                $payload['organizer_participates'] = (bool) $data['organizer_participates'];
+            }
+            if ($payload['organizer_participates'] ?? false) {
+                $roles = $data['participation_roles'] ?? null;
+                $allowed = array_keys(EventResource::participationRoleOptions());
+                if (! is_array($roles) || $roles === []
+                    || collect($roles)->contains(fn ($role): bool =>
+                        ! is_string($role) || ! in_array($role, $allowed, true))
+                    || count($roles) !== count(array_unique($roles))) {
+                    throw ValidationException::withMessages([
+                        'data.participation_roles' => 'Выберите хотя бы одну допустимую роль участия.',
+                    ]);
+                }
+                $payload['participation_roles'] = $roles;
+            }
+
+            return $this->create->handle($actor, $payload);
         });
     }
 
