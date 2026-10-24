@@ -42,6 +42,13 @@
 .app-play-dialog__header h2:focus{outline:0}
 .app-play-dialog__body{padding:20px 24px;display:grid;align-content:start;gap:18px}
 .app-play-dialog__footer{padding:16px 24px;border-top:1px solid var(--line)}
+.app-play-dialog__footer--success{display:flex;flex-direction:row;gap:12px;justify-content:flex-end;align-items:center;flex-wrap:nowrap}
+.app-play-dialog__footer--success>.button{flex:0 1 200px;max-width:200px;min-width:0;width:auto;text-align:center}
+.app-play-dialog__chosen-venue{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:14px;border:1px solid var(--line);padding:12px 14px;border-radius:12px;background:var(--surface-raised)}
+.app-play-dialog__chosen-venue a,.app-play-interests__venue a,.app-venue-interest-summary__own a{color:var(--accent);font-weight:650;text-decoration:underline;text-underline-offset:2px}
+.app-venue-interest-summary{display:grid;gap:8px;width:100%;font-size:14px}
+.app-venue-interest-summary__own{font-size:14px;font-weight:600}
+
 .app-play-dialog__success{font-size:17px;font-weight:650}
 .app-play-dialog__info{background:var(--surface-raised);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:14px;color:var(--text)}
 .app-play-dialog__info-details{max-height:300px;overflow:auto;margin-top:12px;display:grid;gap:8px;color:var(--muted)}
@@ -91,6 +98,9 @@
  .app-play-dialog__header{padding:16px}
  .app-play-dialog__body{padding:16px}
  .app-play-dialog__footer{padding:12px 16px max(12px,env(safe-area-inset-bottom))}
+ .app-play-dialog__footer--success{gap:8px}
+ .app-play-dialog__footer--success>.button{flex:1 1 0;max-width:200px;min-width:0}
+
  .app-play-dialog__time-range{gap:8px}
  .app-play-dialog__amenity-row{grid-template-columns:1fr}
  .app-play-dialog__amenity-row .select-control{max-width:210px;margin-left:32px}
@@ -108,6 +118,7 @@
 .app-play-interests__item-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .app-play-interests__item-head strong{min-width:0;overflow-wrap:anywhere}
 .app-play-dialog__name-input{width:100%}
+.app-play-interests__venue{font-size:14px;overflow-wrap:anywhere}
 .app-play-interests__actions{display:flex;flex-wrap:wrap;gap:8px}
 .app-play-interests__results{font-size:13px}
 .app-play-interests__results ul{list-style:none;margin:0;padding:8px 0;display:grid;gap:9px}
