@@ -17,7 +17,7 @@ final class ListAdminEventsHandler
     {
         return Event::query()
             ->with(['venue', 'booking', 'organizerActor.user'])
-            ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
+            ->withCount(['participants as participants_count' => fn ($query) => $query->occupiesPlayerSpot()])
             ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('title', 'like', '%'.trim($search).'%'))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['type'] ?? null, fn ($query, $type) => $query->where('type', $type))
