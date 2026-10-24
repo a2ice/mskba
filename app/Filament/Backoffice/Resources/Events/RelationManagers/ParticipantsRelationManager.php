@@ -13,6 +13,7 @@ use App\Modules\Identity\Domain\Models\User;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Checkbox;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Validation\ValidationException;
@@ -64,31 +65,56 @@ final class ParticipantsRelationManager extends RelationManager
         ])->recordActions([
             Action::make('changeStatus')->label('Изменить участие')
                 ->visible(fn (EventParticipant $record): bool => EventResource::authorized()
-                    && $record->role !== EventParticipantRoleEnum::ORGANIZER
                     && $this->getOwnerRecord()->ends_at->isFuture())
                 ->fillForm(fn (EventParticipant $record): array => [
                     'status' => $record->status->value,
-                    'participation_roles' => self::participationRolesForEdit($record),
+                    'organizer_participates' => $record->status === EventParticipantStatusEnum::CONFIRMED,
+                    'participation_roles' => $record->role === EventParticipantRoleEnum::ORGANIZER
+                        && $record->status !== EventParticipantStatusEnum::CONFIRMED
+                        ? ($record->participation_roles ?: EventResource::defaultParticipationRoles($record->user_id))
+                        : self::participationRolesForEdit($record),
                 ])
                 ->schema([
-                    Select::make('status')->label('Статус')->required()
+                    Select::make('status')->label('Статус')
+                        ->visible(fn (EventParticipant $record): bool =>
+                            $record->role !== EventParticipantRoleEnum::ORGANIZER)
+                        ->required()
                         ->options(collect(EventParticipantStatusEnum::cases())->mapWithKeys(
                             fn ($case): array => [$case->value => $case->label()])->all()),
+                    Checkbox::make('organizer_participates')->label('Буду участвовать')
+                        ->visible(fn (EventParticipant $record): bool =>
+                            $record->role === EventParticipantRoleEnum::ORGANIZER)
+                        ->live()
+                        ->helperText('Права организатора сохраняются даже без участия.'),
                     CheckboxList::make('participation_roles')->label('В качестве кого')
                         ->options(EventResource::participationRoleOptions())
-                        ->required()->minItems(1)->columns(2)
-                        ->helperText('Можно выбрать несколько ролей. При подтверждении только роль «Игрок» занимает игровое место.'),
+                        ->visible(fn (Get $get, EventParticipant $record): bool =>
+                            $record->role !== EventParticipantRoleEnum::ORGANIZER
+                            || (bool) $get('organizer_participates'))
+                        ->required(fn (Get $get, EventParticipant $record): bool =>
+                            $record->role !== EventParticipantRoleEnum::ORGANIZER
+                            || (bool) $get('organizer_participates'))
+                        ->minItems(1)->columns(2)
+                        ->helperText('Можно выбрать несколько ролей. Только роль «Игрок» занимает игровое место.'),
                 ])
                 ->action(function (EventParticipant $record, array $data): void {
                     abort_unless(EventResource::authorized(), 403);
                     $actor = app(CurrentActorResolver::class)->resolve(auth('web')->user(), null);
                     abort_unless($actor !== null, 403);
+                    $organizer = $record->role === EventParticipantRoleEnum::ORGANIZER;
+                    $organizerParticipates = (bool) ($data['organizer_participates'] ?? false);
+                    $status = $organizer
+                        ? ($organizerParticipates
+                            ? EventParticipantStatusEnum::CONFIRMED : EventParticipantStatusEnum::LEFT)
+                        : EventParticipantStatusEnum::from($data['status']);
+                    $roles = $organizer && ! $organizerParticipates
+                        ? [] : ($data['participation_roles'] ?? []);
                     try {
                         app(UpdateManagedEventParticipantStatusHandler::class)->handle(
                             $this->getOwnerRecord()->routeIdentifier(), $record->id, $actor,
-                            EventParticipantStatusEnum::from($data['status']),
+                            $status,
                             asBackoffice: true,
-                            participationRoles: $data['participation_roles'] ?? [],
+                            participationRoles: $roles,
                         );
                     } catch (InvalidArgumentException $exception) {
                         throw ValidationException::withMessages(['participation_roles' => $exception->getMessage()]);
