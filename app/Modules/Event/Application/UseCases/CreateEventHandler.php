@@ -91,11 +91,13 @@ final class CreateEventHandler
                 throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
 
-            // PostgreSQL connection uses the application timezone. Keep the
-            // local value here: Laravel serializes bindings without an offset,
-            // and converting to UTC first would shift the event by three hours.
-            $startsAt = $localStart;
-            $endsAt = $localStart->addMinutes($durationMinutes);
+            // Eloquent and SQL bindings format Carbon timestamps without an
+            // offset. Convert the venue-local instant to the database session's
+            // timezone *before* binding, otherwise a venue using Moscow time
+            // with a UTC connection is stored three hours later.
+            $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+            $startsAt = $localStart->setTimezone($databaseTimezone);
+            $endsAt = $localStart->addMinutes($durationMinutes)->setTimezone($databaseTimezone);
 
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
             $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
