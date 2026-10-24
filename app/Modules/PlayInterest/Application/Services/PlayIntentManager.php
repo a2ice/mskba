@@ -26,6 +26,14 @@ final class PlayIntentManager
         if ($intent !== null && $intent->user_id !== $canonical->id) {
             abort(404);
         }
+        $requestId = $input['client_request_id'] ?? null;
+        if ($intent === null && is_string($requestId)) {
+            $existing = PlayIntent::query()->where('user_id', $canonical->id)
+                ->where('client_request_id', $requestId)->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+        }
         $venueId = $input['venue_id'] ?? null;
         if ($venueId !== null) {
             $venue = Venue::query()->with('location.address')->find($venueId);
@@ -58,6 +66,7 @@ final class PlayIntentManager
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
+                'client_request_id' => $intent->client_request_id ?: ($input['client_request_id'] ?? null),
                 'venue_id' => $input['venue_id'] ?? null,
                 'include_similar_venues' => (bool) ($input['include_similar_venues'] ?? false),
                 'center_latitude' => $input['center_latitude'] ?? null,
