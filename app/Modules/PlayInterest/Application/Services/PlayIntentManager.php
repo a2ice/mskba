@@ -7,6 +7,7 @@ use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 
 final class PlayIntentManager
@@ -62,7 +63,8 @@ final class PlayIntentManager
                 ->endOfDay()->utc();
         }
 
-        return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent): PlayIntent {
+        try {
+            return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent): PlayIntent {
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
@@ -90,7 +92,22 @@ final class PlayIntentManager
             $intent->save();
 
             return $intent->refresh();
-        });
+            });
+        } catch (QueryException $exception) {
+            // A parallel callback of the same auth/resume request can win the
+            // unique (user_id, client_request_id) race. Only swallow that conflict.
+            $state = (string) $exception->getCode();
+            if ($intent === null && is_string($requestId)
+                && in_array($state, ['23000', '23505'], true)) {
+                $existing = PlayIntent::query()->where('user_id', $canonical->id)
+                    ->where('client_request_id', $requestId)->first();
+                if ($existing !== null) {
+                    return $existing;
+                }
+            }
+
+            throw $exception;
+        }
     }
 
     public function setPaused(User $user, PlayIntent $intent, bool $paused): PlayIntent
