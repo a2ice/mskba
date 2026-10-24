@@ -29,6 +29,8 @@ final class FavoritesFeatureTest extends TestCase
     public function test_anonymous_guest_can_add_trash_and_restore_a_venue_with_one_cookie(): void
     {
         $venue = $this->venue();
+        $token = str_repeat('A', 64);
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
         $first = $this->toggle('venue', $venue->id)
             ->assertOk()->assertJsonPath('state', 'active')
             ->assertCookie(FavoritesManager::COOKIE_NAME);
@@ -39,7 +41,7 @@ final class FavoritesFeatureTest extends TestCase
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('lax', strtolower($cookie->getSameSite()));
 
-        $this->withCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue());
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
             ->assertOk()->assertJsonPath('state', 'active');
 
@@ -51,11 +53,11 @@ final class FavoritesFeatureTest extends TestCase
     public function test_guest_favorite_is_transferred_automatically_on_first_authenticated_request(): void
     {
         $venue = $this->venue();
+        $token = str_repeat('B', 64);
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
         $response = $this->toggle('venue', $venue->id)->assertOk();
-        $cookie = collect($response->headers->getCookies())
-            ->first(fn ($cookie) => $cookie->getName() === FavoritesManager::COOKIE_NAME);
         $user = User::factory()->create();
-        $this->withCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token)
             ->actingAs($user)->get(route('favorites.mine'))->assertOk()
             ->assertSee('Избранное');
 
@@ -132,11 +134,11 @@ final class FavoritesFeatureTest extends TestCase
             'user_id' => $user->id, 'entity_type' => 'venue',
             'entity_id' => $venue->id, 'trashed_at' => now(),
         ]);
+        $token = str_repeat('C', 64);
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
         $guest = $this->toggle('venue', $venue->id)->assertOk();
-        $cookie = collect($guest->headers->getCookies())
-            ->first(fn ($cookie) => $cookie->getName() === FavoritesManager::COOKIE_NAME);
 
-        $this->withCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token)
             ->actingAs($user)->getJson(route('favorites.items'))->assertOk()
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.state', 'active');
         $this->assertDatabaseCount('favorites', 1);
