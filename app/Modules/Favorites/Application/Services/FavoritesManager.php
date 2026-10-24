@@ -114,8 +114,11 @@ final class FavoritesManager
                     ->where('entity_id', $item->entity_id)->lockForUpdate()->first();
 
                 if ($existing !== null) {
-                    if ($item->trashed_at === null && $existing->trashed_at !== null) {
-                        $existing->forceFill(['trashed_at' => null])->save();
+                    if ($item->trashed_at === null) {
+                        $existing->forceFill([
+                            'trashed_at' => null,
+                            'notify_upcoming_events' => $existing->notify_upcoming_events || $item->notify_upcoming_events,
+                        ])->save();
                     }
                     $item->delete();
                 } else {
