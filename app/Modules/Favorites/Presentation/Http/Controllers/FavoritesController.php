@@ -25,6 +25,27 @@ final class FavoritesController extends Controller
         ])->header('Cache-Control', 'private, no-store');
     }
 
+    public function venueStatuses(Request $request, FavoritesManager $favorites): JsonResponse
+    {
+        $input = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['required', 'integer', 'min:1'],
+        ]);
+        $ids = array_values(array_unique(array_map('intval', $input['ids'])));
+        $items = $favorites->owned($request)->where('entity_type', 'venue')
+            ->whereIn('entity_id', $ids)
+            ->get(['entity_id', 'trashed_at', 'notify_upcoming_events'])
+            ->mapWithKeys(fn ($item) => [
+                (string) $item->entity_id => [
+                    'state' => $item->trashed_at === null ? 'active' : 'trashed',
+                    'notify_upcoming_events' => $item->notify_upcoming_events,
+                ],
+            ])->all();
+
+        return response()->json(['data' => $items])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function toggle(
         Request $request,
         FavoritesManager $favorites,
