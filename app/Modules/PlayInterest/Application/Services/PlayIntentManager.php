@@ -87,7 +87,7 @@ final class PlayIntentManager
                 'amenity_preferences' => $input['amenity_preferences'] ?? [],
                 'notify_matches' => (bool) ($input['notify_matches'] ?? true),
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),
-                'status' => 'active',
+                'status' => $intent->exists && $intent->status === 'paused' ? 'paused' : 'active',
                 'expires_at' => $expires,
             ]);
             $intent->save();
