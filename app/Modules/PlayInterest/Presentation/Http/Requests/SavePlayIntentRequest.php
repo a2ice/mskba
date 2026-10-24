@@ -18,6 +18,7 @@ final class SavePlayIntentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'client_request_id' => ['sometimes', 'uuid'],
             'venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'include_similar_venues' => ['sometimes', 'boolean'],
             'center_latitude' => ['nullable', 'numeric', 'between:-90,90'],
