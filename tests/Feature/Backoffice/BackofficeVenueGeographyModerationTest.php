@@ -118,6 +118,30 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         }
     }
 
+    public function test_lighting_fence_and_hoop_nets_are_valid_for_indoor_and_outdoor_venues(): void
+    {
+        $this->actingAs($this->user(Role::SUPERADMIN));
+        $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
+        $this->assertCount(3, $ids);
+        $this->assertSame(3, Amenity::query()
+            ->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])
+            ->where('applies_to', 'all')->count());
+
+        $editor = app(VenueBackofficeEditor::class);
+        foreach ([VenueTypeEnum::SPORTS_HALL, VenueTypeEnum::STREET_COURT] as $type) {
+            $venue = Venue::factory()->create(['type' => $type]);
+            $editor->save(array_replace([
+                'name' => $venue->name,
+                'type' => $type->value,
+                'status' => $venue->status->value,
+                'access_type' => 'unknown',
+                'amenity_ids' => $ids,
+            ], $editor->fields($venue), ['amenity_ids' => $ids]), $venue);
+
+            $this->assertCount(3, $venue->fresh()->amenities);
+        }
+    }
+
     public function test_pending_venue_moderation_detail_displays_original_submission(): void
     {
         $super = $this->user(Role::SUPERADMIN);
