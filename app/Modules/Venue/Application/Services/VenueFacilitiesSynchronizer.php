@@ -8,6 +8,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCharacteristic;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class VenueFacilitiesSynchronizer
@@ -87,6 +88,19 @@ final class VenueFacilitiesSynchronizer
             }
         }
 
-        $venue->amenities()->sync($normalizedAmenityIds->all());
+        // Pivot rows have soft-deletes AND a unique(venue_id, amenity_id)
+        // constraint. Restoring an existing soft-deleted relationship before
+        // BelongsToMany::sync() prevents a duplicate-key failure when an
+        // administrator reselects an amenity that had been removed earlier.
+        DB::transaction(function () use ($venue, $normalizedAmenityIds): void {
+            $ids = $normalizedAmenityIds->all();
+            DB::table('venue_amenities')
+                ->where('venue_id', $venue->id)
+                ->whereIn('amenity_id', $ids)
+                ->whereNotNull('deleted_at')
+                ->update(['deleted_at' => null, 'updated_at' => now()]);
+
+            $venue->amenities()->sync($ids);
+        });
     }
 }
