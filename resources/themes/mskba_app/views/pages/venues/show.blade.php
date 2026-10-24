@@ -29,6 +29,12 @@
         && (clone $activeVenueInterests)
             ->where('user_id', auth()->user()->canonical()->id)
             ->exists();
+    $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
+    $shownDays = $venue->isFreeAccess
+        ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
+            count($day['slots'] ?? []) > 0
+            || count($hoursByDate->get($day['date'])['intervals'] ?? []) > 0)->values()->all()
+        : $venue->occupancyDays;
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
@@ -102,21 +108,12 @@
                         @endforeach
                     </div>
                 @endif
-                @php
-                    $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
-                    // For open/free venues, an empty booking is NOT a booking
-                    // requirement: omit meaningless empty day cards unless
-                    // published opening hours exist for the date.
-                    $shownDays = $venue->isFreeAccess
-                        ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
-                            count($day['slots'] ?? []) > 0
-                            || count($hoursByDate->get($day['date'])['intervals'] ?? []) > 0)->values()->all()
-                        : $venue->occupancyDays;
-                @endphp
                 @if(count($shownDays) > 0)
                     <div class="app-venue-schedule">
                         @foreach($shownDays as $day)
-                            @php($publishedHours = $hoursByDate->get($day['date'])['intervals'] ?? [])
+                            @php
+                                $publishedHours = $hoursByDate->get($day['date'])['intervals'] ?? [];
+                            @endphp
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
                                 @if(count($publishedHours))
