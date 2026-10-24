@@ -7,6 +7,7 @@
     $mapVenues = collect($venues)
         ->filter(fn ($venue) => $venue->latitude !== null && $venue->longitude !== null)
         ->map(fn ($venue) => [
+            'id' => $venue->id,
             'latitude' => $venue->latitude,
             'longitude' => $venue->longitude,
             'name' => $venue->name,
