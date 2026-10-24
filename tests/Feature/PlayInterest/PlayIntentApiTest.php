@@ -177,8 +177,8 @@ final class PlayIntentApiTest extends TestCase
         // intentionally uses the application's default timezone.
         \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
             ->for($venue)->create(['timezone' => 'Europe/Moscow']);
-        $from = \Carbon\CarbonImmutable::parse('2026-10-24 22:00:00', 'Europe/Moscow')->utc();
-        $until = \Carbon\CarbonImmutable::parse('2026-10-25 01:00:00', 'Europe/Moscow')->utc();
+        $from = \Carbon\CarbonImmutable::parse('2026-10-24 22:00:00', 'Europe/Moscow');
+        $until = \Carbon\CarbonImmutable::parse('2026-10-25 01:00:00', 'Europe/Moscow');
         $event = \App\Modules\Event\Domain\Models\Event::factory()->create([
             'venue_id' => $venue->id,
             'starts_at' => $from,
