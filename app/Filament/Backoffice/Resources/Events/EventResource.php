@@ -141,8 +141,9 @@ final class EventResource extends Resource
                             ->options(self::options(EventVisibilityEnum::class))
                             ->default(EventVisibilityEnum::PUBLIC->value),
                         Select::make('organizer_user_id')->label('Организатор')
-                            ->searchable()->required()
-                            ->default(fn (): ?int => auth('web')->id())
+                            ->searchable()
+                            ->placeholder('Текущий администратор')
+                            ->helperText('Можно не выбирать — организатором станет текущий пользователь.')
                             ->getSearchResultsUsing(fn (string $search): array => User::query()
                                 ->whereLike('username', '%'.$search.'%')
                                 ->limit(30)->pluck('username', 'id')->all())

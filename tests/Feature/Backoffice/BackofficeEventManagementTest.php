@@ -145,6 +145,36 @@ final class BackofficeEventManagementTest extends TestCase
         }
     }
 
+    public function test_superadmin_can_choose_another_event_organizer_in_livewire_form(): void
+    {
+        Queue::fake();
+        $super = $this->user(Role::SUPERADMIN);
+        $organizer = $this->user(Role::USER);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+
+        Livewire::test(CreateEvent::class)
+            ->set('data.title', 'Тренировка другого организатора')
+            ->set('data.type', EventTypeEnum::TRAINING->value)
+            ->set('data.visibility', EventVisibilityEnum::PUBLIC->value)
+            ->set('data.organizer_user_id', $organizer->id)
+            ->set('data.venue_id', $venue->id)
+            ->set('data.starts_at', now('Europe/Moscow')->addDays(2)->setTime(18, 0)->format('Y-m-d H:i'))
+            ->set('data.duration_minutes', 90)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()
+            ->where('title', 'Тренировка другого организатора')->firstOrFail();
+        $this->assertSame($organizer->id, $event->organizerActor->user_id);
+    }
+
     public function test_livewire_game_creation_sets_up_game_and_booking(): void
     {
         Queue::fake();
