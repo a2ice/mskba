@@ -54,7 +54,10 @@ final class JoinEventHandler
                 'role' => $participant?->role === EventParticipantRoleEnum::ORGANIZER
                     ? EventParticipantRoleEnum::ORGANIZER
                     : EventParticipantRoleEnum::PARTICIPANT,
-                'participation_roles' => $participant?->participation_roles ?: [UserParticipationRoleEnum::PLAYER->value],
+                'participation_roles' => array_values(array_unique([
+                    ...($participant?->participation_roles ?? []),
+                    UserParticipationRoleEnum::PLAYER->value,
+                ])),
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'joined_at' => now(),
                 'left_at' => null,
