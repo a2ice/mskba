@@ -30,11 +30,11 @@ final class FavoritesFeatureTest extends TestCase
     {
         $venue = $this->venue();
         $token = str_repeat('A', 64);
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->toggle('venue', $venue->id)
             ->assertOk()->assertJsonPath('state', 'active');
 
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
             ->assertOk()->assertJsonPath('state', 'active');
 
@@ -59,12 +59,12 @@ final class FavoritesFeatureTest extends TestCase
     {
         $venue = $this->venue();
         $token = str_repeat('B', 64);
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $response = $this->toggle('venue', $venue->id)->assertOk();
         $user = User::factory()->create();
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token)
-            ->actingAs($user)->get(route('favorites.mine'))->assertOk()
-            ->assertSee('Избранное');
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token)
+            ->actingAs($user)->getJson(route('favorites.items'))->assertOk()
+            ->assertJsonCount(1, 'data');
 
         $this->assertDatabaseHas('favorites', [
             'user_id' => $user->id, 'guest_token_hash' => null,
@@ -200,10 +200,10 @@ final class FavoritesFeatureTest extends TestCase
             'entity_id' => $venue->id, 'trashed_at' => now(),
         ]);
         $token = str_repeat('C', 64);
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token);
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $guest = $this->toggle('venue', $venue->id)->assertOk();
 
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $token)
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $token)
             ->actingAs($user)->getJson(route('favorites.items'))->assertOk()
             ->assertJsonCount(1, 'data')->assertJsonPath('data.0.state', 'active');
         $this->assertDatabaseCount('favorites', 1);
