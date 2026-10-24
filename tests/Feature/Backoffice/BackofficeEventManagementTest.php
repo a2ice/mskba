@@ -528,6 +528,137 @@ final class BackofficeEventManagementTest extends TestCase
         $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
     }
 
+    public function test_backoffice_can_edit_organizer_actual_attendance_without_changing_organizer_privileges(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $invitee = $this->user(Role::USER);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Организатор меняет своё участие',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(12)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'max_participants' => 1,
+            'organizer_participates' => true,
+            'participation_roles' => ['player'],
+        ]);
+        $actor = $event->organizerActor;
+        $record = $event->participants()->where('user_id', $organizer->id)->firstOrFail();
+        $editor = app(UpdateManagedEventParticipantStatusHandler::class);
+        $this->assertSame(['player'], ParticipantsRelationManager::participationRolesForEdit($record));
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $originalJoinedAt = $record->joined_at;
+
+        // Editing only the organizer's functions does not create another seat
+        // or change their event ownership or management permission.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['coach', 'statistician']);
+        $this->assertSame(EventParticipantRoleEnum::ORGANIZER, $record->refresh()->role);
+        $this->assertSame(EventParticipantStatusEnum::CONFIRMED, $record->status);
+        $this->assertSame(['coach', 'statistician'], $record->participation_roles);
+        $this->assertEquals($originalJoinedAt, $record->joined_at);
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        app(AddEventParticipantHandler::class)->handle(
+            $event->routeIdentifier(), $actor, $invitee->id,
+            asBackoffice: true, participationRoles: ['player']);
+        $inviteeRecord = $event->participants()->where('user_id', $invitee->id)->firstOrFail();
+        $editor->handle($event->routeIdentifier(), $inviteeRecord->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['player']);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+
+        // The confirmed organizer may still be staff, but cannot join as an
+        // additional player once the last seat belongs to someone else.
+        try {
+            $editor->handle($event->routeIdentifier(), $record->id, $actor,
+                EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+                participationRoles: ['player', 'coach']);
+            $this->fail('Organizer player role cannot exceed the event limit.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertStringContainsString('Все места', $exception->getMessage());
+        }
+        $this->assertSame(['coach', 'statistician'], $record->refresh()->participation_roles);
+
+        // Organizer stops attending; their ACL and ownership remain.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::LEFT, asBackoffice: true,
+            participationRoles: []);
+        $this->assertSame(EventParticipantRoleEnum::ORGANIZER, $record->refresh()->role);
+        $this->assertSame(EventParticipantStatusEnum::LEFT, $record->status);
+        $this->assertSame([], $record->participation_roles);
+        $this->assertSame($actor->id, $event->fresh()->organizer_actor_id);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $this->assertTrue(app(EventManagementAccess::class)->allows(
+            $event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
+        ));
+
+        // Backoffice can restore non-player attendance even with a full roster.
+        $editor->handle($event->routeIdentifier(), $record->id, $actor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['coach']);
+        $this->assertSame(['coach'], $record->refresh()->participation_roles);
+        $this->assertSame(EventParticipantRoleEnum::ORGANIZER, $record->role);
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+    }
+
+    public function test_organizer_roles_validation_and_legacy_default_are_safe(): void
+    {
+        Queue::fake();
+        $organizer = $this->user(Role::SUPERADMIN);
+        $this->actingAs($organizer);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $event = app(EventBackofficeEditor::class)->createEvent([
+            'title' => 'Организатор с исторической записью',
+            'venue_id' => $venue->id,
+            'type' => EventTypeEnum::TRAINING->value,
+            'visibility' => EventVisibilityEnum::PUBLIC->value,
+            'starts_at' => now('Europe/Moscow')->addDays(13)->setTime(18, 0)->format('Y-m-d H:i'),
+            'duration_minutes' => 90,
+            'organizer_participates' => true,
+            'participation_roles' => ['player'],
+        ]);
+        $record = $event->participants()->firstOrFail();
+        $record->forceFill(['participation_roles' => null])->save();
+        $this->assertSame(['player'], ParticipantsRelationManager::participationRolesForEdit($record->refresh()));
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $editor = app(UpdateManagedEventParticipantStatusHandler::class);
+
+        foreach ([
+            [EventParticipantStatusEnum::CONFIRMED, [], true],
+            [EventParticipantStatusEnum::TENTATIVE, ['coach'], true],
+            [EventParticipantStatusEnum::LEFT, ['coach'], true],
+            [EventParticipantStatusEnum::CONFIRMED, ['coach'], false],
+        ] as [$status, $roles, $backoffice]) {
+            try {
+                $editor->handle($event->routeIdentifier(), $record->id, $event->organizerActor,
+                    $status, asBackoffice: $backoffice, participationRoles: $roles);
+                $this->fail('Invalid organizer participation edit must be rejected.');
+            } catch (\InvalidArgumentException $exception) {
+                $this->assertStringContainsString('Для организатора', $exception->getMessage());
+            }
+        }
+        $this->assertSame(1, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+        $editor->handle($event->routeIdentifier(), $record->id, $event->organizerActor,
+            EventParticipantStatusEnum::CONFIRMED, asBackoffice: true,
+            participationRoles: ['referee']);
+        $this->assertSame(['referee'], $record->refresh()->participation_roles);
+        $this->assertSame(0, app(EventIdentityParticipationService::class)->confirmedIdentityCount($event));
+    }
+
     public function test_editing_participant_roles_preserves_status_and_only_player_role_occupies_one_spot(): void
     {
         Queue::fake();
