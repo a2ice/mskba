@@ -19,6 +19,7 @@ final class SavePlayIntentRequest extends FormRequest
     {
         return [
             'client_request_id' => ['sometimes', 'uuid'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'include_similar_venues' => ['sometimes', 'boolean'],
             'center_latitude' => ['nullable', 'numeric', 'between:-90,90'],
@@ -51,6 +52,14 @@ final class SavePlayIntentRequest extends FormRequest
             'notify_matches' => ['sometimes', 'boolean'],
             'notify_offers' => ['sometimes', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('name') && is_string($this->input('name'))) {
+            $value = trim($this->input('name'));
+            $this->merge(['name' => $value !== '' ? $value : null]);
+        }
     }
 
     public function after(): array
