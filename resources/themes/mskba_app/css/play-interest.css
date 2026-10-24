@@ -31,6 +31,13 @@
 .app-venue-schedule__day{padding:12px;border:1px solid var(--line);border-radius:14px;font-size:13px;display:grid;gap:8px;align-content:start}
 .app-venue-schedule__day p{font-size:12px;color:var(--muted)}
 .app-venue-schedule__day a{color:var(--accent);text-decoration:underline}
+.app-venue-schedule__slots{display:grid;gap:5px;min-width:0;border-top:1px solid var(--line);padding-top:8px}
+.app-venue-schedule__slots-title{font-size:12px;font-weight:700;color:var(--text)}
+.app-venue-schedule__slot-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.app-venue-schedule__slot-list li{min-width:0;font-size:12px;line-height:1.35}
+.app-venue-schedule__slot-list a{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:650;text-decoration:underline;text-underline-offset:2px}
+.app-venue-schedule__slot-list a:hover{color:var(--accent-hover,var(--accent))}
+.app-venue-schedule__slot-list a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 .app-venue-page__aside{padding:20px;display:flex;flex-direction:column;gap:12px;position:sticky;top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px)}
 .app-venue-page__aside strong{font-size:18px}
 .app-venue-page__aside p{font-size:14px;color:var(--muted)}
