@@ -57,6 +57,8 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
+            // Keep editorial content directly above design, below operator tools.
+            ->navigationGroups(['Обращения', 'Операторский центр', 'Контент', 'Дизайн'])
             ->resources([
                 AccountDashboardWidgetResource::class,
                 DashboardButtonStyleResource::class,

@@ -281,7 +281,9 @@ final class BuilderComponentResource extends Resource
             'none' => 'Без анимации',
             'fade' => 'Fade-in',
             'slide-up' => 'Slide-up',
+            'slide-down' => 'Slide-down',
             'slide-left' => 'Slide-left',
+            'slide-right' => 'Slide-right',
             'zoom' => 'Zoom-in',
         ];
     }
