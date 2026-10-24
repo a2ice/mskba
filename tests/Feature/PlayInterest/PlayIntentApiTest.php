@@ -158,10 +158,12 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Нет опубликованных занятых слотов')
             ->assertDontSee('Наличие свободного времени и стоимость уточняются')
             ->assertDontSee('Подтверждённых данных о свободных интервалах');
+        $this->travelBack();
     }
 
     public function test_overnight_event_is_shown_as_a_continuation_not_as_a_new_start_next_day(): void
     {
+        config()->set('app.timezone', 'Europe/Moscow');
         config()->set('themes.active', 'mskba_app');
         app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
         \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
@@ -200,6 +202,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('22:00–01:00 (+1 день)')
             ->assertSee('00:00–01:00 (продолжение)')
             ->assertDontSee('Нет опубликованных занятых слотов');
+        $this->travelBack();
     }
 
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
