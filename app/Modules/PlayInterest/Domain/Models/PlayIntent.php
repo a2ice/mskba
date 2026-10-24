@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class PlayIntent extends Model
 {
     protected $fillable = [
-        'user_id', 'venue_id', 'client_request_id', 'include_similar_venues', 'center_latitude',
+        'user_id', 'venue_id', 'client_request_id', 'name', 'include_similar_venues', 'center_latitude',
         'center_longitude', 'radius_km', 'cadence', 'weekdays', 'dates', 'windows',
         'period_from', 'period_until', 'formats', 'duration_minutes',
         'access_mode', 'venue_kind', 'amenity_preferences', 'notify_matches', 'notify_offers',
