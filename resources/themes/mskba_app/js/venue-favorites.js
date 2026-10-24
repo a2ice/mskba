@@ -74,7 +74,8 @@
             const href=card.matches('a')?card.getAttribute('href'):
                 card.querySelector('a[href*="/venues/"]')?.getAttribute('href');
             const id=Number(card.dataset.venueId)||idFromLink(href);
-            if(!id||card.querySelector('[data-favorite-venue]'))return;
+            if(!id||card.querySelector('[data-favorite-venue]') ||
+                (card.matches('a') && card.parentElement?.classList.contains('mskba-favorite-card-wrap')))return;
             const button=create(id,'card');
             // A sibling outside the link for keyboard/click safety.
             if(card.matches('a')) {
