@@ -28,16 +28,15 @@ final class UpdateManagedEventParticipantStatusHandler
         bool $asBackoffice = false,
         ?array $participationRoles = null,
     ): Event {
-        // Null keeps the original status-only API contract; an explicit array
-        // replaces the event-specific functions (even when status is unchanged).
+        // Null keeps the legacy status-only API contract. Explicit [] is
+        // valid only for an organizer who is NOT attending this event.
         if ($participationRoles !== null && (
-            $participationRoles === []
-            || collect($participationRoles)->contains(fn ($role): bool => ! is_string($role)
+            collect($participationRoles)->contains(fn ($role): bool => ! is_string($role)
                 || ($case = UserParticipationRoleEnum::tryFrom($role)) === null
                 || $case === UserParticipationRoleEnum::ORGANIZER)
             || count($participationRoles) !== count(array_unique($participationRoles))
         )) {
-            throw new InvalidArgumentException('Выберите хотя бы одну допустимую роль участия.');
+            throw new InvalidArgumentException('Выберите допустимые роли участия.');
         }
 
         $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status, $asBackoffice, $participationRoles): Event {
@@ -57,8 +56,22 @@ final class UpdateManagedEventParticipantStatusHandler
             }
 
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
-            if ($participant->role === EventParticipantRoleEnum::ORGANIZER) {
-                throw new InvalidArgumentException('Статус организатора этим действием не изменяется.');
+            $isOrganizer = $participant->role === EventParticipantRoleEnum::ORGANIZER;
+            if ($isOrganizer) {
+                // Management rights stay attached to organizer_actor_id and the
+                // organizer participant role; edit only ACTUAL attendance.
+                if (! $asBackoffice || ! in_array($status, [
+                    EventParticipantStatusEnum::CONFIRMED, EventParticipantStatusEnum::LEFT,
+                ], true) || $participationRoles === null
+                    || ($status === EventParticipantStatusEnum::CONFIRMED && $participationRoles === [])
+                    || ($status === EventParticipantStatusEnum::LEFT && $participationRoles !== [])) {
+                    throw new InvalidArgumentException('Для организатора укажите участие и соответствующие роли.');
+                }
+                if ($participant->user_id !== $event->organizerActor?->user_id) {
+                    throw new InvalidArgumentException('Запись организатора не соответствует организатору мероприятия.');
+                }
+            } elseif ($participationRoles === []) {
+                throw new InvalidArgumentException('Выберите хотя бы одну роль участия.');
             }
             $roles = $participationRoles ?? $participant->participation_roles;
             $sameStatus = $participant->status === $status
@@ -89,19 +102,27 @@ final class UpdateManagedEventParticipantStatusHandler
             $participant->forceFill([
                 ...($participationRoles === null ? [] : ['participation_roles' => $participationRoles]),
                 'status' => $status,
-                'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
-                'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
+                'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED
+                    ? ($participant->status === EventParticipantStatusEnum::CONFIRMED
+                        ? ($participant->joined_at ?? now()) : now())
+                    : null,
+                'left_at' => $status === EventParticipantStatusEnum::LEFT
+                    ? ($participant->status === EventParticipantStatusEnum::LEFT
+                        ? ($participant->left_at ?? now()) : now())
+                    : null,
                 'confirmation_version' => $event->participation_confirmation_version,
-                'status_changed_by_actor_id' => $actor->id,
-                'status_changed_at' => now(),
-                ...($status === EventParticipantStatusEnum::CONFIRMED ? [] : [
+                ...($participant->status === $status ? [] : [
+                    'status_changed_by_actor_id' => $actor->id,
+                    'status_changed_at' => now(),
+                ]),
+                ...($status === EventParticipantStatusEnum::CONFIRMED || $isOrganizer ? [] : [
                     'responsibility_status' => null,
                     'responsibility_requested_by_user_id' => null,
                     'responsibility_requested_at' => null,
                     'responsibility_responded_at' => null,
                 ]),
             ])->save();
-            if ($status !== EventParticipantStatusEnum::CONFIRMED) {
+            if (! $isOrganizer && $status !== EventParticipantStatusEnum::CONFIRMED) {
                 $participant->responsibilityPermissions()->delete();
             }
 
