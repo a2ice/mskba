@@ -598,11 +598,18 @@ final class StandaloneGameFormationService
                         ? EventParticipantRoleEnum::ORGANIZER
                         : EventParticipantRoleEnum::PARTICIPANT,
                     'status' => EventParticipantStatusEnum::CONFIRMED,
+                    'participation_roles' => ['player'],
                     'joined_at' => now(),
                     'confirmation_version' => $event->participation_confirmation_version,
                 ]);
             } else {
                 $participant->forceFill([
+                    // A confirmed roster entry is a player, even when this
+                    // user also coaches/referees the same event.
+                    'participation_roles' => array_values(array_unique([
+                        ...($participant->participation_roles ?? []),
+                        'player',
+                    ])),
                     'status' => EventParticipantStatusEnum::CONFIRMED,
                     'left_at' => null,
                     'confirmation_version' => $event->participation_confirmation_version,
