@@ -1084,6 +1084,24 @@ Route::get('/backoffice/rest-api/openapi.json',
     \App\Http\Controllers\Backoffice\OpenApiDocumentController::class)
     ->middleware('auth:web')->name('backoffice.rest-api.openapi');
 
+// Task 286: JSON contract consumed by the venue and account UI. No extra public data.
+// Keep this outside legacy theme templates and behind ordinary web CSRF/session auth.
+Route::get('/play-intents/amenities',
+    [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController::class, 'amenities'])
+    ->middleware('throttle:60,1')->name('play-intents.amenities');
+
+Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])->group(function (): void {
+    $controller = \App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController::class;
+    Route::get('/', [$controller, 'index'])->name('play-intents.index');
+    Route::post('/', [$controller, 'store'])->name('play-intents.store');
+    Route::put('/{playIntent}', [$controller, 'update'])->whereNumber('playIntent')->name('play-intents.update');
+    Route::patch('/{playIntent}/pause', [$controller, 'pause'])->whereNumber('playIntent')->name('play-intents.pause');
+    Route::patch('/{playIntent}/resume', [$controller, 'resume'])->whereNumber('playIntent')->name('play-intents.resume');
+    Route::delete('/{playIntent}', [$controller, 'destroy'])->whereNumber('playIntent')->name('play-intents.destroy');
+    Route::get('/{playIntent}/recommendations', [$controller, 'recommendations'])
+        ->whereNumber('playIntent')->name('play-intents.recommendations');
+});
+
 // Only run after ALL explicit routes (including routes in other files).
 // Laravel prioritizes fallback routes after normal matching.
 Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
