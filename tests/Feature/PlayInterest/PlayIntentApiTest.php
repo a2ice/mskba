@@ -130,6 +130,81 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Ты уже отметил интерес к игре здесь');
     }
 
+    public function test_free_venue_schedule_displays_published_hours_not_booking_warnings(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-24 10:00:00', 'Europe/Moscow'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Бесплатная уличная площадка',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $schedule = \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        \App\Modules\Venue\Domain\Models\VenueScheduleInterval::factory()
+            ->for($schedule, 'schedule')->create([
+                'day_of_week' => 6,
+                'starts_at' => '10:00', 'ends_at' => '22:00',
+            ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Расписание:')
+            ->assertSee('10:00–22:00')
+            ->assertDontSee('Нет опубликованных занятых слотов')
+            ->assertDontSee('Наличие свободного времени и стоимость уточняются')
+            ->assertDontSee('Подтверждённых данных о свободных интервалах');
+        $this->travelBack();
+    }
+
+    public function test_overnight_event_is_shown_as_a_continuation_not_as_a_new_start_next_day(): void
+    {
+        config()->set('app.timezone', 'Europe/Moscow');
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-24 10:00:00', 'Europe/Moscow'));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        // The real venue has a Moscow schedule; without it this handler
+        // intentionally uses the application's default timezone.
+        \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
+            ->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        $from = \Carbon\CarbonImmutable::parse('2026-10-24 22:00:00', 'Europe/Moscow');
+        $until = \Carbon\CarbonImmutable::parse('2026-10-25 01:00:00', 'Europe/Moscow');
+        $event = \App\Modules\Event\Domain\Models\Event::factory()->create([
+            'venue_id' => $venue->id,
+            'starts_at' => $from,
+            'ends_at' => $until,
+        ]);
+        $venue->bookings()->create([
+            'event_id' => $event->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED->value,
+            'scope' => \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::WHOLE->value,
+            'starts_at' => $from,
+            'ends_at' => $until,
+        ]);
+
+        $occupied = app(\App\Modules\Venue\Application\UseCases\ShowVenueHandler::class)
+            ->handle($venue->routeIdentifier(), null)->occupancyDays;
+        $this->assertSame('22:00–01:00 (+1 день)', $occupied[0]['slots'][0]['timeLabel'] ?? '(missing first-day slot)');
+        $this->assertSame('00:00–01:00 (продолжение)', $occupied[1]['slots'][0]['timeLabel'] ?? '(missing next-day slot)');
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('22:00–01:00 (+1 день)')
+            ->assertSee('00:00–01:00 (продолжение)')
+            ->assertDontSee('Нет опубликованных занятых слотов');
+        $this->travelBack();
+    }
+
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
     {
         $user = User::factory()->create();
@@ -190,19 +265,53 @@ final class PlayIntentApiTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('venue_id');
     }
 
-    public function test_criteria_first_must_provide_center_and_radius(): void
+    public function test_criteria_only_search_can_detach_a_venue_and_discover_venues_by_preferences(): void
     {
         $user = User::factory()->create();
-        $payload = ['cadence' => 'flexible', 'include_similar_venues' => true];
-        $this->actingAs($user)->postJson(route('play-intents.store'), $payload)
-            ->assertUnprocessable()->assertJsonValidationErrors('center_latitude');
+        $outdoor = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value,
+            'type' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::STREET_COURT->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $indoor = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value,
+            'type' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::SPORTS_HALL->value,
+        ]);
+        $id = $this->actingAs($user)->postJson(route('play-intents.store'), $this->payload($indoor))
+            ->assertCreated()->json('data.id');
 
-        $this->postJson(route('play-intents.store'), [
-            ...$payload,
-            'center_latitude' => 55.75,
-            'center_longitude' => 37.61,
-            'radius_km' => 10,
-        ])->assertCreated()->assertJsonPath('data.venue_id', null);
+        // Unlink is an update to the SAME intent, not deletion or creation.
+        $this->putJson(route('play-intents.update', $id), [
+            'venue_id' => null, 'include_similar_venues' => false,
+            'cadence' => 'regular', 'weekdays' => [6],
+            'windows' => [['weekday' => 6, 'start_time' => '18:00', 'end_time' => '20:00']],
+            'formats' => ['3x3'], 'access_mode' => 'free', 'venue_kind' => 'outdoor',
+        ])->assertOk()->assertJsonPath('data.venue_id', null)
+            ->assertJsonPath('data.venue', null)
+            ->assertJsonPath('data.venue_kind', 'outdoor')
+            ->assertJsonPath('data.include_similar_venues', false);
+
+        $record = PlayIntent::query()->findOrFail($id);
+        $this->assertNull($record->venue_id);
+        $this->assertNull($record->center_latitude);
+        $this->assertNull($record->radius_km);
+        $this->assertDatabaseCount('play_intents', 1);
+
+        $recommended = $this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->json('data');
+        $this->assertContains($outdoor->id, array_column($recommended, 'venue_id'));
+        $this->assertNotContains($indoor->id, array_column($recommended, 'venue_id'));
+        $this->getJson(route('play-intents.index'))->assertOk()
+            ->assertJsonPath('data.0.venue_id', null)
+            ->assertJsonPath('data.0.venue', null);
+
+        // "Similar" is available only for a chosen anchor venue.
+        $this->putJson(route('play-intents.update', $id), [
+            'venue_id' => null, 'include_similar_venues' => true, 'cadence' => 'flexible',
+        ])->assertUnprocessable()->assertJsonValidationErrors('include_similar_venues');
     }
 
     public function test_validates_scheduled_time_and_the_one_off_search_horizon(): void

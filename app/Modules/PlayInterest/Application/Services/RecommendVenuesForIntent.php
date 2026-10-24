@@ -24,6 +24,8 @@ final class RecommendVenuesForIntent
         }
 
         $isSimilar = (bool) $intent->include_similar_venues;
+        $criteriaOnly = $intent->venue_id === null;
+        $searchCatalog = $criteriaOnly || $isSimilar;
         $latitude = $intent->center_latitude;
         $longitude = $intent->center_longitude;
         $radius = (int) ($intent->radius_km ?? 10);
@@ -40,7 +42,7 @@ final class RecommendVenuesForIntent
         // The venue chosen by "Хочу здесь играть" remains a candidate.
         // Type preference applies to *alternatives* only, and only when
         // the user opted into searching for similar venues.
-        if ($isSimilar && in_array($intent->venue_kind, ['outdoor', 'indoor'], true)) {
+        if ($searchCatalog && in_array($intent->venue_kind, ['outdoor', 'indoor'], true)) {
             $outdoor = $intent->venue_kind === 'outdoor';
             $query->where(function (Builder $q) use ($outdoor, $intent): void {
                 if ($outdoor) {
@@ -54,9 +56,9 @@ final class RecommendVenuesForIntent
             });
         }
 
-        if (! $isSimilar) {
+        if (! $searchCatalog) {
             $query->whereKey($intent->venue_id);
-        } elseif ($latitude !== null && $longitude !== null) {
+        } elseif ($isSimilar && $latitude !== null && $longitude !== null) {
             // DB bounding box narrows work before exact Haversine scoring.
             $latRadius = $radius / 111.0;
             $lonRadius = $radius / max(1.0, 111.0 * cos(deg2rad((float) $latitude)));

@@ -29,6 +29,12 @@
         && (clone $activeVenueInterests)
             ->where('user_id', auth()->user()->canonical()->id)
             ->exists();
+    $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
+    $shownDays = $venue->isFreeAccess
+        ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
+            count($day['slots'] ?? []) > 0
+            || count($hoursByDate->get($day['date'])['intervals'] ?? []) > 0)->values()->all()
+        : $venue->occupancyDays;
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
@@ -102,23 +108,39 @@
                         @endforeach
                     </div>
                 @endif
-                @if(count($venue->occupancyDays) > 0)
+                @if(count($shownDays) > 0)
                     <div class="app-venue-schedule">
-                        @foreach($venue->occupancyDays as $day)
+                        @foreach($shownDays as $day)
+                            @php
+                                $publishedHours = $hoursByDate->get($day['date'])['intervals'] ?? [];
+                            @endphp
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
+                                @if(count($publishedHours))
+                                    <p class="app-venue-schedule__hours">Расписание:
+                                        @foreach($publishedHours as $hours)
+                                            {{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless
+                                        @endforeach
+                                    </p>
+                                @endif
                                 @forelse($day['slots'] ?? [] as $slot)
                                     <p>{{ $slot['timeLabel'] ?? '' }} · {{ $slot['eventTypeLabel'] ?? 'Занято' }} @if(!empty($slot['eventUrl']))<a href="{{ $slot['eventUrl'] }}">Открыть</a>@endif</p>
                                 @empty
-                                    <p class="muted">Нет опубликованных занятых слотов. Это не подтверждение свободной брони.</p>
+                                    @unless($venue->isFreeAccess)
+                                        <p class="muted">Нет опубликованных занятых слотов. Это не подтверждение свободной брони.</p>
+                                    @endunless
                                 @endforelse
                             </div>
                         @endforeach
                     </div>
+                @elseif($venue->isFreeAccess)
+                    <p class="muted">Опубликованных мероприятий и часов работы пока нет.</p>
                 @else
                     <p class="muted">Подтверждённых данных о свободных интервалах пока нет. Уточни доступность перед бронированием.</p>
                 @endif
-                <p class="caption">Наличие свободного времени и стоимость уточняются при оформлении бронирования.</p>
+                @unless($venue->isFreeAccess)
+                    <p class="caption">Наличие свободного времени и стоимость уточняются при оформлении бронирования.</p>
+                @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>О площадке</h2></header>

@@ -22,6 +22,7 @@ final readonly class VenueDetailsDTO
         public string $typeSlug,
         public string $status,
         public string $statusSlug,
+        public bool $isFreeAccess,
         public bool $isOpen,
         public string $todayHours,
         public ?string $shortDescription,

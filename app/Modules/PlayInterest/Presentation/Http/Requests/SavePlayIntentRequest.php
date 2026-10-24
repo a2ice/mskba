@@ -69,18 +69,11 @@ final class SavePlayIntentRequest extends FormRequest
             $venueId = $data['venue_id'] ?? null;
             $similar = filter_var($data['include_similar_venues'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-            if ($venueId === null && ! $similar) {
-                $validator->errors()->add('include_similar_venues', 'Для поиска без площадки включи подбор по условиям.');
-            }
-            if (($venueId === null || $similar) && (
-                ! is_numeric($data['center_latitude'] ?? null)
-                || ! is_numeric($data['center_longitude'] ?? null)
-                || ! isset($data['radius_km'])
-            )) {
-                // With a preferred venue, the center can be derived in the handler.
-                if ($venueId === null) {
-                    $validator->errors()->add('center_latitude', 'Для поиска по условиям выбери центр и радиус.');
-                }
+            // The user may remove a venue: free-form search then uses the
+            // selected time, format, access, type and amenity criteria. No
+            // fictional geographical center or obligatory radius.
+            if ($venueId === null && $similar) {
+                $validator->errors()->add('include_similar_venues', 'Сначала выбери площадку для поиска похожих.');
             }
             if (isset($data['center_latitude']) xor isset($data['center_longitude'])) {
                 $validator->errors()->add('center_longitude', 'Координаты должны быть указаны парой.');

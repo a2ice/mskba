@@ -64,7 +64,7 @@ final class PlayIntentManager
         }
 
         try {
-            return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent): PlayIntent {
+            return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent, $venueId): PlayIntent {
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
@@ -84,7 +84,7 @@ final class PlayIntentManager
                 'formats' => $input['formats'] ?? [],
                 'duration_minutes' => $input['duration_minutes'] ?? null,
                 'access_mode' => $input['access_mode'] ?? 'any',
-                'venue_kind' => ($input['include_similar_venues'] ?? false) ? ($input['venue_kind'] ?? 'any') : 'any',
+                'venue_kind' => ($venueId === null || ($input['include_similar_venues'] ?? false)) ? ($input['venue_kind'] ?? 'any') : 'any',
                 'amenity_preferences' => $input['amenity_preferences'] ?? [],
                 'notify_matches' => (bool) ($input['notify_matches'] ?? true),
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),
