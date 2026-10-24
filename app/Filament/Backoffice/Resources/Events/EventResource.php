@@ -146,7 +146,9 @@ final class EventResource extends Resource
             ->whereIn('user_id', $organizer->identityIds())
             ->where('status', UserParticipationRoleStatusEnum::ACTIVE->value)
             ->whereIn('role', $allowed)
-            ->pluck('role')->unique()->values()->all();
+            ->pluck('role')
+            ->map(fn ($role): string => $role instanceof UserParticipationRoleEnum ? $role->value : (string) $role)
+            ->unique()->values()->all();
 
         return $roles !== [] ? $roles : [UserParticipationRoleEnum::PLAYER->value];
     }
