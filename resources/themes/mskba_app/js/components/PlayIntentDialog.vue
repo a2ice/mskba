@@ -64,6 +64,11 @@ function restore(data){
     selectedVenueId.value=data.venue_id ?? null;
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
     dates.value=data.dates||[];dateMode.value=dates.value.length?'dates':'range';
+    if(data.period_from && data.period_until){
+        const from=String(data.period_from).slice(0,10), to=String(data.period_until).slice(0,10);
+        const d=Math.round((Date.parse(to+'T12:00:00Z')-Date.parse(from+'T12:00:00Z'))/86400000)+1;
+        period.value=String([7,14,30].includes(d)?d:14);
+    }
     formats.value=data.formats||[];duration.value=String(data.duration_minutes||'');
     similar.value=Boolean(data.include_similar_venues);radius.value=data.radius_km||10;
     latitude.value=data.center_latitude??latitude.value;longitude.value=data.center_longitude??longitude.value;
