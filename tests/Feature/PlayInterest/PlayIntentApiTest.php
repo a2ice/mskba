@@ -29,6 +29,30 @@ final class PlayIntentApiTest extends TestCase
         ];
     }
 
+    public function test_mskba_app_venue_page_exposes_real_interest_dialog_entry_point(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Площадка для новой темы',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Площадка для новой темы')
+            ->assertSee('Хочу здесь играть')
+            ->assertSee('data-mskba-play-intent-root', false)
+            ->assertSee('play-intents/amenities', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('play-intents.mine'))
+            ->assertOk()
+            ->assertSee('data-play-interests', false);
+    }
+
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
     {
         $user = User::factory()->create();
