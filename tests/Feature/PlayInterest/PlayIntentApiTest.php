@@ -226,7 +226,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertJsonPath('meta.reservation_created', false);
     }
 
-    public function test_venue_kind_is_validated_persisted_and_filters_real_venue_types(): void
+    public function test_venue_kind_only_filters_similar_venues_and_keeps_the_selected_venue(): void
     {
         $user = User::factory()->create();
         $indoor = Venue::factory()->create([
@@ -238,28 +238,52 @@ final class PlayIntentApiTest extends TestCase
             'status' => VenueStatusEnum::CONFIRMED->value,
         ]);
 
+        // Both venues are colocated to exercise the alternative type filter,
+        // rather than accidentally excluding one on geographic distance.
+        $origin = $indoor->location->address;
+        $outdoor->location->address->update([
+            'latitude' => $origin->latitude,
+            'longitude' => $origin->longitude,
+        ]);
+
+        // A venue-specific interest must ignore a kind filter when the user
+        // has not enabled "Подбирать похожие площадки" (including legacy input).
         $this->actingAs($user)->postJson(route('play-intents.store'), [
-            ...$this->payload($outdoor), 'venue_kind' => 'outdoor',
-        ])->assertCreated()->assertJsonPath('data.venue_kind', 'outdoor');
+            ...$this->payload($indoor),
+            'venue_kind' => 'outdoor',
+        ])->assertCreated()->assertJsonPath('data.venue_kind', 'any');
+
         $id = PlayIntent::query()->sole()->id;
-        $this->getJson(route('play-intents.recommendations', $id))
-            ->assertOk()->assertJsonPath('data.0.venue_id', $outdoor->id);
-
-        $this->putJson(route('play-intents.update', $id), [
-            ...$this->payload($indoor), 'venue_kind' => 'outdoor',
-        ])->assertOk()->assertJsonPath('data.venue_kind', 'outdoor');
-        $this->assertDatabaseCount('play_intents', 1);
-        $this->getJson(route('play-intents.recommendations', $id))
-            ->assertOk()->assertJsonCount(0, 'data');
-
-        $this->putJson(route('play-intents.update', $id), [
-            ...$this->payload($indoor), 'venue_kind' => 'indoor',
-        ])->assertOk()->assertJsonPath('data.venue_kind', 'indoor');
         $this->getJson(route('play-intents.recommendations', $id))
             ->assertOk()->assertJsonPath('data.0.venue_id', $indoor->id);
 
+        // Once similar venues are enabled, outdoor is a filter on alternatives.
+        // The specifically chosen indoor venue remains present.
+        $similarPayload = [
+            ...$this->payload($indoor),
+            'include_similar_venues' => true,
+            'center_latitude' => $origin->latitude,
+            'center_longitude' => $origin->longitude,
+            'radius_km' => 10,
+        ];
         $this->putJson(route('play-intents.update', $id), [
-            ...$this->payload($indoor), 'venue_kind' => 'invalid',
+            ...$similarPayload, 'venue_kind' => 'outdoor',
+        ])->assertOk()->assertJsonPath('data.venue_kind', 'outdoor');
+        $foundIds = collect($this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->json('data'))->pluck('venue_id')->all();
+        $this->assertContains($indoor->id, $foundIds);
+        $this->assertContains($outdoor->id, $foundIds);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$similarPayload, 'venue_kind' => 'indoor',
+        ])->assertOk()->assertJsonPath('data.venue_kind', 'indoor');
+        $foundIds = collect($this->getJson(route('play-intents.recommendations', $id))
+            ->assertOk()->json('data'))->pluck('venue_id')->all();
+        $this->assertContains($indoor->id, $foundIds);
+        $this->assertNotContains($outdoor->id, $foundIds);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$similarPayload, 'venue_kind' => 'invalid',
         ])->assertUnprocessable()->assertJsonValidationErrors('venue_kind');
         $this->assertDatabaseCount('play_intents', 1);
     }
