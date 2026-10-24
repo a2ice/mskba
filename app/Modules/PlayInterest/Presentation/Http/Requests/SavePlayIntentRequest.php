@@ -92,6 +92,9 @@ final class SavePlayIntentRequest extends FormRequest
             }
             $today = now()->toDateString();
             foreach ((array) $dates as $index => $date) {
+                if (is_string($date) && $date > now()->addDays(30)->toDateString()) {
+                    $validator->errors()->add("dates.{$index}", 'Дата разовой игры не может быть дальше 30 дней.');
+                }
                 if (is_string($date) && $date < $today) {
                     $validator->errors()->add("dates.{$index}", 'Нельзя выбрать прошедшую дату.');
                 }
