@@ -1100,6 +1100,8 @@ Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])
     Route::delete('/{playIntent}', [$controller, 'destroy'])->whereNumber('playIntent')->name('play-intents.destroy');
     Route::get('/{playIntent}/recommendations', [$controller, 'recommendations'])
         ->whereNumber('playIntent')->name('play-intents.recommendations');
+    Route::get('/{playIntent}/slots', [$controller, 'slots'])
+        ->whereNumber('playIntent')->name('play-intents.slots');
 });
 
 // Only run after ALL explicit routes (including routes in other files).
