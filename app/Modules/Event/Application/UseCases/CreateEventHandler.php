@@ -19,6 +19,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
@@ -43,7 +44,25 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы создать мероприятие.');
         }
 
-        $event = DB::transaction(function () use ($actor, $data): Event {
+        // Other creation workflows keep their legacy semantics unless they opt in
+        // to an explicit attendance decision. Filament always supplies this flag.
+        $explicitChoice = array_key_exists('organizer_participates', $data);
+        $organizerParticipates = $explicitChoice
+            ? filter_var($data['organizer_participates'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : true;
+        if ($organizerParticipates === null) {
+            throw new InvalidArgumentException('Неверно указано участие организатора.');
+        }
+
+        $activityRole = isset($data['participation_role']) && is_string($data['participation_role'])
+            ? UserParticipationRoleEnum::tryFrom($data['participation_role'])
+            : null;
+        if ($explicitChoice && $organizerParticipates
+            && ($activityRole === null || $activityRole === UserParticipationRoleEnum::ORGANIZER)) {
+            throw new InvalidArgumentException('Выберите, в качестве кого организатор будет участвовать.');
+        }
+
+        $event = DB::transaction(function () use ($actor, $data, $organizerParticipates, $activityRole): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
             // Some verified venues (including the production -> dev fixture)
@@ -109,8 +128,12 @@ final class CreateEventHandler
             $event->participants()->create([
                 'user_id' => $actor->user_id,
                 'role' => EventParticipantRoleEnum::ORGANIZER,
-                'status' => EventParticipantStatusEnum::CONFIRMED,
-                'joined_at' => now(),
+                'participation_role' => $organizerParticipates ? $activityRole : null,
+                'status' => $organizerParticipates
+                    ? EventParticipantStatusEnum::CONFIRMED
+                    : EventParticipantStatusEnum::LEFT,
+                'joined_at' => $organizerParticipates ? now() : null,
+                'confirmation_version' => $event->participation_confirmation_version,
             ]);
 
             if ($event->type === EventTypeEnum::GAME) {
