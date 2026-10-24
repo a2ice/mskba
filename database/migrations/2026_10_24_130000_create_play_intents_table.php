@@ -12,6 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('venue_id')->nullable()->constrained('venues')->nullOnDelete();
+            $table->uuid('client_request_id')->nullable();
+            $table->unique(['user_id', 'client_request_id']);
             $table->boolean('include_similar_venues')->default(false);
             $table->decimal('center_latitude', 10, 7)->nullable();
             $table->decimal('center_longitude', 10, 7)->nullable();
