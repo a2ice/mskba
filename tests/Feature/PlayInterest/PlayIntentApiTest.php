@@ -160,6 +160,40 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Подтверждённых данных о свободных интервалах');
     }
 
+    public function test_overnight_event_is_shown_as_a_continuation_not_as_a_new_start_next_day(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-24 10:00:00', 'Europe/Moscow'));
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $from = \Carbon\CarbonImmutable::parse('2026-10-24 22:00:00', 'Europe/Moscow')->utc();
+        $until = \Carbon\CarbonImmutable::parse('2026-10-25 01:00:00', 'Europe/Moscow')->utc();
+        $event = \App\Modules\Event\Domain\Models\Event::factory()->create([
+            'venue_id' => $venue->id,
+            'starts_at' => $from,
+            'ends_at' => $until,
+        ]);
+        $venue->bookings()->create([
+            'event_id' => $event->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED->value,
+            'scope' => \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::WHOLE->value,
+            'starts_at' => $from,
+            'ends_at' => $until,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('22:00–01:00 (+1 день)')
+            ->assertSee('00:00–01:00 (продолжение)')
+            ->assertDontSee('Нет опубликованных занятых слотов');
+    }
+
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
     {
         $user = User::factory()->create();
