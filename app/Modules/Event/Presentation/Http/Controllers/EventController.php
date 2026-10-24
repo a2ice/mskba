@@ -761,7 +761,7 @@ final class EventController extends Controller
     private function confirmedParticipantCount(Event $event): int
     {
         return $event->participants()
-            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+            ->occupiesPlayerSpot()
             ->where('confirmation_version', $event->participation_confirmation_version)
             ->count();
     }
