@@ -158,6 +158,51 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()->assertJsonFragment(['id' => $amenity->id]);
     }
 
+    public function test_retry_after_auth_creates_only_one_interest_for_the_same_request_id(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $request = [
+            ...$this->payload($venue),
+            'client_request_id' => '307d52d3-ecb4-462c-a428-52b5bc592612',
+        ];
+        $this->actingAs($user)->postJson(route('play-intents.store'), $request)
+            ->assertCreated();
+        $this->postJson(route('play-intents.store'), $request)
+            ->assertCreated();
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
+    public function test_exact_slot_search_respects_the_published_schedule(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $schedule = $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        foreach (range(1, 7) as $day) {
+            $schedule->intervals()->create([
+                'day_of_week' => $day,
+                'starts_at' => '09:00',
+                'ends_at' => '22:00',
+                'sort_order' => 1,
+            ]);
+        }
+
+        $id = $this->actingAs($user)
+            ->postJson(route('play-intents.store'), $this->payload($venue))
+            ->assertCreated()->json('data.id');
+
+        $this->getJson(route('play-intents.slots', [
+            'playIntent' => $id,
+            'date' => now('Europe/Moscow')->addDays(3)->toDateString(),
+            'time' => '19:00',
+            'duration_minutes' => 90,
+            'tolerance_minutes' => 0,
+        ]))->assertOk()
+            ->assertJsonPath('data.0.venue_id', $venue->id)
+            ->assertJsonPath('data.0.booking_availability', 'available_at_check')
+            ->assertJsonPath('meta.reservation_created', false);
+    }
+
     public function test_recommendations_explain_that_availability_is_not_yet_checked(): void
     {
         $user = User::factory()->create();
