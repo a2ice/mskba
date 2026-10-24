@@ -1084,6 +1084,12 @@ Route::get('/backoffice/rest-api/openapi.json',
     \App\Http\Controllers\Backoffice\OpenApiDocumentController::class)
     ->middleware('auth:web')->name('backoffice.rest-api.openapi');
 
+// MSKBA App account page. Existing legacy account routes remain unchanged.
+Route::get('/account/play-interests', function (\App\Presentation\Theming\ThemeResolver $themes) {
+    abort_unless($themes->active() === 'mskba_app', 404);
+    return \App\Presentation\Theming\ThemeResolver::page('account.play-interests');
+})->middleware('auth:web')->name('play-intents.mine');
+
 // Task 286: JSON contract consumed by the venue and account UI. No extra public data.
 // Keep this outside legacy theme templates and behind ordinary web CSRF/session auth.
 Route::get('/play-intents/amenities',
