@@ -95,9 +95,8 @@
                     @if ($viewerHasVenueInterest)
                         <p class="app-venue-interest-summary__own">Ты уже отметил интерес к игре здесь. <a href="{{ route('play-intents.mine') }}">Мои интересы</a></p>
                     @endif
-                    <p class="caption">Отображается только число интересов — не список пользователей. Это не запись на игру.</p>
                 </div>
-                <button type="button" class="button primary" data-play-intent-open @disabled(!$canStartInterest)>Хочу здесь играть</button>
+                <a class="button primary" href="{{ route('play-intents.mine') }}">Мои интересы</a>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Часы работы</h2></header>
@@ -117,19 +116,30 @@
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
                                 @if(count($publishedHours))
-                                    <p class="app-venue-schedule__hours">Расписание:
+                                    <p class="app-venue-schedule__hours">Часы работы:
                                         @foreach($publishedHours as $hours)
                                             {{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless
                                         @endforeach
                                     </p>
                                 @endif
-                                @forelse($day['slots'] ?? [] as $slot)
-                                    <p>{{ $slot['timeLabel'] ?? '' }} · {{ $slot['eventTypeLabel'] ?? 'Занято' }} @if(!empty($slot['eventUrl']))<a href="{{ $slot['eventUrl'] }}">Открыть</a>@endif</p>
-                                @empty
-                                    @unless($venue->isFreeAccess)
-                                        <p class="muted">Нет опубликованных занятых слотов. Это не подтверждение свободной брони.</p>
-                                    @endunless
-                                @endforelse
+                                @if(count($day['slots'] ?? []) > 0)
+                                    <div class="app-venue-schedule__slots">
+                                        <span class="app-venue-schedule__slots-title">Слоты</span>
+                                        <ul class="app-venue-schedule__slot-list">
+                                            @foreach($day['slots'] as $slot)
+                                                <li>
+                                                    @if(!empty($slot['eventUrl']))
+                                                        <a href="{{ $slot['eventUrl'] }}" aria-label="Открыть мероприятие на {{ $slot['timeLabel'] ?? '' }}">{{ $slot['timeLabel'] ?? '' }}</a>
+                                                    @else
+                                                        <span>{{ $slot['timeLabel'] ?? '' }}</span>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @elseif(! $venue->isFreeAccess)
+                                    <p class="muted">Нет опубликованных занятых слотов. Это не подтверждение свободной брони.</p>
+                                @endif
                             </div>
                         @endforeach
                     </div>
