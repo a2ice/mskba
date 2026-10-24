@@ -153,7 +153,7 @@ final class PlayIntentApiTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Расписание: ')
+            ->assertSee('Расписание:')
             ->assertSee('10:00–22:00')
             ->assertDontSee('Нет опубликованных занятых слотов')
             ->assertDontSee('Наличие свободного времени и стоимость уточняются')
@@ -187,6 +187,10 @@ final class PlayIntentApiTest extends TestCase
             'ends_at' => $until,
         ]);
 
+        $occupied = app(\App\Modules\Venue\Application\UseCases\ShowVenueHandler::class)
+            ->handle($venue->routeIdentifier(), null)->occupancyDays;
+        $this->assertSame('22:00–01:00 (+1 день)', $occupied[0]['slots'][0]['timeLabel'] ?? '(missing first-day slot)');
+        $this->assertSame('00:00–01:00 (продолжение)', $occupied[1]['slots'][0]['timeLabel'] ?? '(missing next-day slot)');
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('22:00–01:00 (+1 день)')
