@@ -1,5 +1,5 @@
 @extends('theme::layouts.app', ['breadcrumbs' => [
-    ['label' => 'Площадки', 'url' => route('venues.index')],
+    ['label' => 'Площадки', 'url' => route('venues.search')],
     ['label' => isset($venue)
         ? (\Illuminate\Support\Str::length($venue->name) > 25
             ? \Illuminate\Support\Str::substr($venue->name, 0, 25).'...'
