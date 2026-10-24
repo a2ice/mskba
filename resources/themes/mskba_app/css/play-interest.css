@@ -1,0 +1,112 @@
+/* Task 286. Reuse existing MSKBA App tokens and core form/modal components. */
+.app-venue-page{padding-top:24px;padding-bottom:48px}
+.app-venue-page__hero-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+.app-venue-gallery{overflow:hidden;min-height:360px}
+.app-venue-gallery__main{display:block;width:100%;height:360px;object-fit:cover}
+.app-venue-gallery__missing{min-height:360px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:var(--surface-raised);color:var(--muted)}
+.app-venue-gallery__missing svg{width:40px;height:40px}
+.app-venue-gallery__thumbs{padding:12px;display:flex;gap:8px;overflow:auto}
+.app-venue-gallery__thumbs a{border-radius:10px;overflow:hidden;flex:0 0 82px}
+.app-venue-gallery__thumbs img{width:82px;height:60px;object-fit:cover}
+.app-venue-intro{padding:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:16px}
+.app-venue-intro h1{font-size:clamp(27px,3.5vw,44px);letter-spacing:-.03em;line-height:1.12;margin:0;font-weight:750;overflow-wrap:anywhere}
+.app-venue-intro__address{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:14px}
+.app-venue-intro__address svg{width:19px;height:19px}
+.app-venue-intro__badges,.app-venue-block__court-list,.app-venue-block__amenities{display:flex;flex-wrap:wrap;gap:8px}
+.app-venue-intro__copy{font-size:14px;color:var(--muted)}
+.app-venue-intro__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+.app-venue-intro__actions .button{flex:1 1 170px}
+.app-venue-intro__hint{font-size:12px;color:var(--muted)}
+.app-venue-page__anchors{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line);padding:16px 0;margin-bottom:24px}
+.app-venue-page__anchors a{border-radius:12px;padding:10px 14px;font-size:14px;font-weight:650;color:var(--muted)}
+.app-venue-page__anchors a:hover,.app-venue-page__anchors a:focus-visible{color:var(--accent);background:var(--surface-raised)}
+.app-venue-page__columns{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;align-items:start}
+.app-venue-page__sections{display:grid;gap:20px;min-width:0}
+.app-venue-block{padding:clamp(20px,3vw,28px);display:flex;flex-direction:column;align-items:flex-start;gap:16px;scroll-margin-top:128px}
+.app-venue-block__header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.app-venue-block h2{font-size:22px;line-height:1.3}
+.app-venue-block h3{font-size:16px}
+.app-venue-block>p,.app-venue-block__description{color:var(--muted);font-size:14px;white-space:pre-wrap}
+.app-venue-schedule{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;width:100%}
+.app-venue-schedule__day{padding:12px;border:1px solid var(--line);border-radius:14px;font-size:13px;display:grid;gap:8px;align-content:start}
+.app-venue-schedule__day p{font-size:12px;color:var(--muted)}
+.app-venue-schedule__day a{color:var(--accent);text-decoration:underline}
+.app-venue-page__aside{padding:20px;display:flex;flex-direction:column;gap:12px;position:sticky;top:calc(var(--header-height,72px) + 32px)}
+.app-venue-page__aside strong{font-size:18px}
+.app-venue-page__aside p{font-size:14px;color:var(--muted)}
+.app-venue-page__empty{padding:40px;display:grid;gap:20px}
+.app-venue-page__empty h1{font-size:30px;margin:0}
+.app-play-dialog{width:min(660px,calc(100vw - 24px))}
+.app-play-dialog__header{padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line)}
+.app-play-dialog__header h2{margin-top:6px;font-size:23px;line-height:1.2}
+.app-play-dialog__header h2:focus{outline:0}
+.app-play-dialog__body{padding:20px 24px;display:grid;align-content:start;gap:18px}
+.app-play-dialog__footer{padding:16px 24px;border-top:1px solid var(--line)}
+.app-play-dialog__success{font-size:17px;font-weight:650}
+.app-play-dialog__info{background:var(--surface-raised);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:14px;color:var(--text)}
+.app-play-dialog__info-details{max-height:300px;overflow:auto;margin-top:12px;display:grid;gap:8px;color:var(--muted)}
+.app-play-dialog__info-details p{font-size:13px}
+.app-play-dialog__text-button{border:0;background:transparent;color:var(--accent);padding:6px 0;font-size:13px;font-weight:700;align-self:flex-start;cursor:pointer}
+.app-play-dialog__text-button:hover{text-decoration:underline}
+.app-play-dialog__hint{font-size:13px;color:var(--muted)}
+.app-play-dialog__form{display:flex;flex-direction:column;gap:20px}
+.app-play-dialog__form fieldset{display:flex;flex-direction:column;gap:10px}
+.app-play-dialog__form legend{font-weight:700;font-size:15px}
+.app-play-dialog__field-label{font-size:13px;font-weight:600;color:var(--muted)}
+.app-play-dialog__chips{display:flex;flex-wrap:wrap;gap:6px}
+.app-play-dialog__chips .chip{border:1px solid var(--control-line);border-radius:999px;padding:7px 12px;font-weight:600;min-width:0;min-height:37px}
+.app-play-dialog__chips .chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.app-play-dialog__chips .chip:hover:not([aria-pressed="true"]){background:var(--surface-raised)}
+.app-play-dialog__day-grid{display:flex;flex-direction:column;gap:10px}
+.app-play-dialog__day{border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.app-play-dialog__day>strong{font-size:15px}
+.app-play-dialog__time-entry{display:grid;gap:10px}
+.app-play-dialog__time-entry+.app-play-dialog__time-entry{border-top:1px solid var(--line);padding-top:12px}
+.app-play-dialog__time-range,.app-play-dialog__date-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.app-play-dialog__date-row{grid-template-columns:minmax(0,1fr) auto}
+.app-play-dialog__form .field-group{gap:6px}
+.app-play-dialog__form .field-group label,.app-play-dialog__form .field-group{font-size:13px}
+.app-play-dialog__form input[type=range]{accent-color:var(--accent);width:100%;padding:0}
+.app-play-dialog__similar{background:var(--surface-raised);border:1px solid var(--line);padding:16px;border-radius:16px;display:grid;gap:16px}
+.app-play-dialog__amenity-group{border-top:1px solid var(--line);padding-top:8px}
+.app-play-dialog__amenity-group summary{font-weight:650;font-size:13px;padding:8px;cursor:pointer}
+.app-play-dialog__amenity-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(128px,170px);gap:12px;align-items:center;padding:6px 0}
+.app-play-dialog__amenity-row .check-label{min-width:0}
+.app-play-dialog__amenity-row .select-control select{min-height:42px}
+.app-play-dialog__notify{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
+.app-play-dialog .check-label:focus-within{outline:none}
+.app-play-dialog .check-label input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:900px){
+ .app-venue-page__hero-grid{grid-template-columns:1fr}
+ .app-venue-page__columns{grid-template-columns:1fr}
+ .app-venue-page__aside{display:none}
+}
+@media(max-width:639px){
+ .app-venue-page{padding-top:12px}
+ .app-venue-page__hero-grid{gap:12px}
+ .app-venue-gallery__main,.app-venue-gallery__missing{height:220px;min-height:220px}
+ .app-venue-intro{padding:20px}
+ .app-venue-page__anchors{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}
+ .app-venue-block{padding:20px}
+ .app-play-dialog__header{padding:16px}
+ .app-play-dialog__body{padding:16px}
+ .app-play-dialog__footer{padding:12px 16px max(12px,env(safe-area-inset-bottom))}
+ .app-play-dialog__time-range{gap:8px}
+ .app-play-dialog__amenity-row{grid-template-columns:1fr}
+ .app-play-dialog__amenity-row .select-control{max-width:210px;margin-left:32px}
+}
+@media(prefers-reduced-motion:reduce){
+ .app-play-dialog__chips .chip{transition:none}
+}
+
+
+.app-play-interests{padding:clamp(18px,3vw,28px);display:grid;gap:20px}
+.app-play-interests__top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.app-play-interests__top h2{font-size:22px}
+.app-play-interests__empty{padding:24px;display:grid;gap:6px;border:1px dashed var(--control-line);border-radius:16px}
+.app-play-interests__item{display:grid;gap:12px;padding:18px 0;border-top:1px solid var(--line)}
+.app-play-interests__item-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.app-play-interests__actions{display:flex;flex-wrap:wrap;gap:8px}
+.app-play-interests__results{font-size:13px}
+.app-play-interests__results ul{list-style:none;margin:0;padding:8px 0;display:grid;gap:9px}
+.app-play-interests__results li a{color:var(--accent);font-weight:650;text-decoration:underline}

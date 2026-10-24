@@ -5,6 +5,7 @@ import { registrationSteps, validateRegistrationField } from './registrationWiza
 
 const props = defineProps({
     options: { type: Object, required: true },
+    initialRole: { type: String, default: '' },
     busy: { type: Boolean, default: false },
     message: { type: String, default: '' },
     serverErrors: { type: Object, default: () => ({}) },
@@ -43,7 +44,7 @@ onBeforeUnmount(() => {
     document.removeEventListener('keydown', closeRequiredHintOnEscape, true);
 });
 const form = reactive({
-    role: '', gender: '', birth_date: '', height_cm: '', weight_kg: '',
+    role: props.initialRole === 'player' ? 'player' : '', gender: '', birth_date: '', height_cm: '', weight_kg: '',
     position: '', body_type: '', experience_started_year: '',
     last_name: '', first_name: '', middle_name: '',
     username: '', password: '', password_confirmation: '', privacy_consent: false,

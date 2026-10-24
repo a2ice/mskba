@@ -24,11 +24,20 @@ import './account-contacts-expiry.js';
 import './profile-thread-invite.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
+import PlayIntentDialog from './components/PlayIntentDialog.vue';
+import './play-interest-continuation.js';
+import './play-interest-mine.js';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
 if (authRoot) {
     const options = JSON.parse(authRoot.dataset.options || '{}');
     createApp(AuthDialog, { options }).mount(authRoot);
+}
+
+const interestRoot = document.querySelector('[data-mskba-play-intent-root]');
+if (interestRoot) {
+    const options = JSON.parse(interestRoot.dataset.options || '{}');
+    createApp(PlayIntentDialog, { options }).mount(interestRoot);
 }
 
 // Inertia is intentionally bootstrapped only on the isolated ui-preview route.

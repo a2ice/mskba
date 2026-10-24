@@ -22,6 +22,7 @@
 @import './appearance-settings.css';
 @import './appearance-light.css';
 @import './appearance-premium.css';
+@import './play-interest.css';
 
 .app-shell { min-height: 100dvh; }
 

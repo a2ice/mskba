@@ -8,6 +8,7 @@ const props = defineProps({
 });
 
 const opened = ref(false);
+const preferredRole = ref('');
 const mode = ref('login');
 const panel = ref(null);
 const dialogHeading = ref(null);
@@ -108,11 +109,13 @@ function onDocumentClick(event) {
     if (!button || !document.getElementById('mskba-auth-dialog-root')) return;
     event.preventDefault();
     inlineAuth = false;
+    preferredRole.value = '';
     openDialog(button.dataset.authMode || 'login');
 }
 
 function onDialogEvent(event) {
     inlineAuth = event.detail?.stayOnPage === true;
+    preferredRole.value = event.detail?.preferredRole === 'player' ? 'player' : '';
     openDialog(event.detail?.mode || 'login');
 }
 
@@ -307,7 +310,7 @@ onBeforeUnmount(() => {
             </form>
 
             <RegistrationWizard v-else-if="mode === 'register'"
-                :options="options" :busy="busy" :server-errors="errors" :message="message"
+                :initial-role="preferredRole" :options="options" :busy="busy" :server-errors="errors" :message="message"
                 @submit="submitRegister" @login="selectMode('login')"
                 @legal-open="openLegalDocument"
                 @step-change="dismissTransientMessage" />
