@@ -66,9 +66,9 @@ final class EventBackofficeEditor
                 $roles = $data['participation_roles'] ?? null;
                 $allowed = array_keys(EventResource::participationRoleOptions());
                 if (! is_array($roles) || $roles === []
-                    || count($roles) !== count(array_unique($roles))
                     || collect($roles)->contains(fn ($role): bool =>
-                        ! is_string($role) || ! in_array($role, $allowed, true))) {
+                        ! is_string($role) || ! in_array($role, $allowed, true))
+                    || count($roles) !== count(array_unique($roles))) {
                     throw ValidationException::withMessages([
                         'data.participation_roles' => 'Выберите хотя бы одну допустимую роль участия.',
                     ]);
