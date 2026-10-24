@@ -61,8 +61,12 @@ final class EventBackofficeEditor
 
         return $this->validation(function () use ($actor, $data): Event {
             $payload = $this->payload($data);
-            $payload['organizer_participates'] = (bool) ($data['organizer_participates'] ?? false);
-            if ($payload['organizer_participates']) {
+            // Preserve legacy behavior for direct callers that do not send
+            // the checkbox. The Filament creation form always sends it.
+            if (array_key_exists('organizer_participates', $data)) {
+                $payload['organizer_participates'] = (bool) $data['organizer_participates'];
+            }
+            if ($payload['organizer_participates'] ?? false) {
                 $roles = $data['participation_roles'] ?? null;
                 $allowed = array_keys(EventResource::participationRoleOptions());
                 if (! is_array($roles) || $roles === []
