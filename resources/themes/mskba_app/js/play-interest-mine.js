@@ -45,7 +45,7 @@ if (root) {
             for (const intent of response.data) {
                 const card = make('article',null,'app-play-interests__item');
                 const head = make('div',null,'app-play-interests__item-head');
-                head.append(make('strong','Интерес №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
+                head.append(make('strong',intent.name || 'Интерес №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
                 card.append(head,make('p',summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
                 if(!['cancelled','completed'].includes(intent.effective_status)) {
