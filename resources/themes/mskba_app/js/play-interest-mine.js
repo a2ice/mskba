@@ -24,9 +24,12 @@ if (root) {
             ? intent.weekdays.map(n=>days[Number(n)-1]).filter(Boolean).join(', ') : 'любые дни';
         const frequency = cadenceNames[intent.cadence] || intent.cadence;
         const dates = intent.dates?.length ? intent.dates.join(', ') : '';
-        const venueKind = {any:'любая площадка',indoor:'крытая площадка',outdoor:'открытая площадка'}[intent.venue_kind || 'any'];
+        // This describes matching conditions, not the user's chosen venue.
+        const venueKind = intent.venue_id && !intent.include_similar_venues
+            ? null
+            : {any:'любая площадка',indoor:'крытая площадка',outdoor:'открытая площадка'}[intent.venue_kind || 'any'];
         return [frequency, dates || dayLabel, (intent.formats || []).length
-            ? intent.formats.join(', ').replaceAll('x','×') : 'любой формат', venueKind].join(' · ');
+            ? intent.formats.join(', ').replaceAll('x','×') : 'любой формат', venueKind].filter(Boolean).join(' · ');
     };
     const button = (text, action) => {
         const b = make('button',text,'button secondary');b.type='button';
@@ -46,7 +49,24 @@ if (root) {
                 const card = make('article',null,'app-play-interests__item');
                 const head = make('div',null,'app-play-interests__item-head');
                 head.append(make('strong',intent.name || 'Интерес №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
-                card.append(head,make('p',summary(intent),'muted'));
+                card.append(head);
+                if (intent.venue) {
+                    const venueLine = make('p',null,'app-play-interests__venue');
+                    venueLine.append(make('span','Площадка: '));
+                    const venueLink = make('a',intent.venue.name);
+                    // The API supplies the canonical internal URL.
+                    const target = new URL(intent.venue.url,location.origin);
+                    if(target.origin === location.origin) {
+                        venueLink.href=target.href;
+                        venueLine.append(venueLink);
+                    }else venueLine.append(make('span',intent.venue.name));
+                    card.append(venueLine);
+                } else if (intent.venue_id) {
+                    card.append(make('p','Площадка больше недоступна','muted'));
+                } else {
+                    card.append(make('p','Поиск без конкретной площадки','muted'));
+                }
+                card.append(make('p',summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
                 if(!['cancelled','completed'].includes(intent.effective_status)) {
                     actions.append(button('Редактировать',()=>{
@@ -87,8 +107,8 @@ if (root) {
                     card.append(alternatives);
                 }
                 if(!['cancelled','completed'].includes(intent.effective_status)) {
-                    actions.append(button('Отменить поиск',async()=>{
-                        if(!window.confirm('Отменить этот игровой интерес?'))return;
+                    actions.append(button('Перестать отслеживать',async()=>{
+                        if(!window.confirm('Перестать отслеживать этот игровой интерес?'))return;
                         try{await request(root.dataset.pauseUrl+'/'+intent.id,'DELETE');await load();}
                         catch(e){showError(e.message);}
                     }));

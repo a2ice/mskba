@@ -1,4 +1,11 @@
-@extends('theme::layouts.app')
+@extends('theme::layouts.app', ['breadcrumbs' => [
+    ['label' => 'Площадки', 'url' => route('venues.search')],
+    ['label' => isset($venue)
+        ? (\Illuminate\Support\Str::length($venue->name) > 25
+            ? \Illuminate\Support\Str::substr($venue->name, 0, 25).'...'
+            : $venue->name)
+        : 'Страница', 'url' => null],
+]])
 
 @section('content')
 @if (!empty($error))
@@ -13,6 +20,15 @@
     $venueAddress = $venue->address?->display ?: $venue->rawAddress;
     $isConfirmedVenue = $venue->statusSlug === 'confirmed';
     $canStartInterest = $isConfirmedVenue;
+    $activeVenueInterests = \App\Modules\PlayInterest\Domain\Models\PlayIntent::query()
+        ->where('venue_id', $venue->id)
+        ->where('status', 'active')
+        ->where('expires_at', '>', now());
+    $activeVenueInterestCount = (clone $activeVenueInterests)->count();
+    $viewerHasVenueInterest = auth()->check()
+        && (clone $activeVenueInterests)
+            ->where('user_id', auth()->user()->canonical()->id)
+            ->exists();
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
@@ -68,6 +84,13 @@
             <section class="panel app-venue-block" id="app-venue-interest">
                 <header class="app-venue-block__header"><h2>Интерес игроков</h2></header>
                 <p class="muted">Отметь, когда тебе удобно играть здесь. Совпадения по времени и формату появятся в разделе «Мои интересы» по мере подключения подбора игроков.</p>
+                <div class="app-venue-interest-summary" data-play-venue-interest-summary>
+                    <p class="muted">Активных интересов по этой площадке: <strong>{{ $activeVenueInterestCount }}</strong></p>
+                    @if ($viewerHasVenueInterest)
+                        <p class="app-venue-interest-summary__own">Ты уже отметил интерес к игре здесь. <a href="{{ route('play-intents.mine') }}">Мои интересы</a></p>
+                    @endif
+                    <p class="caption">Отображается только число интересов — не список пользователей. Это не запись на игру.</p>
+                </div>
                 <button type="button" class="button primary" data-play-intent-open @disabled(!$canStartInterest)>Хочу здесь играть</button>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
@@ -125,6 +148,7 @@
     $playIntentOptions = [
         'venueId' => $venue->id,
         'venueName' => $venue->name,
+        'venueUrl' => route('venues.show', $venue->id.'-'.$venue->alias),
         'venueType' => $venue->typeSlug,
         'venueLatitude' => $venue->address?->latitude,
         'venueLongitude' => $venue->address?->longitude,

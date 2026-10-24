@@ -8,6 +8,7 @@ const interestName=ref('');
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
+const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
 const notifyMatches=ref(true), notifyOffers=ref(false), amenities=ref([]), priority=reactive({});
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
@@ -64,6 +65,8 @@ function serialize(){
 function restore(data){
     interestName.value=data.name || '';
     selectedVenueId.value=data.venue_id ?? null;
+    selectedVenueName.value=data.venue?.name ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueName : '') ?? '';
+    selectedVenueUrl.value=data.venue?.url ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueUrl : '') ?? '';
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
     dates.value=data.dates||[];dateMode.value=dates.value.length?'dates':'range';
     if(data.period_from && data.period_until){
@@ -134,7 +137,7 @@ async function save(payload){
                 'Не получилось сохранить. Повтори попытку.';return;
         }
         success.value=result.data;sessionStorage.removeItem(STORAGE);
-        window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id}}));
+        window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
     finally{busy.value=false;}
 }
@@ -150,7 +153,7 @@ async function resume(){
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
@@ -178,9 +181,9 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             <p class="app-play-dialog__success" role="status">Твой интерес сохранён. Это пока не регистрация на игру и не бронирование.</p>
             <p class="muted">Изменить настройки можно в разделе «Мои интересы».</p>
         </div>
-        <footer class="mskba-modal__footer app-play-dialog__footer">
-            <a class="button primary full" :href="options.endpoints.mine">Мои интересы</a>
-            <button class="button secondary full" type="button" @click="close()">Готово</button>
+        <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
+            <a class="button primary" :href="options.endpoints.mine">Мои интересы</a>
+            <button class="button secondary" type="button" @click="close()">Готово</button>
         </footer>
     </template>
     <template v-else>
@@ -194,6 +197,12 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                 </div>
                 <button type="button" class="app-play-dialog__text-button" :aria-expanded="expanded" @click="expanded=!expanded">{{expanded?'Свернуть':'Подробнее'}}</button>
             </div>
+            <p v-if="selectedVenueId" class="app-play-dialog__chosen-venue">
+                <span>Выбранная площадка:</span>
+                <a v-if="selectedVenueUrl" :href="selectedVenueUrl">{{selectedVenueName || 'Открыть площадку'}}</a>
+                <strong v-else>{{selectedVenueName || 'Площадка №'+selectedVenueId}}</strong>
+            </p>
+            <p v-else class="app-play-dialog__chosen-venue">Поиск без привязки к конкретной площадке.</p>
             <p v-if="!isAuth" class="app-play-dialog__hint">Для сохранения необходимо войти. <button class="app-play-dialog__text-button" type="button" @click="beginLogin()">Войти или зарегистрироваться</button></p>
             <form id="app-play-intent-form" class="app-play-dialog__form" @submit.prevent="submit">
                 <label class="field-group" for="app-play-intent-name">Название интереса
