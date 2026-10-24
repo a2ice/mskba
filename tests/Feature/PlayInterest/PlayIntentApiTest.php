@@ -52,6 +52,84 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-play-interests', false);
     }
 
+    public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue),
+            'name' => 'На ШК',
+            'cadence' => 'flexible',
+            'weekdays' => [],
+            'windows' => [],
+        ])->assertCreated()
+            ->assertJsonPath('data.venue_id', $venue->id)
+            ->assertJsonPath('data.venue.id', $venue->id)
+            ->assertJsonPath('data.venue.name', 'Школа №1794')
+            ->assertJsonPath('data.venue.url', route('venues.show', $venue->routeIdentifier()));
+
+        $record = PlayIntent::query()->sole();
+        $this->assertSame($venue->id, $record->venue_id);
+        $this->getJson(route('play-intents.index'))->assertOk()
+            ->assertJsonPath('data.0.name', 'На ШК')
+            ->assertJsonPath('data.0.venue_id', $venue->id)
+            ->assertJsonPath('data.0.venue.name', 'Школа №1794')
+            ->assertJsonPath('data.0.venue.url', route('venues.show', $venue->routeIdentifier()));
+
+        // Opening the edit dialog from the account uses this returned
+        // venue object; saving unchanged criteria must keep the same link.
+        $this->putJson(route('play-intents.update', $record), [
+            ...$this->payload($venue),
+            'name' => 'На ШК обновлённый',
+        ])->assertOk()
+            ->assertJsonPath('data.venue_id', $venue->id)
+            ->assertJsonPath('data.venue.name', 'Школа №1794');
+        $this->assertSame($venue->id, $record->refresh()->venue_id);
+    }
+
+    public function test_venue_page_displays_anonymous_interest_count_and_own_interest_without_usernames(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794 — замечательная баскетбольная площадка',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+        $user = User::factory()->create(['username' => 'private-interest-test']);
+        $other = User::factory()->create(['username' => 'private-interest-other']);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
+        ])->assertCreated();
+        $this->actingAs($other)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
+        ])->assertCreated();
+
+        $expectedBreadcrumb = \Illuminate\Support\Str::substr($venue->name, 0, 25).'...';
+        $this->actingAs($user)->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee($expectedBreadcrumb)
+            ->assertSee('Активных интересов по этой площадке: ', false)
+            ->assertSee('Ты уже отметил интерес к игре здесь')
+            ->assertSee('data-play-venue-interest-summary', false)
+            ->assertDontSee('private-interest-other');
+
+        // Other users' identities are private even though the aggregate is public.
+        auth()->logout();
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Активных интересов по этой площадке: ', false)
+            ->assertDontSee('private-interest-test')
+            ->assertDontSee('private-interest-other')
+            ->assertDontSee('Ты уже отметил интерес к игре здесь');
+    }
+
     public function test_owner_can_save_read_update_pause_resume_and_cancel_an_interest(): void
     {
         $user = User::factory()->create();
