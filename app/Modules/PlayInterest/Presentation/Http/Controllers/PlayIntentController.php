@@ -5,6 +5,7 @@ namespace App\Modules\PlayInterest\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\PlayInterest\Application\Services\PlayIntentManager;
+use App\Modules\PlayInterest\Application\Services\RecommendPlayableSlots;
 use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\PlayInterest\Presentation\Http\Requests\SavePlayIntentRequest;
@@ -91,6 +92,34 @@ final class PlayIntentController extends Controller
         return response()->json([
             'data' => $recommender->handle($playIntent),
             'meta' => ['ranking' => 'geography_and_amenities_only', 'availability_verified' => false],
+        ]);
+    }
+
+    public function slots(
+        Request $request, PlayIntent $playIntent, RecommendPlayableSlots $recommender,
+    ): JsonResponse {
+        $this->owned($request, $playIntent);
+        $params = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'time' => ['required', 'date_format:H:i'],
+            'duration_minutes' => ['required', 'integer', 'between:30,240', 'multiple_of:30'],
+            'tolerance_minutes' => ['sometimes', 'integer', 'between:0,120', 'multiple_of:30'],
+        ]);
+
+        return response()->json([
+            'data' => $recommender->handle(
+                $playIntent,
+                $params['date'],
+                $params['time'],
+                (int) $params['duration_minutes'],
+                (int) ($params['tolerance_minutes'] ?? 120),
+            ),
+            'meta' => [
+                'ranking' => 'time_45_distance_35_amenities_20',
+                'scope' => 'whole_court',
+                'reservation_created' => false,
+                'notice' => 'Доступность проверена на момент запроса. Перед бронированием нужна повторная проверка.',
+            ],
         ]);
     }
 
