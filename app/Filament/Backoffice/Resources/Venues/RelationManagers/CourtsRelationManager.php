@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Filament\Actions\Action;
@@ -69,6 +70,28 @@ final class CourtsRelationManager extends RelationManager
                 Toggle::make('allows_halves')->label('Бронирование половин')->default(false)
                     ->helperText('Включайте только для зоны с двумя кольцами и поддержкой половин.'),
             ]),
+            Section::make('Наследуемые условия зала')
+                ->description('Без переопределения зал автоматически следует настройкам площадки. Цена указывается за шаг аренды, в копейках; пустое поле — наследование.')
+                ->columns(2)->schema([
+                    Select::make('operational_status')->label('Состояние зала')
+                        ->options(['inherit' => 'Наследовать от площадки',
+                            'active' => 'Работает', 'temporarily_closed' => 'Временно закрыт'])
+                        ->default('inherit')
+                        ->afterStateHydrated(fn (Select $component, $state) => $component->state(
+                            $state instanceof VenueOperationalStatusEnum ? $state->value : ($state ?: 'inherit')
+                        ))
+                        ->dehydrateStateUsing(fn ($state) => $state === 'inherit' ? null : $state),
+                    $this->inheritedBoolean('requires_payment', 'Оплата', 'Платно', 'Бесплатно'),
+                    $this->inheritedBoolean('requires_booking', 'Запись', 'Бронирование обязательно', 'Свободный доступ'),
+                    $this->inheritedBoolean('requires_booking_approval', 'Подтверждение заявки', 'Требуется', 'Автоматически'),
+                    $this->inheritedBoolean('rental_enabled', 'Онлайн-бронирование', 'Разрешено', 'Запрещено'),
+                    TextInput::make('whole_price_per_step_minor')
+                        ->label('Цена всего зала за шаг, коп.')->numeric()->minValue(0)
+                        ->helperText('Пусто — наследовать цену площадки. Ноль — явно бесплатно.'),
+                    TextInput::make('half_price_per_step_minor')
+                        ->label('Цена половины за шаг, коп.')->numeric()->minValue(0)
+                        ->helperText('Пусто — наследовать цену площадки.'),
+                ]),
             Section::make('Медиатека')->description('Фотографии именно этого зала / зоны')
                 ->schema([
                     TextEntry::make('court_photo_preview')->label('Фотографии')
@@ -92,6 +115,14 @@ final class CourtsRelationManager extends RelationManager
                 fn (VenueCourt $record): int => $record->media()->where('collection', 'gallery')->count()
             ),
             TextColumn::make('alias')->label('Код'),
+            TextColumn::make('requires_payment')->label('Оплата')
+                ->formatStateUsing(fn ($state): string => $state === null
+                    ? 'Наследуется' : ($state ? 'Платно' : 'Бесплатно')),
+            TextColumn::make('operational_status')->label('Состояние')
+                ->formatStateUsing(fn ($state): string => $state instanceof VenueOperationalStatusEnum
+                    ? $state->label() : 'Наследуется'),
+            TextColumn::make('whole_price_per_step_minor')->label('Цена/шаг, коп.')
+                ->placeholder('Наследуется'),
             TextColumn::make('environment')->label('Тип зала / зоны')
                 ->formatStateUsing(fn ($state): string => $state instanceof VenueCourtEnvironmentEnum
                     ? $state->label() : (VenueCourtEnvironmentEnum::tryFrom((string) $state)?->label() ?? 'Не указан')),
@@ -107,6 +138,59 @@ final class CourtsRelationManager extends RelationManager
                 ->visible(fn (): bool => VenueResource::authorized()),
         ])->recordActions([
             EditAction::make(),
+            Action::make('courtPricePeriods')->label('Тарифные интервалы')
+                ->icon('heroicon-o-currency-dollar')
+                ->schema([
+                    Repeater::make('prices')->label('Цены зала по дням и времени')
+                        ->helperText('Приоритет: интервал зала → базовая цена зала → интервал площадки → базовая цена площадки.')
+                        ->schema([
+                            Select::make('day_of_week')->label('День')->required()
+                                ->options([
+                                    1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда',
+                                    4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье',
+                                ]),
+                            TimePicker::make('starts_at')->label('Начало шага')->required()->seconds(false),
+                            TextInput::make('whole_price_per_step_minor')->label('Весь зал, коп.')
+                                ->numeric()->minValue(0),
+                            TextInput::make('half_price_per_step_minor')->label('Половина, коп.')
+                                ->numeric()->minValue(0),
+                        ])->columns(4),
+                ])
+                ->fillForm(fn (VenueCourt $record): array => [
+                    'prices' => $record->slotPrices()->orderBy('day_of_week')->orderBy('starts_at')
+                        ->get()->map(fn ($price): array => [
+                            'day_of_week' => $price->day_of_week,
+                            'starts_at' => substr((string) $price->starts_at, 0, 5),
+                            'whole_price_per_step_minor' => $price->whole_price_per_step_minor,
+                            'half_price_per_step_minor' => $price->half_price_per_step_minor,
+                        ])->all(),
+                ])
+                ->action(function (VenueCourt $record, array $data): void {
+                    abort_unless(VenueResource::authorized(), 403);
+                    $rows = array_values($data['prices'] ?? []);
+                    $keys = [];
+                    foreach ($rows as $row) {
+                        $key = $row['day_of_week'].'|'.substr((string) $row['starts_at'], 0, 5);
+                        if (isset($keys[$key])) {
+                            throw ValidationException::withMessages([
+                                'prices' => 'Один и тот же тарифный шаг указан дважды.',
+                            ]);
+                        }
+                        $keys[$key] = true;
+                        if (($row['whole_price_per_step_minor'] ?? null) === null
+                            && ($row['half_price_per_step_minor'] ?? null) === null) {
+                            throw ValidationException::withMessages([
+                                'prices' => 'Укажите цену хотя бы для одного типа аренды.',
+                            ]);
+                        }
+                    }
+                    DB::transaction(function () use ($record, $rows): void {
+                        $record->slotPrices()->delete();
+                        foreach ($rows as $row) {
+                            $record->slotPrices()->create($row);
+                        }
+                    });
+                }),
             Action::make('uploadCourtPhoto')->label('Добавить фото')->icon('heroicon-o-photo')
                 ->schema([
                     FileUpload::make('photo')->label('Фотография зала')->image()
@@ -221,6 +305,22 @@ final class CourtsRelationManager extends RelationManager
                         'Основной зал или зал с будущими бронированиями/мероприятиями нельзя удалить.');
                 }),
         ])->defaultSort('sort_order');
+    }
+
+    private function inheritedBoolean(
+        string $field, string $label, string $yes, string $no,
+    ): Select {
+        return Select::make($field)->label($label)->options([
+            'inherit' => 'Наследовать от площадки',
+            'yes' => $yes,
+            'no' => $no,
+        ])->default('inherit')
+            ->afterStateHydrated(fn (Select $component, $state) => $component->state(
+                $state === null ? 'inherit' : ($state ? 'yes' : 'no')
+            ))
+            ->dehydrateStateUsing(fn ($state) => match ($state) {
+                'yes' => true, 'no' => false, default => null,
+            });
     }
 
     private function courtPhotoPreview(?VenueCourt $court): HtmlString
