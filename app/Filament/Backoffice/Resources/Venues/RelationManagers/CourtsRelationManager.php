@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Filament\Actions\Action;
@@ -42,6 +43,10 @@ final class CourtsRelationManager extends RelationManager
                     ->rule(fn (?VenueCourt $record) => Rule::unique('venue_courts', 'alias')
                         ->where('venue_id', $this->getOwnerRecord()->getKey())->ignore($record?->getKey())),
                 TextInput::make('sort_order')->label('Порядок')->numeric()->minValue(0)->maxValue(65535)->default(10),
+                Select::make('environment')->label('Тип зала / зоны')->options(
+                    collect(VenueCourtEnvironmentEnum::cases())->mapWithKeys(fn ($case): array =>
+                        [$case->value => $case->label()])->all()
+                )->required(),
                 Select::make('hoops_count')->label('Колец')->options([1 => '1', 2 => '2']),
                 Select::make('surface_type')->label('Покрытие')->options(
                     collect(VenueSurfaceTypeEnum::cases())->mapWithKeys(fn ($case): array =>
@@ -60,6 +65,9 @@ final class CourtsRelationManager extends RelationManager
         return $table->columns([
             TextColumn::make('name')->label('Зал / зона')->searchable(),
             TextColumn::make('alias')->label('Код'),
+            TextColumn::make('environment')->label('Тип зала / зоны')
+                ->formatStateUsing(fn ($state): string => $state instanceof VenueCourtEnvironmentEnum
+                    ? $state->label() : (VenueCourtEnvironmentEnum::tryFrom((string) $state)?->label() ?? 'Не указан')),
             IconColumn::make('is_primary')->label('Основная')->boolean(),
             TextColumn::make('hoops_count')->label('Колец'),
             TextColumn::make('surface_type')->label('Покрытие')
