@@ -1095,6 +1095,33 @@ Route::get('/account/play-interests', function (\App\Presentation\Theming\ThemeR
     ]);
 })->middleware('auth:web')->name('play-intents.mine');
 
+// Polymorphic favorites: guest cookie plus authenticated account, with reversible trash.
+Route::get('/favorites/status',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'status'])
+    ->middleware('throttle:60,1')->name('favorites.status');
+Route::get('/favorites/venue-statuses',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'venueStatuses'])
+    ->middleware('throttle:60,1')->name('favorites.venue-statuses');
+Route::post('/favorites/toggle',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'toggle'])
+    ->middleware('throttle:30,1')->name('favorites.toggle');
+Route::post('/favorites/preferences',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'updatePreferences'])
+    ->middleware('throttle:30,1')->name('favorites.preferences');
+Route::get('/account/favorites/items',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'index'])
+    ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.items');
+
+Route::get('/account/favorites', function (\App\Presentation\Theming\ThemeResolver $themes) {
+    abort_unless($themes->active() === 'mskba_app', 404);
+    return \App\Presentation\Theming\ThemeResolver::page('account.favorites', [
+        'breadcrumbs' => [
+            ['label' => 'Аккаунт', 'url' => route('account')],
+            ['label' => 'Избранное', 'url' => null],
+        ],
+    ]);
+})->middleware('auth:web')->name('favorites.mine');
+
 // Task 286: JSON contract consumed by the venue and account UI. No extra public data.
 // Keep this outside legacy theme templates and behind ordinary web CSRF/session auth.
 Route::get('/play-intents/amenities',
