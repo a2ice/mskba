@@ -68,3 +68,9 @@
 .app-venue-map-options__range input[type=range]{accent-color:var(--accent);flex:1 1 130px;min-width:110px}
 .app-venue-map-options__range .button{flex:none;min-width:115px}
 .app-venue-map-options>[role=status]{width:100%;font-size:13px}
+
+.app-venue-interests-dialog__details{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px}
+.app-venue-interests-dialog__details strong{overflow-wrap:anywhere;font-weight:700}
+.app-venue-interests-dialog__details span{font-weight:400;font-size:12px;color:var(--muted)}
+.app-play-dialog__public-intent{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised);align-items:start}
+.app-play-dialog__public-intent input{flex:none;margin-top:3px}
