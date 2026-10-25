@@ -24,6 +24,7 @@ use App\Modules\Venue\Application\DTO\VenueDetailsDTO;
 use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
@@ -41,6 +42,7 @@ final class ShowVenueHandler
         private readonly VenueAccessResolver $access,
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly EventIdentityParticipationService $identityParticipation,
+        private readonly EffectiveVenueHours $hours,
     ) {}
 
     public function handle(
@@ -53,6 +55,7 @@ final class ShowVenueHandler
             ->with([
                 'creatorActor',
                 'courts',
+                'courts.schedule',
                 'courts.media' => fn ($query) => $query
                     ->where('collection', 'gallery')
                     ->orderByDesc('is_featured')
@@ -161,8 +164,9 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
-        $scheduleDays = $this->scheduleDays($venue);
-        $openingState = $this->openingState($venue);
+        $scheduleContextCourt = $courtIdentifier === null ? null : $selectedCourt;
+        $scheduleDays = $this->scheduleDays($venue, $scheduleContextCourt);
+        $openingState = $this->openingState($venue, $scheduleContextCourt);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
         $rentalPolicy = VenueBookingPolicy::query()
             ->where('venue_id', $venue->id)
@@ -671,11 +675,12 @@ final class ShowVenueHandler
     /**
      * @return array<int, array{date: string, label: string, weekday: string, isToday: bool, isClosed: bool, intervals: array<int, array{startsAt: string, endsAt: string}>}>
      */
-    private function scheduleDays(Venue $venue): array
+    private function scheduleDays(Venue $venue, ?VenueCourt $court = null): array
     {
         $schedule = $venue->schedule;
+        $hasOwnSchedule = $court?->schedule !== null;
 
-        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+        if (! $hasOwnSchedule && ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty()))) {
             return [];
         }
 
@@ -684,10 +689,8 @@ final class ShowVenueHandler
 
         for ($offset = 0; $offset < 14; $offset++) {
             $date = $today->addDays($offset);
-            $isException = $schedule->exceptions->contains(
-                fn ($exception): bool => $exception->date->toDateString() === $date->toDateString()
-            );
-            $intervals = $this->intervalsForDate($venue, $date)
+            $isException = $this->hours->isException($venue, $court, $date);
+            $intervals = ($this->hours->intervals($venue, $court, $date) ?? collect())
                 ->map(fn ($interval) => [
                     'startsAt' => $this->formatTime($interval->starts_at),
                     'endsAt' => $this->formatTime($interval->ends_at),
@@ -712,10 +715,10 @@ final class ShowVenueHandler
     /**
      * @return array{isOpen: bool, todayHours: string}
      */
-    private function openingState(Venue $venue): array
+    private function openingState(Venue $venue, ?VenueCourt $court = null): array
     {
         $schedule = $venue->schedule;
-        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+        if ($court?->schedule === null && ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty()))) {
             return [
                 'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE,
                 'todayHours' => 'Не установлено',
@@ -723,7 +726,7 @@ final class ShowVenueHandler
         }
 
         $now = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'));
-        $todayIntervals = $this->intervalsForDate($venue, $now);
+        $todayIntervals = $this->hours->intervals($venue, $court, $now) ?? collect();
 
         if ($todayIntervals->isEmpty()) {
             return ['isOpen' => false, 'todayHours' => 'Закрыто'];
@@ -743,20 +746,6 @@ final class ShowVenueHandler
             'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE && $isWithinWorkingHours,
             'todayHours' => $hours,
         ];
-    }
-
-    private function intervalsForDate(Venue $venue, CarbonInterface $date)
-    {
-        $schedule = $venue->schedule;
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->toDateString() === $date->toDateString()
-        );
-
-        if ($exception !== null) {
-            return $exception->is_closed ? collect() : $exception->intervals->values();
-        }
-
-        return $schedule?->intervals->where('day_of_week', $date->dayOfWeekIso)->values() ?? collect();
     }
 
     private function formatTime(mixed $time): string
