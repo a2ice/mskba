@@ -13,12 +13,14 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
@@ -30,6 +32,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\HtmlString;
 
 final class CourtsRelationManager extends RelationManager
 {
@@ -44,6 +47,7 @@ final class CourtsRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([
+            Grid::make(2)->schema([
             Section::make('Игровая зона')->columns(2)->schema([
                 TextInput::make('name')->label('Название')->required()->maxLength(120),
                 TextInput::make('alias')->label('URL-алиас')->required()->maxLength(120)
@@ -64,6 +68,12 @@ final class CourtsRelationManager extends RelationManager
                 Toggle::make('allows_whole')->label('Бронирование целиком')->default(true),
                 Toggle::make('allows_halves')->label('Бронирование половин')->default(false)
                     ->helperText('Включайте только для зоны с двумя кольцами и поддержкой половин.'),
+            ]),
+            Section::make('Медиатека')->description('Фотографии именно этого зала / зоны')
+                ->schema([
+                    Placeholder::make('court_photo_preview')->label('Фотографии')
+                        ->content(fn (?VenueCourt $record): HtmlString => $this->courtPhotoPreview($record)),
+                ]),
             ]),
         ]);
     }
@@ -210,6 +220,27 @@ final class CourtsRelationManager extends RelationManager
                         'Основной зал или зал с будущими бронированиями/мероприятиями нельзя удалить.');
                 }),
         ])->defaultSort('sort_order');
+    }
+
+    private function courtPhotoPreview(?VenueCourt $court): HtmlString
+    {
+        if ($court === null) {
+            return new HtmlString('Сохраните зал, чтобы добавить фотографии.');
+        }
+
+        $photos = $court->media()->where('collection', 'gallery')
+            ->orderByDesc('is_featured')->orderBy('sort_order')->orderBy('id')->get();
+        if ($photos->isEmpty()) {
+            return new HtmlString('Фотографий ещё нет. Добавьте их действием «Добавить фото» в таблице залов.');
+        }
+
+        $markup = $photos->map(fn ($photo): string =>
+            '<img src="'.e(url($photo->publicUrl())).'" alt="Фото зала" loading="lazy" '
+            .'style="width:100%;max-width:150px;height:110px;object-fit:cover;border-radius:9px">'
+        )->implode('');
+
+        return new HtmlString('<div style="display:flex;gap:8px;flex-wrap:wrap">'.$markup.'</div>'
+            .'<p style="margin-top:10px;font-size:12px">Добавление, выбор обложки и удаление — действия строки зала в таблице.</p>');
     }
 
     /** @return array<int, string> */
