@@ -46,3 +46,10 @@
   .app-venue-map-frame,.app-venue-map-frame iframe{min-height:260px;height:260px}
 }
 @media(prefers-reduced-motion:reduce){.app-venue-gallery__slide{transition:none}}
+
+/* The venue chip is reversible: dimmed means search conditions only. */
+.app-play-dialog__chosen-venue{align-items:center}
+.app-play-dialog__chosen-venue.is-inactive>span:not(.app-play-dialog__unlink-venue),.app-play-dialog__chosen-venue.is-inactive>a,.app-play-dialog__chosen-venue.is-inactive>strong{opacity:.42}
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue{margin-left:2px;min-width:22px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:none;font-size:20px;font-weight:600;cursor:pointer;color:var(--muted);line-height:1}
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:hover{background:none;border:0;color:var(--accent)}
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
