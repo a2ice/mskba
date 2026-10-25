@@ -45,6 +45,11 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()
             ->assertSee('Площадка для новой темы')
             ->assertSee('Хочу здесь играть')
+            ->assertSee('Хочешь здесь играть?')
+            ->assertSee('Создать мероприятие')
+            ->assertSee('data-venue-create-event-dialog', false)
+            ->assertSee('В разработке')
+            ->assertSee('>Расписание</a>', false)
             ->assertSee('data-mskba-play-intent-root', false);
 
         $this->actingAs(User::factory()->create())
