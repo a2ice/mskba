@@ -95,14 +95,12 @@
 }
 .app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .app-venue-page__sections>.app-venue-block{
-    scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--app-venue-nav-height,58px) + 12px);
+    scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--app-venue-nav-height,58px) + 15px);
 }
 
 /* The sticky sidebar stays 15px below the actual navigation boundary. */
-.app-venue-page__anchors{position:sticky;top:calc(var(--header-height,80px) + var(--context-bar-height,44px));z-index:18;background:var(--surface,#fff)}
 .app-venue-page__aside{top:var(--venue-sidebar-sticky-top,calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px))}
 .app-venue-page__aside.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
-.app-venue-block{scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--venue-anchor-height,56px) + 15px)}
 
 .app-venue-schedule__slot-trigger{display:inline-block;max-width:100%;padding:0;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:650;text-align:left;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;cursor:pointer}
 .app-venue-schedule__slot-trigger:hover{color:var(--accent-hover,var(--accent))}
