@@ -135,9 +135,12 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
-        $mediaSource = $selectedCourt->media->isNotEmpty() ? $selectedCourt->media : $venue->media;
+        // The venue page is an overview of every court, including the primary.
+        // Court pages use their own gallery, falling back to venue photos only when empty.
+        $mediaSource = $courtIdentifier === null
+            ? $venue->media->concat($courts->flatMap(fn (VenueCourt $court) => $court->media))
+            : ($selectedCourt->media->isNotEmpty() ? $selectedCourt->media : $venue->media);
         $featuredMedia = $mediaSource
-            ->take(8)
             ->map(fn (Media $media) => [
                 'id' => (int) $media->id,
                 'title' => $media->title,
@@ -166,7 +169,7 @@ final class ShowVenueHandler
             ->where('active_marker', true)
             ->where('is_enabled', true)
             ->first();
-        $occupancyDays = $this->occupancyDays($venue, $selectedCourt, $timezone, $rentalPolicy, $user);
+        $occupancyDays = $this->occupancyDays($venue, $courtIdentifier === null ? null : $selectedCourt, $timezone, $rentalPolicy, $user);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -224,6 +227,7 @@ final class ShowVenueHandler
             ),
             sections: $sections,
             courts: $courtPayloads,
+            isCourtPage: $courtIdentifier !== null,
             selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
             amenities: $amenities,
             featuredMedia: $featuredMedia,
@@ -364,7 +368,7 @@ final class ShowVenueHandler
      */
     private function occupancyDays(
         Venue $venue,
-        VenueCourt $court,
+        ?VenueCourt $court,
         string $timezone,
         ?VenueBookingPolicy $policy,
         ?User $user,
@@ -373,9 +377,9 @@ final class ShowVenueHandler
         $windowEnd = $today->addDays(9);
         $requesterUserId = $user?->canonical()->id;
         $bookings = $venue->bookings()
-            ->where(function ($query) use ($court): void {
+            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
                 $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
-            })
+            }))
             ->where(function ($query) use ($requesterUserId): void {
                 $query->whereIn('status', VenueBookingStatusEnum::occupyingValues());
 
