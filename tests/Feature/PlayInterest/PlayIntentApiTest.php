@@ -45,6 +45,11 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()
             ->assertSee('Площадка для новой темы')
             ->assertSee('Хочу здесь играть')
+            ->assertSee('Хочешь здесь играть?')
+            ->assertSee('Создать мероприятие')
+            ->assertSee('data-venue-create-event-dialog', false)
+            ->assertSee('В разработке')
+            ->assertSee('>Расписание</a>', false)
             ->assertSee('data-mskba-play-intent-root', false);
 
         $this->actingAs(User::factory()->create())
@@ -161,7 +166,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-play-venue-interest-summary', false)
             ->assertSee('2 интереса')
             ->assertSee('data-venue-interest-action', false)
-            ->assertSee('Не хочу здесь играть')
+            ->assertSee('Не интересует')
             ->assertDontSee('Отображается только число интересов')
             ->assertDontSee('private-interest-other')
             ->assertSee('private-interest-test');

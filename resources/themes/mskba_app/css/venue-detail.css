@@ -100,11 +100,11 @@
 
 /* The sticky sidebar stays 15px below the actual navigation boundary. */
 .app-venue-page__aside{top:var(--venue-sidebar-sticky-top,calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px))}
-.app-venue-page__aside.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
+.app-venue-page__anchors.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
 
 .app-venue-schedule__slot-trigger{display:inline-block;max-width:100%;padding:0;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:650;text-align:left;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;cursor:pointer}
 .app-venue-schedule__slot-trigger:hover{color:var(--accent-hover,var(--accent))}
 .app-venue-schedule__slot-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 .app-venue-slot-dialog__time{font-size:14px;font-weight:700;margin-bottom:12px}
-.app-venue-overlay--slot .app-venue-overlay__actions form{margin:0}
+.app-venue-overlay--slot .app-venue-overlay__actions form{margin:0;width:auto;flex:0 0 auto;gap:0}
 .app-venue-overlay [hidden]{display:none!important}

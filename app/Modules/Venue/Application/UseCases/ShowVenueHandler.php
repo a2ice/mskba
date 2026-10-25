@@ -2,6 +2,8 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -37,6 +39,7 @@ final class ShowVenueHandler
     public function __construct(
         private readonly VenueAccessResolver $access,
         private readonly AddressDisplayFormatter $addressFormatter,
+        private readonly EventIdentityParticipationService $identityParticipation,
     ) {}
 
     public function handle(
@@ -449,24 +452,42 @@ final class ShowVenueHandler
         $isPublicEvent = $event !== null
             && $event->status === EventStatusEnum::PUBLISHED
             && $event->visibility === EventVisibilityEnum::PUBLIC;
-        $confirmedCount = $isPublicEvent
-            ? $event->participants->filter(fn ($participant): bool =>
-                $participant->status === EventParticipantStatusEnum::CONFIRMED
-                && $participant->confirmation_version === $event->participation_confirmation_version
-                && $participant->hasPlayerRole())->count()
-            : 0;
-        $viewerIdentityIds = $user?->canonical()->identityIds() ?? [];
-        $alreadyAttending = $isPublicEvent && $event->participants->contains(
-            fn ($participant): bool =>
-                in_array((int) $participant->user_id, $viewerIdentityIds, true)
-                && $participant->status === EventParticipantStatusEnum::CONFIRMED
-                && $participant->confirmation_version === $event->participation_confirmation_version
+        // Mirror the server participation handler's canonical-identity and
+        // capacity checks. Do not count duplicate aliases as separate players.
+        $viewerParticipant = $isPublicEvent && $user !== null
+            ? $this->identityParticipation->effectiveParticipant($event, $user)
+            : null;
+        $isOrganizer = $viewerParticipant?->role === EventParticipantRoleEnum::ORGANIZER;
+        $wasConfirmed = $viewerParticipant?->status === EventParticipantStatusEnum::CONFIRMED;
+        $alreadyAttending = $wasConfirmed
+            && $viewerParticipant->confirmation_version === $event?->participation_confirmation_version;
+        $hasPlaces = ! $isPublicEvent || $event->max_participants === null
+            || $this->identityParticipation->confirmedIdentityCount($event) < $event->max_participants;
+        $participationOpen = $isPublicEvent && $event->ends_at->isFuture();
+        // The handler also allows a previously confirmed participant to
+        // reconfirm after a schedule change even when all places are taken.
+        // Organizers may use the dedicated POST join endpoint (which preserves
+        // organizer privileges); the PATCH participation endpoint rejects them.
+        // A stale confirmed organizer cannot reconfirm via POST (it is a no-op).
+        $canJoin = $participationOpen && ! $alreadyAttending && (
+            $isOrganizer
+                ? (! $wasConfirmed && $hasPlaces)
+                : ($hasPlaces || $wasConfirmed)
         );
-        // A visible event is not necessarily open for joining: check its end
-        // time and remaining player spots, just like its public event page.
-        $canJoin = $isPublicEvent && $event->ends_at->isFuture()
-            && ($event->max_participants === null || $confirmedCount < $event->max_participants)
-            && ! $alreadyAttending;
+        // A full event still accepts a non-binding "Думаю" response. Never
+        // misrepresent that response as a confirmed player place.
+        $canRespondTentative = $participationOpen && ! $hasPlaces && ! $alreadyAttending && ! $isOrganizer
+            && ! $canJoin;
+        $joinState = match (true) {
+            ! $isPublicEvent => 'unavailable',
+            ! $participationOpen => 'ended',
+            $alreadyAttending => 'joined',
+            $isOrganizer && ! $canJoin => 'organizer',
+            $canJoin && $wasConfirmed => 'reconfirm',
+            $canJoin => 'open',
+            ! $hasPlaces => 'full',
+            default => 'unavailable',
+        };
 
         return [
             'timeLabel' => $visibleStart->format('H:i').'–'.$endsAt->format('H:i')
@@ -477,7 +498,14 @@ final class ShowVenueHandler
             'eventUrl' => $isPublicEvent ? route('events.show', $event->routeIdentifier()) : null,
             'eventTitle' => $isPublicEvent ? $event->title : null,
             'canJoin' => $canJoin,
-            'eventJoinUrl' => $canJoin ? route('events.participation', $event->routeIdentifier()) : null,
+            'joinState' => $joinState,
+            'canRespondTentative' => $canRespondTentative,
+            'eventJoinMethod' => $isOrganizer && $canJoin ? 'POST' : 'PATCH',
+            'eventJoinUrl' => ($canJoin || $canRespondTentative)
+                ? ($isOrganizer && $canJoin
+                    ? route('events.join', $event->routeIdentifier())
+                    : route('events.participation', $event->routeIdentifier()))
+                : null,
             'statusIcon' => $statusMeta['icon'],
             'statusLabel' => $statusMeta['label'],
             'status' => $booking->status->value,
