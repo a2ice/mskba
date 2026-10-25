@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import { venuePlacemark } from '../core/venue-map-pins.js';
 import '../../css/pages/home-venue-section.css';
 
 const section = document.querySelector('#venues');
@@ -136,14 +137,13 @@ function initInlineMap() {
                 gridSize: 64,
             });
 
-            const placemarks = mapped.map((venue) => new window.ymaps.Placemark(
+            const placemarks = mapped.map((venue) => venuePlacemark(
                 [Number(venue.latitude), Number(venue.longitude)],
                 {
                     hintContent: venue.name,
                     balloonContentHeader: escapeHtml(venue.name || 'Площадка'),
                     balloonContentBody: buildBalloonBody(venue),
                 },
-                { preset: 'islands#orangeSportIcon' },
             ));
 
             clusterer.add(placemarks);
