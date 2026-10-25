@@ -151,7 +151,9 @@
                                 <h3>{{ $day['label'] ?? $day['date'] }}</h3>
                                 <ul class="app-venue-activities__list">
                                     @foreach($day['slots'] as $slot)
-                                        @php($isPublicEvent = !empty($slot['eventUrl']))
+                                        @php
+                                            $isPublicEvent = !empty($slot['eventUrl']);
+                                        @endphp
                                         <li class="app-venue-activities__item">
                                             <button type="button" class="app-venue-activity" data-venue-slot-open
                                                 data-slot-day="{{ $day['label'] ?? $day['date'] }}"
