@@ -12,9 +12,10 @@ final readonly class FindNearbyVenuesHandler
     /**
      * @return array<int, array{id: int, name: string, latitude: float, longitude: float, distance_meters: int, preview_url: string}>
      */
-    public function handle(int $venueId, float $latitude, float $longitude, int $limit = 6): array
+    public function handle(int $venueId, float $latitude, float $longitude, int $limit = 6, ?int $radiusKm = null): array
     {
-        $limit = max(3, min($limit, 12));
+        $limit = max(1, min($limit, 50));
+        $radiusKm = $radiusKm === null ? null : max(1, min($radiusKm, 10));
 
         return $this->cache->rememberResult([
             'mode' => 'nearby-public-venues',
@@ -22,7 +23,8 @@ final readonly class FindNearbyVenuesHandler
             'latitude' => round($latitude, 7),
             'longitude' => round($longitude, 7),
             'limit' => $limit,
-        ], function () use ($venueId, $latitude, $longitude, $limit): array {
+            'radius_km' => $radiusKm,
+        ], function () use ($venueId, $latitude, $longitude, $limit, $radiusKm): array {
             return collect($this->cache->documents())
                 ->filter(static fn (array $venue): bool => (int) $venue['id'] !== $venueId
                     && ($venue['status_slug'] ?? null) === VenueStatusEnum::CONFIRMED->value
@@ -44,8 +46,10 @@ final readonly class FindNearbyVenuesHandler
                             $venueLongitude,
                         ),
                         'preview_url' => route('venues.preview', $venue['id'].'-'.$venue['alias']),
+                        'url' => route('venues.show', $venue['id'].'-'.$venue['alias']),
                     ];
                 })
+                ->filter(fn (array $venue): bool => $radiusKm === null || $venue['distance_meters'] <= $radiusKm * 1000)
                 ->sortBy('distance_meters')
                 ->take($limit)
                 ->values()
