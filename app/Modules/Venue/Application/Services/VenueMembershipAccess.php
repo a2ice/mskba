@@ -64,6 +64,25 @@ final class VenueMembershipAccess
     }
 
     /** @return array<int> */
+    public function allowedUserIdsForCourt(VenueCourt $court, VenuePermissionEnum $permission): array
+    {
+        $ids = $this->allowedUserIdsForVenue($court->venue, $permission);
+        $now = now();
+        $courtIds = ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE_COURT->value)
+            ->where('scope_id', $court->id)
+            ->whereHas('contract', function (Builder $query) use ($permission, $now): void {
+                $query->where('family', ContractFamilyEnum::MEMBERSHIP->value)
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                    ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $now))
+                    ->whereHas('permissions', fn (Builder $query) => $query->where('permission', $permission->value));
+            })->pluck('user_id')->map(fn ($id): int => (int) $id)->all();
+
+        return array_values(array_unique([...$ids, ...$courtIds]));
+    }
+
+    /** @return array<int> */
     public function allowedCourtIdsFor(User $user, VenuePermissionEnum $permission): array
     {
         return $this->baseQuery($user, $permission, ContractMembershipScopeTypeEnum::VENUE_COURT)
