@@ -88,46 +88,42 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
 
     public function test_court_scoped_pricing_manager_cannot_modify_sibling_court(): void
     {
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-START'."\n", FILE_APPEND);
+
         [$owner, $venue] = $this->ownedVenue();
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-OWNER'."\n", FILE_APPEND);
+
         $first = $venue->primaryCourt()->firstOrFail();
         $second = $venue->courts()->create([
             'name' => 'Другой зал', 'alias' => 'other', 'sort_order' => 20, 'allows_whole' => true,
         ]);
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-COURTS'."\n", FILE_APPEND);
+
         $manager = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-MANAGER'."\n", FILE_APPEND);
+
         app(ManageVenueMembershipHandler::class)->grant(
             $venue, $manager, VenueMembershipAccessLevelEnum::MANAGER, $owner,
             [VenuePermissionEnum::MANAGE_BOOKING_POLICY], $first,
         );
 
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-GRANTED'."\n", FILE_APPEND);
-        \Illuminate\Support\Facades\Event::listen(\Illuminate\Routing\Events\RouteMatched::class,
-            fn ($event) => file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-ROUTE-MATCHED:'.$event->route->getName()."\n", FILE_APPEND)
-        );
         $this->actingAs($manager);
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-AUTHED'."\n", FILE_APPEND);
+
         $this->put(
             route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $second->routeIdentifier()]),
             ['requires_payment' => 'no'],
         )->assertForbidden();
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-FOREIGN-PUT-PASSED'."\n", FILE_APPEND);
+
         $this->assertNull($second->refresh()->requires_payment);
 
         $this->actingAs($manager)->put(
             route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $first->routeIdentifier()]),
             ['requires_payment' => 'no'],
         )->assertRedirect();
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-OWN-PUT-PASSED'."\n", FILE_APPEND);
+
         $this->assertFalse($first->refresh()->requires_payment);
 
         $this->actingAs($manager)->post(
             route('account.venues.courts.prices.store', [$venue->routeIdentifier(), $second->routeIdentifier()]),
             ['day_of_week' => '3', 'starts_at' => '12:00', 'whole_price_per_step' => '700'],
         )->assertForbidden();
-        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-FOREIGN-PRICE-PASSED'."\n", FILE_APPEND);
+
         $this->assertSame(0, $second->slotPrices()->count());
     }
 

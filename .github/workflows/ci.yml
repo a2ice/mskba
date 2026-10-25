@@ -137,14 +137,6 @@ jobs:
             exit 1
           fi
 
-      - name: Isolate venue court inheritance tests
-        run: |
-          php artisan test --filter=VenueCourtInheritedPolicyAccessTest --stop-on-failure --debug || {
-            echo "Court test checkpoints:"
-            cat /tmp/roomtest.markers || true
-            exit 1
-          }
-
       - name: Run PHP tests
         run: php artisan test
 

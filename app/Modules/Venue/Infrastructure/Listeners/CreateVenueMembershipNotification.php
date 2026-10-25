@@ -47,7 +47,9 @@ final readonly class CreateVenueMembershipNotification
         $this->notifications->handle(new CreateUserNotificationDTO(
             userId: $membership->user_id,
             type: UserNotificationTypeEnum::SYSTEM,
-            title: $granted ? 'Выдана роль площадки/зала' : 'Роль площадки/зала отозвана',
+            title: $court === null
+                ? ($granted ? 'Выдана роль площадки' : 'Роль площадки отозвана')
+                : ($granted ? 'Выдана роль зала' : 'Роль зала отозвана'),
             body: $granted
                 ? "Вам выдана роль «{$role->label()}» на площадке «{$venue->name}»".($court ? " в зале «{$court->name}»." : '.')
                 : "Роль «{$role->label()}» на площадке «{$venue->name}»".($court ? " в зале «{$court->name}» отозвана." : ' отозвана.'),
