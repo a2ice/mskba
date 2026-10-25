@@ -4,6 +4,8 @@
     $details = $venueRevision?->payload['details'] ?? [];
     $accessType = $details['access_type'] ?? ($venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'));
     $bookingApproval = $details['requires_booking_approval'] ?? $venue->requires_booking_approval;
+    $bookingRequired = $details['requires_booking'] ?? $venue->requires_booking;
+    $bookingValue = $bookingRequired === null ? 'inherit' : ($bookingRequired ? 'yes' : 'no');
     $breadcrumbs = [
         ['label' => 'Аккаунт', 'url' => route('account')],
         ['label' => 'Мои площадки', 'url' => route('account.venues')],
@@ -46,6 +48,15 @@
                 </select>
                 <p class="form-hint">«Не указано» не считается бесплатным доступом и не подтверждает бронь автоматически.</p>
                 @error('access_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            </div>
+            <div class="form-group field mb-4">
+                <label class="form-label" for="venueRequiresBooking">Предварительное бронирование</label>
+                <select class="form-select" id="venueRequiresBooking" name="requires_booking">
+                    <option value="inherit" @selected(old('requires_booking', $bookingValue) === 'inherit')>Автоматически из условий оплаты и подтверждения</option>
+                    <option value="yes" @selected(old('requires_booking', $bookingValue) === 'yes')>Бронирование обязательно</option>
+                    <option value="no" @selected(old('requires_booking', $bookingValue) === 'no')>Свободный доступ</option>
+                </select>
+                <p class="form-hint">Общий параметр наследуется залами, пока для них не задано собственное значение.</p>
             </div>
             @include('theme::partials.forms.toggle', [
                 'name' => 'requires_booking_approval',
