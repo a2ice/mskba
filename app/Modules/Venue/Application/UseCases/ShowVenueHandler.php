@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -384,13 +385,13 @@ final class ShowVenueHandler
             })
             ->where('starts_at', '<', $windowEnd)
             ->where('ends_at', '>', $today)
-            ->with('event.primaryGame')
+            ->with(['event.primaryGame', 'event.participants'])
             ->orderBy('starts_at')
             ->get();
 
         if ($bookings->isNotEmpty()) {
             $eventsByBookingId = Event::query()
-                ->with('primaryGame')
+                ->with(['primaryGame', 'participants'])
                 ->whereIn('booking_id', $bookings->pluck('id'))
                 ->get()
                 ->keyBy('booking_id');
@@ -432,7 +433,7 @@ final class ShowVenueHandler
     }
 
     /**
-     * @return array{timeLabel: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string, status: string}
+     * @return array<string, mixed>
      */
     private function occupiedSlotData(VenueBooking $booking, string $timezone, ?User $user = null, ?CarbonImmutable $dayStart = null): array
     {
@@ -448,6 +449,24 @@ final class ShowVenueHandler
         $isPublicEvent = $event !== null
             && $event->status === EventStatusEnum::PUBLISHED
             && $event->visibility === EventVisibilityEnum::PUBLIC;
+        $confirmedCount = $isPublicEvent
+            ? $event->participants->filter(fn ($participant): bool =>
+                $participant->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version
+                && $participant->hasPlayerRole())->count()
+            : 0;
+        $viewerIdentityIds = $user?->canonical()->identityIds() ?? [];
+        $alreadyAttending = $isPublicEvent && $event->participants->contains(
+            fn ($participant): bool =>
+                in_array((int) $participant->user_id, $viewerIdentityIds, true)
+                && $participant->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version
+        );
+        // A visible event is not necessarily open for joining: check its end
+        // time and remaining player spots, just like its public event page.
+        $canJoin = $isPublicEvent && $event->ends_at->isFuture()
+            && ($event->max_participants === null || $confirmedCount < $event->max_participants)
+            && ! $alreadyAttending;
 
         return [
             'timeLabel' => $visibleStart->format('H:i').'–'.$endsAt->format('H:i')
@@ -456,6 +475,9 @@ final class ShowVenueHandler
             // while type/format is the useful compact descriptor for the slot.
             'eventTypeLabel' => $eventTypeLabel,
             'eventUrl' => $isPublicEvent ? route('events.show', $event->routeIdentifier()) : null,
+            'eventTitle' => $isPublicEvent ? $event->title : null,
+            'canJoin' => $canJoin,
+            'eventJoinUrl' => $canJoin ? route('events.participation', $event->routeIdentifier()) : null,
             'statusIcon' => $statusMeta['icon'],
             'statusLabel' => $statusMeta['label'],
             'status' => $booking->status->value,

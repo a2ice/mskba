@@ -167,12 +167,6 @@
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
-                <button type="button" class="button primary" data-venue-interest-action
-                    data-interest-id="{{ $viewerVenueInterest?->id }}"
-                    data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
-                    data-play-intent-open @disabled(!$canStartInterest)>
-                    {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
-                </button>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Часы работы</h2></header>
@@ -196,11 +190,18 @@
                                         <ul class="app-venue-schedule__slot-list">
                                             @foreach($day['slots'] as $slot)
                                                 <li>
-                                                    @if(!empty($slot['eventUrl']))
-                                                        <a href="{{ $slot['eventUrl'] }}" aria-label="Открыть мероприятие на {{ $slot['timeLabel'] ?? '' }}">{{ $slot['timeLabel'] ?? '' }}</a>
-                                                    @else
-                                                        <span>{{ $slot['timeLabel'] ?? '' }}</span>
-                                                    @endif
+                                                    <button type="button" class="app-venue-schedule__slot-trigger"
+                                                        data-venue-slot-open
+                                                        data-slot-day="{{ $day['label'] ?? $day['date'] }}"
+                                                        data-slot-time="{{ $slot['timeLabel'] ?? '' }}"
+                                                        data-event-type="{{ !empty($slot['eventUrl']) ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}"
+                                                        data-event-title="{{ $slot['eventTitle'] ?? '' }}"
+                                                        data-event-url="{{ $slot['eventUrl'] ?? '' }}"
+                                                        data-event-join-url="{{ $slot['eventJoinUrl'] ?? '' }}"
+                                                        data-can-join="{{ !empty($slot['canJoin']) ? 'true' : 'false' }}"
+                                                        aria-label="Подробнее о слоте {{ $day['label'] ?? $day['date'] }}, {{ $slot['timeLabel'] ?? '' }}">
+                                                        {{ $slot['timeLabel'] ?? '' }}
+                                                    </button>
                                                 </li>
                                             @endforeach
                                         </ul>
@@ -288,10 +289,30 @@
             <p class="muted">Пока нет игроков, разрешивших показывать свой профиль.</p>
         @endforelse
     </div>
-    <p class="caption">Всего интересов: {{ $activeVenueInterestCount }}. Имена и игровые сведения видны только для интересов с отдельным согласием на публикацию.</p>
     <button type="button" class="button primary" data-venue-interest-action data-interest-id="{{ $viewerVenueInterest?->id }}"
         data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
         data-play-intent-open>{{ $viewerHasVenueInterest ? 'Не интересно' : 'Тоже хочу здесь играть' }}</button>
+</dialog>
+<dialog class="app-venue-overlay app-venue-overlay--slot" data-venue-slot-dialog aria-labelledby="app-venue-slot-title">
+    <div class="app-venue-overlay__header">
+        <h2 id="app-venue-slot-title" data-venue-slot-title>Занятый слот</h2>
+        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
+    </div>
+    <p class="app-venue-slot-dialog__time" data-venue-slot-time></p>
+    <p class="muted" data-venue-slot-message></p>
+    <div class="app-venue-overlay__actions">
+        <a class="button secondary" data-venue-slot-event-link hidden>О мероприятии</a>
+        @auth
+            <form method="POST" data-venue-slot-join-form hidden>
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="confirmed">
+                <button class="button primary" type="submit">Присоединиться</button>
+            </form>
+        @else
+            <a class="button primary" data-venue-slot-guest-link hidden>Присоединиться</a>
+        @endauth
+    </div>
 </dialog>
 <dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
     <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
