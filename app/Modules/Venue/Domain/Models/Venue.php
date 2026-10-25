@@ -95,6 +95,13 @@ class Venue extends Model
         return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
     }
 
+    public function bookingPolicyCurrency(): string
+    {
+        return \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+            ->where('venue_id', $this->id)->where('active_marker', true)
+            ->value('currency') ?: 'RUB';
+    }
+
     public function hasFreeAccess(): bool
     {
         return $this->requires_payment === false && ! $this->requires_booking_approval;
