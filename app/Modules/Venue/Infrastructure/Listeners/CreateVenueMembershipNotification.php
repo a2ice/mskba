@@ -11,6 +11,8 @@ use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
 use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
 
@@ -32,7 +34,10 @@ final readonly class CreateVenueMembershipNotification
             return;
         }
 
-        $venue = Venue::query()->find($membership->scope_id);
+        $court = $membership->scope_type === ContractMembershipScopeTypeEnum::VENUE_COURT
+            ? VenueCourt::query()->with('venue')->find($membership->scope_id) : null;
+        $venue = $court?->venue ?? ($membership->scope_type === ContractMembershipScopeTypeEnum::VENUE
+            ? Venue::query()->find($membership->scope_id) : null);
         $role = VenueMembershipAccessLevelEnum::tryFrom($membership->access_level);
         if ($venue === null || $role === null) {
             return;
@@ -42,17 +47,20 @@ final readonly class CreateVenueMembershipNotification
         $this->notifications->handle(new CreateUserNotificationDTO(
             userId: $membership->user_id,
             type: UserNotificationTypeEnum::SYSTEM,
-            title: $granted ? 'Выдана роль площадки' : 'Роль площадки отозвана',
+            title: $granted ? 'Выдана роль площадки/зала' : 'Роль площадки/зала отозвана',
             body: $granted
-                ? "Вам выдана роль «{$role->label()}» на площадке «{$venue->name}»."
-                : "Роль «{$role->label()}» на площадке «{$venue->name}» отозвана.",
-            actionUrl: route('venues.show', $venue->routeIdentifier(), false),
+                ? "Вам выдана роль «{$role->label()}» на площадке «{$venue->name}»".($court ? " в зале «{$court->name}»." : '.')
+                : "Роль «{$role->label()}» на площадке «{$venue->name}»".($court ? " в зале «{$court->name}» отозвана." : ' отозвана.'),
+            actionUrl: $court === null
+                ? route('venues.show', $venue->routeIdentifier(), false)
+                : route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()], false),
             payload: [
                 'source' => ($granted
                     ? UserNotificationSourceEnum::VENUE_MEMBERSHIP_GRANTED
                     : UserNotificationSourceEnum::VENUE_MEMBERSHIP_REVOKED)->value,
                 'membership_id' => $membership->id,
                 'venue_id' => $venue->id,
+                'venue_court_id' => $court?->id,
             ],
         ));
     }
