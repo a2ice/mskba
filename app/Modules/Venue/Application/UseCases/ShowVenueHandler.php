@@ -346,6 +346,7 @@ final class ShowVenueHandler
             'isPrimary' => (bool) $court->is_primary,
             'supportsHalves' => (bool) $court->supports_halves,
             'hoopsCount' => (int) $hoopsCount,
+            'environment' => $court->environment?->value,
             'surfaceType' => $court->surface_type?->value,
             'surfaceLabel' => $court->surface_type?->label(),
             'allowsWhole' => (bool) $court->allows_whole,
