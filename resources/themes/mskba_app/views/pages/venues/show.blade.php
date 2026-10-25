@@ -161,7 +161,7 @@
                                 </span>
                             @endforeach
                         </div>
-                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $activeVenueInterestCount === 1 ? 'интерес' : 'интересов' }}</strong>
+                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $activeVenueInterestCount % 100 >= 11 && $activeVenueInterestCount % 100 <= 14 ? 'интересов' : (match ($activeVenueInterestCount % 10) { 1 => 'интерес', 2, 3, 4 => 'интереса', default => 'интересов' }) }}</strong>
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
