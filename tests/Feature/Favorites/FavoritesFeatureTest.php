@@ -28,11 +28,9 @@ final class FavoritesFeatureTest extends TestCase
 
     public function test_anonymous_guest_can_add_trash_and_restore_a_venue_with_one_cookie(): void
     {
+        $this->withCredentials();
         $venue = $this->venue();
         $token = str_repeat('A', 64);
-        // Raw injected test cookies are not browser-encrypted; the separate
-        // Set-Cookie test still exercises Laravel's real encryption middleware.
-        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->toggle('venue', $venue->id)
             ->assertOk()->assertJsonPath('state', 'active');
@@ -48,6 +46,7 @@ final class FavoritesFeatureTest extends TestCase
 
     public function test_first_anonymous_save_issues_a_securely_scoped_cookie(): void
     {
+        $this->withCredentials();
         $venue = $this->venue();
         $result = $this->toggle('venue', $venue->id)
             ->assertOk()->assertJsonPath('state', 'active')
@@ -57,21 +56,19 @@ final class FavoritesFeatureTest extends TestCase
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('lax', strtolower($cookie->getSameSite()));
 
-        // Repeat the request with the actual encrypted Set-Cookie value that a
-        // browser receives. This covers the real middleware round-trip, not
-        // only raw synthetic tokens injected by a test.
-        $this->withCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
+        // The encrypted response cookie is already encrypted, so send it
+        // unchanged as a browser would. Laravel's JSON test requests require
+        // withCredentials() to include the cookie at all.
+        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
             ->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
             ->assertOk()->assertJsonPath('state', 'active');
     }
 
     public function test_guest_favorite_is_transferred_automatically_on_first_authenticated_request(): void
     {
+        $this->withCredentials();
         $venue = $this->venue();
         $token = str_repeat('B', 64);
-        // Raw injected test cookies are not browser-encrypted; the separate
-        // Set-Cookie test still exercises Laravel's real encryption middleware.
-        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $response = $this->toggle('venue', $venue->id)->assertOk();
         $user = User::factory()->create();
@@ -206,6 +203,7 @@ final class FavoritesFeatureTest extends TestCase
 
     public function test_guest_active_item_restores_an_account_item_in_the_trash(): void
     {
+        $this->withCredentials();
         $venue = $this->venue();
         $user = User::factory()->create();
         Favorite::query()->create([
@@ -213,9 +211,6 @@ final class FavoritesFeatureTest extends TestCase
             'entity_id' => $venue->id, 'trashed_at' => now(),
         ]);
         $token = str_repeat('C', 64);
-        // Raw injected test cookies are not browser-encrypted; the separate
-        // Set-Cookie test still exercises Laravel's real encryption middleware.
-        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $guest = $this->toggle('venue', $venue->id)->assertOk();
 
