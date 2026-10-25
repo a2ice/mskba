@@ -29,6 +29,8 @@ import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
+import './account-favorites.js';
+import './venue-favorites.js';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
 if (authRoot) {
