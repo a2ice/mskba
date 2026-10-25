@@ -271,6 +271,9 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
             joinForm.hidden = !canJoin;
             if (canJoin) joinForm.action = joinUrl;
             else joinForm.removeAttribute('action');
+            const methodField = joinForm.querySelector('[data-venue-slot-join-method]');
+            if (methodField) methodField.value = button.dataset.eventJoinMethod === 'POST'
+                ? 'POST' : 'PATCH';
             const joinLabel = joinForm.querySelector('[data-venue-slot-join-label]');
             if (joinLabel) joinLabel.textContent = joinState === 'reconfirm'
                 ? 'Подтвердить участие' : 'Присоединиться';
