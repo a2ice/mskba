@@ -22,7 +22,8 @@ final class EffectiveVenueHours
         $parentException = $parent?->exceptions->first(
             fn ($item): bool => $item->date->toDateString() === $date->toDateString()
         );
-        $parentHasHours = $parent !== null && ($parent->intervals->isNotEmpty() || $parent->exceptions->isNotEmpty());
+        $parentHasHours = $parent?->intervals->isNotEmpty() ?? false;
+        $parentControlsDate = $parentHasHours || $parentException !== null;
         if ($parentException?->is_closed) {
             return collect();
         }
@@ -31,7 +32,7 @@ final class EffectiveVenueHours
             : $parent?->intervals->where('day_of_week', $date->dayOfWeekIso)->values();
 
         // A day when the complex itself is closed cannot be reopened by a court.
-        if ($parentHasHours && $parentIntervals->isEmpty()) {
+        if ($parentControlsDate && $parentIntervals->isEmpty()) {
             return collect();
         }
 
@@ -39,7 +40,7 @@ final class EffectiveVenueHours
             ? $court->schedule : $court->schedule()->first());
 
         if ($courtSchedule === null) {
-            return $parentHasHours ? $parentIntervals : null;
+            return $parentControlsDate ? $parentIntervals : null;
         }
 
         $dateString = $date->toDateString();
