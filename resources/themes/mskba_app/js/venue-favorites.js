@@ -175,6 +175,19 @@
             setTimeout(()=>alert.remove(),5000);
         }finally{pending.delete(id);paint(id);}
     }
+    // Play intent dialog updates favorites through the same backend endpoints;
+    // synchronize any visible catalog/card hearts without a reload.
+    window.addEventListener('mskba:venue-favorite:updated',event=>{
+        const id=Number(event.detail?.venueId);
+        if(!Number.isInteger(id)||id<=0)return;
+        pending.delete(id);
+        known.set(id,{
+            ...known.get(id),
+            state:event.detail.state,
+            count:Number(event.detail.count??known.get(id)?.count??0),
+        });
+        paint(id);
+    });
     document.addEventListener('click',e=>{
         const b=e.target.closest?.('[data-favorite-venue]');
         if(!b)return;
