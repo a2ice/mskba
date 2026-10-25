@@ -684,7 +684,7 @@ final class ShowVenueHandler
             return [];
         }
 
-        $today = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
+        $today = CarbonImmutable::now($schedule?->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
         $days = [];
 
         for ($offset = 0; $offset < 14; $offset++) {
@@ -725,7 +725,7 @@ final class ShowVenueHandler
             ];
         }
 
-        $now = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'));
+        $now = CarbonImmutable::now($schedule?->timezone ?: config('app.timezone', 'UTC'));
         $todayIntervals = $this->hours->intervals($venue, $court, $now) ?? collect();
 
         if ($todayIntervals->isEmpty()) {
