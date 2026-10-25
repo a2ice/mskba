@@ -104,7 +104,12 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         );
 
         file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-GRANTED'."\n", FILE_APPEND);
-        $this->actingAs($manager)->put(
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Routing\Events\RouteMatched::class,
+            fn ($event) => file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-ROUTE-MATCHED:'.$event->route->getName()."\n", FILE_APPEND)
+        );
+        $this->actingAs($manager);
+        file_put_contents('/tmp/roomtest.markers', 'ROOMTEST-AUTHED'."\n", FILE_APPEND);
+        $this->put(
             route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $second->routeIdentifier()]),
             ['requires_payment' => 'no'],
         )->assertForbidden();
