@@ -64,12 +64,10 @@
         ? 'уличная и крытая площадки'
         : ($environments->contains('indoor') ? 'крытая площадка'
             : ($environments->contains('outdoor') ? 'уличная площадка' : null));
-    $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
-    $shownDays = $venue->isFreeAccess
-        ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
-            count($day['slots'] ?? []) > 0
-            || count($hoursByDate->get($day['date'])['intervals'] ?? []) > 0)->values()->all()
-        : $venue->occupancyDays;
+    $scheduledDays = collect($venue->about->scheduleDays)->take(9);
+    $activityDays = collect($venue->occupancyDays)
+        ->filter(fn (array $day): bool => count($day['slots'] ?? []) > 0)
+        ->values();
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
@@ -145,8 +143,53 @@
         <div class="app-venue-page__sections">
             <section class="panel app-venue-block" id="app-venue-activities">
                 <header class="app-venue-block__header"><h2>Игры и мероприятия</h2></header>
-                <p class="muted">Проверяй расписание игр и присоединяйся к мероприятиям с открытым набором участников.</p>
-                <a href="{{ route('events.index') }}" class="button secondary">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
+                <p class="muted">Запланированные события и занятые интервалы на ближайшие девять дней.</p>
+                @if($activityDays->isNotEmpty())
+                    <div class="app-venue-activities__days">
+                        @foreach($activityDays as $day)
+                            <div class="app-venue-activities__day">
+                                <h3>{{ $day['label'] ?? $day['date'] }}</h3>
+                                <ul class="app-venue-activities__list">
+                                    @foreach($day['slots'] as $slot)
+                                        @php($isPublicEvent = !empty($slot['eventUrl']))
+                                        <li class="app-venue-activities__item">
+                                            <button type="button" class="app-venue-activity" data-venue-slot-open
+                                                data-slot-day="{{ $day['label'] ?? $day['date'] }}"
+                                                data-slot-time="{{ $slot['timeLabel'] ?? '' }}"
+                                                data-event-type="{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}"
+                                                data-event-title="{{ $slot['eventTitle'] ?? '' }}"
+                                                data-event-url="{{ $slot['eventUrl'] ?? '' }}"
+                                                data-event-join-url="{{ $slot['eventJoinUrl'] ?? '' }}"
+                                                data-event-join-method="{{ $slot['eventJoinMethod'] ?? 'PATCH' }}"
+                                                data-can-join="{{ !empty($slot['canJoin']) ? 'true' : 'false' }}"
+                                                data-join-state="{{ $slot['joinState'] ?? 'unavailable' }}"
+                                                data-can-respond-tentative="{{ !empty($slot['canRespondTentative']) ? 'true' : 'false' }}"
+                                                aria-label="Подробнее: {{ $isPublicEvent ? ($slot['eventTitle'] ?: $slot['eventTypeLabel']) : 'Занятое время' }}, {{ $day['label'] ?? $day['date'] }}, {{ $slot['timeLabel'] ?? '' }}">
+                                                <span class="app-venue-activity__meta">
+                                                    <span>{{ $slot['timeLabel'] ?? '' }}</span>
+                                                    <span class="app-venue-activity__type">{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}</span>
+                                                </span>
+                                                <strong class="app-venue-activity__title">{{ $isPublicEvent ? ($slot['eventTitle'] ?: 'Мероприятие') : 'Время занято' }}</strong>
+                                                @if($isPublicEvent && !empty($slot['eventDescription']))
+                                                    <span class="app-venue-activity__description">{{ $slot['eventDescription'] }}</span>
+                                                @endif
+                                                @if($isPublicEvent)
+                                                    <span class="app-venue-activity__counts">
+                                                        <span>Подтвердили: <b>{{ $slot['eventConfirmedCount'] ?? 0 }}</b></span>
+                                                        <span>Думают: <b>{{ $slot['eventTentativeCount'] ?? 0 }}</b></span>
+                                                    </span>
+                                                @endif
+                                            </button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="muted">Запланированных занятых слотов на ближайшие девять дней пока нет.</p>
+                @endif
+                <a href="{{ route('events.index') }}" class="button secondary app-venue-activities__all">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
             <section class="panel app-venue-block" id="app-venue-interest">
                 <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
@@ -169,59 +212,32 @@
                 </div>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
-                <header class="app-venue-block__header"><h2>Часы работы</h2></header>
-                @if(count($shownDays) > 0)
+                <header class="app-venue-block__header"><h2>Расписание</h2></header>
+                <p class="muted">Рабочие часы площадки и исключения из обычного графика.</p>
+                @if($scheduledDays->isNotEmpty())
                     <div class="app-venue-schedule">
-                        @foreach($shownDays as $day)
-                            @php
-                                $publishedHours = $hoursByDate->get($day['date'])['intervals'] ?? [];
-                            @endphp
+                        @foreach($scheduledDays as $day)
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
-                                @if(count($publishedHours))
+                                @if(count($day['intervals'] ?? []))
                                     <p class="app-venue-schedule__hours" aria-label="Часы работы">
                                         <svg aria-hidden="true"><use href="#clock"/></svg>
-                                        <span>@foreach($publishedHours as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
+                                        <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
                                     </p>
+                                @else
+                                    <p class="app-venue-schedule__closed">Не работает</p>
                                 @endif
-                                @if(count($day['slots'] ?? []) > 0)
-                                    <div class="app-venue-schedule__slots">
-                                        <span class="app-venue-schedule__slots-title">Слоты</span>
-                                        <ul class="app-venue-schedule__slot-list">
-                                            @foreach($day['slots'] as $slot)
-                                                <li>
-                                                    <button type="button" class="app-venue-schedule__slot-trigger"
-                                                        data-venue-slot-open
-                                                        data-slot-day="{{ $day['label'] ?? $day['date'] }}"
-                                                        data-slot-time="{{ $slot['timeLabel'] ?? '' }}"
-                                                        data-event-type="{{ !empty($slot['eventUrl']) ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}"
-                                                        data-event-title="{{ $slot['eventTitle'] ?? '' }}"
-                                                        data-event-url="{{ $slot['eventUrl'] ?? '' }}"
-                                                        data-event-join-url="{{ $slot['eventJoinUrl'] ?? '' }}"
-                                                        data-event-join-method="{{ $slot['eventJoinMethod'] ?? 'PATCH' }}"
-                                                        data-can-join="{{ !empty($slot['canJoin']) ? 'true' : 'false' }}"
-                                                        data-join-state="{{ $slot['joinState'] ?? 'unavailable' }}"
-                                                        data-can-respond-tentative="{{ !empty($slot['canRespondTentative']) ? 'true' : 'false' }}"
-                                                        aria-label="Подробнее о слоте {{ $day['label'] ?? $day['date'] }}, {{ $slot['timeLabel'] ?? '' }}">
-                                                        {{ $slot['timeLabel'] ?? '' }}
-                                                    </button>
-                                                </li>
-                                            @endforeach
-                                        </ul>
-                                    </div>
-                                @elseif(! $venue->isFreeAccess)
-                                    <p class="muted">Нет опубликованных занятых слотов. Это не подтверждение свободной брони.</p>
+                                @if(!empty($day['isException']))
+                                    <span class="app-venue-schedule__exception">{{ !empty($day['isClosed']) ? 'Исключение: выходной' : 'Исключение: изменённые часы' }}</span>
                                 @endif
                             </div>
                         @endforeach
                     </div>
-                @elseif($venue->isFreeAccess)
-                    <p class="muted">Опубликованных мероприятий и часов работы пока нет.</p>
                 @else
-                    <p class="muted">Подтверждённых данных о свободных интервалах пока нет. Уточни доступность перед бронированием.</p>
+                    <p class="muted">Расписание работы площадки ещё не установлено.</p>
                 @endif
                 @unless($venue->isFreeAccess)
-                    <p class="caption">Наличие свободного времени и стоимость уточняются при оформлении бронирования.</p>
+                    <p class="caption">Часы работы не гарантируют доступность бронирования. Уточни свободное время и стоимость при оформлении.</p>
                 @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
