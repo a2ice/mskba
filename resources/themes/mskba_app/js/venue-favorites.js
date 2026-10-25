@@ -36,6 +36,12 @@
     const getName = (state) => state==='active'?'Убрать из избранного':state==='trashed'?'Восстановить из корзины':'Добавить в избранное';
     function paint(id) {
         const state = known.get(id)?.state || 'none';
+        const count = known.get(id)?.count;
+        if (count !== undefined) {
+            document.querySelectorAll('[data-venue-favorite-count]').forEach(node => {
+                if (Number(node.dataset.venueFavoriteCountId) === id) node.textContent = String(count);
+            });
+        }
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             if(Number(btn.dataset.favoriteVenue)!==id) return;
             btn.classList.add('mskba-favorite-heart');
@@ -102,7 +108,8 @@
             ids.forEach(id=>url.searchParams.append('ids[]',String(id)));
             const data=await request(url);
             for(const id of ids){
-                known.set(id,data.data?.[id]||{state:'none',notify_upcoming_events:false});
+                known.set(id,{...(data.data?.[id]||{state:'none',notify_upcoming_events:false}),
+                    count:Number(data.counts?.[id]||0)});
                 pending.delete(id);paint(id);
             }
         }catch{
@@ -137,7 +144,7 @@
                         notify_upcoming_events:chosen,
                     });
                     const targetId=Number(dialog.dataset.venueId);
-                    known.set(targetId,{state:'active',notify_upcoming_events:response.notify_upcoming_events});
+                    known.set(targetId,{...known.get(targetId),state:'active',notify_upcoming_events:response.notify_upcoming_events});
                     paint(targetId);dialog.close();
                 }catch(e){error.textContent=e.message;error.hidden=false;}
                 finally{button.disabled=false;}
@@ -158,6 +165,7 @@
             known.set(id,{
                 state:result.state,
                 notify_upcoming_events:Boolean(result.notify_upcoming_events),
+                count:Number(result.count ?? known.get(id)?.count ?? 0),
             });
             if(result.state==='active')successDialog(id);
         }catch(e) {
