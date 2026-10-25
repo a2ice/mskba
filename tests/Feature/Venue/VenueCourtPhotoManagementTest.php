@@ -38,7 +38,7 @@ final class VenueCourtPhotoManagementTest extends TestCase
         }
 
         $photos = $court->media()->where('collection', 'gallery')->latest('id')->get();
-        $this->assertCount(3, $photos);
+        $this->assertCount(4, $photos);
         $this->assertSame(1, $photos->where('is_featured', true)->count());
 
         $featured = $photos->firstWhere('is_featured', true);
