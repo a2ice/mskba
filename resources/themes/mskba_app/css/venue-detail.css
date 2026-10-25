@@ -102,9 +102,25 @@
 .app-venue-page__aside{top:var(--venue-sidebar-sticky-top,calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px))}
 .app-venue-page__anchors.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
 
-.app-venue-schedule__slot-trigger{display:inline-block;max-width:100%;padding:0;border:0;background:transparent;color:var(--accent);font:inherit;font-weight:650;text-align:left;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;cursor:pointer}
-.app-venue-schedule__slot-trigger:hover{color:var(--accent-hover,var(--accent))}
-.app-venue-schedule__slot-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 .app-venue-slot-dialog__time{font-size:14px;font-weight:700;margin-bottom:12px}
 .app-venue-overlay--slot .app-venue-overlay__actions form{margin:0;width:auto;flex:0 0 auto;gap:0}
 .app-venue-overlay [hidden]{display:none!important}
+
+/* Venue activity cards show booked public events without mixing them into working hours. */
+.app-venue-activities__days{display:grid;gap:18px;margin:18px 0}
+.app-venue-activities__day>h3{margin:0 0 10px;font-size:14px;font-weight:750;color:var(--muted)}
+.app-venue-activities__list{display:grid;gap:10px;list-style:none;margin:0;padding:0}
+.app-venue-activities__item{margin:0}
+.app-venue-activity{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;padding:16px 18px;text-align:left;background:var(--surface,#fff);color:var(--text);border:1px solid var(--line);border-radius:14px;cursor:pointer;transition:border-color .15s,background-color .15s}
+.app-venue-activity:hover{border-color:var(--accent);background:var(--surface-raised,#f5f6f8)}
+.app-venue-activity:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-venue-activity__meta{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--muted)}
+.app-venue-activity__type{display:inline-flex;padding:4px 8px;border-radius:8px;background:var(--surface-raised,#f1f3f6);color:var(--text)}
+.app-venue-activity__title{display:block;font-size:16px;line-height:1.35;font-weight:750;overflow-wrap:anywhere}
+.app-venue-activity__description{display:block;color:var(--muted);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.app-venue-activity__counts{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:12px}
+.app-venue-activity__counts b{color:var(--text);font-variant-numeric:tabular-nums}
+.app-venue-activities__all{margin-top:4px}
+.app-venue-schedule__closed{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.app-venue-schedule__exception{display:inline-block;margin-top:6px;font-size:11px;line-height:1.35;font-weight:650;color:var(--accent);overflow-wrap:anywhere}
+@media(max-width:640px){.app-venue-activity{padding:13px 14px}.app-venue-activity__counts{gap:6px 12px}}
