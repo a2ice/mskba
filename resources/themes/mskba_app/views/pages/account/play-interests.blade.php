@@ -23,6 +23,8 @@
                 'venueLongitude' => null,
                 'authenticated' => true,
                 'endpoints' => [
+                    'favoritesStatus' => route('favorites.status'),
+                    'favoritesToggle' => route('favorites.toggle'),
                     'store' => route('play-intents.store'),
                     'base' => url('/account/play-intents'),
                     'amenities' => route('play-intents.amenities'),
