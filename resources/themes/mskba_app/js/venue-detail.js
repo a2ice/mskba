@@ -103,10 +103,11 @@ if (sectionNav) {
 
 const mapDialog = document.querySelector('[data-venue-map-dialog]');
 const playersDialog = document.querySelector('[data-venue-interests-dialog]');
+const slotDialog = document.querySelector('[data-venue-slot-dialog]');
 const confirmDialog = document.querySelector('[data-venue-interest-confirm]');
 let cancelUrl = '';
 let submitButton = null;
-for (const dialog of [mapDialog, playersDialog, confirmDialog]) {
+for (const dialog of [mapDialog, playersDialog, slotDialog, confirmDialog]) {
     if (!dialog) continue;
     dialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', () => dialog.close()));
@@ -226,6 +227,77 @@ mapDialog?.addEventListener('close', () => {
     pendingNearby?.abort();
 });
 document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
+
+// Occupied time is always clickable, but private bookings reveal no event
+// details. Joining is offered only when the server marks a public event open.
+document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
+    button.addEventListener('click', () => {
+        if (!slotDialog) return;
+        const eventUrl = button.dataset.eventUrl || '';
+        const joinUrl = button.dataset.eventJoinUrl || '';
+        const canJoin = button.dataset.canJoin === 'true' && !!eventUrl && !!joinUrl;
+        const eventLink = slotDialog.querySelector('[data-venue-slot-event-link]');
+        const joinForm = slotDialog.querySelector('[data-venue-slot-join-form]');
+        const guestLink = slotDialog.querySelector('[data-venue-slot-guest-link]');
+        const hasEvent = !!eventUrl;
+
+        slotDialog.querySelector('[data-venue-slot-title]').textContent =
+            hasEvent ? (button.dataset.eventTitle || button.dataset.eventType || 'Мероприятие') : 'Занятое время';
+        slotDialog.querySelector('[data-venue-slot-time]').textContent =
+            [button.dataset.slotDay, button.dataset.slotTime].filter(Boolean).join(' · ');
+        slotDialog.querySelector('[data-venue-slot-message]').textContent =
+            !hasEvent ? 'Детали этой брони не опубликованы. Присоединение недоступно.'
+                : !canJoin ? 'Присоединиться к этому мероприятию сейчас нельзя.'
+                    : joinForm ? 'Набор участников открыт.' :
+                        'Набор открыт. Перейди к мероприятию, чтобы войти и присоединиться.';
+
+        if (eventLink) {
+            eventLink.hidden = !hasEvent;
+            if (hasEvent) eventLink.href = eventUrl;
+            else eventLink.removeAttribute('href');
+        }
+        if (joinForm) {
+            joinForm.hidden = !canJoin;
+            if (canJoin) joinForm.action = joinUrl;
+            else joinForm.removeAttribute('action');
+        }
+        if (guestLink) {
+            guestLink.hidden = !canJoin;
+            if (canJoin) guestLink.href = eventUrl;
+            else guestLink.removeAttribute('href');
+        }
+        slotDialog.showModal();
+    });
+});
+
+// Follow the actual sticky navigation rather than a hard-coded height:
+// navigation can wrap and theme/header dimensions can change independently.
+const venueSidebar = document.querySelector('.app-venue-page__aside');
+const venueAnchors = document.querySelector('.app-venue-page__anchors');
+if (venueSidebar && venueAnchors) {
+    let pending = false;
+    const updateSidebarPosition = () => {
+        pending = false;
+        if (!venueSidebar.getClientRects().length) return;
+        const navBottom = venueAnchors.getBoundingClientRect().bottom;
+        const contextBottom = document.querySelector('.app-context-bar')?.getBoundingClientRect().bottom || 0;
+        const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
+        const top = Math.ceil(Math.max(navBottom, contextBottom, headerBottom, 0) + 15);
+        venueSidebar.style.setProperty('--venue-sidebar-sticky-top', top + 'px');
+        venueAnchors.style.setProperty('--venue-anchor-height', venueAnchors.offsetHeight + 'px');
+        venueSidebar.classList.toggle('is-stuck',
+            Math.abs(venueSidebar.getBoundingClientRect().top - top) <= 2);
+    };
+    const scheduleSidebarUpdate = () => {
+        if (pending) return;
+        pending = true;
+        window.requestAnimationFrame(updateSidebarPosition);
+    };
+    window.addEventListener('scroll', scheduleSidebarUpdate, { passive: true });
+    window.addEventListener('resize', scheduleSidebarUpdate);
+    if ('ResizeObserver' in window) new ResizeObserver(scheduleSidebarUpdate).observe(venueAnchors);
+    scheduleSidebarUpdate();
+}
 
 // Capture clicks before the Vue dialog's delegated handler. A known active
 // interest needs confirmation, not creation of a duplicate.
