@@ -1,0 +1,20 @@
+/* Canonical MSKBA single-venue marker. Same DOM as the homepage Page Builder map.
+ * Shared by both themes; clusters deliberately keep native Yandex styling. */
+.mskba-venues-map__pin{
+  width:38px;height:38px;display:grid;place-items:center;
+  border-radius:50% 50% 50% 5px;transform:rotate(-45deg);
+  border:2px solid #fff;background:#ff7914;
+  box-shadow:0 3px 11px rgba(12,32,49,.25);
+  transition:box-shadow .18s,background .18s;
+}
+.mskba-venues-map__pin span{
+  display:block;width:29px;height:29px;transform:rotate(45deg);
+  background:url('/images/logo-mark-100.png') center / contain no-repeat;
+}
+.mskba-venues-map__pin.is-active{
+  background:#ff5500;
+  box-shadow:0 0 0 6px rgba(255,100,0,.21),0 4px 12px rgba(12,32,49,.35);
+}
+@media(prefers-reduced-motion:reduce){
+  .mskba-venues-map__pin{transition:none}
+}

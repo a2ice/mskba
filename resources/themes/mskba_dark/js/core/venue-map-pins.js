@@ -1,18 +1,21 @@
-/* One brand marker for individual venue locations across all maps.
- * Cluster icons are intentionally independent of this helper. */
-import venueLogo from '../../../mskba_app/assets/images/logo-mark-100.png';
-const SIZE=52;
-export function venuePinOptions(){
-    const half=SIZE/2;
+/* Canonical individual-venue placemark used throughout MSKBA.
+ * Reuses the homepage Page Builder's .mskba-venues-map__pin DOM and CSS.
+ * Do NOT apply this to clusters: their separate Yandex layouts show counts. */
+let sharedLayout;
+export function venuePinOptions() {
+    sharedLayout ||= window.ymaps.templateLayoutFactory.createClass(
+        '<div class="mskba-venues-map__pin"><span></span></div>',
+    );
     return {
-        iconLayout:'default#image',
-        iconImageHref:venueLogo,
-        iconImageSize:[SIZE,SIZE],
-        iconImageOffset:[-half,-half],
-        iconShape:{type:'Rectangle',coordinates:[[-half,-half],[half,half]]},
-        cursor:'pointer',
+        iconLayout: sharedLayout,
+        iconOffset: [-20, -20],
+        // The CSS-rotated 38px pin occupies ~54px. Include its entire visual,
+        // especially the outer edge of the MSKBA logo, in the hit target.
+        iconShape: { type: 'Rectangle', coordinates: [[-28, -28], [28, 30]] },
+        hideIconOnBalloonOpen: false,
+        cursor: 'pointer',
     };
 }
-export function venuePlacemark(coordinates,properties={}){
-    return new window.ymaps.Placemark(coordinates,properties,venuePinOptions());
+export function venuePlacemark(coordinates, properties = {}) {
+    return new window.ymaps.Placemark(coordinates, properties, venuePinOptions());
 }

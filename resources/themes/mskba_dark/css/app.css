@@ -10,6 +10,7 @@
 @import './predictive-search';
 @import './address-suggest';
 @import './venue-selector';
+@import './venue-pin.css';
 @import './form-controls';
 @import './creation-guide';
 @import './catalog-card';

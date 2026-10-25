@@ -16,9 +16,6 @@
 .app-venue-intro__actions{align-items:center}
 .app-venue-intro__actions .button.primary{flex:1 1 160px}
 .app-venue-intro__actions .button.secondary{flex:1 1 160px}
-.app-venue-favorite-action{display:flex;flex:0 0 auto;align-items:center;gap:5px;font-size:13px;font-weight:700}
-.app-venue-favorite-action .mskba-favorite-heart{width:44px;height:44px;padding:8px}
-.app-venue-favorite-action .mskba-favorite-heart svg{width:22px;height:22px}
 .app-venue-schedule__hours{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .app-venue-schedule__hours svg{height:15px;width:15px;flex:none}
 .app-venue-interest-summary__profiles{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
@@ -95,7 +92,6 @@
 .app-venue-page__anchors a[aria-current="location"]{
     color:var(--accent);
     background:var(--surface-raised);
-    box-shadow:inset 0 -2px 0 var(--accent);
 }
 .app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .app-venue-page__sections>.app-venue-block{
