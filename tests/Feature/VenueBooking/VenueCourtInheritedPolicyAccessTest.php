@@ -10,6 +10,7 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
@@ -145,6 +146,7 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
             'name' => 'Test owner', 'status' => ContractStatusEnum::ACTIVE,
+            'assigner' => UserParticipationRoleAssignerEnum::OTHER->value,
             'starts_at' => now()->subDay(),
         ]);
         $contract->membership()->create([

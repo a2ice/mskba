@@ -269,7 +269,9 @@
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? 'О зале / зоне' : 'О площадке' }}</h2></header>
                 @if($venue->isCourtPage)
-                    @php($policy = $venue->effectiveCourtPolicy)
+                    @php
+                        $policy = $venue->effectiveCourtPolicy;
+                    @endphp
                     <dl class="app-venue-court-properties">
                         <div><dt>Состояние</dt><dd>{{ $policy['is_open'] ? 'Работает' : 'Временно закрыт' }}</dd></div>
                         <div><dt>Стоимость</dt><dd>{{ $policy['requires_payment'] ? 'Платно' : 'Бесплатно' }}</dd></div>
