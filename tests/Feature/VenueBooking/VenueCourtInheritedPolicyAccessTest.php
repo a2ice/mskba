@@ -86,6 +86,38 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         $this->assertFalse($access->allowsForCourt($operator, $first, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
     }
 
+    public function test_court_scoped_pricing_manager_cannot_modify_sibling_court(): void
+    {
+        [$owner, $venue] = $this->ownedVenue();
+        $first = $venue->primaryCourt()->firstOrFail();
+        $second = $venue->courts()->create([
+            'name' => 'Другой зал', 'alias' => 'other', 'sort_order' => 20, 'allows_whole' => true,
+        ]);
+        $manager = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        app(ManageVenueMembershipHandler::class)->grant(
+            $venue, $manager, VenueMembershipAccessLevelEnum::MANAGER, $owner,
+            [VenuePermissionEnum::MANAGE_BOOKING_POLICY], $first,
+        );
+
+        $this->actingAs($manager)->put(
+            route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $second->routeIdentifier()]),
+            ['requires_payment' => 'no'],
+        )->assertForbidden();
+        $this->assertNull($second->refresh()->requires_payment);
+
+        $this->actingAs($manager)->put(
+            route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $first->routeIdentifier()]),
+            ['requires_payment' => 'no'],
+        )->assertRedirect();
+        $this->assertFalse($first->refresh()->requires_payment);
+
+        $this->actingAs($manager)->post(
+            route('account.venues.courts.prices.store', [$venue->routeIdentifier(), $second->routeIdentifier()]),
+            ['day_of_week' => '3', 'starts_at' => '12:00', 'whole_price_per_step' => '700'],
+        )->assertForbidden();
+        $this->assertSame(0, $second->slotPrices()->count());
+    }
+
     public function test_inherited_court_price_can_be_overridden_and_quotes_freeze_price_snapshots(): void
     {
         [$owner, $venue] = $this->ownedVenue();
