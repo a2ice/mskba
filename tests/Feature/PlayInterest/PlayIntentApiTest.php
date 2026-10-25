@@ -166,7 +166,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-play-venue-interest-summary', false)
             ->assertSee('2 интереса')
             ->assertSee('data-venue-interest-action', false)
-            ->assertSee('Не хочу здесь играть')
+            ->assertSee('Не интересует')
             ->assertDontSee('Отображается только число интересов')
             ->assertDontSee('private-interest-other')
             ->assertSee('private-interest-test');
