@@ -13,7 +13,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Placeholder;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
@@ -71,8 +71,9 @@ final class CourtsRelationManager extends RelationManager
             ]),
             Section::make('Медиатека')->description('Фотографии именно этого зала / зоны')
                 ->schema([
-                    Placeholder::make('court_photo_preview')->label('Фотографии')
-                        ->content(fn (?VenueCourt $record): HtmlString => $this->courtPhotoPreview($record)),
+                    TextEntry::make('court_photo_preview')->label('Фотографии')
+                        ->state(fn (?VenueCourt $record): HtmlString => $this->courtPhotoPreview($record))
+                        ->html(),
                 ]),
             ]),
         ]);
