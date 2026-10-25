@@ -61,6 +61,10 @@ final class VenueCourtController extends Controller
             'canManageCourt' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
                 $court->id => $access->canManageCourt($request->user(), $court, $actor),
             ])->all(),
+            'canManageCourtMemberships' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
+                $court->id => $request->user() !== null
+                    && $commercial->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_MEMBERSHIPS),
+            ])->all(),
             'canManageCourtPolicy' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
                 $court->id => $request->user() !== null
                     && $commercial->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_BOOKING_POLICY),

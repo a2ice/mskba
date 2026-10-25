@@ -114,6 +114,9 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         $freeQuote = $quote->handle($venue, $start, 60, VenueBookingScopeEnum::WHOLE, $owner, $court);
         $this->assertSame(0, $freeQuote->amountMinor);
         $this->assertFalse($freeQuote->requiresPayment);
+        $freeSnapshot = VenueBookingQuote::query()->where('public_id', $freeQuote->publicId)->firstOrFail()->snapshot;
+        $this->assertSame(0, $freeSnapshot['pricing']['price_per_step_minor']);
+        $this->assertSame([0, 0], $freeSnapshot['pricing']['prices_per_step_minor']);
         $this->assertSame(1850, VenueBookingQuote::query()->where('public_id', $stepQuote->publicId)->value('amount_minor'));
         $this->assertTrue(app(EffectiveCourtPolicy::class)->resolve($venue, $court, $policy)['rental_enabled']);
     }

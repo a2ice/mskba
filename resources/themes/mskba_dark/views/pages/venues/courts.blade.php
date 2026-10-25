@@ -65,6 +65,13 @@
                     @endif
                 </div>
 
+                @if($canManageCourtMemberships[$court->id])
+                    <a class="btn btn--secondary btn--sm mb-3"
+                        href="{{ route('account.venues.commercial-memberships.index', [$venue, 'court_id' => $court->id]) }}">
+                        Роли и разрешения этого зала
+                    </a>
+                @endif
+
                 @if($canManageCourt[$court->id])
                 <form method="POST" action="{{ route('account.venues.courts.update', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}" data-court-form>
                     @csrf

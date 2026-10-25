@@ -100,9 +100,10 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
         }
 
-        $fallbackPricePerStep = $scope === VenueBookingScopeEnum::WHOLE
-            ? $effective['whole_price_per_step_minor']
-            : $effective['half_price_per_step_minor'];
+        $fallbackPricePerStep = ! $effective['requires_payment'] ? 0
+            : ($scope === VenueBookingScopeEnum::WHOLE
+                ? $effective['whole_price_per_step_minor']
+                : $effective['half_price_per_step_minor']);
         if ($effective['requires_payment'] && (int) $fallbackPricePerStep < 1) {
             throw new VenueBookingPolicyException('Для выбранного варианта аренды не настроена положительная цена.');
         }
