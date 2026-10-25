@@ -73,9 +73,9 @@ final class CourtsRelationManager extends RelationManager
         return $table->columns([
             TextColumn::make('name')->label('Зал / зона')->searchable(),
             ImageColumn::make('cover')->label('Фото')->getStateUsing(
-                fn (VenueCourt $record): ?string => $record->media()
+                fn (VenueCourt $record): ?string => ($photo = $record->media()
                     ->where('collection', 'gallery')->orderByDesc('is_featured')
-                    ->orderBy('sort_order')->first()?->publicUrl()
+                    ->orderBy('sort_order')->first()) ? url($photo->publicUrl()) : null
             )->square()->height(48),
             TextColumn::make('photo_count')->label('Фотографий')->getStateUsing(
                 fn (VenueCourt $record): int => $record->media()->where('collection', 'gallery')->count()
