@@ -168,6 +168,7 @@ final class PlayIntentApiTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
+        $venue->primaryCourt()->update(['name' => 'Уличная площадка']);
         $schedule = \App\Modules\Venue\Domain\Models\VenueSchedule::factory()
             ->for($venue)->create(['timezone' => 'Europe/Moscow']);
         \App\Modules\Venue\Domain\Models\VenueScheduleInterval::factory()
@@ -178,6 +179,8 @@ final class PlayIntentApiTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
+            ->assertSee('class="eyebrow accent">Уличная площадка</p>', false)
+            ->assertDontSee('class="eyebrow accent">Школа</p>', false)
             ->assertSee('aria-label="Часы работы"', false)
             ->assertSee('href="#clock"', false)
             ->assertDontSee('Расписание:')
