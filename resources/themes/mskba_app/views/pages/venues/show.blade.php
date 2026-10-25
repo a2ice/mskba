@@ -198,6 +198,7 @@
                                                         data-event-title="{{ $slot['eventTitle'] ?? '' }}"
                                                         data-event-url="{{ $slot['eventUrl'] ?? '' }}"
                                                         data-event-join-url="{{ $slot['eventJoinUrl'] ?? '' }}"
+                                                        data-event-join-method="{{ $slot['eventJoinMethod'] ?? 'PATCH' }}"
                                                         data-can-join="{{ !empty($slot['canJoin']) ? 'true' : 'false' }}"
                                                         data-join-state="{{ $slot['joinState'] ?? 'unavailable' }}"
                                                         data-can-respond-tentative="{{ !empty($slot['canRespondTentative']) ? 'true' : 'false' }}"
@@ -307,7 +308,7 @@
         @auth
             <form method="POST" data-venue-slot-join-form hidden>
                 @csrf
-                @method('PATCH')
+                <input type="hidden" name="_method" value="PATCH" data-venue-slot-join-method>
                 <input type="hidden" name="status" value="confirmed">
                 <button class="button primary" type="submit" data-venue-slot-join-label>Присоединиться</button>
             </form>
