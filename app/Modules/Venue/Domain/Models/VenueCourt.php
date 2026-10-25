@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'supports_halves',
     'hoops_count',
     'surface_type',
+    'environment',
     'allows_whole',
     'allows_halves',
 ])]
@@ -72,6 +73,7 @@ final class VenueCourt extends Model
             'supports_halves' => 'boolean',
             'hoops_count' => 'integer',
             'surface_type' => VenueSurfaceTypeEnum::class,
+            'environment' => \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::class,
             'allows_whole' => 'boolean',
             'allows_halves' => 'boolean',
         ];
