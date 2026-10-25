@@ -110,7 +110,7 @@
                     @foreach($venue->metroStations as $station)
                         <span class="app-venue-intro__station">
                             <span class="app-venue-intro__metro-dot"
-                                style="--metro-color: {{ ($station->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $station->lineColor)) ? $station->lineColor : '#758392' }}"
+                                style="--metro-color: {{ preg_match('/\A#?[0-9A-Fa-f]{6}\z/D', (string) $station->lineColor) ? '#'.ltrim((string) $station->lineColor, '#') : '#758392' }}"
                                 aria-hidden="true"></span>{{ $station->name }}
                         </span>
                     @endforeach
