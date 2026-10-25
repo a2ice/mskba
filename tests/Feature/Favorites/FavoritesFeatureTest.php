@@ -30,6 +30,9 @@ final class FavoritesFeatureTest extends TestCase
     {
         $venue = $this->venue();
         $token = str_repeat('A', 64);
+        // Raw injected test cookies are not browser-encrypted; the separate
+        // Set-Cookie test still exercises Laravel's real encryption middleware.
+        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->toggle('venue', $venue->id)
             ->assertOk()->assertJsonPath('state', 'active');
@@ -59,6 +62,9 @@ final class FavoritesFeatureTest extends TestCase
     {
         $venue = $this->venue();
         $token = str_repeat('B', 64);
+        // Raw injected test cookies are not browser-encrypted; the separate
+        // Set-Cookie test still exercises Laravel's real encryption middleware.
+        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $response = $this->toggle('venue', $venue->id)->assertOk();
         $user = User::factory()->create();
@@ -200,6 +206,9 @@ final class FavoritesFeatureTest extends TestCase
             'entity_id' => $venue->id, 'trashed_at' => now(),
         ]);
         $token = str_repeat('C', 64);
+        // Raw injected test cookies are not browser-encrypted; the separate
+        // Set-Cookie test still exercises Laravel's real encryption middleware.
+        $this->withoutMiddleware(\Illuminate\Cookie\Middleware\EncryptCookies::class);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $guest = $this->toggle('venue', $venue->id)->assertOk();
 
