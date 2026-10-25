@@ -56,6 +56,13 @@ final class FavoritesFeatureTest extends TestCase
             ->first(fn ($cookie) => $cookie->getName() === FavoritesManager::COOKIE_NAME);
         $this->assertTrue($cookie->isHttpOnly());
         $this->assertSame('lax', strtolower($cookie->getSameSite()));
+
+        // Repeat the request with the actual encrypted Set-Cookie value that a
+        // browser receives. This covers the real middleware round-trip, not
+        // only raw synthetic tokens injected by a test.
+        $this->withCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
+            ->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
+            ->assertOk()->assertJsonPath('state', 'active');
     }
 
     public function test_guest_favorite_is_transferred_automatically_on_first_authenticated_request(): void
