@@ -138,8 +138,8 @@ final readonly class ManageVenueMembershipHandler
         return DB::transaction(function () use ($venue, $membership, $issuer): ContractMembership {
             $venue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
-            $this->assertBelongsToVenue($membership, $venue);
-            $this->authorize($issuer, $venue);
+            $court = $this->courtFromMembership($membership, $venue);
+            $this->authorize($issuer, $venue, $court);
 
             if ($membership->access_level === VenueMembershipAccessLevelEnum::OWNER->value) {
                 throw new VenueMembershipException('Нельзя отозвать последнего владельца без передачи владения.');
