@@ -139,7 +139,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee($expectedBreadcrumb)
             ->assertSee('Площадкой интересуются')
             ->assertSee('data-play-venue-interest-summary', false)
-            ->assertSee('2 интересов')
+            ->assertSee('2 интереса')
             ->assertSee('data-venue-interest-action', false)
             ->assertSee('Не хочу здесь играть')
             ->assertDontSee('Отображается только число интересов')
