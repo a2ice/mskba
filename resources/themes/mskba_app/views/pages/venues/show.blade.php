@@ -61,7 +61,7 @@
         : 0;
     $environments = collect($venue->courts)->pluck('environment')->filter()->unique()->values();
     $areaLabel = $environments->contains('indoor') && $environments->contains('outdoor')
-        ? 'крытая и уличная площадки'
+        ? 'уличная и крытая площадки'
         : ($environments->contains('indoor') ? 'крытая площадка'
             : ($environments->contains('outdoor') ? 'уличная площадка' : null));
     $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
