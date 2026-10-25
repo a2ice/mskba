@@ -24,6 +24,8 @@
 @import './appearance-premium.css';
 @import './play-interest.css';
 @import './venue-detail.css';
+@import './venue-favorites.css';
+@import './account-favorites.css';
 
 .app-shell { min-height: 100dvh; }
 
