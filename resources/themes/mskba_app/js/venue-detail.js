@@ -55,7 +55,7 @@ document.querySelector('[data-venue-map-open]')?.addEventListener('click', () =>
     const container = mapDialog.querySelector('[data-venue-map-frame]');
     if (container && !container.firstElementChild) {
         const lat = Number(container.dataset.lat), lon = Number(container.dataset.lon);
-        if (Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+        if (container.dataset.lat?.trim() && container.dataset.lon?.trim() && Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
             const iframe = document.createElement('iframe');
             const url = new URL('https://yandex.ru/map-widget/v1/');
             url.searchParams.set('ll', lon + ',' + lat);
