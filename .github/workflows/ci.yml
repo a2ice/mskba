@@ -138,7 +138,7 @@ jobs:
           fi
 
       - name: Isolate venue court inheritance tests
-        run: php artisan test --filter=VenueCourtInheritedPolicyAccessTest --stop-on-failure --verbose
+        run: php artisan test --filter=VenueCourtInheritedPolicyAccessTest --stop-on-failure --debug
 
       - name: Run PHP tests
         run: php artisan test
