@@ -11,7 +11,7 @@ const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), v
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
-const notifyMatches=ref(true), notifyOffers=ref(false), amenities=ref([]), priority=reactive({});
+const notifyMatches=ref(true), notifyOffers=ref(false), showOnVenue=ref(false), amenities=ref([]), priority=reactive({});
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
 const days=[{id:1,name:'Пн'},{id:2,name:'Вт'},{id:3,name:'Ср'},{id:4,name:'Чт'},{id:5,name:'Пт'},{id:6,name:'Сб'},{id:7,name:'Вс'}];
 const parts=[{id:'any',label:'Не важно'},{id:'morning',label:'Утро'},{id:'day',label:'День'},{id:'evening',label:'Вечер'},{id:'night',label:'Ночь'}];
@@ -56,6 +56,7 @@ function serialize(){
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
         access_mode:access.value,venue_kind:(!chosenVenueId.value || similar.value)?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
+        show_on_venue:Boolean(chosenVenueId.value && showOnVenue.value),
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
         payload.period_from=today();payload.period_until=dayAhead(Number(period.value)-1);
@@ -66,6 +67,7 @@ function serialize(){
 function restore(data){
     interestName.value=data.name || '';
     selectedVenueId.value=data.venue_id ?? null; venueDisabled.value=false;
+    showOnVenue.value=Boolean(data.show_on_venue);
     selectedVenueName.value=data.venue?.name ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueName : '') ?? '';
     selectedVenueUrl.value=data.venue?.url ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueUrl : '') ?? '';
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
@@ -159,7 +161,7 @@ async function resume(){
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=false;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
@@ -214,6 +216,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             </p>
             <p v-else class="app-play-dialog__chosen-venue">Поиск без привязки к конкретной площадке.</p>
             <p v-if="venueDisabled" class="app-play-dialog__hint">После сохранения поиск будет по выбранным условиям, без привязки к площадке.</p>
+            <label v-if="chosenVenueId" class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox"><span>Показывать мой профиль и аватар в списке игроков этой площадки (только когда разрешено настройками приватности)</span></label>
             <div v-if="selectedVenueId && !venueDisabled" class="app-play-dialog__favorite">
                 <button type="button" class="mskba-favorite-heart mskba-favorite-heart--inline" :data-favorite-venue="selectedVenueId"
                     aria-label="Добавить в избранное" aria-pressed="false" title="Избранное"></button>
