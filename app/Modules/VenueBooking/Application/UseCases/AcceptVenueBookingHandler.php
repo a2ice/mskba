@@ -34,7 +34,7 @@ final readonly class AcceptVenueBookingHandler
             'booking_id' => $bookingId,
             'expected_version' => $expectedVersion,
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $expectedVersion): VenueBooking {
-            $this->authorization->assertCommercialDecision($actor, $venue);
+            $this->authorization->assertCommercialDecision($actor, $venue, $booking);
             $this->lifecycle->hold($booking, $actor, CarbonImmutable::now(), $expectedVersion);
             $booking->parties()->firstOrCreate([
                 'user_id' => $actor->user_id,

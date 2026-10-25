@@ -23,7 +23,7 @@ final readonly class RejectVenueBookingPaymentHandler
         $this->features->ensureEnabled(VenueRentalFeature::EXTERNAL_PAYMENT);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($attemptId, $actor, $reason): VenueBookingPaymentAttempt {
-            $this->authorization->assertCanConfirmPayment($actor, $venue);
+            $this->authorization->assertCanConfirmPayment($actor, $venue, $booking);
             $attempt = VenueBookingPaymentAttempt::query()->lockForUpdate()->findOrFail($attemptId);
             if ($attempt->venue_booking_id !== $booking->id) {
                 throw new VenueBookingTransitionException('Платёжная попытка не относится к этой брони.', 'PAYMENT_BOOKING_MISMATCH');

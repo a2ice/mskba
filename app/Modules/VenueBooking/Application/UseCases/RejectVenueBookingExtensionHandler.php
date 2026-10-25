@@ -23,7 +23,7 @@ final readonly class RejectVenueBookingExtensionHandler
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($extensionRequestId, $actor, $reason): VenueBookingExtensionRequest {
-            $this->authorization->assertCommercialDecision($actor, $venue);
+            $this->authorization->assertCommercialDecision($actor, $venue, $booking);
             $extension = VenueBookingExtensionRequest::query()->lockForUpdate()->findOrFail($extensionRequestId);
             if ($extension->venue_booking_id !== $booking->id) {
                 throw new VenueBookingTransitionException('Запрос продления не относится к этой брони.', 'EXTENSION_BOOKING_MISMATCH');

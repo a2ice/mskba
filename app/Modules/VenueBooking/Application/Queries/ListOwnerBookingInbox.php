@@ -24,19 +24,27 @@ final readonly class ListOwnerBookingInbox
         $venueIds = $superadmin ? null : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW_BOOKING_REQUESTS);
         $decideVenueIds = $superadmin ? null : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS);
         $paymentVenueIds = $superadmin ? null : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW_PAYMENTS);
-        if (! $superadmin && $venueIds === []) {
+        $courtIds = $superadmin ? null : $this->memberships->allowedCourtIdsFor($user, VenuePermissionEnum::VIEW_BOOKING_REQUESTS);
+        $decideCourtIds = $superadmin ? null : $this->memberships->allowedCourtIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS);
+        $paymentCourtIds = $superadmin ? null : $this->memberships->allowedCourtIdsFor($user, VenuePermissionEnum::VIEW_PAYMENTS);
+        if (! $superadmin && $venueIds === [] && $courtIds === []) {
             abort(403);
         }
 
         $paginator = VenueBooking::query()->with(['venue', 'requester', 'event', 'paymentAttempt', 'extensionRequests', 'latestTransition'])->where('flow', 'rental')
-            ->when($venueIds !== null, fn ($query) => $query->whereIn('venue_id', $venueIds))
+            ->when($venueIds !== null, fn ($query) => $query->where(
+                fn ($query) => $query->whereIn('venue_id', $venueIds)
+                    ->orWhereIn('venue_court_id', $courtIds)
+            ))
             ->when($venueId !== null, fn ($query) => $query->where('venue_id', $venueId))
             ->when($statuses !== [], fn ($query) => $query->whereIn('status', $statuses))
             ->latest('updated_at')->paginate(min(50, max(1, $perPage)), ['*'], 'page', max(1, $page));
 
-        $data = collect($paginator->items())->map(function (VenueBooking $booking) use ($actor, $decideVenueIds, $paymentVenueIds): array {
-            $canDecide = $decideVenueIds === null || in_array($booking->venue_id, $decideVenueIds, true);
-            $canViewPayment = $paymentVenueIds === null || in_array($booking->venue_id, $paymentVenueIds, true);
+        $data = collect($paginator->items())->map(function (VenueBooking $booking) use ($actor, $decideVenueIds, $paymentVenueIds, $decideCourtIds, $paymentCourtIds): array {
+            $canDecide = $decideVenueIds === null || in_array($booking->venue_id, $decideVenueIds, true)
+                || ($booking->venue_court_id !== null && in_array($booking->venue_court_id, $decideCourtIds, true));
+            $canViewPayment = $paymentVenueIds === null || in_array($booking->venue_id, $paymentVenueIds, true)
+                || ($booking->venue_court_id !== null && in_array($booking->venue_court_id, $paymentCourtIds, true));
             $actions = $this->actions->for($booking, $actor, $canDecide);
 
             return $this->details->serialize($booking, $actions, $this->actions->primary($actions, false), $canViewPayment);

@@ -32,7 +32,7 @@ final readonly class ConfirmVenueBookingHandler
         return $this->commands->execute('venue_booking.confirm', $actor, [
             'booking_id' => $bookingId, 'expected_version' => $expectedVersion,
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $expectedVersion): VenueBooking {
-            $this->authorization->assertCommercialDecision($actor, $venue);
+            $this->authorization->assertCommercialDecision($actor, $venue, $booking);
             $this->lifecycle->confirm($booking, $actor, CarbonImmutable::now(), $expectedVersion);
             $this->outbox->record($booking->id, VenueBookingConfirmed::class);
 

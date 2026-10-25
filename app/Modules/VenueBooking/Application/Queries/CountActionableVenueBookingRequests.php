@@ -41,9 +41,9 @@ final readonly class CountActionableVenueBookingRequests
             return $query;
         }
 
-        return $query->whereIn(
-            'venue_id',
-            $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS),
+        return $query->where(fn (Builder $query) => $query
+            ->whereIn('venue_id', $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS))
+            ->orWhereIn('venue_court_id', $this->memberships->allowedCourtIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS))
         );
     }
 }

@@ -31,7 +31,7 @@ final readonly class OpenVenueBookingPaymentWindowHandler
         $this->features->ensureEnabled(VenueRentalFeature::EXTERNAL_PAYMENT);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $method, $instructions): VenueBookingPaymentAttempt {
-            $this->authorization->assertCanConfirmPayment($actor, $venue);
+            $this->authorization->assertCanConfirmPayment($actor, $venue, $booking);
             if ($booking->status !== VenueBookingStatusEnum::HELD || $booking->effective_protection_until === null || ! now()->lessThan($booking->effective_protection_until)) {
                 throw new VenueBookingTransitionException('Платёжное окно доступно только во время действующего удержания.', 'HOLD_EXPIRED');
             }

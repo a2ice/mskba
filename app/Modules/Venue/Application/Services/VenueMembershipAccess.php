@@ -64,6 +64,14 @@ final class VenueMembershipAccess
     }
 
     /** @return array<int> */
+    public function allowedCourtIdsFor(User $user, VenuePermissionEnum $permission): array
+    {
+        return $this->baseQuery($user, $permission, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->distinct()->pluck('scope_id')
+            ->map(fn ($id): int => (int) $id)->all();
+    }
+
+    /** @return array<int> */
     public function allowedUserIdsForVenue(Venue $venue, VenuePermissionEnum $permission): array
     {
         $now = now();

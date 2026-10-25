@@ -33,7 +33,7 @@ final readonly class RejectVenueBookingHandler
         return $this->commands->execute('venue_booking.reject', $actor, [
             'booking_id' => $bookingId, 'reason' => $reason, 'expected_version' => $expectedVersion,
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $reason, $expectedVersion): VenueBooking {
-            $this->authorization->assertCommercialDecision($actor, $venue);
+            $this->authorization->assertCommercialDecision($actor, $venue, $booking);
             $this->lifecycle->reject($booking, $actor, CarbonImmutable::now(), $reason, $expectedVersion);
             $this->outbox->record($booking->id, VenueBookingRejected::class);
 
