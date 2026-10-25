@@ -24,6 +24,7 @@ use App\Modules\Venue\Application\DTO\VenueDetailsDTO;
 use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
@@ -41,6 +42,7 @@ final class ShowVenueHandler
         private readonly VenueAccessResolver $access,
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly EventIdentityParticipationService $identityParticipation,
+        private readonly EffectiveVenueHours $hours,
     ) {}
 
     public function handle(
@@ -53,6 +55,7 @@ final class ShowVenueHandler
             ->with([
                 'creatorActor',
                 'courts',
+                'courts.schedule',
                 'courts.media' => fn ($query) => $query
                     ->where('collection', 'gallery')
                     ->orderByDesc('is_featured')
@@ -135,9 +138,12 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
-        $mediaSource = $selectedCourt->media->isNotEmpty() ? $selectedCourt->media : $venue->media;
+        // The venue page is an overview of every court, including the primary.
+        // Court pages use their own gallery, falling back to venue photos only when empty.
+        $mediaSource = $courtIdentifier === null
+            ? $venue->media->concat($courts->flatMap(fn (VenueCourt $court) => $court->media))
+            : ($selectedCourt->media->isNotEmpty() ? $selectedCourt->media : $venue->media);
         $featuredMedia = $mediaSource
-            ->take(8)
             ->map(fn (Media $media) => [
                 'id' => (int) $media->id,
                 'title' => $media->title,
@@ -158,15 +164,16 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
-        $scheduleDays = $this->scheduleDays($venue);
-        $openingState = $this->openingState($venue);
+        $scheduleContextCourt = $courtIdentifier === null ? null : $selectedCourt;
+        $scheduleDays = $this->scheduleDays($venue, $scheduleContextCourt);
+        $openingState = $this->openingState($venue, $scheduleContextCourt);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
         $rentalPolicy = VenueBookingPolicy::query()
             ->where('venue_id', $venue->id)
             ->where('active_marker', true)
             ->where('is_enabled', true)
             ->first();
-        $occupancyDays = $this->occupancyDays($venue, $selectedCourt, $timezone, $rentalPolicy, $user);
+        $occupancyDays = $this->occupancyDays($venue, $courtIdentifier === null ? null : $selectedCourt, $timezone, $rentalPolicy, $user);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -224,6 +231,7 @@ final class ShowVenueHandler
             ),
             sections: $sections,
             courts: $courtPayloads,
+            isCourtPage: $courtIdentifier !== null,
             selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
             amenities: $amenities,
             featuredMedia: $featuredMedia,
@@ -364,7 +372,7 @@ final class ShowVenueHandler
      */
     private function occupancyDays(
         Venue $venue,
-        VenueCourt $court,
+        ?VenueCourt $court,
         string $timezone,
         ?VenueBookingPolicy $policy,
         ?User $user,
@@ -373,9 +381,9 @@ final class ShowVenueHandler
         $windowEnd = $today->addDays(9);
         $requesterUserId = $user?->canonical()->id;
         $bookings = $venue->bookings()
-            ->where(function ($query) use ($court): void {
+            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
                 $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
-            })
+            }))
             ->where(function ($query) use ($requesterUserId): void {
                 $query->whereIn('status', VenueBookingStatusEnum::occupyingValues());
 
@@ -429,7 +437,7 @@ final class ShowVenueHandler
                 'slots' => $dayBookings
                     ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart))
                     ->all(),
-                'timeline' => $this->occupancyTimeline($venue, $dayStart, $dayBookings, $timezone, $policy, $user),
+                'timeline' => $this->occupancyTimeline($venue, $court, $dayStart, $dayBookings, $timezone, $policy, $user),
             ];
         }
 
@@ -532,13 +540,14 @@ final class ShowVenueHandler
     /** @return array<int, array<string, mixed>> */
     private function occupancyTimeline(
         Venue $venue,
+        ?VenueCourt $court,
         CarbonImmutable $dayStart,
         $bookings,
         string $timezone,
         ?VenueBookingPolicy $policy,
         ?User $user,
     ): array {
-        $intervals = $this->intervalsForDate($venue, $dayStart);
+        $intervals = $this->hours->intervals($venue, $court, $dayStart) ?? collect();
         if ($intervals->isEmpty()) {
             return $bookings->map(fn (VenueBooking $booking): array => [
                 'kind' => 'occupied',
@@ -667,23 +676,22 @@ final class ShowVenueHandler
     /**
      * @return array<int, array{date: string, label: string, weekday: string, isToday: bool, isClosed: bool, intervals: array<int, array{startsAt: string, endsAt: string}>}>
      */
-    private function scheduleDays(Venue $venue): array
+    private function scheduleDays(Venue $venue, ?VenueCourt $court = null): array
     {
         $schedule = $venue->schedule;
+        $hasOwnSchedule = $court?->schedule !== null;
 
-        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+        if (! $hasOwnSchedule && ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty()))) {
             return [];
         }
 
-        $today = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
+        $today = CarbonImmutable::now($schedule?->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
         $days = [];
 
         for ($offset = 0; $offset < 14; $offset++) {
             $date = $today->addDays($offset);
-            $isException = $schedule->exceptions->contains(
-                fn ($exception): bool => $exception->date->toDateString() === $date->toDateString()
-            );
-            $intervals = $this->intervalsForDate($venue, $date)
+            $isException = $this->hours->isException($venue, $court, $date);
+            $intervals = ($this->hours->intervals($venue, $court, $date) ?? collect())
                 ->map(fn ($interval) => [
                     'startsAt' => $this->formatTime($interval->starts_at),
                     'endsAt' => $this->formatTime($interval->ends_at),
@@ -708,18 +716,18 @@ final class ShowVenueHandler
     /**
      * @return array{isOpen: bool, todayHours: string}
      */
-    private function openingState(Venue $venue): array
+    private function openingState(Venue $venue, ?VenueCourt $court = null): array
     {
         $schedule = $venue->schedule;
-        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+        if ($court?->schedule === null && ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty()))) {
             return [
                 'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE,
                 'todayHours' => 'Не установлено',
             ];
         }
 
-        $now = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'));
-        $todayIntervals = $this->intervalsForDate($venue, $now);
+        $now = CarbonImmutable::now($schedule?->timezone ?: config('app.timezone', 'UTC'));
+        $todayIntervals = $this->hours->intervals($venue, $court, $now) ?? collect();
 
         if ($todayIntervals->isEmpty()) {
             return ['isOpen' => false, 'todayHours' => 'Закрыто'];
@@ -739,20 +747,6 @@ final class ShowVenueHandler
             'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE && $isWithinWorkingHours,
             'todayHours' => $hours,
         ];
-    }
-
-    private function intervalsForDate(Venue $venue, CarbonInterface $date)
-    {
-        $schedule = $venue->schedule;
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->toDateString() === $date->toDateString()
-        );
-
-        if ($exception !== null) {
-            return $exception->is_closed ? collect() : $exception->intervals->values();
-        }
-
-        return $schedule?->intervals->where('day_of_week', $date->dayOfWeekIso)->values() ?? collect();
     }
 
     private function formatTime(mixed $time): string

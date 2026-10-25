@@ -64,6 +64,14 @@
         ? 'уличная и крытая площадки'
         : ($environments->contains('indoor') ? 'крытая площадка'
             : ($environments->contains('outdoor') ? 'уличная площадка' : null));
+    $selectedAreaLabel = $venue->selectedCourt['environment'] === 'indoor'
+        ? 'крытая площадка'
+        : ($venue->selectedCourt['environment'] === 'outdoor' ? 'уличная площадка' : null);
+    $displayAreaLabel = $venue->isCourtPage ? $selectedAreaLabel : $areaLabel;
+    $createEventUrl = route('events.wizard', array_filter([
+        'venue_id' => $venue->id,
+        'venue_court_id' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null,
+    ]));
     $scheduledDays = collect($venue->about->scheduleDays)->take(9);
     $activityDays = collect($venue->occupancyDays)
         ->filter(fn (array $day): bool => count($day['slots'] ?? []) > 0)
@@ -97,8 +105,24 @@
             @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">{{ $venue->type }}@if($areaLabel): {{ $areaLabel }}@endif</p>
-            <h1 id="app-venue-title">{{ $venue->name }}</h1>
+            <div class="app-venue-intro__court-heading">
+                <p class="eyebrow accent">{{ $venue->type }}@if($displayAreaLabel): {{ $displayAreaLabel }}@endif</p>
+                @if(count($venue->courts) > 1)
+                    <details class="app-venue-court-picker" data-venue-court-dropdown>
+                        <summary aria-label="Выбрать зал">{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : 'Все залы' }}
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+                        </summary>
+                        <nav aria-label="Залы площадки">
+                            <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" @if(!$venue->isCourtPage) aria-current="page" @endif>Все залы · общая страница</a>
+                            @foreach($venue->courts as $court)
+                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]) }}"
+                                    @if($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) aria-current="page" @endif>{{ $court['name'] }}</a>
+                            @endforeach
+                        </nav>
+                    </details>
+                @endif
+            </div>
+            <h1 id="app-venue-title">{{ $venue->name }}@if($venue->isCourtPage) <span class="app-venue-intro__court-name">· {{ $venue->selectedCourt['name'] }}</span>@endif</h1>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
                     aria-label="Показать {{ $venueAddress }} на Яндекс Картах">
@@ -243,7 +267,18 @@
                 @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
-                <header class="app-venue-block__header"><h2>О площадке</h2></header>
+                <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? 'О зале / зоне' : 'О площадке' }}</h2></header>
+                @if($venue->isCourtPage)
+                    <dl class="app-venue-court-properties">
+                        <div><dt>Зал / зона</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
+                        <div><dt>Количество колец</dt><dd>{{ $venue->selectedCourt['hoopsCount'] }}</dd></div>
+                        <div><dt>Покрытие</dt><dd>{{ $venue->selectedCourt['surfaceLabel'] ?: 'Не указано' }}</dd></div>
+                        <div><dt>Бронирование целиком</dt><dd>{{ $venue->selectedCourt['allowsWhole'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
+                        <div><dt>Бронирование половинами</dt><dd>{{ $venue->selectedCourt['supportsHalves'] && $venue->selectedCourt['allowsHalves'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
+                    </dl>
+                @else
+                    <p class="app-venue-court-overview"><strong>Количество залов:</strong> {{ count($venue->courts) }}</p>
+                @endif
                 @if($venue->fullDescription)<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
                 @if(count($venue->amenities))
                     <h3>Удобства</h3>
@@ -265,7 +300,7 @@
                 data-interest-id="{{ $viewerVenueInterest?->id }}"
                 data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
                 @disabled(!$canStartInterest)>{{ $viewerHasVenueInterest ? 'Не интересует' : 'Хочу здесь играть' }}</button>
-            <button type="button" class="button secondary full" data-venue-create-event-open>Создать мероприятие</button>
+            <a class="button secondary full" href="{{ $createEventUrl }}" data-venue-create-event-link>Создать мероприятие</a>
         </aside>
     </div>
 </section>
@@ -340,13 +375,6 @@
             <a class="button primary" data-venue-slot-guest-link hidden>Присоединиться</a>
         @endauth
     </div>
-</dialog>
-<dialog class="app-venue-overlay app-venue-overlay--create-event" data-venue-create-event-dialog aria-labelledby="app-venue-create-event-title">
-    <div class="app-venue-overlay__header">
-        <h2 id="app-venue-create-event-title">Создать мероприятие</h2>
-        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
-    </div>
-    <p>В разработке</p>
 </dialog>
 <dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
     <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>

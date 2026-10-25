@@ -47,8 +47,10 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Хочу здесь играть')
             ->assertSee('Хочешь здесь играть?')
             ->assertSee('Создать мероприятие')
-            ->assertSee('data-venue-create-event-dialog', false)
-            ->assertSee('В разработке')
+            ->assertSee('data-venue-create-event-link', false)
+            ->assertSee(route('events.wizard', ['venue_id' => $venue->id]), false)
+            ->assertDontSee('data-venue-create-event-dialog', false)
+            ->assertDontSee('В разработке')
             ->assertSee('>Расписание</a>', false)
             ->assertSee('data-mskba-play-intent-root', false);
 
