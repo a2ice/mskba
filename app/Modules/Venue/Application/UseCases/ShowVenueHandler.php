@@ -25,6 +25,7 @@ use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\EffectiveVenueHours;
+use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
@@ -43,6 +44,7 @@ final class ShowVenueHandler
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly EventIdentityParticipationService $identityParticipation,
         private readonly EffectiveVenueHours $hours,
+        private readonly EffectiveCourtPolicy $courtPolicies,
     ) {}
 
     public function handle(
@@ -201,7 +203,9 @@ final class ShowVenueHandler
             typeSlug: $venue->type->publicSlug(),
             status: $venue->status->label(),
             statusSlug: $venue->status->value,
-            isFreeAccess: $venue->hasFreeAccess(),
+            isFreeAccess: $courtIdentifier !== null
+                ? ! $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['requires_booking']
+                : $venue->hasFreeAccess(),
             isOpen: $openingState['isOpen'],
             todayHours: $openingState['todayHours'],
             shortDescription: $venue->short_description,
@@ -257,6 +261,7 @@ final class ShowVenueHandler
                     ])
                     ->all(),
                 'courtId' => (int) $selectedCourt->id,
+                'effective' => $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy),
                 'scopes' => array_values(array_filter([
                     $selectedCourt->allows_whole ? ['value' => 'whole', 'label' => 'Весь зал'] : null,
                     $selectedCourt->supports_halves && $selectedCourt->allows_halves ? ['value' => 'half_a', 'label' => 'Половина A'] : null,
