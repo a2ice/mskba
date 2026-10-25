@@ -235,7 +235,8 @@
     map.geoObjects.add(clusterer);
 
     const pinOptions = {
-      iconShape:{type:'Rectangle',coordinates:[[-20,-20],[20,30]]},
+      // Include the full CSS-rotated pin and logo, not only its center.
+      iconShape:{type:'Rectangle',coordinates:[[-28,-28],[28,30]]},
       iconOffset:[-20,-20], hideIconOnBalloonOpen:false
     };
     let selected = null;
