@@ -38,12 +38,12 @@
             $user = $intent->user;
             return $user !== null && ! $user->isBlocked()
                 && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
-                    ->allows($user, $viewer, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE);
+                    ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE);
         })
         ->map(function ($intent) use ($viewer): array {
             $user = $intent->user;
             $canShowAvatar = app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
-                ->allows($user, $viewer, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::AVATAR);
+                ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::AVATAR);
             return [
                 'name' => trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->username,
                 'avatar' => $canShowAvatar ? $user->profile?->avatarUrl() : null,
