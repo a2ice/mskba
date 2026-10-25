@@ -95,7 +95,6 @@
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
-                    @disabled(! $venue->address?->latitude || ! $venue->address?->longitude)
                     aria-label="Показать {{ $venueAddress }} на Яндекс Картах">
                     <svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $venueAddress }}</span>
                 </button>
@@ -116,8 +115,11 @@
             </div>
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
-                <button type="button" class="button primary large" data-play-intent-open @disabled(!$canStartInterest)>
-                    Хочу здесь играть
+                <button type="button" class="button primary large" data-play-intent-open data-venue-interest-action
+                    data-interest-id="{{ $viewerVenueInterest?->id }}"
+                    data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                    @disabled(!$canStartInterest)>
+                    {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
                 </button>
                 <span class="app-venue-favorite-action">
                     <button type="button" class="mskba-favorite-heart" data-favorite-venue="{{ $venue->id }}"
@@ -172,13 +174,6 @@
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Часы работы</h2></header>
-                @if(count($venue->courts) > 0)
-                    <div class="app-venue-block__court-list">
-                        @foreach($venue->courts as $court)
-                            <span class="badge">{{ $court['name'] }}</span>
-                        @endforeach
-                    </div>
-                @endif
                 @if(count($shownDays) > 0)
                     <div class="app-venue-schedule">
                         @foreach($shownDays as $day)
@@ -188,10 +183,9 @@
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
                                 @if(count($publishedHours))
-                                    <p class="app-venue-schedule__hours">Часы работы:
-                                        @foreach($publishedHours as $hours)
-                                            {{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless
-                                        @endforeach
+                                    <p class="app-venue-schedule__hours" aria-label="Часы работы">
+                                        <svg aria-hidden="true"><use href="#clock"/></svg>
+                                        <span>@foreach($publishedHours as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
                                     </p>
                                 @endif
                                 @if(count($day['slots'] ?? []) > 0)
@@ -243,7 +237,10 @@
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
             <strong>Хочешь поиграть?</strong>
             <p>Укажи время и подходящий формат. MSKBA сохранит твой интерес без обязательств.</p>
-            <button type="button" class="button primary full" data-play-intent-open @disabled(!$canStartInterest)>Хочу здесь играть</button>
+            <button type="button" class="button primary full" data-play-intent-open data-venue-interest-action
+                data-interest-id="{{ $viewerVenueInterest?->id }}"
+                data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                @disabled(!$canStartInterest)>{{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}</button>
             <a class="button secondary full" href="#app-venue-schedule">Посмотреть расписание</a>
         </aside>
     </div>
