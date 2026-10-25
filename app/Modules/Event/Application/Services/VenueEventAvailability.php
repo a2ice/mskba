@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -14,6 +15,8 @@ use InvalidArgumentException;
 
 final class VenueEventAvailability
 {
+    public function __construct(private readonly EffectiveVenueHours $hours) {}
+
     public function resolveEndsAt(
         Venue $venue,
         CarbonImmutable $startsAt,
@@ -36,19 +39,11 @@ final class VenueEventAvailability
         $timezone = $schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $localStart = $startsAt->setTimezone($timezone);
         $endBoundary = $localStart->endOfDay();
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->format('Y-m-d') === $localStart->format('Y-m-d')
-        );
+        $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
-        if ($exception?->is_closed) {
+        if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
             throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
         }
-
-        $hasRegularHours = $schedule?->intervals->isNotEmpty() ?? false;
-        $applicableIntervals = $exception?->intervals
-            ?? ($hasRegularHours
-                ? $schedule->intervals->where('day_of_week', $localStart->isoWeekday())
-                : null);
 
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
@@ -156,19 +151,11 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('В первой версии мероприятие должно завершаться в тот же день.');
         }
 
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->format('Y-m-d') === $localStart->format('Y-m-d')
-        );
+        $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
-        if ($exception?->is_closed) {
+        if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
             throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
         }
-
-        $hasRegularHours = $schedule?->intervals->isNotEmpty() ?? false;
-        $applicableIntervals = $exception?->intervals
-            ?? ($hasRegularHours
-                ? $schedule->intervals->where('day_of_week', $localStart->isoWeekday())
-                : null);
 
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
