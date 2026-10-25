@@ -89,6 +89,13 @@
                             </select>
                         </div>
                         <div class="col-md-8">
+                            <label class="form-label" for="court-environment-{{ $court->id }}">Расположение игровой зоны</label>
+                            <select id="court-environment-{{ $court->id }}" class="form-select" name="environment">
+                                <option value="">Не указано</option>
+                                @foreach($courtEnvironments as $environment)
+                                    <option value="{{ $environment->value }}" @selected($court->environment?->value === $environment->value)>{{ $environment->label() }}</option>
+                                @endforeach
+                            </select>
                             <label class="form-label" for="court-surface-{{ $court->id }}">Покрытие</label>
                             <select id="court-surface-{{ $court->id }}" class="form-select" name="surface_type">
                                 <option value="">Не указано</option>
@@ -157,6 +164,13 @@
                         </select>
                     </div>
                     <div class="col-md-8">
+                        <label class="form-label" for="court-new-environment">Расположение игровой зоны</label>
+                        <select id="court-new-environment" class="form-select" name="environment">
+                            <option value="">Не указано</option>
+                            @foreach($courtEnvironments as $environment)
+                                <option value="{{ $environment->value }}" @selected(old('environment') === $environment->value)>{{ $environment->label() }}</option>
+                            @endforeach
+                        </select>
                         <label class="form-label" for="court-new-surface">Покрытие</label>
                         <select id="court-new-surface" class="form-select" name="surface_type">
                             <option value="">Не указано</option>
