@@ -46,18 +46,34 @@ final class EffectiveVenueHours
         $dateString = $date->toDateString();
         $exceptionRows = collect($courtSchedule->exceptions ?? [])
             ->filter(fn ($row): bool => ($row['date'] ?? null) === $dateString);
-        if ($exceptionRows->isNotEmpty()) {
-            if ($exceptionRows->contains(fn ($row): bool => (bool) ($row['is_closed'] ?? false))) {
-                return collect();
-            }
-
-            return $this->intervalObjects($exceptionRows);
+        if ($exceptionRows->isNotEmpty()
+            && $exceptionRows->contains(fn ($row): bool => (bool) ($row['is_closed'] ?? false))) {
+            return collect();
         }
 
         $weekly = collect($courtSchedule->weekly_intervals ?? [])
             ->filter(fn ($row): bool => (int) ($row['day_of_week'] ?? 0) === $date->dayOfWeekIso);
+        $ownIntervals = $this->intervalObjects($exceptionRows->isNotEmpty() ? $exceptionRows : $weekly);
 
-        return $this->intervalObjects($weekly);
+        // A shortened parent-wide exception also restricts court-specific hours.
+        if ($parentException !== null) {
+            $intersection = collect();
+            foreach ($ownIntervals as $ownInterval) {
+                foreach ($parentIntervals as $parentInterval) {
+                    $start = max(substr((string) $ownInterval->starts_at, 0, 5),
+                        substr((string) $parentInterval->starts_at, 0, 5));
+                    $end = min(substr((string) $ownInterval->ends_at, 0, 5),
+                        substr((string) $parentInterval->ends_at, 0, 5));
+                    if ($start < $end) {
+                        $intersection->push((object) ['starts_at' => $start, 'ends_at' => $end]);
+                    }
+                }
+            }
+
+            return $intersection->sortBy('starts_at')->values();
+        }
+
+        return $ownIntervals;
     }
 
     public function isException(Venue $venue, ?VenueCourt $court, CarbonInterface $date): bool
