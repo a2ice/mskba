@@ -267,7 +267,18 @@
                 @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
-                <header class="app-venue-block__header"><h2>О площадке</h2></header>
+                <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? 'О зале / зоне' : 'О площадке' }}</h2></header>
+                @if($venue->isCourtPage)
+                    <dl class="app-venue-court-properties">
+                        <div><dt>Зал / зона</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
+                        <div><dt>Количество колец</dt><dd>{{ $venue->selectedCourt['hoopsCount'] }}</dd></div>
+                        <div><dt>Покрытие</dt><dd>{{ $venue->selectedCourt['surfaceLabel'] ?: 'Не указано' }}</dd></div>
+                        <div><dt>Бронирование целиком</dt><dd>{{ $venue->selectedCourt['allowsWhole'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
+                        <div><dt>Бронирование половинами</dt><dd>{{ $venue->selectedCourt['supportsHalves'] && $venue->selectedCourt['allowsHalves'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
+                    </dl>
+                @else
+                    <p class="app-venue-court-overview"><strong>Количество залов:</strong> {{ count($venue->courts) }}</p>
+                @endif
                 @if($venue->fullDescription)<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
                 @if(count($venue->amenities))
                     <h3>Удобства</h3>
