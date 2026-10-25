@@ -218,6 +218,9 @@ function buildBalloonBody(venue) {
         address ? `<div>${escapeHtml(address)}</div>` : '',
         `<div>${escapeHtml(access)}</div>`,
         url ? `<div><a href="${url}">Открыть площадку</a></div>` : '',
+        Number.isInteger(Number(venue.id)) && Number(venue.id) > 0
+            ? `<button type="button" class="mskba-favorite-heart" data-favorite-venue="${Number(venue.id)}" title="Добавить в избранное" aria-pressed="false" aria-label="Добавить в избранное">♡</button>`
+            : '',
     ].filter(Boolean).join('');
 }
 

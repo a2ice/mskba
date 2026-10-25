@@ -1,0 +1,30 @@
+/* Reusable venue favorite hearts + opt-in confirmation dialog. */
+.mskba-favorite-heart{border:1px solid var(--control-line,#cbd0d8);background:var(--surface-raised,#fff);
+    color:var(--text,#303d4c);width:42px;height:42px;display:inline-flex;align-items:center;
+    justify-content:center;border-radius:12px;cursor:pointer;flex:none;padding:9px;
+    transition:color .15s ease,border-color .15s ease,background .15s ease}
+.mskba-favorite-heart svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.mskba-favorite-heart[aria-pressed=true]{color:var(--accent,#c34c00);border-color:currentColor}
+.mskba-favorite-heart[aria-pressed=true] svg{fill:currentColor}
+.mskba-favorite-heart:hover{border-color:var(--accent,#c34c00)}
+.mskba-favorite-heart:disabled{opacity:.65;cursor:wait}
+.mskba-favorite-heart--card{position:absolute;top:12px;right:12px;z-index:8;background:var(--surface,#fff);box-shadow:0 3px 15px #0002}
+.mskba-favorite-card-wrap{position:relative;min-width:0}
+.app-play-dialog__favorite{display:flex;justify-content:flex-start;gap:10px}
+.mskba-favorites-confirm{position:fixed;inset:0;margin:auto;border-radius:20px;
+    width:min(450px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;
+    padding:22px;box-shadow:0 25px 80px #0004;border:1px solid var(--line,#dce0e5);
+    background:var(--surface,#fff);color:var(--text,#263340)}
+.mskba-favorites-confirm::backdrop{background:rgb(24 35 48 / .55);backdrop-filter:blur(3px)}
+.mskba-favorites-confirm__header{display:flex;gap:14px;justify-content:space-between;align-items:start}
+.mskba-favorites-confirm h2{font-size:20px;line-height:1.25;margin:0 0 14px;font-weight:750}
+.mskba-favorites-confirm p{font-size:14px;line-height:1.5;margin:0 0 16px}
+.mskba-favorites-confirm__close{background:transparent;border:1px solid var(--control-line,#cbd0d8);
+    width:38px;height:38px;font-size:25px;border-radius:10px;cursor:pointer;color:inherit}
+.mskba-favorites-confirm__option{display:flex;align-items:start;gap:10px;padding:16px 0;
+    border-top:1px solid var(--line,#dce0e5);font-size:14px;line-height:1.4;cursor:pointer}
+.mskba-favorites-confirm__option input{accent-color:var(--accent,#c34c00);width:18px;height:18px;flex:none;margin:1px 0 0}
+.mskba-favorites-confirm__apply{width:100%;min-height:44px}
+.mskba-favorite-feedback{position:fixed;bottom:20px;right:20px;padding:14px 20px;z-index:20000;
+    background:var(--surface,#fff);border:1px solid var(--line,#dce0e5);border-radius:10px;box-shadow:0 12px 40px #0004}
+@media(prefers-reduced-motion:reduce){.mskba-favorite-heart{transition:none}}

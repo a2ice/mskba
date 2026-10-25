@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ShowCreationPageAccess;
+use App\Modules\Favorites\Infrastructure\Http\Middleware\ClaimGuestFavorites;
 use App\Modules\Content\Presentation\Http\Middleware\PageBuilderRouteOverride;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('web', [
             ResolveCanonicalUserSession::class,
+            ClaimGuestFavorites::class,
             EnsurePersonalDataDistributionSetupCompleted::class,
             ShowCreationPageAccess::class,
             EnforceCreationOperationalPermissions::class,

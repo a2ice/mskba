@@ -7,10 +7,11 @@ const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref('');
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
-const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null);
+const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), venueDisabled=ref(false);
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
+const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
-const notifyMatches=ref(true), notifyOffers=ref(false), amenities=ref([]), priority=reactive({});
+const notifyMatches=ref(true), notifyOffers=ref(false), showOnVenue=ref(false), amenities=ref([]), priority=reactive({});
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
 const days=[{id:1,name:'Пн'},{id:2,name:'Вт'},{id:3,name:'Ср'},{id:4,name:'Чт'},{id:5,name:'Пт'},{id:6,name:'Сб'},{id:7,name:'Вс'}];
 const parts=[{id:'any',label:'Не важно'},{id:'morning',label:'Утро'},{id:'day',label:'День'},{id:'evening',label:'Вечер'},{id:'night',label:'Ночь'}];
@@ -48,23 +49,25 @@ function serialize(){
         ));
     }
     const payload={
-        client_request_id:requestId||(requestId=crypto.randomUUID()),name:interestName.value.trim() || null,venue_id:selectedVenueId.value,
-        include_similar_venues:Boolean(selectedVenueId.value && similar.value),cadence:cadence.value,
+        client_request_id:requestId||(requestId=crypto.randomUUID()),name:interestName.value.trim() || null,venue_id:chosenVenueId.value,
+        include_similar_venues:Boolean(chosenVenueId.value && similar.value),cadence:cadence.value,
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
         dates:cadence.value==='once'&&dateMode.value==='dates'?dates.value:[],
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
-        access_mode:access.value,venue_kind:(!selectedVenueId.value || similar.value)?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
+        access_mode:access.value,venue_kind:(!chosenVenueId.value || similar.value)?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
+        show_on_venue:Boolean(chosenVenueId.value && showOnVenue.value),
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
         payload.period_from=today();payload.period_until=dayAhead(Number(period.value)-1);
     }
-    if(selectedVenueId.value && similar.value){payload.center_latitude=Number(latitude.value);payload.center_longitude=Number(longitude.value);payload.radius_km=Number(radius.value);}
+    if(chosenVenueId.value && similar.value){payload.center_latitude=Number(latitude.value);payload.center_longitude=Number(longitude.value);payload.radius_km=Number(radius.value);}
     return payload;
 }
 function restore(data){
     interestName.value=data.name || '';
-    selectedVenueId.value=data.venue_id ?? null;
+    selectedVenueId.value=data.venue_id ?? null; venueDisabled.value=false;
+    showOnVenue.value=Boolean(data.show_on_venue);
     selectedVenueName.value=data.venue?.name ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueName : '') ?? '';
     selectedVenueUrl.value=data.venue?.url ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueUrl : '') ?? '';
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
@@ -88,8 +91,9 @@ function restore(data){
     }
 }
 function unlinkVenue(){
-    selectedVenueId.value=null;selectedVenueName.value='';selectedVenueUrl.value='';
-    similar.value=false;latitude.value='';longitude.value='';radius.value=10;
+    // Preserve the anchor and allow restoring it before saving.
+    venueDisabled.value=!venueDisabled.value;
+    if(venueDisabled.value) similar.value=false;
 }
 function readPending(){
     try{
@@ -117,7 +121,7 @@ async function openDialog(){
 }
 function beginLogin(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
-    if(selectedVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
+    if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
     try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:payload}));}
     catch{error.value='Не удалось сохранить настройки до входа. Проверь настройки браузера.';return;}
@@ -148,7 +152,7 @@ async function save(payload){
 async function submit(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(!isAuth.value){beginLogin();return;}
-    if(selectedVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
+    if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     await save(serialize());
 }
 async function resume(){
@@ -157,7 +161,7 @@ async function resume(){
     onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=false;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
@@ -201,13 +205,22 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                 </div>
                 <button type="button" class="app-play-dialog__text-button" :aria-expanded="expanded" @click="expanded=!expanded">{{expanded?'Свернуть':'Подробнее'}}</button>
             </div>
-            <p v-if="selectedVenueId" class="app-play-dialog__chosen-venue">
+            <p v-if="selectedVenueId" class="app-play-dialog__chosen-venue" :class="{ 'is-inactive': venueDisabled }">
                 <span>Выбранная площадка:</span>
                 <a v-if="selectedVenueUrl" :href="selectedVenueUrl">{{selectedVenueName || 'Открыть площадку'}}</a>
                 <strong v-else>{{selectedVenueName || 'Площадка №'+selectedVenueId}}</strong>
-                <button type="button" class="app-play-dialog__unlink-venue" aria-label="Убрать площадку из интереса" title="Убрать площадку" @click="unlinkVenue">×</button>
+                <button type="button" class="app-play-dialog__unlink-venue"
+                    :aria-label="venueDisabled ? 'Вернуть площадку в интерес' : 'Отвязать площадку от интереса'"
+                    :title="venueDisabled ? 'Вернуть площадку' : 'Искать без привязки к площадке'"
+                    @click="unlinkVenue">{{ venueDisabled ? '✓' : '×' }}</button>
             </p>
             <p v-else class="app-play-dialog__chosen-venue">Поиск без привязки к конкретной площадке.</p>
+            <p v-if="venueDisabled" class="app-play-dialog__hint">После сохранения поиск будет по выбранным условиям, без привязки к площадке.</p>
+            <label v-if="chosenVenueId" class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox"><span>Показывать мой профиль и аватар в списке игроков этой площадки (только когда разрешено настройками приватности)</span></label>
+            <div v-if="selectedVenueId && !venueDisabled" class="app-play-dialog__favorite">
+                <button type="button" class="mskba-favorite-heart mskba-favorite-heart--inline" :data-favorite-venue="selectedVenueId"
+                    aria-label="Добавить в избранное" aria-pressed="false" title="Избранное"></button>
+            </div>
             <p v-if="!isAuth" class="app-play-dialog__hint">Для сохранения необходимо войти. <button class="app-play-dialog__text-button" type="button" @click="beginLogin()">Войти или зарегистрироваться</button></p>
             <form id="app-play-intent-form" class="app-play-dialog__form" @submit.prevent="submit">
                 <label class="field-group" for="app-play-intent-name">Название интереса
@@ -271,15 +284,15 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                 <label class="field-group">Продолжительность игры<span class="select-control"><select v-model="duration">
                     <option value="">Не важно</option><option value="60">1 час</option><option value="90">1,5 часа</option><option value="120">2 часа</option><option value="180">3 часа</option>
                 </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
-                <label v-if="selectedVenueId" class="check-label"><input v-model="similar" type="checkbox"><strong>Подбирать похожие площадки</strong></label>
-                <div v-if="similar || !selectedVenueId" class="app-play-dialog__similar">
-                    <label v-if="selectedVenueId && similar" class="field-group">Радиус: {{radius}} км<input v-model.number="radius" type="range" min="1" max="30"></label>
+                <label v-if="chosenVenueId" class="check-label"><input v-model="similar" type="checkbox"><strong>Подбирать похожие площадки</strong></label>
+                <div v-if="similar || !chosenVenueId" class="app-play-dialog__similar">
+                    <label v-if="chosenVenueId && similar" class="field-group">Радиус: {{radius}} км<input v-model.number="radius" type="range" min="1" max="30"></label>
                 <fieldset><legend>Тип площадки</legend><div class="app-play-dialog__chips">
                     <button v-for="kind in [{v:'any',t:'Не важно'},{v:'outdoor',t:'Открытая'},{v:'indoor',t:'Крытая'}]"
                         :key="kind.v" type="button" class="chip" :aria-pressed="venueKind===kind.v"
                         @click="venueKind=kind.v">{{kind.t}}</button>
                 </div></fieldset>
-                    <div v-if="selectedVenueId && similar && (!options.venueLatitude||!options.venueLongitude)" class="app-play-dialog__time-range">
+                    <div v-if="chosenVenueId && similar && (!options.venueLatitude||!options.venueLongitude)" class="app-play-dialog__time-range">
                         <label class="field-group">Широта<input v-model="latitude" type="number" min="-90" max="90" step="0.0000001"></label>
                         <label class="field-group">Долгота<input v-model="longitude" type="number" min="-180" max="180" step="0.0000001"></label>
                     </div>

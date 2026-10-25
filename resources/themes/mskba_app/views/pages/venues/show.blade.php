@@ -24,11 +24,38 @@
         ->where('venue_id', $venue->id)
         ->where('status', 'active')
         ->where('expires_at', '>', now());
-    $activeVenueInterestCount = (clone $activeVenueInterests)->count();
-    $viewerHasVenueInterest = auth()->check()
-        && (clone $activeVenueInterests)
-            ->where('user_id', auth()->user()->canonical()->id)
-            ->exists();
+    $viewer = auth()->user()?->canonical();
+    $viewerVenueInterest = $viewer
+        ? (clone $activeVenueInterests)->where('user_id', $viewer->id)->orderByDesc('id')->first()
+        : null;
+    $viewerHasVenueInterest = $viewerVenueInterest !== null;
+    $venueInterestUsers = (clone $activeVenueInterests)
+        ->with(['user.profile.activeAvatar'])
+        ->where('show_on_venue', true)
+        ->orderByDesc('created_at')->get()
+        ->unique('user_id')
+        ->filter(function ($intent) use ($viewer): bool {
+            $user = $intent->user;
+            return $user !== null && ! $user->isBlocked()
+                && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
+                    ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE);
+        })
+        ->map(function ($intent) use ($viewer): array {
+            $user = $intent->user;
+            $canShowAvatar = app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
+                ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::AVATAR);
+            return [
+                'name' => trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->username,
+                'avatar' => $canShowAvatar ? $user->profile?->avatarUrl() : null,
+            ];
+        })->values();
+    // Aggregated counts never identify private users or imply their consent.
+    $activeVenueInterestCount = (clone $activeVenueInterests)->distinct()->count('user_id');
+    $favoritesCount = class_exists(\App\Modules\Favorites\Domain\Models\Favorite::class)
+        ? \App\Modules\Favorites\Domain\Models\Favorite::query()
+            ->where('entity_type', 'venue')->where('entity_id', $venue->id)
+            ->whereNull('trashed_at')->count()
+        : 0;
     $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
     $shownDays = $venue->isFreeAccess
         ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
@@ -38,38 +65,70 @@
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
-        <div class="app-venue-gallery panel">
-            @if($hero)
-                <img class="app-venue-gallery__main" src="{{ $hero }}" alt="Площадка {{ $venue->name }}" loading="eager">
+        <div class="app-venue-gallery panel" data-venue-gallery>
+            @if(count($venue->featuredMedia))
+                <div class="app-venue-gallery__stage">
+                    @foreach($venue->featuredMedia as $photo)
+                        <img class="app-venue-gallery__slide{{ $loop->first ? ' is-active' : '' }}"
+                            src="{{ $photo['url'] }}" alt="{{ $photo['title'] ?: $venue->name }}"
+                            loading="{{ $loop->first ? 'eager' : 'lazy' }}"
+                            data-gallery-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
+                    @endforeach
+                    @if(count($venue->featuredMedia) > 1)
+                        <div class="app-venue-gallery__thumbs" aria-label="Выбор фотографии">
+                            @foreach($venue->featuredMedia as $photo)
+                                <button type="button" class="app-venue-gallery__thumb{{ $loop->first ? ' is-active' : '' }}"
+                                    data-gallery-thumb="{{ $loop->index }}" aria-label="Показать фото {{ $loop->iteration }}"
+                                    aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                                    <img src="{{ $photo['url'] }}" alt="" loading="lazy">
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             @else
                 <div class="app-venue-gallery__missing"><svg aria-hidden="true"><use href="#ball"/></svg><span>Фотографии площадки пока не загружены</span></div>
             @endif
-            @if(count($venue->featuredMedia) > 1)
-                <div class="app-venue-gallery__thumbs">
-                @foreach(array_slice($venue->featuredMedia, 1, 4) as $photo)
-                    <a href="{{ $photo['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="Открыть фото {{ $loop->iteration + 1 }}">
-                        <img src="{{ $photo['url'] }}" alt="{{ $photo['title'] ?: 'Фото площадки' }}" loading="lazy">
-                    </a>
-                @endforeach
-                </div>
-            @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">MSKBA / ПЛОЩАДКА</p>
+            <p class="eyebrow accent">{{ $venue->type }}</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
-            @if($venueAddress)<p class="app-venue-intro__address"><svg aria-hidden="true"><use href="#pin"/></svg>{{ $venueAddress }}</p>@endif
+            @if($venueAddress)
+                <button type="button" class="app-venue-intro__address" data-venue-map-open
+                    aria-label="Показать {{ $venueAddress }} на Яндекс Картах">
+                    <svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $venueAddress }}</span>
+                </button>
+            @endif
+            @if(count($venue->metroStations))
+                <div class="app-venue-intro__metro" aria-label="Ближайшие станции метро">
+                    @foreach($venue->metroStations as $station)
+                        <span class="app-venue-intro__station">
+                            <span class="app-venue-intro__metro-dot"
+                                style="--metro-color: {{ ($station->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $station->lineColor)) ? $station->lineColor : '#758392' }}"
+                                aria-hidden="true"></span>{{ $station->name }}
+                        </span>
+                    @endforeach
+                </div>
+            @endif
             <div class="app-venue-intro__badges">
-                <span class="badge">{{ $venue->type }}</span>
                 @foreach(array_slice($venue->amenities, 0, 3) as $amenity)<span class="badge">{{ $amenity->name }}</span>@endforeach
             </div>
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
-                <button type="button" class="button primary large" data-play-intent-open @disabled(!$canStartInterest)>
-                    <svg aria-hidden="true"><use href="#ball"/></svg> Хочу здесь играть
+                <button type="button" class="button primary large" data-play-intent-open data-venue-interest-action
+                    data-interest-id="{{ $viewerVenueInterest?->id }}"
+                    data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                    @disabled(!$canStartInterest)>
+                    {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
                 </button>
-                <a class="button secondary large" href="#app-venue-schedule">Расписание и бронь</a>
+                <span class="app-venue-favorite-action">
+                    <button type="button" class="mskba-favorite-heart" data-favorite-venue="{{ $venue->id }}"
+                        aria-pressed="false" aria-label="Добавить в избранное" title="Добавить в избранное">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.4c0 5-8.8 11.1-8.8 11.1S3.2 13.4 3.2 8.4a5.1 5.1 0 0 1 8.8-3.3 5.1 5.1 0 0 1 8.8 3.3Z"/></svg>
+                    </button><span data-venue-favorite-count data-venue-favorite-count-id="{{ $venue->id }}">{{ $favoritesCount }}</span>
+                </span>
+                <a class="button secondary large" href="#app-venue-schedule">Расписание площадки</a>
             </div>
-            <p class="app-venue-intro__hint">Можно просто оставить интерес — без брони и обязательств.</p>
         </div>
     </div>
 
@@ -83,30 +142,38 @@
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
             <section class="panel app-venue-block" id="app-venue-activities">
-                <header class="app-venue-block__header"><h2>Игры и мероприятия</h2><span class="badge">Существующие активности</span></header>
+                <header class="app-venue-block__header"><h2>Игры и мероприятия</h2></header>
                 <p class="muted">Проверяй расписание игр и присоединяйся к мероприятиям с открытым набором участников.</p>
                 <a href="{{ route('events.index') }}" class="button secondary">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
             <section class="panel app-venue-block" id="app-venue-interest">
-                <header class="app-venue-block__header"><h2>Интерес игроков</h2></header>
-                <p class="muted">Отметь, когда тебе удобно играть здесь. Совпадения по времени и формату появятся в разделе «Мои интересы» по мере подключения подбора игроков.</p>
+                <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
-                    <p class="muted">Активных интересов по этой площадке: <strong>{{ $activeVenueInterestCount }}</strong></p>
-                    @if ($viewerHasVenueInterest)
-                        <p class="app-venue-interest-summary__own">Ты уже отметил интерес к игре здесь. <a href="{{ route('play-intents.mine') }}">Мои интересы</a></p>
-                    @endif
+                    <div class="app-venue-interest-summary__profiles">
+                        <div class="app-venue-interest-summary__avatars" aria-label="Игроки с открытыми профилями">
+                            @foreach($venueInterestUsers->take(5) as $player)
+                                <span class="app-venue-interest-summary__avatar" title="{{ $player['name'] }}">
+                                    @if($player['avatar'])
+                                        <img src="{{ $player['avatar'] }}" alt="{{ $player['name'] }}" loading="lazy">
+                                    @else
+                                        <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
+                                    @endif
+                                </span>
+                            @endforeach
+                        </div>
+                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $activeVenueInterestCount % 100 >= 11 && $activeVenueInterestCount % 100 <= 14 ? 'интересов' : (match ($activeVenueInterestCount % 10) { 1 => 'интерес', 2, 3, 4 => 'интереса', default => 'интересов' }) }}</strong>
+                        <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
+                    </div>
                 </div>
-                <a class="button primary" href="{{ route('play-intents.mine') }}">Мои интересы</a>
+                <button type="button" class="button primary" data-venue-interest-action
+                    data-interest-id="{{ $viewerVenueInterest?->id }}"
+                    data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                    data-play-intent-open @disabled(!$canStartInterest)>
+                    {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
+                </button>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Часы работы</h2></header>
-                @if(count($venue->courts) > 0)
-                    <div class="app-venue-block__court-list">
-                        @foreach($venue->courts as $court)
-                            <span class="badge">{{ $court['name'] }}</span>
-                        @endforeach
-                    </div>
-                @endif
                 @if(count($shownDays) > 0)
                     <div class="app-venue-schedule">
                         @foreach($shownDays as $day)
@@ -116,10 +183,9 @@
                             <div class="app-venue-schedule__day">
                                 <strong>{{ $day['label'] ?? $day['date'] }}</strong>
                                 @if(count($publishedHours))
-                                    <p class="app-venue-schedule__hours">Часы работы:
-                                        @foreach($publishedHours as $hours)
-                                            {{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless
-                                        @endforeach
+                                    <p class="app-venue-schedule__hours" aria-label="Часы работы">
+                                        <svg aria-hidden="true"><use href="#clock"/></svg>
+                                        <span>@foreach($publishedHours as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
                                     </p>
                                 @endif
                                 @if(count($day['slots'] ?? []) > 0)
@@ -171,11 +237,55 @@
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
             <strong>Хочешь поиграть?</strong>
             <p>Укажи время и подходящий формат. MSKBA сохранит твой интерес без обязательств.</p>
-            <button type="button" class="button primary full" data-play-intent-open @disabled(!$canStartInterest)>Хочу здесь играть</button>
+            <button type="button" class="button primary full" data-play-intent-open data-venue-interest-action
+                data-interest-id="{{ $viewerVenueInterest?->id }}"
+                data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                @disabled(!$canStartInterest)>{{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}</button>
             <a class="button secondary full" href="#app-venue-schedule">Посмотреть расписание</a>
         </aside>
     </div>
 </section>
+@if($venueAddress)
+    <dialog class="app-venue-overlay" data-venue-map-dialog aria-label="Положение площадки на карте">
+        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+        <div class="app-venue-map-frame" data-venue-map-frame
+            data-lat="{{ $venue->address?->latitude }}" data-lon="{{ $venue->address?->longitude }}"
+            data-name="{{ $venue->name }}"></div>
+        <p>{{ $venueAddress }}</p>
+    </dialog>
+@endif
+<dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
+    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-interests-dialog__list">
+        @forelse($venueInterestUsers as $player)
+            <div class="app-venue-interests-dialog__player">
+                <span class="app-venue-interest-summary__avatar">
+                    @if($player['avatar'])
+                        <img src="{{ $player['avatar'] }}" alt="" loading="lazy">
+                    @else
+                        <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
+                    @endif
+                </span>
+                <span>{{ $player['name'] }}</span>
+            </div>
+        @empty
+            <p class="muted">Пока нет игроков, разрешивших показывать свой профиль.</p>
+        @endforelse
+    </div>
+    <p class="caption">Всего интересов: {{ $activeVenueInterestCount }}. Личные данные видны только с разрешения пользователей.</p>
+    <button type="button" class="button primary" data-venue-interest-action data-interest-id="{{ $viewerVenueInterest?->id }}"
+        data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+        data-play-intent-open>{{ $viewerHasVenueInterest ? 'Не интересно' : 'Тоже хочу здесь играть' }}</button>
+</dialog>
+<dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
+    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <p>Вы уверены, что больше не хотите следить за этой площадкой?</p>
+    <div class="app-venue-overlay__actions">
+        <button type="button" class="button secondary" data-venue-overlay-close>Отмена</button>
+        <button type="button" class="button primary" data-venue-interest-confirm-submit>Подтвердить</button>
+    </div>
+    <p class="error" role="alert" data-venue-interest-error hidden></p>
+</dialog>
 @php
     $playIntentOptions = [
         'venueId' => $venue->id,

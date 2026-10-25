@@ -4,7 +4,11 @@
     $venueUrl = route('venues.show', $venue->routeIdentifier());
 @endphp
 
-<article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}">
+<article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}" data-venue-id="{{ $venue->id }}">
+    <button type="button" class="mskba-favorite-heart mskba-favorite-heart--card"
+        data-favorite-venue="{{ $venue->id }}"
+        aria-label="Добавить в избранное" title="Добавить в избранное"
+        aria-pressed="false"><svg aria-hidden="true"><use href="#heart"/></svg></button>
     <a class="catalog-card__image venue-catalog-item__image" href="{{ $venueUrl }}">
         <img src="{{ $venue->imageUrl ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}">
     </a>

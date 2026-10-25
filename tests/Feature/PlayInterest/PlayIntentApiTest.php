@@ -52,6 +52,28 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-play-interests', false);
     }
 
+    public function test_venue_interest_public_listing_requires_explicit_opt_in(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue),
+            'show_on_venue' => true,
+        ])->assertCreated()->assertJsonPath('data.show_on_venue', true);
+        $interest = PlayIntent::query()->sole();
+        $this->assertTrue($interest->show_on_venue);
+
+        $this->putJson(route('play-intents.update', $interest), [
+            ...$this->payload($venue),
+            'venue_id' => null,
+            'include_similar_venues' => false,
+            'show_on_venue' => true,
+        ])->assertOk()
+            ->assertJsonPath('data.venue_id', null)
+            ->assertJsonPath('data.show_on_venue', false);
+        $this->assertFalse($interest->refresh()->show_on_venue);
+    }
+
     public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
     {
         $user = User::factory()->create();
@@ -115,10 +137,11 @@ final class PlayIntentApiTest extends TestCase
         $this->actingAs($user)->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee($expectedBreadcrumb)
-            ->assertSee('Активных интересов по этой площадке: ', false)
-            ->assertSee('Ты уже отметил интерес к игре здесь')
+            ->assertSee('Площадкой интересуются')
             ->assertSee('data-play-venue-interest-summary', false)
-            ->assertSee('class="button primary" href="'.route('play-intents.mine').'">Мои интересы</a>', false)
+            ->assertSee('2 интереса')
+            ->assertSee('data-venue-interest-action', false)
+            ->assertSee('Не хочу здесь играть')
             ->assertDontSee('Отображается только число интересов')
             ->assertDontSee('private-interest-other');
 
@@ -126,10 +149,10 @@ final class PlayIntentApiTest extends TestCase
         auth()->logout();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Активных интересов по этой площадке: ', false)
+            ->assertSee('Площадкой интересуются')
             ->assertDontSee('private-interest-test')
             ->assertDontSee('private-interest-other')
-            ->assertDontSee('Ты уже отметил интерес к игре здесь');
+            ->assertDontSee('private-interest-other');
     }
 
     public function test_free_venue_schedule_displays_published_hours_not_booking_warnings(): void
@@ -155,7 +178,8 @@ final class PlayIntentApiTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Часы работы:')
+            ->assertSee('aria-label="Часы работы"', false)
+            ->assertSee('href="#clock"', false)
             ->assertDontSee('Расписание:')
             ->assertSee('10:00–22:00')
             ->assertDontSee('Нет опубликованных занятых слотов')

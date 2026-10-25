@@ -59,6 +59,8 @@ import './features/address-suggest.js';
 import './features/entity-predictive-search.js';
 import './features/venue-map.js';
 import './features/venue-catalog.js';
+import '../../mskba_app/js/venue-favorites.js';
+import '../../mskba_app/css/venue-favorites.css';
 import './features/team-catalog.js';
 import './features/sports-section-catalog.js';
 import './features/sports-section-recruitment-settings.js';

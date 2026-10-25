@@ -151,6 +151,11 @@
 @section('section-heading-action')
     @if(!empty($venue))
         <div class="venue-heading-actions">
+            <button type="button" class="mskba-favorite-heart"
+                data-favorite-venue="{{ $venue->id }}" aria-label="Добавить в избранное"
+                title="Добавить в избранное" aria-pressed="false">
+                <svg aria-hidden="true"><use href="#heart"/></svg>
+            </button>
             <div
                 class="venue-star-rating"
                 role="img"
