@@ -23,6 +23,7 @@
 @import './appearance-light.css';
 @import './appearance-premium.css';
 @import './play-interest.css';
+@import './venue-detail.css';
 
 .app-shell { min-height: 100dvh; }
 
