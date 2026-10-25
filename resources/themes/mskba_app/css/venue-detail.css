@@ -106,5 +106,5 @@
 .app-venue-schedule__slot-trigger:hover{color:var(--accent-hover,var(--accent))}
 .app-venue-schedule__slot-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 .app-venue-slot-dialog__time{font-size:14px;font-weight:700;margin-bottom:12px}
-.app-venue-overlay--slot .app-venue-overlay__actions form{margin:0}
+.app-venue-overlay--slot .app-venue-overlay__actions form{margin:0;width:auto;flex:0 0 auto;gap:0}
 .app-venue-overlay [hidden]{display:none!important}
