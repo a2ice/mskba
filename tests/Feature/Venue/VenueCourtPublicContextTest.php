@@ -235,10 +235,11 @@ final class VenueCourtPublicContextTest extends TestCase
             'sort_order' => 30,
             'environment' => null,
         ]);
-        $explicit = $venue->courts()->create([
-            'name' => 'Существующий тип',
-            'alias' => 'indoor-existing',
-            'sort_order' => 40,
+        $otherVenue = Venue::factory()->create();
+        $explicit = $otherVenue->primaryCourt()->firstOrFail();
+        $explicit->update([
+            'name' => 'Явно заданная уличная зона',
+            'alias' => 'indoor',
             'environment' => VenueCourtEnvironmentEnum::OUTDOOR,
         ]);
 
