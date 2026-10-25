@@ -25,11 +25,14 @@ final class VenueCourtSettingsController extends Controller
         VenueCommercialAccess $access, MinorAmountParser $amounts,
         VenueAccessResolver $venueAccess, CurrentActorResolver $actors,
     ): RedirectResponse {
+        file_put_contents('/tmp/roomtest.markers', "CONTROLLER-ENTRY\n", FILE_APPEND);
         [$venueModel, $courtModel] = $this->target($venue, $court);
+        file_put_contents('/tmp/roomtest.markers', "CONTROLLER-TARGET\n", FILE_APPEND);
         abort_unless($request->user() !== null && $access->allowsForCourt(
             $request->user(), $courtModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY
         ), 403);
 
+        file_put_contents('/tmp/roomtest.markers', "CONTROLLER-AUTH-PASSED\n", FILE_APPEND);
         $validated = $request->validate([
             'operational_status' => ['sometimes', Rule::in(['inherit', 'active', 'temporarily_closed'])],
             'requires_payment' => ['sometimes', Rule::in(['inherit', 'yes', 'no'])],
