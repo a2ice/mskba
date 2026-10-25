@@ -256,6 +256,37 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this->assertNull($slot['eventJoinUrl']);
     }
 
+    public function test_event_organizer_uses_dedicated_join_action_without_losing_permissions(): void
+    {
+        [$venue, $booking, $actorId] = $this->venueAndBooking();
+        $event = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'booking_id' => $booking->id,
+            'organizer_actor_id' => $actorId,
+            'status' => EventStatusEnum::PUBLISHED,
+            'visibility' => EventVisibilityEnum::PUBLIC,
+            'max_participants' => 10,
+            'starts_at' => '2026-09-12 19:00:00',
+            'ends_at' => '2026-09-12 20:00:00',
+        ]);
+        $organizer = \App\Modules\Identity\Domain\Models\Actor::query()->findOrFail($actorId)->user;
+        $event->participants()->create([
+            'user_id' => $organizer->id,
+            'role' => EventParticipantRoleEnum::ORGANIZER,
+            'participation_roles' => ['player'],
+            'status' => EventParticipantStatusEnum::LEFT,
+            'confirmation_version' => $event->participation_confirmation_version,
+        ]);
+
+        $days = app(ShowVenueHandler::class)->handle($venue->routeIdentifier(), $organizer)->occupancyDays;
+        $slot = collect($days)->flatMap(fn (array $day) => $day['slots'])->first();
+
+        $this->assertSame('open', $slot['joinState']);
+        $this->assertTrue($slot['canJoin']);
+        $this->assertSame('POST', $slot['eventJoinMethod']);
+        $this->assertSame(route('events.join', $event->routeIdentifier()), $slot['eventJoinUrl']);
+    }
+
     /** @return array{0: Venue, 1: LegacyVenueBooking, 2: int} */
     private function venueAndBooking(
         VenueBookingStatusEnum $status = VenueBookingStatusEnum::CONFIRMED,
