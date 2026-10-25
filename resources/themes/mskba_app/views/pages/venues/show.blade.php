@@ -144,15 +144,30 @@
                 <a href="{{ route('events.index') }}" class="button secondary">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
             <section class="panel app-venue-block" id="app-venue-interest">
-                <header class="app-venue-block__header"><h2>Интерес игроков</h2></header>
-                <p class="muted">Отметь, когда тебе удобно играть здесь. Совпадения по времени и формату появятся в разделе «Мои интересы» по мере подключения подбора игроков.</p>
+                <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
-                    <p class="muted">Активных интересов по этой площадке: <strong>{{ $activeVenueInterestCount }}</strong></p>
-                    @if ($viewerHasVenueInterest)
-                        <p class="app-venue-interest-summary__own">Ты уже отметил интерес к игре здесь. <a href="{{ route('play-intents.mine') }}">Мои интересы</a></p>
-                    @endif
+                    <div class="app-venue-interest-summary__profiles">
+                        <div class="app-venue-interest-summary__avatars" aria-label="Игроки с открытыми профилями">
+                            @foreach($venueInterestUsers->take(5) as $player)
+                                <span class="app-venue-interest-summary__avatar" title="{{ $player['name'] }}">
+                                    @if($player['avatar'])
+                                        <img src="{{ $player['avatar'] }}" alt="{{ $player['name'] }}" loading="lazy">
+                                    @else
+                                        <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
+                                    @endif
+                                </span>
+                            @endforeach
+                        </div>
+                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $activeVenueInterestCount === 1 ? 'интерес' : 'интересов' }}</strong>
+                        <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
+                    </div>
                 </div>
-                <a class="button primary" href="{{ route('play-intents.mine') }}">Мои интересы</a>
+                <button type="button" class="button primary" data-venue-interest-action
+                    data-interest-id="{{ $viewerVenueInterest?->id }}"
+                    data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+                    data-play-intent-open @disabled(!$canStartInterest)>
+                    {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
+                </button>
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Часы работы</h2></header>
@@ -232,6 +247,47 @@
         </aside>
     </div>
 </section>
+@if($venueAddress)
+    <dialog class="app-venue-overlay" data-venue-map-dialog aria-label="Положение площадки на карте">
+        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+        <div class="app-venue-map-frame" data-venue-map-frame
+            data-lat="{{ $venue->address?->latitude }}" data-lon="{{ $venue->address?->longitude }}"
+            data-name="{{ $venue->name }}"></div>
+        <p>{{ $venueAddress }}</p>
+    </dialog>
+@endif
+<dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
+    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-interests-dialog__list">
+        @forelse($venueInterestUsers as $player)
+            <div class="app-venue-interests-dialog__player">
+                <span class="app-venue-interest-summary__avatar">
+                    @if($player['avatar'])
+                        <img src="{{ $player['avatar'] }}" alt="" loading="lazy">
+                    @else
+                        <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
+                    @endif
+                </span>
+                <span>{{ $player['name'] }}</span>
+            </div>
+        @empty
+            <p class="muted">Пока нет игроков, разрешивших показывать свой профиль.</p>
+        @endforelse
+    </div>
+    <p class="caption">Всего интересов: {{ $activeVenueInterestCount }}. Личные данные видны только с разрешения пользователей.</p>
+    <button type="button" class="button primary" data-venue-interest-action data-interest-id="{{ $viewerVenueInterest?->id }}"
+        data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
+        data-play-intent-open>{{ $viewerHasVenueInterest ? 'Не интересно' : 'Тоже хочу здесь играть' }}</button>
+</dialog>
+<dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
+    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <p>Вы уверены, что больше не хотите следить за этой площадкой?</p>
+    <div class="app-venue-overlay__actions">
+        <button type="button" class="button secondary" data-venue-overlay-close>Отмена</button>
+        <button type="button" class="button primary" data-venue-interest-confirm-submit>Подтвердить</button>
+    </div>
+    <p class="error" role="alert" data-venue-interest-error hidden></p>
+</dialog>
 @php
     $playIntentOptions = [
         'venueId' => $venue->id,
