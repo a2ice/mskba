@@ -81,6 +81,7 @@
     top:calc(var(--header-height,80px) + var(--context-bar-height,44px));
     z-index:18;
     align-items:center;
+    margin-top:20px;
     margin-bottom:20px;
     padding:8px;
     border:1px solid var(--line);
