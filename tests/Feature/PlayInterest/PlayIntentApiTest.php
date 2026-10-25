@@ -251,8 +251,9 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame('00:00–01:00 (продолжение)', $occupied[1]['slots'][0]['timeLabel'] ?? '(missing next-day slot)');
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Часы работы')
-            ->assertSee('Слоты')
+            ->assertSee('<h2>Расписание</h2>', false)
+            ->assertSee('<h2>Игры и мероприятия</h2>', false)
+            ->assertDontSee('app-venue-schedule__slots', false)
             ->assertSee('22:00–01:00 (+1 день)')
             ->assertSee('00:00–01:00 (продолжение)')
             ->assertSee('data-venue-slot-open', false)
