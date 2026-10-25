@@ -104,10 +104,11 @@ if (sectionNav) {
 const mapDialog = document.querySelector('[data-venue-map-dialog]');
 const playersDialog = document.querySelector('[data-venue-interests-dialog]');
 const slotDialog = document.querySelector('[data-venue-slot-dialog]');
+const createEventDialog = document.querySelector('[data-venue-create-event-dialog]');
 const confirmDialog = document.querySelector('[data-venue-interest-confirm]');
 let cancelUrl = '';
 let submitButton = null;
-for (const dialog of [mapDialog, playersDialog, slotDialog, confirmDialog]) {
+for (const dialog of [mapDialog, playersDialog, slotDialog, createEventDialog, confirmDialog]) {
     if (!dialog) continue;
     dialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', () => dialog.close()));
@@ -227,6 +228,7 @@ mapDialog?.addEventListener('close', () => {
     pendingNearby?.abort();
 });
 document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
+document.querySelector('[data-venue-create-event-open]')?.addEventListener('click', () => createEventDialog?.showModal());
 
 // Occupied time is always clickable, but private bookings reveal no event
 // details. Joining is offered only when the server marks a public event open.
@@ -235,9 +237,12 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
         if (!slotDialog) return;
         const eventUrl = button.dataset.eventUrl || '';
         const joinUrl = button.dataset.eventJoinUrl || '';
+        const joinState = button.dataset.joinState || 'unavailable';
         const canJoin = button.dataset.canJoin === 'true' && !!eventUrl && !!joinUrl;
+        const canRespondTentative = button.dataset.canRespondTentative === 'true' && !!eventUrl && !!joinUrl;
         const eventLink = slotDialog.querySelector('[data-venue-slot-event-link]');
         const joinForm = slotDialog.querySelector('[data-venue-slot-join-form]');
+        const tentativeForm = slotDialog.querySelector('[data-venue-slot-tentative-form]');
         const guestLink = slotDialog.querySelector('[data-venue-slot-guest-link]');
         const hasEvent = !!eventUrl;
 
@@ -245,11 +250,17 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
             hasEvent ? (button.dataset.eventTitle || button.dataset.eventType || 'Мероприятие') : 'Занятое время';
         slotDialog.querySelector('[data-venue-slot-time]').textContent =
             [button.dataset.slotDay, button.dataset.slotTime].filter(Boolean).join(' · ');
+        const messages = {
+            unavailable: 'Детали этой брони не опубликованы. Присоединение недоступно.',
+            ended: 'Мероприятие уже завершилось. Изменить участие нельзя.',
+            organizer: 'Ты организатор этого мероприятия. Управлять им можно на странице мероприятия.',
+            joined: 'Ты уже участвуешь в мероприятии.',
+            full: 'Все места заняты. Можно ответить «Думаю», но это не резервирует место.',
+            reconfirm: 'Условия мероприятия изменились. Нужно подтвердить участие повторно.',
+            open: 'Набор участников открыт.',
+        };
         slotDialog.querySelector('[data-venue-slot-message]').textContent =
-            !hasEvent ? 'Детали этой брони не опубликованы. Присоединение недоступно.'
-                : !canJoin ? 'Присоединиться к этому мероприятию сейчас нельзя.'
-                    : joinForm ? 'Набор участников открыт.' :
-                        'Набор открыт. Перейди к мероприятию, чтобы войти и присоединиться.';
+            messages[joinState] || messages.unavailable;
 
         if (eventLink) {
             eventLink.hidden = !hasEvent;
@@ -260,11 +271,21 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
             joinForm.hidden = !canJoin;
             if (canJoin) joinForm.action = joinUrl;
             else joinForm.removeAttribute('action');
+            const joinLabel = joinForm.querySelector('[data-venue-slot-join-label]');
+            if (joinLabel) joinLabel.textContent = joinState === 'reconfirm'
+                ? 'Подтвердить участие' : 'Присоединиться';
+        }
+        if (tentativeForm) {
+            tentativeForm.hidden = !canRespondTentative;
+            if (canRespondTentative) tentativeForm.action = joinUrl;
+            else tentativeForm.removeAttribute('action');
         }
         if (guestLink) {
-            guestLink.hidden = !canJoin;
-            if (canJoin) guestLink.href = eventUrl;
-            else guestLink.removeAttribute('href');
+            guestLink.hidden = !canJoin && !canRespondTentative;
+            if (canJoin || canRespondTentative) {
+                guestLink.href = eventUrl;
+                guestLink.textContent = canRespondTentative ? 'Думаю' : 'Присоединиться';
+            } else guestLink.removeAttribute('href');
         }
         slotDialog.showModal();
     });
@@ -282,11 +303,13 @@ if (venueSidebar && venueAnchors) {
         const navBottom = venueAnchors.getBoundingClientRect().bottom;
         const contextBottom = document.querySelector('.app-context-bar')?.getBoundingClientRect().bottom || 0;
         const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
-        const top = Math.ceil(Math.max(navBottom, contextBottom, headerBottom, 0) + 15);
+        const fixedHeaderBottom = Math.max(contextBottom, headerBottom, 0);
+        const top = Math.ceil(Math.max(navBottom, fixedHeaderBottom) + 15);
         venueSidebar.style.setProperty('--venue-sidebar-sticky-top', top + 'px');
         venueAnchors.closest('.app-venue-page')?.style.setProperty('--app-venue-nav-height', venueAnchors.offsetHeight + 'px');
-        venueSidebar.classList.toggle('is-stuck',
-            Math.abs(venueSidebar.getBoundingClientRect().top - top) <= 2);
+        venueAnchors.classList.toggle('is-stuck',
+            Math.abs(venueAnchors.getBoundingClientRect().top - fixedHeaderBottom) <= 2
+            && window.scrollY > 0);
     };
     const scheduleSidebarUpdate = () => {
         if (pending) return;
