@@ -12,6 +12,9 @@ const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
 const notifyMatches=ref(true), notifyOffers=ref(true), showOnVenue=ref(false), amenities=ref([]), priority=reactive({});
+const favoriteDesired=ref(true), favoriteState=ref('unknown'), favoriteCount=ref(Number(props.options.favoriteCount ?? 0));
+const favoriteLoading=ref(false), favoriteError=ref(''), favoriteRetryId=ref(null);
+const favoriteEnabled=computed(() => Boolean(chosenVenueId.value && props.options.endpoints?.favoriteStatuses && props.options.endpoints?.favoriteToggle));
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
 const days=[{id:1,name:'Пн'},{id:2,name:'Вт'},{id:3,name:'Ср'},{id:4,name:'Чт'},{id:5,name:'Пт'},{id:6,name:'Сб'},{id:7,name:'Вс'}];
 const parts=[{id:'any',label:'Не важно'},{id:'morning',label:'Утро'},{id:'day',label:'День'},{id:'evening',label:'Вечер'},{id:'night',label:'Ночь'}];
@@ -95,6 +98,56 @@ function unlinkVenue(){
     venueDisabled.value=!venueDisabled.value;
     if(venueDisabled.value) similar.value=false;
 }
+// Always read current state before a toggle: the endpoint is not idempotent.
+async function favoriteStatus(id) {
+    const url=new URL(props.options.endpoints.favoriteStatuses, location.origin);
+    url.searchParams.append('ids[]',String(id));
+    const response=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Не удалось проверить избранное.');
+    const data=await response.json();
+    return {state:data.data?.[id]?.state || 'none',count:Number(data.counts?.[id] ?? 0)};
+}
+async function loadFavoriteStatus(){
+    if(!favoriteEnabled.value)return;
+    const id=Number(chosenVenueId.value);
+    favoriteLoading.value=true;
+    try {
+        const status=await favoriteStatus(id);
+        if(Number(chosenVenueId.value)===id){
+            favoriteState.value=status.state;favoriteCount.value=status.count;
+        }
+    }catch{
+        // The save path rechecks the server and never assumes the venue is absent.
+        if(Number(chosenVenueId.value)===id)favoriteState.value='unknown';
+    }finally{favoriteLoading.value=false;}
+}
+async function syncFavorite(id,desired){
+    const current=await favoriteStatus(id);
+    let state=current.state,count=current.count;
+    if((state==='active')!==desired){
+        const response=await fetch(props.options.endpoints.favoriteToggle,{
+            method:'POST',credentials:'same-origin',
+            headers:{'Content-Type':'application/json',Accept:'application/json',
+                'X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
+            body:JSON.stringify({type:'venue',id}),
+        });
+        if(!response.ok)throw new Error('Не удалось обновить избранное.');
+        const result=await response.json();
+        state=result.state;count=Number(result.count ?? count);
+        if((state==='active')!==desired)throw new Error('Не удалось подтвердить изменение избранного.');
+    }
+    favoriteState.value=state;favoriteCount.value=count;
+    window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{detail:{venueId:id,state,count}}));
+}
+async function retryFavorite(){
+    if(!favoriteRetryId.value||busy.value)return;
+    busy.value=true;
+    try {
+        await syncFavorite(favoriteRetryId.value,favoriteDesired.value);
+        favoriteRetryId.value=null;favoriteError.value='';
+    }catch{favoriteError.value='Не удалось изменить избранное. Повтори попытку.';}
+    finally{busy.value=false;}
+}
 function readPending(){
     try{
         const x=JSON.parse(sessionStorage.getItem(STORAGE)||'null');
@@ -112,6 +165,7 @@ async function openDialog(){
     restoreFocus=document.activeElement;overflow=document.body.style.overflow;visible.value=true;
     await nextTick();el.value?.showModal();document.body.style.overflow='hidden';
     heading.value?.focus({preventScroll:true});
+    if(favoriteEnabled.value)void loadFavoriteStatus();
     if(!amenities.value.length){
         try{
             const r=await fetch(props.options.endpoints.amenities,{credentials:'same-origin',headers:{Accept:'application/json'}});
@@ -124,13 +178,13 @@ function beginLogin(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
-    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:payload}));}
+    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:payload,favoriteSelected:favoriteDesired.value}));}
     catch{error.value='Не удалось сохранить настройки до входа. Проверь настройки браузера.';return;}
     close(true);
     window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true,preferredRole:'player'}}));
 }
-async function save(payload){
-    busy.value=true;error.value='';errors.value={};
+async function save(payload,desiredFavorite=favoriteDesired.value){
+    busy.value=true;error.value='';errors.value={};favoriteError.value='';favoriteRetryId.value=null;
     try{
         const response=await fetch(editingId.value ? props.options.endpoints.base+'/'+editingId.value : props.options.endpoints.store,{
             method:editingId.value?'PUT':'POST',credentials:'same-origin',
@@ -145,7 +199,17 @@ async function save(payload){
                 response.status===422?'Проверь выбранные условия.':
                 'Не получилось сохранить. Повтори попытку.';return;
         }
-        success.value=result.data;sessionStorage.removeItem(STORAGE);
+        sessionStorage.removeItem(STORAGE);
+        // Favorite changes are separate from interest creation and must happen only
+        // after the interest is saved. Failures cannot create duplicate interests.
+        if(payload.venue_id && props.options.endpoints?.favoriteStatuses && props.options.endpoints?.favoriteToggle){
+            try { await syncFavorite(Number(payload.venue_id),Boolean(desiredFavorite)); }
+            catch {
+                favoriteRetryId.value=Number(payload.venue_id);
+                favoriteError.value='Интерес сохранён, но избранное не обновилось. Можно повторить отдельно.';
+            }
+        }
+        success.value=result.data;
         window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
     finally{busy.value=false;}
@@ -160,14 +224,15 @@ async function submit(){
 async function resume(){
     if(onceResume||!isAuth.value||document.querySelector('[data-onboarding-pending]'))return;
     const pending=readPending();if(!pending)return;
-    onceResume=true;restore(pending.data);await openDialog();await save(pending.data);
+    onceResume=true;restore(pending.data);favoriteDesired.value=pending.favoriteSelected!==false;
+    await openDialog();await save(pending.data,favoriteDesired.value);
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=false;notifyOffers.value=true;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=false;notifyOffers.value=true;favoriteDesired.value=true;favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
-    editingId.value=intent.id;success.value=null;error.value='';errors.value={};
+    editingId.value=intent.id;success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
     restore(intent);void openDialog();
 }
 function onBackdrop(e){
@@ -190,6 +255,8 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <p class="app-play-dialog__success" role="status">Твой интерес сохранён. Это пока не регистрация на игру и не бронирование.</p>
             <p class="muted">Изменить настройки можно в разделе «Мои интересы».</p>
+            <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
+            <button v-if="favoriteRetryId" type="button" class="button secondary" :disabled="busy" @click="retryFavorite">{{busy?'Повторяем…':'Повторить изменение избранного'}}</button>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
             <a class="button primary" :href="options.endpoints.mine">Мои интересы</a>
@@ -314,6 +381,11 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
                     <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок (необязательно)</label>
                 </div>
+                <label v-if="favoriteEnabled" class="check-label app-play-dialog__favorite-choice">
+                    <input v-model="favoriteDesired" type="checkbox" :disabled="busy">
+                    <span>{{favoriteDesired?(favoriteState==='active'?'Оставить площадку в избранном':'Добавить площадку в избранное'):(favoriteState==='active'?'Убрать площадку из избранного':'Не добавлять площадку в избранное')}}</span>
+                    <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
+                </label>
                 <label class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox" required><span>Согласен показывать другим посетителям мой никнейм, аватар и игровые характеристики в рамках этого поиска. Это разрешение действует для выбранной площадки или подходящих вариантов, даже если общая видимость профиля ограничена. Отозвать можно, отменив интерес.</span></label>
                 <p v-if="error" class="error" role="alert">{{error}}</p>
                 <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
