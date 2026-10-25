@@ -24,11 +24,37 @@
         ->where('venue_id', $venue->id)
         ->where('status', 'active')
         ->where('expires_at', '>', now());
-    $activeVenueInterestCount = (clone $activeVenueInterests)->count();
-    $viewerHasVenueInterest = auth()->check()
-        && (clone $activeVenueInterests)
-            ->where('user_id', auth()->user()->canonical()->id)
-            ->exists();
+    $viewer = auth()->user()?->canonical();
+    $viewerVenueInterest = $viewer
+        ? (clone $activeVenueInterests)->where('user_id', $viewer->id)->orderByDesc('id')->first()
+        : null;
+    $viewerHasVenueInterest = $viewerVenueInterest !== null;
+    $venueInterestUsers = (clone $activeVenueInterests)
+        ->with(['user.profile.activeAvatar'])
+        ->orderByDesc('created_at')->get()
+        ->unique('user_id')
+        ->filter(function ($intent) use ($viewer): bool {
+            $user = $intent->user;
+            return $user !== null && ! $user->isBlocked()
+                && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
+                    ->allows($user, $viewer, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE);
+        })
+        ->map(function ($intent) use ($viewer): array {
+            $user = $intent->user;
+            $canShowAvatar = app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
+                ->allows($user, $viewer, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::AVATAR);
+            return [
+                'name' => trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->username,
+                'avatar' => $canShowAvatar ? $user->profile?->avatarUrl() : null,
+            ];
+        })->values();
+    // Aggregated counts never identify private users or imply their consent.
+    $activeVenueInterestCount = (clone $activeVenueInterests)->distinct()->count('user_id');
+    $favoritesCount = class_exists(\App\Modules\Favorites\Domain\Models\Favorite::class)
+        ? \App\Modules\Favorites\Domain\Models\Favorite::query()
+            ->where('entity_type', 'venue')->where('entity_id', $venue->id)
+            ->whereNull('trashed_at')->count()
+        : 0;
     $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
     $shownDays = $venue->isFreeAccess
         ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
@@ -38,38 +64,68 @@
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     <div class="app-venue-page__hero-grid">
-        <div class="app-venue-gallery panel">
-            @if($hero)
-                <img class="app-venue-gallery__main" src="{{ $hero }}" alt="Площадка {{ $venue->name }}" loading="eager">
+        <div class="app-venue-gallery panel" data-venue-gallery>
+            @if(count($venue->featuredMedia))
+                <div class="app-venue-gallery__stage">
+                    @foreach($venue->featuredMedia as $photo)
+                        <img class="app-venue-gallery__slide{{ $loop->first ? ' is-active' : '' }}"
+                            src="{{ $photo['url'] }}" alt="{{ $photo['title'] ?: $venue->name }}"
+                            loading="{{ $loop->first ? 'eager' : 'lazy' }}"
+                            data-gallery-slide aria-hidden="{{ $loop->first ? 'false' : 'true' }}">
+                    @endforeach
+                    @if(count($venue->featuredMedia) > 1)
+                        <div class="app-venue-gallery__thumbs" aria-label="Выбор фотографии">
+                            @foreach($venue->featuredMedia as $photo)
+                                <button type="button" class="app-venue-gallery__thumb{{ $loop->first ? ' is-active' : '' }}"
+                                    data-gallery-thumb="{{ $loop->index }}" aria-label="Показать фото {{ $loop->iteration }}"
+                                    aria-pressed="{{ $loop->first ? 'true' : 'false' }}">
+                                    <img src="{{ $photo['url'] }}" alt="" loading="lazy">
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             @else
                 <div class="app-venue-gallery__missing"><svg aria-hidden="true"><use href="#ball"/></svg><span>Фотографии площадки пока не загружены</span></div>
             @endif
-            @if(count($venue->featuredMedia) > 1)
-                <div class="app-venue-gallery__thumbs">
-                @foreach(array_slice($venue->featuredMedia, 1, 4) as $photo)
-                    <a href="{{ $photo['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="Открыть фото {{ $loop->iteration + 1 }}">
-                        <img src="{{ $photo['url'] }}" alt="{{ $photo['title'] ?: 'Фото площадки' }}" loading="lazy">
-                    </a>
-                @endforeach
-                </div>
-            @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">MSKBA / ПЛОЩАДКА</p>
+            <p class="eyebrow accent">{{ $venue->type }}</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
-            @if($venueAddress)<p class="app-venue-intro__address"><svg aria-hidden="true"><use href="#pin"/></svg>{{ $venueAddress }}</p>@endif
+            @if($venueAddress)
+                <button type="button" class="app-venue-intro__address" data-venue-map-open
+                    @disabled(! $venue->address?->latitude || ! $venue->address?->longitude)
+                    aria-label="Показать {{ $venueAddress }} на Яндекс Картах">
+                    <svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $venueAddress }}</span>
+                </button>
+            @endif
+            @if(count($venue->metroStations))
+                <div class="app-venue-intro__metro" aria-label="Ближайшие станции метро">
+                    @foreach($venue->metroStations as $station)
+                        <span class="app-venue-intro__station">
+                            <span class="app-venue-intro__metro-dot"
+                                style="--metro-color: {{ ($station->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $station->lineColor)) ? $station->lineColor : '#758392' }}"
+                                aria-hidden="true"></span>{{ $station->name }}
+                        </span>
+                    @endforeach
+                </div>
+            @endif
             <div class="app-venue-intro__badges">
-                <span class="badge">{{ $venue->type }}</span>
                 @foreach(array_slice($venue->amenities, 0, 3) as $amenity)<span class="badge">{{ $amenity->name }}</span>@endforeach
             </div>
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-play-intent-open @disabled(!$canStartInterest)>
-                    <svg aria-hidden="true"><use href="#ball"/></svg> Хочу здесь играть
+                    Хочу здесь играть
                 </button>
-                <a class="button secondary large" href="#app-venue-schedule">Расписание и бронь</a>
+                <span class="app-venue-favorite-action">
+                    <button type="button" class="mskba-favorite-heart" data-favorite-venue="{{ $venue->id }}"
+                        aria-pressed="false" aria-label="Добавить в избранное" title="Добавить в избранное">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.4c0 5-8.8 11.1-8.8 11.1S3.2 13.4 3.2 8.4a5.1 5.1 0 0 1 8.8-3.3 5.1 5.1 0 0 1 8.8 3.3Z"/></svg>
+                    </button><span data-venue-favorite-count>{{ $favoritesCount }}</span>
+                </span>
+                <a class="button secondary large" href="#app-venue-schedule">Расписание площадки</a>
             </div>
-            <p class="app-venue-intro__hint">Можно просто оставить интерес — без брони и обязательств.</p>
         </div>
     </div>
 
@@ -83,7 +139,7 @@
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
             <section class="panel app-venue-block" id="app-venue-activities">
-                <header class="app-venue-block__header"><h2>Игры и мероприятия</h2><span class="badge">Существующие активности</span></header>
+                <header class="app-venue-block__header"><h2>Игры и мероприятия</h2></header>
                 <p class="muted">Проверяй расписание игр и присоединяйся к мероприятиям с открытым набором участников.</p>
                 <a href="{{ route('events.index') }}" class="button secondary">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
