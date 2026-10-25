@@ -3,7 +3,7 @@
 .app-venue-gallery__stage{height:100%;min-height:360px;position:relative;overflow:hidden;border-radius:inherit;flex:1}
 .app-venue-gallery__slide{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .75s ease-in-out;pointer-events:none}
 .app-venue-gallery__slide.is-active{opacity:1}
-.app-venue-gallery__thumbs{position:absolute;z-index:2;left:10px;right:10px;bottom:10px;display:flex;gap:8px;overflow:auto;scrollbar-width:thin;padding:8px;max-width:calc(100% - 20px);background:rgba(20,28,37,.38);border-radius:18px}
+.app-venue-gallery__thumbs{position:absolute;z-index:2;left:5px;right:5px;bottom:5px;display:flex;gap:8px;overflow:auto;scrollbar-width:thin;padding:5px;max-width:calc(100% - 10px);background:rgb(20 28 37 / 10%);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);border-radius:4px 4px 18px 18px}
 .app-venue-gallery__thumb{flex:none;width:60px;height:49px;padding:2px;border:2px solid transparent;border-radius:10px;background:rgba(255,255,255,.6);cursor:pointer;overflow:hidden}
 .app-venue-gallery__thumb img{width:100%;height:100%;object-fit:cover;display:block;border-radius:6px}
 .app-venue-gallery__thumb.is-active,.app-venue-gallery__thumb:focus-visible{border-color:var(--accent,#c34c00);background:#fff}
@@ -74,3 +74,29 @@
 .app-venue-interests-dialog__details span{font-weight:400;font-size:12px;color:var(--muted)}
 .app-play-dialog__public-intent{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised);align-items:start}
 .app-play-dialog__public-intent input{flex:none;margin-top:3px}
+
+/* Anchors follow the site header and breadcrumb bar while a venue is in view. */
+.app-venue-page__anchors{
+    position:sticky;
+    top:calc(var(--header-height,80px) + var(--context-bar-height,44px));
+    z-index:18;
+    align-items:center;
+    margin-bottom:20px;
+    padding:8px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:color-mix(in srgb,var(--surface) 91%,transparent);
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    scrollbar-width:none;
+}
+.app-venue-page__anchors::-webkit-scrollbar{display:none}
+.app-venue-page__anchors a[aria-current="location"]{
+    color:var(--accent);
+    background:var(--surface-raised);
+    box-shadow:inset 0 -2px 0 var(--accent);
+}
+.app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.app-venue-page__sections>.app-venue-block{
+    scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--app-venue-nav-height,58px) + 12px);
+}

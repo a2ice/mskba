@@ -40,6 +40,67 @@ document.querySelectorAll('[data-venue-gallery]').forEach(gallery => {
     start();
 });
 
+// Follow scroll position and keep hash targets visible below the sticky bars.
+const sectionNav = document.querySelector('[data-venue-section-nav]');
+if (sectionNav) {
+    const links = [...sectionNav.querySelectorAll('a[href^="#"]')];
+    const sections = links.map(link => document.getElementById(link.hash.slice(1)));
+    const header = document.querySelector('[data-app-header]');
+    const breadcrumbs = document.querySelector('[data-app-context-bar]');
+    let scheduled = false;
+
+    function navOffset() {
+        return (header?.getBoundingClientRect().height || 0)
+            + (breadcrumbs?.getBoundingClientRect().height || 0)
+            + sectionNav.getBoundingClientRect().height;
+    }
+
+    function refreshNavHeight() {
+        document.documentElement.style.setProperty(
+            '--app-venue-nav-height', Math.ceil(sectionNav.getBoundingClientRect().height) + 'px',
+        );
+        scheduleActiveUpdate();
+    }
+
+    function updateActiveSection() {
+        scheduled = false;
+        const threshold = navOffset() + 16;
+        let active = sections[0];
+        for (const section of sections) {
+            if (section && section.getBoundingClientRect().top <= threshold) active = section;
+            else break;
+        }
+        links.forEach((link, index) => {
+            if (sections[index] === active) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+        });
+        const activeLink = links[sections.indexOf(active)];
+        if (activeLink && sectionNav.scrollWidth > sectionNav.clientWidth) {
+            const left = activeLink.offsetLeft;
+            const right = left + activeLink.offsetWidth;
+            if (left < sectionNav.scrollLeft || right > sectionNav.scrollLeft + sectionNav.clientWidth) {
+                sectionNav.scrollTo({ left: Math.max(0, left - 12), behavior: 'auto' });
+            }
+        }
+    }
+
+    function scheduleActiveUpdate() {
+        if (scheduled) return;
+        scheduled = true;
+        window.requestAnimationFrame(updateActiveSection);
+    }
+
+    links.forEach(link => link.addEventListener('click', () => {
+        links.forEach(other => other.removeAttribute('aria-current'));
+        link.setAttribute('aria-current', 'location');
+    }));
+    window.addEventListener('scroll', scheduleActiveUpdate, { passive: true });
+    window.addEventListener('resize', refreshNavHeight, { passive: true });
+    window.addEventListener('hashchange', scheduleActiveUpdate);
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refreshNavHeight).observe(sectionNav);
+    refreshNavHeight();
+}
+
 const mapDialog = document.querySelector('[data-venue-map-dialog]');
 const playersDialog = document.querySelector('[data-venue-interests-dialog]');
 const confirmDialog = document.querySelector('[data-venue-interest-confirm]');

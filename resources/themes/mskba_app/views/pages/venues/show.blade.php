@@ -140,7 +140,7 @@
         </div>
     </div>
 
-    <nav class="app-venue-page__anchors" aria-label="Разделы площадки">
+    <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
         <a href="#app-venue-activities">Игры</a>
         <a href="#app-venue-interest">Интерес игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
