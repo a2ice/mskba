@@ -5,6 +5,7 @@ namespace App\Modules\Favorites\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Favorites\Application\Services\FavoriteTargetRegistry;
 use App\Modules\Favorites\Application\Services\FavoritesManager;
+use App\Modules\Favorites\Domain\Models\Favorite;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,7 +43,11 @@ final class FavoritesController extends Controller
                 ],
             ])->all();
 
-        return response()->json(['data' => $items])
+        $counts = Favorite::query()->where('entity_type', 'venue')->whereNull('trashed_at')
+            ->whereIn('entity_id', $ids)->selectRaw('entity_id, COUNT(*) AS total')
+            ->groupBy('entity_id')->pluck('total', 'entity_id');
+
+        return response()->json(['data' => $items, 'counts' => $counts])
             ->header('Cache-Control', 'private, no-store');
     }
 
@@ -70,6 +75,9 @@ final class FavoritesController extends Controller
         return response()->json([
             'state' => $favorite->trashed_at === null ? 'active' : 'trashed',
             'notify_upcoming_events' => $favorite->notify_upcoming_events,
+            'count' => $type === 'venue' ? Favorite::query()
+                ->where('entity_type', 'venue')->where('entity_id', $id)
+                ->whereNull('trashed_at')->count() : null,
             'type' => $type,
             'id' => $id,
         ])->header('Cache-Control', 'private, no-store');
