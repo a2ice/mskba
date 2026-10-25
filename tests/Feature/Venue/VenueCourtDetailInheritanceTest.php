@@ -3,6 +3,7 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Venue\Application\Services\EffectiveVenueHours;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -84,11 +85,18 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         ]);
         $court->unsetRelation('schedule');
         $this->assertSame('10:00', $hours->intervals($venue, $court, $monday)->first()->starts_at);
+        $availability = app(VenueEventAvailability::class);
+        $this->expectAvailabilityError($availability, $venue, $court, '2026-10-26 09:30:00', '2026-10-26 10:30:00');
+        $availability->assertAvailable($venue,
+            CarbonImmutable::parse('2026-10-26 12:00:00', 'Europe/Moscow'),
+            CarbonImmutable::parse('2026-10-26 13:00:00', 'Europe/Moscow'),
+            checkBookings: false, court: $court);
         $this->assertTrue($hours->isException($venue, $court, $monday->addWeek()));
 
         $parent->exceptions()->create(['date' => '2026-11-02', 'is_closed' => true]);
         $venue->unsetRelation('schedule');
         $this->assertTrue($hours->intervals($venue, $court, $monday->addWeek())->isEmpty());
+        $this->expectAvailabilityError($availability, $venue, $court, '2026-11-02 12:00:00', '2026-11-02 13:00:00');
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]))
             ->assertOk()->assertSee('10:00–18:00')
@@ -97,6 +105,21 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         $court->schedule()->delete();
         $court->unsetRelation('schedule');
         $this->assertSame('09:00', substr((string) $hours->intervals($venue, $court, $monday)->first()->starts_at, 0, 5));
+    }
+
+    private function expectAvailabilityError(
+        VenueEventAvailability $availability, Venue $venue, VenueCourt $court,
+        string $starts, string $ends,
+    ): void {
+        try {
+            $availability->assertAvailable($venue,
+                CarbonImmutable::parse($starts, 'Europe/Moscow'),
+                CarbonImmutable::parse($ends, 'Europe/Moscow'),
+                checkBookings: false, court: $court);
+            $this->fail('Expected availability to reject closed/out-of-hours court.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertNotSame('', $exception->getMessage());
+        }
     }
 
     private function photo(Venue|VenueCourt $model, string $file): string
