@@ -22,7 +22,9 @@ final class SavePlayIntentRequest extends FormRequest
             'name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'include_similar_venues' => ['sometimes', 'boolean'],
-            'show_on_venue' => ['sometimes', 'boolean'],
+            'show_on_venue' => $this->isMethod('post')
+                ? ['required', 'accepted']
+                : ['sometimes', 'boolean'],
             'center_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'center_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'radius_km' => ['nullable', 'integer', 'between:1,30'],
