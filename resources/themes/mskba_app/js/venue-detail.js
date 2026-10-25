@@ -284,7 +284,7 @@ if (venueSidebar && venueAnchors) {
         const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
         const top = Math.ceil(Math.max(navBottom, contextBottom, headerBottom, 0) + 15);
         venueSidebar.style.setProperty('--venue-sidebar-sticky-top', top + 'px');
-        venueAnchors.closest('.app-venue-page')?.style.setProperty('--venue-anchor-height', venueAnchors.offsetHeight + 'px');
+        venueAnchors.closest('.app-venue-page')?.style.setProperty('--app-venue-nav-height', venueAnchors.offsetHeight + 'px');
         venueSidebar.classList.toggle('is-stuck',
             Math.abs(venueSidebar.getBoundingClientRect().top - top) <= 2);
     };
