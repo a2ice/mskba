@@ -1,9 +1,9 @@
 /* Refreshed venue detail components; scoped to avoid catalog regressions. */
-.app-venue-gallery{position:relative;min-height:360px}
-.app-venue-gallery__stage{height:360px;position:relative;overflow:hidden;border-radius:inherit}
+.app-venue-gallery{position:relative;min-height:360px;display:flex;align-self:stretch;padding:0!important;overflow:hidden}
+.app-venue-gallery__stage{height:100%;min-height:360px;position:relative;overflow:hidden;border-radius:inherit;flex:1}
 .app-venue-gallery__slide{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .75s ease-in-out;pointer-events:none}
 .app-venue-gallery__slide.is-active{opacity:1}
-.app-venue-gallery__thumbs{position:absolute;z-index:2;left:12px;right:12px;bottom:12px;display:flex;gap:8px;overflow:auto;scrollbar-width:thin;padding:4px;max-width:100%;background:linear-gradient(to top,rgba(0,0,0,.30),transparent)}
+.app-venue-gallery__thumbs{position:absolute;z-index:2;left:10px;right:10px;bottom:10px;display:flex;gap:8px;overflow:auto;scrollbar-width:thin;padding:8px;max-width:calc(100% - 20px);background:rgba(20,28,37,.38);border-radius:18px}
 .app-venue-gallery__thumb{flex:none;width:60px;height:49px;padding:2px;border:2px solid transparent;border-radius:10px;background:rgba(255,255,255,.6);cursor:pointer;overflow:hidden}
 .app-venue-gallery__thumb img{width:100%;height:100%;object-fit:cover;display:block;border-radius:6px}
 .app-venue-gallery__thumb.is-active,.app-venue-gallery__thumb:focus-visible{border-color:var(--accent,#c34c00);background:#fff}
@@ -31,7 +31,7 @@
 .app-venue-overlay::backdrop{background:rgba(20,30,44,.55);backdrop-filter:blur(3px)}
 .app-venue-overlay__header{display:flex;align-items:start;justify-content:space-between;gap:14px;margin-bottom:14px}
 .app-venue-overlay__header h2{font-size:20px;line-height:1.2;margin:0}
-.app-venue-overlay__header button{width:35px;height:35px;border:1px solid var(--line);border-radius:10px;background:transparent;font-size:23px;cursor:pointer;flex:none}
+.app-venue-overlay__header button{display:flex;align-items:center;justify-content:center;line-height:1;width:35px;height:35px;border:1px solid var(--line);border-radius:10px;background:transparent;font-size:23px;cursor:pointer;flex:none}
 .app-venue-overlay__actions{display:flex;justify-content:end;flex-wrap:wrap;gap:10px;margin-top:20px}
 .app-venue-map-frame{width:100%;min-height:350px;background:var(--surface-raised);border-radius:12px;overflow:hidden}
 .app-venue-map-frame iframe{display:block;border:0;width:100%;height:350px}
@@ -40,7 +40,7 @@
 .app-venue-overlay>.button{margin-top:14px}
 @media(max-width:640px){
   .app-venue-gallery{min-height:220px}
-  .app-venue-gallery__stage{height:220px}
+  .app-venue-gallery__stage{height:100%;min-height:220px}
   .app-venue-gallery__thumb{width:52px;height:43px}
   .app-venue-overlay{padding:16px}
   .app-venue-map-frame,.app-venue-map-frame iframe{min-height:260px;height:260px}
@@ -53,3 +53,5 @@
 .app-play-dialog__chosen-venue .app-play-dialog__unlink-venue{margin-left:2px;min-width:22px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:none;font-size:20px;font-weight:600;cursor:pointer;color:var(--muted);line-height:1}
 .app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:hover{background:none;border:0;color:var(--accent)}
 .app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app-venue-overlay__header button svg{height:18px;width:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round}
