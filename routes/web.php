@@ -445,6 +445,8 @@ Route::prefix('venues')->group(function () {
     Route::get('/search', [VenueController::class, 'search'])
         ->middleware('throttle:60,1')
         ->name('venues.search');
+    Route::get('/{alias}/nearby-map', [VenueController::class, 'nearbyMap'])
+        ->middleware('throttle:30,1')->name('venues.nearby-map');
     Route::get('/proximity-check', [VenueController::class, 'proximityCheck'])
         ->middleware('throttle:30,1')
         ->name('venues.proximity-check');

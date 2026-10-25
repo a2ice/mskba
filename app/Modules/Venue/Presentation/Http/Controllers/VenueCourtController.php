@@ -9,6 +9,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -43,6 +44,7 @@ final class VenueCourtController extends Controller
             'venue' => $venueModel,
             'courts' => $venueModel->courts,
             'surfaceTypes' => VenueSurfaceTypeEnum::cases(),
+            'courtEnvironments' => VenueCourtEnvironmentEnum::cases(),
             'courtPhotos' => $courtPhotos,
             'courtDefaults' => [
                 'hoops_count' => $parentHoops,
@@ -90,6 +92,7 @@ final class VenueCourtController extends Controller
                 'is_primary' => ! $hasCourt,
                 'hoops_count' => $hoopsCount,
                 'surface_type' => $validated['surface_type'] ?? null,
+                'environment' => $validated['environment'] ?? null,
                 'supports_halves' => $supportsHalves,
                 'allows_whole' => $allowsWhole,
                 'allows_halves' => $allowsHalves,
@@ -138,6 +141,7 @@ final class VenueCourtController extends Controller
                 'sort_order' => (int) $validated['sort_order'],
                 'hoops_count' => $hoopsCount,
                 'surface_type' => $validated['surface_type'] ?? null,
+                'environment' => $validated['environment'] ?? null,
                 'supports_halves' => $supportsHalves,
                 'allows_whole' => $request->boolean('allows_whole'),
                 'allows_halves' => $supportsHalves && $request->boolean('allows_halves'),
@@ -237,6 +241,7 @@ final class VenueCourtController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
             'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
+            'environment' => ['nullable', Rule::enum(VenueCourtEnvironmentEnum::class)],
             'allows_whole' => ['nullable', 'boolean'],
             'allows_halves' => ['nullable', 'boolean'],
         ];

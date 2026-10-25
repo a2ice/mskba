@@ -56,7 +56,7 @@ function serialize(){
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
         access_mode:access.value,venue_kind:(!chosenVenueId.value || similar.value)?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
-        show_on_venue:Boolean(chosenVenueId.value && showOnVenue.value),
+        show_on_venue:Boolean(showOnVenue.value),
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
         payload.period_from=today();payload.period_until=dayAhead(Number(period.value)-1);
@@ -120,6 +120,7 @@ async function openDialog(){
     }
 }
 function beginLogin(){
+    if(!showOnVenue.value){error.value='Чтобы другие игроки могли найти тебя, подтверди публичность имени, аватара и игровых характеристик в этом поиске.';return;}
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
@@ -150,6 +151,7 @@ async function save(payload){
     finally{busy.value=false;}
 }
 async function submit(){
+    if(!showOnVenue.value){error.value='Чтобы другие игроки могли найти тебя, подтверди публичность имени, аватара и игровых характеристик в этом поиске.';return;}
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(!isAuth.value){beginLogin();return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
@@ -216,7 +218,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             </p>
             <p v-else class="app-play-dialog__chosen-venue">Поиск без привязки к конкретной площадке.</p>
             <p v-if="venueDisabled" class="app-play-dialog__hint">После сохранения поиск будет по выбранным условиям, без привязки к площадке.</p>
-            <label v-if="chosenVenueId" class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox"><span>Показывать мой профиль и аватар в списке игроков этой площадки (только когда разрешено настройками приватности)</span></label>
+            <label class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox" required><span>Согласен показывать другим посетителям мой никнейм, аватар и игровые характеристики в рамках этого поиска. Это разрешение действует для выбранной площадки или подходящих вариантов, даже если общая видимость профиля ограничена. Отозвать можно, отменив интерес.</span></label>
             <div v-if="selectedVenueId && !venueDisabled" class="app-play-dialog__favorite">
                 <button type="button" class="mskba-favorite-heart mskba-favorite-heart--inline" :data-favorite-venue="selectedVenueId"
                     aria-label="Добавить в избранное" aria-pressed="false" title="Избранное"></button>

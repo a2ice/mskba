@@ -168,6 +168,64 @@ final class VenueCourtPublicContextTest extends TestCase
             ->assertJsonMissing(['title' => $privateEvent->title]);
     }
 
+    public function test_mixed_indoor_and_outdoor_courts_are_reflected_in_venue_eyebrow(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа тестовая',
+            'type' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::SCHOOL,
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $venue->primaryCourt()->firstOrFail()->update([
+            'environment' => \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::INDOOR,
+        ]);
+        $venue->courts()->create([
+            'name' => 'Открытая площадка',
+            'alias' => 'outdoor-zone',
+            'sort_order' => 20,
+            'is_primary' => false,
+            'environment' => \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::OUTDOOR,
+            'supports_halves' => false,
+            'allows_whole' => true,
+            'allows_halves' => false,
+        ]);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: крытая и уличная площадки');
+        $venue->courts()->where('alias', 'outdoor-zone')->delete();
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: крытая площадка');
+    }
+
+    public function test_nearby_map_requires_bounded_radius_and_returns_only_close_confirmed_venues(): void
+    {
+        $home = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $near = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $far = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $blocked = Venue::factory()->create(['status' => VenueStatusEnum::BLOCKED]);
+        foreach ([
+            [$home, 55.7558, 37.6173],
+            [$near, 55.7570, 37.6173],
+            [$far, 55.8558, 37.6173],
+            [$blocked, 55.7565, 37.6173],
+        ] as [$venue, $lat, $lon]) {
+            $venue->location->address()->update(['latitude' => $lat, 'longitude' => $lon]);
+        }
+        $route = route('venues.nearby-map', $home->routeIdentifier());
+        $this->getJson($route.'?radius_km=0')->assertUnprocessable();
+        $this->getJson($route.'?radius_km=11')->assertUnprocessable();
+        $response = $this->getJson($route.'?radius_km=2')->assertOk();
+        $ids = collect($response->json('venues'))->pluck('id')->all();
+        $this->assertContains($near->id, $ids);
+        $this->assertNotContains($far->id, $ids);
+        $this->assertNotContains($blocked->id, $ids);
+        $this->assertNotContains($home->id, $ids);
+    }
+
     private function futureEvent(Venue $venue, string $title, int $courtId): Event
     {
         return Event::factory()->create([

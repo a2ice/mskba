@@ -29,24 +29,27 @@
         ? (clone $activeVenueInterests)->where('user_id', $viewer->id)->orderByDesc('id')->first()
         : null;
     $viewerHasVenueInterest = $viewerVenueInterest !== null;
+    // New interests explicitly consent to this venue-specific publication.
+    // Old interests (default false) remain anonymous until their owners opt in.
     $venueInterestUsers = (clone $activeVenueInterests)
-        ->with(['user.profile.activeAvatar'])
+        ->with(['user.profile.activeAvatar', 'user.playerProfile.positions'])
         ->where('show_on_venue', true)
-        ->orderByDesc('created_at')->get()
+        ->orderByDesc('created_at')->limit(300)->get()
         ->unique('user_id')
-        ->filter(function ($intent) use ($viewer): bool {
+        ->filter(fn ($intent) => $intent->user !== null && ! $intent->user->isBlocked())
+        ->map(function ($intent): array {
             $user = $intent->user;
-            return $user !== null && ! $user->isBlocked()
-                && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
-                    ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE);
-        })
-        ->map(function ($intent) use ($viewer): array {
-            $user = $intent->user;
-            $canShowAvatar = app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)
-                ->allows($user, null, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::AVATAR);
+            $player = $user->playerProfile;
+            $positions = $player?->positions?->map(fn ($position) => $position->position?->label())
+                ->filter()->values()->all() ?? [];
+            $experience = $player?->experience_started_year
+                ? max(0, now()->year - (int) $player->experience_started_year) : null;
             return [
-                'name' => trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->username,
-                'avatar' => $canShowAvatar ? $user->profile?->avatarUrl() : null,
+                'name' => $user->username
+                    ?: (trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: 'Игрок'),
+                'avatar' => $user->profile?->avatarUrl(),
+                'positions' => $positions,
+                'experience_years' => $experience,
             ];
         })->values();
     // Aggregated counts never identify private users or imply their consent.
@@ -56,6 +59,11 @@
             ->where('entity_type', 'venue')->where('entity_id', $venue->id)
             ->whereNull('trashed_at')->count()
         : 0;
+    $environments = collect($venue->courts)->pluck('environment')->filter()->unique()->values();
+    $areaLabel = $environments->contains('indoor') && $environments->contains('outdoor')
+        ? 'крытая и уличная площадки'
+        : ($environments->contains('indoor') ? 'крытая площадка'
+            : ($environments->contains('outdoor') ? 'уличная площадка' : null));
     $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
     $shownDays = $venue->isFreeAccess
         ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
@@ -91,7 +99,7 @@
             @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">{{ $venue->type }}</p>
+            <p class="eyebrow accent">{{ $venue->type }}@if($areaLabel): {{ $areaLabel }}@endif</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
@@ -247,15 +255,25 @@
 </section>
 @if($venueAddress)
     <dialog class="app-venue-overlay" data-venue-map-dialog aria-label="Положение площадки на карте">
-        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
         <div class="app-venue-map-frame" data-venue-map-frame
             data-lat="{{ $venue->address?->latitude }}" data-lon="{{ $venue->address?->longitude }}"
-            data-name="{{ $venue->name }}"></div>
-        <p>{{ $venueAddress }}</p>
+            data-name="{{ $venue->name }}" data-map-api-key="{{ $venue->about->mapApiKey }}"></div>
+        <div class="app-venue-map-options">
+            <p class="app-venue-map-options__address">{{ $venueAddress }}</p>
+            <label class="app-venue-map-options__toggle"><input type="checkbox" data-venue-nearby-toggle> Показать площадки рядом</label>
+            <div class="app-venue-map-options__range" data-venue-nearby-options hidden>
+                <label for="venue-nearby-radius">Радиус: <output data-venue-nearby-distance>3</output> км</label>
+                <input id="venue-nearby-radius" type="range" min="1" max="10" step="1" value="3" data-venue-nearby-radius>
+                <button type="button" class="button primary" data-venue-nearby-apply
+                    data-nearby-url="{{ route('venues.nearby-map', $venue->routeIdentifier()) }}">Применить</button>
+            </div>
+            <p class="caption" data-venue-nearby-status role="status" hidden></p>
+        </div>
     </dialog>
 @endif
 <dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
-    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
     <div class="app-venue-interests-dialog__list">
         @forelse($venueInterestUsers as $player)
             <div class="app-venue-interests-dialog__player">
@@ -266,19 +284,23 @@
                         <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
                     @endif
                 </span>
-                <span>{{ $player['name'] }}</span>
+                <div class="app-venue-interests-dialog__details">
+                    <strong>{{ $player['name'] }}</strong>
+                    @if(count($player['positions']))<span>{{ implode(' · ', $player['positions']) }}</span>@endif
+                    @if($player['experience_years'] !== null)<span>Игровой опыт: {{ $player['experience_years'] }} лет</span>@endif
+                </div>
             </div>
         @empty
             <p class="muted">Пока нет игроков, разрешивших показывать свой профиль.</p>
         @endforelse
     </div>
-    <p class="caption">Всего интересов: {{ $activeVenueInterestCount }}. Личные данные видны только с разрешения пользователей.</p>
+    <p class="caption">Всего интересов: {{ $activeVenueInterestCount }}. Имена и игровые сведения видны только для интересов с отдельным согласием на публикацию.</p>
     <button type="button" class="button primary" data-venue-interest-action data-interest-id="{{ $viewerVenueInterest?->id }}"
         data-cancel-url="{{ $viewerVenueInterest ? route('play-intents.destroy', $viewerVenueInterest->id) : '' }}"
         data-play-intent-open>{{ $viewerHasVenueInterest ? 'Не интересно' : 'Тоже хочу здесь играть' }}</button>
 </dialog>
 <dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
-    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
     <p>Вы уверены, что больше не хотите следить за этой площадкой?</p>
     <div class="app-venue-overlay__actions">
         <button type="button" class="button secondary" data-venue-overlay-close>Отмена</button>

@@ -168,6 +168,30 @@ class VenueController extends Controller
         ]);
     }
 
+    public function nearbyMap(
+        Request $request,
+        string $alias,
+        FindNearbyVenuesHandler $nearby,
+    ): JsonResponse {
+        $params = $request->validate([
+            'radius_km' => ['required', 'integer', 'between:1,10'],
+        ]);
+        $venue = Venue::query()->whereRouteIdentifier($alias)
+            ->where('status', VenueStatusEnum::CONFIRMED)->with('location.address')->firstOrFail();
+        $address = $venue->location?->address;
+        abort_unless($address?->latitude !== null && $address?->longitude !== null, 404);
+
+        return response()->json([
+            'venues' => $nearby->handle(
+                $venue->id,
+                (float) $address->latitude,
+                (float) $address->longitude,
+                50,
+                (int) $params['radius_km'],
+            ),
+        ])->header('Cache-Control', 'public, max-age=60');
+    }
+
     public function preview(
         Request $request,
         string $alias,

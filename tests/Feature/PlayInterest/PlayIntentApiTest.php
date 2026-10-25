@@ -18,6 +18,7 @@ final class PlayIntentApiTest extends TestCase
     {
         return [
             'venue_id' => $venue->id,
+            'show_on_venue' => true,
             'cadence' => 'regular',
             'weekdays' => [2, 4],
             'windows' => [
@@ -57,6 +58,7 @@ final class PlayIntentApiTest extends TestCase
         $user = User::factory()->create();
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue),
             'show_on_venue' => true,
         ])->assertCreated()->assertJsonPath('data.show_on_venue', true);
@@ -70,8 +72,21 @@ final class PlayIntentApiTest extends TestCase
             'show_on_venue' => true,
         ])->assertOk()
             ->assertJsonPath('data.venue_id', null)
-            ->assertJsonPath('data.show_on_venue', false);
-        $this->assertFalse($interest->refresh()->show_on_venue);
+            ->assertJsonPath('data.show_on_venue', true);
+        $this->assertTrue($interest->refresh()->show_on_venue);
+    }
+
+    public function test_new_venue_interest_requires_explicit_public_discovery_consent(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('play-intents.store'), [
+                'venue_id' => $venue->id,
+                'cadence' => 'flexible',
+                'weekdays' => [],
+                'windows' => [],
+            ])->assertUnprocessable()->assertJsonValidationErrors('show_on_venue');
+        $this->assertDatabaseCount('play_intents', 0);
     }
 
     public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
@@ -83,6 +98,7 @@ final class PlayIntentApiTest extends TestCase
         ]);
 
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue),
             'name' => 'На ШК',
             'cadence' => 'flexible',
@@ -127,11 +143,15 @@ final class PlayIntentApiTest extends TestCase
         $other = User::factory()->create(['username' => 'private-interest-other']);
 
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
         ])->assertCreated();
         $this->actingAs($other)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
         ])->assertCreated();
+        // An existing private interest must never be included in public names.
+        PlayIntent::query()->where('user_id', $other->id)->update(['show_on_venue' => false]);
 
         $expectedBreadcrumb = \Illuminate\Support\Str::substr($venue->name, 0, 25).'...';
         $this->actingAs($user)->get(route('venues.show', $venue->routeIdentifier()))
@@ -143,15 +163,15 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-interest-action', false)
             ->assertSee('Не хочу здесь играть')
             ->assertDontSee('Отображается только число интересов')
-            ->assertDontSee('private-interest-other');
+            ->assertDontSee('private-interest-other')
+            ->assertSee('private-interest-test');
 
-        // Other users' identities are private even though the aggregate is public.
+        // Only explicitly opted-in users appear; others remain anonymous.
         auth()->logout();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Площадкой интересуются')
-            ->assertDontSee('private-interest-test')
-            ->assertDontSee('private-interest-other')
+            ->assertSee('private-interest-test')
             ->assertDontSee('private-interest-other');
     }
 
@@ -352,6 +372,7 @@ final class PlayIntentApiTest extends TestCase
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
 
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             'venue_id' => $venue->id,
             'cadence' => 'once',
             'period_from' => now()->toDateString(),
@@ -360,6 +381,7 @@ final class PlayIntentApiTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('windows.0.end_time');
 
         $this->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             'venue_id' => $venue->id,
             'cadence' => 'once',
             'period_from' => now()->toDateString(),
@@ -367,6 +389,7 @@ final class PlayIntentApiTest extends TestCase
         ])->assertCreated()->assertJsonPath('data.cadence', 'once');
 
         $this->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             'venue_id' => $venue->id,
             'cadence' => 'once',
             'period_from' => now()->toDateString(),
@@ -390,6 +413,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertCreated()->assertJsonPath('data.amenity_preferences.0.priority', 'required');
 
         $this->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$data, 'amenity_preferences' => [
                 ['amenity_id' => $amenity->id, 'priority' => 'preferred'],
                 ['amenity_id' => $amenity->id, 'priority' => 'required'],
@@ -468,6 +492,7 @@ final class PlayIntentApiTest extends TestCase
         // A venue-specific interest must ignore a kind filter when the user
         // has not enabled "Подбирать похожие площадки" (including legacy input).
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($indoor),
             'venue_kind' => 'outdoor',
         ])->assertCreated()->assertJsonPath('data.venue_kind', 'any');
@@ -544,6 +569,7 @@ final class PlayIntentApiTest extends TestCase
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
 
         $this->actingAs($user)->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue),
             'name' => '  Игры зимой  ',
         ])->assertCreated()->assertJsonPath('data.name', 'Игры зимой');
@@ -575,6 +601,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertCreated()->assertJsonPath('data.name', null);
 
         $this->postJson(route('play-intents.store'), [
+            'show_on_venue' => true,
             ...$this->payload($venue), 'name' => str_repeat('И', 81),
         ])->assertUnprocessable()->assertJsonValidationErrors('name');
 
