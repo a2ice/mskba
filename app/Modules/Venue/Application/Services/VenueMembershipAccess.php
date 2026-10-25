@@ -116,11 +116,14 @@ final class VenueMembershipAccess
      */
     public function contractedVenueIdsFor(User $user): array
     {
-        return $this->baseContractQuery($user)
-            ->distinct()
-            ->pluck('scope_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
+        $venues = $this->baseContractQuery($user)->distinct()->pluck('scope_id');
+        $courtIds = $this->baseContractQuery($user, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->distinct()->pluck('scope_id');
+        $courtVenues = VenueCourt::query()->whereIn('id', $courtIds)
+            ->pluck('venue_id');
+
+        return $venues->concat($courtVenues)->map(fn ($id): int => (int) $id)
+            ->unique()->values()->all();
     }
 
     /**

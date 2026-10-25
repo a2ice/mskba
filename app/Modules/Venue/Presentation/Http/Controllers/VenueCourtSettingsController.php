@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -22,6 +23,7 @@ final class VenueCourtSettingsController extends Controller
     public function updatePolicy(
         Request $request, string $venue, string $court,
         VenueCommercialAccess $access, MinorAmountParser $amounts,
+        VenueAccessResolver $venueAccess, CurrentActorResolver $actors,
     ): RedirectResponse {
         [$venueModel, $courtModel] = $this->target($venue, $court);
         abort_unless($request->user() !== null && $access->allowsForCourt(
@@ -37,6 +39,11 @@ final class VenueCourtSettingsController extends Controller
             'whole_price_per_step' => ['sometimes', 'nullable', 'string', 'max:32'],
             'half_price_per_step' => ['sometimes', 'nullable', 'string', 'max:32'],
         ]);
+        if (array_key_exists('operational_status', $validated)) {
+            abort_unless($venueAccess->canEditCourtSchedule(
+                $request->user(), $courtModel, $actors->resolveForRequest($request)
+            ), 403);
+        }
         $values = [];
         foreach (['requires_payment', 'requires_booking', 'requires_booking_approval', 'rental_enabled'] as $field) {
             if (array_key_exists($field, $validated)) {
@@ -129,7 +136,7 @@ final class VenueCourtSettingsController extends Controller
             'weekly_intervals' => ['array', 'max:70'],
             'weekly_intervals.*.day_of_week' => ['required', 'integer', 'between:1,7'],
             'weekly_intervals.*.starts_at' => ['required', 'date_format:H:i'],
-            'weekly_intervals.*.ends_at' => ['required', 'date_format:H:i', 'after:weekly_intervals.*.starts_at'],
+            'weekly_intervals.*.ends_at' => ['required', 'date_format:H:i'],
             'exceptions' => ['array', 'max:365'],
             'exceptions.*.date' => ['required', 'date_format:Y-m-d'],
             'exceptions.*.is_closed' => ['required', 'boolean'],
@@ -142,6 +149,13 @@ final class VenueCourtSettingsController extends Controller
             return back()->with('status', 'Зал наследует график площадки.');
         }
 
+        foreach ($data['weekly_intervals'] ?? [] as $interval) {
+            if ($interval['starts_at'] >= $interval['ends_at']) {
+                throw ValidationException::withMessages([
+                    'weekly_intervals' => 'Конец рабочего интервала должен быть позже начала.',
+                ]);
+            }
+        }
         foreach ($data['exceptions'] ?? [] as $exception) {
             if (! $exception['is_closed'] && (empty($exception['starts_at'])
                 || empty($exception['ends_at']) || $exception['starts_at'] >= $exception['ends_at'])) {
