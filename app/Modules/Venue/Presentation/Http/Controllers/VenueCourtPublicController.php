@@ -36,10 +36,6 @@ final class VenueCourtPublicController extends Controller
             ]]);
         }
 
-        if ($details->selectedCourt['isPrimary']) {
-            return redirect()->route('venues.show', $details->routeIdentifier(), 301);
-        }
-
         $canonicalUrl = route('venues.courts.show', [
             $details->routeIdentifier(),
             $details->selectedCourt['routeIdentifier'],
