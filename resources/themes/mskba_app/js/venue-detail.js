@@ -260,7 +260,9 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
             open: 'Набор участников открыт.',
         };
         slotDialog.querySelector('[data-venue-slot-message]').textContent =
-            messages[joinState] || messages.unavailable;
+            joinState === 'full' && !tentativeForm
+                ? 'Все места заняты. После входа можно ответить «Думаю», но это не резервирует место.'
+                : (messages[joinState] || messages.unavailable);
 
         if (eventLink) {
             eventLink.hidden = !hasEvent;
@@ -284,10 +286,12 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
             else tentativeForm.removeAttribute('action');
         }
         if (guestLink) {
-            guestLink.hidden = !canJoin && !canRespondTentative;
-            if (canJoin || canRespondTentative) {
+            // The public event page cannot capture guest "Думаю" responses
+            // for a full event, so avoid an action that leads to a dead end.
+            guestLink.hidden = !canJoin;
+            if (canJoin) {
                 guestLink.href = eventUrl;
-                guestLink.textContent = canRespondTentative ? 'Думаю' : 'Присоединиться';
+                guestLink.textContent = 'Присоединиться';
             } else guestLink.removeAttribute('href');
         }
         slotDialog.showModal();
