@@ -437,7 +437,7 @@ final class ShowVenueHandler
                 'slots' => $dayBookings
                     ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart))
                     ->all(),
-                'timeline' => $this->occupancyTimeline($venue, $dayStart, $dayBookings, $timezone, $policy, $user),
+                'timeline' => $this->occupancyTimeline($venue, $court, $dayStart, $dayBookings, $timezone, $policy, $user),
             ];
         }
 
@@ -540,13 +540,14 @@ final class ShowVenueHandler
     /** @return array<int, array<string, mixed>> */
     private function occupancyTimeline(
         Venue $venue,
+        ?VenueCourt $court,
         CarbonImmutable $dayStart,
         $bookings,
         string $timezone,
         ?VenueBookingPolicy $policy,
         ?User $user,
     ): array {
-        $intervals = $this->intervalsForDate($venue, $dayStart);
+        $intervals = $this->hours->intervals($venue, $court, $dayStart) ?? collect();
         if ($intervals->isEmpty()) {
             return $bookings->map(fn (VenueBooking $booking): array => [
                 'kind' => 'occupied',
