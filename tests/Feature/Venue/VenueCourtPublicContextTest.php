@@ -123,14 +123,26 @@ final class VenueCourtPublicContextTest extends TestCase
         $this->assertNotNull($primary);
     }
 
-    public function test_primary_court_nested_url_redirects_to_canonical_venue_url(): void
+    public function test_primary_court_has_its_own_url_and_general_venue_has_overview_selector(): void
     {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
         $primary = $venue->primaryCourt()->firstOrFail();
+        $venue->courts()->create([
+            'name' => 'Второй зал', 'alias' => 'second', 'sort_order' => 20,
+            'allows_whole' => true,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()->assertSee('Все залы · общая страница')
+            ->assertSee('data-venue-court-dropdown', false);
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $primary->routeIdentifier()]))
-            ->assertRedirect(route('venues.show', $venue->routeIdentifier()))
-            ->assertStatus(301);
+            ->assertOk()->assertSee('Зал 1')
+            ->assertSee('data-venue-court-dropdown', false);
     }
 
     public function test_activity_endpoint_is_scoped_to_selected_court_and_keeps_legacy_public_events(): void
