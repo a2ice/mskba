@@ -52,6 +52,54 @@ final class EventIdentityParticipationService
     }
 
     /**
+     * Counts unique canonical players by current response status.
+     * Stale confirmations do not occupy a place, and a confirmed identity
+     * cannot also inflate the tentative total through another linked account.
+     *
+     * @return array{confirmed: int, tentative: int}
+     */
+    public function publicStatusCounts(Event $event): array
+    {
+        $participants = $event->relationLoaded('participants')
+            ? $event->participants
+            : $event->participants()->get();
+        $relevant = $participants->filter(
+            fn (EventParticipant $participant): bool => $participant->hasPlayerRole()
+                && ($participant->status === EventParticipantStatusEnum::TENTATIVE
+                    || ($participant->status === EventParticipantStatusEnum::CONFIRMED
+                        && $participant->confirmation_version === $event->participation_confirmation_version)),
+        );
+
+        if ($relevant->isEmpty()) {
+            return ['confirmed' => 0, 'tentative' => 0];
+        }
+
+        $users = User::query()->whereIn('id', $relevant->pluck('user_id')->unique()->all())
+            ->get()->keyBy('id');
+        $confirmed = [];
+        $tentative = [];
+
+        foreach ($relevant as $participant) {
+            $user = $users->get((int) $participant->user_id);
+            if ($user === null) {
+                continue;
+            }
+
+            $identityId = (int) $user->canonical()->id;
+            if ($participant->status === EventParticipantStatusEnum::CONFIRMED) {
+                $confirmed[$identityId] = true;
+            } else {
+                $tentative[$identityId] = true;
+            }
+        }
+
+        return [
+            'confirmed' => count($confirmed),
+            'tentative' => count(array_diff_key($tentative, $confirmed)),
+        ];
+    }
+
+    /**
      * Returns every physical user id belonging to an identity that is already
      * confirmed for the current participation version. This is used to keep
      * aliases out of participant candidate search results.

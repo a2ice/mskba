@@ -33,6 +33,7 @@ use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Str;
 
 final class ShowVenueHandler
 {
@@ -452,6 +453,12 @@ final class ShowVenueHandler
         $isPublicEvent = $event !== null
             && $event->status === EventStatusEnum::PUBLISHED
             && $event->visibility === EventVisibilityEnum::PUBLIC;
+        $participantCounts = $isPublicEvent
+            ? $this->identityParticipation->publicStatusCounts($event)
+            : null;
+        $eventDescription = $isPublicEvent
+            ? trim(strip_tags((string) $event->description))
+            : '';
         // Mirror the server participation handler's canonical-identity and
         // capacity checks. Do not count duplicate aliases as separate players.
         $viewerParticipant = $isPublicEvent && $user !== null
@@ -462,7 +469,7 @@ final class ShowVenueHandler
         $alreadyAttending = $wasConfirmed
             && $viewerParticipant->confirmation_version === $event?->participation_confirmation_version;
         $hasPlaces = ! $isPublicEvent || $event->max_participants === null
-            || $this->identityParticipation->confirmedIdentityCount($event) < $event->max_participants;
+            || $participantCounts['confirmed'] < $event->max_participants;
         $participationOpen = $isPublicEvent && $event->ends_at->isFuture();
         // The handler also allows a previously confirmed participant to
         // reconfirm after a schedule change even when all places are taken.
@@ -497,6 +504,9 @@ final class ShowVenueHandler
             'eventTypeLabel' => $eventTypeLabel,
             'eventUrl' => $isPublicEvent ? route('events.show', $event->routeIdentifier()) : null,
             'eventTitle' => $isPublicEvent ? $event->title : null,
+            'eventDescription' => $eventDescription !== '' ? Str::limit($eventDescription, 180) : null,
+            'eventConfirmedCount' => $participantCounts['confirmed'] ?? null,
+            'eventTentativeCount' => $participantCounts['tentative'] ?? null,
             'canJoin' => $canJoin,
             'joinState' => $joinState,
             'canRespondTentative' => $canRespondTentative,
@@ -670,6 +680,9 @@ final class ShowVenueHandler
 
         for ($offset = 0; $offset < 14; $offset++) {
             $date = $today->addDays($offset);
+            $isException = $schedule->exceptions->contains(
+                fn ($exception): bool => $exception->date->toDateString() === $date->toDateString()
+            );
             $intervals = $this->intervalsForDate($venue, $date)
                 ->map(fn ($interval) => [
                     'startsAt' => $this->formatTime($interval->starts_at),
@@ -684,6 +697,7 @@ final class ShowVenueHandler
                 'weekday' => $this->russianWeekdayLabel($date),
                 'isToday' => $offset === 0,
                 'isClosed' => $intervals === [],
+                'isException' => $isException,
                 'intervals' => $intervals,
             ];
         }
