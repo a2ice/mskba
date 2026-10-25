@@ -10,6 +10,7 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Builder;
 
 final class VenueMembershipAccess
@@ -18,6 +19,21 @@ final class VenueMembershipAccess
     {
         return $this->baseQuery($user, $permission)
             ->where('scope_id', $venue->id)
+            ->exists();
+    }
+
+    public function allowsForCourt(User $user, VenueCourt $court, VenuePermissionEnum $permission): bool
+    {
+        if ($court->trashed() || $court->venue?->trashed()) {
+            return false;
+        }
+
+        if ($this->allows($user, $court->venue, $permission)) {
+            return true;
+        }
+
+        return $this->baseQuery($user, $permission, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->where('scope_id', $court->id)
             ->exists();
     }
 
@@ -114,13 +130,13 @@ final class VenueMembershipAccess
             ->all();
     }
 
-    private function baseContractQuery(User $user): Builder
+    private function baseContractQuery(User $user, ContractMembershipScopeTypeEnum $scope = ContractMembershipScopeTypeEnum::VENUE): Builder
     {
         $now = now();
         $user = $user->canonical();
 
         return ContractMembership::query()
-            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('scope_type', $scope->value)
             ->whereIn('user_id', $user->identityIds())
             ->whereHas('contract', function (Builder $query) use ($now): void {
                 $query
@@ -175,9 +191,12 @@ final class VenueMembershipAccess
             ->all();
     }
 
-    private function baseQuery(User $user, VenuePermissionEnum $permission): Builder
-    {
-        return $this->baseContractQuery($user)
+    private function baseQuery(
+        User $user,
+        VenuePermissionEnum $permission,
+        ContractMembershipScopeTypeEnum $scope = ContractMembershipScopeTypeEnum::VENUE,
+    ): Builder {
+        return $this->baseContractQuery($user, $scope)
             ->whereHas('contract.permissions', fn (Builder $query) => $query->where('permission', $permission->value));
     }
 }

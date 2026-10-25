@@ -17,6 +17,7 @@ use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
 use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
 use App\Modules\Venue\Domain\Exceptions\VenueMembershipException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +37,7 @@ final readonly class ManageVenueMembershipHandler
         VenueMembershipAccessLevelEnum $role,
         User $issuer,
         ?array $permissions = null,
+        ?VenueCourt $court = null,
     ): ContractMembership {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $target = $target->canonical();
@@ -49,11 +51,12 @@ final readonly class ManageVenueMembershipHandler
             throw new VenueMembershipException('Роль владельца выдаётся только через подтверждение владения.');
         }
 
-        return DB::transaction(function () use ($venue, $target, $role, $issuer, $permissions): ContractMembership {
+        return DB::transaction(function () use ($venue, $target, $role, $issuer, $permissions, $court): ContractMembership {
             $venue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
-            $this->authorize($issuer, $venue);
+            $this->assertCourtBelongsToVenue($court, $venue);
+            $this->authorize($issuer, $venue, $court);
 
-            if ($this->activeMemberships($venue)
+            if ($this->activeMemberships($venue, $court)
                 ->whereIn('user_id', $target->identityIds())
                 ->where('access_level', $role->value)
                 ->exists()) {
@@ -62,7 +65,7 @@ final readonly class ManageVenueMembershipHandler
 
             $contract = Contract::query()->create([
                 'family' => ContractFamilyEnum::MEMBERSHIP,
-                'name' => "{$role->label()}: {$venue->name}",
+                'name' => "{$role->label()}: {$venue->name}".($court ? " / {$court->name}" : ''),
                 'status' => ContractStatusEnum::ACTIVE,
                 'starts_at' => now(),
                 'assigned_by' => $issuer->id,
@@ -72,8 +75,10 @@ final readonly class ManageVenueMembershipHandler
             ]);
 
             $membership = $contract->membership()->create([
-                'scope_type' => ContractMembershipScopeTypeEnum::VENUE,
-                'scope_id' => $venue->id,
+                'scope_type' => $court === null
+                    ? ContractMembershipScopeTypeEnum::VENUE
+                    : ContractMembershipScopeTypeEnum::VENUE_COURT,
+                'scope_id' => $court?->id ?? $venue->id,
                 'user_id' => $target->id,
                 'access_level' => $role->value,
             ]);
@@ -103,14 +108,14 @@ final readonly class ManageVenueMembershipHandler
         return DB::transaction(function () use ($venue, $membership, $role, $issuer, $permissions): ContractMembership {
             $venue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
-            $this->assertBelongsToVenue($membership, $venue);
-            $this->authorize($issuer, $venue);
+            $court = $this->courtFromMembership($membership, $venue);
+            $this->authorize($issuer, $venue, $court);
 
             if ($membership->access_level === VenueMembershipAccessLevelEnum::OWNER->value) {
                 throw new VenueMembershipException('Последний владелец не может быть изменён без передачи владения.');
             }
 
-            if ($this->activeMemberships($venue)
+            if ($this->activeMemberships($venue, $court)
                 ->where('id', '!=', $membership->id)
                 ->where('user_id', $membership->user_id)
                 ->where('access_level', $role->value)
@@ -155,20 +160,25 @@ final readonly class ManageVenueMembershipHandler
         });
     }
 
-    private function authorize(User $issuer, Venue $venue): void
+    private function authorize(User $issuer, Venue $venue, ?VenueCourt $court = null): void
     {
-        if (! $this->access->allows($issuer, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
+        $allowed = $court === null
+            ? $this->access->allows($issuer, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS)
+            : $this->access->allowsForCourt($issuer, $court, VenuePermissionEnum::MANAGE_MEMBERSHIPS);
+        if (! $allowed) {
             throw new VenueMembershipException('Недостаточно прав для управления коммерческими ролями площадки.');
         }
     }
 
-    private function activeMemberships(Venue $venue): Builder
+    private function activeMemberships(Venue $venue, ?VenueCourt $court = null): Builder
     {
         $now = now();
 
         return ContractMembership::query()
-            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
-            ->where('scope_id', $venue->id)
+            ->where('scope_type', ($court === null
+                ? ContractMembershipScopeTypeEnum::VENUE
+                : ContractMembershipScopeTypeEnum::VENUE_COURT)->value)
+            ->where('scope_id', $court?->id ?? $venue->id)
             ->whereHas('contract', fn (Builder $query) => $query
                 ->where('status', ContractStatusEnum::ACTIVE->value)
                 ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
@@ -199,11 +209,28 @@ final readonly class ManageVenueMembershipHandler
         ));
     }
 
-    private function assertBelongsToVenue(ContractMembership $membership, Venue $venue): void
+    private function assertCourtBelongsToVenue(?VenueCourt $court, Venue $venue): void
     {
-        if ($membership->scope_type !== ContractMembershipScopeTypeEnum::VENUE || $membership->scope_id !== $venue->id) {
-            throw new VenueMembershipException('Роль не относится к выбранной площадке.');
+        if ($court !== null && ($court->venue_id !== $venue->id || $court->trashed())) {
+            throw new VenueMembershipException('Зал не относится к выбранной площадке.');
         }
+    }
+
+    private function courtFromMembership(ContractMembership $membership, Venue $venue): ?VenueCourt
+    {
+        if ($membership->scope_type === ContractMembershipScopeTypeEnum::VENUE
+            && $membership->scope_id === $venue->id) {
+            return null;
+        }
+        if ($membership->scope_type === ContractMembershipScopeTypeEnum::VENUE_COURT) {
+            $court = VenueCourt::query()->where('venue_id', $venue->id)
+                ->find($membership->scope_id);
+            if ($court !== null) {
+                return $court;
+            }
+        }
+
+        throw new VenueMembershipException('Роль не относится к выбранной площадке или её залам.');
     }
 
     private function overrideComment(User $issuer): ?string
