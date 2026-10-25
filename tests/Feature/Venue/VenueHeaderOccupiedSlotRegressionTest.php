@@ -203,6 +203,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             'organizer_actor_id' => $actorId,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
+            'participation_confirmation_version' => 1,
             'max_participants' => 1,
             'starts_at' => '2026-09-12 19:00:00',
             'ends_at' => '2026-09-12 20:00:00',
@@ -235,6 +236,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             'organizer_actor_id' => $actorId,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
+            'participation_confirmation_version' => 1,
             'starts_at' => '2026-09-12 19:00:00',
             'ends_at' => '2026-09-12 20:00:00',
         ]);
@@ -265,6 +267,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             'organizer_actor_id' => $actorId,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
+            'participation_confirmation_version' => 1,
             'max_participants' => 10,
             'starts_at' => '2026-09-12 19:00:00',
             'ends_at' => '2026-09-12 20:00:00',
