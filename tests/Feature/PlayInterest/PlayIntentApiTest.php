@@ -250,9 +250,10 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Слоты')
             ->assertSee('22:00–01:00 (+1 день)')
             ->assertSee('00:00–01:00 (продолжение)')
-            ->assertSee('aria-label="Открыть мероприятие на 22:00–01:00 (+1 день)"', false)
-            ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
-            ->assertDontSee('Игровая тренировка')
+            ->assertSee('data-venue-slot-open', false)
+            ->assertSee('data-slot-time="22:00–01:00 (+1 день)"', false)
+            ->assertSee('data-event-url="'.route('events.show', $event->routeIdentifier()).'"', false)
+            ->assertSee('data-venue-slot-dialog', false)
             ->assertDontSee('Нет опубликованных занятых слотов');
         $this->travelBack();
     }
