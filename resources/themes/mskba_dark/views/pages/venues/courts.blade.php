@@ -57,14 +57,15 @@
                         @endif
                         <div class="text-muted small">/{{ $court->alias }}</div>
                     </div>
-                    @unless($court->is_primary)
+                    @if($canManageVenue && !$court->is_primary)
                         <form method="POST" action="{{ route('account.venues.courts.primary', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}">
                             @csrf
                             <button type="submit" class="btn btn--secondary btn--sm">Сделать основным</button>
                         </form>
-                    @endunless
+                    @endif
                 </div>
 
+                @if($canManageCourt[$court->id])
                 <form method="POST" action="{{ route('account.venues.courts.update', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}" data-court-form>
                     @csrf
                     @method('PUT')
@@ -126,8 +127,66 @@
                     'court' => $court,
                     'photos' => $courtPhotos[$court->id] ?? [],
                 ])
+                @endif
 
-                @if($courts->count() > 1)
+                @if($canManageCourtPolicy[$court->id])
+                    <details class="mt-4"><summary class="fw-semibold">Условия доступа и стоимость аренды</summary>
+                        <form method="POST" class="mt-3" action="{{ route('account.venues.courts.settings.update', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}">
+                            @csrf @method('PUT')
+                            @foreach([
+                                'requires_payment' => ['Оплата', 'Платно', 'Бесплатно'],
+                                'requires_booking' => ['Запись', 'Требуется бронирование', 'Свободный доступ'],
+                                'requires_booking_approval' => ['Подтверждение бронирования', 'Ручное', 'Автоматическое'],
+                                'rental_enabled' => ['Онлайн-аренда', 'Разрешена', 'Запрещена'],
+                            ] as $field => [$label, $yes, $no])
+                                <label class="form-label mt-2">{{ $label }}
+                                    <select class="form-select" name="{{ $field }}">
+                                        <option value="inherit" @selected($court->{$field} === null)>Наследовать от площадки</option>
+                                        <option value="yes" @selected($court->{$field} === true)>{{ $yes }}</option>
+                                        <option value="no" @selected($court->{$field} === false)>{{ $no }}</option>
+                                    </select>
+                                </label>
+                            @endforeach
+                            <p class="small text-muted">Цены за один шаг аренды в {{ $policy?->currency ?? 'RUB' }}. Пустое поле означает наследование.</p>
+                            <label class="form-label mt-2">Весь зал
+                                <input class="form-control" name="whole_price_per_step" value="{{ $court->whole_price_per_step_minor === null ? '' : number_format($court->whole_price_per_step_minor / 100, 2, '.', '') }}" placeholder="Наследовать">
+                            </label>
+                            <label class="form-label mt-2">Половина зала
+                                <input class="form-control" name="half_price_per_step" value="{{ $court->half_price_per_step_minor === null ? '' : number_format($court->half_price_per_step_minor / 100, 2, '.', '') }}" placeholder="Наследовать">
+                            </label>
+                            <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить условия зала</button>
+                        </form>
+                    </details>
+                    <details class="mt-3"><summary class="fw-semibold">Стоимость по временным слотам</summary>
+                        @foreach($court->slotPrices()->orderBy('day_of_week')->orderBy('starts_at')->get() as $slotPrice)
+                            <div class="d-flex gap-2 align-items-center mt-2 flex-wrap">
+                                <span>День {{ $slotPrice->day_of_week }}, {{ substr($slotPrice->starts_at, 0, 5) }}:
+                                    {{ $slotPrice->whole_price_per_step_minor === null ? '—' : number_format($slotPrice->whole_price_per_step_minor / 100, 2, ',', ' ') }}
+                                    / {{ $slotPrice->half_price_per_step_minor === null ? '—' : number_format($slotPrice->half_price_per_step_minor / 100, 2, ',', ' ') }}</span>
+                                <form method="POST" action="{{ route('account.venues.courts.prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), $slotPrice->id]) }}">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn--danger btn--sm">Удалить</button>
+                                </form>
+                            </div>
+                        @endforeach
+                        <form method="POST" class="mt-3" action="{{ route('account.venues.courts.prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}">
+                            @csrf
+                            <label class="form-label">День недели
+                                <select class="form-select" name="day_of_week" required>
+                                    @foreach([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс'] as $day => $label)
+                                        <option value="{{ $day }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="form-label">Начало шага <input class="form-control" type="time" name="starts_at" required></label>
+                            <label class="form-label">Весь зал <input class="form-control" name="whole_price_per_step" placeholder="Не переопределять"></label>
+                            <label class="form-label">Половина <input class="form-control" name="half_price_per_step" placeholder="Не переопределять"></label>
+                            <button type="submit" class="btn btn--secondary btn--sm mt-2">Добавить / обновить тариф</button>
+                        </form>
+                    </details>
+                @endif
+
+                @if($canManageVenue && $courts->count() > 1)
                     <form method="POST" action="{{ route('account.venues.courts.destroy', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}" class="mt-3" onsubmit="return confirm('Удалить этот зал?')">
                         @csrf
                         @method('DELETE')
@@ -138,6 +197,7 @@
         </article>
     @endforeach
 
+    @if($canManageVenue)
     <div class="card mt-4">
         <div class="card-body">
             <h2 class="h4 mb-3">Добавить зал</h2>
@@ -198,4 +258,5 @@
             </form>
         </div>
     </div>
+@endif
 @endsection

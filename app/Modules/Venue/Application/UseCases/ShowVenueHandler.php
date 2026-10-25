@@ -206,7 +206,8 @@ final class ShowVenueHandler
             isFreeAccess: $courtIdentifier !== null
                 ? ! $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['requires_booking']
                 : $venue->hasFreeAccess(),
-            isOpen: $openingState['isOpen'],
+            isOpen: $openingState['isOpen'] && ($courtIdentifier === null
+                || $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['is_open']),
             todayHours: $openingState['todayHours'],
             shortDescription: $venue->short_description,
             fullDescription: $venue->full_description,
@@ -237,6 +238,7 @@ final class ShowVenueHandler
             courts: $courtPayloads,
             isCourtPage: $courtIdentifier !== null,
             selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
+            effectiveCourtPolicy: $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy),
             amenities: $amenities,
             featuredMedia: $featuredMedia,
             reviews: $reviews,

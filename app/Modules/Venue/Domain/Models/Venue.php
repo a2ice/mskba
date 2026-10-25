@@ -104,7 +104,9 @@ class Venue extends Model
 
     public function hasFreeAccess(): bool
     {
-        return $this->requires_payment === false && ! $this->requires_booking_approval;
+        return $this->requires_booking === null
+            ? $this->requires_payment === false && ! $this->requires_booking_approval
+            : ! $this->requires_booking;
     }
 
     public function routeIdentifier(): string
