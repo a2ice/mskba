@@ -91,7 +91,7 @@
             @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">{{ $venue->type }}</p>
+            <p class="eyebrow accent">{{ $venue->selectedCourt['name'] ?: $venue->type }}</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
