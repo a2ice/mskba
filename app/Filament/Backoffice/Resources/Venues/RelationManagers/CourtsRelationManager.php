@@ -316,7 +316,7 @@ final class CourtsRelationManager extends RelationManager
             'no' => $no,
         ])->default('inherit')
             ->afterStateHydrated(fn (Select $component, $state) => $component->state(
-                $state === null ? 'inherit' : ($state ? 'yes' : 'no')
+                $state === null || $state === 'inherit' ? 'inherit' : ($state ? 'yes' : 'no')
             ))
             ->dehydrateStateUsing(fn ($state) => match ($state) {
                 'yes' => true, 'no' => false, default => null,
