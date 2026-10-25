@@ -95,7 +95,6 @@
 .app-venue-page__anchors a[aria-current="location"]{
     color:var(--accent);
     background:var(--surface-raised);
-    box-shadow:inset 0 -2px 0 var(--accent);
 }
 .app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .app-venue-page__sections>.app-venue-block{
