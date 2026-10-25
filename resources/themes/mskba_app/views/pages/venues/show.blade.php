@@ -129,12 +129,6 @@
                     @disabled(!$canStartInterest)>
                     {{ $viewerHasVenueInterest ? 'Не хочу здесь играть' : 'Хочу здесь играть' }}
                 </button>
-                <span class="app-venue-favorite-action">
-                    <button type="button" class="mskba-favorite-heart" data-favorite-venue="{{ $venue->id }}"
-                        aria-pressed="false" aria-label="Добавить в избранное" title="Добавить в избранное">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.4c0 5-8.8 11.1-8.8 11.1S3.2 13.4 3.2 8.4a5.1 5.1 0 0 1 8.8-3.3 5.1 5.1 0 0 1 8.8 3.3Z"/></svg>
-                    </button><span data-venue-favorite-count data-venue-favorite-count-id="{{ $venue->id }}">{{ $favoritesCount }}</span>
-                </span>
                 <a class="button secondary large" href="#app-venue-schedule">Расписание площадки</a>
             </div>
         </div>
@@ -316,11 +310,14 @@
         'venueType' => $venue->typeSlug,
         'venueLatitude' => $venue->address?->latitude,
         'venueLongitude' => $venue->address?->longitude,
+        'favoriteCount' => $favoritesCount,
         'authenticated' => auth()->check(),
         'endpoints' => [
             'store' => route('play-intents.store'),
             'amenities' => route('play-intents.amenities'),
             'mine' => route('play-intents.mine'),
+            'favoriteStatuses' => route('favorites.venue-statuses'),
+            'favoriteToggle' => route('favorites.toggle'),
         ],
     ];
 @endphp
