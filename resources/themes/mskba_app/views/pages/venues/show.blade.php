@@ -31,6 +31,7 @@
     $viewerHasVenueInterest = $viewerVenueInterest !== null;
     $venueInterestUsers = (clone $activeVenueInterests)
         ->with(['user.profile.activeAvatar'])
+        ->where('show_on_venue', true)
         ->orderByDesc('created_at')->get()
         ->unique('user_id')
         ->filter(function ($intent) use ($viewer): bool {
