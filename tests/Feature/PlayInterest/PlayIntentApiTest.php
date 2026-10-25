@@ -76,6 +76,19 @@ final class PlayIntentApiTest extends TestCase
         $this->assertTrue($interest->refresh()->show_on_venue);
     }
 
+    public function test_new_venue_interest_requires_explicit_public_discovery_consent(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('play-intents.store'), [
+                'venue_id' => $venue->id,
+                'cadence' => 'flexible',
+                'weekdays' => [],
+                'windows' => [],
+            ])->assertUnprocessable()->assertJsonValidationErrors('show_on_venue');
+        $this->assertDatabaseCount('play_intents', 0);
+    }
+
     public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
     {
         $user = User::factory()->create();
@@ -137,6 +150,8 @@ final class PlayIntentApiTest extends TestCase
             'show_on_venue' => true,
             ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
         ])->assertCreated();
+        // An existing private interest must never be included in public names.
+        PlayIntent::query()->where('user_id', $other->id)->update(['show_on_venue' => false]);
 
         $expectedBreadcrumb = \Illuminate\Support\Str::substr($venue->name, 0, 25).'...';
         $this->actingAs($user)->get(route('venues.show', $venue->routeIdentifier()))
@@ -148,15 +163,15 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-interest-action', false)
             ->assertSee('Не хочу здесь играть')
             ->assertDontSee('Отображается только число интересов')
-            ->assertDontSee('private-interest-other');
+            ->assertDontSee('private-interest-other')
+            ->assertSee('private-interest-test');
 
-        // Other users' identities are private even though the aggregate is public.
+        // Only explicitly opted-in users appear; others remain anonymous.
         auth()->logout();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Площадкой интересуются')
-            ->assertDontSee('private-interest-test')
-            ->assertDontSee('private-interest-other')
+            ->assertSee('private-interest-test')
             ->assertDontSee('private-interest-other');
     }
 
