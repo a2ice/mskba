@@ -56,6 +56,11 @@
             ->where('entity_type', 'venue')->where('entity_id', $venue->id)
             ->whereNull('trashed_at')->count()
         : 0;
+    $environments = collect($venue->courts)->pluck('environment')->filter()->unique()->values();
+    $areaLabel = $environments->contains('indoor') && $environments->contains('outdoor')
+        ? 'крытая и уличная площадки'
+        : ($environments->contains('indoor') ? 'крытая площадка'
+            : ($environments->contains('outdoor') ? 'уличная площадка' : null));
     $hoursByDate = collect($venue->about->scheduleDays)->keyBy('date');
     $shownDays = $venue->isFreeAccess
         ? collect($venue->occupancyDays)->filter(fn (array $day): bool =>
@@ -91,7 +96,7 @@
             @endif
         </div>
         <div class="app-venue-intro panel">
-            <p class="eyebrow accent">{{ $venue->type }}</p>
+            <p class="eyebrow accent">{{ $venue->type }}@if($areaLabel): {{ $areaLabel }}@endif</p>
             <h1 id="app-venue-title">{{ $venue->name }}</h1>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
@@ -247,15 +252,25 @@
 </section>
 @if($venueAddress)
     <dialog class="app-venue-overlay" data-venue-map-dialog aria-label="Положение площадки на карте">
-        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
         <div class="app-venue-map-frame" data-venue-map-frame
             data-lat="{{ $venue->address?->latitude }}" data-lon="{{ $venue->address?->longitude }}"
-            data-name="{{ $venue->name }}"></div>
-        <p>{{ $venueAddress }}</p>
+            data-name="{{ $venue->name }}" data-map-api-key="{{ $venue->about->mapApiKey }}"></div>
+        <div class="app-venue-map-options">
+            <p class="app-venue-map-options__address">{{ $venueAddress }}</p>
+            <label class="app-venue-map-options__toggle"><input type="checkbox" data-venue-nearby-toggle> Показать площадки рядом</label>
+            <div class="app-venue-map-options__range" data-venue-nearby-options hidden>
+                <label for="venue-nearby-radius">Радиус: <output data-venue-nearby-distance>3</output> км</label>
+                <input id="venue-nearby-radius" type="range" min="1" max="10" step="1" value="3" data-venue-nearby-radius>
+                <button type="button" class="button primary" data-venue-nearby-apply
+                    data-nearby-url="{{ route('venues.nearby-map', $venue->routeIdentifier()) }}">Применить</button>
+            </div>
+            <p class="caption" data-venue-nearby-status role="status" hidden></p>
+        </div>
     </dialog>
 @endif
 <dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
-    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
     <div class="app-venue-interests-dialog__list">
         @forelse($venueInterestUsers as $player)
             <div class="app-venue-interests-dialog__player">
@@ -278,7 +293,7 @@
         data-play-intent-open>{{ $viewerHasVenueInterest ? 'Не интересно' : 'Тоже хочу здесь играть' }}</button>
 </dialog>
 <dialog class="app-venue-overlay app-venue-overlay--confirm" data-venue-interest-confirm>
-    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть">×</button></div>
+    <div class="app-venue-overlay__header"><h2>Отменить интерес?</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
     <p>Вы уверены, что больше не хотите следить за этой площадкой?</p>
     <div class="app-venue-overlay__actions">
         <button type="button" class="button secondary" data-venue-overlay-close>Отмена</button>
