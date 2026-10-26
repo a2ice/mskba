@@ -10,7 +10,8 @@
     max-width: 390px;
     min-width: 270px;
     position: sticky;
-    top: calc(var(--site-header-height, 80px) + 18px);
+    top: calc(var(--site-sticky-offset, 80px) + 18px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
 }
 
 .account-player-character-stage {
