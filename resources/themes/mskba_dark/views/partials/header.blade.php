@@ -29,10 +29,10 @@
 
         </div>
 
-        @unless($isMainPage ?? false)
-            @include('theme::partials.context-submenu')
-        @endunless
-
     </div>
 
 </header>
+
+@unless($isMainPage ?? false)
+    @include('theme::partials.context-submenu')
+@endunless
