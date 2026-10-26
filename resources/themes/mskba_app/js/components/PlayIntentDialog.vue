@@ -328,7 +328,7 @@ function onEdit(event){
     matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';
     editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
     restore(intent);
-    if(intent.effective_status==='expired'&&intent.cadence==='once'){
+    if(['expired','cancelled'].includes(intent.effective_status)&&intent.cadence==='once'){
         dates.value=[];dateMode.value='dates'; // Old game dates cannot be replayed.
         error.value='Для восстановления разовой подписки выбери новую дату.';
     }

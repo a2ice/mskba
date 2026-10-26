@@ -875,6 +875,9 @@ final class PlayIntentApiTest extends TestCase
             ->assertStatus(301);
         $this->get(route('play-intents.mine'))
             ->assertOk()
+            ->assertSee('data-subscription-details-restore', false)
+            ->assertSee('app-subscription-details__shell', false)
+            ->assertSee('Параметры подписки')
             ->assertSee('Мои подписки')
             ->assertSee('Тип подписки')
             ->assertSee('Все статусы')
@@ -986,7 +989,12 @@ final class PlayIntentApiTest extends TestCase
 
         $this->deleteJson(route('play-intents.destroy', $id))->assertOk();
         $this->patchJson(route('play-intents.restore', $id))
+            ->assertOk()->assertJsonPath('data.status', 'active')
+            ->assertJsonPath('data.effective_status', 'active')
+            ->assertJsonPath('data.id', $id);
+        $this->patchJson(route('play-intents.restore', $id))
             ->assertUnprocessable()->assertJsonValidationErrors('status');
+        $this->assertDatabaseCount('play_intents', 1);
     }
 
     public function test_expired_one_time_subscription_requires_new_dates_before_renewal(): void
@@ -1012,6 +1020,72 @@ final class PlayIntentApiTest extends TestCase
             ->assertJsonPath('data.dates.0', $future);
         $this->assertDatabaseCount('play_intents', 1);
         $this->assertTrue($record->fresh()->expires_at->isFuture());
+    }
+
+
+    public function test_cancelled_regular_subscription_restores_in_place_with_original_preferences(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $id = $this->actingAs($owner)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue),
+            'name' => 'Подписка для восстановления',
+            'notify_matches' => false,
+            'notify_offers' => true,
+            'show_on_venue' => false,
+        ])->assertCreated()->json('data.id');
+        $before = PlayIntent::findOrFail($id);
+        $requestId = $before->client_request_id;
+        $formats = $before->formats;
+        $weekdays = $before->weekdays;
+
+        $this->deleteJson(route('play-intents.destroy', $id))->assertOk();
+        $this->actingAs($other)->patchJson(route('play-intents.restore', $id))->assertNotFound();
+        $this->actingAs($owner)->patchJson(route('play-intents.restore', $id))
+            ->assertOk()
+            ->assertJsonPath('data.id', $id)
+            ->assertJsonPath('data.status', 'active')
+            ->assertJsonPath('data.effective_status', 'active')
+            ->assertJsonPath('data.name', 'Подписка для восстановления')
+            ->assertJsonPath('data.show_on_venue', false)
+            ->assertJsonPath('data.notify_matches', false)
+            ->assertJsonPath('data.notify_offers', true);
+        $after = PlayIntent::findOrFail($id);
+        $this->assertTrue($after->expires_at->between(now()->addDays(89), now()->addDays(91)));
+        $this->assertSame($requestId, $after->client_request_id);
+        $this->assertSame($formats, $after->formats);
+        $this->assertSame($weekdays, $after->weekdays);
+        $this->assertDatabaseCount('play_intents', 1);
+        $this->patchJson(route('play-intents.restore', $id))
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+
+        $after->forceFill(['status' => 'completed'])->save();
+        $this->patchJson(route('play-intents.restore', $id))
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
+    public function test_cancelled_one_time_subscription_requires_new_date_in_editor(): void
+    {
+        $owner = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $record = PlayIntent::query()->create([
+            'user_id' => $owner->id, 'venue_id' => $venue->id,
+            'cadence' => 'once',
+            'dates' => [now()->subDays(3)->toDateString()],
+            'status' => 'cancelled',
+            'expires_at' => now()->subDay(),
+        ]);
+        $this->actingAs($owner)->patchJson(route('play-intents.restore', $record->id))
+            ->assertUnprocessable()->assertJsonValidationErrors('dates');
+        $future=now()->addDays(5)->toDateString();
+        $this->putJson(route('play-intents.update', $record), [
+            'venue_id' => $venue->id, 'cadence' => 'once',
+            'dates' => [$future], 'weekdays' => [], 'windows' => [],
+        ])->assertOk()
+            ->assertJsonPath('data.status','active')
+            ->assertJsonPath('data.effective_status','active');
+        $this->assertDatabaseCount('play_intents', 1);
     }
 
 }

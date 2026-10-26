@@ -279,19 +279,72 @@
 @media(max-width:640px){.app-play-interests__page-buttons{justify-content:center;width:100%}}
 
 
-/* Shared native modal patterns for generic subscription details. */
-.app-subscription-details{width:min(560px,calc(100vw - 24px));max-height:88dvh;overflow:auto;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:0 24px 60px #0003}
-.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop-filter:blur(3px)}
-.app-subscription-details__header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.app-subscription-details__header h2{margin:0;font-size:21px;font-weight:750;line-height:1.25}
-.app-subscription-details__close{width:40px;height:40px;display:grid;place-items:center;flex-shrink:0;border:1px solid var(--control-line);border-radius:12px;background:var(--surface);color:var(--text);cursor:pointer}
+/* Subscription details: same layered modal rhythm as the play wizard. */
+dialog.app-subscription-details{
+    box-sizing:border-box;
+    inset:0;
+    margin:auto;
+    padding:0;
+    width:min(640px,calc(100vw - 28px));
+    max-width:640px;
+    max-height:min(88dvh,820px);
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:22px;
+    background:var(--surface,#fff);
+    color:var(--text);
+    box-shadow:0 24px 70px #0003;
+}
+dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop-filter:blur(3px)}
+.app-subscription-details__shell{display:flex;flex-direction:column;min-height:0;max-height:min(88dvh,820px)}
+.app-subscription-details__header{
+    padding:22px 24px 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    border-bottom:1px solid var(--line);
+}
+.app-subscription-details__heading{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.app-subscription-details__eyebrow{font-size:12px;letter-spacing:.06em;font-weight:750;color:var(--accent)}
+.app-subscription-details__header h2{font-size:23px;line-height:1.22;letter-spacing:-.02em;font-weight:750;margin:0;overflow-wrap:anywhere}
+.app-subscription-details__status{font-size:12px;font-weight:650}
+.app-subscription-details__close{
+    width:44px;height:44px;min-width:44px;display:grid;place-items:center;flex-shrink:0;
+    padding:0;border:1px solid var(--control-line);border-radius:12px;
+    background:var(--surface);color:var(--text);cursor:pointer;
+}
 .app-subscription-details__close svg{width:18px;height:18px}
-.app-subscription-details__body{display:grid;gap:0;margin:0;padding:10px 24px}
-.app-subscription-details__fact{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:13px 0;border-bottom:1px solid var(--line)}
-.app-subscription-details__fact dt{font-size:13px;color:var(--muted);max-width:44%}
-.app-subscription-details__fact dd{font-size:14px;font-weight:600;text-align:right;margin:0;overflow-wrap:anywhere}
-.app-subscription-details__footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-.app-subscription-details__footer .button[hidden]{display:none!important}
+.app-subscription-details__close:hover{background:var(--surface-raised)}
+.app-subscription-details__close:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-subscription-details__content{padding:22px 24px;overflow-y:auto;min-height:0;flex:1 1 auto}
+.app-subscription-details__content>h3{font-size:15px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.app-subscription-details__body{display:grid;gap:0;padding:0;margin:0}
+.app-subscription-details__fact{
+    display:grid;grid-template-columns:minmax(0,40%) minmax(0,60%);
+    align-items:start;gap:16px;padding:13px 0;border-bottom:1px solid var(--line);
+}
+.app-subscription-details__fact:last-child{border-bottom:0}
+.app-subscription-details__fact dt{font-size:13px;line-height:1.5;color:var(--muted);font-weight:500;max-width:none}
+.app-subscription-details__fact dd{margin:0;font-size:14px;line-height:1.5;font-weight:650;text-align:right;overflow-wrap:anywhere}
+.app-subscription-details__error{margin:16px 0 0}
+.app-subscription-details__error[hidden]{display:none!important}
+.app-subscription-details__footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:16px 24px;border-top:1px solid var(--line);
+    background:var(--surface);
+}
+.app-subscription-details__footer>.button{min-height:44px;margin:0}
+.app-subscription-details__footer>.button[hidden]{display:none!important}
+@media(max-width:640px){
+    .app-subscription-details__header{padding:18px 16px 14px}
+    .app-subscription-details__header h2{font-size:20px}
+    .app-subscription-details__content{padding:18px 16px}
+    .app-subscription-details__fact{grid-template-columns:minmax(0,1fr);gap:3px;padding:11px 0}
+    .app-subscription-details__fact dd{text-align:left}
+    .app-subscription-details__footer{padding:12px 16px max(12px,env(safe-area-inset-bottom));gap:8px}
+    .app-subscription-details__footer>.button{flex:1 1 0;min-width:0}
+}
 /* Venue search and excluded-venue search inherit theme form control geometry. */
 .app-play-dialog .app-play-dialog__autocomplete>.app-play-dialog__venue-input{
     box-sizing:border-box;display:block;width:100%;height:44px;min-height:44px;max-height:44px;
