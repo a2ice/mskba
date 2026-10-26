@@ -833,4 +833,79 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Подходят по условиям');
     }
 
+
+    public function test_subscription_hub_routes_filters_and_paginates_only_owned_records(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        for ($i = 1; $i <= 15; $i++) {
+            $status = match ($i) { 12 => 'paused', 13 => 'cancelled', 15 => 'completed', default => 'active' };
+            PlayIntent::query()->create([
+                'user_id' => $user->id,
+                'name' => 'Subscription #'.$i,
+                'cadence' => 'flexible',
+                'status' => $status,
+                'expires_at' => $i === 14 ? now()->subDay() : now()->addMonth(),
+            ]);
+        }
+        PlayIntent::query()->create([
+            'user_id' => $other->id,
+            'name' => 'Another user secret',
+            'status' => 'active',
+            'expires_at' => now()->addMonth(),
+        ]);
+
+        $this->get('/account/subscriptions')->assertRedirect(route('login'));
+        $this->actingAs($user)->get('/account/play-interests')
+            ->assertRedirect(route('play-intents.mine'))
+            ->assertStatus(301);
+        $this->get(route('play-intents.mine'))
+            ->assertOk()
+            ->assertSee('Мои подписки')
+            ->assertSee('Тип подписки')
+            ->assertSee('Все статусы')
+            ->assertSee('data-subscriptions-pagination', false)
+            ->assertDontSee('Твои подписки')
+            ->assertDontSee('Хочу играть');
+
+        $pageOne = $this->getJson(route('play-intents.index', ['type' => 'all', 'status' => 'all']))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 15)
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonCount(10, 'data');
+        $pageTwo = $this->getJson(route('play-intents.index', ['page' => 2, 'type' => 'play']))
+            ->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonCount(5, 'data');
+        $firstIds = array_column($pageOne->json('data'), 'id');
+        $secondIds = array_column($pageTwo->json('data'), 'id');
+        $this->assertCount(15, array_unique([...$firstIds, ...$secondIds]));
+        $this->assertNotContains('Another user secret', array_column($pageOne->json('data'), 'name'));
+        $this->assertSame(['play'], array_unique(array_column($pageOne->json('data'), 'subscription_type')));
+
+        $this->getJson(route('play-intents.index', ['status' => 'active']))
+            ->assertOk()->assertJsonPath('meta.total', 11);
+        $this->getJson(route('play-intents.index', ['status' => 'expired']))
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.name', 'Subscription #14')
+            ->assertJsonPath('data.0.effective_status', 'expired');
+        $this->getJson(route('play-intents.index', ['status' => 'paused']))
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.name', 'Subscription #12');
+        $this->getJson(route('play-intents.index', ['status' => 'cancelled']))
+            ->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson(route('play-intents.index', ['status' => 'completed']))
+            ->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson(route('play-intents.index', ['type' => 'unsupported']))
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+        $this->getJson(route('play-intents.index', ['status' => 'unknown']))
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
+
 }
