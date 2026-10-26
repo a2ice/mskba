@@ -8,7 +8,6 @@ if (root) {
     const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
     const detailsEdit = detailsDialog?.querySelector('[data-subscription-details-edit]');
     const detailsRestore = detailsDialog?.querySelector('[data-subscription-details-restore]');
-    const detailsStatus = detailsDialog?.querySelector('[data-subscription-details-status]');
     const detailsError = detailsDialog?.querySelector('[data-subscription-details-error]');
     let detailsTrigger = null;
     detailsDialog?.querySelectorAll('[data-subscription-details-close]').forEach(button=>button.addEventListener('click',()=>detailsDialog.close()));
@@ -149,7 +148,6 @@ if (root) {
         if (!detailsDialog || !detailsBody) return;
         detailsTrigger=trigger;
         detailsTitle.textContent=intent.name || 'Подписка №'+intent.id;
-        detailsStatus.textContent=statusNames[intent.effective_status] || intent.status;
         detailsBody.replaceChildren();
         if(detailsError){detailsError.hidden=true;detailsError.textContent='';}
         const addFact=(label,value)=>{
@@ -158,6 +156,7 @@ if (root) {
             row.append(make('dt',label),make('dd',String(value)));
             detailsBody.append(row);
         };
+        addFact('Статус',statusNames[intent.effective_status] || intent.status);
         addFact('Тип подписки','Игровая');
         addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Без конкретной площадки'));
         addFact('Условия',summary(intent));
