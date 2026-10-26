@@ -19,6 +19,12 @@
     inset: 0;
     filter: blur(3px);
     pointer-events: none;
+    /* Full image (including alpha) is authoritative after decode or without JS. */
+    opacity: 0;
+    transition: opacity .28s ease;
+}
+.mskba-site-media-image.is-lqip-pending .mskba-site-media-image__lqip {
+    opacity: 1;
 }
 .mskba-site-media-image.is-lqip-pending .mskba-site-media-image__original {
     opacity: 0;
@@ -55,6 +61,8 @@
     object-fit: contain;
 }
 @media (prefers-reduced-motion: reduce) {
+    .mskba-site-media-image__lqip,
+    .mskba-site-media-image__original { transition: none !important; }
     .site-lqip-preview,
     .mskba-hero-slide__background.has-site-lqip > img.site-lqip-full,
     .mskba-hero-slide__player.site-lqip-full,
