@@ -99,6 +99,15 @@ final class PlayIntentController extends Controller
         ]);
     }
 
+    public function restore(Request $request, PlayIntent $playIntent, PlayIntentManager $manager): JsonResponse
+    {
+        $this->owned($request, $playIntent);
+
+        return response()->json([
+            'data' => $this->serialize($manager->restoreExpired($this->viewer($request), $playIntent)),
+        ]);
+    }
+
     public function destroy(Request $request, PlayIntent $playIntent): JsonResponse
     {
         $this->owned($request, $playIntent);
@@ -112,9 +121,18 @@ final class PlayIntentController extends Controller
     ): JsonResponse {
         $this->owned($request, $playIntent);
 
+        // Expired subscriptions may preview geographically matching venues
+        // before renewal. Never reactivate them or include them in audience counts.
+        $preview = $playIntent;
+        if ($playIntent->status === 'active' && $playIntent->expires_at?->isPast()) {
+            $preview = clone $playIntent;
+            $preview->expires_at = now()->addDay();
+        }
+
         return response()->json([
-            'data' => $recommender->handle($playIntent),
-            'meta' => ['ranking' => 'geography_and_amenities_only', 'availability_verified' => false],
+            'data' => $recommender->handle($preview),
+            'meta' => ['ranking' => 'geography_and_amenities_only', 'availability_verified' => false,
+                'preview_only' => $preview !== $playIntent],
         ]);
     }
 

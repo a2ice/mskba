@@ -6,6 +6,7 @@ const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref(''), manuallyNamed=ref(false), step=ref('form');
 const venueSearch=ref(''), venueSuggestions=ref([]), searchingVenue=ref(false), venueMenu=ref(false);
+const matchingVenues=ref([]), matchingLoading=ref(false), matchingError=ref(''), matchingOpen=ref(false);
 const excludedSearch=ref(''), excludedSuggestions=ref([]), excludedMenu=ref(false), excludedVenues=ref([]), venueNotice=ref('');
 let venueTimer=null, excludedTimer=null;
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
@@ -310,11 +311,28 @@ async function resume(){
 }
 function authSuccess(){isAuth.value=true;void resume();}
 function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;favoriteDesired.value=true;similar.value=false;excludedVenues.value=[];venueNotice.value='';favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
+async function loadMatchingVenues(){
+    if(!editingId.value || matchingLoading.value)return;
+    matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
+    try{
+        const endpoint=props.options.endpoints.base+'/'+editingId.value+'/recommendations';
+        const response=await fetch(endpoint,{credentials:'same-origin',headers:{Accept:'application/json'}});
+        if(!response.ok)throw Error('Не удалось подобрать площадки. Попробуй ещё раз.');
+        matchingVenues.value=(await response.json()).data||[];
+    }catch(e){matchingError.value=e.message;}
+    finally{matchingLoading.value=false;}
+}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
+    matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';
     editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
-    restore(intent);void openDialog().then(()=>hydrateExcluded(intent.excluded_venue_ids));
+    restore(intent);
+    if(intent.effective_status==='expired'&&intent.cadence==='once'){
+        dates.value=[];dateMode.value='dates'; // Old game dates cannot be replayed.
+        error.value='Для восстановления разовой подписки выбери новую дату.';
+    }
+    void openDialog().then(()=>hydrateExcluded(intent.excluded_venue_ids));
 }
 function onBackdrop(e){
     if(e.target!==el.value)return;
@@ -362,7 +380,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                         name="subscription_name" type="text" maxlength="80" autocomplete="off"
                         @input="manuallyNamed=true" placeholder="Игры по моим условиям">
                 </label>
-                <div class="app-play-dialog__venue-picker">
+                <div class="app-play-dialog__venue-picker field-group">
                     <label class="app-play-dialog__field-label" for="app-play-venue-search">Выбранная площадка</label>
                     <div class="app-play-dialog__venue-picker-header">
                         <span v-if="chosenVenueId" class="app-play-dialog__hint">Поиск по названию, адресу и метро</span>
@@ -370,7 +388,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                         <button v-if="selectedVenueId" type="button" class="app-play-dialog__text-button" @click="unlinkVenue">{{venueDisabled?'Вернуть площадку':'Без конкретной площадки'}}</button>
                     </div>
                     <div class="app-play-dialog__autocomplete">
-                        <input id="app-play-venue-search" v-model="venueSearch" type="text" autocomplete="off"
+                        <input id="app-play-venue-search" v-model="venueSearch" class="app-play-dialog__venue-input" type="text" autocomplete="off"
                             role="combobox" aria-controls="app-play-venue-options" aria-autocomplete="list"
                             :aria-expanded="venueMenu" :disabled="venueDisabled"
                             placeholder="Начни вводить название площадки"
@@ -395,7 +413,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <div class="app-play-dialog__venue-picker">
                         <label class="app-play-dialog__field-label" for="app-play-excluded-search">Исключённые площадки</label>
                         <div class="app-play-dialog__autocomplete">
-                            <input id="app-play-excluded-search" v-model="excludedSearch" type="text" autocomplete="off"
+                            <input id="app-play-excluded-search" v-model="excludedSearch" class="app-play-dialog__venue-input" type="text" autocomplete="off"
                                 role="combobox" aria-controls="app-play-excluded-options" aria-autocomplete="list"
                                 :aria-expanded="excludedMenu" placeholder="Найти площадку в выбранном радиусе"
                                 @focus="searchVenueList('excluded')" @input="searchVenueList('excluded')"
@@ -517,6 +535,18 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
                 </label>
                 <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Согласен показывать другим посетителям мой аватар и игровые характеристики в рамках этого поиска. Логин отображается независимо от этой настройки.</span></label>
+            </div>
+            <div v-if="editingId" class="app-play-dialog__matches">
+                <button type="button" class="button secondary" :disabled="matchingLoading"
+                    :aria-expanded="matchingOpen" @click="loadMatchingVenues()">
+                    {{matchingLoading?'Подбираем площадки…':'Подходящие площадки'}}
+                </button>
+                <p class="app-play-dialog__hint">Предварительный подбор по сохранённым условиям подписки. Новые настройки вступят в силу после сохранения.</p>
+                <p v-if="matchingError" class="error" role="alert">{{matchingError}}</p>
+                <p v-if="matchingOpen && !matchingLoading && !matchingError && !matchingVenues.length" class="muted">По выбранным условиям площадки пока не найдены.</p>
+                <ul v-if="matchingVenues.length" class="app-play-dialog__matched-venues">
+                    <li v-for="venue in matchingVenues" :key="venue.venue_id"><a :href="venue.url" target="_blank" rel="noopener noreferrer">{{venue.name}}</a></li>
+                </ul>
             </div>
             <p v-if="error" class="error" role="alert">{{error}}</p>
             <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
