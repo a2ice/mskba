@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Modules\Media\Application\Services\SiteMediaLqip;
 use App\Modules\Media\Application\Services\SiteMediaManager;
+use App\Modules\Content\Application\Services\HeroSliderComponent;
+use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use App\Modules\Media\Domain\Models\SiteMediaAsset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -93,4 +95,31 @@ final class SiteMediaLqipTest extends TestCase
         $this->assertStringNotContainsString('mskba-site-media-image__lqip', $renderedWithout);
         $this->assertStringContainsString($asset->publicUrl(), $renderedWithout);
     }
+    public function test_hero_never_uses_legacy_preview_for_a_different_selected_asset(): void
+    {
+        Storage::fake('public');
+        $manager = app(SiteMediaManager::class);
+        $legacyBytes = file_get_contents(UploadedFile::fake()->image('old.png', 200, 100)->getRealPath());
+        $legacy = $manager->importBytes($legacyBytes, 'Old', 'old.png', legacyPath: 'page-builder/hero/old.png');
+        $selected = $manager->upload(UploadedFile::fake()->image('new.png', 320, 160));
+        Storage::disk('public')->delete(SiteMediaLqip::path($selected->currentMedia));
+
+        $slider = PageBuilderComponent::query()->where('slug', 'hero-slider')->firstOrFail();
+        $slides = $slider->draft_slides;
+        $slides[0]['layout'] = 'layers';
+        $slides[0]['background_image_site_asset'] = $selected->uuid;
+        $slides[0]['background_image'] = 'page-builder/hero/old.png';
+        $slides[0]['elements'] = [[
+            'type' => 'image',
+            'name' => 'Игрок',
+            'image_site_asset' => $selected->uuid,
+            'image' => 'page-builder/hero/old.png',
+        ]];
+        $slider->update(['draft_slides' => [$slides[0]]]);
+        $html = app(HeroSliderComponent::class)->render($slider->refresh(), true);
+
+        $this->assertStringContainsString($selected->publicUrl(), $html);
+        $this->assertStringNotContainsString($legacy->lqipUrl(), $html);
+    }
+
 }
