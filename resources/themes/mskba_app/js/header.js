@@ -53,6 +53,9 @@ if (siteHeader) {
     let scrollDelta = 0;
     let scrollingUp = false;
     let pointerReveal = false;
+    // Only actual mouse hover over the primary header locks it open.
+    // Hovering the breadcrumbs must not prevent normal hide-on-scroll.
+    let headerHovered = false;
     let previousState = '';
     let scrollFrame = null;
 
@@ -82,6 +85,7 @@ if (siteHeader) {
         // will hide the header naturally.
         const reveal = scrollingUp
             || pointerReveal
+            || headerHovered
             || navigationOpen()
             || siteHeader.contains(document.activeElement);
 
@@ -150,6 +154,16 @@ if (siteHeader) {
     document.addEventListener('pointerleave', () => {
         if (!pointerReveal) return;
         pointerReveal = false;
+        updateVisibility();
+    }, { signal });
+    siteHeader.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        headerHovered = true;
+        updateVisibility();
+    }, { signal });
+    siteHeader.addEventListener('pointerleave', (event) => {
+        if (event.pointerType !== 'mouse') return;
+        headerHovered = false;
         updateVisibility();
     }, { signal });
     siteHeader.addEventListener('toggle', updateVisibility, { capture: true, signal });
