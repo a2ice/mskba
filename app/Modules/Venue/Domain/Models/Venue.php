@@ -40,6 +40,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type',
     'requires_payment',
     'requires_booking_approval',
+    'requires_booking',
     'status',
     'operational_status',
     'status_info',
@@ -94,9 +95,18 @@ class Venue extends Model
         return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
     }
 
+    public function bookingPolicyCurrency(): string
+    {
+        return \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+            ->where('venue_id', $this->id)->where('active_marker', true)
+            ->value('currency') ?: 'RUB';
+    }
+
     public function hasFreeAccess(): bool
     {
-        return $this->requires_payment === false && ! $this->requires_booking_approval;
+        return $this->requires_booking === null
+            ? $this->requires_payment === false && ! $this->requires_booking_approval
+            : ! $this->requires_booking;
     }
 
     public function routeIdentifier(): string
@@ -258,6 +268,7 @@ class Venue extends Model
             'type' => VenueTypeEnum::class,
             'requires_payment' => 'boolean',
             'requires_booking_approval' => 'boolean',
+            'requires_booking' => 'boolean',
             'status' => VenueStatusEnum::class,
             'operational_status' => VenueOperationalStatusEnum::class,
             'canonical_venue_id' => 'integer',

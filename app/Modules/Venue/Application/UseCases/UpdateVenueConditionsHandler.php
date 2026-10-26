@@ -20,7 +20,7 @@ final class UpdateVenueConditionsHandler
         private readonly VenueRevisionManager $revisions,
     ) {}
 
-    /** @param array{access_type: string, requires_booking_approval: bool|int|string} $data */
+    /** @param array{access_type: string, requires_booking_approval: bool|int|string, requires_booking?: string} $data */
     public function handle(string $alias, ?User $user, ?Actor $actor, array $data): Venue
     {
         return DB::transaction(function () use ($alias, $user, $actor, $data): Venue {
@@ -40,10 +40,16 @@ final class UpdateVenueConditionsHandler
                 $revision = $this->revisions->getOrCreateDraft($venue, $actor);
                 $this->revisions->assertCurrent($revision);
                 $payload = $revision->payload;
-                $payload['details'] = array_replace($payload['details'], [
+                $overrides = [
                     'access_type' => $data['access_type'],
                     'requires_booking_approval' => (bool) $data['requires_booking_approval'],
-                ]);
+                ];
+                if (array_key_exists('requires_booking', $data)) {
+                    $overrides['requires_booking'] = match ($data['requires_booking']) {
+                        'yes' => true, 'no' => false, default => null,
+                    };
+                }
+                $payload['details'] = array_replace($payload['details'], $overrides);
                 $revision->forceFill(['payload' => $payload])->save();
             } else {
                 $venue->forceFill([
@@ -53,6 +59,10 @@ final class UpdateVenueConditionsHandler
                         default => null,
                     },
                     'requires_booking_approval' => (bool) $data['requires_booking_approval'],
+                    'requires_booking' => array_key_exists('requires_booking', $data)
+                        ? match ($data['requires_booking']) {
+                            'yes' => true, 'no' => false, default => null,
+                        } : $venue->requires_booking,
                     'content_version' => $venue->content_version + 1,
                 ])->save();
             }

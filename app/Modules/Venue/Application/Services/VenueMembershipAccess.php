@@ -10,6 +10,7 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Builder;
 
 final class VenueMembershipAccess
@@ -18,6 +19,21 @@ final class VenueMembershipAccess
     {
         return $this->baseQuery($user, $permission)
             ->where('scope_id', $venue->id)
+            ->exists();
+    }
+
+    public function allowsForCourt(User $user, VenueCourt $court, VenuePermissionEnum $permission): bool
+    {
+        if ($court->trashed() || $court->venue?->trashed()) {
+            return false;
+        }
+
+        if ($this->allows($user, $court->venue, $permission)) {
+            return true;
+        }
+
+        return $this->baseQuery($user, $permission, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->where('scope_id', $court->id)
             ->exists();
     }
 
@@ -45,6 +61,33 @@ final class VenueMembershipAccess
         }
 
         return $user->canonical()->loadMissing('profile');
+    }
+
+    /** @return array<int> */
+    public function allowedUserIdsForCourt(VenueCourt $court, VenuePermissionEnum $permission): array
+    {
+        $ids = $this->allowedUserIdsForVenue($court->venue, $permission);
+        $now = now();
+        $courtIds = ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE_COURT->value)
+            ->where('scope_id', $court->id)
+            ->whereHas('contract', function (Builder $query) use ($permission, $now): void {
+                $query->where('family', ContractFamilyEnum::MEMBERSHIP->value)
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                    ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $now))
+                    ->whereHas('permissions', fn (Builder $query) => $query->where('permission', $permission->value));
+            })->pluck('user_id')->map(fn ($id): int => (int) $id)->all();
+
+        return array_values(array_unique([...$ids, ...$courtIds]));
+    }
+
+    /** @return array<int> */
+    public function allowedCourtIdsFor(User $user, VenuePermissionEnum $permission): array
+    {
+        return $this->baseQuery($user, $permission, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->distinct()->pluck('scope_id')
+            ->map(fn ($id): int => (int) $id)->all();
     }
 
     /** @return array<int> */
@@ -92,11 +135,14 @@ final class VenueMembershipAccess
      */
     public function contractedVenueIdsFor(User $user): array
     {
-        return $this->baseContractQuery($user)
-            ->distinct()
-            ->pluck('scope_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
+        $venues = $this->baseContractQuery($user)->distinct()->pluck('scope_id');
+        $courtIds = $this->baseContractQuery($user, ContractMembershipScopeTypeEnum::VENUE_COURT)
+            ->distinct()->pluck('scope_id');
+        $courtVenues = VenueCourt::query()->whereIn('id', $courtIds)
+            ->pluck('venue_id');
+
+        return $venues->concat($courtVenues)->map(fn ($id): int => (int) $id)
+            ->unique()->values()->all();
     }
 
     /**
@@ -114,13 +160,13 @@ final class VenueMembershipAccess
             ->all();
     }
 
-    private function baseContractQuery(User $user): Builder
+    private function baseContractQuery(User $user, ContractMembershipScopeTypeEnum $scope = ContractMembershipScopeTypeEnum::VENUE): Builder
     {
         $now = now();
         $user = $user->canonical();
 
         return ContractMembership::query()
-            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('scope_type', $scope->value)
             ->whereIn('user_id', $user->identityIds())
             ->whereHas('contract', function (Builder $query) use ($now): void {
                 $query
@@ -175,9 +221,12 @@ final class VenueMembershipAccess
             ->all();
     }
 
-    private function baseQuery(User $user, VenuePermissionEnum $permission): Builder
-    {
-        return $this->baseContractQuery($user)
+    private function baseQuery(
+        User $user,
+        VenuePermissionEnum $permission,
+        ContractMembershipScopeTypeEnum $scope = ContractMembershipScopeTypeEnum::VENUE,
+    ): Builder {
+        return $this->baseContractQuery($user, $scope)
             ->whereHas('contract.permissions', fn (Builder $query) => $query->where('permission', $permission->value));
     }
 }

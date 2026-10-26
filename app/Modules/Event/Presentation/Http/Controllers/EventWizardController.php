@@ -18,6 +18,7 @@ use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -309,15 +310,19 @@ final class EventWizardController extends Controller
                     'description' => $venue->shortDescription,
                     'address' => $venue->displayAddress,
                     'raw_address' => $venue->rawAddress,
-                    'requires_payment' => $venue->requiresPayment,
-                    'requires_booking_approval' => $venue->requiresBookingApproval,
-                    'has_free_access' => $venue->hasFreeAccess(),
+                    'requires_payment' => $court !== null ? ($court->requires_payment ?? $venue->requiresPayment) : $venue->requiresPayment,
+                    'requires_booking_approval' => $court !== null ? ($court->requires_booking_approval ?? $venue->requiresBookingApproval) : $venue->requiresBookingApproval,
+                    'has_free_access' => $court !== null
+                        ? ! ($court->requires_booking
+                            ?? (($court->requires_payment ?? $venue->requiresPayment)
+                                || ($court->requires_booking_approval ?? $venue->requiresBookingApproval)))
+                        : $venue->hasFreeAccess(),
                     'operational_status' => $venue->operationalStatus,
                     'metro_stations' => $venue->metroStations,
                     'tags' => $venue->tags,
                     'latitude' => $venue->latitude,
                     'longitude' => $venue->longitude,
-                    'url' => $court !== null && ! $court->is_primary
+                    'url' => $court !== null
                         ? route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()])
                         : route('venues.show', $venue->routeIdentifier()),
                     'preview_url' => route('venues.preview', $venue->routeIdentifier()),
@@ -328,12 +333,12 @@ final class EventWizardController extends Controller
                     'rental_policy' => $policy === null ? null : [
                         'currency' => $policy->currency,
                         'currency_exponent' => $amounts->exponent($policy->currency),
-                        'requires_payment' => $policy->requires_payment,
+                        'requires_payment' => $court !== null ? ($court->requires_payment ?? $policy->requires_payment) : $policy->requires_payment,
                         'time_step_minutes' => $policy->time_step_minutes,
-                        'whole_amount_minor' => $steps === null ? null : $steps * $policy->whole_price_per_step_minor,
-                        'half_amount_minor' => $steps === null || $policy->half_price_per_step_minor === null
+                        'whole_amount_minor' => $steps === null ? null : $steps * ($court?->whole_price_per_step_minor ?? $policy->whole_price_per_step_minor),
+                        'half_amount_minor' => $steps === null || ($court?->half_price_per_step_minor ?? $policy->half_price_per_step_minor) === null
                             ? null
-                            : $steps * $policy->half_price_per_step_minor,
+                            : $steps * ($court?->half_price_per_step_minor ?? $policy->half_price_per_step_minor),
                     ],
                 ];
             })->all(),

@@ -17,6 +17,7 @@ final class UpdateVenueConditionsRequest extends FormRequest
         return [
             'access_type' => ['required', Rule::in(['unknown', 'free', 'paid'])],
             'requires_booking_approval' => ['required', 'boolean'],
+            'requires_booking' => ['sometimes', Rule::in(['inherit', 'yes', 'no'])],
         ];
     }
 }

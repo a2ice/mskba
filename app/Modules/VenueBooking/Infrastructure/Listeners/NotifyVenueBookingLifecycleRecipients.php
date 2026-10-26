@@ -97,10 +97,15 @@ final readonly class NotifyVenueBookingLifecycleRecipients
     private function recipientIds(VenueBooking $booking, object $event): array
     {
         $ids = match ($event::class) {
-            VenueBookingRequested::class => $this->memberships->allowedUserIdsForVenue(
-                $booking->venue,
-                VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
-            ),
+            VenueBookingRequested::class => $booking->venue_court_id === null
+                ? $this->memberships->allowedUserIdsForVenue(
+                    $booking->venue,
+                    VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
+                )
+                : $this->memberships->allowedUserIdsForCourt(
+                    $booking->venue->courts()->findOrFail($booking->venue_court_id),
+                    VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
+                ),
             VenueBookingCancelled::class => [
                 $booking->requester_user_id,
                 ...$booking->parties

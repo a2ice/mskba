@@ -15,6 +15,7 @@ use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueMembershipException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -27,11 +28,14 @@ final class VenueCommercialMembershipController extends Controller
 {
     public function index(Request $request, Venue $venue, VenueCommercialAccess $access): Response
     {
-        abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS), 403);
+        $court = $this->requestedCourt($venue, $request->query('court_id'));
+        $this->authorizeScope($request, $venue, $court, $access);
 
         return ThemeResolver::page('venues.commercial-memberships', [
             'venue' => $venue,
-            'memberships' => $this->activeMemberships($venue)->with(['user.profile', 'contract.permissions'])->get(),
+            'memberships' => $this->activeMemberships($venue, $court)->with(['user.profile', 'contract.permissions'])->get(),
+            'courts' => $venue->courts()->get(),
+            'selectedCourt' => $court,
             'roles' => $this->assignableRoles(),
             'permissions' => VenuePermissionEnum::cases(),
         ]);
@@ -43,9 +47,10 @@ final class VenueCommercialMembershipController extends Controller
         VenueCommercialAccess $access,
         SearchDiscoverableUsers $users,
     ): JsonResponse {
-        abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS), 403);
+        $court = $this->requestedCourt($venue, $request->query('court_id'));
+        $this->authorizeScope($request, $venue, $court, $access);
         $validated = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
-        $excluded = $this->activeMemberships($venue)->pluck('user_id')->all();
+        $excluded = $this->activeMemberships($venue, $court)->pluck('user_id')->all();
 
         $candidates = $users->handle($request->user(), $validated['q'], $excluded)
             ->filter(fn (User $user): bool => $user->status === UserStatusEnum::CONFIRMED)
@@ -64,8 +69,9 @@ final class VenueCommercialMembershipController extends Controller
         ManageVenueMembershipHandler $memberships,
         VenueCommercialAccess $access,
     ): RedirectResponse {
-        abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS), 403);
-        $validated = $this->validateMembership($request, true);
+        $validated = $this->validateMembership($request, true, $venue);
+        $court = $this->requestedCourt($venue, $validated['court_id'] ?? null);
+        $this->authorizeScope($request, $venue, $court, $access);
 
         try {
             $memberships->grant(
@@ -74,6 +80,7 @@ final class VenueCommercialMembershipController extends Controller
                 VenueMembershipAccessLevelEnum::from($validated['role']),
                 $request->user(),
                 $this->permissions($validated),
+                $court,
             );
         } catch (VenueMembershipException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -89,8 +96,9 @@ final class VenueCommercialMembershipController extends Controller
         ManageVenueMembershipHandler $memberships,
         VenueCommercialAccess $access,
     ): RedirectResponse {
-        abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS), 403);
-        $validated = $this->validateMembership($request, false);
+        $court = $this->membershipCourt($venue, $membership);
+        $this->authorizeScope($request, $venue, $court, $access);
+        $validated = $this->validateMembership($request, false, $venue);
 
         try {
             $memberships->change(
@@ -114,7 +122,8 @@ final class VenueCommercialMembershipController extends Controller
         ManageVenueMembershipHandler $memberships,
         VenueCommercialAccess $access,
     ): RedirectResponse {
-        abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS), 403);
+        $court = $this->membershipCourt($venue, $membership);
+        $this->authorizeScope($request, $venue, $court, $access);
         try {
             $memberships->revoke($venue, $membership, $request->user());
         } catch (VenueMembershipException $exception) {
@@ -125,11 +134,13 @@ final class VenueCommercialMembershipController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function validateMembership(Request $request, bool $withUser): array
+    private function validateMembership(Request $request, bool $withUser, Venue $venue): array
     {
         return $request->validate([
             'user_id' => [$withUser ? 'required' : 'nullable', 'integer', 'exists:users,id'],
             'role' => ['required', Rule::enum(VenueMembershipAccessLevelEnum::class)],
+            'court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
+                ->where('venue_id', $venue->id)->whereNull('deleted_at')],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', Rule::enum(VenuePermissionEnum::class)],
         ]);
@@ -160,11 +171,44 @@ final class VenueCommercialMembershipController extends Controller
         ];
     }
 
-    private function activeMemberships(Venue $venue): Builder
+    private function requestedCourt(Venue $venue, mixed $courtId): ?VenueCourt
+    {
+        if ($courtId === null || $courtId === '' || $courtId === '0') {
+            return null;
+        }
+        if (! ctype_digit((string) $courtId)) {
+            abort(404);
+        }
+        return $venue->courts()->findOrFail((int) $courtId);
+    }
+
+    private function membershipCourt(Venue $venue, ContractMembership $membership): ?VenueCourt
+    {
+        if ($membership->scope_type === ContractMembershipScopeTypeEnum::VENUE
+            && (int) $membership->scope_id === (int) $venue->id) {
+            return null;
+        }
+        if ($membership->scope_type === ContractMembershipScopeTypeEnum::VENUE_COURT) {
+            return $venue->courts()->findOrFail((int) $membership->scope_id);
+        }
+        abort(404);
+    }
+
+    private function authorizeScope(
+        Request $request, Venue $venue, ?VenueCourt $court, VenueCommercialAccess $access
+    ): void {
+        abort_unless($request->user() !== null && ($court === null
+            ? $access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS)
+            : $access->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_MEMBERSHIPS)), 403);
+    }
+
+    private function activeMemberships(Venue $venue, ?VenueCourt $court = null): Builder
     {
         return ContractMembership::query()
-            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
-            ->where('scope_id', $venue->id)
+            ->where('scope_type', ($court === null
+                ? ContractMembershipScopeTypeEnum::VENUE
+                : ContractMembershipScopeTypeEnum::VENUE_COURT)->value)
+            ->where('scope_id', $court?->id ?? $venue->id)
             ->whereIn('access_level', array_map(
                 static fn (VenueMembershipAccessLevelEnum $role): string => $role->value,
                 VenueMembershipAccessLevelEnum::cases(),

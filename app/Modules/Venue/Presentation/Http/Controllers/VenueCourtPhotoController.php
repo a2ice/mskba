@@ -23,8 +23,9 @@ final class VenueCourtPhotoController extends Controller
         VenueAccessResolver $access,
         VenueCourtGalleryManager $gallery,
     ): RedirectResponse {
-        $venueModel = $this->managedVenue($request, $venue, $actors, $access);
+        $venueModel = Venue::query()->with('creatorActor')->whereRouteIdentifier($venue)->firstOrFail();
         $courtModel = $this->courtForVenue($venueModel, $court);
+        abort_unless($access->canManageCourt($request->user(), $courtModel, $actors->resolveForRequest($request)), 403);
         $file = $request->file('photo');
         $path = $file?->getRealPath();
         $contents = is_string($path) ? file_get_contents($path) : false;
@@ -60,8 +61,9 @@ final class VenueCourtPhotoController extends Controller
         VenueAccessResolver $access,
         VenueCourtGalleryManager $gallery,
     ): RedirectResponse {
-        $venueModel = $this->managedVenue($request, $venue, $actors, $access);
+        $venueModel = Venue::query()->with('creatorActor')->whereRouteIdentifier($venue)->firstOrFail();
         $courtModel = $this->courtForVenue($venueModel, $court);
+        abort_unless($access->canManageCourt($request->user(), $courtModel, $actors->resolveForRequest($request)), 403);
         $gallery->activate($courtModel, $photo);
 
         return back()->with('court_photo_status', [
@@ -79,8 +81,9 @@ final class VenueCourtPhotoController extends Controller
         VenueAccessResolver $access,
         VenueCourtGalleryManager $gallery,
     ): RedirectResponse {
-        $venueModel = $this->managedVenue($request, $venue, $actors, $access);
+        $venueModel = Venue::query()->with('creatorActor')->whereRouteIdentifier($venue)->firstOrFail();
         $courtModel = $this->courtForVenue($venueModel, $court);
+        abort_unless($access->canManageCourt($request->user(), $courtModel, $actors->resolveForRequest($request)), 403);
         $gallery->delete($courtModel, $photo);
 
         return back()->with('court_photo_status', [

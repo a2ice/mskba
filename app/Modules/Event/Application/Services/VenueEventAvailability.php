@@ -127,6 +127,9 @@ final class VenueEventAvailability
         if ($venue->operational_status !== VenueOperationalStatusEnum::ACTIVE) {
             throw new InvalidArgumentException('Площадка временно закрыта.');
         }
+        if ($court?->operational_status === VenueOperationalStatusEnum::TEMPORARILY_CLOSED) {
+            throw new InvalidArgumentException('Выбранный зал временно закрыт.');
+        }
 
         $minimumStartsAt = CarbonImmutable::now($startsAt->getTimezone())
             ->subMinute()

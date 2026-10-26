@@ -7,10 +7,12 @@ use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 
 enum ContractMembershipScopeTypeEnum: string
 {
     case VENUE = 'venue';
+    case VENUE_COURT = 'venue_court';
     case EVENT = 'event';
     case TEAM = 'team';
     case COMPANY = 'company';
@@ -21,6 +23,7 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => 'Площадка',
+            self::VENUE_COURT => 'Зал / зона',
             self::EVENT => 'Событие',
             self::TEAM => 'Команда',
             self::COMPANY => 'Компания',
@@ -33,6 +36,7 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => Venue::class,
+            self::VENUE_COURT => VenueCourt::class,
             self::TEAM => Team::class,
             self::TOURNAMENT => Tournament::class,
             self::SPORTS_SECTION => SportsSection::class,
@@ -46,6 +50,7 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => 'venues.show',
+            self::VENUE_COURT => null,
             self::TEAM => 'teams.show',
             self::TOURNAMENT => 'tournaments.show',
             self::SPORTS_SECTION => 'sports-sections.show',
@@ -59,6 +64,7 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE,
+            self::VENUE_COURT,
             self::TEAM => 'name',
             self::TOURNAMENT => 'title',
             self::SPORTS_SECTION => 'name',
@@ -71,7 +77,8 @@ enum ContractMembershipScopeTypeEnum: string
     public function accessLevelEnumClass(): ?string
     {
         return match ($this) {
-            self::VENUE => VenueMembershipAccessLevelEnum::class,
+            self::VENUE,
+            self::VENUE_COURT => VenueMembershipAccessLevelEnum::class,
             self::TEAM => TeamMembershipAccessLevelEnum::class,
             self::SPORTS_SECTION => SportsSectionAccessLevelEnum::class,
 

@@ -19,7 +19,13 @@ final readonly class VenueBookingActionState
     {
         $isRequester = $actor->user_id === $booking->requester_user_id;
         $canDecide = $canDecideOverride ?? ($actor->user !== null
-            && $this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+            && ($this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS)
+                || ($booking->venue_court_id !== null
+                    && ($court = \App\Modules\Venue\Domain\Models\VenueCourt::query()
+                        ->where('venue_id', $booking->venue_id)->find($booking->venue_court_id)) !== null
+                    && $this->commercialAccess->allowsForCourt(
+                        $actor->user, $court, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS
+                    ))));
         $now = CarbonImmutable::now();
         $heldActive = $booking->effective_protection_until !== null
             && $now->lessThan($booking->effective_protection_until);

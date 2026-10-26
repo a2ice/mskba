@@ -7,6 +7,8 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
@@ -30,19 +32,46 @@ final class VenueCourtController extends Controller
         CurrentActorResolver $actors,
         VenueAccessResolver $access,
         VenueCourtGalleryManager $gallery,
+        VenueCommercialAccess $commercial,
     ): Response {
-        $venueModel = $this->managedVenue($request, $venue, $actors, $access);
+        $venueModel = Venue::query()->with('creatorActor')
+            ->whereRouteIdentifier($venue)->firstOrFail();
+        $actor = $actors->resolveForRequest($request);
+        $canManageVenue = $access->canManage($request->user(), $venueModel, $actor);
         $venueModel->load(['courts', 'characteristics']);
+        $courts = $canManageVenue ? $venueModel->courts
+            : $venueModel->courts->filter(
+                fn (VenueCourt $court) => $access->canManageCourt($request->user(), $court, $actor)
+                    || $access->canEditCourtSchedule($request->user(), $court, $actor)
+                    || ($request->user() !== null
+                        && $commercial->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_BOOKING_POLICY))
+            )->values();
+        abort_if($courts->isEmpty(), 403);
         $policy = $this->activePolicy($venueModel);
         $parentHoops = (int) ($venueModel->characteristics?->hoops_count ?? 1);
         $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : 1;
-        $courtPhotos = $venueModel->courts
+        $courtPhotos = $courts
             ->mapWithKeys(fn (VenueCourt $court): array => [$court->id => $gallery->gallery($court)])
             ->all();
 
         return ThemeResolver::page('venues.courts', [
             'venue' => $venueModel,
-            'courts' => $venueModel->courts,
+            'courts' => $courts,
+            'canManageVenue' => $canManageVenue,
+            'canManageCourt' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
+                $court->id => $access->canManageCourt($request->user(), $court, $actor),
+            ])->all(),
+            'canManageCourtMemberships' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
+                $court->id => $request->user() !== null
+                    && $commercial->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_MEMBERSHIPS),
+            ])->all(),
+            'canManageCourtPolicy' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
+                $court->id => $request->user() !== null
+                    && $commercial->allowsForCourt($request->user(), $court, VenuePermissionEnum::MANAGE_BOOKING_POLICY),
+            ])->all(),
+            'canManageCourtSchedule' => $courts->mapWithKeys(fn (VenueCourt $court): array => [
+                $court->id => $access->canEditCourtSchedule($request->user(), $court, $actor),
+            ])->all(),
             'surfaceTypes' => VenueSurfaceTypeEnum::cases(),
             'courtEnvironments' => VenueCourtEnvironmentEnum::cases(),
             'courtPhotos' => $courtPhotos,
@@ -111,8 +140,10 @@ final class VenueCourtController extends Controller
         CurrentActorResolver $actors,
         VenueAccessResolver $access,
     ): RedirectResponse {
-        $venueModel = $this->managedVenue($request, $venue, $actors, $access);
+        $venueModel = Venue::query()->with('creatorActor')
+            ->whereRouteIdentifier($venue)->firstOrFail();
         $courtModel = $this->courtForVenue($venueModel, $court);
+        abort_unless($access->canManageCourt($request->user(), $courtModel, $actors->resolveForRequest($request)), 403);
         $rules = $this->courtRules($venueModel, $courtModel);
         $rules['sort_order'] = ['required', 'integer', 'min:0', 'max:65535'];
         $validated = $request->validate($rules);

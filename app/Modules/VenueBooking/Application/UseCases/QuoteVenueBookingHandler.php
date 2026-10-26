@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
@@ -24,6 +25,7 @@ final readonly class QuoteVenueBookingHandler
         private VenueEventAvailability $availability,
         private FeatureFlags $features,
         private VenueSlotPricing $pricing,
+        private EffectiveCourtPolicy $effectivePolicies,
     ) {}
 
     public function handle(
@@ -47,6 +49,10 @@ final readonly class QuoteVenueBookingHandler
 
         if ($policy === null || ! $policy->is_enabled) {
             throw new VenueBookingPolicyException('Аренда этой площадки сейчас недоступна.');
+        }
+        $effective = $this->effectivePolicies->resolve($venue, $court, $policy);
+        if (! $effective['rental_enabled']) {
+            throw new VenueBookingPolicyException('Аренда выбранного зала сейчас недоступна.');
         }
 
         $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
@@ -94,13 +100,17 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
         }
 
-        $fallbackPricePerStep = $scope === VenueBookingScopeEnum::WHOLE
-            ? $policy->whole_price_per_step_minor
-            : $policy->half_price_per_step_minor;
-        if ($policy->requires_payment && (int) $fallbackPricePerStep < 1) {
-            throw new VenueBookingPolicyException('Для выбранного варианта аренды не настроена цена.');
+        $fallbackPricePerStep = ! $effective['requires_payment'] ? 0
+            : ($scope === VenueBookingScopeEnum::WHOLE
+                ? $effective['whole_price_per_step_minor']
+                : $effective['half_price_per_step_minor']);
+        $price = $this->pricing->calculate($venue, $policy, $localStart, $durationMinutes, $scope, $court, $effective);
+        if ($effective['requires_payment'] && in_array(0, $price['prices_per_step_minor'], true)) {
+            throw new VenueBookingPolicyException('Для каждого платного интервала аренды должна быть задана положительная цена.');
         }
-        $price = $this->pricing->calculate($venue, $policy, $localStart, $durationMinutes, $scope);
+        $paymentWindow = $effective['requires_payment']
+            ? ((int) ($policy->payment_window_minutes ?: 15))
+            : null;
         $steps = count($price['prices_per_step_minor']);
         $amountMinor = $price['amount_minor'];
         $generatedAt = CarbonImmutable::now('UTC');
@@ -118,11 +128,14 @@ final readonly class QuoteVenueBookingHandler
                 'maximum_duration_minutes' => $policy->maximum_duration_minutes,
                 'minimum_lead_time_minutes' => $policy->minimum_lead_time_minutes,
                 'maximum_advance_days' => $policy->maximum_advance_days,
-                'requires_payment' => $policy->requires_payment,
+                'requires_payment' => $effective['requires_payment'],
+                'requires_booking' => $effective['requires_booking'],
+                'requires_booking_approval' => $effective['requires_booking_approval'],
+                'court_rental_enabled' => $effective['rental_enabled'],
                 'hold_duration_minutes' => $policy->hold_duration_minutes,
                 'allows_hold_extension' => $policy->allows_hold_extension,
                 'maximum_hold_extension_minutes' => $policy->maximum_hold_extension_minutes,
-                'payment_window_minutes' => $policy->payment_window_minutes,
+                'payment_window_minutes' => $paymentWindow,
                 'cancellation_before_minutes' => $policy->cancellation_before_minutes,
             ],
             'request' => [
@@ -147,6 +160,7 @@ final readonly class QuoteVenueBookingHandler
                 'uses_custom_prices' => $price['uses_custom_prices'],
                 'amount_minor' => $amountMinor,
                 'currency' => $policy->currency,
+                'court_id' => $court->id,
             ],
             'generated_at' => $generatedAt->toIso8601String(),
             'valid_until' => $validUntil->toIso8601String(),
@@ -164,8 +178,8 @@ final readonly class QuoteVenueBookingHandler
             'amount_minor' => $amountMinor,
             'currency' => $policy->currency,
             'hold_duration_minutes' => $policy->hold_duration_minutes,
-            'payment_window_minutes' => $policy->payment_window_minutes,
-            'requires_payment' => $policy->requires_payment,
+            'payment_window_minutes' => $paymentWindow,
+            'requires_payment' => $effective['requires_payment'],
             'snapshot' => $snapshot,
             'valid_until' => $validUntil->setTimezone($databaseTimezone),
         ]);
@@ -179,9 +193,9 @@ final readonly class QuoteVenueBookingHandler
             endsAt: $endsAt,
             amountMinor: $amountMinor,
             currency: $policy->currency,
-            requiresPayment: $policy->requires_payment,
+            requiresPayment: $effective['requires_payment'],
             holdDurationMinutes: $policy->hold_duration_minutes,
-            paymentWindowMinutes: $policy->payment_window_minutes,
+            paymentWindowMinutes: $paymentWindow,
             validUntil: $validUntil,
         );
     }

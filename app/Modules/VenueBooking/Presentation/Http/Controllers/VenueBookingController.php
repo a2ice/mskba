@@ -130,16 +130,20 @@ final class VenueBookingController extends Controller
         }
 
         $canViewPayment = $isRequester || ($actor->user !== null
-            && $commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS));
+            && ($commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS)
+                || ($venueBooking->venue_court_id !== null
+                    && ($court = \App\Modules\Venue\Domain\Models\VenueCourt::query()
+                        ->where('venue_id', $venueBooking->venue_id)->find($venueBooking->venue_court_id)) !== null
+                    && $commercialAccess->allowsForCourt($actor->user, $court, VenuePermissionEnum::VIEW_PAYMENTS))));
         $canDecideExtensions = false;
         $canConfirmPayment = false;
         try {
-            $authorization->assertCommercialDecision($actor, $venueBooking->venue);
+            $authorization->assertCommercialDecision($actor, $venueBooking->venue, $venueBooking);
             $canDecideExtensions = true;
         } catch (VenueBookingTransitionException) {
         }
         try {
-            $authorization->assertCanConfirmPayment($actor, $venueBooking->venue);
+            $authorization->assertCanConfirmPayment($actor, $venueBooking->venue, $venueBooking);
             $canConfirmPayment = true;
         } catch (VenueBookingTransitionException) {
         }

@@ -269,7 +269,22 @@
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? 'О зале / зоне' : 'О площадке' }}</h2></header>
                 @if($venue->isCourtPage)
+                    @php
+                        $policy = $venue->effectiveCourtPolicy;
+                    @endphp
                     <dl class="app-venue-court-properties">
+                        <div><dt>Состояние</dt><dd>{{ $policy['is_open'] ? 'Работает' : 'Временно закрыт' }}</dd></div>
+                        <div><dt>Стоимость</dt><dd>{{ $policy['requires_payment'] ? 'Платно' : 'Бесплатно' }}</dd></div>
+                        <div><dt>Запись</dt><dd>{{ $policy['requires_booking'] ? 'Необходимо бронирование' : 'Свободный доступ' }}</dd></div>
+                        <div><dt>Подтверждение</dt><dd>{{ $policy['requires_booking_approval'] ? 'Администратором' : 'Автоматическое' }}</dd></div>
+                        @if($policy['currency'] !== null && $policy['whole_price_per_step_minor'] !== null)
+                            <div><dt>Базовая цена всего зала за {{ $policy['time_step_minutes'] }} мин.</dt>
+                                <dd>{{ number_format($policy['whole_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
+                        @endif
+                        @if($policy['currency'] !== null && $policy['half_price_per_step_minor'] !== null)
+                            <div><dt>Базовая цена половины за {{ $policy['time_step_minutes'] }} мин.</dt>
+                                <dd>{{ number_format($policy['half_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
+                        @endif
                         <div><dt>Зал / зона</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
                         <div><dt>Количество колец</dt><dd>{{ $venue->selectedCourt['hoopsCount'] }}</dd></div>
                         <div><dt>Покрытие</dt><dd>{{ $venue->selectedCourt['surfaceLabel'] ?: 'Не указано' }}</dd></div>

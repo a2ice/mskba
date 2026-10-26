@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Builder;
 
 final class VenueAccessResolver
@@ -49,6 +50,22 @@ final class VenueAccessResolver
 
         return $this->isBootstrapCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
+    }
+
+    public function canManageCourt(?User $user, VenueCourt $court, ?Actor $actor = null): bool
+    {
+        $venue = $court->venue;
+        return ! $court->trashed() && $venue !== null && ! $venue->trashed()
+            && ($this->canManage($user, $venue, $actor)
+                || ($user !== null && $this->memberships->allowsForCourt($user, $court, VenuePermissionEnum::EDIT)));
+    }
+
+    public function canEditCourtSchedule(?User $user, VenueCourt $court, ?Actor $actor = null): bool
+    {
+        $venue = $court->venue;
+        return ! $court->trashed() && $venue !== null && $venue->allowsOperationalChanges()
+            && ($this->canEditSchedule($user, $venue, $actor)
+                || ($user !== null && $this->memberships->allowsForCourt($user, $court, VenuePermissionEnum::EDIT_SCHEDULE)));
     }
 
     public function canRemove(?User $user, Venue $venue, ?Actor $actor = null): bool

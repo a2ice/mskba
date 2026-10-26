@@ -35,6 +35,7 @@ final readonly class VenueDetailsDTO
         public array $courts,
         public bool $isCourtPage,
         public array $selectedCourt,
+        public array $effectiveCourtPolicy,
         public array $amenities,
         public array $featuredMedia,
         public array $reviews,

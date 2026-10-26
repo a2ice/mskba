@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtSettingsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPhotoController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPublicController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
@@ -27,6 +28,14 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
                     ->name('account.venues.courts.store');
                 Route::put('/account/venues/{venue}/courts/{court}', [VenueCourtController::class, 'update'])
                     ->name('account.venues.courts.update');
+                Route::put('/account/venues/{venue}/courts/{court}/settings', [VenueCourtSettingsController::class, 'updatePolicy'])
+                    ->name('account.venues.courts.settings.update');
+                Route::put('/account/venues/{venue}/courts/{court}/schedule', [VenueCourtSettingsController::class, 'updateSchedule'])
+                    ->name('account.venues.courts.schedule.update');
+                Route::post('/account/venues/{venue}/courts/{court}/prices', [VenueCourtSettingsController::class, 'storePrice'])
+                    ->name('account.venues.courts.prices.store');
+                Route::delete('/account/venues/{venue}/courts/{court}/prices/{price}', [VenueCourtSettingsController::class, 'destroyPrice'])
+                    ->whereNumber('price')->name('account.venues.courts.prices.destroy');
                 Route::post('/account/venues/{venue}/courts/{court}/primary', [VenueCourtController::class, 'makePrimary'])
                     ->name('account.venues.courts.primary');
                 Route::delete('/account/venues/{venue}/courts/{court}', [VenueCourtController::class, 'destroy'])
