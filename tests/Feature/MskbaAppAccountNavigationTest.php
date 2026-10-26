@@ -174,6 +174,10 @@ final class MskbaAppAccountNavigationTest extends TestCase
             ->assertSee('Мои подписки')
             ->assertSee('data-subscriptions-filters', false)
             ->assertSee('data-subscriptions-pagination', false)
+            ->assertSee('class="field-group app-play-interests__filter-field"', false)
+            ->assertSee('class="select-control"', false)
+            ->assertSee('<use href="#chevron-down"/>', false)
+            ->assertSee('app-play-interests__filter-reset', false)
             ->assertSee('<use href="#bell"/>', false);
         $roles = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте');
         $this->assertSame(route('account.roles'), $roles['url']);
