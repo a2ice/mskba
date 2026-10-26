@@ -3,7 +3,7 @@
    zero only when the user scrolls upward or enters the 18px edge activation zone. */
 .app-site-header {
     isolation: isolate;
-    top: calc(-1 * var(--header-height));
+    top: calc(0px - var(--header-height));
     transition: top .28s cubic-bezier(.22, .61, .36, 1);
 }
 .app-site-header.is-scroll-revealed { top: 0; }
