@@ -477,7 +477,8 @@
     .venue-section .section-sidebar-layout__aside {
         position: sticky;
         z-index: 10;
-        top: calc(var(--site-header-height, 76px) + 10px);
+        top: calc(var(--site-sticky-offset, 76px) + 10px);
+        transition: top .28s cubic-bezier(.22, .61, .36, 1);
         display: block;
         align-self: start;
     }
@@ -641,7 +642,8 @@
 
     .venue-section .venue-show > .venue-anchor-nav {
         position: sticky;
-        top: var(--site-header-height, 76px);
+        top: var(--site-sticky-offset, 76px);
+        transition: top .28s cubic-bezier(.22, .61, .36, 1);
         z-index: 35;
         display: flex;
         flex-wrap: nowrap;
