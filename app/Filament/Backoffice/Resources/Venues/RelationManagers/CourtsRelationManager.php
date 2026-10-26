@@ -4,7 +4,6 @@ namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
-use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
