@@ -287,7 +287,7 @@ async function save(payload,desiredFavorite=favoriteDesired.value){
             try { await syncFavorite(Number(payload.venue_id),Boolean(desiredFavorite)); }
             catch {
                 favoriteRetryId.value=Number(payload.venue_id);
-                favoriteError.value='Интерес сохранён, но избранное не обновилось. Можно повторить отдельно.';
+                favoriteError.value='Подписка сохранена, но избранное не обновилось. Можно повторить отдельно.';
             }
         }
         success.value=result.data;
