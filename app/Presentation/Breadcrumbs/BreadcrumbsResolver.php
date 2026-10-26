@@ -58,7 +58,9 @@ final class BreadcrumbsResolver
                 $route = $routes->getByName($name);
                 $items[] = [
                     'label' => $route?->defaults['breadcrumb'] ?? ($name === $routeName ? $title : Str::headline(Str::afterLast($name, '.'))),
-                    'url' => $name === $routeName ? null : route($name),
+                    // Some deployments also expose /venues/search; breadcrumbs
+                    // must always point to the canonical public catalog URL.
+                    'url' => $name === $routeName ? null : ($name === 'venues' ? url('/venues') : route($name)),
                 ];
             }
 
