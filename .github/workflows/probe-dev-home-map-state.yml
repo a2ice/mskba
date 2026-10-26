@@ -1,0 +1,53 @@
+name: Probe dev homepage map CMS baselines (temporary)
+
+on:
+  push:
+    branches:
+      - fix/dev-home-map-allow-editor-html-20261026
+    paths:
+      - .github/workflows/probe-dev-home-map-state.yml
+
+permissions:
+  contents: read
+
+jobs:
+  read_only_probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare live CMS snapshots with the existing server source (no writes)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -eu
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $db = \Illuminate\Support\Facades\DB::getFacadeRoot();
+              $c = $db->table("page_builder_components")->where("slug", "venues-map")->first();
+              if (!$c) { echo "COMPONENT_ABSENT\n"; exit(2); }
+              $s = $db->table("page_builder_script_assets")
+                ->where("entity_type", "component")->where("entity_id", $c->id)->first();
+              if (!$s) { echo "SCRIPT_ABSENT\n"; exit(2); }
+              $html = file_get_contents(resource_path("page-builder/venues-map.html"));
+              $css = file_get_contents(resource_path("page-builder/venues-map.css"));
+              $js = file_get_contents(resource_path("page-builder/venues-map.js"));
+              echo "DEV_CMS_BASELINE_PROBE\n";
+              echo "HTML_EXACT=".(int)($c->draft_html === $html && $c->published_html === $html)."\n";
+              echo "HTML_COPY=".(int)(str_contains($c->draft_html, "mskba-venues-map__copy") && str_contains($c->published_html, "mskba-venues-map__copy"))."\n";
+              echo "HTML_SCRIM=".(int)(str_contains($c->draft_html, "mskba-venues-map__scrim") && str_contains($c->published_html, "mskba-venues-map__scrim"))."\n";
+              echo "HTML_CTA=".(int)(str_contains($c->draft_html, "section-cta") && str_contains($c->published_html, "section-cta"))."\n";
+              echo "HTML_CANVAS=".(int)(str_contains($c->draft_html, "mskba-venues-map-canvas") && str_contains($c->published_html, "mskba-venues-map-canvas"))."\n";
+              echo "CSS_EXACT=".(int)($c->draft_css === $css && $c->published_css === $css)."\n";
+              echo "JS_EXACT=".(int)($s->draft_js === $js && $s->published_js === $js)."\n";
+              echo "JS_HASH=".(int)($s->published_hash === hash("sha256", $js))."\n";
+              echo "SCRIPT_ENABLED=".(int)$s->is_enabled."\n";
+              echo "PUBLISHED=".(int)($c->published_at !== null)."\n";
+              echo "DEV_CMS_BASELINE_END\n";
+            '
