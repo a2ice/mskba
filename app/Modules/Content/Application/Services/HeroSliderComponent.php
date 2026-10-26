@@ -37,10 +37,12 @@ final class HeroSliderComponent
                     ?? (($slide['background_preset'] ?? null) === 'indoor' ? asset('images/bg-indoor.png') : null);
                 $slide['background_mobile_url'] = $this->siteAssetUrl($slide['background_image_mobile_site_asset'] ?? null)
                     ?? $this->mediaUrl($slide['background_image_mobile'] ?? null);
-                $slide['background_desktop_lqip_url'] = $this->siteAssetLqipUrl($slide['background_image_site_asset'] ?? null)
-                    ?? $this->mediaLqipUrl($slide['background_image'] ?? null);
-                $slide['background_mobile_lqip_url'] = $this->siteAssetLqipUrl($slide['background_image_mobile_site_asset'] ?? null)
-                    ?? $this->mediaLqipUrl($slide['background_image_mobile'] ?? null);
+                $slide['background_desktop_lqip_url'] = ! empty($slide['background_image_site_asset'])
+                    ? $this->siteAssetLqipUrl($slide['background_image_site_asset'])
+                    : $this->mediaLqipUrl($slide['background_image'] ?? null);
+                $slide['background_mobile_lqip_url'] = ! empty($slide['background_image_mobile_site_asset'])
+                    ? $this->siteAssetLqipUrl($slide['background_image_mobile_site_asset'])
+                    : $this->mediaLqipUrl($slide['background_image_mobile'] ?? null);
                 $slide['delay_background_ms'] = (int) ($slide['delay_background_ms'] ?? 0);
                 $slide['mobile_layout'] = $slide['mobile_layout'] ?? 'absolute';
                 $slide['mobile_padding_top'] = (int) ($slide['mobile_padding_top'] ?? 38);
@@ -49,8 +51,9 @@ final class HeroSliderComponent
                 $slide['elements'] = array_map(function (array $element): array {
                     $element['image_url'] = $this->siteAssetUrl($element['image_site_asset'] ?? null)
                         ?? $this->mediaUrl($element['image'] ?? null);
-                    $element['image_lqip_url'] = $this->siteAssetLqipUrl($element['image_site_asset'] ?? null)
-                        ?? $this->mediaLqipUrl($element['image'] ?? null);
+                    $element['image_lqip_url'] = ! empty($element['image_site_asset'])
+                        ? $this->siteAssetLqipUrl($element['image_site_asset'])
+                        : $this->mediaLqipUrl($element['image'] ?? null);
                     if (($element['type'] ?? '') === 'links') {
                         $element['links'] = array_map(function (array $link): array {
                             $link['icon_url'] = ($link['icon'] ?? null) === 'custom'
