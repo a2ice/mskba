@@ -14,7 +14,7 @@ final class PlayIntent extends Model
         'center_longitude', 'radius_km', 'cadence', 'weekdays', 'dates', 'windows',
         'period_from', 'period_until', 'formats', 'duration_minutes',
         'access_mode', 'venue_kind', 'amenity_preferences', 'notify_matches', 'notify_offers',
-        'status', 'expires_at', 'show_on_venue',
+        'status', 'expires_at', 'show_on_venue', 'excluded_venue_ids',
     ];
 
     protected function casts(): array
@@ -24,6 +24,7 @@ final class PlayIntent extends Model
             'venue_id' => 'integer',
             'include_similar_venues' => 'boolean',
             'show_on_venue' => 'boolean',
+            'excluded_venue_ids' => 'array',
             'center_latitude' => 'float',
             'center_longitude' => 'float',
             'radius_km' => 'integer',
