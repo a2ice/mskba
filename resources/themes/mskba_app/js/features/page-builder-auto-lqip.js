@@ -27,6 +27,8 @@ if (canvas && manifestNode) {
     };
     const thumbnail = url => previews[uuidFrom(url)] || null;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMapWidget = element => element?.id === 'mskba-venues-map-canvas'
+        || Boolean(element?.closest?.('#mskba-venues-map-canvas'));
     const decoratedImages = new WeakSet();
 
     function decoded(image, finished) {
@@ -153,12 +155,15 @@ if (canvas && manifestNode) {
     }
 
     function scan(element) {
-        if (!element || element.nodeType !== 1) return;
+        if (!element || element.nodeType !== 1 || isMapWidget(element)) return;
         if (element.tagName === 'IMG') imagePreview(element);
         else if (element.tagName !== 'SCRIPT') backgroundPreview(element);
-        element.querySelectorAll?.('img').forEach(imagePreview);
+        element.querySelectorAll?.('img').forEach(image => {
+            if (!isMapWidget(image)) imagePreview(image);
+        });
         element.querySelectorAll?.('*').forEach(child => {
-            if (child.tagName !== 'IMG' && child.tagName !== 'SCRIPT') backgroundPreview(child);
+            if (!isMapWidget(child) && child.tagName !== 'IMG'
+                && child.tagName !== 'SCRIPT') backgroundPreview(child);
         });
     }
 
@@ -172,6 +177,9 @@ if (canvas && manifestNode) {
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver(records => {
                 for (const record of records) {
+                    // The Yandex map mutates hundreds of tile styles and
+                    // children. None of them are CMS Site Media photographs.
+                    if (isMapWidget(record.target)) continue;
                     if (record.type === 'attributes') {
                         if (record.target.tagName === 'IMG') imagePreview(record.target);
                         else backgroundPreview(record.target);
