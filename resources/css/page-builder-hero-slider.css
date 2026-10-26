@@ -104,6 +104,8 @@
 .mskba-hero-slide.is-animating .mskba-hero-slide__background {animation:mskba-hero-fade .7s var(--background-delay,0ms) both;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-up"] {animation-name:mskba-hero-up;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-right"] {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-down"] {animation-name:mskba-hero-down;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--far {animation:mskba-hero-up .85s var(--far-delay,240ms) both;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--near {animation:mskba-hero-up .9s var(--near-delay,460ms) both;}
@@ -113,10 +115,16 @@
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="slide-left"],
 .mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="slide-right"],
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="slide-right"] {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="slide-down"],
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="slide-down"] {animation-name:mskba-hero-down;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy > :not(.mskba-hero-slide__actions) {animation:mskba-hero-up .7s both;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="fade"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-fade;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="zoom"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="slide-left"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="slide-right"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="slide-down"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-down;}
  .mskba-hero-slide.is-animating .mskba-hero-slide__eyebrow {animation-delay:var(--copy-delay,440ms);}
  .mskba-hero-slide.is-animating .mskba-hero-slide__title {animation-delay:calc(var(--copy-delay,440ms) + 140ms);}
  .mskba-hero-slide.is-animating .mskba-hero-slide__description {animation-delay:calc(var(--copy-delay,440ms) + 280ms);}
@@ -124,6 +132,8 @@
 .mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="fade"] {animation-name:mskba-hero-fade;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-up"] {animation-name:mskba-hero-up;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-right"] {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-down"] {animation-name:mskba-hero-down;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights a .mskba-hero-slide__icon {
     animation:mskba-hero-fade .45s calc(var(--highlights-delay,1050ms) + var(--highlight-index) * 130ms) both;
@@ -133,10 +143,14 @@
 }
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-up"] a span {animation-name:mskba-hero-up;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-left"] a span {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-right"] a span {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-down"] a span {animation-name:mskba-hero-down;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="zoom"] a span {animation-name:mskba-hero-zoom;}
 @keyframes mskba-hero-fade {from{opacity:0}to{opacity:1}}
 @keyframes mskba-hero-up {from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
 @keyframes mskba-hero-left {from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes mskba-hero-right {from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes mskba-hero-down {from{opacity:0;transform:translateY(-26px)}to{opacity:1;transform:translateY(0)}}
 @keyframes mskba-hero-zoom {from{opacity:0;scale:.94}to{opacity:1;scale:1}}
 /* Short desktop keeps the same action-row layout and reduces hero height. */
 @media (max-height:790px) and (min-width:1100px) {
@@ -267,6 +281,8 @@
 }
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="fade"] {animation-name:mskba-hero-fade;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="slide-right"] {animation-name:mskba-hero-right;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="slide-down"] {animation-name:mskba-hero-down;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
 .mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="none"] {animation:none;}
 .mskba-hero-slide__layer-button:focus-visible {outline:3px solid var(--accent,#ff7900);outline-offset:3px;}
