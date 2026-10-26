@@ -115,6 +115,89 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame('hide-this-profile', $visible['direct'][0]['name']);
     }
 
+    public function test_guest_sees_avatar_and_player_details_when_any_matching_subscription_is_public(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $differentVenue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $owner = User::factory()->create(['username' => 'opt-in-toggle-player']);
+        \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
+            ->for($owner)->create(['height_cm' => 191, 'experience_started_year' => 2017]);
+        $owner->profile()->firstOrCreate([])->media()->save(
+            \App\Modules\Media\Domain\Models\Media::factory()->make([
+                'collection' => 'avatar', 'disk' => 'public',
+                'path' => 'avatars/opt-in-toggle-avatar.jpg', 'is_featured' => true,
+            ])
+        );
+
+        $hiddenId = $this->actingAs($owner)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'name' => 'Скрытая подписка', 'show_on_venue' => false,
+        ])->assertCreated()->json('data.id');
+        $editedId = $this->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'name' => 'На ШК', 'show_on_venue' => false,
+        ])->assertCreated()->json('data.id');
+        // Consent for another venue must never reveal this venue's private subscriptions.
+        $this->postJson(route('play-intents.store'), [
+            ...$this->payload($differentVenue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => true,
+        ])->assertCreated();
+
+        auth()->logout();
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+        $this->assertFalse($audience['direct'][0]['public']);
+        $this->assertNull($audience['direct'][0]['avatar']);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()->assertSee('opt-in-toggle-player')
+            ->assertDontSee('opt-in-toggle-avatar.jpg')
+            ->assertDontSee('191 см')
+            ->assertDontSee('data-venue-player-details-open', false);
+
+        // Updating only this subscription to public must immediately make the
+        // one deduplicated player visible, even while another matching one stays private.
+        $this->actingAs($owner)->putJson(route('play-intents.update', $editedId), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'name' => 'На ШК', 'show_on_venue' => true,
+        ])->assertOk()->assertJsonPath('data.show_on_venue', true);
+        $this->assertFalse(PlayIntent::findOrFail($hiddenId)->show_on_venue);
+        auth()->logout();
+
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+        $this->assertTrue($audience['direct'][0]['public']);
+        $this->assertTrue($audience['direct'][0]['can_view_details']);
+        $this->assertSame('/storage/avatars/opt-in-toggle-avatar.jpg', $audience['direct'][0]['avatar']);
+        $this->assertSame(191, $audience['direct'][0]['height_cm']);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('opt-in-toggle-avatar.jpg')
+            ->assertSee('191 см')
+            ->assertSee('data-venue-player-details-open', false);
+
+        // Revocation must take effect immediately, without removing the count.
+        $this->actingAs($owner)->putJson(route('play-intents.update', $editedId), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => false,
+        ])->assertOk()->assertJsonPath('data.show_on_venue', false);
+        auth()->logout();
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertFalse($audience['direct'][0]['public']);
+        $this->assertNull($audience['direct'][0]['avatar']);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('opt-in-toggle-avatar.jpg')
+            ->assertDontSee('191 см')
+            ->assertDontSee('data-venue-player-details-open', false);
+    }
+
     public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
     {
         $user = User::factory()->create();

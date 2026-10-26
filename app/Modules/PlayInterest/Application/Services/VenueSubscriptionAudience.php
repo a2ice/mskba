@@ -37,10 +37,13 @@ final class VenueSubscriptionAudience
                 continue;
             }
             $id = (int) $user->canonical()->id;
-            $byUser[$id] ??= ['direct' => false, 'public' => true, 'user' => $user];
+            $byUser[$id] ??= ['direct' => false, 'public' => false, 'user' => $user];
             $byUser[$id]['direct'] = $byUser[$id]['direct'] || $direct;
-            // Privacy wins if the same user has multiple matching subscriptions.
-            $byUser[$id]['public'] = $byUser[$id]['public'] && (bool) $subscription->show_on_venue;
+            // Publicity is consented per subscription, not globally per user.
+            // Any *matching active* subscription with opt-in permits displaying
+            // the player's profile for this venue; private subscriptions remain
+            // counted but must not veto a different explicit public opt-in.
+            $byUser[$id]['public'] = $byUser[$id]['public'] || (bool) $subscription->show_on_venue;
         }
 
         $directUsers = [];
