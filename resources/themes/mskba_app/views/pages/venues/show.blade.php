@@ -33,6 +33,9 @@
         ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
     $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']));
     $activeVenueInterestCount = $venueAudience['total'];
+    $venuePlayerWord = $activeVenueInterestCount % 100 >= 11 && $activeVenueInterestCount % 100 <= 14
+        ? 'игроков'
+        : (match ($activeVenueInterestCount % 10) { 1 => 'игрок', 2, 3, 4 => 'игрока', default => 'игроков' });
     $favoritesCount = class_exists(\App\Modules\Favorites\Domain\Models\Favorite::class)
         ? \App\Modules\Favorites\Domain\Models\Favorite::query()
             ->where('entity_type', 'venue')->where('entity_id', $venue->id)
@@ -204,7 +207,7 @@
                             @foreach($venueInterestUsers->take(5) as $player)
                                 <span class="app-venue-interest-summary__avatar" title="{{ $player['name'] }}">
                                     @if(!$player['public'])
-                                        <span aria-hidden="true">●</span>
+                                        <svg class="app-venue-interest-summary__profile-icon" aria-hidden="true"><use href="#user"/></svg>
                                     @elseif($player['avatar'])
                                         <img src="{{ $player['avatar'] }}" alt="{{ $player['name'] }}" loading="lazy">
                                     @else
@@ -213,8 +216,7 @@
                                 </span>
                             @endforeach
                         </div>
-                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $activeVenueInterestCount % 100 >= 11 && $activeVenueInterestCount % 100 <= 14 ? 'игроков' : (match ($activeVenueInterestCount % 10) { 1 => 'игрок', 2, 3, 4 => 'игрока', default => 'игроков' }) }}</strong>
-                        <p class="app-venue-interest-summary__breakdown"><strong>{{ $venueAudience['direct_count'] }}</strong> напрямую · <strong>{{ $venueAudience['matched_count'] }}</strong> по условиям</p>
+                        <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $venuePlayerWord }}</strong>
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
                     </div>
                 </div>
@@ -322,35 +324,34 @@
 @endif
 <dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
     <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
-    <div class="app-venue-interests-dialog__total">
-        <strong>{{ $venueAudience['total'] }} игроков</strong>
-        <p class="muted">{{ $venueAudience['direct_count'] }} напрямую · {{ $venueAudience['matched_count'] }} по условиям</p>
+    <div class="app-venue-interests-dialog__total" aria-label="{{ $activeVenueInterestCount }} {{ $venuePlayerWord }}">
+        <strong class="app-venue-interests-dialog__total-number">{{ $activeVenueInterestCount }}</strong>
+        <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
     </div>
     <div class="app-venue-interests-dialog__list">
         @foreach([
             ['label' => 'Подписаны на эту площадку', 'count' => $venueAudience['direct_count'], 'players' => $venueAudience['direct']],
             ['label' => 'Подходят по условиям', 'count' => $venueAudience['matched_count'], 'players' => $venueAudience['matched']],
         ] as $group)
+            @if($group['count'] > 0)
             <section class="app-venue-interests-dialog__group">
                 <div class="app-venue-interests-dialog__heading"><span>{{ $group['label'] }}</span><span>{{ $group['count'] }}</span></div>
-                @forelse($group['players'] as $player)
+                @foreach($group['players'] as $player)
                     <div class="app-venue-interests-dialog__player {{ !$player['public'] ? 'app-venue-interests-dialog__private' : '' }}">
                         <span class="app-venue-interest-summary__avatar">
                             @if($player['avatar'])<img src="{{ $player['avatar'] }}" alt="" loading="lazy">
-                            @elseif(!$player['public'])<span aria-hidden="true">●</span>
+                            @elseif(!$player['public'])<svg class="app-venue-interest-summary__profile-icon" aria-hidden="true"><use href="#user"/></svg>
                             @else<span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>@endif
                         </span>
                         <div class="app-venue-interests-dialog__details">
                             <strong>{{ $player['name'] }}</strong>
                             @if(count($player['positions']))<span>{{ implode(' · ', $player['positions']) }}</span>@endif
                             @if($player['experience_years'] !== null)<span>Игровой опыт: {{ $player['experience_years'] }} лет</span>@endif
-                            @if(!$player['public'])<span>Без данных профиля</span>@endif
                         </div>
                     </div>
-                @empty
-                    <p class="muted">Пока нет игроков в этой группе.</p>
-                @endforelse
+                @endforeach
             </section>
+            @endif
         @endforeach
     </div>
     <button type="button" class="button primary" data-venue-interest-action data-interest-id="{{ $viewerVenueInterest?->id }}"
