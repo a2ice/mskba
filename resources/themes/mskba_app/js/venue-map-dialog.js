@@ -184,7 +184,7 @@ if (dialog) {
         if (!dialog.open) dialog.showModal();
 
         try {
-            const response = await fetch('/api/v1/venues/' + id, {
+            const response = await fetch('/api/v1/venues/' + id + '?map=1', {
                 signal: controller.signal, headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
             });
