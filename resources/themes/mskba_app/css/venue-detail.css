@@ -97,7 +97,7 @@
 }
 .app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .app-venue-page__sections>.app-venue-block{
-    scroll-margin-top:calc(var(--app-sticky-offset,124px) + var(--app-venue-nav-height,58px) + 15px);
+    scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--app-venue-nav-height,58px) + 15px);
 }
 
 /* The sticky sidebar stays 15px below the actual navigation boundary. */
