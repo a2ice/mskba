@@ -53,15 +53,12 @@ final class PlayIntentManager
         }
 
         $cadence = (string) $input['cadence'];
-        $expires = $cadence === 'regular'
-            ? CarbonImmutable::now()->addDays(90)
-            : CarbonImmutable::now()->addDays(30);
-        if ($cadence === 'once') {
-            $dates = $input['dates'] ?? [];
-            $lastDate = $dates !== [] ? max($dates) : $input['period_until'];
-            $expires = CarbonImmutable::parse($lastDate, config('app.timezone', 'Europe/Moscow'))
-                ->endOfDay()->utc();
-        }
+        // Subscription lifetime is independent from the preferred game dates
+        // and cadence. Missing/null expiry explicitly means "Бессрочно".
+        $expires = isset($input['expires_at'])
+            ? CarbonImmutable::parse($input['expires_at'], config('app.timezone', 'Europe/Moscow'))
+                ->endOfDay()->utc()
+            : null;
 
         try {
             return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent, $venueId): PlayIntent {
@@ -143,10 +140,15 @@ final class PlayIntentManager
                 ]);
             }
 
-            $days = $locked->cadence === 'regular' ? 90 : 30;
+            // A cancelled open-ended subscription remains open-ended on restore.
+            // A cancelled one with a future chosen date keeps that date. Legacy
+            // expired/elapsed dates retain the existing 30/90-day renewal rule.
+            $expires = $isCancelled && ($locked->expires_at === null || $locked->expires_at->isFuture())
+                ? $locked->expires_at
+                : CarbonImmutable::now()->addDays($locked->cadence === 'regular' ? 90 : 30);
             $locked->forceFill([
                 'status' => 'active',
-                'expires_at' => CarbonImmutable::now()->addDays($days),
+                'expires_at' => $expires,
             ])->save();
 
             return $locked->refresh();
