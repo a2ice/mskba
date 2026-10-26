@@ -297,7 +297,8 @@ scrollable height follows the same offset, and reduced-motion users get
 instant changes. At smaller widths the normal single-column sidebar layout
 is unchanged. Keep component styling for individual cards in the loop-item.
 
-The `BreadcrumbsResolver` uses the canonical `/venues` URL for the
-`venues` ancestor in breadcrumb trails, including `venues.show`, rather
-than the internal `/venues/search` search endpoint. Both the visible
-breadcrumb trail and the compact path menu consume this one resolver.
+The `mskba_app` venue detail Blade view explicitly passes the canonical
+`route('venues')` URL for its `Площадки` breadcrumb rather than the internal
+`/venues/search` search endpoint. The same value reaches both the visible
+breadcrumb trail and the compact path menu via `BreadcrumbsResolver`. The
+common resolver's route-derived behavior is unchanged.
