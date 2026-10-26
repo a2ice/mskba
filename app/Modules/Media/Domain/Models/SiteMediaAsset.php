@@ -2,7 +2,9 @@
 
 namespace App\Modules\Media\Domain\Models;
 
+use App\Modules\Media\Application\Services\SiteMediaLqip;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -39,5 +41,20 @@ final class SiteMediaAsset extends Model
     public function publicUrl(): string
     {
         return route('site-media.show', ['uuid' => $this->uuid], false);
+    }
+
+    /**
+     * Null when no matching derivative exists; the client loads the original
+     * directly, without an extra HEAD or a speculative 404.
+     */
+    public function lqipUrl(): ?string
+    {
+        $media = $this->currentMedia;
+        if (! $media || $media->disk !== 'public'
+            || ! Storage::disk('public')->exists(SiteMediaLqip::path($media))) {
+            return null;
+        }
+
+        return route('site-media.lqip', ['uuid' => $this->uuid], false);
     }
 }
