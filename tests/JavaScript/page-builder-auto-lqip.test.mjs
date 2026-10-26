@@ -59,6 +59,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
         tagName: 'DIV',
         nodeType: 1,
         classList: classes(),
+        closest: () => null,
         querySelectorAll: selector => selector === 'img' ? [img] : [img, bg],
     };
     const manifest = {
