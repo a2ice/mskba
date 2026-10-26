@@ -30,7 +30,9 @@ final class GenerateSiteMediaLqipChunk implements ShouldQueue
             $asset = SiteMediaAsset::query()->with('currentMedia')->find($id);
             if ($asset && $asset->currentMedia) {
                 try {
-                    if ($generator->generate($asset->currentMedia)) {
+                    if ($generator->exists($asset->currentMedia)) {
+                        Cache::increment('site-media:lqip:'.$this->batchId.':skipped');
+                    } elseif ($generator->generate($asset->currentMedia)) {
                         Cache::increment('site-media:lqip:'.$this->batchId.':created');
                     } else {
                         Cache::increment('site-media:lqip:'.$this->batchId.':skipped');
