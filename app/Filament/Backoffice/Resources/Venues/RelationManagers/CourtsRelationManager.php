@@ -4,10 +4,12 @@ namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -69,6 +71,43 @@ final class CourtsRelationManager extends RelationManager
                 Toggle::make('allows_whole')->label('Бронирование целиком')->default(true),
                 Toggle::make('allows_halves')->label('Бронирование половин')->default(false)
                     ->helperText('Включайте только для зоны с двумя кольцами и поддержкой половин.'),
+                Select::make('operational_status')->label('Статус зала')
+                    ->options(['inherit' => 'Наследовать от площадки',
+                        'active' => 'Работает', 'temporarily_closed' => 'Временно закрыт'])
+                    ->default('inherit')
+                    ->formatStateUsing(fn ($state): string => $state?->value ?? (is_string($state) ? $state : 'inherit'))
+                    ->dehydrateStateUsing(fn ($state): ?string => $state === 'inherit' ? null : $state)
+                    ->required(),
+                Select::make('requires_payment')->label('Платность')
+                    ->options(['inherit' => 'Наследовать от площадки', 'yes' => 'Платно', 'no' => 'Бесплатно'])
+                    ->default('inherit')
+                    ->formatStateUsing(fn ($state): string => $state === null ? 'inherit' : ($state ? 'yes' : 'no'))
+                    ->dehydrateStateUsing(fn ($state): ?bool => $state === 'inherit' ? null : $state === 'yes')
+                    ->required(),
+                Select::make('requires_booking')->label('Предварительное бронирование')
+                    ->options(['inherit' => 'Наследовать от площадки', 'yes' => 'Обязательно', 'no' => 'Свободный доступ'])
+                    ->default('inherit')
+                    ->formatStateUsing(fn ($state): string => $state === null ? 'inherit' : ($state ? 'yes' : 'no'))
+                    ->dehydrateStateUsing(fn ($state): ?bool => $state === 'inherit' ? null : $state === 'yes')
+                    ->required(),
+                Select::make('requires_booking_approval')->label('Подтверждение бронирования')
+                    ->options(['inherit' => 'Наследовать от площадки', 'yes' => 'Требуется', 'no' => 'Автоматически'])
+                    ->default('inherit')
+                    ->formatStateUsing(fn ($state): string => $state === null ? 'inherit' : ($state ? 'yes' : 'no'))
+                    ->dehydrateStateUsing(fn ($state): ?bool => $state === 'inherit' ? null : $state === 'yes')
+                    ->required(),
+                Select::make('rental_enabled')->label('Аренда зала')
+                    ->options(['inherit' => 'Наследовать от площадки', 'yes' => 'Разрешена', 'no' => 'Отключена'])
+                    ->default('inherit')
+                    ->formatStateUsing(fn ($state): string => $state === null ? 'inherit' : ($state ? 'yes' : 'no'))
+                    ->dehydrateStateUsing(fn ($state): ?bool => $state === 'inherit' ? null : $state === 'yes')
+                    ->required(),
+                TextInput::make('whole_price_per_step_minor')->label('Цена всего зала, коп. за шаг')
+                    ->numeric()->minValue(0)->maxValue(999999999)->nullable()
+                    ->helperText('Пусто — наследуется стоимость площадки. 0 — бесплатно.'),
+                TextInput::make('half_price_per_step_minor')->label('Цена половины, коп. за шаг')
+                    ->numeric()->minValue(0)->maxValue(999999999)->nullable()
+                    ->helperText('Пусто — наследуется стоимость площадки.'),
             ]),
             Section::make('Наследуемые условия зала')
                 ->description('Без переопределения зал автоматически следует настройкам площадки. Цена указывается за шаг аренды, в копейках; пустое поле — наследование.')
@@ -111,6 +150,10 @@ final class CourtsRelationManager extends RelationManager
                     ->where('collection', 'gallery')->orderByDesc('is_featured')
                     ->orderBy('sort_order')->first()) ? url($photo->publicUrl()) : null
             )->square()->height(48),
+            TextColumn::make('effective_payment')->label('Аренда')->getStateUsing(
+                fn (VenueCourt $record): string => $record->requires_payment === null
+                    ? 'Наследуется' : ($record->requires_payment ? 'Платно' : 'Бесплатно')
+            ),
             TextColumn::make('photo_count')->label('Фотографий')->getStateUsing(
                 fn (VenueCourt $record): int => $record->media()->where('collection', 'gallery')->count()
             ),
