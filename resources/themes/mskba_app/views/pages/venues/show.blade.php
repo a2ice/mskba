@@ -25,7 +25,7 @@
         ? \App\Modules\PlayInterest\Domain\Models\PlayIntent::query()
             ->where('venue_id', $venue->id)
             ->where('status', 'active')
-            ->where('expires_at', '>', now())
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->where('user_id', $viewer->id)->orderByDesc('id')->first()
         : null;
     $viewerHasVenueInterest = $viewerVenueInterest !== null;
