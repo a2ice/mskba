@@ -17,6 +17,7 @@
   const scrim = root.querySelector('.mskba-venues-map__scrim');
   const expandLink = copy?.querySelector('a.section-cta');
   let refreshMapViewport = () => {};
+  let mapReady = false;
   if (copy && scrim && expandLink) {
     const collapseButton = document.createElement('button');
     collapseButton.type = 'button';
@@ -33,9 +34,6 @@
     root.append(collapseButton);
 
     let expanded = false;
-    expandLink.setAttribute('role', 'button');
-    expandLink.setAttribute('aria-controls', canvas.id);
-    expandLink.setAttribute('aria-expanded', 'false');
     const toggleMap = next => {
       if (next === expanded) return;
       expanded = next;
@@ -49,12 +47,14 @@
       window.requestAnimationFrame(refreshMapViewport);
     };
     expandLink.addEventListener('click', event => {
+      // Before the map is ready (or on API failure) keep /venues working.
+      if (!mapReady) return;
       event.preventDefault();
       toggleMap(true);
     });
     // An anchor enhanced as a button already handles Enter; add Space parity.
     expandLink.addEventListener('keydown', event => {
-      if (event.key !== ' ' && event.key !== 'Spacebar') return;
+      if (!mapReady || (event.key !== ' ' && event.key !== 'Spacebar')) return;
       event.preventDefault();
       toggleMap(true);
     });
@@ -343,6 +343,13 @@
       say(visible.length ? 'Площадок на карте: '+visible.length : 'По выбранным фильтрам площадок не найдено');
     }
     refresh();
+    // Only a successfully initialized, populated map gets an in-place toggle.
+    mapReady = true;
+    if (expandLink) {
+      expandLink.setAttribute('role', 'button');
+      expandLink.setAttribute('aria-controls', canvas.id);
+      expandLink.setAttribute('aria-expanded', 'false');
+    }
     // Start with the map unobstructed. The user opens a venue card by
     // clicking a marker; never show a popup on initial page load.
 
