@@ -334,6 +334,22 @@ if (venueSidebar && venueAnchors) {
         pending = true;
         window.requestAnimationFrame(updateSidebarPosition);
     };
+    // Header and breadcrumbs animate even without a scroll event (top-edge hover).
+    // Re-read their real bottom edge during the 280ms transition so the venue
+    // sidebar never crosses the horizontal anchors while either bar is moving.
+    let headerAnimationFrame = null;
+    window.addEventListener('mskba:header-visibility', () => {
+        const deadline = performance.now() + 340;
+        if (headerAnimationFrame !== null) cancelAnimationFrame(headerAnimationFrame);
+
+        const followHeader = () => {
+            scheduleSidebarUpdate();
+            headerAnimationFrame = performance.now() < deadline
+                ? requestAnimationFrame(followHeader)
+                : null;
+        };
+        headerAnimationFrame = requestAnimationFrame(followHeader);
+    });
     window.addEventListener('scroll', scheduleSidebarUpdate, { passive: true });
     window.addEventListener('resize', scheduleSidebarUpdate);
     if ('ResizeObserver' in window) new ResizeObserver(scheduleSidebarUpdate).observe(venueAnchors);
