@@ -1122,8 +1122,12 @@ final class PlayIntentApiTest extends TestCase
             ...$payload, 'expires_at' => $future,
         ])->assertCreated()->json('data.id');
         $intent = PlayIntent::findOrFail($id);
-        $this->assertSame($future, $intent->expires_at->setTimezone(config('app.timezone'))->format('Y-m-d'));
-        $this->assertSame('23:59:59', $intent->expires_at->setTimezone(config('app.timezone'))->format('H:i:s'));
+        // Eloquent casts SQLite test timestamps without DB timezone metadata.
+        // Assert the UTC storage instant rather than treating it as app-local.
+        $expectedUtc = \Carbon\CarbonImmutable::parse($future, config('app.timezone'))
+            ->endOfDay()->utc()->format('Y-m-d H:i:s');
+        $stored = \Illuminate\Support\Facades\DB::table('play_intents')->where('id', $id)->value('expires_at');
+        $this->assertSame($expectedUtc, substr((string) $stored, 0, 19));
 
         $this->putJson(route('play-intents.update', $id), [
             ...$payload, 'expires_at' => now()->subDays(5)->toDateString(),
