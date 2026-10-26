@@ -1,0 +1,38 @@
+name: Probe isolated dev target (temporary)
+
+on:
+  push:
+    branches:
+      - feature/scroll-aware-header-context-bar
+    paths:
+      - .github/workflows/probe-mskba-dev.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the connected deployment host without writing anything
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -eu
+            echo "DEV_TARGET_PROBE_BEGIN"
+            found=0
+            for root in /var/www /srv/www /srv /opt; do
+              if [ ! -d "$root" ]; then
+                continue
+              fi
+              find "$root" -maxdepth 4 -type f -name .env -print 2>/dev/null || true
+            done | sort -u | while IFS= read -r config; do
+              if grep -Eq '^APP_URL=.*dev\.mskba\.ru' "$config"; then
+                echo "DEV_ROOT_FOUND: ${config%/.env}"
+              fi
+            done
+            echo "DEV_TARGET_PROBE_END"
