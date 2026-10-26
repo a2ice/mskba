@@ -8,7 +8,7 @@ if (root) {
     const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
     const detailsEdit = detailsDialog?.querySelector('[data-subscription-details-edit]');
     let detailsTrigger = null;
-    detailsDialog?.querySelector('[data-subscription-details-close]')?.addEventListener('click',()=>detailsDialog.close());
+    detailsDialog?.querySelectorAll('[data-subscription-details-close]').forEach(button=>button.addEventListener('click',()=>detailsDialog.close()));
     detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
     const typeSelect = filters?.querySelector('[name="type"]');
     const statusSelect = filters?.querySelector('[name="status"]');
