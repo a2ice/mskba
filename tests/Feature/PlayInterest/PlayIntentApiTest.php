@@ -249,7 +249,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-dialog', false)
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
-        $this->assertSame(2, substr_count($ownHtml, 'Вы подписаны'));
+        $this->assertSame(3, substr_count($ownHtml, 'Вы подписаны'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
         auth()->logout();
