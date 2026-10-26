@@ -165,7 +165,7 @@ if (root) {
                         catch(e){showError(e.message);}
                     }));
                 }
-                if(intent.effective_status === 'active') {
+                if(['active','expired'].includes(intent.effective_status)) {
                     const alternatives=make('div',null,'app-play-interests__results');
                     actions.append(button('Подходящие площадки',async()=>{
                         alternatives.replaceChildren(make('p','Подбираем варианты…','muted'));
@@ -187,7 +187,21 @@ if (root) {
                     }));
                     card.append(alternatives);
                 }
-                if(!['cancelled','completed'].includes(intent.effective_status)) {
+                if(intent.effective_status === 'expired') {
+                    actions.append(button('Восстановить подписку',async()=>{
+                        if (intent.cadence === 'once') {
+                            const notice=make('p','Укажи новые даты и сохрани подписку, чтобы восстановить разовый поиск.','muted');
+                            card.insertBefore(notice,actions);
+                            window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
+                            return;
+                        }
+                        try {
+                            await request(root.dataset.pauseUrl+'/'+intent.id+'/restore','PATCH');
+                            await load();
+                        } catch(e) { showError(e.message); }
+                    }));
+                }
+                if(!['cancelled','completed','expired'].includes(intent.effective_status)) {
                     actions.append(button('Отменить подписку',async()=>{
                         if(!window.confirm('Отменить эту игровую подписку?'))return;
                         try{await request(root.dataset.pauseUrl+'/'+intent.id,'DELETE');await load();}
