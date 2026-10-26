@@ -178,12 +178,87 @@
 @media(max-width:639px){.app-play-dialog__steps-footer{gap:8px}.app-venue-interests-dialog__heading{font-size:14px}}
 
 
-/* General subscriptions hub: filters and server-driven pagination. */
-.app-play-interests__filters{display:flex;align-items:end;gap:14px;flex-wrap:wrap;padding:2px 0 18px;border-bottom:1px solid var(--line)}
-.app-play-interests__filter-field{display:grid;gap:8px;flex:1 1 190px;min-width:160px}
-.app-play-interests__filter-field label{font-weight:650;font-size:13px;color:var(--text)}
-.app-play-interests__filter-field select{width:100%;min-height:44px;padding:8px 36px 8px 12px;border:1px solid var(--control-line);border-radius:12px;background:var(--surface-raised);color:var(--text);font:inherit}
-.app-play-interests__filters>.button{min-height:44px}
+/* General subscriptions hub: compact shared filter toolbar.
+ * Qualify the form against the base form{flex-direction:column} rule and
+ * design-theme overrides. Desktop is a true single row, like the prod toolbar.
+ */
+.app-play-interests form.app-play-interests__filters{
+    width:100%;
+    min-width:0;
+    max-width:none;
+    margin:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+    align-items:end;
+    gap:12px;
+    padding:0 0 20px;
+    border-bottom:1px solid var(--line);
+}
+.app-play-interests .app-play-interests__filters .app-play-interests__filter-field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    width:100%;
+    min-width:0;
+    max-width:none;
+    margin:0;
+    padding:0;
+}
+.app-play-interests__filters .app-play-interests__filter-field>span:first-child{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:650;
+    line-height:20px;
+}
+.app-play-interests__filters .select-control{
+    display:block;
+    position:relative;
+    width:100%;
+    min-width:0;
+    line-height:normal;
+}
+.app-play-interests__filters .select-control select{
+    box-sizing:border-box;
+    display:block;
+    width:100%;
+    height:44px;
+    min-height:44px;
+    max-height:44px;
+    padding:10px 44px 10px 14px;
+    appearance:none;
+    -webkit-appearance:none;
+    border:1px solid var(--control-line);
+    border-radius:12px;
+    background:var(--field);
+    color:var(--text);
+    font-size:14px;
+    line-height:20px;
+    font-weight:500;
+    cursor:pointer;
+}
+.app-play-interests__filters .select-control>svg{
+    width:16px;
+    height:16px;
+    position:absolute;
+    inset-inline-end:14px;
+    top:50%;
+    transform:translateY(-50%);
+    pointer-events:none;
+    color:var(--muted);
+}
+.app-play-interests form.app-play-interests__filters>.app-play-interests__filter-reset{
+    min-height:44px;
+    height:44px;
+    width:auto;
+    margin:0;
+    align-self:end;
+    justify-self:start;
+    white-space:nowrap;
+}
+@media(forced-colors:active){
+    .app-play-interests__filters .select-control select{appearance:auto;-webkit-appearance:auto}
+    .app-play-interests__filters .select-control>svg{display:none}
+}
 .app-play-interests__pagination{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line)}
 .app-play-interests__pagination[hidden]{display:none}
 .app-play-interests__page-summary{font-size:13px;color:var(--muted)}
@@ -192,4 +267,13 @@
 .app-play-interests__page-buttons>.button.is-active{background:var(--accent);border-color:var(--accent);color:#fff}
 .app-play-interests__page-buttons>.button:disabled{opacity:.45;cursor:not-allowed}
 .app-play-interests__page-ellipsis{padding:0 4px;color:var(--muted)}
-@media(max-width:640px){.app-play-interests__filter-field{flex:1 1 100%}.app-play-interests__filters>.button{width:100%}.app-play-interests__page-buttons{justify-content:center;width:100%}}
+@media(max-width:700px){
+    .app-play-interests form.app-play-interests__filters{
+        grid-template-columns:minmax(0,1fr);
+        gap:14px;
+    }
+    .app-play-interests form.app-play-interests__filters>.app-play-interests__filter-reset{
+        width:100%;
+    }
+}
+@media(max-width:640px){.app-play-interests__page-buttons{justify-content:center;width:100%}}

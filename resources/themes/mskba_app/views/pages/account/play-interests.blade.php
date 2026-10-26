@@ -13,25 +13,31 @@
         data-pause-url="{{ url('/account/play-intents') }}"
         data-venues-url="{{ route('venues.search') }}">
         <form class="app-play-interests__filters" data-subscriptions-filters aria-label="Фильтры подписок">
-            <div class="app-play-interests__filter-field">
-                <label for="account-subscription-type">Тип подписки</label>
-                <select id="account-subscription-type" name="type">
-                    <option value="all">Все типы</option>
-                    <option value="play">Игровые подписки</option>
-                </select>
-            </div>
-            <div class="app-play-interests__filter-field">
-                <label for="account-subscription-status">Статус</label>
-                <select id="account-subscription-status" name="status">
-                    <option value="all">Все статусы</option>
-                    <option value="active">Активные</option>
-                    <option value="paused">На паузе</option>
-                    <option value="expired">Истекшие</option>
-                    <option value="cancelled">Отменённые</option>
-                    <option value="completed">Выполненные</option>
-                </select>
-            </div>
-            <button type="reset" class="button secondary" data-subscriptions-reset>Сбросить</button>
+            <label class="field-group app-play-interests__filter-field" for="account-subscription-type">
+                <span>Тип подписки</span>
+                <span class="select-control">
+                    <select id="account-subscription-type" name="type">
+                        <option value="all">Все типы</option>
+                        <option value="play">Игровые подписки</option>
+                    </select>
+                    <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                </span>
+            </label>
+            <label class="field-group app-play-interests__filter-field" for="account-subscription-status">
+                <span>Статус</span>
+                <span class="select-control">
+                    <select id="account-subscription-status" name="status">
+                        <option value="all">Все статусы</option>
+                        <option value="active">Активные</option>
+                        <option value="paused">На паузе</option>
+                        <option value="expired">Истекшие</option>
+                        <option value="cancelled">Отменённые</option>
+                        <option value="completed">Выполненные</option>
+                    </select>
+                    <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                </span>
+            </label>
+            <button type="reset" class="button secondary app-play-interests__filter-reset" data-subscriptions-reset>Сбросить</button>
         </form>
         @php
             $interestDialogOptions = [
