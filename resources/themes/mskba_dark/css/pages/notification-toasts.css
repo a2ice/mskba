@@ -1,7 +1,8 @@
 .notification-toast-region {
     position: fixed;
     z-index: 1200;
-    top: calc(var(--site-header-height, 80px) + 1rem + var(--app-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    top: calc(var(--site-sticky-offset, 80px) + 1rem + var(--app-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     right: max(1rem, var(--app-safe-area-inset-right, env(safe-area-inset-right, 0px)));
     display: grid;
     width: min(20rem, calc(100vw - 2rem));
