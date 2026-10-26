@@ -6,6 +6,8 @@
             <source media="(max-width: 640px)" srcset="{{ $slide['background_mobile_url'] }}">
         @endif
         <img src="{{ $slide['background_desktop_url'] }}" alt="" decoding="async"
+            @if (! empty($slide['background_desktop_lqip_url'])) data-site-media-lqip="{{ $slide['background_desktop_lqip_url'] }}" @endif
+            @if (! empty($slide['background_mobile_lqip_url'])) data-site-media-lqip-mobile="{{ $slide['background_mobile_lqip_url'] }}" @endif
             @if ($firstVisible) fetchpriority="high" @else loading="lazy" @endif>
     </picture>
 @endif
@@ -43,6 +45,7 @@
             @case('image')
                 @if ($element['image_url'])
                     <img class="mskba-hero-slide__layer-image" src="{{ $element['image_url'] }}"
+                        @if (! empty($element['image_lqip_url'])) data-site-media-lqip="{{ $element['image_lqip_url'] }}" @endif
                         alt="{{ $element['alt'] ?? '' }}" decoding="async" loading="{{ $firstVisible ? 'eager' : 'lazy' }}">
                 @endif
                 @break

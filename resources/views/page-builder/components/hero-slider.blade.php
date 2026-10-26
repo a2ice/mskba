@@ -22,6 +22,8 @@
                             <source media="(max-width: 640px)" srcset="{{ $slide['background_mobile_url'] }}">
                         @endif
                         <img src="{{ $slide['background_desktop_url'] }}" alt="" decoding="async"
+                             @if (! empty($slide['background_desktop_lqip_url'])) data-site-media-lqip="{{ $slide['background_desktop_lqip_url'] }}" @endif
+                             @if (! empty($slide['background_mobile_lqip_url'])) data-site-media-lqip-mobile="{{ $slide['background_mobile_lqip_url'] }}" @endif
                              @if ($loop->first) fetchpriority="high" @else loading="lazy" @endif>
                     </picture>
                 @else
@@ -32,13 +34,13 @@
                 @if ($slide['far_player_url'])
                     <img class="mskba-hero-slide__player mskba-hero-slide__player--far"
                         data-motion="{{ $slide['animation_far'] ?? 'slide-up' }}"
-                        src="{{ $slide['far_player_url'] }}" alt="" aria-hidden="true"
+                        src="{{ $slide['far_player_url'] }}" @if (! empty($slide['far_player_lqip_url'])) data-site-media-lqip="{{ $slide['far_player_lqip_url'] }}" @endif alt="" aria-hidden="true"
                         loading="{{ $loop->first ? 'eager' : 'lazy' }}" decoding="async">
                 @endif
                 @if ($slide['near_player_url'])
                     <img class="mskba-hero-slide__player mskba-hero-slide__player--near"
                         data-motion="{{ $slide['animation_near'] ?? 'zoom' }}"
-                        src="{{ $slide['near_player_url'] }}" alt="" aria-hidden="true"
+                        src="{{ $slide['near_player_url'] }}" @if (! empty($slide['near_player_lqip_url'])) data-site-media-lqip="{{ $slide['near_player_lqip_url'] }}" @endif alt="" aria-hidden="true"
                         loading="{{ $loop->first ? 'eager' : 'lazy' }}" decoding="async">
                 @endif
 

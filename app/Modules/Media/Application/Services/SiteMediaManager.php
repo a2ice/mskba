@@ -18,7 +18,7 @@ final class SiteMediaManager
     public const MAX_BYTES = 10 * 1024 * 1024;
     public const MAX_DIMENSION = 6000;
 
-    public function __construct(private readonly WebpImageNormalizer $normalizer, private readonly SiteMediaUsage $usage) {}
+    public function __construct(private readonly WebpImageNormalizer $normalizer, private readonly SiteMediaUsage $usage, private readonly SiteMediaLqip $lqip) {}
 
     public function upload(UploadedFile $file, ?int $folderId = null, ?string $title = null, bool $optimize = false): SiteMediaAsset
     {
@@ -58,12 +58,13 @@ final class SiteMediaManager
                     'legacy_path' => $legacyPath,
                 ]);
                 $media = $this->version($asset, $path, $prepared);
+                $this->generatePreviewWithoutBlockingUpload($media);
                 $asset->update(['current_media_id' => $media->id]);
 
                 return $asset->refresh();
             });
         } catch (Throwable $exception) {
-            Storage::disk('public')->delete($path);
+            Storage::disk('public')->delete([$path, $this->lqipPathFromSource($path)]);
             if ($legacyPath !== null && ($existing = SiteMediaAsset::query()->where('legacy_path', $legacyPath)->first())) {
                 return $existing;
             }
@@ -105,6 +106,7 @@ final class SiteMediaManager
                 $locked = SiteMediaAsset::query()->whereKey($asset->id)->lockForUpdate()->firstOrFail();
                 $oldPrevious = $locked->previousMedia;
                 $new = $this->version($locked, $path, $prepared);
+                $this->generatePreviewWithoutBlockingUpload($new);
                 $locked->update([
                     'current_media_id' => $new->id,
                     'previous_media_id' => $locked->current_media_id,
@@ -113,14 +115,14 @@ final class SiteMediaManager
                 if ($oldPrevious) {
                     $oldPrevious->delete();
                     DB::afterCommit(static function () use ($oldPrevious): void {
-                        Storage::disk('public')->delete($oldPrevious->path);
+                        Storage::disk('public')->delete([$oldPrevious->path, SiteMediaLqip::path($oldPrevious)]);
                     });
                 }
 
                 return $locked->refresh();
             });
         } catch (Throwable $exception) {
-            Storage::disk('public')->delete($path);
+            Storage::disk('public')->delete([$path, $this->lqipPathFromSource($path)]);
             throw $exception;
         }
     }
@@ -151,13 +153,37 @@ final class SiteMediaManager
                     'asset' => 'Изображение используется в опубликованном контенте: '.implode(', ', $uses),
                 ]);
             }
-            $paths = $locked->versions()->pluck('path')->all();
-            $locked->versions()->get()->each->delete();
+            $versions = $locked->versions()->get();
+            $paths = $versions->flatMap(fn (Media $media): array => [$media->path, SiteMediaLqip::path($media)])->all();
+            $versions->each->delete();
             $locked->delete();
             DB::afterCommit(static function () use ($paths): void {
                 Storage::disk('public')->delete($paths);
             });
         });
+    }
+
+    /** Rebuild a missing/obsolete derivative without changing either Media version. */
+    public function generateLqip(SiteMediaAsset $asset, bool $force = false): bool
+    {
+        $asset->load('currentMedia');
+
+        return $asset->currentMedia ? $this->lqip->generate($asset->currentMedia, $force) : false;
+    }
+
+    private function generatePreviewWithoutBlockingUpload(Media $media): void
+    {
+        try {
+            $this->lqip->generate($media);
+        } catch (Throwable $exception) {
+            // Original upload/replace must remain usable on hosts without GD.
+            report($exception);
+        }
+    }
+
+    private function lqipPathFromSource(string $source): string
+    {
+        return dirname($source).'/'.pathinfo($source, PATHINFO_FILENAME).'.lqip.webp';
     }
 
     /** @return array{contents:string,mime:string,extension:string,width:int,height:int} */

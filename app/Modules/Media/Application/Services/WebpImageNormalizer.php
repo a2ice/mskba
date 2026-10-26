@@ -20,6 +20,7 @@ final class WebpImageNormalizer
         string $contents,
         int $maxOutputDimension = self::MAX_OUTPUT_DIMENSION,
         int $maxInputBytes = self::MAX_INPUT_BYTES,
+        int $quality = 82,
     ): array {
         if (! extension_loaded('gd') || ! function_exists('imagecreatefromstring') || ! function_exists('imagewebp')) {
             throw new RuntimeException('Обработка изображений временно недоступна. Расширение GD не установлено.');
@@ -27,6 +28,9 @@ final class WebpImageNormalizer
 
         if ($maxOutputDimension < 1 || $maxOutputDimension > self::MAX_INPUT_DIMENSION) {
             throw new InvalidArgumentException('Некорректный максимальный размер изображения.');
+        }
+        if ($quality < 1 || $quality > 100) {
+            throw new InvalidArgumentException('Некорректное качество WebP.');
         }
         if ($maxInputBytes < 1 || $contents === '' || strlen($contents) > $maxInputBytes) {
             throw new InvalidArgumentException('Изображение превышает допустимый размер.');
@@ -70,7 +74,7 @@ final class WebpImageNormalizer
         imagecopyresampled($target, $source, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
 
         ob_start();
-        $encoded = imagewebp($target, null, 82);
+        $encoded = imagewebp($target, null, $quality);
         $normalized = ob_get_clean();
 
         if (! $encoded || ! is_string($normalized) || $normalized === '') {
