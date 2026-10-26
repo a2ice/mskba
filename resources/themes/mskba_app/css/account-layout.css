@@ -225,7 +225,7 @@
     box-shadow:0 16px 35px var(--shadow-menu);
   }
   html:has(.app-account-layout__aside.is-stuck) {
-    scroll-padding-top:calc(var(--app-sticky-offset,124px) + 60px);
+    scroll-padding-top:calc(var(--header-height) + var(--context-bar-height) + 60px);
   }
 }
 @media (max-width:639px) {
