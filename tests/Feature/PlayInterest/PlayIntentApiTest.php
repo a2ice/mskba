@@ -221,6 +221,13 @@ final class PlayIntentApiTest extends TestCase
 
         $hiddenProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
             ->for($hidden)->create(['height_cm' => 193, 'experience_started_year' => 2018]);
+        $avatarProfile = $hidden->profile()->firstOrCreate([]);
+        $avatarProfile->media()->save(
+            \App\Modules\Media\Domain\Models\Media::factory()->make([
+                'collection' => 'avatar', 'disk' => 'public',
+                'path' => 'avatars/hidden-self-unique.jpg', 'is_featured' => true,
+            ])
+        );
         $visibleProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
             ->for($visible)->create(['height_cm' => 178, 'experience_started_year' => 2019]);
 
@@ -241,6 +248,7 @@ final class PlayIntentApiTest extends TestCase
         $this->assertFalse($ownRow['public']);
         $this->assertTrue($ownRow['can_view_details']);
         $this->assertSame(193, $ownRow['height_cm']);
+        $this->assertSame('/storage/avatars/hidden-self-unique.jpg', $ownRow['avatar']);
 
         $ownHtml = $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
@@ -250,6 +258,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-dialog', false)
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
+        $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
         $this->assertSame(3, substr_count($ownHtml, 'Вы подписаны'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
@@ -266,6 +275,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()
             ->assertSee('hidden-self-player')
             ->assertDontSee('Это вы')
+            ->assertDontSee('hidden-self-unique.jpg')
             ->assertDontSee('193 см')
             ->assertSee('178 см')
             ->assertSee('data-venue-player-details-open', false)
