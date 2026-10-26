@@ -38,6 +38,11 @@ final class ParticipantCatalogTest extends TestCase
             ->assertSee('Назад');
 
         $this->assertSame(1, substr_count($response->getContent(), 'class="page-breadcrumbs"'));
+        // The context bar must be a sibling, not a child of the hiding header.
+        $this->assertMatchesRegularExpression(
+            '/<\\/header>\\s*<div class="context-submenu" data-context-submenu>/',
+            $response->getContent(),
+        );
         $this->assertSame('/players', route('participants.players', [], false));
         $this->assertSame('/coaches', route('participants.coaches', [], false));
         $this->assertSame('/participants', route('participants.index', [], false));
