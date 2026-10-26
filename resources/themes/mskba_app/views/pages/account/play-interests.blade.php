@@ -1,4 +1,4 @@
-@extends('theme::layouts.account', ['title' => 'Мои интересы'])
+@extends('theme::layouts.account', ['title' => 'Мои подписки'])
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
@@ -13,7 +13,7 @@
         data-pause-url="{{ url('/account/play-intents') }}"
         data-venues-url="{{ route('venues.search') }}">
         <div class="app-play-interests__top">
-            <h2>Мои интересы</h2>
+            <h2>Мои подписки</h2>
             <a class="button secondary" href="{{ route('venues.search') }}">Найти площадку</a>
         </div>
         @php
@@ -23,11 +23,12 @@
                 'venueLongitude' => null,
                 'authenticated' => true,
                 'endpoints' => [
-                    'favoritesStatus' => route('favorites.status'),
+                    'favoriteStatuses' => route('favorites.venue-statuses'),
                     'favoritesToggle' => route('favorites.toggle'),
                     'store' => route('play-intents.store'),
                     'base' => url('/account/play-intents'),
                     'amenities' => route('play-intents.amenities'),
+                    'venuesSearch' => route('venues.search'),
                     'mine' => route('play-intents.mine'),
                 ],
             ];

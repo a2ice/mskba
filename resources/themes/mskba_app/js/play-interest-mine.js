@@ -42,13 +42,13 @@ if (root) {
             outlet.replaceChildren();
             if (!response.data?.length) {
                 const empty=make('div',null,'app-play-interests__empty');
-                empty.append(make('p','Пока нет сохранённых интересов.'),make('p','Открой понравившуюся площадку и нажми «Хочу здесь играть».','muted'));
+                empty.append(make('p','Пока нет подписок.'),make('p','Открой понравившуюся площадку и нажми «Хочу здесь играть».','muted'));
                 outlet.append(empty);return;
             }
             for (const intent of response.data) {
                 const card = make('article',null,'app-play-interests__item');
                 const head = make('div',null,'app-play-interests__item-head');
-                head.append(make('strong',intent.name || 'Интерес №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
+                head.append(make('strong',intent.name || 'Подписка №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
                 card.append(head);
                 if (intent.venue) {
                     const venueLine = make('p',null,'app-play-interests__venue');
@@ -107,8 +107,8 @@ if (root) {
                     card.append(alternatives);
                 }
                 if(!['cancelled','completed'].includes(intent.effective_status)) {
-                    actions.append(button('Перестать отслеживать',async()=>{
-                        if(!window.confirm('Перестать отслеживать этот игровой интерес?'))return;
+                    actions.append(button('Отменить подписку',async()=>{
+                        if(!window.confirm('Отменить эту игровую подписку?'))return;
                         try{await request(root.dataset.pauseUrl+'/'+intent.id,'DELETE');await load();}
                         catch(e){showError(e.message);}
                     }));

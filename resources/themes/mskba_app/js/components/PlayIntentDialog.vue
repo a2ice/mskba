@@ -1,17 +1,20 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, nextTick, reactive, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, nextTick, reactive, ref, watch } from 'vue';
 const props = defineProps({ options: { type:Object, required:true } });
 const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
-const interestName=ref('');
+const interestName=ref(''), manuallyNamed=ref(false), step=ref('form');
+const venueSearch=ref(''), venueSuggestions=ref([]), searchingVenue=ref(false), venueMenu=ref(false);
+const excludedSearch=ref(''), excludedSuggestions=ref([]), excludedMenu=ref(false), excludedVenues=ref([]), venueNotice=ref('');
+let venueTimer=null, excludedTimer=null;
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), venueDisabled=ref(false);
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
-const notifyMatches=ref(true), notifyOffers=ref(true), showOnVenue=ref(false), amenities=ref([]), priority=reactive({});
+const notifyMatches=ref(true), notifyOffers=ref(true), showOnVenue=ref(true), amenities=ref([]), priority=reactive({});
 const favoriteDesired=ref(true), favoriteState=ref('unknown'), favoriteCount=ref(Number(props.options.favoriteCount ?? 0));
 const favoriteLoading=ref(false), favoriteError=ref(''), favoriteRetryId=ref(null);
 const favoriteEnabled=computed(() => Boolean(chosenVenueId.value && props.options.endpoints?.favoriteStatuses && props.options.endpoints?.favoriteToggle));
@@ -53,6 +56,7 @@ function serialize(){
     }
     const payload={
         client_request_id:requestId||(requestId=crypto.randomUUID()),name:interestName.value.trim() || null,venue_id:chosenVenueId.value,
+        excluded_venue_ids:chosenVenueId.value && similar.value ? excludedVenues.value.map(v=>v.id) : [],
         include_similar_venues:Boolean(chosenVenueId.value && similar.value),cadence:cadence.value,
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
         dates:cadence.value==='once'&&dateMode.value==='dates'?dates.value:[],
@@ -68,11 +72,13 @@ function serialize(){
     return payload;
 }
 function restore(data){
-    interestName.value=data.name || '';
+    interestName.value=data.name || '';manuallyNamed.value=data.manuallyNamed ?? Boolean(data.id);
     selectedVenueId.value=data.venue_id ?? null; venueDisabled.value=false;
-    showOnVenue.value=Boolean(data.show_on_venue);
+    showOnVenue.value=data.show_on_venue !== false;
     selectedVenueName.value=data.venue?.name ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueName : '') ?? '';
     selectedVenueUrl.value=data.venue?.url ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueUrl : '') ?? '';
+    venueSearch.value=selectedVenueName.value;
+    excludedVenues.value=Array.isArray(data.excludedVenues) ? data.excludedVenues : [];
     requestId=data.client_request_id ?? null;cadence.value=data.cadence;dayIds.value=data.weekdays||[];
     dates.value=data.dates||[];dateMode.value=dates.value.length?'dates':'range';
     if(data.period_from && data.period_until){
@@ -93,10 +99,85 @@ function restore(data){
         windows[key].push({part,from:w.start_time,to:w.end_time});
     }
 }
+
+const suggestedName=computed(()=>{
+    if(!chosenVenueId.value) return 'Игры по моим условиям';
+    const suffix=similar.value?' и похожие':'';
+    return (selectedVenueName.value||'Площадка').slice(0,80-suffix.length)+suffix;
+});
+watch(suggestedName,name=>{if(!manuallyNamed.value) interestName.value=name;},{immediate:true});
+watch([chosenVenueId,radius,similar],()=>{
+    if(!similar.value||!chosenVenueId.value){excludedMenu.value=false;return;}
+    const original=excludedVenues.value.length;
+    excludedVenues.value=excludedVenues.value.filter(v=>withinRadius(v));
+    if(original!==excludedVenues.value.length)venueNotice.value='Некоторые исключения удалены: они вне выбранного радиуса.';
+});
+function distanceMeters(venue){
+    if(latitude.value===''||longitude.value===''||venue.latitude==null||venue.longitude==null)return Infinity;
+    const radians=n=>n*Math.PI/180;
+    const a=radians(Number(latitude.value)),b=radians(Number(venue.latitude));
+    const lat=radians(Number(venue.latitude)-Number(latitude.value)),lon=radians(Number(venue.longitude)-Number(longitude.value));
+    const x=Math.sin(lat/2)**2+Math.cos(a)*Math.cos(b)*Math.sin(lon/2)**2;
+    return 6371000*2*Math.atan2(Math.sqrt(x),Math.sqrt(Math.max(0,1-x)));
+}
+function withinRadius(v){return Number(v.id)!==Number(chosenVenueId.value)&&distanceMeters(v)<=Number(radius.value)*1000;}
+async function fetchVenues(search='',id=null){
+    const url=new URL(props.options.endpoints.venuesSearch||'/venues/search',location.origin);
+    url.searchParams.set('confirmed_only','1');url.searchParams.set('limit','30');
+    if(id)url.searchParams.set('venue_id',String(id));
+    else if(search)url.searchParams.set('query',search);
+    const response=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    if(!response.ok)throw Error('Площадки не удалось загрузить');
+    return (await response.json()).venues||[];
+}
+function searchVenueList(which){
+    const excluding=which==='excluded',term=excluding?excludedSearch.value:venueSearch.value;
+    if(excluding && (!chosenVenueId.value||!similar.value))return;
+    clearTimeout(excluding?excludedTimer:venueTimer);
+    const run=async()=>{
+        if(!excluding)searchingVenue.value=true;
+        try{
+            const matches=await fetchVenues(term);
+            if(excluding)excludedSuggestions.value=matches.filter(v=>withinRadius(v)&&!excludedVenues.value.some(a=>a.id===v.id));
+            else venueSuggestions.value=matches;
+        }catch{if(excluding)excludedSuggestions.value=[];else venueSuggestions.value=[];}
+        finally{searchingVenue.value=false;}
+    };
+    if(excluding){excludedMenu.value=true;excludedTimer=setTimeout(run,230);}
+    else{venueMenu.value=true;venueTimer=setTimeout(run,230);}
+}
+function chooseVenue(v){
+    selectedVenueId.value=v.id;selectedVenueName.value=v.name;selectedVenueUrl.value=v.url||'';
+    latitude.value=v.latitude??'';longitude.value=v.longitude??'';
+    venueDisabled.value=false;venueSearch.value=v.name;venueMenu.value=false;
+    excludedVenues.value=[];venueNotice.value='';
+    if(favoriteEnabled.value)void loadFavoriteStatus();
+}
+function chooseExcluded(v){if(withinRadius(v)&&!excludedVenues.value.some(x=>x.id===v.id))excludedVenues.value=[...excludedVenues.value,v];excludedSearch.value='';excludedMenu.value=false;}
+async function hydrateVenue(){
+    if(chosenVenueId.value && (latitude.value===''||longitude.value==='')){
+        try{const v=(await fetchVenues('',chosenVenueId.value))[0];if(v){latitude.value=v.latitude??'';longitude.value=v.longitude??'';}}
+        catch{}
+    }
+}
+async function hydrateExcluded(ids){
+    if(!ids?.length||excludedVenues.value.length)return;
+    const found=await Promise.all(ids.map(id=>fetchVenues('',id).catch(()=>[])));
+    excludedVenues.value=found.flat().filter(v=>ids.includes(v.id));
+}
+function next(){
+    error.value='';errors.value={};
+    if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
+    if(chosenVenueId.value&&similar.value&&(latitude.value===''||longitude.value==='')){error.value='Не удалось определить центр поиска похожих площадок.';return;}
+    if(!isAuth.value){beginLogin();return;}
+    step.value='options';
+}
+
 function unlinkVenue(){
     // Preserve the anchor and allow restoring it before saving.
     venueDisabled.value=!venueDisabled.value;
     if(venueDisabled.value) similar.value=false;
+    venueNotice.value='';
 }
 // Always read current state before a toggle: the endpoint is not idempotent.
 async function favoriteStatus(id) {
@@ -165,6 +246,7 @@ async function openDialog(){
     restoreFocus=document.activeElement;overflow=document.body.style.overflow;visible.value=true;
     await nextTick();el.value?.showModal();document.body.style.overflow='hidden';
     heading.value?.focus({preventScroll:true});
+    void hydrateVenue();
     if(favoriteEnabled.value)void loadFavoriteStatus();
     if(!amenities.value.length){
         try{
@@ -174,11 +256,10 @@ async function openDialog(){
     }
 }
 function beginLogin(){
-    if(!showOnVenue.value){error.value='Чтобы другие игроки могли найти тебя, подтверди публичность имени, аватара и игровых характеристик в этом поиске.';return;}
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
-    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:payload,favoriteSelected:favoriteDesired.value}));}
+    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:{...payload,venue:{name:selectedVenueName.value,url:selectedVenueUrl.value},excludedVenues:excludedVenues.value,manuallyNamed:manuallyNamed.value},favoriteSelected:favoriteDesired.value}));}
     catch{error.value='Не удалось сохранить настройки до входа. Проверь настройки браузера.';return;}
     close(true);
     window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true,preferredRole:'player'}}));
@@ -206,7 +287,7 @@ async function save(payload,desiredFavorite=favoriteDesired.value){
             try { await syncFavorite(Number(payload.venue_id),Boolean(desiredFavorite)); }
             catch {
                 favoriteRetryId.value=Number(payload.venue_id);
-                favoriteError.value='Интерес сохранён, но избранное не обновилось. Можно повторить отдельно.';
+                favoriteError.value='Подписка сохранена, но избранное не обновилось. Можно повторить отдельно.';
             }
         }
         success.value=result.data;
@@ -215,7 +296,7 @@ async function save(payload,desiredFavorite=favoriteDesired.value){
     finally{busy.value=false;}
 }
 async function submit(){
-    if(!showOnVenue.value){error.value='Чтобы другие игроки могли найти тебя, подтверди публичность имени, аватара и игровых характеристик в этом поиске.';return;}
+    if(step.value!=='options')return next();
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(!isAuth.value){beginLogin();return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
@@ -225,74 +306,118 @@ async function resume(){
     if(onceResume||!isAuth.value||document.querySelector('[data-onboarding-pending]'))return;
     const pending=readPending();if(!pending)return;
     onceResume=true;restore(pending.data);favoriteDesired.value=pending.favoriteSelected!==false;
-    await openDialog();await save(pending.data,favoriteDesired.value);
+    step.value='options';await openDialog();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;interestName.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=false;notifyOffers.value=true;favoriteDesired.value=true;favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;favoriteDesired.value=true;similar.value=false;excludedVenues.value=[];venueNotice.value='';favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
 function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
-    editingId.value=intent.id;success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
-    restore(intent);void openDialog();
+    editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
+    restore(intent);void openDialog().then(()=>hydrateExcluded(intent.excluded_venue_ids));
 }
 function onBackdrop(e){
     if(e.target!==el.value)return;
     const r=el.value.getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
 }
-onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);void resume();});
-onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);if(el.value?.open)el.value.close();});
+onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
+onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
 </script>
 <template>
 <Teleport to="body">
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?'Настройки приняты':editingId?'Редактировать интерес':'Хочу здесь играть'}}</h2></div>
+        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?'Подписка оформлена':editingId?'Редактировать подписку':'Хочу здесь играть'}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
-            <p class="app-play-dialog__success" role="status">Твой интерес сохранён. Это пока не регистрация на игру и не бронирование.</p>
-            <p class="muted">Изменить настройки можно в разделе «Мои интересы».</p>
+            <p class="app-play-dialog__success" role="status">Подписка оформлена! Она не означает запись на игру или бронирование площадки.</p>
+            <p class="muted">Изменить параметры и видимость профиля можно в разделе «Мои подписки».</p>
             <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             <button v-if="favoriteRetryId" type="button" class="button secondary" :disabled="busy" @click="retryFavorite">{{busy?'Повторяем…':'Повторить изменение избранного'}}</button>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
-            <a class="button primary" :href="options.endpoints.mine">Мои интересы</a>
+            <a class="button primary" :href="options.endpoints.mine">Мои подписки</a>
             <button class="button secondary" type="button" @click="close()">Готово</button>
         </footer>
     </template>
     <template v-else>
-        <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
+        <div v-show="step==='form'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <div class="app-play-dialog__info">
                 <p>Укажи удобное время и формат. MSKBA поможет найти игроков и подходящие игры без обязательств.</p>
                 <div v-if="expanded" class="app-play-dialog__info-details mskba-scroll">
                     <p>Настройки можно изменить или приостановить. Участие, бронирование и оплата согласовываются отдельно.</p>
                     <p>Похожие площадки будут подбираться по расстоянию и указанным удобствам. Совпадение не гарантирует свободную бронь.</p>
-                    <p>Контакты не передаются владельцам площадок при обычном сохранении интереса.</p>
-                    <p v-if="!isAuth" class="app-play-dialog__login-hint">Для сохранения необходимо войти. <button class="app-play-dialog__text-button" type="button" @click="beginLogin()">Войти или зарегистрироваться</button></p>
+                    <p>Контакты не передаются владельцам площадок при оформлении подписки.</p>
+                    <p v-if="!isAuth" class="app-play-dialog__login-hint">Перед оформлением подписки понадобится войти или зарегистрироваться.</p>
                 </div>
                 <button type="button" class="app-play-dialog__text-button" :aria-expanded="expanded" @click="expanded=!expanded">{{expanded?'Свернуть':'Подробнее'}}</button>
             </div>
-            <p v-if="selectedVenueId" class="app-play-dialog__chosen-venue" :class="{ 'is-inactive': venueDisabled }">
-                <span>Выбранная площадка:</span>
-                <a v-if="selectedVenueUrl" :href="selectedVenueUrl">{{selectedVenueName || 'Открыть площадку'}}</a>
-                <strong v-else>{{selectedVenueName || 'Площадка №'+selectedVenueId}}</strong>
-                <button type="button" class="app-play-dialog__unlink-venue"
-                    :aria-label="venueDisabled ? 'Вернуть площадку в интерес' : 'Отвязать площадку от интереса'"
-                    :title="venueDisabled ? 'Вернуть площадку' : 'Искать без привязки к площадке'"
-                    @click="unlinkVenue">{{ venueDisabled ? '✓' : '×' }}</button>
-            </p>
-            <p v-else class="app-play-dialog__chosen-venue">Поиск без привязки к конкретной площадке.</p>
-            <p v-if="venueDisabled" class="app-play-dialog__hint">После сохранения поиск будет по выбранным условиям, без привязки к площадке.</p>
-            <form id="app-play-intent-form" class="app-play-dialog__form" @submit.prevent="submit">
-                <label class="field-group" for="app-play-intent-name">Название интереса
+            <form id="app-play-intent-form" class="app-play-dialog__form" @submit.prevent="step==='form'?next():submit()">
+                <label class="field-group" for="app-play-intent-name">Название подписки
                     <input id="app-play-intent-name" v-model="interestName" class="app-play-dialog__name-input"
-                        name="interest_name" type="text" maxlength="80" autocomplete="off"
-                        placeholder="Например, стритбол по выходным">
-                    <span class="caption">Необязательно. Только для твоего удобства, до 80 символов.</span>
+                        name="subscription_name" type="text" maxlength="80" autocomplete="off"
+                        @input="manuallyNamed=true" placeholder="Игры по моим условиям">
                 </label>
+                <div class="app-play-dialog__venue-picker">
+                    <label class="app-play-dialog__field-label" for="app-play-venue-search">Выбранная площадка</label>
+                    <div class="app-play-dialog__venue-picker-header">
+                        <span v-if="chosenVenueId" class="app-play-dialog__hint">Поиск по названию, адресу и метро</span>
+                        <span v-else class="app-play-dialog__hint">Поиск без привязки к площадке</span>
+                        <button v-if="selectedVenueId" type="button" class="app-play-dialog__text-button" @click="unlinkVenue">{{venueDisabled?'Вернуть площадку':'Без конкретной площадки'}}</button>
+                    </div>
+                    <div class="app-play-dialog__autocomplete">
+                        <input id="app-play-venue-search" v-model="venueSearch" type="text" autocomplete="off"
+                            role="combobox" aria-controls="app-play-venue-options" aria-autocomplete="list"
+                            :aria-expanded="venueMenu" :disabled="venueDisabled"
+                            placeholder="Начни вводить название площадки"
+                            @focus="searchVenueList('venue')" @input="searchVenueList('venue')"
+                            @keydown.esc="venueMenu=false">
+                        <div v-if="venueMenu" id="app-play-venue-options" role="listbox" class="app-play-dialog__suggestions">
+                            <button v-for="venue in venueSuggestions" :key="venue.id" type="button" role="option"
+                                :aria-selected="venue.id===chosenVenueId" @click="chooseVenue(venue)">
+                                <strong>{{venue.name}}</strong><span>{{venue.address}}</span>
+                            </button>
+                            <p v-if="!venueSuggestions.length" class="muted">{{searchingVenue?'Ищем…':'Площадки не найдены'}}</p>
+                        </div>
+                    </div>
+                </div>
+                <label class="check-label"><input v-model="similar" type="checkbox" :disabled="!chosenVenueId">
+                    <strong>Подбирать похожие площадки</strong>
+                </label>
+                <div v-if="chosenVenueId && similar" class="app-play-dialog__similar">
+                    <label class="field-group">Радиус поиска: {{radius}} км
+                        <input v-model.number="radius" type="range" min="1" max="30">
+                    </label>
+                    <div class="app-play-dialog__venue-picker">
+                        <label class="app-play-dialog__field-label" for="app-play-excluded-search">Исключённые площадки</label>
+                        <div class="app-play-dialog__autocomplete">
+                            <input id="app-play-excluded-search" v-model="excludedSearch" type="text" autocomplete="off"
+                                role="combobox" aria-controls="app-play-excluded-options" aria-autocomplete="list"
+                                :aria-expanded="excludedMenu" placeholder="Найти площадку в выбранном радиусе"
+                                @focus="searchVenueList('excluded')" @input="searchVenueList('excluded')"
+                                @keydown.esc="excludedMenu=false">
+                            <div v-if="excludedMenu" id="app-play-excluded-options" class="app-play-dialog__suggestions" role="listbox">
+                                <button v-for="venue in excludedSuggestions" :key="venue.id" type="button" role="option"
+                                    :aria-selected="false" @click="chooseExcluded(venue)">
+                                    <strong>{{venue.name}}</strong><span>{{venue.address}}</span>
+                                </button>
+                                <p v-if="!excludedSuggestions.length" class="muted">В радиусе нет подходящих вариантов</p>
+                            </div>
+                        </div>
+                        <div v-if="excludedVenues.length" class="app-play-dialog__excluded-tags" aria-label="Исключённые площадки">
+                            <button v-for="venue in excludedVenues" :key="venue.id" type="button" class="app-play-dialog__excluded-tag"
+                                :aria-label="'Убрать исключение: '+venue.name"
+                                @click="excludedVenues=excludedVenues.filter(v=>v.id!==venue.id)">
+                                {{venue.name}} <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <p v-if="venueNotice" class="app-play-dialog__hint" role="status">{{venueNotice}}</p>
+                    </div>
+                </div>
                 <fieldset><legend>Как часто хочешь играть?</legend>
                     <label v-for="m in [{v:'flexible',t:'Не важно — любые игры'},{v:'once',t:'Разово — одна игра'},{v:'regular',t:'Регулярно'}]" :key="m.v" class="check-label">
                         <input v-model="cadence" type="radio" name="cadence" :value="m.v">{{m.t}}
@@ -348,9 +473,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                 <label class="field-group">Продолжительность игры<span class="select-control"><select v-model="duration">
                     <option value="">Не важно</option><option value="60">1 час</option><option value="90">1,5 часа</option><option value="120">2 часа</option><option value="180">3 часа</option>
                 </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
-                <label v-if="chosenVenueId" class="check-label"><input v-model="similar" type="checkbox"><strong>Подбирать похожие площадки</strong></label>
                 <div v-if="similar || !chosenVenueId" class="app-play-dialog__similar">
-                    <label v-if="chosenVenueId && similar" class="field-group">Радиус: {{radius}} км<input v-model.number="radius" type="range" min="1" max="30"></label>
                 <fieldset><legend>Тип площадки</legend><div class="app-play-dialog__chips">
                     <button v-for="kind in [{v:'any',t:'Не важно'},{v:'outdoor',t:'Открытая'},{v:'indoor',t:'Крытая'}]"
                         :key="kind.v" type="button" class="chip" :aria-pressed="venueKind===kind.v"
@@ -377,23 +500,36 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                         </details>
                     </fieldset>
                 </div>
-                <div class="app-play-dialog__notify">
-                    <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
-                    <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок (необязательно)</label>
-                </div>
-                <label v-if="favoriteEnabled" class="check-label app-play-dialog__favorite-choice">
-                    <input v-model="favoriteDesired" type="checkbox" :disabled="busy">
-                    <span>{{favoriteDesired?(favoriteState==='active'?'Оставить площадку в избранном':'Добавить площадку в избранное'):(favoriteState==='active'?'Убрать площадку из избранного':'Не добавлять площадку в избранное')}}</span>
-                    <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
-                </label>
-                <label class="check-label app-play-dialog__public-intent"><input v-model="showOnVenue" type="checkbox" required><span>Согласен показывать другим посетителям мой никнейм, аватар и игровые характеристики в рамках этого поиска. Это разрешение действует для выбранной площадки или подходящих вариантов, даже если общая видимость профиля ограничена. Отозвать можно, отменив интерес.</span></label>
+
                 <p v-if="error" class="error" role="alert">{{error}}</p>
                 <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
             </form>
         </div>
-        <footer class="mskba-modal__footer app-play-dialog__footer">
-            <button class="button primary full" type="submit" form="app-play-intent-form" :disabled="busy">
-                {{busy?'Сохраняем…':isAuth?(editingId?'Сохранить изменения':'Сохранить интерес'):'Войти и сохранить'}}</button>
+        <div v-show="step==='options'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
+            <h3>Настройки подписки</h3>
+            <p class="app-play-dialog__hint">Проверь параметры перед оформлением подписки.</p>
+            <div class="app-play-dialog__settings">
+                <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
+                <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок</label>
+                <label v-if="chosenVenueId" class="check-label app-play-dialog__favorite-choice">
+                    <input v-model="favoriteDesired" type="checkbox" :disabled="busy">
+                    <span>Оставить площадку в избранном</span>
+                    <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
+                </label>
+                <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Согласен показывать другим посетителям мой никнейм, аватар и игровые характеристики в рамках этого поиска.</span></label>
+            </div>
+            <p v-if="error" class="error" role="alert">{{error}}</p>
+            <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
+        </div>
+        <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__steps-footer">
+            <template v-if="step==='form'">
+                <button class="button secondary" type="button" @click="close()">Отмена</button>
+                <button class="button primary" type="button" :disabled="busy" @click="next()">Далее</button>
+            </template>
+            <template v-else>
+                <button class="button secondary" type="button" :disabled="busy" @click="step='form'">Назад</button>
+                <button class="button primary" type="button" :disabled="busy" @click="submit()">{{busy?'Подписываем…':editingId?'Сохранить подписку':'Подписаться'}}</button>
+            </template>
         </footer>
     </template>
 </dialog>

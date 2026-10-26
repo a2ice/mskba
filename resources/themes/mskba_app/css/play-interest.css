@@ -90,8 +90,6 @@
 .app-play-dialog__amenity-row .check-label{min-width:0}
 .app-play-dialog__amenity-row .select-control select{min-height:42px}
 .app-play-dialog__notify{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
-.app-play-dialog__public-intent{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--muted);font-size:10px;line-height:1.5}
-.app-play-dialog__public-intent span{font-size:10px;line-height:1.5}
 .app-play-dialog .check-label:focus-within{outline:none}
 .app-play-dialog .check-label input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:900px){
@@ -146,3 +144,33 @@
 .app-play-dialog__favorite-choice{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .app-play-dialog__favorite-choice input{flex:none}
 .app-play-dialog__favorite-count{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+
+
+/* Task 286: subscription wizard, predictive venue selectors and Filament-like tags. */
+.app-play-dialog__steps-footer{display:flex;gap:12px}
+.app-play-dialog__steps-footer>.button{flex:1 1 0;min-width:0}
+.app-play-dialog__venue-picker{display:grid;gap:8px;min-width:0}
+.app-play-dialog__venue-picker-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.app-play-dialog__autocomplete{position:relative;min-width:0}
+.app-play-dialog__autocomplete>input{display:block;width:100%;min-height:44px}
+.app-play-dialog__autocomplete>input:disabled{opacity:.6;cursor:not-allowed}
+.app-play-dialog__suggestions{position:absolute;z-index:30;top:calc(100% + 4px);left:0;right:0;max-height:230px;overflow:auto;background:var(--surface);border:1px solid var(--control-line);border-radius:12px;padding:4px;box-shadow:0 12px 24px #0002}
+.app-play-dialog__suggestions button{display:grid;gap:2px;width:100%;padding:10px;text-align:left;border:0;border-radius:9px;background:transparent;cursor:pointer;color:var(--text)}
+.app-play-dialog__suggestions button span{font-size:12px;color:var(--muted)}
+.app-play-dialog__suggestions button:hover,.app-play-dialog__suggestions button:focus-visible{background:var(--surface-raised);outline:2px solid var(--accent);outline-offset:-2px}
+.app-play-dialog__suggestions p{padding:10px;font-size:13px}
+.app-play-dialog__excluded-tags{display:flex;flex-wrap:wrap;gap:6px}
+.app-play-dialog__excluded-tag{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:7px 10px;border:1px solid var(--control-line);border-radius:9px;background:var(--surface-raised);font-size:12px;font-weight:600;color:var(--text);cursor:pointer}
+.app-play-dialog__excluded-tag span{font-size:19px;line-height:1}
+.app-play-dialog__excluded-tag:hover,.app-play-dialog__excluded-tag:focus-visible{border-color:var(--accent);outline-offset:2px}
+.app-play-dialog__settings{border-top:1px solid var(--line);display:grid;gap:16px;padding-top:18px}
+.app-play-dialog__settings .check-label{font-size:14px;line-height:1.5;color:var(--text);align-items:flex-start}
+.app-play-dialog__settings .check-label input{flex-shrink:0;margin-top:3px}
+.app-venue-interest-summary__breakdown{font-size:13px;color:var(--muted)}
+.app-venue-interest-summary__breakdown strong{color:var(--text)}
+.app-venue-interests-dialog__group{display:grid;gap:12px;padding:12px 0}
+.app-venue-interests-dialog__group+.app-venue-interests-dialog__group{border-top:1px solid var(--line)}
+.app-venue-interests-dialog__heading{display:flex;justify-content:space-between;gap:12px;font-weight:700}
+.app-venue-interests-dialog__total{border-radius:14px;background:var(--surface-raised);padding:14px;text-align:center}
+.app-venue-interests-dialog__private .app-venue-interest-summary__avatar{background:var(--surface-raised);color:var(--muted)}
+@media(max-width:639px){.app-play-dialog__steps-footer{gap:8px}.app-venue-interests-dialog__heading{font-size:14px}}

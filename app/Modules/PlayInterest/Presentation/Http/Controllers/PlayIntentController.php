@@ -82,7 +82,7 @@ final class PlayIntentController extends Controller
         $this->owned($request, $playIntent);
         $playIntent->forceFill(['status' => 'cancelled'])->save();
 
-        return response()->json(['message' => 'Интерес отменён.']);
+        return response()->json(['message' => 'Подписка отменена.']);
     }
 
     public function recommendations(
@@ -145,7 +145,7 @@ final class PlayIntentController extends Controller
         $venue = $intent->venue;
         $data = $intent->only([
             'id', 'client_request_id', 'name', 'venue_id', 'include_similar_venues', 'center_latitude', 'center_longitude',
-            'radius_km', 'cadence', 'weekdays', 'dates', 'windows', 'period_from', 'period_until',
+            'radius_km', 'excluded_venue_ids', 'cadence', 'weekdays', 'dates', 'windows', 'period_from', 'period_until',
             'formats', 'duration_minutes', 'access_mode', 'venue_kind', 'amenity_preferences',
             'notify_matches', 'notify_offers', 'status', 'show_on_venue', 'expires_at', 'created_at', 'updated_at',
         ]);
