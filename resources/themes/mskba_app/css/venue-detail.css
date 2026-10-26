@@ -146,3 +146,22 @@
 .app-venue-court-properties dd{margin:4px 0 0;font-size:14px;font-weight:700;color:var(--text)}
 .app-venue-court-overview{margin:10px 0}
 .app-venue-court-picker nav{max-height:min(60vh,420px);overflow-y:auto}
+
+
+/* Venue subscriber profile: a second native top-layer dialog above the audience. */
+.app-venue-interests-dialog__more{margin-left:auto;flex:none;min-height:38px;padding:8px 14px;font-size:13px}
+.app-venue-interests-dialog__player{flex-wrap:wrap}
+.app-venue-interests-dialog__details{flex:1 1 125px}
+.app-venue-player-details-dialog{max-width:min(520px,calc(100vw - 24px));max-height:90dvh;overflow-y:auto}
+.app-venue-player-details__body{display:grid;gap:20px}
+.app-venue-player-details__identity{display:flex;align-items:center;gap:14px}
+.app-venue-player-details__identity strong{font-size:18px}
+.app-venue-player-details__identity .muted{font-size:13px;margin-top:4px}
+.app-venue-player-details__avatar{width:64px;height:64px;font-size:22px}
+.app-venue-player-details__avatar .app-venue-interest-summary__profile-icon{width:30px;height:30px}
+.app-venue-player-details__facts,.app-venue-player-details__skills{display:grid;gap:10px;margin:0}
+.app-venue-player-details__facts>div,.app-venue-player-details__skills>div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.app-venue-player-details__facts dt,.app-venue-player-details__skills dt{font-size:13px;color:var(--muted)}
+.app-venue-player-details__facts dd,.app-venue-player-details__skills dd{margin:0;font-size:14px;font-weight:650;text-align:right}
+.app-venue-player-details__body h3{font-size:16px;margin:0}
+@media(max-width:420px){.app-venue-interests-dialog__more{margin-left:56px}}
