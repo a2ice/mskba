@@ -19,7 +19,7 @@ final class PageBuilderMarkup
             ->allowRelativeMedias()
             ->allowLinkSchemes(['http', 'https', 'mailto', 'tel'])
             ->allowMediaSchemes(['http', 'https']);
-        foreach (['section', 'article', 'header', 'footer', 'main', 'div', 'span',
+        foreach (['section', 'article', 'aside', 'header', 'footer', 'main', 'div', 'span',
             'h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'ul', 'ol', 'li',
             'figure', 'figcaption', 'blockquote', 'small', 'nav'] as $tag) {
             $config = $config->allowElement($tag, ['class', 'id']);

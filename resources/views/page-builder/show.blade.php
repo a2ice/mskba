@@ -31,4 +31,7 @@
         @endif
         {!! $builderHtml !!}
     </div>
+    @if ($builderTheme === 'mskba_app')
+        @include('theme::partials.venue-map-dialog')
+    @endif
 @endsection

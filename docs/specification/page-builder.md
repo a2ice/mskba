@@ -244,3 +244,42 @@ public subset of event and team fields in anonymous responses.
 ## Site Media Library
 
 Новая медиабиблиотека для изображений оформления, логические папки и выбор UUID-ассетов в Hero Slider описаны в [Site Media Library](site-media-library.md). Поля FileUpload и старые JSON остаются совместимыми; импорт выполняется явной CLI-командой, без автоматической публикации страниц.
+
+## Venue catalog map reuse and semantic <aside> (2026-10-27)
+
+The PageBuilder HTML sanitizer accepts the semantic `aside` element with the same
+`class` and `id` attributes as `section`/`article`, without permitting
+forms, inline event handlers, arbitrary `data-*` or embedded scripts.
+
+The `mskba_app` theme renders one reusable
+`theme::partials.venue-map-dialog` shell both on a venue detail page and on
+PageBuilder pages. Its interactions live in the theme's
+`js/venue-map-dialog.js` module, imported once by `js/app.js`; the detail
+page no longer owns a separate implementation. A PageBuilder venue loop-item
+renders an address button through its published component JS using the
+existing `#pin` icon, `data-venue-map-open`, and the containing
+`data-venue-id`. The shared handler opens the same dialog as the detail
+page, requests `GET /api/v1/venues/{id}?map=1`, and uses the existing nearby
+venues endpoint when the visitor enables the radius control. The map includes
+the venue and its linked metro stations, uses the configured station-line HEX
+for metro markers (neutral fallback for invalid colors), and fits all visible
+venue/metro/nearby points. On a detail page the map metadata comes from the
+server-rendered DTO, requiring no public API call.
+
+`GET /api/v1/venues/{id}` **without `?map=1` remains byte-shape compatible**
+with the existing public/mobile API: only the opted-in request adds the `map`
+object (`api_key`, `nearby_url`, `metro_stations`). Never expose private
+venue details through this opt-in: the endpoint retains its confirmed-public
+visibility filter. The browser-side Yandex Maps API key is already exposed on
+detail pages; it is not a server credential.
+
+For PageBuilder-hosted cards, keep the component HTML sanitizer-safe and create
+the interactive address button in the separately permissioned, published
+component JavaScript. Map styling belongs to the shared `mskba_app` theme;
+loop-item visual styling remains in the reusable component. The standard
+`#heart` sprite is rendered by the global `venue-favorites.js` enhancer,
+so components must not draw a second custom heart or implement duplicate
+favorite state.
+
+The catalog's HTML/CSS/JS still lives in the Filament database; publishing
+this code branch does not automatically rewrite or publish a PageBuilder page.

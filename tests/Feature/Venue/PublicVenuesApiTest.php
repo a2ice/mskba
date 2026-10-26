@@ -4,6 +4,8 @@ namespace Tests\Feature\Venue;
 
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\Location;
+use App\Modules\Location\Domain\Models\MetroLine;
+use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -308,4 +310,34 @@ class PublicVenuesApiTest extends TestCase
             ->assertHeader('Access-Control-Allow-Origin', '*')
             ->assertHeaderMissing('Access-Control-Allow-Credentials');
     }
+    public function test_public_show_map_context_contains_linked_metro_stations_only_when_requested(): void
+    {
+        $location = Location::factory()->create();
+        $line = MetroLine::factory()->create(['color' => '#BED12C', 'name' => 'Люблинско-Дмитровская']);
+        $station = MetroStation::factory()->create([
+            'metro_line_id' => $line->id,
+            'name' => 'Селигерская',
+            'latitude' => 55.865,
+            'longitude' => 37.55,
+        ]);
+        $location->metroStations()->attach($station->id);
+
+        $venue = Venue::factory()->create([
+            'location_id' => $location->id,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+        ]);
+
+        // The mobile API response is intentionally unchanged without ?map=1.
+        $this->getJson(route('api.v1.venues.show', ['venue' => $venue->id]))
+            ->assertOk()->assertJsonMissingPath('map');
+
+        $this->getJson(route('api.v1.venues.show', ['venue' => $venue->id, 'map' => 1]))
+            ->assertOk()
+            ->assertJsonPath('map.metro_stations.0.name', 'Селигерская')
+            ->assertJsonPath('map.metro_stations.0.line_color', '#BED12C')
+            ->assertJsonPath('map.metro_stations.0.latitude', 55.865)
+            ->assertJsonPath('map.metro_stations.0.longitude', 37.55)
+            ->assertJsonStructure(['map' => ['nearby_url', 'metro_stations']]);
+    }
+
 }

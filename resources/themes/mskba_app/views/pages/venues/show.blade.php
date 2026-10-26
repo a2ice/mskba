@@ -305,25 +305,7 @@
         </aside>
     </div>
 </section>
-@if($venueAddress)
-    <dialog class="app-venue-overlay" data-venue-map-dialog aria-label="Положение площадки на карте">
-        <div class="app-venue-overlay__header"><h2>{{ $venue->name }} — на карте</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
-        <div class="app-venue-map-frame" data-venue-map-frame
-            data-lat="{{ $venue->address?->latitude }}" data-lon="{{ $venue->address?->longitude }}"
-            data-name="{{ $venue->name }}" data-map-api-key="{{ $venue->about->mapApiKey }}"></div>
-        <div class="app-venue-map-options">
-            <p class="app-venue-map-options__address">{{ $venueAddress }}</p>
-            <label class="app-venue-map-options__toggle"><input type="checkbox" data-venue-nearby-toggle> Показать площадки рядом</label>
-            <div class="app-venue-map-options__range" data-venue-nearby-options hidden>
-                <label for="venue-nearby-radius">Радиус: <output data-venue-nearby-distance>3</output> км</label>
-                <input id="venue-nearby-radius" type="range" min="1" max="10" step="1" value="3" data-venue-nearby-radius>
-                <button type="button" class="button primary" data-venue-nearby-apply
-                    data-nearby-url="{{ route('venues.nearby-map', $venue->routeIdentifier()) }}">Применить</button>
-            </div>
-            <p class="caption" data-venue-nearby-status role="status" hidden></p>
-        </div>
-    </dialog>
-@endif
+@include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 <dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
     <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
     <div class="app-venue-interests-dialog__total" aria-label="{{ $activeVenueInterestCount }} {{ $venuePlayerWord }}">
