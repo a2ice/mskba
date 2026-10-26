@@ -345,15 +345,7 @@ jobs:
             test -s "$MAP_BACKUP/mskba-dev-pre-venues-map.dump" || { echo '::error::Required pre-venues-map database backup missing'; exit 1; }
             ( cd "$MAP_BACKUP" && sha256sum -c SHA256SUMS )
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:publish --apply
-            # One-time, drift-guarded publication of the animated map overlay.
-            # Never overwrite future Filament edits during subsequent deployments.
-            # The verified pre-map backup is checked immediately above.
-            MAP_EXPAND_MARKER='.dev-venues-map-expand-20261026-complete'
-            if [ ! -f "$MAP_EXPAND_MARKER" ]; then
-              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:expand-toggle --check
-              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:expand-toggle --apply
-              touch "$MAP_EXPAND_MARKER"
-            fi
+            # The map reveal is loaded from the app theme; Filament assets stay untouched.
 
             # Import currently referenced Hero/Page Builder images into writable permanent storage.
             # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.

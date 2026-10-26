@@ -4,131 +4,127 @@ import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
 const source = readFileSync(
-    new URL('../../resources/page-builder/venues-map.js', import.meta.url), 'utf8',
+    new URL('../../resources/themes/mskba_app/js/features/home-venues-map-expand.js', import.meta.url),
+    'utf8',
 );
 
-function scene({ mapReady = true } = {}) {
+function scene({ loaded = false } = {}) {
     const classes = new Set();
-    const handlers = new Map();
-    const makeElement = tagName => ({
-        tagName, attributes: new Map(), children: [], listeners: new Map(),
-        tabIndex: null, inert: false, focusCount: 0,
-        setAttribute(name, value) { this.attributes.set(name, value); },
-        getAttribute(name) { return this.attributes.get(name); },
-        append(...items) { this.children.push(...items); },
-        addEventListener(name, fn) { this.listeners.set(name, fn); },
-        focus() { this.focusCount += 1; },
-        click() {
-            this.preventedNavigation = false;
-            this.listeners.get('click')?.({ preventDefault: () => { this.preventedNavigation = true; } });
-        },
-    });
+    const documentListeners = new Map();
+    const elements = {};
+    let changedToolbar = () => {};
+    let observerDisconnected = false;
+
+    function makeElement(tagName) {
+        return {
+            tagName,
+            attributes: new Map(),
+            listeners: new Map(),
+            children: [],
+            focusCount: 0,
+            inert: false,
+            tabIndex: null,
+            setAttribute(key, value) { this.attributes.set(key, value); },
+            getAttribute(key) { return this.attributes.get(key); },
+            append(node) { this.children.push(node); },
+            addEventListener(key, callback) { this.listeners.set(key, callback); },
+            focus() { this.focusCount += 1; },
+            click() {
+                this.preventedNavigation = false;
+                this.listeners.get('click')?.({ preventDefault: () => { this.preventedNavigation = true; } });
+            },
+        };
+    }
+
     const canvas = makeElement('div');
     canvas.id = 'mskba-venues-map-canvas';
-    const filters = makeElement('div');
-    const card = makeElement('div');
-    const scrim = makeElement('div');
-    const cta = makeElement('a');
-    cta.href = '/venues'; // navigation still works if the JS bundle is absent
+    canvas.firstElementChild = loaded ? makeElement('div') : null;
+    const toolbar = makeElement('div');
+    toolbar.ready = loaded;
+    toolbar.querySelector = query => query === 'select' && toolbar.ready ? makeElement('select') : null;
     const copy = makeElement('div');
-    copy.querySelector = selector => selector === 'a.section-cta' ? cta : null;
-    const root = {
+    const scrim = makeElement('div');
+    const link = makeElement('a');
+    link.href = '/venues';
+    copy.querySelector = query => query === 'a.section-cta[href]' ? link : null;
+
+    const plate = {
         dataset: {},
         appended: [],
-        classList: { toggle(key, enabled) {
-            if (enabled) classes.add(key);
-            else classes.delete(key);
-        } },
-        querySelector(selector) {
+        classList: { toggle(key, next) { if (next) classes.add(key); else classes.delete(key); } },
+        querySelector(query) {
             return ({
                 '#mskba-venues-map-canvas': canvas,
-                '#mskba-venues-map-filters': filters,
-                '#mskba-venues-map-card': card,
-                '#mskba-venues-map-status': makeElement('p'),
-                '.mskba-venues-map__copy': copy,
+                '#mskba-venues-map-filters': toolbar,
                 '.mskba-venues-map__scrim': scrim,
-            })[selector] || null;
+                '.mskba-venues-map__copy': copy,
+            })[query] || null;
         },
-        querySelectorAll() { return []; },
         append(node) { this.appended.push(node); },
-        addEventListener(name, cb) { handlers.set(name, cb); },
     };
-    const window = {
-        addEventListener(name, cb) { handlers.set(name, cb); },
-        requestAnimationFrame(callback) { callback(); },
-        IntersectionObserver: class { observe() {} disconnect() {} },
+    const document = {
+        querySelector: query => query === '.mskba-venues-map' ? plate : null,
+        createElement: makeElement,
+        addEventListener(key, callback) { documentListeners.set(key, callback); },
     };
-    const context = {
-        window, document: {
-            querySelector: selector => selector === '.mskba-venues-map' ? root : null,
-            createElement: makeElement,
-        },
-        console, URL, location: { origin: 'https://dev.mskba.ru' },
-        IntersectionObserver: window.IntersectionObserver,
-    };
-    // Simulate the map-ready state without issuing live Yandex/API requests.
-    // The unmodified source is used for failure/fallback tests.
-    const code = mapReady
-        ? source.replace('let mapReady = false;', 'let mapReady = true;')
-        : source;
-    runInNewContext(code, context);
+    const window = { addEventListener() {} };
+    class MutationObserverMock {
+        constructor(callback) { changedToolbar = callback; }
+        observe() {}
+        disconnect() { observerDisconnected = true; }
+    }
+    runInNewContext(source, { document, window, MutationObserver: MutationObserverMock });
     return {
-        root, cta, copy, classes,
-        button: root.appended[0],
-        escape() { handlers.get('keydown')?.({ key: 'Escape' }); },
+        classes, plate, copy, link,
+        button: plate.appended[0],
+        setLoaded() {
+            canvas.firstElementChild = makeElement('div');
+            toolbar.ready = true;
+            changedToolbar();
+        },
+        observerDisconnected: () => observerDisconnected,
+        escape() { documentListeners.get('keydown')?.({ key: 'Escape' }); },
     };
 }
 
-test('CTA reveals full map, slides both overlays away and focuses return control', () => {
+test('pending or failed maps retain their /venues fallback without exposing an empty map', () => {
     const map = scene();
-    assert.equal(map.root.dataset.venuesMapInitialized, '1');
-    assert.equal(map.classes.has('is-map-expanded'), false);
-    assert.equal(map.cta.href, '/venues');
+    assert.equal(map.plate.dataset.expandEnhancement, '1');
     assert.equal(map.button.tabIndex, -1);
+    assert.equal(map.link.href, '/venues');
+    map.link.click();
+    assert.equal(map.link.preventedNavigation, false);
+    assert.equal(map.classes.has('is-map-expanded'), false);
+    assert.equal(map.copy.inert, false);
+    assert.equal(map.link.getAttribute('role'), undefined);
+});
 
-    map.cta.click();
+test('map readiness triggers the accessible toggle without modifying Filament markup', () => {
+    const map = scene();
+    map.setLoaded();
+    assert.equal(map.observerDisconnected(), true);
+    assert.equal(map.link.getAttribute('role'), 'button');
+    map.link.click();
+    assert.equal(map.link.preventedNavigation, true);
     assert.equal(map.classes.has('is-map-expanded'), true);
-    assert.equal(map.copy.inert, true, 'translated-out-of-view content is not keyboard reachable');
-    assert.equal(map.cta.getAttribute('aria-expanded'), 'true');
+    assert.equal(map.copy.inert, true);
+    assert.equal(map.button.focusCount, 1);
     assert.equal(map.button.getAttribute('aria-expanded'), 'true');
     assert.equal(map.button.tabIndex, 0);
-    assert.equal(map.button.focusCount, 1);
 });
 
-test('Space activates the CTA with keyboard button semantics', () => {
-    const map = scene();
-    let prevented = false;
-    map.cta.listeners.get('keydown')?.({
-        key: ' ',
-        preventDefault() { prevented = true; },
-    });
-    assert.equal(prevented, true);
+test('return arrow and Escape reveal copy again, while Space opens the map', () => {
+    const map = scene({ loaded: true });
+    const event = { key: ' ', prevented: false, preventDefault() { this.prevented = true; } };
+    map.link.listeners.get('keydown')(event);
+    assert.equal(event.prevented, true);
     assert.equal(map.classes.has('is-map-expanded'), true);
     map.button.click();
     assert.equal(map.classes.has('is-map-expanded'), false);
-});
-
-test('map errors or pending initialization preserve the real /venues navigation', () => {
-    const map = scene({ mapReady: false });
-    map.cta.click();
-    assert.equal(map.cta.preventedNavigation, false);
-    assert.equal(map.classes.has('is-map-expanded'), false);
-    assert.equal(map.cta.href, '/venues');
+    assert.equal(map.link.focusCount, 1);
     assert.equal(map.copy.inert, false);
-    assert.equal(map.cta.getAttribute('role'), undefined);
-});
-
-test('compact arrow restores the overlay and keyboard Escape can restore it too', () => {
-    const map = scene();
-    map.cta.click();
-    map.button.click();
-    assert.equal(map.classes.has('is-map-expanded'), false);
-    assert.equal(map.copy.inert, false);
-    assert.equal(map.cta.getAttribute('aria-expanded'), 'false');
-    assert.equal(map.button.tabIndex, -1);
-    assert.equal(map.cta.focusCount, 1);
-
-    map.cta.click();
+    map.link.click();
     map.escape();
     assert.equal(map.classes.has('is-map-expanded'), false);
+    assert.equal(map.button.tabIndex, -1);
 });

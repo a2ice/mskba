@@ -29,6 +29,7 @@ import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
+import './features/home-venues-map-expand.js';
 import './account-favorites.js';
 import './venue-favorites.js';
 
