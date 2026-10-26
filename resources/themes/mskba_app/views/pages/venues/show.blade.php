@@ -137,7 +137,7 @@
 
     <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
         <a href="#app-venue-activities">Игры</a>
-        <a href="#app-venue-interest">Интерес игроков</a>
+        <a href="#app-venue-interest">Подписки игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
     </nav>
@@ -203,7 +203,9 @@
                         <div class="app-venue-interest-summary__avatars" aria-label="Игроки с подписками на площадку">
                             @foreach($venueInterestUsers->take(5) as $player)
                                 <span class="app-venue-interest-summary__avatar" title="{{ $player['name'] }}">
-                                    @if($player['avatar'])
+                                    @if(!$player['public'])
+                                        <span aria-hidden="true">●</span>
+                                    @elseif($player['avatar'])
                                         <img src="{{ $player['avatar'] }}" alt="{{ $player['name'] }}" loading="lazy">
                                     @else
                                         <span aria-hidden="true">{{ mb_strtoupper(mb_substr($player['name'], 0, 1)) }}</span>
