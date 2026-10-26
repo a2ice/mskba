@@ -582,7 +582,7 @@ final class PlayIntentApiTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
             ->assertOk()
-            ->assertSee('Мои интересы')
+            ->assertSee('Мои подписки')
             ->assertSee('data-mskba-play-intent-root', false)
             ->assertDontSee('>Index<', false);
     }
