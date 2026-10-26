@@ -23,6 +23,8 @@ function scene({ known = true, existing = false, background = true } = {}) {
         contains: () => true,
     };
     const img = {
+        tagName: 'IMG',
+        nodeType: 1,
         src: 'https://dev.mskba.ru/media/site/' + asset,
         currentSrc: 'https://dev.mskba.ru/media/site/' + asset,
         complete: false,
@@ -45,6 +47,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
     const bgClasses = classes();
     const bg = {
         tagName: 'SECTION',
+        nodeType: 1,
         classList: bgClasses,
         closest: () => null,
         getBoundingClientRect: () => ({ width: 500, height: 300 }),
@@ -52,6 +55,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
     };
     const canvas = {
         tagName: 'DIV',
+        nodeType: 1,
         classList: classes(),
         querySelectorAll: selector => selector === 'img' ? [img] : [img, bg],
     };
@@ -84,7 +88,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
             objectFit: 'contain', objectPosition: 'center', borderRadius: '3px',
             transform: 'none', transformOrigin: 'center', zIndex: 'auto',
         } : {
-            backgroundImage: background
+            backgroundImage: element === bg && background
                 ? 'linear-gradient(90deg, transparent, #fff), url("https://dev.mskba.ru/media/site/' + asset + '")'
                 : 'none',
             backgroundSize: 'cover', backgroundPosition: 'center',
