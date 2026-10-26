@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
@@ -29,6 +31,41 @@ final class MskbaAppContextBarCompactTest extends TestCase
         View::replaceNamespace('theme', resource_path('themes/'.$this->previousTheme.'/views'));
         app()->forgetInstance(ThemeResolver::class);
         parent::tearDown();
+    }
+
+    public function test_venue_detail_breadcrumb_links_to_canonical_venues_catalog(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'name' => 'Школа для проверки навигации',
+        ]);
+
+        $html = $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+
+        foreach (['Навигационная цепочка', 'Путь страницы'] as $label) {
+            $nodes = $xpath->query('//nav[@aria-label="'.$label.'"]//a[text()="Площадки"]');
+            $this->assertSame(1, $nodes->length, $label);
+            $this->assertSame(url('/venues'), $nodes->item(0)->getAttribute('href'), $label);
+        }
+        $this->assertStringNotContainsString('href="'.url('/venues/search').'">Площадки</a>', $html);
+    }
+
+    public function test_catalog_sidebar_sticky_style_tracks_shared_header_offset(): void
+    {
+        $css = file_get_contents(resource_path('themes/mskba_app/css/catalog-sidebar-sticky.css'));
+        $this->assertIsString($css);
+        $this->assertStringContainsString('.mskba-page-builder .mskba-catalog-sidebar', $css);
+        $this->assertStringContainsString('--app-sticky-offset', $css);
+        $this->assertStringContainsString('+ 15px', $css);
+        $this->assertStringContainsString('prefers-reduced-motion', $css);
+        $this->assertStringContainsString(
+            "@import './catalog-sidebar-sticky.css';",
+            file_get_contents(resource_path('themes/mskba_app/css/app.css')),
+        );
     }
 
     public function test_compact_path_contains_all_breadcrumb_segments_with_noninteractive_current_page(): void

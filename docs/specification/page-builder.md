@@ -283,3 +283,22 @@ favorite state.
 
 The catalog's HTML/CSS/JS still lives in the Filament database; publishing
 this code branch does not automatically rewrite or publish a PageBuilder page.
+
+## Catalog sidebar and canonical venue breadcrumbs (2026-10-27)
+
+On `mskba_app` PageBuilder pages, the reusable `.mskba-catalog-sidebar`
+uses `resources/themes/mskba_app/css/catalog-sidebar-sticky.css` from the
+**theme**, not a page-specific override. Above 899px its sticky top is
+`var(--app-sticky-offset) + 15px`, matching the bottom of the animated
+breadcrumbs bar plus a 15px gap. The existing `header.js` updates this
+shared variable on scroll direction changes and mouse hover at the top edge;
+no second scroll observer or custom script is needed. The sidebar's max
+scrollable height follows the same offset, and reduced-motion users get
+instant changes. At smaller widths the normal single-column sidebar layout
+is unchanged. Keep component styling for individual cards in the loop-item.
+
+The `mskba_app` venue detail Blade view explicitly passes the canonical
+`route('venues')` URL for its `Площадки` breadcrumb rather than the internal
+`/venues/search` search endpoint. The same value reaches both the visible
+breadcrumb trail and the compact path menu via `BreadcrumbsResolver`. The
+common resolver's route-derived behavior is unchanged.
