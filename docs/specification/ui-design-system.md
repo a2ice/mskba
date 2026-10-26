@@ -559,12 +559,30 @@ CSS-примитивы и SVG-иконки.
 
 В `mskba_app` по запросу пользователя подготовлена под header контекстная строка: слева breadcrumbs из `BreadcrumbsResolver` (ссылка на родителей, `aria-current` у текущей страницы), справа `details/summary` «Действия». Контекстные действия получают данные от `ContextSubmenuResolver`, постоянные — «Назад», «Поделиться», «Помощь». Оформление — существующие токены `--surface/--muted/--accent/--line`, кнопки и focus 2px, минимальные области нажатия 44px, responsive без horizontal overflow. За реализацию отвечают `partials/context-bar.blade.php`, `css/context-bar.css`, `js/context-bar.js`.
 
-**По уточнению приёмки 2026-10-09:** полоса закреплена под sticky header с
-`position: sticky; top: var(--header-height)`, её высота уменьшена до
+**По уточнению приёмки 2026-10-09:** высота контекстной полосы
 `--context-bar-height: 44px` при сохранении 44px hit areas. На desktop
-sidebar закрепляется ниже обеих полос и получает достаточную минимальную
-высоту родительского grid для коротких страниц. Из sidebar удалён
-дублирующий заголовок; mobile navigation остаётся раскрываемой.
+sidebar получает достаточную минимальную высоту родительского grid для
+коротких страниц. Из sidebar удалён дублирующий заголовок; mobile navigation
+остаётся раскрываемой.
+
+**Поведение header на dev (2026-10-26):** основной `.app-site-header`
+остаётся в потоке, при прокрутке вниз уходит вместе со страницей
+(`position: sticky; top: calc(0px - var(--header-height))`), а при
+прокрутке вверх или наведении курсора на первые 18px окна плавно выезжает
+через `.is-scroll-revealed`. Контекстная полоса `.app-context-bar`
+не уходит: она закреплена сверху с `top: var(--app-visible-header-height)`.
+Появляющийся header сдвигает полосу и расположенные ниже sticky-элементы.
+
+`resources/themes/mskba_app/js/header.js` публикует на `html`:
+`--app-visible-header-height` (0 либо фактическая высота раскрытого header)
+и `--app-sticky-offset` (видимая часть header + высота context bar).
+Изменение оповещается событием `window.mskba:header-visibility` с
+`detail: { visible, stickyOffset, headerHeight, contextHeight }`. 
+Sticky-навигация площадки, sidebar площадки и мобильный sidebar кабинета
+используют живую границу навигации, а не постоянное `--header-height`.
+Для scroll-to-anchor оставляем запас под **полный** header, потому что он
+может раскрыться во время прокрутки к якорю. Учитываются открытые меню,
+keyboard focus и `prefers-reduced-motion`.
 
 **Eyebrow не нужен на странице или в sidebar, если лишь дублирует заголовок или навигационную цепочку.** Он остаётся у смысловых этапов и групп (например, форма приватности), когда добавляет информацию.
 
