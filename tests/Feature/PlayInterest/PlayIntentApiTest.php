@@ -192,8 +192,8 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Подходят по условиям')
             ->assertDontSee('напрямую ·')
             ->assertDontSee('Без данных профиля')
-            ->assertSee('data-venue-interest-action', false)
-            ->assertSee('Отменить подписку')
+            ->assertSee('href="'.route('play-intents.mine').'"', false)
+            ->assertSee('Вы подписаны')
             ->assertDontSee('Отображается только число интересов')
             ->assertSee('private-interest-other')
             ->assertSee('private-interest-test');
@@ -207,6 +207,68 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('private-interest-other')
             ->assertDontSee('Скрытый профиль')
             ->assertDontSee('Без данных профиля');
+    }
+
+    public function test_subscribed_viewer_sees_own_hidden_game_profile_but_others_do_not(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $hidden = User::factory()->create(['username' => 'hidden-self-player']);
+        $visible = User::factory()->create(['username' => 'open-player']);
+
+        $hiddenProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
+            ->for($hidden)->create(['height_cm' => 193, 'experience_started_year' => 2018]);
+        $visibleProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
+            ->for($visible)->create(['height_cm' => 178, 'experience_started_year' => 2019]);
+
+        $this->actingAs($hidden)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => false,
+        ])->assertCreated();
+        $this->actingAs($visible)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => true,
+        ])->assertCreated();
+
+        $own = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $ownRow = collect($own['direct'])->firstWhere('name', 'hidden-self-player');
+        $this->assertTrue($ownRow['is_self']);
+        $this->assertFalse($ownRow['public']);
+        $this->assertTrue($ownRow['can_view_details']);
+        $this->assertSame(193, $ownRow['height_cm']);
+
+        $ownHtml = $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Это вы')
+            ->assertSee('193 см')
+            ->assertSee('178 см')
+            ->assertSee('data-venue-player-details-dialog', false)
+            ->assertSee('data-venue-player-details-open', false)
+            ->getContent();
+        $this->assertSame(2, substr_count($ownHtml, 'Вы подписаны'));
+        $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
+
+        auth()->logout();
+        $guestAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $hiddenRow = collect($guestAudience['direct'])->firstWhere('name', 'hidden-self-player');
+        $this->assertFalse($hiddenRow['is_self']);
+        $this->assertFalse($hiddenRow['can_view_details']);
+        $this->assertNull($hiddenRow['height_cm']);
+        $this->assertNull($hiddenRow['avatar']);
+        $this->assertSame([], $hiddenRow['skills']);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('hidden-self-player')
+            ->assertDontSee('Это вы')
+            ->assertDontSee('193 см')
+            ->assertSee('178 см')
+            ->assertSee('data-venue-player-details-open', false)
+            ->assertDontSee('Вы подписаны');
     }
 
     public function test_free_venue_schedule_displays_published_hours_not_booking_warnings(): void
