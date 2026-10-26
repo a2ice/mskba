@@ -1,7 +1,7 @@
 /* Breadcrumbs remain sticky even when the primary header scrolls away. */
 :root { --context-bar-height: 44px; }
 html:has(.app-context-bar) {
-    scroll-padding-top: calc(var(--app-sticky-offset, calc(var(--header-height) + var(--context-bar-height))) + 24px);
+    scroll-padding-top: calc(var(--header-height) + var(--context-bar-height) + 24px);
 }
 .app-context-bar {
     position: sticky;
