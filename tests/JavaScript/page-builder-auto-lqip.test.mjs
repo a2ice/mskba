@@ -86,6 +86,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
         location: { href: 'https://dev.mskba.ru/', origin: 'https://dev.mskba.ru' },
         matchMedia: () => ({ matches: false }),
         requestAnimationFrame: callback => callback(),
+        addEventListener() {},
         getComputedStyle: element => element === img ? {
             objectFit: 'contain', objectPosition: 'center', borderRadius: '3px',
             transform: 'none', transformOrigin: 'center', zIndex: 'auto',
