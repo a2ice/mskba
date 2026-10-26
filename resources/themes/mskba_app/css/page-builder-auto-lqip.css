@@ -14,8 +14,8 @@
 .mskba-page-builder .has-pb-site-lqip-background {
     isolation: isolate;
 }
-.mskba-page-builder .has-pb-site-lqip-background:not(:where([style*="position"])) {
-    /* Explicitly positioned blocks retain their authored positioning. */
+.mskba-page-builder .has-pb-site-lqip-background.pb-site-lqip-containing-block {
+    position: relative;
 }
 .mskba-page-builder .pb-site-lqip-background {
     position: absolute !important;
