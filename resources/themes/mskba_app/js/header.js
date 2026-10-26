@@ -75,12 +75,15 @@ if (siteHeader) {
     };
 
     const updateVisibility = () => {
-        const reveal = window.scrollY > headerHeight && (
-            scrollingUp
+        // Do not revoke the revealed/sticky state at scrollY <= headerHeight.
+        // At that boundary sticky naturally rejoins the in-flow header at y=0.
+        // Switching the class off there causes the visible 80px jump on scroll-up.
+        // Keep the upward intent through the very top; the next downward scroll
+        // will hide the header naturally.
+        const reveal = scrollingUp
             || pointerReveal
             || navigationOpen()
-            || siteHeader.contains(document.activeElement)
-        );
+            || siteHeader.contains(document.activeElement);
 
         siteHeader.classList.toggle('is-scroll-revealed', reveal);
         updateOffsets(reveal);
@@ -111,7 +114,8 @@ if (siteHeader) {
         }
 
         if (current <= 1) {
-            scrollingUp = false;
+            // Preserve scrollingUp at the page origin. The normal-flow and
+            // sticky top=0 positions coincide, so no handover is necessary.
             pointerReveal = false;
             scrollDelta = 0;
         }
@@ -135,7 +139,7 @@ if (siteHeader) {
                 siteHeader.getBoundingClientRect().bottom,
                 contextBar?.getBoundingClientRect().bottom || 0,
             );
-        const reveal = window.scrollY > headerHeight && (atEdge || withinRevealedNavigation);
+        const reveal = window.scrollY > 1 && (atEdge || withinRevealedNavigation);
 
         if (reveal !== pointerReveal) {
             pointerReveal = reveal;
