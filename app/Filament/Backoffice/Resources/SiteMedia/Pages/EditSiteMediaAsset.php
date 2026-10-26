@@ -44,6 +44,14 @@ final class EditSiteMediaAsset extends EditRecord
                     app(SiteMediaManager::class)->optimize($this->record);
                     Notification::make()->title('Создана оптимизированная версия')->success()->send();
                 }),
+            Action::make('generateLqip')->label('Создать / пересоздать LQIP')->icon('heroicon-o-photo')
+                ->visible(fn (): bool => SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_EDIT))
+                ->action(function (): void {
+                    abort_unless(SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_EDIT), 403);
+                    $created = app(SiteMediaManager::class)->generateLqip($this->record, true);
+                    $notice = Notification::make()->title($created ? 'LQIP создан (до 10 КБ)' : 'LQIP для этого файла недоступен');
+                    ($created ? $notice->success() : $notice->warning())->send();
+                }),
             Action::make('previous')->label('Посмотреть предыдущую')->icon('heroicon-o-eye')
                 ->visible(fn (): bool => SiteMediaAssetResource::allowed(Permission::BACKOFFICE_SITE_MEDIA_VIEW)
                     && $this->record->previous_media_id !== null)
