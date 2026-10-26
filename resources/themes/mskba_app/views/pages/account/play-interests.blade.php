@@ -65,7 +65,7 @@
             <header class="mskba-modal__header app-subscription-details__header">
                 <h2 id="subscription-details-title" data-subscription-details-title>Подписка</h2>
                 <button type="button" class="app-subscription-details__close" data-subscription-details-close aria-label="Закрыть">
-                    <svg aria-hidden="true"><use href="#x"/></svg>
+                    <svg aria-hidden="true"><use href="#close"/></svg>
                 </button>
             </header>
             <dl class="mskba-modal__body app-subscription-details__body" data-subscription-details-body></dl>
