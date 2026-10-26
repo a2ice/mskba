@@ -76,8 +76,9 @@
 /* Anchors follow the site header and breadcrumb bar while a venue is in view. */
 .app-venue-page__anchors{
     position:sticky;
-    top:calc(var(--header-height,80px) + var(--context-bar-height,44px));
+    top:var(--app-sticky-offset,calc(var(--header-height,80px) + var(--context-bar-height,44px)));
     z-index:18;
+    transition:top .28s cubic-bezier(.22,.61,.36,1);
     align-items:center;
     margin-top:20px;
     margin-bottom:20px;
@@ -96,11 +97,11 @@
 }
 .app-venue-page__anchors a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .app-venue-page__sections>.app-venue-block{
-    scroll-margin-top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + var(--app-venue-nav-height,58px) + 15px);
+    scroll-margin-top:calc(var(--app-sticky-offset,124px) + var(--app-venue-nav-height,58px) + 15px);
 }
 
 /* The sticky sidebar stays 15px below the actual navigation boundary. */
-.app-venue-page__aside{top:var(--venue-sidebar-sticky-top,calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px))}
+.app-venue-page__aside{top:var(--venue-sidebar-sticky-top,calc(var(--app-sticky-offset,124px) + 15px));transition:top .28s cubic-bezier(.22,.61,.36,1)}
 .app-venue-page__anchors.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
 
 .app-venue-slot-dialog__time{font-size:14px;font-weight:700;margin-bottom:12px}
@@ -165,3 +166,7 @@
 .app-venue-player-details__facts dd,.app-venue-player-details__skills dd{margin:0;font-size:14px;font-weight:650;text-align:right}
 .app-venue-player-details__body h3{font-size:16px;margin:0}
 @media(max-width:420px){.app-venue-interests-dialog__more{margin-left:56px}}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-venue-page__anchors, .app-venue-page__aside { transition: none; }
+}
