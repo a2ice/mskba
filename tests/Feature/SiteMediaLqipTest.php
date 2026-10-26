@@ -99,7 +99,8 @@ final class SiteMediaLqipTest extends TestCase
     {
         Storage::fake('public');
         $manager = app(SiteMediaManager::class);
-        $legacyBytes = file_get_contents(UploadedFile::fake()->image('old.png', 200, 100)->getRealPath());
+        $legacyFile = UploadedFile::fake()->image('old.png', 200, 100);
+        $legacyBytes = file_get_contents($legacyFile->getRealPath());
         $legacy = $manager->importBytes($legacyBytes, 'Old', 'old.png', legacyPath: 'page-builder/hero/old.png');
         $selected = $manager->upload(UploadedFile::fake()->image('new.png', 320, 160));
         Storage::disk('public')->delete(SiteMediaLqip::path($selected->currentMedia));
