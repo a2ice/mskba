@@ -87,6 +87,19 @@ test('CTA reveals full map, slides both overlays away and focuses return control
     assert.equal(map.button.focusCount, 1);
 });
 
+test('Space activates the CTA with keyboard button semantics', () => {
+    const map = scene();
+    let prevented = false;
+    map.cta.listeners.get('keydown')?.({
+        key: ' ',
+        preventDefault() { prevented = true; },
+    });
+    assert.equal(prevented, true);
+    assert.equal(map.classes.has('is-map-expanded'), true);
+    map.button.click();
+    assert.equal(map.classes.has('is-map-expanded'), false);
+});
+
 test('compact arrow restores the overlay and keyboard Escape can restore it too', () => {
     const map = scene();
     map.cta.click();
