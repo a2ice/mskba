@@ -104,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const update = () => {
-            const headerHeight = Math.ceil(header.getBoundingClientRect().height);
+            const contextBarHeight = Math.ceil(root.querySelector('[data-context-submenu]')?.offsetHeight || 0);
+            const headerHeight = Math.ceil(header.getBoundingClientRect().height) + contextBarHeight;
 
             root.style.setProperty('--telegram-header-height', `${headerHeight}px`);
             document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
