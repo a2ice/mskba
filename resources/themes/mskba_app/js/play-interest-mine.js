@@ -7,6 +7,9 @@ if (root) {
     const detailsBody = detailsDialog?.querySelector('[data-subscription-details-body]');
     const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
     const detailsEdit = detailsDialog?.querySelector('[data-subscription-details-edit]');
+    const detailsRestore = detailsDialog?.querySelector('[data-subscription-details-restore]');
+    const detailsStatus = detailsDialog?.querySelector('[data-subscription-details-status]');
+    const detailsError = detailsDialog?.querySelector('[data-subscription-details-error]');
     let detailsTrigger = null;
     detailsDialog?.querySelectorAll('[data-subscription-details-close]').forEach(button=>button.addEventListener('click',()=>detailsDialog.close()));
     detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
@@ -109,34 +112,68 @@ if (root) {
         const b = make('button',text,'button secondary');b.type='button';
         b.addEventListener('click',action);return b;
     };
+    function editSubscription(intent) {
+        detailsDialog?.close();
+        window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
+    }
+    function showActionError(message, element) {
+        const old=element.querySelector('.app-play-interests__action-error');
+        old?.remove();
+        const error=make('p',message,'error app-play-interests__action-error');
+        error.setAttribute('role','alert');
+        element.append(error);
+    }
+    async function restoreSubscription(intent, container, actionButton) {
+        if (intent.cadence === 'once') {
+            editSubscription(intent); // Never silently replay the previous one-time date.
+            return;
+        }
+        if (actionButton) actionButton.disabled=true;
+        if (detailsError) {detailsError.textContent='';detailsError.hidden=true;}
+        try {
+            await request(root.dataset.pauseUrl+'/'+intent.id+'/restore','PATCH');
+            if(detailsDialog?.open)detailsDialog.close();
+            await load(); // Respects active status filters and correct page count.
+        } catch(e) {
+            if(container===detailsDialog && detailsError){
+                detailsError.textContent=e.message;
+                detailsError.hidden=false;
+            }else showActionError(e.message,container);
+        } finally {
+            if(actionButton) actionButton.disabled=false;
+        }
+    }
     // The shared list exposes only generic actions. Type-specific settings
     // live in the detail viewer and in the existing subscription editor.
     function openDetails(intent, trigger) {
         if (!detailsDialog || !detailsBody) return;
         detailsTrigger=trigger;
         detailsTitle.textContent=intent.name || 'Подписка №'+intent.id;
+        detailsStatus.textContent=statusNames[intent.effective_status] || intent.status;
         detailsBody.replaceChildren();
+        if(detailsError){detailsError.hidden=true;detailsError.textContent='';}
         const addFact=(label,value)=>{
             if(value===null || value===undefined || value==='')return;
             const row=make('div',null,'app-subscription-details__fact');
             row.append(make('dt',label),make('dd',String(value)));
             detailsBody.append(row);
         };
-        addFact('Тип','Игровая подписка');
-        addFact('Статус',statusNames[intent.effective_status]||intent.status);
-        addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Поиск без конкретной площадки'));
+        addFact('Тип подписки','Игровая');
+        addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Без конкретной площадки'));
         addFact('Условия',summary(intent));
-        if(intent.expires_at)addFact('Действует до',new Date(intent.expires_at).toLocaleDateString('ru-RU'));
-        addFact('Уведомления о подходящих играх',intent.notify_matches?'Включены':'Выключены');
+        if(intent.expires_at)addFact('Срок действия до',new Date(intent.expires_at).toLocaleDateString('ru-RU'));
+        addFact('Уведомления об играх',intent.notify_matches?'Включены':'Выключены');
         addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
-        addFact('Публичность игровых данных',intent.show_on_venue?'Включена':'Выключена');
+        addFact('Публикация игровых данных',intent.show_on_venue?'Включена':'Выключена');
+
+        const restorable=['expired','cancelled'].includes(intent.effective_status);
         if(detailsEdit){
-            const canEdit=!['cancelled','completed'].includes(intent.effective_status);
-            detailsEdit.hidden=!canEdit;
-            detailsEdit.onclick=()=>{
-                detailsDialog.close();
-                window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
-            };
+            detailsEdit.hidden=['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.onclick=()=>editSubscription(intent);
+        }
+        if(detailsRestore){
+            detailsRestore.hidden=!restorable;
+            detailsRestore.onclick=()=>void restoreSubscription(intent,detailsDialog,detailsRestore);
         }
         detailsDialog.showModal();
     }
@@ -201,19 +238,9 @@ if (root) {
                         catch(e){showError(e.message);}
                     }));
                 }
-                if(intent.effective_status === 'expired') {
-                    actions.append(button('Восстановить подписку',async()=>{
-                        if (intent.cadence === 'once') {
-                            const notice=make('p','Укажи новые даты и сохрани подписку, чтобы восстановить разовый поиск.','muted');
-                            card.insertBefore(notice,actions);
-                            window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
-                            return;
-                        }
-                        try {
-                            await request(root.dataset.pauseUrl+'/'+intent.id+'/restore','PATCH');
-                            await load();
-                        } catch(e) { showError(e.message); }
-                    }));
+                if(['expired','cancelled'].includes(intent.effective_status)) {
+                    const restoreButton=button('Восстановить подписку',()=>void restoreSubscription(intent,card,restoreButton));
+                    actions.append(restoreButton);
                 }
                 if(!['cancelled','completed','expired'].includes(intent.effective_status)) {
                     actions.append(button('Отменить подписку',async()=>{
