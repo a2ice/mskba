@@ -73,6 +73,7 @@ final class PlayIntentManager
                 'venue_id' => $input['venue_id'] ?? null,
                 'include_similar_venues' => (bool) ($input['include_similar_venues'] ?? false),
                 'show_on_venue' => (bool) ($input['show_on_venue'] ?? $intent->show_on_venue ?? false),
+                'excluded_venue_ids' => ($venueId !== null && ($input['include_similar_venues'] ?? false)) ? ($input['excluded_venue_ids'] ?? []) : [],
                 'center_latitude' => $input['center_latitude'] ?? null,
                 'center_longitude' => $input['center_longitude'] ?? null,
                 'radius_km' => ($input['include_similar_venues'] ?? false) ? ($input['radius_km'] ?? 10) : null,
