@@ -28,26 +28,26 @@ final class ShowPublicVenueController extends Controller
             return response()->json(['message' => 'Площадка не найдена.'], 404);
         }
 
-        // The shared venue map is used both by the detail page and PageBuilder cards.
-        // Load metro only for this detail request, not for every catalog item.
-        $record->loadMissing('location.metroStations.line');
-        $metro = ($record->location?->metroStations ?? collect())
-            ->map(static fn (MetroStation $station): array => [
-                'name' => $station->name,
-                'line_name' => $station->line?->name,
-                'line_color' => $station->line?->color,
-                'latitude' => $station->latitude === null ? null : (float) $station->latitude,
-                'longitude' => $station->longitude === null ? null : (float) $station->longitude,
-            ])->values()->all();
-
-        return response()->json([
-            'data' => (new PublicVenueResource($record, $addressFormatter))->toArray($request),
-            'map' => [
-                // Public browser-side Yandex Maps key: also present on detail pages.
+        // Keep the original mobile API payload unchanged unless explicitly
+        // requested by the shared web map dialog (?map=1).
+        $body = ['data' => (new PublicVenueResource($record, $addressFormatter))->toArray($request)];
+        if ($request->boolean('map')) {
+            $record->loadMissing('location.metroStations.line');
+            $metro = ($record->location?->metroStations ?? collect())
+                ->map(static fn (MetroStation $station): array => [
+                    'name' => $station->name,
+                    'line_name' => $station->line?->name,
+                    'line_color' => $station->line?->color,
+                    'latitude' => $station->latitude === null ? null : (float) $station->latitude,
+                    'longitude' => $station->longitude === null ? null : (float) $station->longitude,
+                ])->values()->all();
+            $body['map'] = [
                 'api_key' => config('integrations.yandex.api_key'),
                 'nearby_url' => route('venues.nearby-map', $record->routeIdentifier()),
                 'metro_stations' => $metro,
-            ],
-        ]);
+            ];
+        }
+
+        return response()->json($body);
     }
 }
