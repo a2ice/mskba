@@ -173,6 +173,7 @@ if (dialog) {
         if (activeVenueId === id && ownCoords()) { show(); return; }
 
         contextRequest?.abort();
+        activeVenueId = null;
         const controller = new AbortController();
         contextRequest = controller;
         generation++;
