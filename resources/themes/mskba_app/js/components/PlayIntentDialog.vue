@@ -321,8 +321,8 @@ function onBackdrop(e){
     const r=el.value.getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
 }
-onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);void resume();});
-onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
+onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
+onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
 </script>
 <template>
 <Teleport to="body">
