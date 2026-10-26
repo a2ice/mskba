@@ -1,5 +1,5 @@
-/* Header stays in document flow; only the inner wrapper becomes fixed after the
-   page has been scrolled past the header's own height. */
+/* The primary header stays in document flow until the user scrolls past it.
+   The breadcrumbs bar has its own sticky lifecycle below. */
 body .site-header,
 body.main .site-header {
     position: relative;
@@ -10,6 +10,10 @@ body.main .site-header {
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+}
+
+.site-header.is-fixed {
+    z-index: 50;
 }
 
 /* The header now reserves its own height in document flow. The old first-screen
@@ -44,7 +48,7 @@ body:not(.main) .site-header > .header-wrapper {
     right: 0;
     left: 0;
     transform: translateY(-100%);
-    transition: none;
+    transition: transform .28s cubic-bezier(.22, .61, .36, 1);
     box-shadow: 0 12px 34px rgba(0, 0, 0, .24);
 }
 
@@ -77,23 +81,26 @@ body:not(.main) .site-header > .header-wrapper {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .site-header.is-fixed.is-fixed-shown > .header-wrapper {
+    .site-header.is-fixed > .header-wrapper,
+    .context-submenu {
         transition-duration: .01ms;
     }
 }
 
 
-/* Contextual navigation belongs to the header wrapper so it follows the same
-   normal/fixed/reveal lifecycle as the primary navigation. Keep the main header
-   row above it so primary dropdowns can overlap the submenu. */
+/* Breadcrumbs stay at the top when the main header hides. When it reveals,
+   the breadcrumbs smoothly move below it; page-level sticky surfaces use
+   --site-sticky-offset to stay below both visible navigation layers. */
 .site-header-inner {
     position: relative;
     z-index: 2;
 }
 
 .context-submenu {
-    position: relative;
-    z-index: 1;
+    position: sticky;
+    z-index: 40;
+    top: var(--site-primary-visible-height, 0px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     border-top: 1px solid rgba(255, 255, 255, .08);
     border-bottom: 1px solid rgba(255, 255, 255, .14);
     background: rgba(5, 6, 5, .82);
