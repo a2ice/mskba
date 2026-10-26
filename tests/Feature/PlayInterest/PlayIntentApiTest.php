@@ -233,6 +233,7 @@ final class PlayIntentApiTest extends TestCase
             'show_on_venue' => true,
         ])->assertCreated();
 
+        $this->actingAs($hidden);
         $own = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
             ->forVenue($venue);
         $ownRow = collect($own['direct'])->firstWhere('name', 'hidden-self-player');
