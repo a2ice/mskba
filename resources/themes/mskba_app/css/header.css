@@ -1,5 +1,16 @@
 /* MSKBA App header: the accepted specimen's primitives with production navigation. */
-.app-site-header { isolation: isolate; }
+/* Keep the primary header in normal flow on downward scroll. Sticky top becomes
+   zero only when the user scrolls upward or enters the 18px edge activation zone. */
+.app-site-header {
+    isolation: isolate;
+    top: calc(-1 * var(--header-height));
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
+}
+.app-site-header.is-scroll-revealed { top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .app-site-header { transition: none; }
+}
 .app-header-inner { gap: clamp(16px, 2.2vw, 32px); }
 .app-header-brand { text-decoration: none; }
 @media (min-width: 1280px) {
