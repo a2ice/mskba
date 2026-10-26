@@ -14,9 +14,10 @@ final class PageBuilderRenderer
         private readonly PageBuilderSources $sources,
         private readonly HeroSliderComponent $heroSlider,
         private readonly PageBuilderScriptUrls $scripts,
+        private readonly PageBuilderLqipManifest $lqipManifest,
     ) {}
 
-    /** @return array{html:string,css:string,scripts:list<string>} */
+    /** @return array{html:string,css:string,scripts:list<string>,lqip:array<string,string>} */
     public function render(PageBuilderPage $page, bool $preview = false): array
     {
         $pageHtml = (string) ($preview ? $page->draft_html : $page->published_html);
@@ -111,6 +112,7 @@ final class PageBuilderRenderer
             'html' => $html,
             'css' => trim($css),
             'scripts' => $preview ? [] : $this->scripts->forOwners($owners),
+            'lqip' => $this->lqipManifest->forContent($html, $css),
         ];
     }
 }
