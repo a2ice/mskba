@@ -516,7 +516,7 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                     <span>Оставить площадку в избранном</span>
                     <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
                 </label>
-                <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Согласен показывать другим посетителям мой никнейм, аватар и игровые характеристики в рамках этого поиска.</span></label>
+                <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Согласен показывать другим посетителям мой аватар и игровые характеристики в рамках этого поиска. Логин отображается независимо от этой настройки.</span></label>
             </div>
             <p v-if="error" class="error" role="alert">{{error}}</p>
             <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
