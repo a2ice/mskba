@@ -52,6 +52,12 @@
       event.preventDefault();
       toggleMap(true);
     });
+    // An anchor enhanced as a button already handles Enter; add Space parity.
+    expandLink.addEventListener('keydown', event => {
+      if (event.key !== ' ' && event.key !== 'Spacebar') return;
+      event.preventDefault();
+      toggleMap(true);
+    });
     collapseButton.addEventListener('click', () => toggleMap(false));
     root.addEventListener('transitionend', event => {
       if (event.target === copy || event.target === scrim) refreshMapViewport();
