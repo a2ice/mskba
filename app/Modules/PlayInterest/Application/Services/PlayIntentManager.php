@@ -115,7 +115,7 @@ final class PlayIntentManager
     }
 
     /**
-     * Renew an expired subscription without rewriting its criteria, notifications,
+     * Restore an expired or cancelled subscription without rewriting its criteria, notifications,
      * public profile preference or immutable client request id. One-time
      * subscriptions must be edited with new dates instead of silently
      * shifting their previously requested game day.
@@ -129,9 +129,12 @@ final class PlayIntentManager
         return DB::transaction(function () use ($intent): PlayIntent {
             // Lock before rechecking to avoid concurrent restores extending twice.
             $locked = PlayIntent::query()->lockForUpdate()->findOrFail($intent->id);
-            if ($locked->status !== 'active' || $locked->expires_at === null || ! $locked->expires_at->isPast()) {
+            $isExpired = $locked->status === 'active'
+                && $locked->expires_at !== null && $locked->expires_at->isPast();
+            $isCancelled = $locked->status === 'cancelled';
+            if (! $isExpired && ! $isCancelled) {
                 throw ValidationException::withMessages([
-                    'status' => 'Восстановить можно только истёкшую подписку.',
+                    'status' => 'Восстановить можно только истёкшую или отменённую подписку.',
                 ]);
             }
             if ($locked->cadence === 'once') {
@@ -142,6 +145,7 @@ final class PlayIntentManager
 
             $days = $locked->cadence === 'regular' ? 90 : 30;
             $locked->forceFill([
+                'status' => 'active',
                 'expires_at' => CarbonImmutable::now()->addDays($days),
             ])->save();
 
