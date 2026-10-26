@@ -171,6 +171,8 @@
 .app-venue-interests-dialog__group{display:grid;gap:12px;padding:12px 0}
 .app-venue-interests-dialog__group+.app-venue-interests-dialog__group{border-top:1px solid var(--line)}
 .app-venue-interests-dialog__heading{display:flex;justify-content:space-between;gap:12px;font-weight:700}
-.app-venue-interests-dialog__total{border-radius:14px;background:var(--surface-raised);padding:14px;text-align:center}
+.app-venue-interests-dialog__total{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:14px;background:var(--surface-raised);padding:14px;text-align:center}
+.app-venue-interests-dialog__total-number{font-size:36px;line-height:1.1;font-weight:750}
+.app-venue-interests-dialog__total-word{font-size:14px;line-height:1.4;color:var(--muted)}
 .app-venue-interests-dialog__private .app-venue-interest-summary__avatar{background:var(--surface-raised);color:var(--muted)}
 @media(max-width:639px){.app-play-dialog__steps-footer{gap:8px}.app-venue-interests-dialog__heading{font-size:14px}}
