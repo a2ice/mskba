@@ -1021,7 +1021,7 @@ final class PlayIntentApiTest extends TestCase
         ])->assertOk()->assertJsonPath('data.effective_status', 'active')
             ->assertJsonPath('data.dates.0', $future);
         $this->assertDatabaseCount('play_intents', 1);
-        $this->assertTrue($record->fresh()->expires_at->isFuture());
+        $this->assertNull($record->fresh()->expires_at);
     }
 
 
@@ -1054,7 +1054,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertJsonPath('data.notify_matches', false)
             ->assertJsonPath('data.notify_offers', true);
         $after = PlayIntent::findOrFail($id);
-        $this->assertTrue($after->expires_at->between(now()->addDays(89), now()->addDays(91)));
+        $this->assertNull($after->expires_at);
         $this->assertSame($requestId, $after->client_request_id);
         $this->assertSame($formats, $after->formats);
         $this->assertSame($weekdays, $after->weekdays);
@@ -1065,6 +1065,93 @@ final class PlayIntentApiTest extends TestCase
         $after->forceFill(['status' => 'completed'])->save();
         $this->patchJson(route('play-intents.restore', $id))
             ->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
+
+    public function test_default_expiry_is_indefinite_for_all_cadences_and_venue_audience(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $user = User::factory()->create();
+
+        $id = $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue),
+        ])->assertCreated()
+            ->assertJsonPath('data.expires_at', null)
+            ->assertJsonPath('data.effective_status', 'active')
+            ->json('data.id');
+        $this->assertNull(PlayIntent::findOrFail($id)->expires_at);
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+
+        $this->getJson(route('play-intents.index', ['status' => 'active']))
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.expires_at', null);
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$this->payload($venue), 'cadence' => 'flexible',
+            'expires_at' => null,
+        ])->assertOk()->assertJsonPath('data.expires_at', null);
+        $this->assertNull(PlayIntent::findOrFail($id)->expires_at);
+
+        $date = now()->addDays(5)->toDateString();
+        $this->putJson(route('play-intents.update', $id), [
+            'venue_id' => $venue->id, 'cadence' => 'once',
+            'dates' => [$date], 'expires_at' => null,
+        ])->assertOk()
+            ->assertJsonPath('data.cadence', 'once')
+            ->assertJsonPath('data.expires_at', null);
+        $this->assertNull(PlayIntent::findOrFail($id)->expires_at);
+    }
+
+    public function test_expiry_date_is_validated_saved_and_can_be_cleared(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $user = User::factory()->create();
+        $payload = $this->payload($venue);
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$payload, 'expires_at' => now()->subDay()->toDateString(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('expires_at');
+        $this->postJson(route('play-intents.store'), [
+            ...$payload, 'expires_at' => '2026/12/01',
+        ])->assertUnprocessable()->assertJsonValidationErrors('expires_at');
+
+        $future = now()->addDays(10)->toDateString();
+        $id = $this->postJson(route('play-intents.store'), [
+            ...$payload, 'expires_at' => $future,
+        ])->assertCreated()->json('data.id');
+        $intent = PlayIntent::findOrFail($id);
+        // Eloquent casts SQLite test timestamps without DB timezone metadata.
+        // Assert the UTC storage instant rather than treating it as app-local.
+        $expectedUtc = \Carbon\CarbonImmutable::parse($future, config('app.timezone'))
+            ->endOfDay()->utc()->format('Y-m-d H:i:s');
+        $stored = \Illuminate\Support\Facades\DB::table('play_intents')->where('id', $id)->value('expires_at');
+        $this->assertSame($expectedUtc, substr((string) $stored, 0, 19));
+
+        $this->putJson(route('play-intents.update', $id), [
+            ...$payload, 'expires_at' => now()->subDays(5)->toDateString(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('expires_at');
+        $this->putJson(route('play-intents.update', $id), [
+            ...$payload, 'expires_at' => null,
+        ])->assertOk()->assertJsonPath('data.expires_at', null);
+        $this->assertNull($intent->fresh()->expires_at);
+    }
+
+    public function test_restoring_cancelled_indefinite_subscription_does_not_add_expiry(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $id = $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'expires_at' => null,
+        ])->assertCreated()->json('data.id');
+
+        $this->deleteJson(route('play-intents.destroy', $id))->assertOk();
+        $this->patchJson(route('play-intents.restore', $id))
+            ->assertOk()->assertJsonPath('data.status', 'active')
+            ->assertJsonPath('data.expires_at', null);
+        $this->assertNull(PlayIntent::findOrFail($id)->expires_at);
+        $this->assertDatabaseCount('play_intents', 1);
     }
 
     public function test_cancelled_one_time_subscription_requires_new_date_in_editor(): void

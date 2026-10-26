@@ -160,7 +160,9 @@ if (root) {
         addFact('Тип подписки','Игровая');
         addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Без конкретной площадки'));
         addFact('Условия',summary(intent));
-        if(intent.expires_at)addFact('Срок действия до',new Date(intent.expires_at).toLocaleDateString('ru-RU'));
+        addFact('Срок действия',intent.expires_at
+            ? new Date(intent.expires_at).toLocaleDateString('ru-RU')
+            : 'Бессрочно');
         addFact('Уведомления об играх',intent.notify_matches?'Включены':'Выключены');
         addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
         addFact('Публикация игровых данных',intent.show_on_venue?'Включена':'Выключена');

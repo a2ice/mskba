@@ -20,6 +20,7 @@ final class SavePlayIntentRequest extends FormRequest
         return [
             'client_request_id' => ['sometimes', 'uuid'],
             'name' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'expires_at' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
             'venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'include_similar_venues' => ['sometimes', 'boolean'],
             'show_on_venue' => ['sometimes', 'boolean'],

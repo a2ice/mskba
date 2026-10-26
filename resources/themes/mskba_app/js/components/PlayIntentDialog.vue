@@ -5,6 +5,7 @@ const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref(''), manuallyNamed=ref(false), step=ref('form');
+const hasExpiry=ref(false), expiryDate=ref('');
 const venueSearch=ref(''), venueSuggestions=ref([]), searchingVenue=ref(false), venueMenu=ref(false);
 const matchingVenues=ref([]), matchingLoading=ref(false), matchingError=ref(''), matchingOpen=ref(false);
 const excludedSearch=ref(''), excludedSuggestions=ref([]), excludedMenu=ref(false), excludedVenues=ref([]), venueNotice=ref('');
@@ -57,6 +58,7 @@ function serialize(){
     }
     const payload={
         client_request_id:requestId||(requestId=crypto.randomUUID()),name:interestName.value.trim() || null,venue_id:chosenVenueId.value,
+        expires_at:hasExpiry.value ? expiryDate.value : null,
         excluded_venue_ids:chosenVenueId.value && similar.value ? excludedVenues.value.map(v=>v.id) : [],
         include_similar_venues:Boolean(chosenVenueId.value && similar.value),cadence:cadence.value,
         weekdays:cadence.value==='once'&&dateMode.value==='dates'?[]:dayIds.value,
@@ -74,6 +76,8 @@ function serialize(){
 }
 function restore(data){
     interestName.value=data.name || '';manuallyNamed.value=data.manuallyNamed ?? Boolean(data.id);
+    hasExpiry.value=Boolean(data.expires_at);
+    expiryDate.value=data.expires_at ? String(data.expires_at).slice(0,10) : '';
     selectedVenueId.value=data.venue_id ?? null; venueDisabled.value=false;
     showOnVenue.value=data.show_on_venue !== false;
     selectedVenueName.value=data.venue?.name ?? (selectedVenueId.value && selectedVenueId.value === props.options.venueId ? props.options.venueName : '') ?? '';
@@ -166,8 +170,17 @@ async function hydrateExcluded(ids){
     const found=await Promise.all(ids.map(id=>fetchVenues('',id).catch(()=>[])));
     excludedVenues.value=found.flat().filter(v=>ids.includes(v.id));
 }
+function validateExpiry() {
+    if(!hasExpiry.value)return true;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(expiryDate.value) || expiryDate.value<today()){
+        error.value='Укажи дату окончания подписки не раньше сегодняшнего дня.';
+        return false;
+    }
+    return true;
+}
 function next(){
     error.value='';errors.value={};
+    if(!validateExpiry())return;
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value&&similar.value&&(latitude.value===''||longitude.value==='')){error.value='Не удалось определить центр поиска похожих площадок.';return;}
     if(!isAuth.value){beginLogin();return;}
@@ -257,6 +270,7 @@ async function openDialog(){
     }
 }
 function beginLogin(){
+    if(!validateExpiry())return;
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
@@ -298,6 +312,8 @@ async function save(payload,desiredFavorite=favoriteDesired.value){
 }
 async function submit(){
     if(step.value!=='options')return next();
+    error.value='';
+    if(!validateExpiry())return;
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(!isAuth.value){beginLogin();return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
@@ -310,7 +326,7 @@ async function resume(){
     step.value='options';await openDialog();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;favoriteDesired.value=true;similar.value=false;excludedVenues.value=[];venueNotice.value='';favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;favoriteDesired.value=true;similar.value=false;excludedVenues.value=[];venueNotice.value='';favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
@@ -380,6 +396,18 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
                         name="subscription_name" type="text" maxlength="80" autocomplete="off"
                         @input="manuallyNamed=true" placeholder="Игры по моим условиям">
                 </label>
+                <div class="app-play-dialog__expiry">
+                    <label class="check-label" for="app-play-intent-has-expiry">
+                        <input id="app-play-intent-has-expiry" v-model="hasExpiry" type="checkbox">
+                        <span>Срок действия</span>
+                    </label>
+                    <label v-if="hasExpiry" class="field-group app-play-dialog__expiry-date" for="app-play-intent-expiry-date">
+                        Дата окончания подписки
+                        <input id="app-play-intent-expiry-date" v-model="expiryDate" name="expires_at"
+                            type="date" :min="today()" required>
+                    </label>
+                    <p v-else class="app-play-dialog__hint">Бессрочно</p>
+                </div>
                 <div class="app-play-dialog__venue-picker field-group">
                     <label class="app-play-dialog__field-label" for="app-play-venue-search">Выбранная площадка</label>
                     <div class="app-play-dialog__venue-picker-header">

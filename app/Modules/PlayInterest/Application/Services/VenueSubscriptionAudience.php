@@ -17,7 +17,7 @@ final class VenueSubscriptionAudience
         $viewerId = auth()->user()?->canonical()->id;
         $subscriptions = PlayIntent::query()
             ->where('status', 'active')
-            ->where('expires_at', '>', now())
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->where(function ($query) use ($venue): void {
                 $query->where('venue_id', $venue->id)
                     ->orWhereNull('venue_id')
