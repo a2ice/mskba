@@ -26,6 +26,7 @@
         <main id="mskba-app" class="app-shell">
             @yield('content')
         </main>
+        @include('theme::partials.footer')
         @auth
             <section class="app-message-toast-region" data-message-toast-region hidden
                      role="region" aria-label="Непрочитанные сообщения"></section>
