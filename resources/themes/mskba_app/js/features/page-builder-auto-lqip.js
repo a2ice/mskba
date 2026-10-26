@@ -27,6 +27,7 @@ if (canvas && manifestNode) {
     };
     const thumbnail = url => previews[uuidFrom(url)] || null;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const decoratedImages = new WeakSet();
 
     function decoded(image, finished) {
         const reveal = () => {
@@ -41,6 +42,7 @@ if (canvas && manifestNode) {
     }
 
     function imagePreview(image) {
+        if (decoratedImages.has(image)) return;
         // Hero Slider and the reusable Blade component already have their own
         // LQIP lifecycle. Never duplicate their thumbnails or fade effects.
         if (image.hasAttribute('data-site-media-lqip') || image.closest('[data-site-media-progressive]')) return;
@@ -79,6 +81,7 @@ if (canvas && manifestNode) {
             overlay.style.transformOrigin = originalPosition.transformOrigin;
             overlay.style.zIndex = originalPosition.zIndex;
             image.before(overlay);
+            decoratedImages.add(image);
 
             let done = false;
             decoded(image, () => {
@@ -149,12 +152,39 @@ if (canvas && manifestNode) {
         }
     }
 
+    function scan(element) {
+        if (!element || element.nodeType !== 1) return;
+        if (element.tagName === 'IMG') imagePreview(element);
+        else if (element.tagName !== 'SCRIPT') backgroundPreview(element);
+        element.querySelectorAll?.('img').forEach(imagePreview);
+        element.querySelectorAll?.('*').forEach(child => {
+            if (child.tagName !== 'IMG' && child.tagName !== 'SCRIPT') backgroundPreview(child);
+        });
+    }
+
     function start() {
         // Keep the DOM walk scoped to editor canvas; no global image scanning.
-        canvas.querySelectorAll('img').forEach(imagePreview);
-        for (const element of [canvas, ...canvas.querySelectorAll('*')]) {
-            if (element.tagName === 'SCRIPT' || element.tagName === 'IMG') continue;
-            backgroundPreview(element);
+        scan(canvas);
+
+        // Editor-managed components can add img/style.backgroundImage after an
+        // IntersectionObserver/API response (e.g. tournaments scene artwork).
+        // Watch only changed elements, never the Yandex map tile subtree.
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver(records => {
+                for (const record of records) {
+                    if (record.type === 'attributes') {
+                        if (record.target.tagName === 'IMG') imagePreview(record.target);
+                        else backgroundPreview(record.target);
+                    } else {
+                        for (const node of record.addedNodes) scan(node);
+                    }
+                }
+            });
+            observer.observe(canvas, {
+                subtree: true, childList: true, attributes: true,
+                attributeFilter: ['style', 'src', 'srcset'],
+            });
+            window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
         }
     }
 
