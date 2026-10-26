@@ -19,17 +19,39 @@ final class PlayIntentController extends Controller
     {
         $user = $this->viewer($request);
 
+        $filters = $request->validate([
+            'type' => ['sometimes', 'string', 'in:all,play'],
+            'status' => ['sometimes', 'string', 'in:all,active,paused,expired,cancelled,completed'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $query = PlayIntent::query()->where('user_id', $user->id);
+        $status = $filters['status'] ?? 'all';
+        if ($status === 'active') {
+            $query->where('status', 'active')->where(
+                fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now())
+            );
+        } elseif ($status === 'expired') {
+            $query->where('status', 'active')->whereNotNull('expires_at')->where('expires_at', '<=', now());
+        } elseif ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Currently PlayIntent is the only implemented subscription provider.
+        // Type is deliberately explicit so additional providers can be added
+        // without pretending they are already present.
+        $page = $query->with('venue')->orderByDesc('updated_at')->orderByDesc('id')->paginate(10);
+
         return response()->json([
-            'data' => PlayIntent::query()
-                ->where('user_id', $user->id)
-                ->orderByDesc('updated_at')
-                ->orderByDesc('id')
-                ->limit(100)
-                ->with('venue')
-                ->get()
-                ->map(fn (PlayIntent $intent): array => $this->serialize($intent))
-                ->values()
-                ->all(),
+            'data' => $page->getCollection()->map(
+                fn (PlayIntent $intent): array => $this->serialize($intent)
+            )->values()->all(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
         ]);
     }
 
@@ -149,6 +171,7 @@ final class PlayIntentController extends Controller
             'formats', 'duration_minutes', 'access_mode', 'venue_kind', 'amenity_preferences',
             'notify_matches', 'notify_offers', 'status', 'show_on_venue', 'expires_at', 'created_at', 'updated_at',
         ]);
+        $data['subscription_type'] = 'play';
         $data['effective_status'] = $intent->status === 'active' && $intent->expires_at?->isPast()
             ? 'expired' : $intent->status;
         // The owner can see which venue was chosen; this is not a public
