@@ -1,4 +1,4 @@
-name: Probe isolated dev target (temporary)
+name: Inspect isolated dev deploy readiness (temporary)
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Check the connected deployment host without writing anything
+      - name: Inspect dev checkout and build services without writes
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -23,16 +23,22 @@ jobs:
           command_timeout: 3m
           script: |
             set -eu
-            echo "DEV_TARGET_PROBE_BEGIN"
-            found=0
-            for root in /var/www /srv/www /srv /opt; do
-              if [ ! -d "$root" ]; then
-                continue
-              fi
-              find "$root" -maxdepth 4 -type f -name .env -print 2>/dev/null || true
-            done | sort -u | while IFS= read -r config; do
-              if grep -Eq '^APP_URL=.*dev\.mskba\.ru' "$config"; then
-                echo "DEV_ROOT_FOUND: ${config%/.env}"
-              fi
-            done
-            echo "DEV_TARGET_PROBE_END"
+            ROOT=/var/www/mskba-dev-next
+            test -f "$ROOT/.env"
+            grep -Eq '^APP_URL=.*dev\.mskba\.ru' "$ROOT/.env" || { echo 'REFUSE_NOT_DEV'; exit 2; }
+            cd "$ROOT"
+            echo 'DEV_ROOT_CONFIRMED'
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "BRANCH=$(git branch --show-current)"
+            echo "TRACKED_CHANGES=$(git status --porcelain -uno | wc -l)"
+            echo "GIT_REMOTE_CONFIGURED=$(git remote | grep -cx origin || true)"
+            echo "COMPOSE_BASE=$(test -f compose.yaml && echo yes || echo no)"
+            echo "COMPOSE_PROD=$(test -f compose.prod.yaml && echo yes || echo no)"
+            echo "APP_MANIFEST=$(test -f public/build/manifest.json && echo yes || echo no)"
+            echo "APP_VENDOR=$(test -d vendor && echo yes || echo no)"
+            echo 'TARGET_PATH_CHANGES_BEGIN'
+            git status --short -- resources/themes/mskba_dark/js/features/sticky-header.js resources/themes/mskba_dark/css/header-sticky.css resources/themes/mskba_dark/views/partials/header.blade.php resources/themes/mskba_dark/css/pages/venue-sidebar-layout.css
+            echo 'TARGET_PATH_CHANGES_END'
+            echo 'RUNNING_COMPOSE_SERVICES_BEGIN'
+            docker compose -f compose.yaml -f compose.prod.yaml ps --services --status running 2>&1 || true
+            echo 'RUNNING_COMPOSE_SERVICES_END'
