@@ -144,7 +144,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs
 
       - name: Validate dynamic Page Builder venues-map JavaScript syntax
         run: node --check resources/page-builder/venues-map.js
@@ -345,6 +345,15 @@ jobs:
             test -s "$MAP_BACKUP/mskba-dev-pre-venues-map.dump" || { echo '::error::Required pre-venues-map database backup missing'; exit 1; }
             ( cd "$MAP_BACKUP" && sha256sum -c SHA256SUMS )
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:publish --apply
+            # One-time, drift-guarded publication of the animated map overlay.
+            # Never overwrite future Filament edits during subsequent deployments.
+            # The verified pre-map backup is checked immediately above.
+            MAP_EXPAND_MARKER='.dev-venues-map-expand-20261026-complete'
+            if [ ! -f "$MAP_EXPAND_MARKER" ]; then
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:expand-toggle --check
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:expand-toggle --apply
+              touch "$MAP_EXPAND_MARKER"
+            fi
 
             # Import currently referenced Hero/Page Builder images into writable permanent storage.
             # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.

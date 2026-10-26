@@ -150,6 +150,33 @@ Utilities set **only the background**. Text and icon colors are not changed
 automatically; check contrast in both light and dark themes. Page-specific
 local CSS can override the utilities with a more specific selector.
 
+## Главная — раскрытие карты площадок (DEV, 2026-10-26)
+
+В существующем опубликованном Page Builder компоненте `venues-map`
+сама Яндекс Карта всегда занимает всю ширину белого закруглённого блока.
+Кнопка **«Открыть карту»** на главной теперь раскрывает карту **на месте**,
+не переводя пользователя в каталог площадок: левый текстовый слой
+`.mskba-venues-map__copy` и полупрозрачный `.mskba-venues-map__scrim`
+синхронно выезжают за левую границу clipping-контейнера.
+Фильтры и маркеры остаются доступны; в верхнем левом углу появляется
+44×44 кнопка `←` для восстановления исходного состояния. Кнопка
+`Escape` также закрывает раскрытие. Плавный переход выключен при
+`prefers-reduced-motion`; `inert` исключает скрытые ссылки из таб-навигации.
+При отсутствии JS **или до успешной инициализации Яндекс Карты** исходная ссылка `/venues` остаётся рабочей; при ошибке API пустая карта не раскрывается.
+
+JS и CSS разработаны в `resources/page-builder/venues-map.{js,css}`.
+HTML из Filament **не переписывается**: кнопка возврата создаётся JS,
+а исходная CTA перехватывается после загрузки скрипта.
+Перед публикацией сохранены точные копии двух ранее действовавших
+файлов в `resources/page-builder/versions/venues-map-pre-expand-20261026.*`.
+Релизная команда `mskba:venues-map:expand-toggle --check|--apply`
+предназначена **только для staging**; проверяет под блокировкой БД,
+что draft/published HTML и JS/CSS не отличаются от сохранённого
+baseline. Публикует через стандартные CSS-ревизии и JS-аудит,
+сохраняя слоты `previous_css` и `previous_js` для отката.
+Однократное исполнение встроено в `dev` CI/CD с серверным marker-файлом:
+последующие редакторские правки Filament автоматически не перезаписываются.
+
 ## Editor layout in Filament 5
 
 On every existing Page Builder editor (Pages, Templates and Components), the form

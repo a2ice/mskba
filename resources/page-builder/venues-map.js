@@ -10,6 +10,63 @@
   const status = root.querySelector('#mskba-venues-map-status');
   if (!canvas || !toolbar || !cardMount) return;
 
+  // The map canvas already fills the card. Uncover it by sliding the text and
+  // full-width white gradient off the left edge; preserve /venues link as the
+  // no-JavaScript fallback. Controls and markers remain interactive.
+  const copy = root.querySelector('.mskba-venues-map__copy');
+  const scrim = root.querySelector('.mskba-venues-map__scrim');
+  const expandLink = copy?.querySelector('a.section-cta');
+  let refreshMapViewport = () => {};
+  let mapReady = false;
+  if (copy && scrim && expandLink) {
+    const collapseButton = document.createElement('button');
+    collapseButton.type = 'button';
+    collapseButton.className = 'mskba-venues-map__collapse';
+    collapseButton.setAttribute('aria-label', 'Свернуть карту и вернуть описание');
+    collapseButton.setAttribute('title', 'Вернуть описание карты');
+    collapseButton.setAttribute('aria-controls', canvas.id);
+    collapseButton.setAttribute('aria-expanded', 'false');
+    collapseButton.tabIndex = -1;
+    const arrow = document.createElement('span');
+    arrow.textContent = '←';
+    arrow.setAttribute('aria-hidden', 'true');
+    collapseButton.append(arrow);
+    root.append(collapseButton);
+
+    let expanded = false;
+    const toggleMap = next => {
+      if (next === expanded) return;
+      expanded = next;
+      root.classList.toggle('is-map-expanded', expanded);
+      copy.inert = expanded;
+      expandLink.setAttribute('aria-expanded', String(expanded));
+      collapseButton.setAttribute('aria-expanded', String(expanded));
+      collapseButton.tabIndex = expanded ? 0 : -1;
+      if (expanded) collapseButton.focus({ preventScroll: true });
+      else expandLink.focus({ preventScroll: true });
+      window.requestAnimationFrame(refreshMapViewport);
+    };
+    expandLink.addEventListener('click', event => {
+      // Before the map is ready (or on API failure) keep /venues working.
+      if (!mapReady) return;
+      event.preventDefault();
+      toggleMap(true);
+    });
+    // An anchor enhanced as a button already handles Enter; add Space parity.
+    expandLink.addEventListener('keydown', event => {
+      if (!mapReady || (event.key !== ' ' && event.key !== 'Spacebar')) return;
+      event.preventDefault();
+      toggleMap(true);
+    });
+    collapseButton.addEventListener('click', () => toggleMap(false));
+    root.addEventListener('transitionend', event => {
+      if (event.target === copy || event.target === scrim) refreshMapViewport();
+    });
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && expanded) toggleMap(false);
+    });
+  }
+
   const say = value => { if (status) status.textContent = value; };
   const svgPaths = {
     pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
@@ -215,6 +272,9 @@
       center: isMobile ? [55.77,37.55] : [55.78,37.42],
       zoom: isMobile ? 9 : 9.5, controls: ['zoomControl']
     },{suppressMapOpenBlock:true});
+    refreshMapViewport = () => {
+      if (canvas.isConnected && canvas.offsetWidth) map.container.fitToViewport();
+    };
     map.behaviors.disable('scrollZoom');
     if (matchMedia('(pointer: coarse)').matches) {
       map.behaviors.disable('drag');
@@ -283,6 +343,13 @@
       say(visible.length ? 'Площадок на карте: '+visible.length : 'По выбранным фильтрам площадок не найдено');
     }
     refresh();
+    // Only a successfully initialized, populated map gets an in-place toggle.
+    mapReady = true;
+    if (expandLink) {
+      expandLink.setAttribute('role', 'button');
+      expandLink.setAttribute('aria-controls', canvas.id);
+      expandLink.setAttribute('aria-expanded', 'false');
+    }
     // Start with the map unobstructed. The user opens a venue card by
     // clicking a marker; never show a popup on initial page load.
 
