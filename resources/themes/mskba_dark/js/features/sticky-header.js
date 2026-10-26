@@ -13,6 +13,8 @@ function initStickyHeader() {
 
     let headerHeight = 0;
     let contextBarHeight = 0;
+    let hiddenTopInset = 0;
+    let lastAppliedOffsets = '';
     let scrollReference = window.scrollY;
     let scrollingUp = false;
     let pointerReveal = false;
@@ -23,8 +25,15 @@ function initStickyHeader() {
     const syncOffsets = (headerShown) => {
         // Keep the legacy token stable for layouts that use it for sizing/padding.
         // Sticky surfaces instead use the height actually covering the viewport.
-        const visibleHeaderHeight = headerShown ? headerHeight : 0;
+        const visibleHeaderHeight = headerShown ? headerHeight : hiddenTopInset;
         const stickyOffset = contextBarHeight + visibleHeaderHeight;
+        const offsetsKey = `${headerHeight}:${contextBarHeight}:${visibleHeaderHeight}`;
+
+        if (offsetsKey === lastAppliedOffsets) {
+            return;
+        }
+
+        lastAppliedOffsets = offsetsKey;
         const root = document.documentElement;
 
         root.style.setProperty('--site-header-height', `${headerHeight + contextBarHeight}px`);
@@ -47,6 +56,11 @@ function initStickyHeader() {
         }
 
         contextBarHeight = Math.ceil(contextBar?.offsetHeight || 0);
+        // The Telegram webview reserves a top safe area inside the primary
+        // header. Once hidden, the breadcrumbs must still clear that inset.
+        hiddenTopInset = document.body.classList.contains('telegram-mini-app')
+            ? Math.max(0, Number.parseFloat(window.getComputedStyle(wrapper).paddingTop) || 0)
+            : 0;
     };
 
     const syncStickyState = () => {
