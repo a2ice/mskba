@@ -11,6 +11,8 @@ const asset = '60d4d65b-308c-40aa-8466-158466632107';
 
 function scene({ known = true, existing = false, background = true } = {}) {
     const imageEvents = new Map();
+    let backgroundReady = background;
+    let observerCallback = null;
     const previews = [];
     const classes = () => {
         const values = new Set();
@@ -88,7 +90,7 @@ function scene({ known = true, existing = false, background = true } = {}) {
             objectFit: 'contain', objectPosition: 'center', borderRadius: '3px',
             transform: 'none', transformOrigin: 'center', zIndex: 'auto',
         } : {
-            backgroundImage: element === bg && background
+            backgroundImage: element === bg && backgroundReady
                 ? 'linear-gradient(90deg, transparent, #fff), url("https://dev.mskba.ru/media/site/' + asset + '")'
                 : 'none',
             backgroundSize: 'cover', backgroundPosition: 'center',
@@ -102,8 +104,20 @@ function scene({ known = true, existing = false, background = true } = {}) {
         decode() { return Promise.resolve(); }
         set src(v) { this.url = v; }
     }
-    runInNewContext(script, { document, window, URL, Image: ImageMock, console });
-    return { img, bg, bgClasses, imageEvents, previews, created };
+    class MutationObserverMock {
+        constructor(callback) { observerCallback = callback; }
+        observe() {}
+        disconnect() {}
+    }
+    runInNewContext(script, { document, window, URL, Image: ImageMock,
+        MutationObserver: MutationObserverMock, console });
+    return {
+        img, bg, bgClasses, imageEvents, previews, created,
+        activateBackground() {
+            backgroundReady = true;
+            observerCallback([{ type: 'attributes', target: bg }]);
+        },
+    };
 }
 
 test('Page Builder LQIP finds matching HTML img and CSS background without changing editor sources', async () => {
@@ -129,4 +143,13 @@ test('missing LQIP yields no placeholders or extra requests', () => {
 test('already enhanced Hero images and absent CSS backgrounds are left alone', () => {
     const s = scene({ existing: true, background: false });
     assert.equal(s.previews.length, 0);
+});
+
+test('late JS-assigned tournament background becomes LQIP-capable after DOM mutation', () => {
+    const s = scene({ existing: true, background: false });
+    assert.equal(s.previews.length, 0);
+    s.activateBackground();
+    assert.equal(s.previews.length, 1);
+    assert.match(s.previews[0].style.backgroundImage, /\/lqip/);
+    assert.equal(s.bgClasses.contains('has-pb-site-lqip-background'), true);
 });
