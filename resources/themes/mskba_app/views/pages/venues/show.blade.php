@@ -1,5 +1,5 @@
 @extends('theme::layouts.app', ['breadcrumbs' => [
-    ['label' => 'Площадки', 'url' => route('venues.search')],
+    ['label' => 'Площадки', 'url' => route('venues')],
     ['label' => isset($venue)
         ? (\Illuminate\Support\Str::length($venue->name) > 25
             ? \Illuminate\Support\Str::substr($venue->name, 0, 25).'...'
@@ -12,7 +12,7 @@
     <section class="container section app-venue-page"><div class="panel app-venue-page__empty">
         <h1>Площадка недоступна</h1>
         <p>{{ $error['message'] ?? 'Не удалось загрузить площадку.' }}</p>
-        <a class="button secondary" href="{{ route('venues.search') }}">К каталогу площадок</a>
+        <a class="button secondary" href="{{ route('venues') }}">К каталогу площадок</a>
     </div></section>
 @else
 @php
@@ -438,7 +438,7 @@
         'endpoints' => [
             'store' => route('play-intents.store'),
             'amenities' => route('play-intents.amenities'),
-            'venuesSearch' => route('venues.search'),
+            'venuesSearch' => route('venues'),
             'mine' => route('play-intents.mine'),
             'favoriteStatuses' => route('favorites.venue-statuses'),
             'favoriteToggle' => route('favorites.toggle'),
