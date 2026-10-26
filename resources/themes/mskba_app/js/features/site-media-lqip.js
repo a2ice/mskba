@@ -4,6 +4,21 @@
  * Full-size <img src> remains a working no-JavaScript fallback.
  */
 function progressiveMediaImages() {
+    document.querySelectorAll('[data-site-media-progressive="1"]').forEach(frame => {
+        const image = frame.querySelector('.mskba-site-media-image__original');
+        if (!image || (image.complete && image.naturalWidth > 0)) return;
+        frame.classList.add('is-lqip-pending');
+        const reveal = () => {
+            const done = () => {
+                frame.classList.remove('is-lqip-pending');
+                frame.classList.add('is-lqip-ready');
+            };
+            if (typeof image.decode === 'function') image.decode().then(done, done);
+            else done();
+        };
+        image.addEventListener('load', reveal, { once: true });
+        image.addEventListener('error', () => frame.classList.remove('is-lqip-pending'), { once: true });
+    });
     document.querySelectorAll('img[data-site-media-lqip]').forEach(image => {
         if (image.dataset.siteLqipBound === '1') return;
         image.dataset.siteLqipBound = '1';
