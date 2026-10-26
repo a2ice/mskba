@@ -137,12 +137,6 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose court change PHP and backoffice test
-        run: |
-          php -l app/Modules/Venue/Presentation/Http/Controllers/VenueCourtSettingsController.php
-          php -l app/Filament/Backoffice/Resources/Venues/RelationManagers/CourtsRelationManager.php
-          php -d display_errors=1 artisan test tests/Feature/Backoffice/BackofficeVenueGeographyModerationTest.php --filter test_editing_venue_amenities_via_livewire_saves_without_navigation_error --no-ansi
-
       - name: Run PHP tests
         run: php artisan test
 

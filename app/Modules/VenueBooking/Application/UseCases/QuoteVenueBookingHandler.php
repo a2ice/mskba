@@ -104,10 +104,10 @@ final readonly class QuoteVenueBookingHandler
             : ($scope === VenueBookingScopeEnum::WHOLE
                 ? $effective['whole_price_per_step_minor']
                 : $effective['half_price_per_step_minor']);
-        if ($effective['requires_payment'] && (int) $fallbackPricePerStep < 1) {
-            throw new VenueBookingPolicyException('Для выбранного варианта аренды не настроена положительная цена.');
-        }
         $price = $this->pricing->calculate($venue, $policy, $localStart, $durationMinutes, $scope, $court, $effective);
+        if ($effective['requires_payment'] && in_array(0, $price['prices_per_step_minor'], true)) {
+            throw new VenueBookingPolicyException('Для каждого платного интервала аренды должна быть задана положительная цена.');
+        }
         $paymentWindow = $effective['requires_payment']
             ? ((int) ($policy->payment_window_minutes ?: 15))
             : null;

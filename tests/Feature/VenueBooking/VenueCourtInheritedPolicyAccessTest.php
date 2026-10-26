@@ -17,6 +17,7 @@ use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Application\UseCases\ManageVenueMembershipHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
@@ -183,7 +184,7 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
     private function ownedVenue(): array
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $venue = Venue::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
             'name' => 'Test owner', 'status' => ContractStatusEnum::ACTIVE,
