@@ -388,7 +388,8 @@
 .venue-anchor-nav {
     position: sticky;
     z-index: 2;
-    top: 84px;
+    top: var(--site-sticky-offset, 84px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     flex-wrap: wrap;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
@@ -432,7 +433,8 @@
     .venue-section .section-sidebar-layout__aside {
         position: sticky;
         z-index: 20;
-        top: 76px;
+        top: var(--site-sticky-offset, 76px);
+        transition: top .28s cubic-bezier(.22, .61, .36, 1);
     }
 
     .venue-section .section-sidebar-layout__aside > .section-sidebar-layout__panel {
