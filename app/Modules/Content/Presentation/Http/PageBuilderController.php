@@ -78,6 +78,7 @@ final class PageBuilderController extends Controller
             'metaRobots' => $preview ? 'noindex, nofollow' : 'index, follow',
             'builderHtml' => $output['html'],
             'builderCss' => $output['css'],
+            'builderLqipMap' => $output['lqip'],
             'builderScripts' => $output['scripts'],
             'builderPreview' => $preview,
             'builderTheme' => app(ThemeResolver::class)->active(),
