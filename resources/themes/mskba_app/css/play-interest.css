@@ -308,7 +308,6 @@ dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop
 .app-subscription-details__heading{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
 .app-subscription-details__eyebrow{font-size:12px;letter-spacing:.06em;font-weight:750;color:var(--accent)}
 .app-subscription-details__header h2{font-size:23px;line-height:1.22;letter-spacing:-.02em;font-weight:750;margin:0;overflow-wrap:anywhere}
-.app-subscription-details__status{font-size:12px;font-weight:650}
 .app-subscription-details__close{
     width:44px;height:44px;min-width:44px;display:grid;place-items:center;flex-shrink:0;
     padding:0;border:1px solid var(--control-line);border-radius:12px;
