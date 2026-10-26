@@ -7,7 +7,7 @@ const source = readFileSync(
     new URL('../../resources/page-builder/venues-map.js', import.meta.url), 'utf8',
 );
 
-function scene() {
+function scene({ mapReady = true } = {}) {
     const classes = new Set();
     const handlers = new Map();
     const makeElement = tagName => ({
@@ -18,7 +18,10 @@ function scene() {
         append(...items) { this.children.push(...items); },
         addEventListener(name, fn) { this.listeners.set(name, fn); },
         focus() { this.focusCount += 1; },
-        click() { this.listeners.get('click')?.({ preventDefault() {} }); },
+        click() {
+            this.preventedNavigation = false;
+            this.listeners.get('click')?.({ preventDefault: () => { this.preventedNavigation = true; } });
+        },
     });
     const canvas = makeElement('div');
     canvas.id = 'mskba-venues-map-canvas';
@@ -63,7 +66,12 @@ function scene() {
         console, URL, location: { origin: 'https://dev.mskba.ru' },
         IntersectionObserver: window.IntersectionObserver,
     };
-    runInNewContext(source, context);
+    // Simulate the map-ready state without issuing live Yandex/API requests.
+    // The unmodified source is used for failure/fallback tests.
+    const code = mapReady
+        ? source.replace('let mapReady = false;', 'let mapReady = true;')
+        : source;
+    runInNewContext(code, context);
     return {
         root, cta, copy, classes,
         button: root.appended[0],
@@ -98,6 +106,16 @@ test('Space activates the CTA with keyboard button semantics', () => {
     assert.equal(map.classes.has('is-map-expanded'), true);
     map.button.click();
     assert.equal(map.classes.has('is-map-expanded'), false);
+});
+
+test('map errors or pending initialization preserve the real /venues navigation', () => {
+    const map = scene({ mapReady: false });
+    map.cta.click();
+    assert.equal(map.cta.preventedNavigation, false);
+    assert.equal(map.classes.has('is-map-expanded'), false);
+    assert.equal(map.cta.href, '/venues');
+    assert.equal(map.copy.inert, false);
+    assert.equal(map.cta.getAttribute('role'), undefined);
 });
 
 test('compact arrow restores the overlay and keyboard Escape can restore it too', () => {
