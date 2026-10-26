@@ -3,6 +3,13 @@ if (root) {
     const outlet = root.querySelector('[data-play-interests-list]');
     const filters = root.querySelector('[data-subscriptions-filters]');
     const pagination = root.querySelector('[data-subscriptions-pagination]');
+    const detailsDialog = root.querySelector('[data-subscription-details-dialog]');
+    const detailsBody = detailsDialog?.querySelector('[data-subscription-details-body]');
+    const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
+    const detailsEdit = detailsDialog?.querySelector('[data-subscription-details-edit]');
+    let detailsTrigger = null;
+    detailsDialog?.querySelector('[data-subscription-details-close]')?.addEventListener('click',()=>detailsDialog.close());
+    detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
     const typeSelect = filters?.querySelector('[name="type"]');
     const statusSelect = filters?.querySelector('[name="status"]');
     const validTypes = new Set(['all','play']);
@@ -102,6 +109,38 @@ if (root) {
         const b = make('button',text,'button secondary');b.type='button';
         b.addEventListener('click',action);return b;
     };
+    // The shared list exposes only generic actions. Type-specific settings
+    // live in the detail viewer and in the existing subscription editor.
+    function openDetails(intent, trigger) {
+        if (!detailsDialog || !detailsBody) return;
+        detailsTrigger=trigger;
+        detailsTitle.textContent=intent.name || 'Подписка №'+intent.id;
+        detailsBody.replaceChildren();
+        const addFact=(label,value)=>{
+            if(value===null || value===undefined || value==='')return;
+            const row=make('div',null,'app-subscription-details__fact');
+            row.append(make('dt',label),make('dd',String(value)));
+            detailsBody.append(row);
+        };
+        addFact('Тип','Игровая подписка');
+        addFact('Статус',statusNames[intent.effective_status]||intent.status);
+        addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Поиск без конкретной площадки'));
+        addFact('Условия',summary(intent));
+        if(intent.expires_at)addFact('Действует до',new Date(intent.expires_at).toLocaleDateString('ru-RU'));
+        addFact('Уведомления о подходящих играх',intent.notify_matches?'Включены':'Выключены');
+        addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
+        addFact('Публичность игровых данных',intent.show_on_venue?'Включена':'Выключена');
+        if(detailsEdit){
+            const canEdit=!['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.hidden=!canEdit;
+            detailsEdit.onclick=()=>{
+                detailsDialog.close();
+                window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
+            };
+        }
+        detailsDialog.showModal();
+    }
+
     function showError(message) { outlet.replaceChildren(make('p',message,'error')); }
     async function load() {
         const sequence=++loadSequence;
@@ -149,11 +188,8 @@ if (root) {
                 }
                 card.append(make('p',summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
-                if(!['cancelled','completed'].includes(intent.effective_status)) {
-                    actions.append(button('Редактировать',()=>{
-                        window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
-                    }));
-                }
+                const viewButton=button('Посмотреть',()=>openDetails(intent,viewButton));
+                actions.append(viewButton);
                 if(intent.effective_status === 'active') {
                     actions.append(button('Приостановить',async()=>{
                         try{await request(root.dataset.pauseUrl+'/'+intent.id+'/pause','PATCH');await load();}
@@ -164,28 +200,6 @@ if (root) {
                         try{await request(root.dataset.pauseUrl+'/'+intent.id+'/resume','PATCH');await load();}
                         catch(e){showError(e.message);}
                     }));
-                }
-                if(['active','expired'].includes(intent.effective_status)) {
-                    const alternatives=make('div',null,'app-play-interests__results');
-                    actions.append(button('Подходящие площадки',async()=>{
-                        alternatives.replaceChildren(make('p','Подбираем варианты…','muted'));
-                        try{
-                            const response=await request(root.dataset.pauseUrl+'/'+intent.id+'/recommendations');
-                            alternatives.replaceChildren();
-                            if(!response.data.length){alternatives.append(make('p','По выбранным условиям площадки пока не найдены.','muted'));return;}
-                            const ul=make('ul');
-                            for(const venue of response.data) {
-                                const li=make('li'), a=make('a',venue.name);
-                                const target=new URL(venue.url,location.origin);
-                                if(target.origin!==location.origin)continue;
-                                a.href=target.href;
-                                li.append(a,make('span',' · доступность брони ещё не проверена','muted'));
-                                ul.append(li);
-                            }
-                            alternatives.append(ul);
-                        }catch(e){alternatives.replaceChildren(make('p',e.message,'error'));}
-                    }));
-                    card.append(alternatives);
                 }
                 if(intent.effective_status === 'expired') {
                     actions.append(button('Восстановить подписку',async()=>{
