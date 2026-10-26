@@ -168,6 +168,11 @@ final class MskbaAppAccountNavigationTest extends TestCase
             ->assertSee('Здесь ты можешь управлять');
 
         $this->assertSame([], $this->childLabels());
+        $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
+        $this->assertSame(route('play-intents.mine'), $subscriptions['url']);
+        $this->get(route('play-intents.mine'))->assertOk()
+            ->assertSee('Хочу играть')
+            ->assertSee('Мои подписки');
         $roles = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте');
         $this->assertSame(route('account.roles'), $roles['url']);
         $this->assertArrayNotHasKey('children', $roles);
@@ -185,7 +190,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
             ->assertSee('Мои команды')
             ->assertSee('Мои игры')
             ->assertSee('Мои тренировки');
-        $this->assertSame(['Хочу играть', 'Мои команды', 'Мои игры', 'Мои тренировки'], $this->childLabels());
+        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки'], $this->childLabels());
         $roleGroup = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте');
         $this->assertNull($roleGroup['url']);
         $this->assertSame(['Все роли', 'Игрок'], array_column($roleGroup['children'], 'label'));
@@ -194,10 +199,13 @@ final class MskbaAppAccountNavigationTest extends TestCase
 
         $this->get(route('play-intents.mine'))->assertOk()
             ->assertSee('aria-current="page"', false);
-        $interestGroup = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Участие');
-        $interestLink = collect($interestGroup['children'])->firstWhere('label', 'Хочу играть');
-        $this->assertTrue($interestLink['active']);
-        $this->assertSame(route('play-intents.mine'), $interestLink['url']);
+        $subscriptionsLink = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
+        $this->assertNotNull($subscriptionsLink);
+        $this->assertTrue($subscriptionsLink['active']);
+        $this->assertSame(route('play-intents.mine'), $subscriptionsLink['url']);
+        $this->get(route('play-intents.mine'))->assertOk()
+            ->assertSee('data-play-intent-open', false)
+            ->assertSee('Хочу играть');
 
         $this->get(route('account.my-games'))->assertOk()
             ->assertSee('id="account-section-title"', false);
@@ -216,7 +224,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
             ->assertSee('app-account-nav__group', false);
 
         $this->assertSame([
-            'Хочу играть', 'Мои команды', 'Мои игры', 'Мои тренировки',
+            'Мои команды', 'Мои игры', 'Мои тренировки',
             'Мои секции', 'Судейские назначения',
         ], $this->childLabels());
         $group = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Участие');
@@ -250,7 +258,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertNull($items->firstWhere('label', 'Тренер'));
         $this->assertSame(['Обзор', 'Профиль', 'Роли в проекте', 'Участие'], array_slice($items->pluck('label')->all(), 0, 4));
         $this->assertFalse($myMskba['active']);
-        $this->assertSame(['Хочу играть', 'Мои команды', 'Мои игры', 'Мои тренировки', 'Мои секции'], array_column($myMskba['children'], 'label'));
+        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Мои секции'], array_column($myMskba['children'], 'label'));
 
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
