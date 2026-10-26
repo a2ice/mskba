@@ -103,12 +103,10 @@ if (sectionNav) {
 
 const mapDialog = document.querySelector('[data-venue-map-dialog]');
 const playersDialog = document.querySelector('[data-venue-interests-dialog]');
+const playerDetailsDialog = document.querySelector('[data-venue-player-details-dialog]');
 const slotDialog = document.querySelector('[data-venue-slot-dialog]');
 const createEventDialog = document.querySelector('[data-venue-create-event-dialog]');
-const confirmDialog = document.querySelector('[data-venue-interest-confirm]');
-let cancelUrl = '';
-let submitButton = null;
-for (const dialog of [mapDialog, playersDialog, slotDialog, createEventDialog, confirmDialog]) {
+for (const dialog of [mapDialog, playersDialog, playerDetailsDialog, slotDialog, createEventDialog]) {
     if (!dialog) continue;
     dialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', () => dialog.close()));
@@ -228,6 +226,19 @@ mapDialog?.addEventListener('close', () => {
     pendingNearby?.abort();
 });
 document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
+playersDialog?.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-venue-player-details-open]');
+    if (!button || !playerDetailsDialog) return;
+    const template = button.closest('.app-venue-interests-dialog__player')
+        ?.querySelector('template[data-venue-player-template]');
+    const content = playerDetailsDialog.querySelector('[data-venue-player-details-body]');
+    if (!template || !content) return;
+    content.replaceChildren(template.content.cloneNode(true));
+    playerDetailsDialog.showModal();
+});
+playerDetailsDialog?.addEventListener('close', () => {
+    playerDetailsDialog.querySelector('[data-venue-player-details-body]')?.replaceChildren();
+});
 document.querySelector('[data-venue-create-event-open]')?.addEventListener('click', () => createEventDialog?.showModal());
 
 // Occupied time is always clickable, but private bookings reveal no event
@@ -329,38 +340,9 @@ if (venueSidebar && venueAnchors) {
     scheduleSidebarUpdate();
 }
 
-// Capture clicks before the Vue dialog's delegated handler. A known active
-// interest needs confirmation, not creation of a duplicate.
+// A guest opening the subscription wizard from the audience modal should
+// close the audience first. Subscribed users navigate directly to their account.
 document.addEventListener('click', event => {
     const button = event.target.closest?.('[data-venue-interest-action]');
-    if (!button) return;
-    const id = Number(button.dataset.interestId);
-    if (!id || !button.dataset.cancelUrl) {
-        if (playersDialog?.open) playersDialog.close();
-        return;
-    }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    cancelUrl = button.dataset.cancelUrl;
-    playersDialog?.close();
-    confirmDialog?.showModal();
+    if (button && playersDialog?.open) playersDialog.close();
 }, true);
-document.querySelector('[data-venue-interest-confirm-submit]')?.addEventListener('click', async event => {
-    if (!cancelUrl || submitButton) return;
-    submitButton = event.currentTarget;
-    const error = confirmDialog.querySelector('[data-venue-interest-error]');
-    error.hidden = true; submitButton.disabled = true;
-    try {
-        const response = await fetch(cancelUrl, {
-            method: 'DELETE', credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-            },
-        });
-        if (!response.ok) throw new Error('Не удалось отменить подписку. Повторите попытку.');
-        location.reload();
-    } catch (cause) {
-        error.textContent = cause.message; error.hidden = false;
-    } finally { submitButton.disabled = false; submitButton = null; }
-});
