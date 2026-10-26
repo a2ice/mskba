@@ -24,9 +24,11 @@ if (layout) {
 
     function refreshBoundary() {
         const styles = getComputedStyle(document.documentElement);
-        stickyBoundary =
-            (parseFloat(styles.getPropertyValue('--header-height')) || 64) +
-            (parseFloat(styles.getPropertyValue('--context-bar-height')) || 44);
+        const liveOffset = parseFloat(styles.getPropertyValue('--app-sticky-offset'));
+        stickyBoundary = Number.isFinite(liveOffset)
+            ? liveOffset
+            : (parseFloat(styles.getPropertyValue('--header-height')) || 64)
+                + (parseFloat(styles.getPropertyValue('--context-bar-height')) || 44);
         update();
     }
 
@@ -34,6 +36,7 @@ if (layout) {
     // There is one inexpensive bounding-rect read and no network or reflow loop.
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', refreshBoundary, { passive: true });
+    window.addEventListener('mskba:header-visibility', refreshBoundary);
     breakpoint.addEventListener('change', refreshBoundary);
     document.addEventListener('mskba:account-sidebar-updated', update);
     refreshBoundary();

@@ -37,3 +37,130 @@ document.querySelectorAll('.app-header-nav-group').forEach((menu) => {
 });
 
 if (import.meta.hot) import.meta.hot.dispose(() => controller.abort());
+
+
+/* Primary navigation is allowed to scroll away while the contextual bar remains
+ * sticky. Reveal on upward scroll or mouse entering the first 18 viewport pixels.
+ * The shared offset drives the venue anchors/sidebar and account sticky UI. */
+const siteHeader = document.querySelector('[data-app-header]');
+if (siteHeader) {
+    const contextBar = document.querySelector('[data-app-context-bar]');
+    const TOP_EDGE_PX = 18;
+    const DIRECTION_THRESHOLD_PX = 6;
+    let headerHeight = siteHeader.offsetHeight;
+    let contextHeight = contextBar?.offsetHeight || 0;
+    let previousScrollY = Math.max(0, window.scrollY);
+    let scrollDelta = 0;
+    let scrollingUp = false;
+    let pointerReveal = false;
+    let previousState = '';
+    let scrollFrame = null;
+
+    const navigationOpen = () => Boolean(siteHeader.querySelector('details[open]'));
+
+    const updateOffsets = (visible) => {
+        const root = document.documentElement;
+        const visibleHeight = visible ? headerHeight : 0;
+        const stickyOffset = visibleHeight + contextHeight;
+        const state = `${visibleHeight}:${contextHeight}`;
+
+        if (state === previousState) return;
+        previousState = state;
+
+        root.style.setProperty('--app-visible-header-height', `${visibleHeight}px`);
+        root.style.setProperty('--app-sticky-offset', `${stickyOffset}px`);
+        window.dispatchEvent(new CustomEvent('mskba:header-visibility', {
+            detail: { visible, stickyOffset, headerHeight, contextHeight },
+        }));
+    };
+
+    const updateVisibility = () => {
+        const reveal = window.scrollY > headerHeight && (
+            scrollingUp
+            || pointerReveal
+            || navigationOpen()
+            || siteHeader.contains(document.activeElement)
+        );
+
+        siteHeader.classList.toggle('is-scroll-revealed', reveal);
+        updateOffsets(reveal);
+    };
+
+    const updateDimensions = () => {
+        headerHeight = Math.ceil(siteHeader.offsetHeight);
+        contextHeight = Math.ceil(contextBar?.offsetHeight || 0);
+        updateVisibility();
+    };
+
+    const onScroll = () => {
+        scrollFrame = null;
+        const current = Math.max(0, window.scrollY);
+        const diff = current - previousScrollY;
+        previousScrollY = current;
+
+        if ((diff > 0 && scrollDelta < 0) || (diff < 0 && scrollDelta > 0)) {
+            scrollDelta = 0;
+        }
+
+        scrollDelta += diff;
+
+        if (Math.abs(scrollDelta) >= DIRECTION_THRESHOLD_PX) {
+            scrollingUp = scrollDelta < 0;
+            scrollDelta = 0;
+            if (!scrollingUp) pointerReveal = false;
+        }
+
+        if (current <= 1) {
+            scrollingUp = false;
+            pointerReveal = false;
+            scrollDelta = 0;
+        }
+
+        updateVisibility();
+    };
+
+    window.addEventListener('scroll', () => {
+        if (scrollFrame === null) {
+            scrollFrame = window.requestAnimationFrame(onScroll);
+        }
+    }, { passive: true, signal });
+
+    window.addEventListener('pointermove', (event) => {
+        if (event.pointerType !== 'mouse') return;
+
+        const atEdge = event.clientY >= 0 && event.clientY <= TOP_EDGE_PX;
+        const withinRevealedNavigation = pointerReveal
+            && event.clientY >= 0
+            && event.clientY <= Math.max(
+                siteHeader.getBoundingClientRect().bottom,
+                contextBar?.getBoundingClientRect().bottom || 0,
+            );
+        const reveal = window.scrollY > headerHeight && (atEdge || withinRevealedNavigation);
+
+        if (reveal !== pointerReveal) {
+            pointerReveal = reveal;
+            updateVisibility();
+        }
+    }, { passive: true, signal });
+
+    document.addEventListener('pointerleave', () => {
+        if (!pointerReveal) return;
+        pointerReveal = false;
+        updateVisibility();
+    }, { signal });
+    siteHeader.addEventListener('toggle', updateVisibility, { capture: true, signal });
+    siteHeader.addEventListener('focusin', updateVisibility, { signal });
+    siteHeader.addEventListener('focusout', () => {
+        window.requestAnimationFrame(updateVisibility);
+    }, { signal });
+    window.addEventListener('resize', updateDimensions, { passive: true, signal });
+
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(updateDimensions);
+        observer.observe(siteHeader);
+        if (contextBar) observer.observe(contextBar);
+        signal.addEventListener('abort', () => observer.disconnect(), { once: true });
+    }
+
+    updateDimensions();
+}
