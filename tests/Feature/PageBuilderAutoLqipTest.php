@@ -66,8 +66,7 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertSame([], $manifest->forContent('<img src="/images/ball-rolling.png">', '.ball { background:url("/images/ball-rolling.png"); }'));
         Storage::disk('public')->delete(SiteMediaLqip::path($asset->currentMedia));
         $this->assertSame([], $manifest->forContent('<img src="'.$asset->publicUrl().'">', ''));
-        $this->assertSame([], $manifest->forContent('<img src="https://other.test/media/site/'.$asset->uuid.'">', '') === []
-            ? [] : $manifest->forContent('', ''), 'External image previews must not be used on the page.');
+        $this->assertSame([], $manifest->forContent('<img src="/media/site/00000000-0000-4000-8000-000000000000">', ''));
     }
 
     public function test_preview_is_resolved_from_current_version_after_replace_or_restore(): void
