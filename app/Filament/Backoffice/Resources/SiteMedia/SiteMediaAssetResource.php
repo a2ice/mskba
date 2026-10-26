@@ -67,6 +67,9 @@ final class SiteMediaAssetResource extends Resource
                     ->searchable()->native(false)->placeholder('Без папки'),
                 TextInput::make('alt')->label('Alt')->maxLength(180),
                 Textarea::make('description')->label('Описание')->columnSpanFull(),
+                TextInput::make('lqip_url')->label('LQIP URL (производная миниатюра)')
+                    ->formatStateUsing(fn (?SiteMediaAsset $record): string => $record?->lqipUrl() ?? 'Миниатюра ещё не создана')
+                    ->disabled()->dehydrated(false)->columnSpanFull(),
                 TextInput::make('public_path')->label('Публичный URL (копируй в HTML/CSS)')
                     ->formatStateUsing(fn (?SiteMediaAsset $record): string => $record?->publicUrl() ?? '')
                     ->disabled()->dehydrated(false)->columnSpanFull(),
@@ -91,6 +94,11 @@ final class SiteMediaAssetResource extends Resource
                 // Our /media/site/{uuid} route is a Laravel HTTP endpoint instead.
                 ->getStateUsing(fn (SiteMediaAsset $record): string => self::previewUrl($record))
                 ->square()->height(64),
+            ImageColumn::make('lqip_preview')->label('LQIP')
+                ->getStateUsing(fn (SiteMediaAsset $record): ?string => $record->lqipUrl() ? url($record->lqipUrl()) : null)
+                ->height(48)->square(),
+            TextColumn::make('lqip_status')->label('Миниатюра')
+                ->getStateUsing(fn (SiteMediaAsset $record): string => $record->lqipUrl() !== null ? 'Готова' : 'Нет'),
             TextColumn::make('title')->label('Изображение')->searchable()->sortable(),
             TextColumn::make('folder.name')->label('Папка')->placeholder('Без папки')->sortable(),
             TextColumn::make('currentMedia.mime')->label('Формат'),
