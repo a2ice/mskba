@@ -454,7 +454,8 @@
     display: grid;
     gap: 14px;
     position: sticky;
-    top: calc(var(--site-header-height, 0px) + 18px);
+    top: calc(var(--site-sticky-offset, 0px) + 18px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
 }
 
 .venue-ownership-side-link {
