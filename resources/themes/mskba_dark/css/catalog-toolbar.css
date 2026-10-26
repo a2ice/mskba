@@ -1,7 +1,8 @@
 .catalog-toolbar {
     position: sticky;
     z-index: 20;
-    top: var(--site-header-height, 76px);
+    top: var(--site-sticky-offset, 76px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     display: flex;
     align-items: center;
     justify-content: flex-end;
