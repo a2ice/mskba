@@ -33,7 +33,7 @@
     </div>
     @if (! empty($builderLqipMap))
         {{-- Server-generated manifest only: never insert editor HTML or code here. --}}
-        <script type="application/json" data-page-builder-lqip-manifest>@json($builderLqipMap, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>
+        <script type="application/json" data-page-builder-lqip-manifest>@json($builderLqipMap, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES)</script>
     @endif
     @if ($builderTheme === 'mskba_app')
         @include('theme::partials.venue-map-dialog')
