@@ -705,6 +705,18 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame([], $audience['matched'][0]['positions']);
         $this->assertNull($audience['matched'][0]['experience_years']);
 
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->actingAs($direct)->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Подписаны на эту площадку')
+            ->assertSee('Подходят по условиям')
+            ->assertSee('direct-venue-user')
+            ->assertSee('conditions-venue-user')
+            ->assertDontSee('Без данных профиля')
+            ->assertDontSee('excluded-venue-user');
+
         $excludedSubscription = PlayIntent::query()->where('user_id', $excluded->id)->firstOrFail();
         $candidates = $this->actingAs($excluded)
             ->getJson(route('play-intents.recommendations', $excludedSubscription->id))
