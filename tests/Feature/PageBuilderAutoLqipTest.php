@@ -8,6 +8,7 @@ use App\Modules\Content\Application\Services\PageBuilderRenderer;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Media\Application\Services\SiteMediaLqip;
 use App\Modules\Media\Application\Services\SiteMediaManager;
+use App\Modules\Media\Domain\Models\SiteMediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -86,4 +87,29 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertSame($first->id, $asset->current_media_id);
         $this->assertSame([$asset->uuid => $asset->lqipUrl()], $manifest->forContent($src, ''));
     }
+    public function test_lazy_tournaments_scene_named_artwork_is_available_in_manifest_without_republishing_js(): void
+    {
+        Storage::fake('public');
+        $folder = SiteMediaFolder::query()->create([
+            'name' => 'Турниры', 'slug' => 'home-tournaments-section',
+        ]);
+        $manager = app(SiteMediaManager::class);
+        $background = $manager->upload(
+            UploadedFile::fake()->image('background.jpg', 360, 200), $folder->id, 'background',
+        );
+        $ball = $manager->upload(
+            UploadedFile::fake()->image('ball.png', 150, 150), $folder->id, 'ball',
+        );
+        $unused = $manager->upload(
+            UploadedFile::fake()->image('other.png', 150, 150), $folder->id, 'other',
+        );
+
+        $builder = app(PageBuilderLqipManifest::class);
+        $this->assertSame([], $builder->forContent('<section class="unrelated"></section>', ''));
+        $map = $builder->forContent('<section class="mskba-tournaments"></section>', '');
+        $this->assertSame($background->lqipUrl(), $map[$background->uuid] ?? null);
+        $this->assertSame($ball->lqipUrl(), $map[$ball->uuid] ?? null);
+        $this->assertArrayNotHasKey($unused->uuid, $map);
+    }
+
 }
