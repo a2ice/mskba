@@ -75,7 +75,7 @@ final class CourtsRelationManager extends RelationManager
                     ->options(['inherit' => 'Наследовать от площадки',
                         'active' => 'Работает', 'temporarily_closed' => 'Временно закрыт'])
                     ->default('inherit')
-                    ->formatStateUsing(fn ($state): string => $state?->value ?? (is_string($state) ? $state : 'inherit'))
+                    ->formatStateUsing(fn ($state): string => $state instanceof VenueOperationalStatusEnum ? $state->value : ($state ?? 'inherit'))
                     ->dehydrateStateUsing(fn ($state): ?string => $state === 'inherit' ? null : $state)
                     ->required(),
                 Select::make('requires_payment')->label('Платность')
