@@ -126,6 +126,7 @@ if (canvas && manifestNode) {
         // Negative z-index inside an isolated stacking context keeps the
         // miniature behind all text/buttons, but above the original background.
         element.classList.add('has-pb-site-lqip-background');
+        if (computed.position === 'static') element.classList.add('pb-site-lqip-containing-block');
         element.prepend(placeholder);
         const loader = new Image();
         let finished = false;
