@@ -12,7 +12,7 @@
     const pending = new Set();
     let frame = null;
     let dialog = null;
-    const svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.5a5.25 5.25 0 0 0 -7.5 0a5.25 5.25 0 0 0 -7.5 7.5l7.5 7.5a5.25 5.25 0 0 0 0 -7.5z"/></svg>';
+    const svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#heart"/></svg>';
     const idFromLink = (href) => {
         if (!href) return null;
         try {
@@ -45,7 +45,7 @@
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             if(Number(btn.dataset.favoriteVenue)!==id) return;
             btn.classList.add('mskba-favorite-heart');
-            if (!btn.querySelector('svg path')) btn.innerHTML = svg;
+            if (!btn.querySelector('svg use[href="#heart"]')) btn.innerHTML = svg;
             btn.setAttribute('aria-pressed',String(state==='active'));
             btn.setAttribute('aria-label',getName(state));
             btn.title=state==='active'?'Добавлено в избранное':getName(state);
