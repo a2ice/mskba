@@ -45,14 +45,12 @@ const sectionNav = document.querySelector('[data-venue-section-nav]');
 if (sectionNav) {
     const links = [...sectionNav.querySelectorAll('a[href^="#"]')];
     const sections = links.map(link => document.getElementById(link.hash.slice(1)));
-    const header = document.querySelector('[data-app-header]');
-    const breadcrumbs = document.querySelector('[data-app-context-bar]');
     let scheduled = false;
 
+    // The navigation itself is the source of truth: unlike header heights,
+    // its bottom edge follows both sticky layers during hide/reveal animation.
     function navOffset() {
-        return (header?.getBoundingClientRect().height || 0)
-            + (breadcrumbs?.getBoundingClientRect().height || 0)
-            + sectionNav.getBoundingClientRect().height;
+        return Math.max(0, sectionNav.getBoundingClientRect().bottom);
     }
 
     function refreshNavHeight() {
@@ -97,6 +95,18 @@ if (sectionNav) {
     window.addEventListener('scroll', scheduleActiveUpdate, { passive: true });
     window.addEventListener('resize', refreshNavHeight, { passive: true });
     window.addEventListener('hashchange', scheduleActiveUpdate);
+    let activeTransitionFrame = null;
+    window.addEventListener('mskba:header-visibility', () => {
+        const deadline = performance.now() + 340;
+        if (activeTransitionFrame !== null) cancelAnimationFrame(activeTransitionFrame);
+        const followNavigation = () => {
+            scheduleActiveUpdate();
+            activeTransitionFrame = performance.now() < deadline
+                ? requestAnimationFrame(followNavigation)
+                : null;
+        };
+        activeTransitionFrame = requestAnimationFrame(followNavigation);
+    });
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(refreshNavHeight).observe(sectionNav);
     refreshNavHeight();
 }
