@@ -22,9 +22,9 @@ final class SavePlayIntentRequest extends FormRequest
             'name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'venue_id' => ['nullable', 'integer', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'include_similar_venues' => ['sometimes', 'boolean'],
-            'show_on_venue' => $this->isMethod('post')
-                ? ['required', 'accepted']
-                : ['sometimes', 'boolean'],
+            'show_on_venue' => ['sometimes', 'boolean'],
+            'excluded_venue_ids' => ['sometimes', 'array', 'max:30'],
+            'excluded_venue_ids.*' => ['required', 'integer', 'distinct', Rule::exists('venues', 'id')->whereNull('deleted_at')->where('status', 'confirmed')],
             'center_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'center_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'radius_km' => ['nullable', 'integer', 'between:1,30'],
@@ -111,6 +111,39 @@ final class SavePlayIntentRequest extends FormRequest
             if ($cadence === 'once' && is_string($data['period_until'] ?? null)
                 && $data['period_until'] > now()->addDays(30)->toDateString()) {
                 $validator->errors()->add('period_until', 'Горизонт разового поиска не более 30 дней.');
+            }
+
+            $excluded = (array) ($data['excluded_venue_ids'] ?? []);
+            if ($excluded !== [] && ($venueId === null || ! $similar)) {
+                $validator->errors()->add('excluded_venue_ids', 'Исключения доступны только при подборе похожих площадок.');
+            }
+            if ($venueId !== null && in_array((int) $venueId, array_map('intval', $excluded), true)) {
+                $validator->errors()->add('excluded_venue_ids', 'Нельзя исключить выбранную площадку.');
+            }
+            if ($excluded !== [] && $venueId !== null && $similar && $validator->errors()->isEmpty()) {
+                $origin = Venue::query()->with('location.address')->find($venueId);
+                $lat = $data['center_latitude'] ?? $origin?->location?->address?->latitude;
+                $lon = $data['center_longitude'] ?? $origin?->location?->address?->longitude;
+                $radius = (int) ($data['radius_km'] ?? 10);
+                if ($lat === null || $lon === null || $radius < 1 || $radius > 30) {
+                    $validator->errors()->add('excluded_venue_ids', 'Не удалось определить центр поиска.');
+                } else {
+                    $options = Venue::query()->with('location.address')->whereIn('id', $excluded)->get()->keyBy('id');
+                    foreach ($excluded as $index => $id) {
+                        $address = $options->get((int) $id)?->location?->address;
+                        if ($address?->latitude === null || $address?->longitude === null) {
+                            $validator->errors()->add("excluded_venue_ids.{$index}", 'У площадки нет координат.');
+                            continue;
+                        }
+                        $angle = sin(deg2rad(((float) $address->latitude - (float) $lat)) / 2) ** 2
+                            + cos(deg2rad((float) $lat)) * cos(deg2rad((float) $address->latitude))
+                            * sin(deg2rad(((float) $address->longitude - (float) $lon)) / 2) ** 2;
+                        $meters = 6371000 * 2 * atan2(sqrt($angle), sqrt(max(0, 1 - $angle)));
+                        if ($meters > $radius * 1000) {
+                            $validator->errors()->add("excluded_venue_ids.{$index}", 'Площадка находится за пределами радиуса.');
+                        }
+                    }
+                }
             }
 
             $seenAmenities = [];
