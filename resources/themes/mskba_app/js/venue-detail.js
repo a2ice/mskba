@@ -358,7 +358,7 @@ document.querySelector('[data-venue-interest-confirm-submit]')?.addEventListener
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
             },
         });
-        if (!response.ok) throw new Error('Не удалось отменить интерес. Повторите попытку.');
+        if (!response.ok) throw new Error('Не удалось отменить подписку. Повторите попытку.');
         location.reload();
     } catch (cause) {
         error.textContent = cause.message; error.hidden = false;
