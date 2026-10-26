@@ -306,7 +306,8 @@
 @media (max-width: 768px) {
     .section-sidebar-layout__mobile-sticky-navigation {
         position: sticky;
-        top: var(--site-header-height, 76px);
+        top: var(--site-sticky-offset, 76px);
+        transition: top .28s cubic-bezier(.22, .61, .36, 1);
         z-index: 25;
         display: block;
         margin-bottom: 10px;
