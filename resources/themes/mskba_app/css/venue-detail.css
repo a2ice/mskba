@@ -20,9 +20,10 @@
 .app-venue-schedule__hours svg{height:15px;width:15px;flex:none}
 .app-venue-interest-summary__profiles{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
 .app-venue-interest-summary__avatars{display:flex;align-items:center;padding-left:7px}
-.app-venue-interest-summary__avatar{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:50%;border:3px solid var(--surface,#fff);overflow:hidden;background:var(--surface-raised,#edf0f4);color:var(--text);font-size:17px;font-weight:700;flex:none}
+.app-venue-interest-summary__avatar{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center;border-radius:50%;border:3px solid #f7f8fa;overflow:hidden;background:var(--surface-raised,#edf0f4);color:var(--text);font-size:17px;font-weight:700;flex:none}
 .app-venue-interest-summary__avatar+.app-venue-interest-summary__avatar{margin-left:-12px}
 .app-venue-interest-summary__avatar img{width:100%;height:100%;object-fit:cover}
+.app-venue-interest-summary__profile-icon{width:23px;height:23px;display:block;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
 .app-venue-interest-summary__count{white-space:nowrap;font-size:13px}
 .app-venue-overlay{border:1px solid var(--line);border-radius:20px;max-width:min(660px,calc(100vw - 24px));width:100%;max-height:min(80dvh,720px);padding:22px;background:var(--surface,#fff);color:var(--text);box-shadow:0 20px 65px #0004}
 .app-venue-overlay::backdrop{background:rgba(20,30,44,.55);backdrop-filter:blur(3px)}

@@ -100,7 +100,11 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame(1, $audience['total']);
         $this->assertSame(1, $audience['direct_count']);
         $this->assertSame(0, $audience['matched_count']);
-        $this->assertSame('Скрытый профиль', $audience['direct'][0]['name']);
+        $this->assertSame('hide-this-profile', $audience['direct'][0]['name']);
+        $this->assertNull($audience['direct'][0]['avatar']);
+        $this->assertSame([], $audience['direct'][0]['positions']);
+        $this->assertNull($audience['direct'][0]['experience_years']);
+        $this->assertFalse($audience['direct'][0]['public']);
 
         $record = PlayIntent::query()->sole();
         $this->putJson(route('play-intents.update', $record), [
@@ -151,7 +155,7 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame($venue->id, $record->refresh()->venue_id);
     }
 
-    public function test_venue_page_displays_anonymous_interest_count_and_own_interest_without_usernames(): void
+    public function test_venue_page_shows_login_but_hides_avatar_and_game_stats_for_private_subscription(): void
     {
         config()->set('themes.active', 'mskba_app');
         app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
@@ -172,7 +176,7 @@ final class PlayIntentApiTest extends TestCase
             'show_on_venue' => true,
             ...$this->payload($venue), 'cadence' => 'flexible', 'weekdays' => [], 'windows' => [],
         ])->assertCreated();
-        // An existing private interest must never be included in public names.
+        // A hidden subscription still exposes the login, not the avatar or game profile.
         PlayIntent::query()->where('user_id', $other->id)->update(['show_on_venue' => false]);
 
         $expectedBreadcrumb = \Illuminate\Support\Str::substr($venue->name, 0, 25).'...';
@@ -182,19 +186,27 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Площадкой интересуются')
             ->assertSee('data-play-venue-interest-summary', false)
             ->assertSee('2 игрока')
+            ->assertSee('class="app-venue-interests-dialog__total-number">2</strong>', false)
+            ->assertSee('class="app-venue-interests-dialog__total-word">игрока</span>', false)
+            ->assertSee('class="app-venue-interest-summary__profile-icon"', false)
+            ->assertDontSee('Подходят по условиям')
+            ->assertDontSee('напрямую ·')
+            ->assertDontSee('Без данных профиля')
             ->assertSee('data-venue-interest-action', false)
             ->assertSee('Отменить подписку')
             ->assertDontSee('Отображается только число интересов')
-            ->assertDontSee('private-interest-other')
+            ->assertSee('private-interest-other')
             ->assertSee('private-interest-test');
 
-        // Only explicitly opted-in users appear; others remain anonymous.
+        // Public viewers see usernames in both cases, never hidden game details.
         auth()->logout();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Площадкой интересуются')
             ->assertSee('private-interest-test')
-            ->assertDontSee('private-interest-other');
+            ->assertSee('private-interest-other')
+            ->assertDontSee('Скрытый профиль')
+            ->assertDontSee('Без данных профиля');
     }
 
     public function test_free_venue_schedule_displays_published_hours_not_booking_warnings(): void
@@ -688,7 +700,22 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame(1, $audience['direct_count']);
         $this->assertSame(1, $audience['matched_count']);
         $this->assertSame('direct-venue-user', $audience['direct'][0]['name']);
-        $this->assertSame('Скрытый профиль', $audience['matched'][0]['name']);
+        $this->assertSame('conditions-venue-user', $audience['matched'][0]['name']);
+        $this->assertNull($audience['matched'][0]['avatar']);
+        $this->assertSame([], $audience['matched'][0]['positions']);
+        $this->assertNull($audience['matched'][0]['experience_years']);
+
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->actingAs($direct)->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Подписаны на эту площадку')
+            ->assertSee('Подходят по условиям')
+            ->assertSee('direct-venue-user')
+            ->assertSee('conditions-venue-user')
+            ->assertDontSee('Без данных профиля')
+            ->assertDontSee('excluded-venue-user');
 
         $excludedSubscription = PlayIntent::query()->where('user_id', $excluded->id)->firstOrFail();
         $candidates = $this->actingAs($excluded)
@@ -699,6 +726,48 @@ final class PlayIntentApiTest extends TestCase
             ...$this->payload($venue), 'include_similar_venues' => true,
             'excluded_venue_ids' => [$venue->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('excluded_venue_ids');
+    }
+
+
+    public function test_venue_subscriber_popup_hides_empty_groups_and_declines_count(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('class="app-venue-interests-dialog__total-word">игроков</span>', false)
+            ->assertDontSee('Подписаны на эту площадку')
+            ->assertDontSee('Подходят по условиям');
+
+        $user = User::factory()->create(['username' => 'single-login']);
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+            'show_on_venue' => false,
+        ])->assertCreated();
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('class="app-venue-interests-dialog__total-number">1</strong>', false)
+            ->assertSee('class="app-venue-interests-dialog__total-word">игрок</span>', false)
+            ->assertSee('Подписаны на эту площадку')
+            ->assertDontSee('Подходят по условиям')
+            ->assertSee('single-login')
+            ->assertDontSee('Без данных профиля');
+
+        // A second subscriber changes declension but does not create a
+        // phantom "matched by conditions" group.
+        $second = User::factory()->create(['username' => 'second-login']);
+        $this->actingAs($second)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+        ])->assertCreated();
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('2 игрока')
+            ->assertSee('class="app-venue-interests-dialog__total-word">игрока</span>', false)
+            ->assertDontSee('Подходят по условиям');
     }
 
 }
