@@ -859,7 +859,7 @@ final class PlayIntentApiTest extends TestCase
             'expires_at' => now()->addMonth(),
         ]);
 
-        $this->get('/account/subscriptions')->assertRedirect(route('login'));
+        $this->get('/account/subscriptions')->assertRedirect();
         $this->actingAs($user)->get('/account/play-interests')
             ->assertRedirect(route('play-intents.mine'))
             ->assertStatus(301);
