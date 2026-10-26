@@ -24,6 +24,7 @@ final class RecommendVenuesForIntent
         }
 
         $isSimilar = (bool) $intent->include_similar_venues;
+        $excludedIds = array_map('intval', $intent->excluded_venue_ids ?? []);
         $criteriaOnly = $intent->venue_id === null;
         $searchCatalog = $criteriaOnly || $isSimilar;
         $latitude = $intent->center_latitude;
@@ -37,6 +38,7 @@ final class RecommendVenuesForIntent
             ->where('status', VenueStatusEnum::CONFIRMED)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE)
             ->with(['location.address', 'amenities:id,name,alias,is_active', 'primaryCourt'])
+            ->when($excludedIds !== [], fn (Builder $q) => $q->whereNotIn('id', $excludedIds))
             ->orderBy('id');
 
         // The venue chosen by "Хочу здесь играть" remains a candidate.
@@ -80,6 +82,9 @@ final class RecommendVenuesForIntent
         // Iterator avoids loading the whole venue catalog into application memory.
         foreach ($query->lazy(100) as $venue) {
             /** @var Venue $venue */
+            if (! $this->matchesVenue($intent, $venue)) {
+                continue;
+            }
             $lat = $venue->location?->address?->latitude;
             $lon = $venue->location?->address?->longitude;
             $distance = null;
@@ -130,6 +135,60 @@ final class RecommendVenuesForIntent
             ?: ($a['venue_id'] <=> $b['venue_id']));
 
         return array_slice($matches, 0, $limit);
+    }
+
+    /**
+     * Shared eligibility predicate for recommendations and potential venue
+     * subscribers. Direct subscriptions are classified by the audience service.
+     */
+    public function matchesVenue(PlayIntent $intent, Venue $venue): bool
+    {
+        if ($intent->status !== 'active' || $intent->expires_at?->isPast()
+            || in_array((int) $venue->id, array_map('intval', $intent->excluded_venue_ids ?? []), true)
+            || $venue->status !== VenueStatusEnum::CONFIRMED
+            || $venue->operational_status !== VenueOperationalStatusEnum::ACTIVE) {
+            return false;
+        }
+        $direct = $intent->venue_id !== null && (int) $intent->venue_id === (int) $venue->id;
+        if (! $direct && $intent->venue_id !== null && ! $intent->include_similar_venues) {
+            return false;
+        }
+        if (! $direct && in_array($intent->venue_kind, ['indoor', 'outdoor'], true)) {
+            $outdoor = $venue->type === VenueTypeEnum::STREET_COURT;
+            if ($outdoor !== ($intent->venue_kind === 'outdoor')) {
+                return false;
+            }
+        }
+        if (! $direct && $intent->include_similar_venues) {
+            $venue->loadMissing('location.address');
+            $address = $venue->location?->address;
+            if ($intent->center_latitude === null || $intent->center_longitude === null
+                || $address?->latitude === null || $address?->longitude === null) {
+                return false;
+            }
+            if ($this->haversineMeters(
+                (float) $intent->center_latitude, (float) $intent->center_longitude,
+                (float) $address->latitude, (float) $address->longitude,
+            ) > (int) ($intent->radius_km ?? 10) * 1000) {
+                return false;
+            }
+        }
+        if ($intent->access_mode === 'free' && ! $venue->hasFreeAccess()) {
+            return false;
+        }
+        if ($intent->access_mode === 'paid' && $venue->requires_payment !== true) {
+            return false;
+        }
+        $required = collect($intent->amenity_preferences ?? [])
+            ->where('priority', 'required')->pluck('amenity_id')->map(fn ($id): int => (int) $id)->all();
+        if ($required !== []) {
+            $venue->loadMissing('amenities');
+            $available = $venue->amenities->where('is_active', true)->pluck('id')->map(fn ($id): int => (int) $id)->all();
+            if (array_diff($required, $available) !== []) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private function haversineMeters(float $la, float $lo, float $lb, float $lob): int
