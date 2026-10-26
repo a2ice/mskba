@@ -1,0 +1,40 @@
+/* Optional Page Builder-only LQIP: no CSS effect without a known sidecar. */
+.mskba-page-builder .pb-site-lqip-image-overlay {
+    pointer-events: none !important;
+    user-select: none;
+    filter: blur(2px);
+    opacity: 1;
+    transition: opacity .28s ease;
+}
+.mskba-page-builder .pb-site-lqip-image-overlay.is-lqip-replaced {
+    opacity: 0 !important;
+}
+/* An isolated stack keeps the preview under text/controls. The original
+   background (with gradients, sizes and placement) stays unmodified. */
+.mskba-page-builder .has-pb-site-lqip-background {
+    isolation: isolate;
+}
+.mskba-page-builder .has-pb-site-lqip-background:not(:where([style*="position"])) {
+    /* Explicitly positioned blocks retain their authored positioning. */
+}
+.mskba-page-builder .pb-site-lqip-background {
+    position: absolute !important;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none !important;
+    background-color: transparent;
+    filter: blur(2px);
+    opacity: 1;
+    transition: opacity .28s ease;
+}
+.mskba-page-builder .pb-site-lqip-background.is-lqip-replaced {
+    opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    .mskba-page-builder .pb-site-lqip-image-overlay,
+    .mskba-page-builder .pb-site-lqip-background {
+        filter: none !important;
+        transition: none !important;
+    }
+}
