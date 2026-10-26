@@ -31,7 +31,8 @@
 .default-category__sidebar {
     position: sticky;
     z-index: 16;
-    top: calc(var(--site-header-height, 76px) + 16px);
+    top: calc(var(--site-sticky-offset, 76px) + 16px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     min-width: 0;
 }
 
@@ -146,7 +147,8 @@
 .default-category-toolbar {
     position: sticky;
     z-index: 18;
-    top: calc(var(--site-header-height, 76px) + 12px);
+    top: calc(var(--site-sticky-offset, 76px) + 12px);
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -404,7 +406,7 @@
     }
 
     .default-category-toolbar {
-        top: var(--site-header-height, 70px);
+        top: var(--site-sticky-offset, 70px);
         gap: 6px;
         padding: 10px;
         border-radius: 16px;
