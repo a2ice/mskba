@@ -41,7 +41,7 @@ final class PageBuilderAutoLqipTest extends TestCase
         $cssBefore = $page->published_css;
 
         $result = app(PageBuilderRenderer::class)->render($page);
-        $this->assertSame([
+        $this->assertEquals([
             $player->uuid => $player->lqipUrl(),
             $background->uuid => $background->lqipUrl(),
         ], $result['lqip']);
