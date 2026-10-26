@@ -171,8 +171,10 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
         $this->assertSame(route('play-intents.mine'), $subscriptions['url']);
         $this->get(route('play-intents.mine'))->assertOk()
-            ->assertSee('Хочу играть')
-            ->assertSee('Мои подписки');
+            ->assertSee('Мои подписки')
+            ->assertSee('data-subscriptions-filters', false)
+            ->assertSee('data-subscriptions-pagination', false)
+            ->assertSee('<use href="#bell"/>', false);
         $roles = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте');
         $this->assertSame(route('account.roles'), $roles['url']);
         $this->assertArrayNotHasKey('children', $roles);
@@ -204,8 +206,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertTrue($subscriptionsLink['active']);
         $this->assertSame(route('play-intents.mine'), $subscriptionsLink['url']);
         $this->get(route('play-intents.mine'))->assertOk()
-            ->assertSee('data-play-intent-open', false)
-            ->assertSee('Хочу играть');
+            ->assertSee('Тип подписки')
+            ->assertDontSee('data-play-intent-open', false);
 
         $this->get(route('account.my-games'))->assertOk()
             ->assertSee('id="account-section-title"', false);
