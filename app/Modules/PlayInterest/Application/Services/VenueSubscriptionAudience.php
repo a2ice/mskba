@@ -52,9 +52,11 @@ final class VenueSubscriptionAudience
             $experience = $player?->experience_started_year
                 ? max(0, now()->year - (int) $player->experience_started_year) : null;
             $data = [
+                // Username remains public in a venue audience; opt-out hides
+                // the avatar and game characteristics, not the account login.
                 'name' => $public
                     ? ($user->username ?: (trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: 'Игрок'))
-                    : 'Скрытый профиль',
+                    : ($user->username ?: 'Игрок'),
                 'avatar' => $public ? $user->profile?->avatarUrl() : null,
                 'positions' => $positions,
                 'experience_years' => $public ? $experience : null,
