@@ -31,6 +31,7 @@ import './venue-interest-summary.js';
 import './venue-detail.js';
 import './features/home-venues-map-expand.js';
 import './features/site-media-lqip.js';
+import './features/page-builder-auto-lqip.js';
 import './account-favorites.js';
 import './venue-favorites.js';
 
