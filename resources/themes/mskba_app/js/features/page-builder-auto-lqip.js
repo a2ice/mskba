@@ -99,7 +99,9 @@ if (canvas && manifestNode) {
     }
 
     function backgroundPreview(element) {
-        if (element.classList.contains('pb-site-lqip-background') || element.closest('[data-site-media-progressive]')) return;
+        if (element.classList.contains('pb-site-lqip-background')
+            || element.classList.contains('has-pb-site-lqip-background')
+            || element.closest('[data-site-media-progressive]')) return;
         const computed = window.getComputedStyle(element);
         const originalBackground = computed.backgroundImage;
         if (!originalBackground || originalBackground === 'none') return;
