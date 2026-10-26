@@ -1,6 +1,73 @@
 const root = document.querySelector('[data-play-interests]');
 if (root) {
     const outlet = root.querySelector('[data-play-interests-list]');
+    const filters = root.querySelector('[data-subscriptions-filters]');
+    const pagination = root.querySelector('[data-subscriptions-pagination]');
+    const typeSelect = filters?.querySelector('[name="type"]');
+    const statusSelect = filters?.querySelector('[name="status"]');
+    const validTypes = new Set(['all','play']);
+    const validStatuses = new Set(['all','active','paused','expired','cancelled','completed']);
+    let currentPage = 1;
+    let loadSequence = 0;
+
+    function syncFromUrl() {
+        const url = new URL(location.href);
+        typeSelect.value = validTypes.has(url.searchParams.get('type')) ? url.searchParams.get('type') : 'all';
+        statusSelect.value = validStatuses.has(url.searchParams.get('status')) ? url.searchParams.get('status') : 'all';
+        currentPage = Math.max(1, Number.parseInt(url.searchParams.get('page'), 10) || 1);
+    }
+    function updateUrl() {
+        const url = new URL(location.href);
+        for (const [key, value] of [['type',typeSelect.value],['status',statusSelect.value],['page',String(currentPage)]]) {
+            if (value==='all' || (key==='page' && value==='1')) url.searchParams.delete(key);
+            else url.searchParams.set(key,value);
+        }
+        history.pushState(null,'',url);
+    }
+    const openPage = page => {
+        currentPage = page;
+        updateUrl();
+        void load();
+    };
+    function renderPagination(meta) {
+        pagination.replaceChildren();
+        pagination.hidden = !meta || meta.total === 0;
+        if (pagination.hidden) return;
+        const total = meta.total, last = Math.max(1,meta.last_page), page = meta.current_page;
+        const offset = (page-1)*meta.per_page;
+        pagination.append(make('span',`Показано ${offset+1}–${Math.min(total, offset+meta.per_page)} из ${total}`,'app-play-interests__page-summary'));
+        if (last < 2) return;
+        const controls = make('div',null,'app-play-interests__page-buttons');
+        const addPage = (text,value,disabled=false,active=false) => {
+            const control = make('button',text,'button secondary');
+            control.type = 'button';
+            control.disabled = disabled;
+            if (active) { control.classList.add('is-active'); control.setAttribute('aria-current','page'); }
+            control.addEventListener('click',()=>openPage(value));
+            controls.append(control);
+        };
+        addPage('Назад',Math.max(1,page-1),page===1);
+        const pages = [...new Set([1,last,page-1,page,page+1].filter(n=>n>=1 && n<=last))].sort((a,b)=>a-b);
+        let previous = 0;
+        for (const number of pages) {
+            if(number-previous>1) controls.append(make('span','…','app-play-interests__page-ellipsis'));
+            addPage(String(number),number,false,number===page);
+            previous=number;
+        }
+        addPage('Далее',Math.min(last,page+1),page===last);
+        pagination.append(controls);
+    }
+    syncFromUrl();
+    filters?.addEventListener('change',()=>{currentPage=1;updateUrl();void load();});
+    filters?.addEventListener('reset',event=>{
+        event.preventDefault();
+        typeSelect.value='all';
+        statusSelect.value='all';
+        currentPage=1;
+        updateUrl();
+        void load();
+    });
+    window.addEventListener('popstate',()=>{syncFromUrl();void load();});
     const make = (tag, text, className = '') => {
         const node = document.createElement(tag);
         if (className) node.className = className;
@@ -37,12 +104,26 @@ if (root) {
     };
     function showError(message) { outlet.replaceChildren(make('p',message,'error')); }
     async function load() {
+        const sequence=++loadSequence;
         try {
-            const response = await request(root.dataset.listUrl);
+            const target=new URL(root.dataset.listUrl,location.origin);
+            target.searchParams.set('type',typeSelect.value);
+            target.searchParams.set('status',statusSelect.value);
+            target.searchParams.set('page',String(currentPage));
+            const response = await request(target.href);
+            if(sequence!==loadSequence)return;
+            if(response.meta && currentPage>response.meta.last_page){
+                currentPage=response.meta.last_page;
+                updateUrl();
+                return load();
+            }
             outlet.replaceChildren();
+            renderPagination(response.meta);
             if (!response.data?.length) {
                 const empty=make('div',null,'app-play-interests__empty');
-                empty.append(make('p','Пока нет подписок.'),make('p','Открой понравившуюся площадку и нажми «Хочу здесь играть».','muted'));
+                const filtered=typeSelect.value!=='all'||statusSelect.value!=='all';
+                empty.append(make('p',filtered?'По выбранным фильтрам подписок нет.':'Пока нет подписок.'));
+                if (!filtered) empty.append(make('p','Когда ты оформишь первую подписку, она появится здесь.','muted'));
                 outlet.append(empty);return;
             }
             for (const intent of response.data) {
@@ -115,7 +196,9 @@ if (root) {
                 }
                 card.append(actions);outlet.append(card);
             }
-        } catch (e) { showError(e.message); }
+        } catch (e) {
+            if(sequence===loadSequence){pagination.hidden=true;showError(e.message);}
+        }
     }
     window.addEventListener('mskba:play-intent:saved',()=>{void load();});
     void load();

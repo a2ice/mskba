@@ -22,7 +22,7 @@ final class AccountMenu implements MenuHandler
         'account.roles' => 'people',
         'account.teams' => 'people',
         'account.my-games' => 'ball',
-        'play-intents.mine' => 'ball',
+        'play-intents.mine' => 'bell',
         'favorites.mine' => 'heart',
         'account.my-trainings' => 'clock',
         'account.sports-sections.index' => 'people',

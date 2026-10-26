@@ -221,6 +221,13 @@ final class PlayIntentApiTest extends TestCase
 
         $hiddenProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
             ->for($hidden)->create(['height_cm' => 193, 'experience_started_year' => 2018]);
+        $avatarProfile = $hidden->profile()->firstOrCreate([]);
+        $avatarProfile->media()->save(
+            \App\Modules\Media\Domain\Models\Media::factory()->make([
+                'collection' => 'avatar', 'disk' => 'public',
+                'path' => 'avatars/hidden-self-unique.jpg', 'is_featured' => true,
+            ])
+        );
         $visibleProfile = \App\Modules\Identity\Domain\Models\Participation\PlayerProfile::factory()
             ->for($visible)->create(['height_cm' => 178, 'experience_started_year' => 2019]);
 
@@ -241,6 +248,7 @@ final class PlayIntentApiTest extends TestCase
         $this->assertFalse($ownRow['public']);
         $this->assertTrue($ownRow['can_view_details']);
         $this->assertSame(193, $ownRow['height_cm']);
+        $this->assertSame('/storage/avatars/hidden-self-unique.jpg', $ownRow['avatar']);
 
         $ownHtml = $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
@@ -250,6 +258,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-dialog', false)
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
+        $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
         $this->assertSame(3, substr_count($ownHtml, 'Вы подписаны'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
@@ -266,6 +275,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()
             ->assertSee('hidden-self-player')
             ->assertDontSee('Это вы')
+            ->assertDontSee('hidden-self-unique.jpg')
             ->assertDontSee('193 см')
             ->assertSee('178 см')
             ->assertSee('data-venue-player-details-open', false)
@@ -832,5 +842,80 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('class="app-venue-interests-dialog__total-word">игрока</span>', false)
             ->assertDontSee('Подходят по условиям');
     }
+
+
+    public function test_subscription_hub_routes_filters_and_paginates_only_owned_records(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        for ($i = 1; $i <= 15; $i++) {
+            $status = match ($i) { 12 => 'paused', 13 => 'cancelled', 15 => 'completed', default => 'active' };
+            PlayIntent::query()->create([
+                'user_id' => $user->id,
+                'name' => 'Subscription #'.$i,
+                'cadence' => 'flexible',
+                'status' => $status,
+                'expires_at' => $i === 14 ? now()->subDay() : now()->addMonth(),
+            ]);
+        }
+        PlayIntent::query()->create([
+            'user_id' => $other->id,
+            'name' => 'Another user secret',
+            'status' => 'active',
+            'expires_at' => now()->addMonth(),
+        ]);
+
+        $this->get('/account/subscriptions')->assertRedirect();
+        $this->actingAs($user)->get('/account/play-interests')
+            ->assertRedirect(route('play-intents.mine'))
+            ->assertStatus(301);
+        $this->get(route('play-intents.mine'))
+            ->assertOk()
+            ->assertSee('Мои подписки')
+            ->assertSee('Тип подписки')
+            ->assertSee('Все статусы')
+            ->assertSee('data-subscriptions-pagination', false)
+            ->assertDontSee('Твои подписки')
+            ->assertDontSee('Хочу играть');
+
+        $pageOne = $this->getJson(route('play-intents.index', ['type' => 'all', 'status' => 'all']))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 15)
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonCount(10, 'data');
+        $pageTwo = $this->getJson(route('play-intents.index', ['page' => 2, 'type' => 'play']))
+            ->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonCount(5, 'data');
+        $firstIds = array_column($pageOne->json('data'), 'id');
+        $secondIds = array_column($pageTwo->json('data'), 'id');
+        $this->assertCount(15, array_unique([...$firstIds, ...$secondIds]));
+        $this->assertNotContains('Another user secret', array_column($pageOne->json('data'), 'name'));
+        $this->assertSame(['play'], array_unique(array_column($pageOne->json('data'), 'subscription_type')));
+
+        $this->getJson(route('play-intents.index', ['status' => 'active']))
+            ->assertOk()->assertJsonPath('meta.total', 11);
+        $this->getJson(route('play-intents.index', ['status' => 'expired']))
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.name', 'Subscription #14')
+            ->assertJsonPath('data.0.effective_status', 'expired');
+        $this->getJson(route('play-intents.index', ['status' => 'paused']))
+            ->assertOk()->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.name', 'Subscription #12');
+        $this->getJson(route('play-intents.index', ['status' => 'cancelled']))
+            ->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson(route('play-intents.index', ['status' => 'completed']))
+            ->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson(route('play-intents.index', ['type' => 'unsupported']))
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+        $this->getJson(route('play-intents.index', ['status' => 'unknown']))
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
 
 }

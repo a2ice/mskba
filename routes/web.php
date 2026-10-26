@@ -1087,15 +1087,18 @@ Route::get('/backoffice/rest-api/openapi.json',
     ->middleware('auth:web')->name('backoffice.rest-api.openapi');
 
 // MSKBA App account page. Existing legacy account routes remain unchanged.
-Route::get('/account/play-interests', function (\App\Presentation\Theming\ThemeResolver $themes) {
+Route::get('/account/subscriptions', function (\App\Presentation\Theming\ThemeResolver $themes) {
     abort_unless($themes->active() === 'mskba_app', 404);
     return \App\Presentation\Theming\ThemeResolver::page('account.play-interests', [
         'breadcrumbs' => [
             ['label' => 'Аккаунт', 'url' => route('account')],
-            ['label' => 'Мои интересы', 'url' => null],
+            ['label' => 'Мои подписки', 'url' => null],
         ],
     ]);
 })->middleware('auth:web')->name('play-intents.mine');
+
+Route::get('/account/play-interests', fn () => redirect()->route('play-intents.mine', [], 301))
+    ->middleware('auth:web')->name('play-intents.mine.legacy');
 
 // Polymorphic favorites: guest cookie plus authenticated account, with reversible trash.
 Route::get('/favorites/status',

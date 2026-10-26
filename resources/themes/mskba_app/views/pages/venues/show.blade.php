@@ -206,7 +206,7 @@
                         <div class="app-venue-interest-summary__avatars" aria-label="Игроки с подписками на площадку">
                             @foreach($venueInterestUsers->take(5) as $player)
                                 <span class="app-venue-interest-summary__avatar" title="{{ $player['is_self'] ? 'Это вы' : $player['name'] }}">
-                                    @if(!$player['public'])
+                                    @if(!$player['public'] && !$player['is_self'])
                                         <svg class="app-venue-interest-summary__profile-icon" aria-hidden="true"><use href="#user"/></svg>
                                     @elseif($player['avatar'])
                                         <img src="{{ $player['avatar'] }}" alt="{{ $player['is_self'] ? 'Это вы' : $player['name'] }}" loading="lazy">
