@@ -877,6 +877,8 @@ final class PlayIntentApiTest extends TestCase
             ->assertOk()
             ->assertSee('data-subscription-details-restore', false)
             ->assertSee('app-subscription-details__shell', false)
+            ->assertSee('data-subscription-details-body', false)
+            ->assertDontSee('data-subscription-details-status', false)
             ->assertSee('Параметры подписки')
             ->assertSee('Мои подписки')
             ->assertSee('Тип подписки')

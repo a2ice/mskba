@@ -67,7 +67,6 @@
                     <div class="app-subscription-details__heading">
                         <span class="app-subscription-details__eyebrow">MSKBA / ПОДПИСКИ</span>
                         <h2 id="subscription-details-title" data-subscription-details-title>Подписка</h2>
-                        <span class="app-subscription-details__status badge" data-subscription-details-status></span>
                     </div>
                     <button type="button" class="app-subscription-details__close" data-subscription-details-close aria-label="Закрыть">
                         <svg aria-hidden="true"><use href="#close"/></svg>
