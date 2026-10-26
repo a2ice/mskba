@@ -2,8 +2,8 @@
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => 'Хочу играть',
-        'intro' => 'Здесь сохраняются места, расписание и другие условия, в которых тебе хотелось бы играть.',
+        'heading' => 'Мои подписки',
+        'intro' => 'Здесь ты можешь создавать, изменять и приостанавливать подписки на игры и площадки.',
     ])
 @endsection
 
@@ -13,8 +13,11 @@
         data-pause-url="{{ url('/account/play-intents') }}"
         data-venues-url="{{ route('venues.search') }}">
         <div class="app-play-interests__top">
-            <h2>Мои подписки</h2>
-            <a class="button secondary" href="{{ route('venues.search') }}">Найти площадку</a>
+            <h2>Твои подписки</h2>
+            <div class="app-play-interests__actions">
+                <button class="button primary" type="button" data-play-intent-open>Хочу играть</button>
+                <a class="button secondary" href="{{ route('venues.search') }}">Найти площадку</a>
+            </div>
         </div>
         @php
             $interestDialogOptions = [
@@ -35,7 +38,7 @@
         @endphp
         <div data-mskba-play-intent-root data-options='@json($interestDialogOptions)'></div>
         <div data-play-interests-list role="region" aria-live="polite">
-            <p class="muted">Загружаем интересы…</p>
+            <p class="muted">Загружаем подписки…</p>
         </div>
     </section>
 @endsection

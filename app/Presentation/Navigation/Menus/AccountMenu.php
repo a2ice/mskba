@@ -113,7 +113,7 @@ final class AccountMenu implements MenuHandler
         // Navigation is an invitation to participate, not a report of existing relations.
         // Roles only control menu visibility; domain permissions are enforced by handlers.
         $roleSections = [
-            UserParticipationRoleEnum::PLAYER->value => ['interests', 'teams', 'games', 'trainings'],
+            UserParticipationRoleEnum::PLAYER->value => ['teams', 'games', 'trainings'],
             UserParticipationRoleEnum::COACH->value => ['sections', 'trainings', 'teams'],
             UserParticipationRoleEnum::VENUE_RELATED->value => ['venues', 'bookings', 'schedule'],
             UserParticipationRoleEnum::ORGANIZER->value => ['events', 'tournaments'],
@@ -122,7 +122,6 @@ final class AccountMenu implements MenuHandler
             UserParticipationRoleEnum::MEDIA->value => ['materials', 'events'],
         ];
         $definitions = [
-            'interests' => ['Хочу играть', 'play-intents.mine', 'play-intents.mine'],
             'teams' => ['Мои команды', 'account.teams', 'account.teams'],
             'games' => ['Мои игры', 'account.my-games', 'account.my-games'],
             'trainings' => ['Мои тренировки', 'account.my-trainings', 'account.my-trainings'],
@@ -205,6 +204,8 @@ final class AccountMenu implements MenuHandler
             $items[] = $groupItem;
         }
 
+        // A subscription is available to any signed-in user, regardless of participation role.
+        $items[] = $this->link('Мои подписки', 'play-intents.mine');
         $items[] = $this->link('Избранное', 'favorites.mine');
 
         $items[] = [

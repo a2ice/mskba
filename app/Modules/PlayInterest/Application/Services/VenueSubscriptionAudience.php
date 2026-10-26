@@ -3,6 +3,7 @@
 namespace App\Modules\PlayInterest\Application\Services;
 
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Venue\Domain\Models\Venue;
 
 final class VenueSubscriptionAudience
@@ -13,6 +14,7 @@ final class VenueSubscriptionAudience
     public function forVenue(Venue $venue): array
     {
         $venue->loadMissing(['location.address', 'amenities']);
+        $viewerId = auth()->user()?->canonical()->id;
         $subscriptions = PlayIntent::query()
             ->where('status', 'active')
             ->where('expires_at', '>', now())
@@ -21,7 +23,7 @@ final class VenueSubscriptionAudience
                     ->orWhereNull('venue_id')
                     ->orWhere('include_similar_venues', true);
             })
-            ->with(['user.profile.activeAvatar', 'user.playerProfile.positions'])
+            ->with(['user.profile.activeAvatar', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
             ->get();
 
         $byUser = [];
@@ -45,21 +47,38 @@ final class VenueSubscriptionAudience
         $matchedUsers = [];
         foreach ($byUser as $row) {
             $user = $row['user'];
+            $isSelf = $viewerId !== null && (int) $viewerId === (int) $user->canonical()->id;
             $public = $row['public'];
-            $player = $public ? $user->playerProfile : null;
+            $canViewDetails = $public || $isSelf;
+            $player = $canViewDetails ? $user->playerProfile : null;
             $positions = $player?->positions?->map(fn ($position) => $position->position?->label())
                 ->filter()->values()->all() ?? [];
             $experience = $player?->experience_started_year
                 ? max(0, now()->year - (int) $player->experience_started_year) : null;
+            $skills = [];
+            if ($player?->selfAssessment) {
+                foreach (PlayerSelfAssessment::SKILLS as $attribute => $label) {
+                    $score = $player->selfAssessment->{$attribute};
+                    if ($score !== null) {
+                        $skills[] = ['label' => $label, 'value' => (int) $score];
+                    }
+                }
+            }
             $data = [
                 // Username remains public in a venue audience; opt-out hides
                 // the avatar and game characteristics, not the account login.
                 'name' => $public
                     ? ($user->username ?: (trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: 'Игрок'))
                     : ($user->username ?: 'Игрок'),
-                'avatar' => $public ? $user->profile?->avatarUrl() : null,
+                'avatar' => $canViewDetails ? $user->profile?->avatarUrl() : null,
                 'positions' => $positions,
-                'experience_years' => $public ? $experience : null,
+                'experience_years' => $canViewDetails ? $experience : null,
+                'height_cm' => $canViewDetails ? $player?->height_cm : null,
+                'weight_kg' => $canViewDetails ? $player?->weight_kg : null,
+                'body_type' => $canViewDetails ? $player?->body_type?->label() : null,
+                'skills' => $canViewDetails ? $skills : [],
+                'is_self' => $isSelf,
+                'can_view_details' => $canViewDetails,
                 'public' => $public,
             ];
             if ($row['direct']) {
