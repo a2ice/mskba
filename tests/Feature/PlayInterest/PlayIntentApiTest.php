@@ -83,17 +83,32 @@ final class PlayIntentApiTest extends TestCase
         $this->assertTrue($interest->refresh()->show_on_venue);
     }
 
-    public function test_new_venue_interest_requires_explicit_public_discovery_consent(): void
+    public function test_new_subscription_can_be_hidden_without_losing_its_count(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
-        $this->actingAs(User::factory()->create())
+        $user = User::factory()->create(['username' => 'hide-this-profile']);
+
+        $this->actingAs($user)
             ->postJson(route('play-intents.store'), [
-                'venue_id' => $venue->id,
-                'cadence' => 'flexible',
-                'weekdays' => [],
-                'windows' => [],
-            ])->assertUnprocessable()->assertJsonValidationErrors('show_on_venue');
-        $this->assertDatabaseCount('play_intents', 0);
+                'venue_id' => $venue->id, 'cadence' => 'flexible',
+                'weekdays' => [], 'windows' => [], 'show_on_venue' => false,
+            ])->assertCreated()->assertJsonPath('data.show_on_venue', false);
+        $this->assertDatabaseCount('play_intents', 1);
+
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+        $this->assertSame(0, $audience['matched_count']);
+        $this->assertSame('Скрытый профиль', $audience['direct'][0]['name']);
+
+        $record = PlayIntent::query()->sole();
+        $this->putJson(route('play-intents.update', $record), [
+            ...$this->payload($venue), 'show_on_venue' => true,
+        ])->assertOk()->assertJsonPath('data.show_on_venue', true);
+        $visible = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $this->assertSame('hide-this-profile', $visible['direct'][0]['name']);
     }
 
     public function test_venue_specific_interest_round_trip_exposes_the_selected_venue_to_its_owner(): void
@@ -166,7 +181,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee($expectedBreadcrumb)
             ->assertSee('Площадкой интересуются')
             ->assertSee('data-play-venue-interest-summary', false)
-            ->assertSee('2 интереса')
+            ->assertSee('2 игрока')
             ->assertSee('data-venue-interest-action', false)
             ->assertSee('Не интересует')
             ->assertDontSee('Отображается только число интересов')
@@ -632,4 +647,58 @@ final class PlayIntentApiTest extends TestCase
             ->assertJsonPath('data.0.booking_availability', 'not_checked')
             ->assertJsonPath('meta.availability_verified', false);
     }
+    public function test_direct_and_criteria_matched_users_are_deduplicated_and_exclusions_apply(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $origin = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $address = $venue->location->address;
+        $origin->location->address->update([
+            'latitude' => $address->latitude, 'longitude' => $address->longitude,
+        ]);
+        $direct = User::factory()->create(['username' => 'direct-venue-user']);
+        $matched = User::factory()->create(['username' => 'conditions-venue-user']);
+        $excluded = User::factory()->create(['username' => 'excluded-venue-user']);
+
+        $this->actingAs($direct)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+        ])->assertCreated();
+        // The same canonical user with a second criteria subscription is still direct.
+        $this->actingAs($direct)->postJson(route('play-intents.store'), [
+            'venue_id' => null, 'cadence' => 'flexible',
+            'show_on_venue' => true, 'windows' => [],
+        ])->assertCreated();
+
+        $this->actingAs($matched)->postJson(route('play-intents.store'), [
+            'venue_id' => null, 'cadence' => 'flexible',
+            'show_on_venue' => false, 'windows' => [],
+        ])->assertCreated();
+
+        $this->actingAs($excluded)->postJson(route('play-intents.store'), [
+            ...$this->payload($origin), 'cadence' => 'flexible', 'windows' => [],
+            'include_similar_venues' => true,
+            'center_latitude' => $address->latitude,
+            'center_longitude' => $address->longitude,
+            'radius_km' => 10,
+            'excluded_venue_ids' => [$venue->id],
+        ])->assertCreated()->assertJsonPath('data.excluded_venue_ids.0', $venue->id);
+
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $this->assertSame(2, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+        $this->assertSame(1, $audience['matched_count']);
+        $this->assertSame('direct-venue-user', $audience['direct'][0]['name']);
+        $this->assertSame('Скрытый профиль', $audience['matched'][0]['name']);
+
+        $excludedSubscription = PlayIntent::query()->where('user_id', $excluded->id)->firstOrFail();
+        $candidates = $this->actingAs($excluded)
+            ->getJson(route('play-intents.recommendations', $excludedSubscription->id))
+            ->assertOk()->json('data');
+        $this->assertNotContains($venue->id, array_column($candidates, 'venue_id'));
+        $this->actingAs($excluded)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'include_similar_venues' => true,
+            'excluded_venue_ids' => [$venue->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors('excluded_venue_ids');
+    }
+
 }
