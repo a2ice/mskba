@@ -61,5 +61,18 @@
             <p class="muted">Загружаем подписки…</p>
         </div>
         <nav class="app-play-interests__pagination" data-subscriptions-pagination aria-label="Страницы подписок" hidden></nav>
+        <dialog class="mskba-modal app-subscription-details" data-subscription-details-dialog aria-labelledby="subscription-details-title">
+            <header class="mskba-modal__header app-subscription-details__header">
+                <h2 id="subscription-details-title" data-subscription-details-title>Подписка</h2>
+                <button type="button" class="app-subscription-details__close" data-subscription-details-close aria-label="Закрыть">
+                    <svg aria-hidden="true"><use href="#x"/></svg>
+                </button>
+            </header>
+            <dl class="mskba-modal__body app-subscription-details__body" data-subscription-details-body></dl>
+            <footer class="mskba-modal__footer app-subscription-details__footer">
+                <button type="button" class="button secondary" data-subscription-details-close>Закрыть</button>
+                <button type="button" class="button primary" data-subscription-details-edit>Редактировать</button>
+            </footer>
+        </dialog>
     </section>
 @endsection
