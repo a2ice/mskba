@@ -10,6 +10,7 @@ const source = readFileSync(
 
 function mountHeader() {
     const callbacks = new Map();
+    const headerCallbacks = new Map();
     const frames = [];
     const cssVars = new Map();
     const classes = new Set();
@@ -22,7 +23,10 @@ function mountHeader() {
         classList,
         querySelector: () => null,
         contains: () => false,
-        addEventListener: () => {},
+        addEventListener: (name, cb) => {
+            if (!headerCallbacks.has(name)) headerCallbacks.set(name, []);
+            headerCallbacks.get(name).push(cb);
+        },
         getBoundingClientRect: () => ({ bottom: classes.has('is-scroll-revealed') ? 80 : -80 }),
     };
     const context = {
@@ -69,6 +73,14 @@ function mountHeader() {
             emit('scroll');
         },
         moveMouse(y) { emit('pointermove', { pointerType: 'mouse', clientY: y }); },
+        enterHeader(pointerType = 'mouse') {
+            for (const cb of headerCallbacks.get('pointerenter') || []) cb({ pointerType });
+            while (frames.length) frames.shift()();
+        },
+        leaveHeader(pointerType = 'mouse') {
+            for (const cb of headerCallbacks.get('pointerleave') || []) cb({ pointerType });
+            while (frames.length) frames.shift()();
+        },
     };
 }
 
@@ -101,5 +113,41 @@ test('top 18px mouse reveal works after scrolling down', () => {
     page.moveMouse(10);
     assert.equal(page.classes.has('is-scroll-revealed'), true);
     page.moveMouse(170);
+    assert.equal(page.classes.has('is-scroll-revealed'), false);
+});
+
+
+test('mouse held over revealed header keeps it shown during downward scroll', () => {
+    const page = mountHeader();
+    page.scrollTo(500);
+    page.scrollTo(400);
+    assert.equal(page.classes.has('is-scroll-revealed'), true);
+
+    page.enterHeader();
+    page.scrollTo(450);
+    page.scrollTo(700);
+    assert.equal(page.classes.has('is-scroll-revealed'), true);
+    assert.equal(page.cssVars.get('--app-sticky-offset'), '124px');
+
+    // Cursor leaving should restore downward-scroll behavior immediately.
+    page.leaveHeader();
+    assert.equal(page.classes.has('is-scroll-revealed'), false);
+    assert.equal(page.cssVars.get('--app-sticky-offset'), '44px');
+});
+
+test('hover over header at page top keeps it pinned on the first downward scroll', () => {
+    const page = mountHeader();
+    page.enterHeader();
+    page.scrollTo(100);
+    page.scrollTo(250);
+    assert.equal(page.classes.has('is-scroll-revealed'), true);
+    page.leaveHeader();
+    assert.equal(page.classes.has('is-scroll-revealed'), false);
+});
+
+test('touch pointer does not trigger a persistent hover lock', () => {
+    const page = mountHeader();
+    page.enterHeader('touch');
+    page.scrollTo(150);
     assert.equal(page.classes.has('is-scroll-revealed'), false);
 });
