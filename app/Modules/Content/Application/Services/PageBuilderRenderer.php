@@ -5,6 +5,7 @@ namespace App\Modules\Content\Application\Services;
 use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Content\Domain\Models\PageBuilderTemplate;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Collection;
 
 final class PageBuilderRenderer
@@ -16,6 +17,7 @@ final class PageBuilderRenderer
         private readonly PageBuilderScriptUrls $scripts,
         private readonly PageBuilderLqipManifest $lqipManifest,
         private readonly PageBuilderFirstPaintLqip $firstPaintLqip,
+        private readonly ThemeResolver $themeResolver,
     ) {}
 
     /** @return array{html:string,css:string,originalCss:string,scripts:list<string>,lqip:array<string,string>} */
@@ -111,8 +113,12 @@ final class PageBuilderRenderer
 
         $previews = $this->lqipManifest->forContent($html, $css);
         $originalCss = trim($css);
-        $html = $this->firstPaintLqip->apply($html, $previews);
-        $css = $this->firstPaintLqip->css($css, $previews);
+        // mskba_dark currently has no Page Builder @stack('scripts') and
+        // cannot hydrate URL previews. Leave its original media unchanged.
+        if ($this->themeResolver->active() === 'mskba_app') {
+            $html = $this->firstPaintLqip->apply($html, $previews);
+            $css = $this->firstPaintLqip->css($css, $previews);
+        }
 
         return [
             'html' => $html,
