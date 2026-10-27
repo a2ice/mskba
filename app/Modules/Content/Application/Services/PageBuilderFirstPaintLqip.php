@@ -42,6 +42,7 @@ final class PageBuilderFirstPaintLqip
                 '~\bsrc\s*=\s*(["\'])'.preg_quote($src[2], '~').'\1~i',
                 'src="'.e($preview).'"', $tag, 1,
             );
+            $initial = preg_replace('~\sloading\s*=\s*(["\']).*?\1~i', '', $initial);
             $initial = preg_replace('~\s*/?>$~', ' data-mskba-player-full-src="'.e($src[2]).'" data-mskba-player-lqip="1" loading="eager">', $initial, 1);
             // HTML <img> can now paint before JavaScript initializes. Keep the
             // original high-resolution fallback if scripts are disabled.
