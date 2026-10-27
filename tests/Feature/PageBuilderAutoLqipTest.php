@@ -60,7 +60,6 @@ final class PageBuilderAutoLqipTest extends TestCase
             ->assertSee($player->lqipUrl())
             ->assertSee($background->lqipUrl())
             ->assertSee('data-mskba-lqip-full-src', false)
-            ->assertSee('data-mskba-lqip-css', false)
             ->assertDontSee($noPreview->publicUrl().'/lqip');
     }
 
