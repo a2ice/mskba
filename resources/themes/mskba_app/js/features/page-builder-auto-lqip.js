@@ -33,14 +33,56 @@ if (canvas && manifestNode) {
 
     function decoded(image, finished) {
         const reveal = () => {
-            if (typeof image.decode === 'function') image.decode().then(finished, finished);
-            else finished();
+            if (typeof image.decode === 'function') {
+                image.decode().then(finished, () => {
+                    // A failed decode is NOT a successful hand-off. Only show
+                    // the original if the browser has usable image pixels.
+                    if (image.naturalWidth > 0) finished();
+                });
+            } else finished();
         };
         if (image.complete && image.naturalWidth > 0) reveal();
         else {
             image.addEventListener('load', reveal, { once: true });
-            image.addEventListener('error', finished, { once: true });
+            // Keep the last valid LQIP visible if the full image fails.
         }
+    }
+
+    function whenOriginalIsPaintable(image, overlay) {
+        let completed = false;
+        let retryMs = 85;
+        const visible = () => {
+            if (image.isConnected === false) return false;
+            const style = window.getComputedStyle(image);
+            const opacity = Number.parseFloat(style.opacity);
+            return style.visibility !== 'hidden' && style.display !== 'none'
+                && (!Number.isFinite(opacity) || opacity >= 0.92);
+        };
+        const attempt = () => {
+            if (completed || image.isConnected === false) return;
+            if (!visible()) {
+                // The original can already be decoded but still have opacity:0
+                // during a Page Builder reveal/parallax animation. Never fade
+                // the thumbnail first: that creates a blank frame on 'player'.
+                window.setTimeout(attempt, retryMs);
+                retryMs = Math.min(400, Math.round(retryMs * 1.45));
+                return;
+            }
+            // Allow the browser a paint opportunity before crossfading the
+            // small preview, not merely a completed network/decode promise.
+            window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+                if (!visible()) {
+                    window.setTimeout(attempt, retryMs);
+                    return;
+                }
+                if (completed) return;
+                completed = true;
+                overlay.classList.add('is-lqip-replaced');
+                if (reducedMotion) overlay.remove();
+                else overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+            }));
+        };
+        attempt();
     }
 
     function imagePreview(image) {
@@ -85,14 +127,7 @@ if (canvas && manifestNode) {
             image.before(overlay);
             decoratedImages.add(image);
 
-            let done = false;
-            decoded(image, () => {
-                if (done) return;
-                done = true;
-                overlay.classList.add('is-lqip-replaced');
-                if (reducedMotion) overlay.remove();
-                else overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-            });
+            decoded(image, () => whenOriginalIsPaintable(image, overlay));
         };
         // Wait for the CSS-driven dimensions to settle before positioning.
         window.requestAnimationFrame(render);
