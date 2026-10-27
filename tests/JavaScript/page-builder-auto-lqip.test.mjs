@@ -10,24 +10,27 @@ const uuid = '60d4d65b-308c-40aa-8466-158466632107';
 const full = '/media/site/' + uuid;
 const mini = full + '/lqip';
 
-function scene({ known = true, player = true, css = false, dynamic = false, picture = false } = {}) {
+function scene({ known = true, player = true, css = false, dynamic = false, picture = false, staticFallback = false } = {}) {
     const downloads = [];
     let notify = null;
     const attrs = new Map([
-        ['src', known ? mini : full],
-        ...(known ? [['data-mskba-lqip-full-src', full]] : []),
+        ['src', staticFallback ? '/images/bg-indoor.png' : known ? mini : full],
+        ...(known && !staticFallback ? [['data-mskba-lqip-full-src', full]] : []),
         ...(player ? [['data-mskba-lqip-venue-player', '1']] : []),
     ]);
     const sourceAttrs = new Map([
         ['data-mskba-lqip-full-srcset', full],
     ]);
     const source = {
-        media: '(max-width: 640px)',
+        media: '(max-width: 640px)', isConnected: true, tagName: 'SOURCE',
+        nodeType: 1, hasAttribute: name => sourceAttrs.has(name),
+        closest: selector => selector === 'picture' ? wrapper : null,
         getAttribute: name => sourceAttrs.get(name) || null,
         set srcset(value) { this.restored = value; },
     };
     const wrapper = {
         querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
+        querySelector: selector => selector.startsWith('img') ? img : null,
     };
     const img = {
         tagName: 'IMG', nodeType: 1, loading: 'eager', isConnected: true,
@@ -49,6 +52,7 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
         closest: () => null,
         querySelectorAll(selector) {
             if (selector.startsWith('img')) return [img];
+            if (selector.startsWith('source')) return picture ? [source] : [];
             if (selector.startsWith('[style')) return dynamic ? [bg] : [];
             return [];
         },
@@ -152,4 +156,15 @@ test('picture source switches mobile srcset with the same image without coordina
     await Promise.resolve();
     assert.equal(s.source.restored, full);
     assert.equal(s.img.src, full);
+});
+
+test('mobile source gets full quality even when fallback is static and has no LQIP', async () => {
+    const s = scene({ picture: true, staticFallback: true });
+    assert.equal(s.img.src, '/images/bg-indoor.png');
+    assert.equal(s.downloads.length, 1);
+    s.downloads[0].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.source.restored, full);
+    assert.equal(s.img.src, '/images/bg-indoor.png');
 });
