@@ -33,6 +33,18 @@
         @endauth
         @include('theme::partials.auth-dialog-root')
         @auth
+            @unless (request()->routeIs('account.contacts'))
+                <div class="app-subscription-contact-dialog">
+                    @include('theme::pages.account.partials.contact-add-dialog', [
+                        'contactDialogOnly' => true,
+                        'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
+                        'vkEnabled' => trim((string) config('vk.app_id')) !== '',
+                        'contactEmulationEnabled' => \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled(),
+                    ])
+                </div>
+            @endunless
+        @endauth
+        @auth
             @if (app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup(auth()->user()))
                 <div data-onboarding-pending
                      data-onboarding-url="{{ route('account.privacy.distribution') }}"
