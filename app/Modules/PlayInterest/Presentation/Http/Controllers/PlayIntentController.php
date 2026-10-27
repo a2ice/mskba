@@ -25,7 +25,7 @@ final class PlayIntentController extends Controller
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
         $type = $filters['type'] ?? 'all';
-        $status = $filters['status'] ?? 'active';
+        $status = $filters['status'] ?? 'all';
         $page = (int) ($filters['page'] ?? 1);
         $items = collect();
 

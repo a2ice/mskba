@@ -107,15 +107,15 @@ final class FavoritesController extends Controller
         ]);
         $venueId = (int) $validated['venue_id'];
         $enabled = (bool) $validated['notify_upcoming_events'];
-        $subscription = $subscriptions->set($request->user(), $venueId, $enabled);
-
-        // Keep the historical preference in sync when the venue happens to be
-        // favorited. Subscription ownership and lifecycle are independent.
+        // The favorite-preferences endpoint is only usable for an existing,
+        // active favorite. Game-subscription editing uses the independent
+        // VenueSubscriptionManager and does not require a favorite.
         $favorite = $favorites->owned($request)->where('entity_type', 'venue')
             ->where('entity_id', $venueId)->whereNull('trashed_at')->first();
-        if ($favorite !== null) {
-            $favorite->forceFill(['notify_upcoming_events' => $enabled])->save();
-        }
+        abort_unless($favorite !== null, 404);
+
+        $subscription = $subscriptions->set($request->user(), $venueId, $enabled);
+        $favorite->forceFill(['notify_upcoming_events' => $enabled])->save();
 
         return response()->json([
             'state' => $favorite ? 'active' : 'none',
