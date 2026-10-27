@@ -639,27 +639,27 @@ class AccountController extends Controller
         ConfirmContactVerificationRequest $request,
         Contact $contact,
         ConfirmContactVerificationHandler $confirmContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
-
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
 
         try {
             $confirmContactVerification->handle($contact, $request->toDTO());
         } catch (ContactVerificationException|LogicException $e) {
-            return redirect()
-                ->route('account.contacts')
-                ->withInput()
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            return redirect()->route('account.contacts')->withInput()
                 ->with('error', $e->getMessage())
                 ->with('contactVerificationFeedbackContactId', $contact->id);
         }
 
-        return redirect()
-            ->route('account.contacts')
-            ->with('status', 'Контакт подтвержден.');
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Контакт подтверждён.',
+                'contact_id' => $contact->id, 'verified' => $contact->refresh()->hasBeenVerified()]);
+        }
+
+        return redirect()->route('account.contacts')->with('status', 'Контакт подтвержден.');
     }
 
     public function destroyContact(Contact $contact, DeleteContactHandler $deleteContact): RedirectResponse
