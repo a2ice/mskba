@@ -17,16 +17,28 @@ const contextSource=ref('play'), contextType=ref('venue'), contextId=ref(props.o
 const favoriteOpen=ref(false), favoriteSelected=ref(true), favoriteState=ref('unknown'), favoriteBusy=ref(false);
 const favoriteError=ref(''), alreadySubscribed=ref(false), playOpen=ref(true);
 const hasFavorite=computed(()=>Number(contextId.value)>0 && !!contextType.value);
-const favoriteTitle=computed(()=>({
-    venue:'Площадка добавлена в избранное',
-    team:'Команда добавлена в избранное',
-    event:'Мероприятие добавлено в избранное',
-    user:'Пользователь добавлен в избранное',
-}[contextType.value]||'Добавлено в избранное'));
+// Each entity can expose its own optional module. Unconfigured types show
+// only the generic favorite confirmation, not an irrelevant game editor.
+const favoriteContexts={
+    venue:{title:'Площадка добавлена в избранное',
+        description:'Ты сможешь найти площадку в разделе «Избранное» личного кабинета.',
+        module:'play'},
+    team:{title:'Команда добавлена в избранное',
+        description:'Ты сможешь найти команду в разделе «Избранное» личного кабинета.'},
+    event:{title:'Мероприятие добавлено в избранное',
+        description:'Ты сможешь найти мероприятие в разделе «Избранное» личного кабинета.'},
+};
+const favoriteContext=computed(()=>favoriteContexts[contextType.value]||{
+    title:'Добавлено в избранное',
+    description:'Запись сохранена в разделе «Избранное» личного кабинета.',
+});
+const favoriteTitle=computed(()=>favoriteContext.value.title);
+const favoriteDescription=computed(()=>favoriteContext.value.description);
+const contextualModule=computed(()=>favoriteContext.value.module||null);
 const favoriteExtraVisible=computed(()=>contextSource.value==='play' && hasFavorite.value
     && contextType.value==='venue' && !!chosenVenueId.value && !editingId.value);
 const favoriteRetryNeeded=ref(false);
-const supportsPlay=computed(()=>!hasFavorite.value||contextType.value==='venue');
+const supportsPlay=computed(()=>!hasFavorite.value||contextualModule.value==='play');
 const titleText=computed(()=>contextSource.value==='favorite'?favoriteTitle.value:
     editingId.value?'Редактировать подписку':'Хочу здесь играть');
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
@@ -280,6 +292,10 @@ function searchVenueList(which){
 }
 function chooseVenue(v){
     selectedVenueId.value=v.id;selectedVenueName.value=v.name;selectedVenueUrl.value=v.url||'';
+    if(contextSource.value==='play' && contextType.value==='venue') {
+        contextId.value=v.id;favoriteState.value='unknown';
+        void syncFavorite();
+    }
     latitude.value=v.latitude??'';longitude.value=v.longitude??'';
     venueDisabled.value=false;venueSearch.value=v.name;venueMenu.value=false;
     excludedVenues.value=[];venueNotice.value='';
@@ -319,6 +335,10 @@ function unlinkVenue(){
     // Preserve the anchor and allow restoring it before saving.
     venueDisabled.value=!venueDisabled.value;
     if(venueDisabled.value) similar.value=false;
+    if(contextSource.value==='play') {
+        contextId.value=venueDisabled.value?null:selectedVenueId.value;
+        if(!venueDisabled.value)void syncFavorite();
+    }
     venueNotice.value='';
 }
 function readPending(){
@@ -472,16 +492,15 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
     <template v-else>
         <div v-show="step==='form'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <section v-if="contextSource==='favorite'" class="app-play-dialog__context-section">
-                <strong>{{favoriteTitle}}</strong>
-                <p class="app-play-dialog__context-hint">
-                    Объект уже сохранён в избранном. Управлять избранным можно в личном кабинете.</p>
+                <p class="app-play-dialog__context-hint">{{favoriteDescription}}</p>
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             </section>
-            <section v-if="supportsPlay && contextSource==='favorite'" class="app-play-dialog__context-section">
+            <section v-if="contextualModule==='play' && contextSource==='favorite'" class="app-play-dialog__context-section">
                 <label class="check-label"><input v-model="playOpen" type="checkbox" :disabled="alreadySubscribed">
                     Хочу здесь играть</label>
                 <p v-if="alreadySubscribed" class="app-play-dialog__context-hint">
-                    Уже есть подписка на эту площадку. <a href="/account/subscriptions">Смотреть подписки</a></p>
+                    У тебя уже есть подписка на эту площадку.
+                    <a href="/account/subscriptions?status=active">Смотреть подписки</a></p>
                 <p v-else-if="!playOpen" class="app-play-dialog__context-hint">Включи, чтобы задать параметры поиска игр.</p>
             </section>
             <template v-if="supportsPlay && playOpen">
