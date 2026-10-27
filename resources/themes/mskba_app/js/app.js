@@ -1,6 +1,8 @@
 import './header.js';
 import './features/appearance-preferences.js';
 import './notification-counts.js';
+import { initActionToasts } from './action-toasts.js';
+initActionToasts();
 import './operator-presence.js';
 import './context-bar.js';
 import './context-dialogs.js';
