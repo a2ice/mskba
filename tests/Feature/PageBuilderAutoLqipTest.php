@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Modules\Content\Application\Services\PageBuilderLqipManifest;
+use App\Modules\Content\Application\Services\PageBuilderFirstPaintLqip;
 use App\Modules\Content\Application\Services\PageBuilderPublisher;
 use App\Modules\Content\Application\Services\PageBuilderRenderer;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
@@ -45,8 +46,11 @@ final class PageBuilderAutoLqipTest extends TestCase
             $player->uuid => $player->lqipUrl(),
             $background->uuid => $background->lqipUrl(),
         ], $result['lqip']);
-        $this->assertStringContainsString($player->publicUrl(), $result['html']);
-        $this->assertStringContainsString($background->publicUrl(), $result['css']);
+        $this->assertStringContainsString('src="'.$player->lqipUrl().'"', $result['html']);
+        $this->assertStringContainsString('data-mskba-lqip-full-src="'.$player->publicUrl().'"', $result['html']);
+        $this->assertStringContainsString($background->lqipUrl(), $result['css']);
+        $this->assertStringNotContainsString('url("'.$background->publicUrl().'")', $result['css']);
+        $this->assertStringContainsString($background->publicUrl(), $result['originalCss']);
         $this->assertStringNotContainsString('data-site-media-lqip', $result['html']);
         $this->assertSame($htmlBefore, $page->fresh()->published_html);
         $this->assertSame($cssBefore, $page->fresh()->published_css);
@@ -55,6 +59,8 @@ final class PageBuilderAutoLqipTest extends TestCase
             ->assertSee('data-page-builder-lqip-manifest', false)
             ->assertSee($player->lqipUrl())
             ->assertSee($background->lqipUrl())
+            ->assertSee('data-mskba-lqip-full-src', false)
+            ->assertSee('data-mskba-lqip-css', false)
             ->assertDontSee($noPreview->publicUrl().'/lqip');
     }
 
@@ -110,6 +116,52 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertSame($background->lqipUrl(), $map[$background->uuid] ?? null);
         $this->assertSame($ball->lqipUrl(), $map[$ball->uuid] ?? null);
         $this->assertArrayNotHasKey($unused->uuid, $map);
+    }
+
+    public function test_all_library_images_and_picture_sources_use_native_first_paint_without_moving_css_coordinates(): void
+    {
+        $uuidA = '12345678-1234-1234-1234-123456789abc';
+        $uuidB = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+        $one = '/media/site/'.$uuidA;
+        $two = '/media/site/'.$uuidB;
+        $mini = [$uuidA => $one.'/lqip', $uuidB => $two.'/lqip'];
+        $markup = '<div class="mskba-v2-venues__photo">'
+            .'<img class="mskba-v2-venues__player" loading="lazy" src="'.$one.'">'
+            .'<img class="mskba-v2-venues__hoop" src="'.$two.'">'
+            .'<img class="no-mini" src="/images/ball-rolling.png">'
+            .'</div><picture><source media="(max-width: 640px)" srcset="'.$two.'">'
+            .'<img class="hero" data-site-media-lqip="'.$one.'/lqip" src="'.$one.'"></picture>';
+        $generator = app(PageBuilderFirstPaintLqip::class);
+        $rendered = $generator->apply($markup, $mini);
+
+        $this->assertStringContainsString('src="'.$one.'/lqip"', $rendered);
+        $this->assertStringContainsString('src="'.$two.'/lqip"', $rendered);
+        $this->assertStringContainsString('srcset="'.$two.'/lqip"', $rendered);
+        $this->assertStringContainsString('data-mskba-lqip-full-src="'.$one.'"', $rendered);
+        $this->assertStringContainsString('data-mskba-lqip-full-srcset="'.$two.'"', $rendered);
+        $this->assertStringContainsString('data-mskba-lqip-venue-player="1" loading="eager"', $rendered);
+        $this->assertStringNotContainsString('data-site-media-lqip=', $rendered);
+        $this->assertStringContainsString('src="/images/ball-rolling.png"', $rendered);
+        $this->assertStringContainsString('<noscript>', $rendered);
+
+        $css = '.player {background-size:contain;background-position:center;'
+            .'background-image:linear-gradient(#000,#fff),url("'.$one.'");'
+            .'transform:translate3d(1px,2px,0)}'
+            .'.bg{background-image:url(\''.$two.'\')}';
+        $lqCss = $generator->css($css, $mini);
+        $this->assertStringContainsString('url("'.$one.'/lqip")', $lqCss);
+        $this->assertStringContainsString('url("'.$two.'/lqip")', $lqCss);
+        $this->assertStringContainsString('background-size:contain', $lqCss);
+        $this->assertStringContainsString('transform:translate3d(1px,2px,0)', $lqCss);
+        $this->assertSame($css, $generator->css($css, []));
+    }
+
+    public function test_unsupported_or_missing_preview_preserves_original_src(): void
+    {
+        $generator = app(PageBuilderFirstPaintLqip::class);
+        $html = '<img class="player" src="/media/site/00000000-0000-4000-8000-000000000000">';
+        $this->assertSame($html, $generator->apply($html, []));
+        $this->assertSame($html, $generator->apply($html, ['00000000-0000-4000-8000-000000000000' => '/untrusted-preview']));
     }
 
 }
