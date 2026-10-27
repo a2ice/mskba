@@ -9,8 +9,10 @@ const script = readFileSync(
 );
 const asset = '60d4d65b-308c-40aa-8466-158466632107';
 
-function scene({ known = true, existing = false, background = true } = {}) {
+function scene({ known = true, existing = false, background = true, playerOpacity = 1 } = {}) {
     const imageEvents = new Map();
+    let currentOpacity = playerOpacity;
+    const retryQueue = [];
     let backgroundReady = background;
     let observerCallback = null;
     const previews = [];
@@ -88,7 +90,10 @@ function scene({ known = true, existing = false, background = true } = {}) {
         matchMedia: () => ({ matches: false }),
         requestAnimationFrame: callback => callback(),
         addEventListener() {},
+        setTimeout(callback) { retryQueue.push(callback); },
         getComputedStyle: element => element === img ? {
+            opacity: String(currentOpacity),
+            visibility: 'visible', display: 'block',
             objectFit: 'contain', objectPosition: 'center', borderRadius: '3px',
             transform: 'none', transformOrigin: 'center', zIndex: 'auto',
         } : {
@@ -119,6 +124,9 @@ function scene({ known = true, existing = false, background = true } = {}) {
             backgroundReady = true;
             observerCallback([{ type: 'attributes', target: bg }]);
         },
+        setPlayerOpacity(value) { currentOpacity = value; },
+        runNextRetry() { retryQueue.shift()?.(); },
+        pendingRetries() { return retryQueue.length; },
     };
 }
 
@@ -154,4 +162,30 @@ test('late JS-assigned tournament background becomes LQIP-capable after DOM muta
     assert.equal(s.previews.length, 1);
     assert.match(s.previews[0].style.backgroundImage, /\/lqip/);
     assert.equal(s.bgClasses.contains('has-pb-site-lqip-background'), true);
+});
+
+test('slow player reveal keeps LQIP until original is actually visible, not just decoded', async () => {
+    const s = scene({ background: false, playerOpacity: 0 });
+    assert.equal(s.previews.length, 1);
+    s.imageEvents.get('load')();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
+    assert.equal(s.pendingRetries(), 1, 'still waiting for original opacity to reach visibility');
+
+    s.setPlayerOpacity(0.4);
+    s.runNextRetry();
+    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
+
+    s.setPlayerOpacity(1);
+    s.runNextRetry();
+    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), true);
+});
+
+test('failed full-size image cannot remove its working LQIP placeholder', async () => {
+    const s = scene({ background: false });
+    assert.equal(s.previews.length, 1);
+    s.imageEvents.get('error')?.();
+    await Promise.resolve();
+    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
 });
