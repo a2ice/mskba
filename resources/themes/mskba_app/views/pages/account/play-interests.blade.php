@@ -53,6 +53,7 @@
                     'favoritesToggle' => route('favorites.toggle'),
                     'store' => route('play-intents.store'),
                     'base' => url('/account/play-intents'),
+                    'venueSubscriptions' => url('/account/venue-subscriptions'),
                     'amenities' => route('play-intents.amenities'),
                     'venuesSearch' => route('venues.search'),
                     'mine' => route('play-intents.mine'),
