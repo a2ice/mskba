@@ -42,11 +42,27 @@ if (authRoot) {
     createApp(AuthDialog, { options }).mount(authRoot);
 }
 
-const interestRoot = document.querySelector('[data-mskba-play-intent-root]');
-if (interestRoot) {
-    const options = JSON.parse(interestRoot.dataset.options || '{}');
-    createApp(PlayIntentDialog, { options }).mount(interestRoot);
+// Mount the same universal dialog once, even on pages with only favorite hearts.
+const interestRoot = document.querySelector('[data-mskba-play-intent-root]') || (() => {
+    const root=document.createElement('div');
+    root.dataset.mskbaPlayIntentRoot='1';
+    document.body.appendChild(root);
+    return root;
+})();
+{
+    const options=interestRoot.dataset.options?JSON.parse(interestRoot.dataset.options):{
+        authenticated:document.querySelector('meta[name="mskba-authenticated"]')?.content==='1',
+        endpoints:{
+            favoriteStatuses:'/favorites/venue-statuses',favoritesToggle:'/favorites/toggle',
+            store:'/account/play-intents',base:'/account/play-intents',
+            amenities:'/play-intents/amenities',venuesSearch:'/venues/search',
+            channels:'/account/subscription-channels',mine:'/account/subscriptions',
+        },
+    };
+    createApp(PlayIntentDialog,{options}).mount(interestRoot);
 }
+// Favorite hearts for venues and other supported entity types are handled by
+// venue-favorites.js; the single Vue dialog only provides post-save context.
 
 // Inertia is intentionally bootstrapped only on the isolated ui-preview route.
 // Legacy theme DOM enhancers and jQuery are not imported here.

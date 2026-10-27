@@ -18,21 +18,13 @@ final class VenueSubscriptionController extends Controller
             ->header('Cache-Control', 'private, no-store');
     }
 
-    public function update(Request $request, VenueSubscription $venueSubscription, VenueSubscriptionManager $manager,
-        SubscriptionDeliveryChannels $channels): JsonResponse
+    // Kept only for compatibility with old bookmarks. Venue subscriptions
+    // are now regular PlayIntent records edited through /account/play-intents.
+    public function update(Request $request): JsonResponse
     {
-        $this->authorizeOwner($request, $venueSubscription);
-        $data = $request->validate([
-            'active' => ['required', 'boolean'],
-            'delivery_channels' => ['sometimes', 'array', 'min:1'],
-            'delivery_channels.*' => ['string', 'in:in_app,telegram,email,phone'],
-        ]);
-        if (isset($data['delivery_channels'])) {
-            $manager->setChannels($venueSubscription, $channels->validate($request->user(), $data['delivery_channels']));
-        }
-        $updated = $manager->set($request->user(), (int) $venueSubscription->venue_id, (bool) $data['active']);
-        return response()->json(['status' => $updated?->status, 'id' => $updated?->id])
-            ->header('Cache-Control', 'private, no-store');
+        return response()->json([
+            'message' => 'Используй раздел «Мои подписки» для изменения подписки.',
+        ], 410);
     }
 
     private function authorizeOwner(Request $request, VenueSubscription $subscription): void

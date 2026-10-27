@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Modules\Favorites\Application\Services\FavoriteTargetRegistry;
 use App\Modules\Favorites\Application\Services\FavoritesManager;
 use App\Modules\Favorites\Domain\Models\Favorite;
-use App\Modules\PlayInterest\Application\Services\VenueSubscriptionManager;
-use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
+use App\Modules\PlayInterest\Application\Services\FavoritePlayIntentService;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -45,14 +45,15 @@ final class FavoritesController extends Controller
                 ],
             ])->all();
 
-        $subscriptions = $request->user() ? VenueSubscription::query()
+        $subscriptions = $request->user() ? PlayIntent::query()
             ->where('user_id', $request->user()->canonical()->id)
-            ->where('status', 'active')->whereIn('venue_id', $ids)
+            ->where('status', 'active')->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->whereIn('venue_id', $ids)
             ->pluck('id', 'venue_id')->all() : [];
         foreach ($ids as $id) {
             $key = (string) $id;
             $items[$key] = [...($items[$key] ?? ['state' => 'none', 'notify_upcoming_events' => false]),
-                'subscribed' => isset($subscriptions[$id])];
+                'subscribed' => isset($subscriptions[$id]),
+                'subscription_id' => $subscriptions[$id] ?? null];
         }
 
         $counts = Favorite::query()->where('entity_type', 'venue')->whereNull('trashed_at')
@@ -98,7 +99,7 @@ final class FavoritesController extends Controller
     public function updatePreferences(
         Request $request,
         FavoritesManager $favorites,
-        VenueSubscriptionManager $subscriptions,
+        FavoritePlayIntentService $subscriptions,
     ): JsonResponse {
         abort_unless($request->user() !== null, 401);
         $validated = $request->validate([
@@ -114,7 +115,9 @@ final class FavoritesController extends Controller
             ->where('entity_id', $venueId)->whereNull('trashed_at')->first();
         abort_unless($favorite !== null, 404);
 
-        $subscription = $subscriptions->set($request->user(), $venueId, $enabled);
+        $subscription = $enabled
+            ? $subscriptions->ensure($request->user(), $venueId)
+            : $subscriptions->disableVenueNews($request->user(), $venueId);
         $favorite->forceFill(['notify_upcoming_events' => $enabled])->save();
 
         return response()->json([

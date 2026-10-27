@@ -5,7 +5,6 @@ namespace App\Modules\PlayInterest\Application\Services;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\PlayInterest\Application\Services\SubscriptionDeliveryChannels;
-use App\Modules\PlayInterest\Application\Services\VenueSubscriptionManager;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -105,15 +104,8 @@ final class PlayIntentManager
             ]);
             $intent->save();
 
-            // A venue-news opt-in manages the same one-per-user venue subscription
-            // used by the favorite-heart dialog (not a duplicate game intent).
-            if ($venueId !== null && array_key_exists('notify_venue_news', $input)) {
-                $manager = app(VenueSubscriptionManager::class);
-                $subscription = $manager->set($canonical, (int) $venueId, (bool) $input['notify_venue_news']);
-                if ($subscription && ! empty($input['notify_venue_news'])) {
-                    $manager->setChannels($subscription, $input['venue_delivery_channels'] ?? ['in_app']);
-                }
-            }
+            // News and matched-game notifications belong to this same PlayIntent.
+            // No second subscription is created or synchronised.
 
             return $intent->refresh();
             });
