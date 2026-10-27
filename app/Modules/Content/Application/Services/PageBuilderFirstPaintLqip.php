@@ -61,7 +61,8 @@ final class PageBuilderFirstPaintLqip
 
             // Real original remains available without JS (including when
             // screen readers or crawlers request the HTML without hydration).
-            return $initial.'<noscript>'.$tag.'</noscript>';
+            $fallbackTag = preg_replace('~\sdata-site-media-lqip(?:-mobile)?\s*=\s*(["\']).*?\1~i', '', $tag);
+            return $initial.'<noscript>'.$fallbackTag.'</noscript>';
         }, $html) ?? $html;
     }
 
