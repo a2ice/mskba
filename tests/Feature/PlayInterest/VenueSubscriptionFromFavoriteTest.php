@@ -7,6 +7,7 @@ use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class VenueSubscriptionFromFavoriteTest extends TestCase
@@ -77,6 +78,36 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
         $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
             ->assertOk()->assertJsonPath('state', 'trashed');
         $this->assertSame('active', $intent->refresh()->status);
+    }
+
+    public function test_legacy_active_venue_news_merges_with_paused_search_without_reactivating_game_alerts(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $intent = PlayIntent::query()->create([
+            'user_id' => $user->id, 'venue_id' => $venue->id,
+            'name' => 'Вечерние игры', 'cadence' => 'flexible',
+            'status' => 'paused', 'notify_matches' => true,
+            'notify_venue_news' => false,
+        ]);
+        DB::table('venue_subscriptions')->insert([
+            'user_id' => $user->id, 'venue_id' => $venue->id,
+            'status' => 'active', 'delivery_channels' => json_encode(['in_app']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $migration = require database_path(
+            'migrations/2026_10_27_153000_merge_venue_subscriptions_into_play_intents.php'
+        );
+        $migration->up();
+
+        $this->assertDatabaseCount('play_intents', 1);
+        $intent->refresh();
+        $this->assertSame('active', $intent->status);
+        $this->assertSame('Вечерние игры', $intent->name);
+        $this->assertTrue($intent->notify_venue_news);
+        $this->assertFalse($intent->notify_matches);
+        $this->assertSame(['in_app'], $intent->venue_delivery_channels);
     }
 
     public function test_unlinked_external_delivery_channels_remain_unavailable(): void
