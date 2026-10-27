@@ -505,7 +505,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                     Хочу здесь играть</label>
                 <p v-if="alreadySubscribed" class="app-play-dialog__context-hint">
                     У тебя уже есть подписка на эту площадку.
-                    <a href="/account/subscriptions?status=active">Смотреть подписки</a></p>
+                    <a class="button secondary" href="/account/subscriptions?status=active">Смотреть подписки</a></p>
                 <p v-else-if="!playOpen" class="app-play-dialog__context-hint">Включи, чтобы задать параметры поиска игр.</p>
             </section>
             <template v-if="supportsPlay && playOpen">
