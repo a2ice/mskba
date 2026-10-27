@@ -203,8 +203,7 @@ if (root) {
         detailsTrigger=trigger;
         editedVenue=intent.subscription_type==='venue'?intent:null;
         detailsDialog.querySelector('[data-venue-channels-editor]')?.remove();
-        detailsTitle.textContent=intent.subscription_type==='venue'
-            ? 'Новости площадки' : (intent.name || 'Подписка №'+intent.id);
+        detailsTitle.textContent=intent.name || 'Подписка №'+intent.id;
         detailsBody.replaceChildren();
         if(detailsError){detailsError.hidden=true;detailsError.textContent='';}
         const addFact=(label,value)=>{
@@ -295,13 +294,10 @@ if (root) {
                     ? 'Уведомления о новых играх, тренировках и турнирах'
                     : summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
-                const viewButton=button('Посмотреть',()=>openDetails(intent,viewButton));
+                // "Посмотреть" always opens the original complete two-step editor,
+                // including subscriptions that originated from the favorite heart.
+                const viewButton=button('Посмотреть',()=>editSubscription(intent));
                 actions.append(viewButton);
-                if(intent.subscription_type!=='venue' && !['cancelled','completed'].includes(intent.effective_status)) {
-                    // Do not replace the full game-subscription editor with a
-                    // notification-only modal. Open the original first step.
-                    actions.append(button('Редактировать',()=>editSubscription(intent)));
-                }
                 if(intent.subscription_type==='venue') {
                     const update=async active=>{
                         try{
@@ -310,10 +306,6 @@ if (root) {
                         }catch(e){showActionError(e.message,card);}
                     };
                     if(intent.effective_status==='active') {
-                        actions.append(button('Настроить уведомления',()=>{
-                            openDetails(intent,viewButton);
-                            void venueChannelsEditor(intent);
-                        }));
                         actions.append(button('Отменить подписку',()=>{
                         if(window.confirm('Отключить уведомления этой площадки?'))void update(false);
                     }));
