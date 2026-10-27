@@ -715,13 +715,13 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             </div>
             <div class="app-play-dialog__settings">
-                <section class="app-play-dialog__notification-topic">
+                <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyMatches}">
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
-                    <div class="app-play-dialog__notification-channels">
+                    <div v-if="notifyMatches" class="app-play-dialog__notification-channels">
                         <strong>Каналы уведомлений</strong>
                         <div v-for="ch in channelList" :key="'game-'+ch.key" class="app-play-dialog__channel">
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('games',ch.key)"
-                                :disabled="!notifyMatches || !channelEnabled(ch.key) || channelsLoading || busy"
+                                :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('games',ch.key,$event.target.checked)">{{ch.label}}</label>
                             <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
                                 <small>{{channelReason(ch.key)}}</small>
@@ -730,16 +730,16 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                         </div>
                     </div>
                 </section>
-                <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок</label>
-                <section class="app-play-dialog__notification-topic">
+
+                <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyVenueNews || !chosenVenueId}">
                     <label class="check-label"><input v-model="notifyVenueNews" type="checkbox" :disabled="!chosenVenueId">
                         Уведомлять о новостях площадки</label>
                     <small v-if="!chosenVenueId" class="app-play-dialog__channel-hint">Для уведомлений о новостях выбери площадку на первом шаге.</small>
-                    <div class="app-play-dialog__notification-channels">
+                    <div v-if="notifyVenueNews && chosenVenueId" class="app-play-dialog__notification-channels">
                         <strong>Каналы уведомлений</strong>
                         <div v-for="ch in channelList" :key="'venue-'+ch.key" class="app-play-dialog__channel">
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('venue',ch.key)"
-                                :disabled="!chosenVenueId || !notifyVenueNews || !channelEnabled(ch.key) || channelsLoading || busy"
+                                :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('venue',ch.key,$event.target.checked)">{{ch.label}}</label>
                             <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
                                 <small>{{channelReason(ch.key)}}</small>
