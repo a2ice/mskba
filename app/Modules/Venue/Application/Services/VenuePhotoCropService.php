@@ -51,54 +51,14 @@ final class VenuePhotoCropService
                 $selection = $this->validatedSelection($photo->crop_draft);
                 $sourcePath = $photo->original_path ?: $photo->path;
                 $sourceContents = Storage::disk($photo->disk)->get($sourcePath);
-                $fullImage = $this->normalizer->normalize(
+                $image = $this->normalizer->crop(
                     $sourceContents,
-                    WebpImageNormalizer::MAX_INPUT_DIMENSION,
-                    10 * 1024 * 1024,
-                    90,
+                    $selection,
+                    VenueGalleryManager::MAX_OUTPUT_DIMENSION,
                 );
-
-                $source = @imagecreatefromstring($fullImage['contents']);
-
-                if ($source === false) {
-                    throw new RuntimeException('Не удалось открыть оригинал фотографии.');
-                }
-
-                try {
-                    $width = imagesx($source);
-                    $height = imagesy($source);
-                    $x = min($width - 1, (int) floor($selection['x'] * $width));
-                    $y = min($height - 1, (int) floor($selection['y'] * $height));
-                    $cropWidth = min($width - $x, max(1, (int) round($selection['width'] * $width)));
-                    $cropHeight = min($height - $y, max(1, (int) round($selection['height'] * $height)));
-                    $scale = min(1, VenueGalleryManager::MAX_OUTPUT_DIMENSION / max($cropWidth, $cropHeight));
-                    $outputWidth = max(1, (int) round($cropWidth * $scale));
-                    $outputHeight = max(1, (int) round($cropHeight * $scale));
-
-                    $output = imagecreatetruecolor($outputWidth, $outputHeight);
-
-                    if ($output === false) {
-                        throw new RuntimeException('Не удалось подготовить кадрированное изображение.');
-                    }
-
-                    try {
-                        imagealphablending($output, false);
-                        imagesavealpha($output, true);
-                        imagefilledrectangle($output, 0, 0, $outputWidth, $outputHeight, imagecolorallocatealpha($output, 0, 0, 0, 127));
-                        imagecopyresampled($output, $source, 0, 0, $x, $y, $outputWidth, $outputHeight, $cropWidth, $cropHeight);
-                        ob_start();
-                        $encoded = imagewebp($output, null, 82);
-                        $bytes = ob_get_clean();
-
-                        if (! $encoded || ! is_string($bytes) || $bytes === '') {
-                            throw new RuntimeException('Не удалось сформировать кадрированное изображение.');
-                        }
-                    } finally {
-                        imagedestroy($output);
-                    }
-                } finally {
-                    imagedestroy($source);
-                }
+                $bytes = $image['contents'];
+                $outputWidth = $image['width'];
+                $outputHeight = $image['height'];
 
                 if (! Storage::disk($photo->disk)->put($newPath, $bytes)) {
                     throw new RuntimeException('Не удалось сохранить кадрированное изображение.');
