@@ -8,7 +8,6 @@ use App\Modules\PlayInterest\Application\Services\PlayIntentManager;
 use App\Modules\PlayInterest\Application\Services\RecommendPlayableSlots;
 use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
-use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
 use App\Modules\PlayInterest\Presentation\Http\Requests\SavePlayIntentRequest;
 use App\Modules\Venue\Domain\Models\Amenity;
 use Illuminate\Http\JsonResponse;
@@ -27,37 +26,17 @@ final class PlayIntentController extends Controller
         $type = $filters['type'] ?? 'all';
         $status = $filters['status'] ?? 'all';
         $page = (int) ($filters['page'] ?? 1);
+        // Every subscription, including the one created from a favorite, is a PlayIntent.
+        // The optional type filter describes search scope, not a separate data model.
         $items = collect();
-
-        if ($type === 'all' || $type === 'play') {
-            $games = PlayIntent::query()->where('user_id', $user->id)->with('venue')->get();
-            foreach ($games as $game) {
-                $item = $this->serialize($game);
-                if ($status === 'all' || $item['effective_status'] === $status) {
-                    $item['updated_sort'] = $game->updated_at?->getTimestamp() ?? 0;
-                    $items->push($item);
-                }
-            }
-        }
-        if ($type === 'all' || $type === 'venue') {
-            $subscriptions = VenueSubscription::query()->where('user_id', $user->id)->with('venue')->get();
-            foreach ($subscriptions as $subscription) {
-                if ($status !== 'all' && $subscription->status !== $status) continue;
-                $venue = $subscription->venue;
-                $items->push([
-                    'id' => $subscription->id,
-                    'subscription_type' => 'venue',
-                    'name' => 'Новости площадки',
-                    'venue_id' => $subscription->venue_id,
-                    'venue' => $venue ? ['id' => (int) $venue->id, 'name' => $venue->name,
-                        'url' => route('venues.show', $venue->routeIdentifier())] : null,
-                    'status' => $subscription->status,
-                    'effective_status' => $subscription->status,
-                    'notify_venue_news' => $subscription->status === 'active',
-                    'delivery_channels' => $subscription->channels(),
-                    'updated_sort' => $subscription->updated_at?->getTimestamp() ?? 0,
-                ]);
-            }
+        $query = PlayIntent::query()->where('user_id', $user->id)->with('venue');
+        if ($type === 'venue') $query->whereNotNull('venue_id');
+        if ($type === 'play') $query->whereNull('venue_id');
+        foreach ($query->get() as $intent) {
+            $item = $this->serialize($intent);
+            if ($status !== 'all' && $item['effective_status'] !== $status) continue;
+            $item['updated_sort'] = $intent->updated_at?->getTimestamp() ?? 0;
+            $items->push($item);
         }
 
         $items = $items->sortByDesc('updated_sort')->values();

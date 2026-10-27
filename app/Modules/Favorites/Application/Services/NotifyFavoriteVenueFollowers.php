@@ -5,7 +5,7 @@ namespace App\Modules\Favorites\Application\Services;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
@@ -51,8 +51,9 @@ final readonly class NotifyFavoriteVenueFollowers
 
     private function send(int $venueId, string $type, int $id, string $title, string $body, string $url): void
     {
-        VenueSubscription::query()
-            ->where('venue_id', $venueId)->where('status', 'active')
+        PlayIntent::query()
+            ->where('venue_id', $venueId)->where('status', 'active')->where('notify_venue_news', true)
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->orderBy('id')->chunkById(100, function ($subscriptions) use ($type, $id, $title, $body, $url, $venueId): void {
                 foreach ($subscriptions as $subscription) {
                     $saved = DB::table('favorite_notification_deliveries')->insertOrIgnore([
@@ -72,7 +73,7 @@ final readonly class NotifyFavoriteVenueFollowers
                         payload: [
                             'source' => 'favorites.venue.upcoming',
                             'delivery_category' => 'general',
-                            'delivery_channels' => $subscription->channels(),
+                            'delivery_channels' => $subscription->venue_delivery_channels ?: ['in_app'],
                             'venue_id' => $venueId,
                             $type === 'event' ? 'event_id' : 'tournament_id' => $id,
                         ],
