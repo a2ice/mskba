@@ -98,7 +98,7 @@ function toast(message,failed=false){
 }
 async function applyFavorite(){
     if(!hasFavorite.value)return true;
-    if(favoriteState.value==='unknown'){favoriteError.value='Не удалось проверить текущее состояние избранного.';return false;}
+    if(favoriteState.value==='unknown'){favoriteError.value='Не удалось проверить текущее состояние избранного.';toast(favoriteError.value,true);return false;}
     if((favoriteState.value==='active')===favoriteSelected.value)return true;
     favoriteBusy.value=true;favoriteError.value='';
     try{
