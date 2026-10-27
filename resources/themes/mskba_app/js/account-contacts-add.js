@@ -17,6 +17,7 @@ if (root) {
     let step = 'method';
     let kind = 'email';
     let busy = false;
+    let methodLocked = false;
     let opener = null;
     let previousOverflow = '';
     let verificationContactId = null;
@@ -47,6 +48,7 @@ if (root) {
         footer.hidden = ['done', 'verification'].includes(target);
         next.hidden = !['method', 'value'].includes(target);
         back.hidden = target === 'method';
+        back.textContent = methodLocked ? 'Отмена' : 'Назад';
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
         if (target === 'verification') { if (codeInput) { codeInput.value=''; codeInput.focus(); } }
@@ -66,9 +68,10 @@ if (root) {
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         emulator.reset();
+        methodLocked = Boolean(skipMethod && radio && !radio.disabled);
         // From a + button the contact kind is already known. Do not ask the
         // user to choose it again. Keep the selection screen for normal entry.
-        if (skipMethod && radio && !radio.disabled) advanceFromMethod();
+        if (methodLocked) advanceFromMethod();
         else showStep('method');
     }
 
@@ -194,7 +197,11 @@ if (root) {
         showStep('method');
         value.value = '';
     });
-    back.addEventListener('click', () => { if (!busy) showStep('method'); });
+    back.addEventListener('click', () => {
+        if (busy) return;
+        if (methodLocked) dialog.close();
+        else showStep('method');
+    });
 
     next.addEventListener('click', async () => {
         if (busy) return;
