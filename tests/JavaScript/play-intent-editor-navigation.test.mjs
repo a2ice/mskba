@@ -6,7 +6,7 @@ const editor = readFileSync(new URL('../../resources/themes/mskba_app/js/compone
 const account = readFileSync(new URL('../../resources/themes/mskba_app/js/play-interest-mine.js', import.meta.url), 'utf8');
 
 test('editing a game subscription opens the original first stage', () => {
-    assert.match(editor, /editingId\.value=intent\.id;step\.value='form'/);
+    assert.match(editor, /editingId\.value=intent\.id;editingType\.value=intent\.subscription_type==='venue'\?'venue':'play';step\.value='form'/);
     assert.match(editor, /v-show="step==='form'"/);
     assert.match(editor, /v-show="step==='options'"/);
     assert.match(account, /button\('Посмотреть',\(\)=>editSubscription\(intent\)\)/);
