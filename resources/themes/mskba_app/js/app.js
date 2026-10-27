@@ -42,11 +42,38 @@ if (authRoot) {
     createApp(AuthDialog, { options }).mount(authRoot);
 }
 
-const interestRoot = document.querySelector('[data-mskba-play-intent-root]');
-if (interestRoot) {
-    const options = JSON.parse(interestRoot.dataset.options || '{}');
-    createApp(PlayIntentDialog, { options }).mount(interestRoot);
+// Mount the same universal dialog once, even on pages with only favorite hearts.
+const interestRoot = document.querySelector('[data-mskba-play-intent-root]') || (() => {
+    const root=document.createElement('div');
+    root.dataset.mskbaPlayIntentRoot='1';
+    document.body.appendChild(root);
+    return root;
+})();
+{
+    const options=interestRoot.dataset.options?JSON.parse(interestRoot.dataset.options):{
+        authenticated:document.querySelector('meta[name="mskba-authenticated"]')?.content==='1',
+        endpoints:{
+            favoriteStatuses:'/favorites/venue-statuses',favoritesToggle:'/favorites/toggle',
+            store:'/account/play-intents',base:'/account/play-intents',
+            amenities:'/account/play-intents/amenities',venuesSearch:'/venues/search',
+            channels:'/account/subscription-channels',mine:'/account/subscriptions',
+        },
+    };
+    createApp(PlayIntentDialog,{options}).mount(interestRoot);
 }
+// Extensible entry point for other favorite-capable entities. Only venues
+// offer the "Хочу здесь играть" section; other types render their own
+// contextual module or just the favorite section.
+document.addEventListener('click',event=>{
+    const trigger=event.target.closest?.('[data-favorite-type][data-favorite-id]');
+    if(!trigger || trigger.matches('[data-favorite-venue]'))return;
+    const id=Number(trigger.dataset.favoriteId),type=trigger.dataset.favoriteType;
+    if(!Number.isInteger(id)||id<=0||!type)return;
+    event.preventDefault();
+    window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
+        detail:{source:'favorite',type,id,name:trigger.dataset.favoriteName||''},
+    }));
+});
 
 // Inertia is intentionally bootstrapped only on the isolated ui-preview route.
 // Legacy theme DOM enhancers and jQuery are not imported here.
