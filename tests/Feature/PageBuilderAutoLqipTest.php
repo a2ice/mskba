@@ -44,6 +44,7 @@ final class PageBuilderAutoLqipTest extends TestCase
         $theme = config('themes');
         $theme['active'] = 'mskba_app';
         $this->app->instance(ThemeResolver::class, new ThemeResolver($theme));
+        view()->getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
         $htmlBefore = $page->published_html;
         $cssBefore = $page->published_css;
 
