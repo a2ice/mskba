@@ -39,6 +39,7 @@ function harness(legacy=false) {
             const scan=n=>{for(const c of n.children){if(c.matches(selector))out.push(c);scan(c);}};
             scan(this);return out;
         },
+        querySelector(selector){return this.querySelectorAll(selector)[0] || null;},
         getBoundingClientRect(){
             const [x=0,y=0]=this.style.translate.match(/-?\d+(?:\.\d+)?/g)?.map(Number)||[];
             return {left:200+x,top:100+y,width:420,height:300,right:620+x,bottom:400+y};
