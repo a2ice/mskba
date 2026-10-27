@@ -19,6 +19,10 @@ if (root) {
     let busy = false;
     let opener = null;
     let previousOverflow = '';
+    let verificationContactId = null;
+    const codeInput = dialog.querySelector('[data-contact-add-code]');
+    const verifyButton = dialog.querySelector('[data-contact-add-verify]');
+    const resendButton = dialog.querySelector('[data-contact-add-resend]');
 
     const setError = text => {
         error.textContent = text || '';
@@ -30,6 +34,8 @@ if (root) {
         busy = enabled;
         next.disabled = enabled;
         back.disabled = enabled;
+        if (verifyButton) verifyButton.disabled = enabled;
+        if (resendButton) resendButton.disabled = enabled;
         dialog.setAttribute('aria-busy', enabled ? 'true' : 'false');
     };
 
@@ -38,11 +44,12 @@ if (root) {
         setError('');
         steps.forEach(node => { node.hidden = node.dataset.contactAddStep !== target; });
         if (target === 'done') dialog.querySelector('.mskba-modal__body')?.scrollTo(0, 0);
-        footer.hidden = target === 'done';
+        footer.hidden = ['done', 'verification'].includes(target);
         next.hidden = !['method', 'value'].includes(target);
         back.hidden = target === 'method';
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
+        if (target === 'verification') { if (codeInput) { codeInput.value=''; codeInput.focus(); } }
         if (target === 'telegram') telegramLink.start();
         else telegramLink.stop();
     }
@@ -52,7 +59,8 @@ if (root) {
         const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
         (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
         value.value = '';
-        kind = preselected;
+        verificationContactId = null;
+        kind = (radio && !radio.disabled) ? preselected : 'email';
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
@@ -96,6 +104,31 @@ if (root) {
     }
 
     const refreshList = refreshAccountContactsList;
+    const verificationUrl = () => '/account/contacts/'+verificationContactId+'/verification';
+    async function sendEmailCode() {
+        if (!verificationContactId) return;
+        setBusy(true);setError('');
+        try { await post(verificationUrl(), {}); }
+        catch(e) { setError(e.message || 'Не удалось отправить код. Повтори запрос.'); }
+        finally { setBusy(false); }
+    }
+    resendButton?.addEventListener('click',()=>void sendEmailCode());
+    verifyButton?.addEventListener('click',async()=>{
+        if (busy||!verificationContactId) return;
+        const code=codeInput.value.trim();
+        if (!/^\d{6}$/.test(code)) {setError('Введи шестизначный код подтверждения.');return;}
+        setBusy(true);setError('');
+        try {
+            await post(verificationUrl()+'/confirm',{code});
+            let updated=true;
+            try { await refreshList(); } catch { updated=false; }
+            success.textContent='Email подтверждён и готов к уведомлениям.'+
+                (updated?'':' Контакты обновятся после перезагрузки страницы.');
+            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
+            showStep('done');
+        }catch(e){setError(e.message || 'Код не подошёл. Попробуй ещё раз.');}
+        finally {setBusy(false);}
+    });
 
     const telegramLink = createTelegramContactBotLink({
         root, dialog, post,
@@ -179,12 +212,18 @@ if (root) {
             const result = await post(root.dataset.addUrl, { type: kind, value: value.value });
             let updated = true;
             try { await refreshList(); } catch { updated = false; }
-            success.textContent = (result.contact?.value || value.value)
-                + ' — контакт добавлен. ' + (updated
-                    ? 'Подтвердить его можно в списке контактов.'
-                    : 'Не удалось обновить список автоматически. Обнови страницу, чтобы увидеть контакт.');
-            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
-            showStep('done');
+            if (kind==='email' && result.contact?.id && !result.contact.is_verified) {
+                verificationContactId=Number(result.contact.id);
+                showStep('verification');
+                await sendEmailCode();
+            } else {
+                success.textContent = (result.contact?.value || value.value)
+                    + ' — контакт добавлен. ' + (kind==='phone'
+                        ? 'SMS-подтверждение пока недоступно.'
+                        : updated?'':' Обнови страницу, чтобы увидеть контакт.');
+                window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
+                showStep('done');
+            }
         } catch (exception) {
             // Addition may already have succeeded even if the list-refresh request failed.
             if (exception instanceof Error) setError(exception.message);
