@@ -56,11 +56,11 @@ final class SavePlayIntentRequest extends FormRequest
             'notify_matches' => ['sometimes', 'boolean'],
             'notify_offers' => ['sometimes', 'boolean'],
             'notify_venue_news' => ['sometimes', 'boolean'],
-            'game_delivery_channels' => ['sometimes', 'array', 'min:1'],
+            'game_delivery_channels' => ['sometimes', 'array'],
             'game_delivery_channels.*' => ['string', Rule::in(['in_app', 'telegram', 'email'])],
-            'offers_delivery_channels' => ['sometimes', 'array', 'min:1'],
+            'offers_delivery_channels' => ['sometimes', 'array'],
             'offers_delivery_channels.*' => ['string', Rule::in(['in_app', 'telegram', 'email'])],
-            'venue_delivery_channels' => ['sometimes', 'array', 'min:1'],
+            'venue_delivery_channels' => ['sometimes', 'array'],
             'venue_delivery_channels.*' => ['string', Rule::in(['in_app', 'telegram', 'email'])],
         ];
     }
