@@ -12,7 +12,7 @@ const excludedSearch=ref(''), excludedSuggestions=ref([]), excludedMenu=ref(fals
 let venueTimer=null, excludedTimer=null;
 const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), dateMode=ref('range'), dateInput=ref('');
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
-const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), venueDisabled=ref(false);
+const editingId=ref(null), editingType=ref('play'), selectedVenueId=ref(props.options.venueId ?? null), venueDisabled=ref(false);
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
@@ -125,6 +125,7 @@ function restore(data){
     notifyVenueNews.value=data.notify_venue_news!==false;
     gameChannels.value=Array.isArray(data.game_delivery_channels)?data.game_delivery_channels:['in_app'];
     venueChannels.value=Array.isArray(data.venue_delivery_channels)?data.venue_delivery_channels:['in_app'];
+    for(const id of Object.keys(priority))delete priority[id];
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
@@ -263,7 +264,10 @@ function beginLogin(){
 async function save(payload){
     busy.value=true;error.value='';errors.value={};
     try{
-        const response=await fetch(editingId.value ? props.options.endpoints.base+'/'+editingId.value : props.options.endpoints.store,{
+        const url=editingId.value ? (editingType.value==='venue'
+            ? props.options.endpoints.venueSubscriptions+'/'+editingId.value+'/details'
+            : props.options.endpoints.base+'/'+editingId.value) : props.options.endpoints.store;
+        const response=await fetch(url,{
             method:editingId.value?'PUT':'POST',credentials:'same-origin',
             headers:{'Content-Type':'application/json',Accept:'application/json','X-Requested-With':'XMLHttpRequest',
                 'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
@@ -298,12 +302,14 @@ async function resume(){
     step.value='options';await openDialog();void refreshChannels();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;editingType.value='play';step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
     try{
-        const endpoint=props.options.endpoints.base+'/'+editingId.value+'/recommendations';
+        const endpoint=editingType.value==='venue'
+            ? props.options.endpoints.venueSubscriptions+'/'+editingId.value+'/recommendations'
+            : props.options.endpoints.base+'/'+editingId.value+'/recommendations';
         const response=await fetch(endpoint,{credentials:'same-origin',headers:{Accept:'application/json'}});
         if(!response.ok)throw Error('Не удалось подобрать площадки. Попробуй ещё раз.');
         matchingVenues.value=(await response.json()).data||[];
@@ -314,7 +320,7 @@ function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
     matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';
-    editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};
+    editingId.value=intent.id;editingType.value=intent.subscription_type==='venue'?'venue':'play';step.value='form';success.value=null;error.value='';errors.value={};
     restore(intent);
     if(['expired','cancelled'].includes(intent.effective_status)&&intent.cadence==='once'){
         dates.value=[];dateMode.value='dates'; // Old game dates cannot be replayed.
