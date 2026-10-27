@@ -108,3 +108,22 @@
         to { opacity: 1; }
     }
 }
+
+/* Task 293: dialog stays in the top layer, only its surface moves.
+   While dragging, dimming remains but ALL nested backdrops stop blurring. */
+.mskba-modal[open] > .mskba-modal__header {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.mskba-modal[data-mskba-dragging] > .mskba-modal__header { cursor: grabbing; }
+.mskba-modal__header :is(button,a,input,select,textarea) { cursor: pointer; touch-action: auto; }
+.mskba-modal__header[data-mskba-drag-handle]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -4px;
+}
+html[data-mskba-modal-dragging="true"] .mskba-modal::backdrop {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
