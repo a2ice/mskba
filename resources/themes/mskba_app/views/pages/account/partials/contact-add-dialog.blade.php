@@ -28,6 +28,18 @@
                            maxlength="255" autocomplete="email" placeholder="name@example.com" required>
                 </label>
             </section>
+            <section data-contact-add-step="verification" hidden>
+                <h3>Подтверждение Email</h3>
+                <p>Мы отправили шестизначный код на указанный адрес. Введи код, чтобы включить Email-уведомления.</p>
+                <label class="field-group" for="contact-add-verification-code">Код подтверждения
+                    <input id="contact-add-verification-code" data-contact-add-code type="text" inputmode="numeric"
+                           autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000">
+                </label>
+                <div class="app-contact-wizard__trigger">
+                    <button type="button" class="button primary" data-contact-add-verify>Подтвердить код</button>
+                    <button type="button" class="button secondary" data-contact-add-resend>Отправить код повторно</button>
+                </div>
+            </section>
             <section data-contact-add-step="telegram" hidden>
                 <p>Для подключения Telegram необходимо перейти в официальный Telegram-бот и там следовать инструкциям.</p>
                 <a data-bot-link href="#" class="button primary" target="_blank" rel="noopener noreferrer" hidden>Перейти в Telegram-бот</a>
