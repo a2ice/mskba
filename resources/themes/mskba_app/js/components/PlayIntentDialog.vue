@@ -17,8 +17,17 @@ const contextSource=ref('play'), contextType=ref('venue'), contextId=ref(props.o
 const favoriteOpen=ref(false), favoriteSelected=ref(true), favoriteState=ref('unknown'), favoriteBusy=ref(false);
 const favoriteError=ref(''), alreadySubscribed=ref(false), playOpen=ref(true);
 const hasFavorite=computed(()=>Number(contextId.value)>0 && !!contextType.value);
+const favoriteTitle=computed(()=>({
+    venue:'Площадка добавлена в избранное',
+    team:'Команда добавлена в избранное',
+    event:'Мероприятие добавлено в избранное',
+    user:'Пользователь добавлен в избранное',
+}[contextType.value]||'Добавлено в избранное'));
+const favoriteExtraVisible=computed(()=>contextSource.value==='play' && hasFavorite.value
+    && contextType.value==='venue' && !!chosenVenueId.value && !editingId.value);
+const favoriteRetryNeeded=ref(false);
 const supportsPlay=computed(()=>!hasFavorite.value||contextType.value==='venue');
-const titleText=computed(()=>contextSource.value==='favorite'?'Избранное и подписка':
+const titleText=computed(()=>contextSource.value==='favorite'?favoriteTitle.value:
     editingId.value?'Редактировать подписку':'Хочу здесь играть');
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
@@ -67,6 +76,8 @@ async function syncFavorite(){
         favoriteState.value=item?.state||'none';
         alreadySubscribed.value=Boolean(item?.subscribed);
         if(contextSource.value==='edit')favoriteSelected.value=favoriteState.value==='active';
+        if(contextSource.value==='favorite'&&favoriteState.value!=='active')
+            favoriteError.value='Не удалось подтвердить добавление в избранное.';
     }catch(e){favoriteState.value='unknown';favoriteError.value=e.message;}
     finally{favoriteBusy.value=false;}
 }
@@ -97,17 +108,25 @@ async function applyFavorite(){
     finally{favoriteBusy.value=false;}
 }
 async function saveFavoriteOnly(){
-    if(await applyFavorite())close();
+    // The heart has ALREADY persisted the favorite. The modal confirms the
+    // result or offers extra actions; closing it never mutates favorites.
+    close();
+}
+async function retryFavorite(){
+    if(await applyFavorite())favoriteRetryNeeded.value=false;
 }
 async function contextOpen(event){
     const detail=event.detail||{},id=Number(detail.id);
     if(!Number.isInteger(id)||id<=0)return;
     contextSource.value='favorite';contextType.value=detail.type||'venue';contextId.value=id;
-    playOpen.value=false;favoriteOpen.value=true;favoriteSelected.value=true;favoriteState.value='unknown';
+    playOpen.value=false;favoriteOpen.value=true;favoriteSelected.value=true;favoriteState.value='active';
+    favoriteRetryNeeded.value=false;
     alreadySubscribed.value=false;favoriteError.value='';
     editingId.value=null;step.value='form';success.value=null;error.value='';errors.value={};
     selectedVenueId.value=contextType.value==='venue'?id:null;
     selectedVenueName.value=detail.name||'';selectedVenueUrl.value='';venueSearch.value=selectedVenueName.value;
+    // For non-venue favorites the entity title is only used for context text.
+    // No game-search state or form is created.
     manuallyNamed.value=false;interestName.value='';requestId=null;
     venueDisabled.value=false;similar.value=false;radius.value=10;cadence.value='flexible';
     hasExpiry.value=false;expiryDate.value='';dayIds.value=[];dates.value=[];formats.value=[];
@@ -345,7 +364,6 @@ async function save(payload){
             error.value='Ты уже подписан на эту площадку. Изменить подписку можно в разделе «Мои подписки».';
             return;
         }
-        if(!await applyFavorite()){error.value=favoriteError.value;return;}
         const response=await fetch(editingId.value ? props.options.endpoints.base+'/'+editingId.value : props.options.endpoints.store,{
             method:editingId.value?'PUT':'POST',credentials:'same-origin',
             headers:{'Content-Type':'application/json',Accept:'application/json','X-Requested-With':'XMLHttpRequest',
@@ -362,6 +380,12 @@ async function save(payload){
         sessionStorage.removeItem(STORAGE);
         success.value=result.data;
         toast(editingId.value?'Подписка сохранена':'Подписка оформлена');
+        // Subscription is saved independently. Favorite is an optional second
+        // operation: failure must not erase the saved subscription or create
+        // another one on a retry.
+        if(favoriteExtraVisible.value) {
+            favoriteRetryNeeded.value=!await applyFavorite();
+        }
         window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
     finally{busy.value=false;}
@@ -386,6 +410,7 @@ function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventD
     contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
+    favoriteRetryNeeded.value=false;
     editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
@@ -433,6 +458,11 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <p class="app-play-dialog__success" role="status">{{editingId?'Изменения подписки сохранены.':'Подписка оформлена! Она не означает запись на игру или бронирование площадки.'}}</p>
             <p class="muted">Изменить параметры и видимость профиля можно в разделе «Мои подписки».</p>
+            <div v-if="favoriteRetryNeeded" class="app-play-dialog__context-section">
+                <p class="error" role="alert">Подписка сохранена, но не удалось добавить площадку в избранное: {{favoriteError}}</p>
+                <button type="button" class="button secondary" :disabled="favoriteBusy" @click="retryFavorite()">
+                    {{favoriteBusy?'Сохраняем…':'Повторить добавление в избранное'}}</button>
+            </div>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
             <a class="button primary" :href="options.endpoints.mine">Мои подписки</a>
@@ -441,15 +471,10 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
     </template>
     <template v-else>
         <div v-show="step==='form'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
-            <section v-if="hasFavorite" class="app-play-dialog__context-section">
-                <div class="app-play-dialog__context-row">
-                    <label class="check-label"><input v-model="favoriteSelected" type="checkbox"
-                        :disabled="favoriteBusy || favoriteState==='unknown'">Добавить в избранное</label>
-                    <button type="button" class="app-play-dialog__text-button" :aria-expanded="favoriteOpen"
-                        @click="favoriteOpen=!favoriteOpen">{{favoriteOpen?'Свернуть':'Подробнее'}}</button>
-                </div>
-                <p v-if="favoriteOpen" class="app-play-dialog__context-hint">
-                    Площадка сохраняется в избранном независимо от подписки.</p>
+            <section v-if="contextSource==='favorite'" class="app-play-dialog__context-section">
+                <strong>{{favoriteTitle}}</strong>
+                <p class="app-play-dialog__context-hint">
+                    Объект уже сохранён в избранном. Управлять избранным можно в личном кабинете.</p>
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             </section>
             <section v-if="supportsPlay && contextSource==='favorite'" class="app-play-dialog__context-section">
@@ -635,6 +660,13 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
         <div v-show="step==='options' && supportsPlay && playOpen" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <h3>Настройки подписки</h3>
             <p class="app-play-dialog__hint">Шаг 2 из 2. Проверь настройки перед сохранением подписки.</p>
+            <div v-if="favoriteExtraVisible" class="app-play-dialog__context-section">
+                <label class="check-label"><input v-model="favoriteSelected" type="checkbox"
+                    :disabled="favoriteBusy || favoriteState==='unknown'">
+                    Добавить площадку в избранное</label>
+                <p class="app-play-dialog__context-hint">Дополнительное действие. Подписка сохранится независимо от избранного.</p>
+                <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
+            </div>
             <div class="app-play-dialog__settings">
                 <section class="app-play-dialog__notification-topic">
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
@@ -692,7 +724,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                 <button class="button secondary" type="button" @click="close()">Отмена</button>
                 <button v-if="supportsPlay && playOpen" class="button primary" type="button" :disabled="busy || favoriteBusy" @click="next()">Далее</button>
                 <button v-else class="button primary" type="button" :disabled="busy || favoriteBusy"
-                    @click="saveFavoriteOnly()">{{favoriteBusy?'Сохраняем…':'Применить'}}</button>
+                    @click="saveFavoriteOnly()">Готово</button>
             </template>
             <template v-else>
                 <button class="button secondary" type="button" :disabled="busy" @click="step='form'">Назад</button>
