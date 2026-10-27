@@ -93,6 +93,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
+use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginalController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\BookingContributionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
@@ -111,6 +112,12 @@ Route::get('/', function () use ($themeResolver) {
     return app(PageBuilderController::class)->home(app(\App\Modules\Content\Application\Services\PageBuilderRenderer::class))
         ?? $themeResolver->page('welcome');
 })->name('welcome');
+
+Route::get('/backoffice/venues/{venue}/photos/{photo}/original', BackofficeVenuePhotoOriginalController::class)
+    ->middleware(['auth', 'throttle:60,1'])
+    ->whereNumber('venue')
+    ->whereNumber('photo')
+    ->name('backoffice.venue-photos.original');
 
 Route::get('/backoffice/page-builder/preview/{page}', [PageBuilderController::class, 'preview'])
     ->middleware(['auth', 'throttle:30,1'])

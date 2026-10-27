@@ -89,6 +89,84 @@ final class WebpImageNormalizer
         ];
     }
 
+    /**
+     * Crop the source before resizing it, so the editor never compounds previous
+     * crops or loses detail from an unnecessarily pre-downscaled WebP version.
+     * Coordinates refer to the EXIF-corrected original and are normalized to 0–1.
+     *
+     * @param array{x: float, y: float, width: float, height: float} $selection
+     * @return array{contents: string, mime: string, width: int, height: int}
+     */
+    public function crop(string $contents, array $selection, int $maxOutputDimension = 500): array
+    {
+        if (! extension_loaded('gd') || ! function_exists('imagewebp')) {
+            throw new RuntimeException('Обработка изображений временно недоступна.');
+        }
+
+        if ($contents === '' || strlen($contents) > 10 * 1024 * 1024) {
+            throw new InvalidArgumentException('Изображение превышает допустимый размер.');
+        }
+
+        $info = @getimagesizefromstring($contents);
+
+        if ($info === false || ! in_array($info['mime'] ?? null, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+            throw new InvalidArgumentException('Неподдерживаемый формат фотографии.');
+        }
+
+        if ($info[0] < 1 || $info[1] < 1 ||
+            $info[0] > self::MAX_INPUT_DIMENSION || $info[1] > self::MAX_INPUT_DIMENSION) {
+            throw new InvalidArgumentException('Размер изображения не должен превышать 6000×6000 пикселей.');
+        }
+
+        $source = @imagecreatefromstring($contents);
+
+        if ($source === false) {
+            throw new InvalidArgumentException('Не удалось прочитать фотографию.');
+        }
+
+        try {
+            $source = $this->applyExifOrientation($source, $contents, $info['mime']);
+            $sourceWidth = imagesx($source);
+            $sourceHeight = imagesy($source);
+            $left = min($sourceWidth - 1, (int) floor($selection['x'] * $sourceWidth));
+            $top = min($sourceHeight - 1, (int) floor($selection['y'] * $sourceHeight));
+            $cropWidth = min($sourceWidth - $left, max(1, (int) round($selection['width'] * $sourceWidth)));
+            $cropHeight = min($sourceHeight - $top, max(1, (int) round($selection['height'] * $sourceHeight)));
+            $scale = min(1, $maxOutputDimension / max($cropWidth, $cropHeight));
+            $width = max(1, (int) round($cropWidth * $scale));
+            $height = max(1, (int) round($cropHeight * $scale));
+            $target = imagecreatetruecolor($width, $height);
+
+            if ($target === false) {
+                throw new RuntimeException('Не удалось подготовить кадрированное изображение.');
+            }
+
+            try {
+                imagealphablending($target, false);
+                imagesavealpha($target, true);
+                imagefilledrectangle($target, 0, 0, $width, $height,
+                    imagecolorallocatealpha($target, 0, 0, 0, 127));
+                imagecopyresampled($target, $source, 0, 0, $left, $top,
+                    $width, $height, $cropWidth, $cropHeight);
+
+                ob_start();
+                $encoded = imagewebp($target, null, 82);
+                $webp = ob_get_clean();
+
+                if (! $encoded || ! is_string($webp) || $webp === '') {
+                    throw new RuntimeException('Не удалось создать WebP фотографию.');
+                }
+
+                return ['contents' => $webp, 'mime' => 'image/webp',
+                    'width' => $width, 'height' => $height];
+            } finally {
+                imagedestroy($target);
+            }
+        } finally {
+            imagedestroy($source);
+        }
+    }
+
     private function applyExifOrientation(\GdImage $source, string $contents, string $mime): \GdImage
     {
         $orientation = $this->readExifOrientation($contents, $mime);

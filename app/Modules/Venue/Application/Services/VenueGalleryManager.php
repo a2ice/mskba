@@ -21,6 +21,8 @@ final class VenueGalleryManager
 
     public const MAX_OUTPUT_DIMENSION = 500;
 
+    private const ORIGINAL_DISK = 'local';
+
     public function __construct(
         private readonly WebpImageNormalizer $normalizer,
         private readonly VenueRevisionManager $revisions,
@@ -28,16 +30,30 @@ final class VenueGalleryManager
 
     public function store(Venue $venue, string $contents, ?Actor $actor = null, bool $forcePublished = false): Media
     {
-        $image = $this->normalizer->normalize($contents, self::MAX_OUTPUT_DIMENSION);
+        $image = $this->normalizer->normalize($contents, self::MAX_OUTPUT_DIMENSION, 10 * 1024 * 1024);
         $disk = 'public';
-        $path = sprintf('venues/%d/%s.webp', $venue->id, Str::uuid());
+        $uuid = Str::uuid();
+        $path = sprintf('venues/%d/%s.webp', $venue->id, $uuid);
+        $mime = (string) (getimagesizefromstring($contents)['mime'] ?? '');
+        $extension = match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => throw new InvalidArgumentException('Неподдерживаемый формат изображения.'),
+        };
+        $originalPath = sprintf('venue-photo-originals/%d/%s.%s', $venue->id, $uuid, $extension);
 
         if (! Storage::disk($disk)->put($path, $image['contents'])) {
             throw new RuntimeException('Не удалось сохранить фотографию площадки.');
         }
 
+        if (! Storage::disk(self::ORIGINAL_DISK)->put($originalPath, $contents)) {
+            Storage::disk($disk)->delete($path);
+            throw new RuntimeException('Не удалось сохранить оригинал фотографии площадки.');
+        }
+
         try {
-            return DB::transaction(function () use ($venue, $actor, $forcePublished, $disk, $path, $image): Media {
+            return DB::transaction(function () use ($venue, $actor, $forcePublished, $disk, $path, $originalPath, $image): Media {
                 $lockedVenue = Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
 
                 if ($lockedVenue->trashed() || ($lockedVenue->status === VenueStatusEnum::BLOCKED && ! $forcePublished)) {
@@ -49,13 +65,14 @@ final class VenueGalleryManager
                 }
 
                 if ($lockedVenue->status === VenueStatusEnum::CONFIRMED && ! $forcePublished) {
-                    return $this->storeInRevision($lockedVenue, $actor, $disk, $path, $image);
+                    return $this->storeInRevision($lockedVenue, $actor, $disk, $path, $originalPath, $image);
                 }
 
-                return $this->storePublished($lockedVenue, $disk, $path, $image);
+                return $this->storePublished($lockedVenue, $disk, $path, $originalPath, $image);
             });
         } catch (Throwable $exception) {
             Storage::disk($disk)->delete($path);
+            Storage::disk(self::ORIGINAL_DISK)->delete($originalPath);
             throw $exception;
         }
     }
@@ -187,11 +204,11 @@ final class VenueGalleryManager
     }
 
     /** @param array<string, mixed> $image */
-    private function storeInRevision(Venue $venue, ?Actor $actor, string $disk, string $path, array $image): Media
+    private function storeInRevision(Venue $venue, ?Actor $actor, string $disk, string $path, string $originalPath, array $image): Media
     {
         $revision = $this->revisions->getOrCreateDraft($venue, $actor);
         $this->revisions->assertCurrent($revision);
-        $photo = $revision->media()->create($this->mediaAttributes($disk, $path, $image));
+        $photo = $revision->media()->create($this->mediaAttributes($disk, $path, $originalPath, $image));
         $payload = $revision->payload;
         $gallery = $this->galleryPayload($payload);
         array_unshift($gallery, ['kind' => 'draft', 'id' => $photo->id]);
@@ -212,7 +229,7 @@ final class VenueGalleryManager
     }
 
     /** @param array<string, mixed> $image */
-    private function storePublished(Venue $venue, string $disk, string $path, array $image): Media
+    private function storePublished(Venue $venue, string $disk, string $path, string $originalPath, array $image): Media
     {
         $photos = $venue->media()->where('collection', 'gallery')->lockForUpdate()->latest('id')->get();
         foreach ($photos as $photo) {
@@ -220,7 +237,7 @@ final class VenueGalleryManager
                 $photo->forceFill(['is_featured' => false])->save();
             }
         }
-        $photo = $venue->media()->create($this->mediaAttributes($disk, $path, $image) + ['is_featured' => true]);
+        $photo = $venue->media()->create($this->mediaAttributes($disk, $path, $originalPath, $image) + ['is_featured' => true]);
         foreach ($venue->media()->where('collection', 'gallery')->latest('id')->get()->slice(self::MAX_PHOTOS) as $obsolete) {
             $this->deleteMediaAfterCommit($obsolete);
         }
@@ -257,10 +274,11 @@ final class VenueGalleryManager
     }
 
     /** @param array<string, mixed> $image @return array<string, mixed> */
-    private function mediaAttributes(string $disk, string $path, array $image): array
+    private function mediaAttributes(string $disk, string $path, string $originalPath, array $image): array
     {
         return [
             'collection' => 'gallery', 'source' => 'upload', 'disk' => $disk, 'path' => $path,
+            'original_path' => $originalPath, 'original_disk' => self::ORIGINAL_DISK,
             'mime' => $image['mime'], 'size' => strlen($image['contents']), 'sort_order' => 0,
         ];
     }
@@ -275,8 +293,15 @@ final class VenueGalleryManager
     {
         $disk = $media->disk;
         $path = $media->path;
+        $originalPath = $media->original_path;
+        $originalDisk = $media->original_disk ?: $disk;
         $media->delete();
-        DB::afterCommit(fn () => Storage::disk($disk)->delete($path));
+        DB::afterCommit(function () use ($disk, $path, $originalDisk, $originalPath): void {
+            Storage::disk($disk)->delete($path);
+            if ($originalPath && ($originalPath !== $path || $originalDisk !== $disk)) {
+                Storage::disk($originalDisk)->delete($originalPath);
+            }
+        });
     }
 
     private function notFound(int $id): never

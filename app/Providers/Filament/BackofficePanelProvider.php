@@ -88,6 +88,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
                 '<meta name="mskba-reverb-app-key" content="'.e((string) config('broadcasting.connections.reverb.key')).'">',
             ))
+            ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.backoffice.venue-photo-crop-assets'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => view('filament.backoffice.support-chat-assets'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(<<<'HTML'
 <script>
