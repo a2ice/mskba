@@ -19,6 +19,7 @@
                     <select id="account-subscription-type" name="type">
                         <option value="all">Все типы</option>
                         <option value="play">Игровые подписки</option>
+                        <option value="venue">Подписки на площадки</option>
                     </select>
                     <svg aria-hidden="true"><use href="#chevron-down"/></svg>
                 </span>
@@ -28,7 +29,7 @@
                 <span class="select-control">
                     <select id="account-subscription-status" name="status">
                         <option value="all">Все статусы</option>
-                        <option value="active">Активные</option>
+                        <option value="active" selected>Активные</option>
                         <option value="paused">На паузе</option>
                         <option value="expired">Истекшие</option>
                         <option value="cancelled">Отменённые</option>
