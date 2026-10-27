@@ -118,7 +118,9 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
             ->assertJsonPath('channels.in_app.available', true)
             ->assertJsonPath('channels.telegram.available', false)
             ->assertJsonPath('channels.email.available', false)
-            ->assertJsonPath('channels.phone.available', false);
+            ->assertJsonMissingPath('channels.phone')
+            ->assertJsonPath('channels.telegram.action', 'add_contact')
+            ->assertJsonPath('channels.email.action', 'add_contact');
     }
 
     public function test_preference_cannot_be_changed_by_another_user(): void
