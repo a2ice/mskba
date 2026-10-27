@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::table('media', function (Blueprint $table): void {
             $table->string('original_path')->nullable();
+            $table->string('original_disk')->nullable();
             $table->json('crop_draft')->nullable();
             $table->json('crop_applied')->nullable();
         });
@@ -18,7 +19,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('media', function (Blueprint $table): void {
-            $table->dropColumn(['original_path', 'crop_draft', 'crop_applied']);
+            $table->dropColumn(['original_path', 'original_disk', 'crop_draft', 'crop_applied']);
         });
     }
 };
