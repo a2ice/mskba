@@ -61,19 +61,8 @@ const interestRoot = document.querySelector('[data-mskba-play-intent-root]') || 
     };
     createApp(PlayIntentDialog,{options}).mount(interestRoot);
 }
-// Extensible entry point for other favorite-capable entities. Only venues
-// offer the "Хочу здесь играть" section; other types render their own
-// contextual module or just the favorite section.
-document.addEventListener('click',event=>{
-    const trigger=event.target.closest?.('[data-favorite-type][data-favorite-id]');
-    if(!trigger || trigger.matches('[data-favorite-venue]'))return;
-    const id=Number(trigger.dataset.favoriteId),type=trigger.dataset.favoriteType;
-    if(!Number.isInteger(id)||id<=0||!type)return;
-    event.preventDefault();
-    window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
-        detail:{source:'favorite',type,id,name:trigger.dataset.favoriteName||''},
-    }));
-});
+// Favorite hearts for venues and other supported entity types are handled by
+// venue-favorites.js; the single Vue dialog only provides post-save context.
 
 // Inertia is intentionally bootstrapped only on the isolated ui-preview route.
 // Legacy theme DOM enhancers and jQuery are not imported here.
