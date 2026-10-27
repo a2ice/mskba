@@ -1145,6 +1145,15 @@ Route::get('/play-intents/amenities',
 Route::get('/account/subscription-channels',
     [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'availability'])
     ->middleware(['auth:web', 'throttle:30,1'])->name('subscriptions.channels');
+Route::put('/account/venue-subscriptions/{venueSubscription}/details',
+    [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'updateDetails'])
+    ->middleware(['auth:web', 'throttle:30,1'])->whereNumber('venueSubscription')
+    ->name('venue-subscriptions.details.update');
+Route::get('/account/venue-subscriptions/{venueSubscription}/recommendations',
+    [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'recommendations'])
+    ->middleware(['auth:web', 'throttle:30,1'])->whereNumber('venueSubscription')
+    ->name('venue-subscriptions.recommendations');
+
 Route::patch('/account/venue-subscriptions/{venueSubscription}',
     [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'update'])
     ->middleware(['auth:web', 'throttle:30,1'])->whereNumber('venueSubscription')
