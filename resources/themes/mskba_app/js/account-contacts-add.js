@@ -119,6 +119,7 @@ if (root) {
             try { await refreshList(); } catch { updated = false; }
             success.textContent = result.message
                 + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
+            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
             showStep('done');
         },
     });
@@ -182,6 +183,7 @@ if (root) {
                 + ' — контакт добавлен. ' + (updated
                     ? 'Подтвердить его можно в списке контактов.'
                     : 'Не удалось обновить список автоматически. Обнови страницу, чтобы увидеть контакт.');
+            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
             showStep('done');
         } catch (exception) {
             // Addition may already have succeeded even if the list-refresh request failed.
