@@ -47,11 +47,12 @@ if (root) {
         else telegramLink.stop();
     }
 
-    function open() {
+    function open(preselected = 'email') {
         opener = document.activeElement;
-        dialog.querySelector('input[name="new_contact_channel"][value="email"]').checked = true;
+        const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
+        (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
         value.value = '';
-        kind = 'email';
+        kind = preselected;
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
@@ -103,6 +104,7 @@ if (root) {
             try { await refreshList(); } catch { updated = false; }
             success.textContent = (result.message || 'Telegram подтверждён и добавлен в список.')
                 + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
+            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
             showStep('done');
         },
         onError: message => setError(message),
@@ -121,7 +123,8 @@ if (root) {
         },
     });
 
-    root.querySelector('[data-contact-add-open]').addEventListener('click', open);
+    root.querySelector('[data-contact-add-open]').addEventListener('click', () => open());
+    window.addEventListener('mskba:contact:add', event => open(event.detail?.type || 'email'));
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
     });
