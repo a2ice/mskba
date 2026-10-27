@@ -42,7 +42,39 @@ if (canvas && manifestNode) {
     };
 
     const hydrated = new WeakSet();
+    const hydratedSources = new WeakSet();
     const dynamicBackgrounds = new WeakMap();
+
+    function hydrateSource(source) {
+        if (hydratedSources.has(source)) return;
+        const full = source.getAttribute('data-mskba-lqip-full-srcset');
+        if (!full) return;
+        hydratedSources.add(source);
+        const begin = () => loaded(full, () => {
+            if (source.isConnected === false) return;
+            source.srcset = full;
+            // Even when the desktop fallback lacks a preview, restore the
+            // matched mobile source. If the fallback also has a preview,
+            // restore its src without downloading an unused desktop file.
+            const image = source.closest?.('picture')
+                ?.querySelector('img[data-mskba-lqip-full-src]');
+            if (image) {
+                image.src = image.getAttribute('data-mskba-lqip-full-src');
+                image.setAttribute('data-mskba-lqip-ready', '1');
+            }
+        });
+        const media = source.media && window.matchMedia(source.media);
+        if (!media || media.matches) begin();
+        else if (typeof media.addEventListener === 'function') {
+            media.addEventListener('change', event => {
+                if (event.matches) begin();
+            }, { once: true });
+        } else {
+            // Old browsers without MediaQueryList change events still recover
+            // full-resolution images on viewport changes.
+            begin();
+        }
+    }
 
     function hydrateImage(image) {
         if (hydrated.has(image)) return;
@@ -59,17 +91,14 @@ if (canvas && manifestNode) {
         hydrated.add(image);
         const fullSrc = image.getAttribute('data-mskba-lqip-full-src');
         const picture = image.closest('picture');
-        const source = picture && [...picture.querySelectorAll('source[data-mskba-lqip-full-srcset]')]
+        // Source and fallback are independently hydrated. This also supports
+        // a mobile LQIP next to a static/no-preview desktop fallback.
+        const activeSource = picture && [...picture.querySelectorAll('source[data-mskba-lqip-full-srcset]')]
             .find(node => !node.media || window.matchMedia(node.media).matches);
-        const target = source?.getAttribute('data-mskba-lqip-full-srcset') || fullSrc;
+        if (activeSource) return; // hydrateSource() restores both after decode.
         const begin = () => {
-            loaded(target, () => {
+            loaded(fullSrc, () => {
                 if (!image.isConnected) return;
-                // Both URLs change on the SAME picture/img DOM nodes; parallax
-                // styles and CSS layout do not change, and the full is decoded.
-                for (const node of picture?.querySelectorAll('source[data-mskba-lqip-full-srcset]') || []) {
-                    node.srcset = node.getAttribute('data-mskba-lqip-full-srcset');
-                }
                 image.src = fullSrc;
                 image.setAttribute('data-mskba-lqip-ready', '1');
             }, image.hasAttribute('data-mskba-lqip-venue-player') ? 'high' : 'auto');
@@ -125,6 +154,10 @@ if (canvas && manifestNode) {
         else hydrateDynamicBackground(node);
         node.querySelectorAll?.('img[data-mskba-lqip-full-src], img[src^="/media/site/"]')
             .forEach(hydrateImage);
+        if (node.tagName === 'SOURCE' && node.hasAttribute?.('data-mskba-lqip-full-srcset')) {
+            hydrateSource(node);
+        }
+        node.querySelectorAll?.('source[data-mskba-lqip-full-srcset]').forEach(hydrateSource);
         node.querySelectorAll?.('[style*="background-image"]').forEach(hydrateDynamicBackground);
     }
 
