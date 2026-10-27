@@ -55,7 +55,7 @@ const interestRoot = document.querySelector('[data-mskba-play-intent-root]') || 
         endpoints:{
             favoriteStatuses:'/favorites/venue-statuses',favoritesToggle:'/favorites/toggle',
             store:'/account/play-intents',base:'/account/play-intents',
-            amenities:'/account/play-intents/amenities',venuesSearch:'/venues/search',
+            amenities:'/play-intents/amenities',venuesSearch:'/venues/search',
             channels:'/account/subscription-channels',mine:'/account/subscriptions',
         },
     };
