@@ -169,7 +169,14 @@ final class VenueSubscriptionController extends Controller
             ]);
         }
 
-        return response()->json(['data' => $recommender->handle($intent),
+        // Recommendations are a preview even when this subscription does not
+        // have game notifications enabled and its linked search is paused.
+        $preview = clone $intent;
+        $preview->status = 'active';
+        if ($preview->expires_at?->isPast()) {
+            $preview->expires_at = now()->addDay();
+        }
+        return response()->json(['data' => $recommender->handle($preview),
             'meta' => ['ranking' => 'geography_and_amenities_only',
                 'availability_verified' => false]]);
     }
