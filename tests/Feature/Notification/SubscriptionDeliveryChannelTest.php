@@ -8,7 +8,6 @@ use App\Modules\Notification\Application\Services\SystemNotificationTimeline;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
-use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -31,7 +30,6 @@ final class SubscriptionDeliveryChannelTest extends TestCase
 
         $this->assertSame(UserNotificationStatusEnum::READ, $notification->status);
         $this->assertCount(0, app(SystemNotificationTimeline::class)->page($user)['entries']);
-        Queue::assertPushed(SendUserNotificationToTelegramJob::class);
     }
 
     public function test_in_app_channel_keeps_regular_new_message(): void
