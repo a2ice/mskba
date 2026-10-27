@@ -20,8 +20,8 @@
                 <span class="select-control">
                     <select id="account-subscription-type" name="type">
                         <option value="all">Все типы</option>
-                        <option value="play">Игровые подписки</option>
-                        <option value="venue">Подписки на площадки</option>
+                        <option value="play">Без конкретной площадки</option>
+                        <option value="venue">С привязкой к площадке</option>
                     </select>
                     <svg aria-hidden="true"><use href="#chevron-down"/></svg>
                 </span>
