@@ -40,6 +40,13 @@ final class SendUserNotificationEmailJob implements ShouldQueue
             return;
         }
 
+        // Source-specific subscription preferences override global delivery.
+        $selected = data_get($notification->payload, 'delivery_channels');
+        if (is_array($selected) && ! in_array('email', $selected, true)) {
+            $delivery->update(['status' => 'skipped', 'last_error' => 'Channel disabled for this subscription.']);
+            return;
+        }
+
         $category = UserNotificationDeliveryCategoryEnum::tryFrom(
             (string) data_get($notification->payload, 'delivery_category', UserNotificationDeliveryCategoryEnum::GENERAL->value),
         ) ?? UserNotificationDeliveryCategoryEnum::GENERAL;
