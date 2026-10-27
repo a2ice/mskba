@@ -35,9 +35,9 @@
 
     <div class="venue-photo-crop__toolbar">
         <div class="venue-photo-crop__controls" aria-label="Изменение масштаба кадра">
-            <button type="button" x-on:click="zoom(1 / 1.2)" :disabled="busy" aria-label="Увеличить масштаб">−</button>
-            <span>Размер рамки</span>
-            <button type="button" x-on:click="zoom(1.2)" :disabled="busy" aria-label="Уменьшить масштаб">+</button>
+            <button type="button" x-on:click="zoom(1.2)" :disabled="busy" aria-label="Уменьшить масштаб изображения">−</button>
+            <span>Масштаб</span>
+            <button type="button" x-on:click="zoom(1 / 1.2)" :disabled="busy" aria-label="Увеличить масштаб изображения">+</button>
         </div>
         <button type="button" class="venue-photo-crop__reset" x-on:click="reset()" :disabled="busy">Сбросить рамку</button>
     </div>
