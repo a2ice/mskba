@@ -28,3 +28,13 @@
 .mskba-favorite-feedback{position:fixed;bottom:20px;right:20px;padding:14px 20px;z-index:20000;
     background:var(--surface,#fff);border:1px solid var(--line,#dce0e5);border-radius:10px;box-shadow:0 12px 40px #0004}
 @media(prefers-reduced-motion:reduce){.mskba-favorite-heart{transition:none}}
+
+.mskba-favorites-confirm [hidden]{display:none!important}
+.mskba-favorites-confirm__checking{color:var(--text-muted,#667481)}
+.mskba-favorites-confirm__subscription strong{color:var(--text,#263340)}
+.mskba-favorites-confirm__link{display:block;text-align:center;text-decoration:none;padding:12px 16px}
+.mskba-action-toast-region{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:max(20px,env(safe-area-inset-bottom,0px));z-index:22000;display:grid;gap:10px;max-width:min(390px,calc(100vw - 28px));pointer-events:none}
+.mskba-action-toast{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 16px;background:#fff;color:#263340;border:1px solid #b4d7bf;border-left:4px solid #237e46;border-radius:11px;box-shadow:0 10px 32px #0003;pointer-events:auto;font-size:14px;line-height:1.4}
+.mskba-action-toast--error{border-color:#e5bab6;border-left-color:#b72b27}
+.mskba-action-toast button{border:0;background:none;color:inherit;font-size:22px;cursor:pointer}
+@media(max-width:600px){.mskba-action-toast-region{left:14px;right:14px;bottom:max(14px,env(safe-area-inset-bottom,0px));max-width:none}}
