@@ -12,6 +12,7 @@
     const pending = new Set();
     let frame = null;
     let dialog = null;
+    let feedbackRegion = null;
     const svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#heart"/></svg>';
     const idFromLink = (href) => {
         if (!href) return null;
@@ -119,6 +120,32 @@
             loading=false;if(pending.size)setTimeout(()=>void hydrate(),0);
         }
     }
+    function toast(message, failed = false) {
+        if (!feedbackRegion) {
+            feedbackRegion=document.createElement('div');
+            feedbackRegion.className='mskba-action-toast-region';
+            feedbackRegion.setAttribute('role','region');
+            feedbackRegion.setAttribute('aria-label','Результаты действий');
+            document.body.appendChild(feedbackRegion);
+        }
+        const item=document.createElement('div');
+        item.className='mskba-action-toast'+(failed?' mskba-action-toast--error':'');
+        item.setAttribute('role',failed?'alert':'status');
+        const label=document.createElement('span');
+        label.textContent=message;
+        const close=document.createElement('button');
+        close.type='button';close.textContent='×';close.setAttribute('aria-label','Закрыть уведомление');
+        close.addEventListener('click',()=>item.remove());
+        item.append(label,close);
+        feedbackRegion.appendChild(item);
+        window.setTimeout(()=>item.remove(),6000);
+    }
+    async function checkSubscription(id) {
+        const url=new URL(endpoints.statuses,location.origin);
+        url.searchParams.append('ids[]',String(id));
+        const result=await request(url);
+        return Boolean(result.data?.[String(id)]?.subscribed);
+    }
     function successDialog(id) {
         if(!dialog) {
             dialog=document.createElement('dialog');
@@ -126,9 +153,10 @@
             dialog.setAttribute('aria-labelledby','mskba-favorites-confirm-title');
             dialog.innerHTML = '<div class="mskba-favorites-confirm__header"><h2 id="mskba-favorites-confirm-title">Площадка добавлена в избранное</h2><button type="button" class="mskba-favorites-confirm__close" aria-label="Закрыть">×</button></div>'+
                 '<p>Ты сможешь найти площадку в разделе «Избранное» личного кабинета.</p>'+
-                '<label class="mskba-favorites-confirm__option"><input type="checkbox" checked><span>Получать уведомления о предстоящих мероприятиях: играх, тренировках и турнирах</span></label>'+
-                '<p class="mskba-favorites-confirm__error error" role="alert" hidden></p>'+
-                '<button type="button" class="button primary mskba-favorites-confirm__apply">Применить</button>';
+                '<p class="mskba-favorites-confirm__checking" role="status">Проверяем подписку…</p>'+
+                '<div class="mskba-favorites-confirm__subscription" hidden><p><strong>Ты уже подписан на эту площадку.</strong></p><p>Уведомления о новых играх, тренировках и турнирах уже включены.</p><a class="button primary mskba-favorites-confirm__link" href="/account/subscriptions?type=venue">Смотреть подписки</a></div>'+
+                '<div class="mskba-favorites-confirm__offer" hidden><label class="mskba-favorites-confirm__option"><input type="checkbox" checked><span>Получать уведомления о новых играх, тренировках и турнирах на этой площадке</span></label><button type="button" class="button primary mskba-favorites-confirm__apply">Применить</button></div>'+
+                '<p class="mskba-favorites-confirm__error error" role="alert" hidden></p>';
             document.body.appendChild(dialog);
             dialog.querySelector('.mskba-favorites-confirm__close').addEventListener('click',()=>dialog.close());
             dialog.addEventListener('cancel',()=>dialog.close());
@@ -137,25 +165,41 @@
                 const button=dialog.querySelector('.mskba-favorites-confirm__apply');
                 const error=dialog.querySelector('.mskba-favorites-confirm__error');
                 const chosen=dialog.querySelector('input[type=checkbox]').checked;
+                if(!chosen){dialog.close();return;}
                 button.disabled=true;error.hidden=true;
                 try {
                     const response=await request(endpoints.preferences,'POST',{
-                        venue_id:Number(dialog.dataset.venueId),
-                        notify_upcoming_events:chosen,
+                        venue_id:Number(dialog.dataset.venueId),notify_upcoming_events:true,
                     });
                     const targetId=Number(dialog.dataset.venueId);
-                    known.set(targetId,{...known.get(targetId),state:'active',notify_upcoming_events:response.notify_upcoming_events});
-                    paint(targetId);dialog.close();
-                }catch(e){error.textContent=e.message;error.hidden=false;}
-                finally{button.disabled=false;}
+                    known.set(targetId,{...known.get(targetId),state:'active',subscribed:response.subscribed});
+                    paint(targetId);
+                    toast('Вы подписались на обновления площадки');
+                    dialog.close();
+                }catch(e){
+                    error.textContent=e.message;error.hidden=false;
+                    toast('Не удалось оформить подписку. Попробуйте ещё раз',true);
+                }finally{button.disabled=false;}
             });
         }
         dialog.dataset.venueId=String(id);
-        dialog.querySelector('.mskba-favorites-confirm__error').hidden=true;
-        // Propose opt-in; actual subscription is saved only after Apply.
+        const checking=dialog.querySelector('.mskba-favorites-confirm__checking');
+        const subscription=dialog.querySelector('.mskba-favorites-confirm__subscription');
+        const offer=dialog.querySelector('.mskba-favorites-confirm__offer');
+        const error=dialog.querySelector('.mskba-favorites-confirm__error');
+        checking.hidden=false;subscription.hidden=true;offer.hidden=true;error.hidden=true;
         dialog.querySelector('input[type=checkbox]').checked=true;
         if(dialog.open)dialog.close();
         dialog.showModal();
+        void checkSubscription(id).then(subscribed=>{
+            if(!dialog.open||Number(dialog.dataset.venueId)!==id)return;
+            known.set(id,{...known.get(id),subscribed});
+            checking.hidden=true;subscription.hidden=!subscribed;offer.hidden=subscribed;
+        }).catch(e=>{
+            if(!dialog.open||Number(dialog.dataset.venueId)!==id)return;
+            checking.hidden=true;error.hidden=false;
+            error.textContent='Не удалось проверить текущую подписку. '+e.message;
+        });
     }
     async function toggle(id) {
         if(pending.has(id)||!known.has(id))return;
@@ -167,12 +211,14 @@
                 notify_upcoming_events:Boolean(result.notify_upcoming_events),
                 count:Number(result.count ?? known.get(id)?.count ?? 0),
             });
+            toast(result.state==='active'?'Площадка добавлена в избранное':'Площадка убрана из избранного');
             if(result.state==='active')successDialog(id);
         }catch(e) {
             let alert=document.querySelector('[data-favorites-inline-error]');
             if(!alert){alert=document.createElement('p');alert.dataset.favoritesInlineError='1';alert.className='error mskba-favorite-feedback';alert.setAttribute('role','alert');document.body.appendChild(alert);}
             alert.textContent=e.message;
             setTimeout(()=>alert.remove(),5000);
+            toast('Не удалось изменить избранное. Попробуйте ещё раз',true);
         }finally{pending.delete(id);paint(id);}
     }
     // Play intent dialog updates favorites through the same backend endpoints;
