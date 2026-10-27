@@ -18,6 +18,7 @@ final class VenuePhotoCropTest extends TestCase
     public function test_preserves_original_and_autosaved_draft_is_not_published_until_applied(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $venue = Venue::factory()->create();
         $raw = $this->stripedPng();
 
@@ -25,8 +26,10 @@ final class VenuePhotoCropTest extends TestCase
         $initialPath = $photo->path;
 
         $this->assertNotNull($photo->original_path);
-        Storage::disk('public')->assertExists([$initialPath, $photo->original_path]);
-        $this->assertSame($raw, Storage::disk('public')->get($photo->original_path));
+        $this->assertSame('local', $photo->original_disk);
+        Storage::disk('public')->assertExists($initialPath);
+        Storage::disk('local')->assertExists($photo->original_path);
+        $this->assertSame($raw, Storage::disk('local')->get($photo->original_path));
 
         $cropper = app(VenuePhotoCropService::class);
         $rightHalf = ['x' => 0.5, 'y' => 0.0, 'width' => 0.5, 'height' => 1.0];
@@ -41,9 +44,10 @@ final class VenuePhotoCropTest extends TestCase
         $this->assertNull($photo->crop_draft);
         $this->assertEquals($rightHalf, $photo->crop_applied);
         $this->assertNotSame($initialPath, $photo->path);
-        $this->assertSame($raw, Storage::disk('public')->get($photo->original_path));
+        $this->assertSame($raw, Storage::disk('local')->get($photo->original_path));
         Storage::disk('public')->assertMissing($initialPath);
         Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('local')->assertExists($photo->original_path);
 
         $image = imagecreatefromstring(Storage::disk('public')->get($photo->path));
         $this->assertNotFalse($image);
@@ -68,6 +72,7 @@ final class VenuePhotoCropTest extends TestCase
     public function test_rejects_invalid_crop_and_photo_from_another_venue(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $venue = Venue::factory()->create();
         $otherVenue = Venue::factory()->create();
         $photo = app(VenueGalleryManager::class)->store($venue, $this->stripedPng(), forcePublished: true);
@@ -87,6 +92,7 @@ final class VenuePhotoCropTest extends TestCase
     public function test_existing_normalized_photos_can_be_cropped_without_losing_the_original(): void
     {
         Storage::fake('public');
+        Storage::fake('local');
         $venue = Venue::factory()->create();
         $original = app(VenueGalleryManager::class)->store($venue, $this->stripedPng(), forcePublished: true);
         $path = 'venues/'.$venue->id.'/older-image.webp';
