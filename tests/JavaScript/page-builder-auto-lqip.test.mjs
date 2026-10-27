@@ -3,189 +3,153 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
-const script = readFileSync(
-    new URL('../../resources/themes/mskba_app/js/features/page-builder-auto-lqip.js', import.meta.url),
-    'utf8',
-);
-const asset = '60d4d65b-308c-40aa-8466-158466632107';
+const script = readFileSync(new URL(
+    '../../resources/themes/mskba_app/js/features/page-builder-native-lqip.js', import.meta.url,
+), 'utf8');
+const uuid = '60d4d65b-308c-40aa-8466-158466632107';
+const full = '/media/site/' + uuid;
+const mini = full + '/lqip';
 
-function scene({ known = true, existing = false, background = true, playerOpacity = 1 } = {}) {
-    const imageEvents = new Map();
-    let currentOpacity = playerOpacity;
-    const retryQueue = [];
-    let backgroundReady = background;
-    let observerCallback = null;
-    const previews = [];
-    const classes = () => {
-        const values = new Set();
-        return {
-            add: name => values.add(name),
-            contains: name => values.has(name),
-        };
+function scene({ known = true, player = true, css = false, dynamic = false, picture = false } = {}) {
+    const downloads = [];
+    let notify = null;
+    const attrs = new Map([
+        ['src', known ? mini : full],
+        ...(known ? [['data-mskba-lqip-full-src', full]] : []),
+        ...(player ? [['data-mskba-lqip-venue-player', '1']] : []),
+    ]);
+    const sourceAttrs = new Map([
+        ['data-mskba-lqip-full-srcset', full],
+    ]);
+    const source = {
+        media: '(max-width: 640px)',
+        getAttribute: name => sourceAttrs.get(name) || null,
+        set srcset(value) { this.restored = value; },
     };
-    const container = {
-        contains: () => true,
+    const wrapper = {
+        querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
     };
     const img = {
-        tagName: 'IMG',
-        nodeType: 1,
-        src: 'https://dev.mskba.ru/media/site/' + asset,
-        currentSrc: 'https://dev.mskba.ru/media/site/' + asset,
-        complete: false,
-        naturalWidth: 0,
-        loading: 'eager',
-        isConnected: true,
-        parentElement: container,
-        offsetParent: container,
-        offsetLeft: 17,
-        offsetTop: 20,
-        offsetWidth: 150,
-        offsetHeight: 90,
-        getBoundingClientRect: () => ({ width: 150, height: 90 }),
-        hasAttribute: name => existing && name === 'data-site-media-lqip',
-        closest: () => null,
-        before: overlay => previews.push(overlay),
-        addEventListener: (name, cb) => imageEvents.set(name, cb),
-        decode: () => Promise.resolve(),
+        tagName: 'IMG', nodeType: 1, loading: 'eager', isConnected: true,
+        complete: false, naturalWidth: 0,
+        getAttribute: name => attrs.get(name) || null,
+        setAttribute(name, value) { attrs.set(name, value); },
+        hasAttribute: name => attrs.has(name),
+        closest: selector => selector === 'picture' && picture ? wrapper : null,
+        set src(value) { attrs.set('src', value); },
+        get src() { return attrs.get('src'); },
     };
-    const bgClasses = classes();
     const bg = {
-        tagName: 'SECTION',
-        nodeType: 1,
-        classList: bgClasses,
-        closest: () => null,
-        getBoundingClientRect: () => ({ width: 500, height: 300 }),
-        prepend: preview => previews.push(preview),
+        nodeType: 1, tagName: 'DIV', id: 'tournaments-background',
+        isConnected: true, style: { backgroundImage: dynamic ? 'url("' + full + '")' : '' },
+        closest: () => null, querySelectorAll: () => [],
     };
     const canvas = {
-        tagName: 'DIV',
-        nodeType: 1,
-        classList: classes(),
+        nodeType: 1, tagName: 'DIV', id: '', style: {},
         closest: () => null,
-        querySelectorAll: selector => selector === 'img' ? [img] : [img, bg],
-    };
-    const manifest = {
-        textContent: JSON.stringify(known ? { [asset]: '/media/site/' + asset + '/lqip' } : {}),
-    };
-    const created = [];
-    const document = {
-        readyState: 'complete',
-        querySelector: sel => sel === '.mskba-page-builder' ? canvas :
-            sel === '[data-page-builder-lqip-manifest]' ? manifest : null,
-        createElement: tagName => {
-            const el = {
-                tagName, style: {}, classList: classes(),
-                attrs: {}, src: '',
-                setAttribute(name, value) { this.attrs[name] = value; },
-                addEventListener(name, handler) { this.listeners[name] = handler; },
-                listeners: {},
-                remove() { this.removed = true; },
-            };
-            created.push(el);
-            return el;
+        querySelectorAll(selector) {
+            if (selector.startsWith('img')) return [img];
+            if (selector.startsWith('[style')) return dynamic ? [bg] : [];
+            return [];
         },
     };
-    const window = {
-        location: { href: 'https://dev.mskba.ru/', origin: 'https://dev.mskba.ru' },
-        matchMedia: () => ({ matches: false }),
-        requestAnimationFrame: callback => callback(),
-        addEventListener() {},
-        setTimeout(callback) { retryQueue.push(callback); },
-        getComputedStyle: element => element === img ? {
-            opacity: String(currentOpacity),
-            visibility: 'visible', display: 'block',
-            objectFit: 'contain', objectPosition: 'center', borderRadius: '3px',
-            transform: 'none', transformOrigin: 'center', zIndex: 'auto',
-        } : {
-            backgroundImage: element === bg && backgroundReady
-                ? 'linear-gradient(90deg, transparent, #fff), url("https://dev.mskba.ru/media/site/' + asset + '")'
-                : 'none',
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat', backgroundClip: 'border-box',
-            backgroundOrigin: 'padding-box', borderRadius: '12px', position: 'relative',
+    const style = { textContent: css ? '.court{background-image:url("' + mini + '");background-size:cover}' : '', isConnected: true };
+    const manifest = { textContent: JSON.stringify(known ? { [uuid]: mini } : {}) };
+    const document = {
+        readyState: 'complete',
+        querySelector(selector) {
+            if (selector === '.mskba-page-builder') return canvas;
+            if (selector === '[data-page-builder-lqip-manifest]') return manifest;
+            if (selector === 'style[data-mskba-lqip-css]') return css ? style : null;
+            return null;
         },
     };
     class ImageMock {
-        complete = false;
         naturalWidth = 0;
+        complete = false;
+        set src(value) { this.url = value; downloads.push(this); }
+        get src() { return this.url; }
         decode() { return Promise.resolve(); }
-        set src(v) { this.url = v; }
+        succeed() { this.naturalWidth = 320; this.onload?.(); }
+        fail() { this.onerror?.(); }
     }
     class MutationObserverMock {
-        constructor(callback) { observerCallback = callback; }
+        constructor(callback) { notify = callback; }
         observe() {}
         disconnect() {}
     }
+    const window = {
+        location: { href: 'https://dev.mskba.ru/#venues', origin: 'https://dev.mskba.ru' },
+        matchMedia: () => ({ matches: true }),
+        addEventListener() {},
+    };
     runInNewContext(script, { document, window, URL, Image: ImageMock,
         MutationObserver: MutationObserverMock, console });
+
     return {
-        img, bg, bgClasses, imageEvents, previews, created,
-        activateBackground() {
-            backgroundReady = true;
-            observerCallback([{ type: 'attributes', target: bg }]);
+        img, bg, style, source, downloads,
+        setLateBackground(value) {
+            bg.style.backgroundImage = value;
+            notify([{ type: 'attributes', target: bg }]);
         },
-        setPlayerOpacity(value) { currentOpacity = value; },
-        runNextRetry() { retryQueue.shift()?.(); },
-        pendingRetries() { return retryQueue.length; },
     };
 }
 
-test('Page Builder LQIP finds matching HTML img and CSS background without changing editor sources', async () => {
+test('player starts with a real LQIP src in CSS position, then swaps the SAME image', async () => {
     const s = scene();
-    assert.equal(s.previews.length, 2);
-    assert.equal(s.previews[0].src, '/media/site/' + asset + '/lqip');
-    assert.equal(s.img.src, 'https://dev.mskba.ru/media/site/' + asset);
-    assert.equal(s.previews[0].style.position, 'absolute');
-    assert.match(s.previews[1].style.backgroundImage, /\/lqip/);
-    assert.equal(s.bgClasses.contains('has-pb-site-lqip-background'), true);
-    s.imageEvents.get('load')();
+    assert.equal(s.img.src, mini);
+    assert.equal(s.downloads.length, 1);
+    assert.equal(s.downloads[0].src, full);
+    s.downloads[0].succeed();
     await Promise.resolve();
     await Promise.resolve();
-    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), true);
+    assert.equal(s.img.src, full);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
 });
 
-test('missing LQIP yields no placeholders or extra requests', () => {
+test('full image failure keeps valid miniature visible without DOM cloning', async () => {
+    const s = scene();
+    s.downloads[0].fail();
+    await Promise.resolve();
+    assert.equal(s.img.src, mini);
+});
+
+test('missing LQIP does not add placeholders or image requests', () => {
     const s = scene({ known: false });
-    assert.equal(s.previews.length, 0);
-    assert.equal(s.bgClasses.contains('has-pb-site-lqip-background'), false);
+    assert.equal(s.downloads.length, 0);
+    assert.equal(s.img.src, full);
 });
 
-test('already enhanced Hero images and absent CSS backgrounds are left alone', () => {
-    const s = scene({ existing: true, background: false });
-    assert.equal(s.previews.length, 0);
-});
-
-test('late JS-assigned tournament background becomes LQIP-capable after DOM mutation', () => {
-    const s = scene({ existing: true, background: false });
-    assert.equal(s.previews.length, 0);
-    s.activateBackground();
-    assert.equal(s.previews.length, 1);
-    assert.match(s.previews[0].style.backgroundImage, /\/lqip/);
-    assert.equal(s.bgClasses.contains('has-pb-site-lqip-background'), true);
-});
-
-test('slow player reveal keeps LQIP until original is actually visible, not just decoded', async () => {
-    const s = scene({ background: false, playerOpacity: 0 });
-    assert.equal(s.previews.length, 1);
-    s.imageEvents.get('load')();
+test('CSS-authored background starts with lightweight URL, full replaces it after decode', async () => {
+    const s = scene({ css: true });
+    assert.match(s.style.textContent, /\/lqip/);
+    assert.equal(s.downloads.length, 2); // player and stylesheet original
+    const background = s.downloads.find(x => x.src === full);
+    background.succeed();
     await Promise.resolve();
     await Promise.resolve();
-    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
-    assert.equal(s.pendingRetries(), 1, 'still waiting for original opacity to reach visibility');
-
-    s.setPlayerOpacity(0.4);
-    s.runNextRetry();
-    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
-
-    s.setPlayerOpacity(1);
-    s.runNextRetry();
-    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), true);
+    assert.doesNotMatch(s.style.textContent, /\/lqip/);
+    assert.match(s.style.textContent, /background-size:cover/);
 });
 
-test('failed full-size image cannot remove its working LQIP placeholder', async () => {
-    const s = scene({ background: false });
-    assert.equal(s.previews.length, 1);
-    s.imageEvents.get('error')?.();
+test('late API-provided tournament background uses same CSS box, no overlay element', async () => {
+    const s = scene({ dynamic: false });
+    s.setLateBackground('linear-gradient(#000,#fff), url("' + full + '")');
+    assert.match(s.bg.style.backgroundImage, /\/lqip/);
+    assert.equal(s.downloads.length, 2);
+    s.downloads[1].succeed();
     await Promise.resolve();
-    assert.equal(s.previews[0].classList.contains('is-lqip-replaced'), false);
+    await Promise.resolve();
+    assert.doesNotMatch(s.bg.style.backgroundImage, /\/lqip/);
+    assert.match(s.bg.style.backgroundImage, /linear-gradient/);
+});
+
+test('picture source switches mobile srcset with the same image without coordinates changes', async () => {
+    const s = scene({ picture: true });
+    assert.equal(s.img.src, mini);
+    s.downloads[0].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.source.restored, full);
+    assert.equal(s.img.src, full);
 });
