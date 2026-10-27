@@ -15,6 +15,7 @@ final class PageBuilderRenderer
         private readonly HeroSliderComponent $heroSlider,
         private readonly PageBuilderScriptUrls $scripts,
         private readonly PageBuilderLqipManifest $lqipManifest,
+        private readonly PageBuilderFirstPaintLqip $firstPaintLqip,
     ) {}
 
     /** @return array{html:string,css:string,scripts:list<string>,lqip:array<string,string>} */
@@ -108,11 +109,14 @@ final class PageBuilderRenderer
             $owners[] = $component;
         }
 
+        $previews = $this->lqipManifest->forContent($html, $css);
+        $html = $this->firstPaintLqip->apply($html, $previews);
+
         return [
             'html' => $html,
             'css' => trim($css),
             'scripts' => $preview ? [] : $this->scripts->forOwners($owners),
-            'lqip' => $this->lqipManifest->forContent($html, $css),
+            'lqip' => $previews,
         ];
     }
 }
