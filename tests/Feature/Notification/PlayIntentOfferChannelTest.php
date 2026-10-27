@@ -72,6 +72,13 @@ final class PlayIntentOfferChannelTest extends TestCase
             'notify_offers' => false,
             'offers_delivery_channels' => ['telegram'],
         ]))->assertCreated()->assertJsonPath('data.offers_delivery_channels.0', 'telegram');
+
+        // The hidden panel must not block saving if its last checkbox
+        // was cleared before disabling the entire notification topic.
+        $this->postJson(route('play-intents.store'), $this->validPayload([
+            'notify_offers' => false,
+            'offers_delivery_channels' => [],
+        ]))->assertCreated()->assertJsonPath('data.offers_delivery_channels', []);
     }
 
     public function test_game_and_venue_channels_remain_independent_from_offers(): void
