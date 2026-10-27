@@ -1,4 +1,6 @@
 import $ from 'jquery';
+import { initModalDragging } from '../../mskba_app/js/modal-dragging.js';
+initModalDragging();
 import '../css/pages/team-roster-save.css';
 import '../css/pages/team-pending-invitations.css';
 import '../css/pages/team-member-panels.css';
