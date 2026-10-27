@@ -193,10 +193,11 @@ final class PlayIntentController extends Controller
             'radius_km', 'excluded_venue_ids', 'cadence', 'weekdays', 'dates', 'windows', 'period_from', 'period_until',
             'formats', 'duration_minutes', 'access_mode', 'venue_kind', 'amenity_preferences',
             'notify_matches', 'notify_offers', 'notify_venue_news', 'game_delivery_channels',
-            'venue_delivery_channels', 'status', 'show_on_venue', 'expires_at', 'created_at', 'updated_at',
+            'venue_delivery_channels', 'offers_delivery_channels', 'status', 'show_on_venue', 'expires_at', 'created_at', 'updated_at',
         ]);
         $data['game_delivery_channels'] ??= ['in_app'];
         $data['venue_delivery_channels'] ??= ['in_app'];
+        $data['offers_delivery_channels'] ??= ['in_app'];
         $data['subscription_type'] = 'play';
         $data['effective_status'] = $intent->status === 'active' && $intent->expires_at?->isPast()
             ? 'expired' : $intent->status;
