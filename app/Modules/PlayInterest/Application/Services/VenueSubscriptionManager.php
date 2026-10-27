@@ -32,11 +32,14 @@ final class VenueSubscriptionManager
             if ($subscription === null) {
                 return VenueSubscription::query()->firstOrCreate(
                     ['user_id' => $canonical->id, 'venue_id' => $venueId],
-                    ['status' => 'active', 'delivery_channels' => ['in_app']]
+                    ['status' => 'active', 'notify_venue_news' => true, 'delivery_channels' => ['in_app']]
                 );
             }
-            if ($subscription->status !== ($enabled ? 'active' : 'cancelled')) {
-                $subscription->forceFill(['status' => $enabled ? 'active' : 'cancelled'])->save();
+            if ($subscription->status !== ($enabled ? 'active' : 'cancelled') || (bool) $subscription->notify_venue_news !== $enabled) {
+                $subscription->forceFill([
+                    'status' => $enabled ? 'active' : 'cancelled',
+                    'notify_venue_news' => $enabled,
+                ])->save();
             }
             return $subscription->refresh();
         });
