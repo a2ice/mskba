@@ -1,7 +1,8 @@
 // Shared drag controller for native MSKBA dialogs and legacy modal shell.
 // Translation is kept on the dialog surface; never move the backdrop or
 // change focus, modal stacking, overflow locking or the existing lifecycle.
-const HANDLE = '.mskba-modal__header, .modal__header';
+const NATIVE = 'dialog.mskba-modal, dialog.app-venue-overlay, dialog.account-venue-price-dialog';
+const HANDLE = '.mskba-modal__header, .modal__header, .app-venue-overlay__header, .account-venue-price-dialog__head';
 const BLOCKED = 'button, a, input, textarea, select, label, summary, [role="button"], [contenteditable], [data-modal-no-drag]';
 const PAD = 8;
 const THRESHOLD = 5;
@@ -30,13 +31,14 @@ export function visualModalViewport(win) {
 export function initModalDragging(doc = document, win = window) {
     const offsets = new WeakMap();
     const observed = new WeakSet();
+    const lifecycleObservers = new Map();
     const tracked = new Set();
     let attempt = null;
 
-    const isNative = node => node?.matches?.('dialog.mskba-modal');
+    const isNative = node => node?.matches?.(NATIVE);
     const isLegacy = node => node?.matches?.('.modal__dialog');
     const surfaceFor = handle => {
-        const native = handle.closest?.('dialog.mskba-modal');
+        const native = handle.closest?.(NATIVE);
         if (native) return native.open ? native : null;
         const surface = handle.closest?.('.modal__dialog');
         if (!surface) return null;
@@ -157,8 +159,8 @@ export function initModalDragging(doc = document, win = window) {
         if (!node?.querySelectorAll) return;
         if (node.matches?.(HANDLE)) prepareHandle(node);
         node.querySelectorAll(HANDLE).forEach(prepareHandle);
-        const roots = [...node.querySelectorAll('dialog.mskba-modal, .modal')];
-        if (node.matches?.('dialog.mskba-modal, .modal')) roots.push(node);
+        const roots = [...node.querySelectorAll(NATIVE + ', .modal')];
+        if (node.matches?.(NATIVE + ', .modal')) roots.push(node);
         for (const root of roots) {
             if (observed.has(root)) continue;
             observed.add(root);
@@ -170,11 +172,17 @@ export function initModalDragging(doc = document, win = window) {
                 }
             });
             lifecycle.observe(root, {attributes:true, attributeFilter:root.matches('dialog')?['open']:['class','hidden']});
+            lifecycleObservers.set(root, lifecycle);
         }
     };
     prepare(doc.body);
     const observer = new win.MutationObserver(records => {
         for (const record of records) for (const node of record.addedNodes) prepare(node);
+        for (const [root, life] of lifecycleObservers) {
+            if (root.isConnected) continue;
+            life.disconnect();
+            lifecycleObservers.delete(root);
+        }
         if (attempt && !attempt.surface.isConnected) finish();
     });
     observer.observe(doc.body, {childList:true, subtree:true});
@@ -186,7 +194,8 @@ export function initModalDragging(doc = document, win = window) {
     win.addEventListener('pointermove', onMove, {passive:false});
     win.addEventListener('pointerup', onUp);
     win.addEventListener('pointercancel', onCancel);
-    win.addEventListener('blur', () => finish(true));
+    const onBlur = () => finish(true);
+    win.addEventListener('blur', onBlur);
     doc.addEventListener('keydown', onKey, true);
     doc.addEventListener('close', onClose, true);
     win.addEventListener('resize', onViewportChange);
@@ -199,6 +208,9 @@ export function initModalDragging(doc = document, win = window) {
         win.removeEventListener('pointermove', onMove);
         win.removeEventListener('pointerup', onUp);
         win.removeEventListener('pointercancel', onCancel);
+        win.removeEventListener('blur', onBlur);
+        for (const lifecycle of lifecycleObservers.values()) lifecycle.disconnect();
+        lifecycleObservers.clear();
         doc.removeEventListener('keydown', onKey, true);
         doc.removeEventListener('close', onClose, true);
         win.removeEventListener('resize', onViewportChange);
