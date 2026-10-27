@@ -3,6 +3,7 @@ if (root) {
     const outlet = root.querySelector('[data-play-interests-list]');
     const filters = root.querySelector('[data-subscriptions-filters]');
     const pagination = root.querySelector('[data-subscriptions-pagination]');
+    const venueSubscriptionsUrl = root.dataset.venueSubscriptionsUrl || '/account/venue-subscriptions';
     const detailsDialog = root.querySelector('[data-subscription-details-dialog]');
     const detailsBody = detailsDialog?.querySelector('[data-subscription-details-body]');
     const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
@@ -86,11 +87,12 @@ if (root) {
     const statusNames = {active:'Активно',paused:'На паузе',expired:'Истёк',cancelled:'Отменён',completed:'Выполнено'};
     const cadenceNames = {flexible:'Гибкий поиск',once:'Разово',regular:'Регулярно'};
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const request = async (url, method = 'GET') => {
+    const request = async (url, method = 'GET', body = null) => {
         const res = await fetch(url,{method,credentials:'same-origin',headers:{
             Accept:'application/json','X-Requested-With':'XMLHttpRequest',
             'X-CSRF-TOKEN':csrf(),
-        }});
+            ...(body !== null ? {'Content-Type':'application/json'} : {}),
+        },...(body !== null ? {body:JSON.stringify(body)} : {})});
         if(!res.ok)throw new Error(res.status===419?'Сессия истекла. Обнови страницу.':'Не удалось выполнить запрос.');
         return res.json();
     };
@@ -147,7 +149,8 @@ if (root) {
     function openDetails(intent, trigger) {
         if (!detailsDialog || !detailsBody) return;
         detailsTrigger=trigger;
-        detailsTitle.textContent=intent.name || 'Подписка №'+intent.id;
+        detailsTitle.textContent=intent.subscription_type==='venue'
+            ? 'Новости площадки' : (intent.name || 'Подписка №'+intent.id);
         detailsBody.replaceChildren();
         if(detailsError){detailsError.hidden=true;detailsError.textContent='';}
         const addFact=(label,value)=>{
@@ -157,23 +160,28 @@ if (root) {
             detailsBody.append(row);
         };
         addFact('Статус',statusNames[intent.effective_status] || intent.status);
-        addFact('Тип подписки','Игровая');
+        addFact('Тип подписки',intent.subscription_type==='venue'?'На обновления площадки':'Игровая');
         addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Без конкретной площадки'));
-        addFact('Условия',summary(intent));
-        addFact('Срок действия',intent.expires_at
+        if(intent.subscription_type==='venue') {
+            addFact('Уведомления','Новые игры, тренировки и турниры');
+            addFact('Каналы', (intent.delivery_channels||['in_app']).map(x=>({in_app:'Личные сообщения',telegram:'Telegram',email:'Email',phone:'Телефон'}[x]||x)).join(', '));
+        } else addFact('Условия',summary(intent));
+        if(intent.subscription_type!=='venue') addFact('Срок действия',intent.expires_at
             ? new Date(intent.expires_at).toLocaleDateString('ru-RU')
             : 'Бессрочно');
-        addFact('Уведомления об играх',intent.notify_matches?'Включены':'Выключены');
-        addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
-        addFact('Публикация игровых данных',intent.show_on_venue?'Включена':'Выключена');
+        if(intent.subscription_type!=='venue') {
+            addFact('Уведомления об играх',intent.notify_matches?'Включены':'Выключены');
+            addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
+            addFact('Публикация игровых данных',intent.show_on_venue?'Включена':'Выключена');
+        }
 
         const restorable=['expired','cancelled'].includes(intent.effective_status);
         if(detailsEdit){
-            detailsEdit.hidden=['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.hidden=intent.subscription_type==='venue'||['cancelled','completed'].includes(intent.effective_status);
             detailsEdit.onclick=()=>editSubscription(intent);
         }
         if(detailsRestore){
-            detailsRestore.hidden=!restorable;
+            detailsRestore.hidden=!restorable || intent.subscription_type==='venue';
             detailsRestore.onclick=()=>void restoreSubscription(intent,detailsDialog,detailsRestore);
         }
         detailsDialog.showModal();
@@ -224,10 +232,26 @@ if (root) {
                 } else {
                     card.append(make('p','Поиск без конкретной площадки','muted'));
                 }
-                card.append(make('p',summary(intent),'muted'));
+                card.append(make('p',intent.subscription_type==='venue'
+                    ? 'Уведомления о новых играх, тренировках и турнирах'
+                    : summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
                 const viewButton=button('Посмотреть',()=>openDetails(intent,viewButton));
                 actions.append(viewButton);
+                if(intent.subscription_type==='venue') {
+                    const update=async active=>{
+                        try{
+                            await request(venueSubscriptionsUrl+'/'+intent.id,'PATCH',{active});
+                            await load();
+                        }catch(e){showActionError(e.message,card);}
+                    };
+                    if(intent.effective_status==='active') actions.append(button('Отменить подписку',()=>{
+                        if(window.confirm('Отключить уведомления этой площадки?'))void update(false);
+                    }));
+                    else actions.append(button('Восстановить подписку',()=>void update(true)));
+                    card.append(actions);outlet.append(card);
+                    continue;
+                }
                 if(intent.effective_status === 'active') {
                     actions.append(button('Приостановить',async()=>{
                         try{await request(root.dataset.pauseUrl+'/'+intent.id+'/pause','PATCH');await load();}
