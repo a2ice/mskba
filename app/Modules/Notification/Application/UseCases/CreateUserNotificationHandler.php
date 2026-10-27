@@ -31,6 +31,7 @@ final class CreateUserNotificationHandler
             'user_id' => $targetUserId,
             'type' => $data->type,
             'status' => $internal ? UserNotificationStatusEnum::NEW : UserNotificationStatusEnum::READ,
+            'read_at' => $internal ? null : now(),
             'title' => $data->title,
             'body' => $data->body,
             'action_url' => $data->actionUrl,
