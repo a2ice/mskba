@@ -392,3 +392,6 @@ dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop
 .app-play-dialog__context-section .check-label{margin:0}
 .app-play-dialog__context-hint{font-size:13px;color:var(--text-muted,#667481);line-height:1.5;margin:0}
 .app-play-dialog__context-hint a{color:var(--accent,#c55200)}
+
+.app-play-dialog__notification-topic--collapsed{grid-template-columns:minmax(0,1fr)}
+.app-play-dialog__notification-channels .app-play-dialog__channel-hint a{font-size:12px;color:var(--accent,#c34c00)}
