@@ -55,10 +55,13 @@ final class PlayIntentManager
 
         $channels = app(SubscriptionDeliveryChannels::class);
         if ($input['notify_matches'] ?? true) {
-            $input['game_delivery_channels'] = $channels->validate($canonical, $input['game_delivery_channels'] ?? ['in_app']);
+            $input['game_delivery_channels'] = $channels->validate($canonical, $input['game_delivery_channels'] ?? ['in_app'], 'game_delivery_channels');
         }
         if ($venueId !== null && ($input['notify_venue_news'] ?? true)) {
-            $input['venue_delivery_channels'] = $channels->validate($canonical, $input['venue_delivery_channels'] ?? ['in_app']);
+            $input['venue_delivery_channels'] = $channels->validate($canonical, $input['venue_delivery_channels'] ?? ['in_app'], 'venue_delivery_channels');
+        }
+        if ($input['notify_offers'] ?? false) {
+            $input['offers_delivery_channels'] = $channels->validate($canonical, $input['offers_delivery_channels'] ?? ['in_app'], 'offers_delivery_channels');
         }
 
         $cadence = (string) $input['cadence'];
@@ -98,7 +101,8 @@ final class PlayIntentManager
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),
                 'notify_venue_news' => (bool) ($input['notify_venue_news'] ?? true),
                 'game_delivery_channels' => $input['game_delivery_channels'] ?? ['in_app'],
-                'venue_delivery_channels' => $input['venue_delivery_channels'] ?? ['in_app'],
+                'venue_delivery_channels' => $input['venue_delivery_channels'] ?? $intent->venue_delivery_channels ?? ['in_app'],
+                'offers_delivery_channels' => $input['offers_delivery_channels'] ?? $intent->offers_delivery_channels ?? ['in_app'],
                 'status' => $intent->exists && $intent->status === 'paused' ? 'paused' : 'active',
                 'expires_at' => $expires,
             ]);

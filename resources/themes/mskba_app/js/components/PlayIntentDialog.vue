@@ -46,32 +46,40 @@ const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
 const notifyMatches=ref(true), notifyOffers=ref(true), notifyVenueNews=ref(true), showOnVenue=ref(true), amenities=ref([]), priority=reactive({});
-const gameChannels=ref(['in_app']), venueChannels=ref(['in_app']);
+const gameChannels=ref(['in_app']), venueChannels=ref(['in_app']), offersChannels=ref(['in_app']);
 const channelsLoading=ref(false), channelError=ref('');
-const channelAvailability=ref({in_app:{available:true,reason:null},
-    telegram:{available:false,reason:'Проверяем доступность Telegram…'},
-    email:{available:false,reason:'Проверяем подтверждение Email…'},
-    phone:{available:false,reason:'SMS-уведомления пока недоступны.'}});
-const channelList=[{key:'in_app',label:'Личные сообщения'},{key:'telegram',label:'Telegram'},
-    {key:'email',label:'Email'},{key:'phone',label:'Телефон'}];
-function channelChecked(topic,key){return (topic==='games'?gameChannels.value:venueChannels.value).includes(key);}
+const channelAvailability=ref({
+    in_app:{available:true,reason:null,action:null},
+    telegram:{available:false,reason:null,action:'add_contact'},
+    email:{available:false,reason:null,action:'add_contact'},
+});
+const channelList=[{key:'in_app',label:'Личные сообщения'},
+    {key:'telegram',label:'Telegram'},{key:'email',label:'Email'}];
+const topicChannels={games:gameChannels,offers:offersChannels,venue:venueChannels};
+function channelChecked(topic,key){return topicChannels[topic]?.value.includes(key)===true;}
 function toggleChannel(topic,key,enabled){
-    const state=topic==='games'?gameChannels:venueChannels;
+    const state=topicChannels[topic];
+    if(!state)return;
     state.value=enabled?[...new Set([...state.value,key])]:state.value.filter(ch=>ch!==key);
 }
-function channelEnabled(key){return channelAvailability.value[key]?.available === true;}
-function channelReason(key){return channelAvailability.value[key]?.reason || '';}
-function addContact(key){window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{type:key}}));}
+function channelEnabled(key){return channelAvailability.value[key]?.available===true;}
+function channelAction(key){return channelAvailability.value[key]?.action||null;}
+function addContact(key){
+    if(!['telegram','email'].includes(key))return;
+    window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{type:key}}));
+}
 async function refreshChannels(){
     if(!isAuth.value||!props.options.endpoints?.channels)return;
     channelsLoading.value=true;channelError.value='';
     try{
-        const response=await fetch(props.options.endpoints.channels,{credentials:'same-origin',headers:{Accept:'application/json'}});
+        const response=await fetch(props.options.endpoints.channels,{
+            credentials:'same-origin',headers:{Accept:'application/json'}});
         if(!response.ok)throw new Error('Не удалось проверить доступность каналов.');
         channelAvailability.value=(await response.json()).channels;
-        for(const selected of [gameChannels,venueChannels])
-            selected.value=selected.value.filter(ch=>channelEnabled(ch));
-    }catch(e){channelError.value=e.message;}finally{channelsLoading.value=false;}
+        // A temporarily unavailable contact must not erase the user's
+        // previous choices. Enabled topics are validated again on save.
+    }catch(e){channelError.value=e.message;}
+    finally{channelsLoading.value=false;}
 }
 
 async function syncFavorite(){
@@ -150,7 +158,7 @@ async function contextOpen(event){
     for(const key of Object.keys(windows))delete windows[key];
     windows.all=[{part:'any',from:'',to:''}];
     duration.value='';notifyMatches.value=true;notifyOffers.value=false;notifyVenueNews.value=true;
-    showOnVenue.value=false;gameChannels.value=['in_app'];venueChannels.value=['in_app'];
+    showOnVenue.value=false;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];
     await openDialog();
     if(contextType.value==='venue'){
         try{
@@ -209,6 +217,7 @@ function serialize(){
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
         notify_venue_news:Boolean(chosenVenueId.value && notifyVenueNews.value),
         game_delivery_channels:gameChannels.value,venue_delivery_channels:venueChannels.value,
+        offers_delivery_channels:offersChannels.value,
         show_on_venue:Boolean(showOnVenue.value),
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
@@ -241,6 +250,7 @@ function restore(data){
     notifyVenueNews.value=data.notify_venue_news!==false;
     gameChannels.value=Array.isArray(data.game_delivery_channels)?data.game_delivery_channels:['in_app'];
     venueChannels.value=Array.isArray(data.venue_delivery_channels)?data.venue_delivery_channels:['in_app'];
+    offersChannels.value=Array.isArray(data.offers_delivery_channels)?data.offers_delivery_channels:['in_app'];
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
@@ -445,7 +455,7 @@ function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventD
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
-    editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
+    editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
@@ -705,35 +715,50 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             </div>
             <div class="app-play-dialog__settings">
-                <section class="app-play-dialog__notification-topic">
+                <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyMatches}">
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
-                    <div class="app-play-dialog__notification-channels">
+                    <div v-if="notifyMatches" class="app-play-dialog__notification-channels">
                         <strong>Каналы уведомлений</strong>
                         <div v-for="ch in channelList" :key="'game-'+ch.key" class="app-play-dialog__channel">
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('games',ch.key)"
-                                :disabled="!notifyMatches || !channelEnabled(ch.key) || channelsLoading || busy"
+                                :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('games',ch.key,$event.target.checked)">{{ch.label}}</label>
                             <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
-                                <small>{{channelReason(ch.key)}}</small>
-                                <button type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
                             </div>
                         </div>
                     </div>
                 </section>
-                <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок</label>
-                <section class="app-play-dialog__notification-topic">
+                <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyOffers}">
+                    <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок</label>
+                    <div v-if="notifyOffers" class="app-play-dialog__notification-channels">
+                        <strong>Каналы уведомлений</strong>
+                        <div v-for="ch in channelList" :key="'offers-'+ch.key" class="app-play-dialog__channel">
+                            <label class="check-label"><input type="checkbox" :checked="channelChecked('offers',ch.key)"
+                                :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
+                                @change="toggleChannel('offers',ch.key,$event.target.checked)">{{ch.label}}</label>
+                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyVenueNews || !chosenVenueId}">
                     <label class="check-label"><input v-model="notifyVenueNews" type="checkbox" :disabled="!chosenVenueId">
                         Уведомлять о новостях площадки</label>
                     <small v-if="!chosenVenueId" class="app-play-dialog__channel-hint">Для уведомлений о новостях выбери площадку на первом шаге.</small>
-                    <div class="app-play-dialog__notification-channels">
+                    <div v-if="notifyVenueNews && chosenVenueId" class="app-play-dialog__notification-channels">
                         <strong>Каналы уведомлений</strong>
                         <div v-for="ch in channelList" :key="'venue-'+ch.key" class="app-play-dialog__channel">
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('venue',ch.key)"
-                                :disabled="!chosenVenueId || !notifyVenueNews || !channelEnabled(ch.key) || channelsLoading || busy"
+                                :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('venue',ch.key,$event.target.checked)">{{ch.label}}</label>
                             <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
-                                <small>{{channelReason(ch.key)}}</small>
-                                <button type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
                             </div>
                         </div>
                     </div>

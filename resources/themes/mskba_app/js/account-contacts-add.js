@@ -157,7 +157,7 @@ if (root) {
         },
     });
 
-    root.querySelector('[data-contact-add-open]').addEventListener('click', () => open());
+    root.querySelector('[data-contact-add-open]')?.addEventListener('click', () => open());
     window.addEventListener('mskba:contact:add', event => open(event.detail?.type || 'email'));
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });

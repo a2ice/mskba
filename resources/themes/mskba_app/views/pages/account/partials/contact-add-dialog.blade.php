@@ -6,7 +6,9 @@
      data-telegram-status-url="{{ route('account.telegram.bot.link.status') }}"
      data-telegram-bot="{{ $telegramBotUsername }}"
      @if ($contactEmulationEnabled ?? false) data-emulate-url="{{ route('account.contacts.provider-emulation') }}" @endif>
-    <button type="button" class="button primary" data-contact-add-open>Добавить контакт</button>
+    @unless($contactDialogOnly ?? false)
+        <button type="button" class="button primary" data-contact-add-open>Добавить контакт</button>
+    @endunless
     <dialog class="mskba-modal app-contact-wizard__dialog" data-contact-add-modal aria-labelledby="contact-add-title">
         <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
             <h2 id="contact-add-title" tabindex="-1" class="eyebrow accent mskba-auth-heading">Добавить контакт</h2>
