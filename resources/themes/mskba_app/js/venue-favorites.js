@@ -33,7 +33,7 @@
             'Не удалось сохранить изменения. Попробуйте ещё раз.');
         return res.json();
     };
-    const getName = (state) => state==='active'?'Убрать из избранного':state==='trashed'?'Восстановить из корзины':'Добавить в избранное';
+    const getName = (state) => state==='active'?'Убрать из избранного':'Добавить в избранное';
     function paint(id) {
         const state = known.get(id)?.state || 'none';
         const count = known.get(id)?.count;
