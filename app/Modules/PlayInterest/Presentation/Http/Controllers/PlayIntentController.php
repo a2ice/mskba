@@ -33,7 +33,7 @@ final class PlayIntentController extends Controller
             // A venue subscription may have a linked game search. Display the
             // combined subscription once, not both its constituent records.
             $linkedIds = VenueSubscription::query()->where('user_id', $user->id)
-                ->whereNotNull('play_intent_id')->where('status', 'active')
+                ->whereNotNull('play_intent_id')
                 ->pluck('play_intent_id');
             $games = PlayIntent::query()->where('user_id', $user->id)
                 ->whereNotIn('id', $linkedIds)->with('venue')->get();
