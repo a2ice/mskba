@@ -31,7 +31,7 @@ final class PlayIntentController extends Controller
         $items = collect();
         $query = PlayIntent::query()->where('user_id', $user->id)->with('venue');
         if ($type === 'venue') $query->whereNotNull('venue_id');
-        if ($type === 'play') $query->whereNull('venue_id');
+        // 'play' includes all PlayIntent searches, including venue-anchored ones.
         foreach ($query->get() as $intent) {
             $item = $this->serialize($intent);
             if ($status !== 'all' && $item['effective_status'] !== $status) continue;
