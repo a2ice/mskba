@@ -231,16 +231,19 @@ if (root) {
 
         const restorable=['expired','cancelled'].includes(intent.effective_status);
         if(detailsEdit){
-            detailsEdit.hidden=intent.subscription_type==='venue'||['cancelled','completed'].includes(intent.effective_status);
-            detailsEdit.textContent='Редактировать';
-            detailsEdit.onclick=()=>editSubscription(intent);
+            // Game subscriptions keep the original two-step editor.
+            // Venue-news subscriptions only expose delivery-channel settings.
+            detailsEdit.hidden=['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.textContent=intent.subscription_type==='venue'?'Настроить уведомления':'Редактировать';
+            detailsEdit.onclick=()=>intent.subscription_type==='venue'
+                ? void venueChannelsEditor(intent) : editSubscription(intent);
         }
         if(detailsRestore){
             detailsRestore.hidden=!restorable || intent.subscription_type==='venue';
             detailsRestore.onclick=()=>void restoreSubscription(intent,detailsDialog,detailsRestore);
         }
+        // Opening "Посмотреть" stays read-only; editing is an explicit action.
         detailsDialog.showModal();
-        if(editedVenue) void venueChannelsEditor(editedVenue);
     }
 
     function showError(message) { outlet.replaceChildren(make('p',message,'error')); }
@@ -294,6 +297,11 @@ if (root) {
                 const actions=make('div',null,'app-play-interests__actions');
                 const viewButton=button('Посмотреть',()=>openDetails(intent,viewButton));
                 actions.append(viewButton);
+                if(intent.subscription_type!=='venue' && !['cancelled','completed'].includes(intent.effective_status)) {
+                    // Do not replace the full game-subscription editor with a
+                    // notification-only modal. Open the original first step.
+                    actions.append(button('Редактировать',()=>editSubscription(intent)));
+                }
                 if(intent.subscription_type==='venue') {
                     const update=async active=>{
                         try{
@@ -301,10 +309,15 @@ if (root) {
                             await load();
                         }catch(e){showActionError(e.message,card);}
                     };
-                    if(intent.effective_status==='active') actions.append(button('Отменить подписку',()=>{
+                    if(intent.effective_status==='active') {
+                        actions.append(button('Настроить уведомления',()=>{
+                            openDetails(intent,viewButton);
+                            void venueChannelsEditor(intent);
+                        }));
+                        actions.append(button('Отменить подписку',()=>{
                         if(window.confirm('Отключить уведомления этой площадки?'))void update(false);
                     }));
-                    else actions.append(button('Восстановить подписку',()=>void update(true)));
+                    } else actions.append(button('Восстановить подписку',()=>void update(true)));
                     card.append(actions);outlet.append(card);
                     continue;
                 }
