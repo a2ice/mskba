@@ -775,3 +775,16 @@ html[data-mskba-modal-dragging="true"] .modal:not(.is-minimized) {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
 }
+
+/* Native schedule-pricing overlay uses the same drag interaction. */
+dialog.account-venue-price-dialog[open] .account-venue-price-dialog__head {
+    cursor: grab; touch-action: none; user-select: none;
+}
+dialog.account-venue-price-dialog[data-mskba-dragging] .account-venue-price-dialog__head {cursor:grabbing}
+.account-venue-price-dialog__head :is(button,a,input,select,textarea) {cursor:pointer;touch-action:auto}
+.account-venue-price-dialog__head[data-mskba-drag-handle]:focus-visible {
+    outline: 2px solid var(--accent-strong); outline-offset: -4px;
+}
+html[data-mskba-modal-dragging="true"] dialog.account-venue-price-dialog::backdrop {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
