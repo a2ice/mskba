@@ -124,7 +124,7 @@ test('CSS-authored background starts with lightweight URL, full replaces it afte
     const s = scene({ css: true });
     assert.match(s.style.textContent, /\/lqip/);
     assert.equal(s.downloads.length, 2); // player and stylesheet original
-    const background = s.downloads.find(x => x.src === full);
+    const background = s.downloads.filter(x => x.src === full).at(-1);
     background.succeed();
     await Promise.resolve();
     await Promise.resolve();
