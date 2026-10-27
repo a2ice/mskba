@@ -24,20 +24,18 @@ final class SubscriptionDeliveryChannels
         $telegramLinked = $this->telegram->resolve($canonical) !== null;
         $verifiedEmail = $canonical->primaryEmail()?->hasBeenVerified() === true;
         return [
-            'in_app' => ['available' => true, 'reason' => null],
+            'in_app' => ['available' => true, 'reason' => null, 'action' => null],
             'telegram' => [
                 'available' => $telegramAllowed && $telegramLinked,
                 'reason' => ! $telegramAllowed ? 'Уведомления запрещены в настройках аккаунта.'
-                    : (! $telegramLinked ? 'Добавь и подтверди Telegram через бота, затем открой приватный чат с ботом.' : null),
+                    : (! $telegramLinked ? 'Требуется подтверждённый Telegram и приватный чат с ботом.' : null),
+                'action' => ! $telegramAllowed ? 'settings' : (! $telegramLinked ? 'add_contact' : null),
             ],
             'email' => [
                 'available' => $emailAllowed && $verifiedEmail,
                 'reason' => ! $emailAllowed ? 'Email-уведомления запрещены в настройках аккаунта.'
-                    : (! $verifiedEmail ? 'Добавь и подтверди основной адрес электронной почты.' : null),
-            ],
-            'phone' => [
-                'available' => false,
-                'reason' => 'SMS-уведомления пока не подключены. Можно добавить телефон в контакты.',
+                    : (! $verifiedEmail ? 'Требуется подтверждённый основной Email.' : null),
+                'action' => ! $emailAllowed ? 'settings' : (! $verifiedEmail ? 'add_contact' : null),
             ],
         ];
     }
@@ -45,17 +43,17 @@ final class SubscriptionDeliveryChannels
     /** @param array<mixed> $channels
      * @return list<string>
      */
-    public function validate(User $user, array $channels): array
+    public function validate(User $user, array $channels, string $field = 'delivery_channels'): array
     {
         $allowed = $this->availability($user);
         $result = array_values(array_unique(array_map('strval', $channels)));
         if ($result === []) {
-            throw ValidationException::withMessages(['delivery_channels' => 'Выбери хотя бы один доступный канал уведомлений.']);
+            throw ValidationException::withMessages([$field => 'Выбери хотя бы один доступный канал уведомлений.']);
         }
         foreach ($result as $channel) {
             if (! isset($allowed[$channel]) || ! $allowed[$channel]['available']) {
                 throw ValidationException::withMessages([
-                    'delivery_channels' => $allowed[$channel]['reason'] ?? 'Канал недоступен.',
+                    $field => $allowed[$channel]['reason'] ?? 'Канал недоступен.',
                 ]);
             }
         }
