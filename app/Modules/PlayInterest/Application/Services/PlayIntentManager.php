@@ -4,6 +4,8 @@ namespace App\Modules\PlayInterest\Application\Services;
 
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use App\Modules\PlayInterest\Application\Services\SubscriptionDeliveryChannels;
+use App\Modules\PlayInterest\Application\Services\VenueSubscriptionManager;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +54,14 @@ final class PlayIntentManager
             }
         }
 
+        $channels = app(SubscriptionDeliveryChannels::class);
+        if ($input['notify_matches'] ?? true) {
+            $input['game_delivery_channels'] = $channels->validate($canonical, $input['game_delivery_channels'] ?? ['in_app']);
+        }
+        if ($venueId !== null && ($input['notify_venue_news'] ?? true)) {
+            $input['venue_delivery_channels'] = $channels->validate($canonical, $input['venue_delivery_channels'] ?? ['in_app']);
+        }
+
         $cadence = (string) $input['cadence'];
         // Subscription lifetime is independent from the preferred game dates
         // and cadence. Missing/null expiry explicitly means "Бессрочно".
@@ -87,10 +97,23 @@ final class PlayIntentManager
                 'amenity_preferences' => $input['amenity_preferences'] ?? [],
                 'notify_matches' => (bool) ($input['notify_matches'] ?? true),
                 'notify_offers' => (bool) ($input['notify_offers'] ?? false),
+                'notify_venue_news' => (bool) ($input['notify_venue_news'] ?? true),
+                'game_delivery_channels' => $input['game_delivery_channels'] ?? ['in_app'],
+                'venue_delivery_channels' => $input['venue_delivery_channels'] ?? ['in_app'],
                 'status' => $intent->exists && $intent->status === 'paused' ? 'paused' : 'active',
                 'expires_at' => $expires,
             ]);
             $intent->save();
+
+            // A venue-news opt-in manages the same one-per-user venue subscription
+            // used by the favorite-heart dialog (not a duplicate game intent).
+            if ($venueId !== null && array_key_exists('notify_venue_news', $input)) {
+                $manager = app(VenueSubscriptionManager::class);
+                $subscription = $manager->set($canonical, (int) $venueId, (bool) $input['notify_venue_news']);
+                if ($subscription && ! empty($input['notify_venue_news'])) {
+                    $manager->setChannels($subscription, $input['venue_delivery_channels'] ?? ['in_app']);
+                }
+            }
 
             return $intent->refresh();
             });
