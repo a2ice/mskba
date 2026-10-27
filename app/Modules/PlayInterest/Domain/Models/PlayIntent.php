@@ -15,7 +15,7 @@ final class PlayIntent extends Model
         'period_from', 'period_until', 'formats', 'duration_minutes',
         'access_mode', 'venue_kind', 'amenity_preferences', 'notify_matches', 'notify_offers',
         'status', 'expires_at', 'show_on_venue', 'excluded_venue_ids',
-        'notify_venue_news', 'game_delivery_channels', 'venue_delivery_channels',
+        'notify_venue_news', 'game_delivery_channels', 'venue_delivery_channels', 'offers_delivery_channels',
     ];
 
     protected function casts(): array
@@ -40,6 +40,7 @@ final class PlayIntent extends Model
             'notify_venue_news' => 'boolean',
             'game_delivery_channels' => 'array',
             'venue_delivery_channels' => 'array',
+            'offers_delivery_channels' => 'array',
             'period_from' => 'immutable_date',
             'period_until' => 'immutable_date',
             'expires_at' => 'immutable_datetime',
