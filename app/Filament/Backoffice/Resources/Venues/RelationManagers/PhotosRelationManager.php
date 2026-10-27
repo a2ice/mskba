@@ -20,7 +20,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Storage;
 
 final class PhotosRelationManager extends RelationManager
 {
@@ -74,9 +73,10 @@ final class PhotosRelationManager extends RelationManager
                             ->modalCancelActionLabel('Закрыть')
                             ->modalContent(fn (Media $record): View => view('filament.backoffice.venue-photo-crop', [
                                 'photoId' => $record->id,
-                                'sourceUrl' => url($record->original_path
-                                    ? Storage::disk($record->disk)->url($record->original_path)
-                                    : $record->publicUrl()),
+                                'sourceUrl' => route('backoffice.venue-photos.original', [
+                                    'venue' => $this->getOwnerRecord()->getKey(),
+                                    'photo' => $record->getKey(),
+                                ]),
                                 'selection' => $record->crop_draft ?? $record->crop_applied ?? [
                                     'x' => 0, 'y' => 0, 'width' => 1, 'height' => 1,
                                 ],
