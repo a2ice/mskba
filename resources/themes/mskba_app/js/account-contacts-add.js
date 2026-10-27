@@ -1,6 +1,7 @@
 import { createContactProviderEmulation } from './contact-provider-emulation.js';
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { refreshAccountContactsList } from './account-contacts-list.js';
+import { contactWizardNavigation } from './contact-wizard-navigation.js';
 const root = document.querySelector('[data-contacts-add]');
 
 if (root) {
@@ -21,6 +22,7 @@ if (root) {
     let opener = null;
     let previousOverflow = '';
     let verificationContactId = null;
+    let verificationEmail = '';
     const codeInput = dialog.querySelector('[data-contact-add-code]');
     const verifyButton = dialog.querySelector('[data-contact-add-verify]');
     const resendButton = dialog.querySelector('[data-contact-add-resend]');
@@ -45,10 +47,11 @@ if (root) {
         setError('');
         steps.forEach(node => { node.hidden = node.dataset.contactAddStep !== target; });
         if (target === 'done') dialog.querySelector('.mskba-modal__body')?.scrollTo(0, 0);
-        footer.hidden = ['done', 'verification'].includes(target);
-        next.hidden = !['method', 'value'].includes(target);
-        back.hidden = target === 'method';
-        back.textContent = methodLocked ? 'Отмена' : 'Назад';
+        const navigation = contactWizardNavigation(target, methodLocked);
+        footer.hidden = !navigation.footer;
+        next.hidden = !navigation.next;
+        back.hidden = !navigation.back;
+        back.textContent = navigation.backLabel;
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
         if (target === 'verification') { if (codeInput) { codeInput.value=''; codeInput.focus(); } }
@@ -62,6 +65,7 @@ if (root) {
         (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
         value.value = '';
         verificationContactId = null;
+        verificationEmail = '';
         kind = (radio && !radio.disabled) ? preselected : 'email';
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
@@ -194,13 +198,17 @@ if (root) {
     dialog.addEventListener('click', event => { if (event.target === dialog && !busy) dialog.close(); });
 
     dialog.querySelector('[data-contact-add-again]').addEventListener('click', () => {
+        methodLocked = false;
+        verificationContactId = null;
+        verificationEmail = '';
         showStep('method');
         value.value = '';
     });
     back.addEventListener('click', () => {
         if (busy) return;
-        if (methodLocked) dialog.close();
-        else showStep('method');
+        const target = contactWizardNavigation(step, methodLocked).backTarget;
+        if (target === 'close') dialog.close();
+        else if (target) showStep(target);
     });
 
     next.addEventListener('click', async () => {
@@ -223,6 +231,13 @@ if (root) {
             }
             value.value = normalized;
         }
+        // Returning from verification with the same email must not try to
+        // create the already-pending contact a second time.
+        if (kind === 'email' && verificationContactId &&
+            value.value.toLowerCase() === verificationEmail) {
+            showStep('verification');
+            return;
+        }
         setBusy(true);
         setError('');
         try {
@@ -231,6 +246,7 @@ if (root) {
             try { await refreshList(); } catch { updated = false; }
             if (kind==='email' && result.contact?.id && !result.contact.is_verified) {
                 verificationContactId=Number(result.contact.id);
+                verificationEmail=value.value.toLowerCase();
                 showStep('verification');
                 await sendEmailCode();
             } else {

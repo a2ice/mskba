@@ -61,6 +61,16 @@ test('contact plus skips method picker while normal entry retains it', () => {
     assert.match(wizard, /configureValueField\(\);\s*showStep\('value'\)/);
     assert.match(wizard, /emulator.choose\(kind\);\s*showStep\('emulation'\)/);
     assert.match(wizard, /root.querySelector\('\[data-contact-add-open\]'\)\?\.addEventListener\('click', \(\) => open\(\)\)/);
-    assert.match(wizard, /if \(methodLocked\) dialog.close\(\)/);
-    assert.match(wizard, /back.textContent = methodLocked \? 'Отмена' : 'Назад'/);
+    assert.match(wizard, /contactWizardNavigation\(step, methodLocked\)\.backTarget/);
+    assert.match(wizard, /back.textContent = navigation.backLabel/);
+});
+
+test('email verification has a real Back action to edit the existing value', () => {
+    assert.match(wizard, /contactWizardNavigation\(target, methodLocked\)/);
+    assert.match(wizard, /footer.hidden = !navigation.footer/);
+    assert.match(wizard, /if \(target === 'close'\) dialog.close\(\)/);
+    assert.match(wizard, /else if \(target\) showStep\(target\)/);
+    assert.match(wizard, /verificationEmail=value.value.toLowerCase\(\)/);
+    assert.match(wizard, /value.value.toLowerCase\(\) === verificationEmail/);
+    assert.match(wizard, /showStep\('verification'\);\s*return;/);
 });
