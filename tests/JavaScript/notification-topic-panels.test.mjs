@@ -27,7 +27,8 @@ test('the original confirmation wizard mounts outside Contacts and opens with ch
     assert.match(layout, /routeIs\('account\.contacts'\)/);
     assert.match(layout, /pages\.account\.partials\.contact-add-dialog/);
     assert.match(partial, /contactDialogOnly/);
-    assert.match(wizard, /window\.addEventListener\('mskba:contact:add', event => open\(event\.detail\?\.type \|\| 'email'\)\)/);
+    assert.match(wizard, /window\.addEventListener\('mskba:contact:add', event => \{/);
+    assert.match(wizard, /open\(type \|\| 'email', Boolean\(type\)\)/);
     assert.match(editor, /detail:\{type:key\}/);
     assert.match(wizard, /mskba:contact:updated/);
     assert.match(editor, /mskba:contact:updated',refreshChannels/);
@@ -49,4 +50,17 @@ test('checkbox text aligns vertically and inline plus replaces add-contact text 
     assert.match(css, /\.app-play-dialog__channel\{display:flex;align-items:center;/);
     assert.match(css, /\.app-play-dialog__settings \.app-play-dialog__channel \.check-label input\{\s*margin:0;align-self:center/);
     assert.match(css, /\.app-play-dialog__channel-add:focus-visible\{outline:/);
+});
+
+test('contact plus skips method picker while normal entry retains it', () => {
+    assert.match(wizard, /function open\(preselected = 'email', skipMethod = false\)/);
+    assert.match(wizard, /methodLocked = Boolean\(skipMethod && radio && !radio.disabled\)/);
+    assert.match(wizard, /if \(methodLocked\) advanceFromMethod\(\)/);
+    assert.match(wizard, /else showStep\('method'\)/);
+    assert.match(wizard, /function advanceFromMethod\(\)/);
+    assert.match(wizard, /configureValueField\(\);\s*showStep\('value'\)/);
+    assert.match(wizard, /emulator.choose\(kind\);\s*showStep\('emulation'\)/);
+    assert.match(wizard, /root.querySelector\('\[data-contact-add-open\]'\)\?\.addEventListener\('click', \(\) => open\(\)\)/);
+    assert.match(wizard, /if \(methodLocked\) dialog.close\(\)/);
+    assert.match(wizard, /back.textContent = methodLocked \? 'Отмена' : 'Назад'/);
 });
