@@ -198,6 +198,9 @@ if (root) {
     dialog.addEventListener('click', event => { if (event.target === dialog && !busy) dialog.close(); });
 
     dialog.querySelector('[data-contact-add-again]').addEventListener('click', () => {
+        methodLocked = false;
+        verificationContactId = null;
+        verificationEmail = '';
         showStep('method');
         value.value = '';
     });
