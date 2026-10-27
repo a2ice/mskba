@@ -5,11 +5,13 @@ namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
+use App\Modules\Venue\Application\Services\VenuePhotoCropService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -17,6 +19,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Storage;
 
 final class PhotosRelationManager extends RelationManager
 {
@@ -26,6 +30,27 @@ final class PhotosRelationManager extends RelationManager
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return VenueResource::authorized() && ! $ownerRecord->trashed();
+    }
+
+    /**
+     * Called from the crop editor inside this relation manager's Filament modal.
+     * Both operations verify backoffice permissions and the venue/photo relation.
+     *
+     * @param array<string, mixed> $selection
+     */
+    public function saveVenuePhotoCropDraft(int $photoId, array $selection): void
+    {
+        abort_unless(VenueResource::authorized(), 403);
+
+        app(VenuePhotoCropService::class)->saveDraft($this->getOwnerRecord(), $photoId, $selection);
+    }
+
+    public function applyVenuePhotoCrop(int $photoId): void
+    {
+        abort_unless(VenueResource::authorized(), 403);
+
+        app(VenuePhotoCropService::class)->apply($this->getOwnerRecord(), $photoId);
+        Notification::make()->success()->title('Кадрирование применено')->send();
     }
 
     public function form(Schema $schema): Schema
@@ -39,7 +64,24 @@ final class PhotosRelationManager extends RelationManager
             ->columns([
                 ImageColumn::make('path')->label('Фото')
                     ->getStateUsing(fn (Media $record): string => url($record->publicUrl()))
-                    ->square()->height(76),
+                    ->square()->height(76)
+                    ->action(
+                        Action::make('cropPhoto')
+                            ->label('Обрезать фотографию')
+                            ->modalHeading('Кадрирование фотографии')
+                            ->modalWidth(Width::FiveExtraLarge)
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Закрыть')
+                            ->modalContent(fn (Media $record): View => view('filament.backoffice.venue-photo-crop', [
+                                'photoId' => $record->id,
+                                'sourceUrl' => url($record->original_path
+                                    ? Storage::disk($record->disk)->url($record->original_path)
+                                    : $record->publicUrl()),
+                                'selection' => $record->crop_draft ?? $record->crop_applied ?? [
+                                    'x' => 0, 'y' => 0, 'width' => 1, 'height' => 1,
+                                ],
+                            ])),
+                    ),
                 IconColumn::make('is_featured')->label('Главное')->boolean(),
                 TextColumn::make('mime')->label('Формат'),
                 TextColumn::make('created_at')->label('Добавлено')->dateTime('d.m.Y H:i'),
