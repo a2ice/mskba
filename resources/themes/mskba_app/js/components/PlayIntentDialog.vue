@@ -335,12 +335,12 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:contact:updated',refreshC
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?'Подписка оформлена':editingId?'Редактировать подписку':'Хочу здесь играть'}}</h2></div>
+        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):editingId?'Редактировать подписку':'Хочу здесь играть'}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
-            <p class="app-play-dialog__success" role="status">Подписка оформлена! Она не означает запись на игру или бронирование площадки.</p>
+            <p class="app-play-dialog__success" role="status">{{editingId?'Изменения подписки сохранены.':'Подписка оформлена! Она не означает запись на игру или бронирование площадки.'}}</p>
             <p class="muted">Изменить параметры и видимость профиля можно в разделе «Мои подписки».</p>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
@@ -523,7 +523,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:contact:updated',refreshC
         </div>
         <div v-show="step==='options'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <h3>Настройки подписки</h3>
-            <p class="app-play-dialog__hint">Проверь параметры перед оформлением подписки.</p>
+            <p class="app-play-dialog__hint">Шаг 2 из 2. Проверь настройки перед сохранением подписки.</p>
             <div class="app-play-dialog__settings">
                 <section class="app-play-dialog__notification-topic">
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
