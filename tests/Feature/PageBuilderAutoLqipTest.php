@@ -11,6 +11,7 @@ use App\Modules\Media\Application\Services\SiteMediaLqip;
 use App\Modules\Media\Application\Services\SiteMediaManager;
 use App\Modules\Media\Domain\Models\SiteMediaFolder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -38,6 +39,11 @@ final class PageBuilderAutoLqipTest extends TestCase
         ]);
         app(PageBuilderPublisher::class)->publish($page);
         $page->refresh();
+        // Exercise native first-paint on the theme that includes the shared
+        // Page Builder script stack; the default legacy theme is kept intact.
+        $theme = config('themes');
+        $theme['active'] = 'mskba_app';
+        $this->app->instance(ThemeResolver::class, new ThemeResolver($theme));
         $htmlBefore = $page->published_html;
         $cssBefore = $page->published_css;
 
@@ -161,6 +167,26 @@ final class PageBuilderAutoLqipTest extends TestCase
         $html = '<img class="player" src="/media/site/00000000-0000-4000-8000-000000000000">';
         $this->assertSame($html, $generator->apply($html, []));
         $this->assertSame($html, $generator->apply($html, ['00000000-0000-4000-8000-000000000000' => '/untrusted-preview']));
+    }
+
+    public function test_legacy_dark_theme_keeps_original_image_and_css_urls(): void
+    {
+        Storage::fake('public');
+        $asset = app(SiteMediaManager::class)->upload(UploadedFile::fake()->image('original.png', 300, 150));
+        $page = PageBuilderPage::query()->create([
+            'name' => 'Legacy theme', 'path' => '/legacy-image',
+            'draft_html' => '<img src="'.$asset->publicUrl().'">',
+            'draft_css' => '.demo{background:url("'.$asset->publicUrl().'")}',
+        ]);
+        app(PageBuilderPublisher::class)->publish($page);
+        $legacy = config('themes');
+        $legacy['active'] = 'mskba_dark';
+        $this->app->instance(ThemeResolver::class, new ThemeResolver($legacy));
+
+        $rendered = app(PageBuilderRenderer::class)->render($page->fresh());
+        $this->assertStringContainsString('src="'.$asset->publicUrl().'"', $rendered['html']);
+        $this->assertStringNotContainsString('data-mskba-lqip-full-src', $rendered['html']);
+        $this->assertSame($rendered['originalCss'], $rendered['css']);
     }
 
 }
