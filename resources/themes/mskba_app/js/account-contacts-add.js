@@ -17,6 +17,7 @@ if (root) {
     let step = 'method';
     let kind = 'email';
     let busy = false;
+    let methodLocked = false;
     let opener = null;
     let previousOverflow = '';
     let verificationContactId = null;
@@ -47,6 +48,7 @@ if (root) {
         footer.hidden = ['done', 'verification'].includes(target);
         next.hidden = !['method', 'value'].includes(target);
         back.hidden = target === 'method';
+        back.textContent = methodLocked ? 'Отмена' : 'Назад';
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
         if (target === 'verification') { if (codeInput) { codeInput.value=''; codeInput.focus(); } }
@@ -54,7 +56,7 @@ if (root) {
         else telegramLink.stop();
     }
 
-    function open(preselected = 'email') {
+    function open(preselected = 'email', skipMethod = false) {
         opener = document.activeElement;
         const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
         (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
@@ -65,8 +67,12 @@ if (root) {
         dialog.showModal();
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
-        showStep('method');
         emulator.reset();
+        methodLocked = Boolean(skipMethod && radio && !radio.disabled);
+        // From a + button the contact kind is already known. Do not ask the
+        // user to choose it again. Keep the selection screen for normal entry.
+        if (methodLocked) advanceFromMethod();
+        else showStep('method');
     }
 
     function configureValueField() {
@@ -157,8 +163,25 @@ if (root) {
         },
     });
 
+    function advanceFromMethod() {
+        kind = dialog.querySelector('input[name="new_contact_channel"]:checked')?.value || '';
+        if (!kind) { setError('Выбери способ связи.'); return; }
+        if (kind === 'email' || kind === 'phone') {
+            configureValueField();
+            showStep('value');
+        } else if (emulator.available && ['telegram', 'vk'].includes(kind)) {
+            emulator.choose(kind);
+            showStep('emulation');
+        } else {
+            showStep(kind);
+        }
+    }
+
     root.querySelector('[data-contact-add-open]')?.addEventListener('click', () => open());
-    window.addEventListener('mskba:contact:add', event => open(event.detail?.type || 'email'));
+    window.addEventListener('mskba:contact:add', event => {
+        const type = event.detail?.type;
+        open(type || 'email', Boolean(type));
+    });
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
     });
@@ -174,22 +197,16 @@ if (root) {
         showStep('method');
         value.value = '';
     });
-    back.addEventListener('click', () => { if (!busy) showStep('method'); });
+    back.addEventListener('click', () => {
+        if (busy) return;
+        if (methodLocked) dialog.close();
+        else showStep('method');
+    });
 
     next.addEventListener('click', async () => {
         if (busy) return;
         if (step === 'method') {
-            kind = dialog.querySelector('input[name="new_contact_channel"]:checked')?.value || '';
-            if (!kind) { setError('Выбери способ связи.'); return; }
-            if (kind === 'email' || kind === 'phone') {
-                configureValueField();
-                showStep('value');
-            } else if (emulator.available && ['telegram', 'vk'].includes(kind)) {
-                emulator.choose(kind);
-                showStep('emulation');
-            } else {
-                showStep(kind);
-            }
+            advanceFromMethod();
             return;
         }
 
