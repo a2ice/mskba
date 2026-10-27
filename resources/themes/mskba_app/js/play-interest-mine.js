@@ -14,7 +14,7 @@ if (root) {
     detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
     const typeSelect = filters?.querySelector('[name="type"]');
     const statusSelect = filters?.querySelector('[name="status"]');
-    const validTypes = new Set(['all','play']);
+    const validTypes = new Set(['all','play','venue']);
     const validStatuses = new Set(['all','active','paused','expired','cancelled','completed']);
     let currentPage = 1;
     let loadSequence = 0;
@@ -22,13 +22,13 @@ if (root) {
     function syncFromUrl() {
         const url = new URL(location.href);
         typeSelect.value = validTypes.has(url.searchParams.get('type')) ? url.searchParams.get('type') : 'all';
-        statusSelect.value = validStatuses.has(url.searchParams.get('status')) ? url.searchParams.get('status') : 'all';
+        statusSelect.value = validStatuses.has(url.searchParams.get('status')) ? url.searchParams.get('status') : 'active';
         currentPage = Math.max(1, Number.parseInt(url.searchParams.get('page'), 10) || 1);
     }
     function updateUrl() {
         const url = new URL(location.href);
         for (const [key, value] of [['type',typeSelect.value],['status',statusSelect.value],['page',String(currentPage)]]) {
-            if (value==='all' || (key==='page' && value==='1')) url.searchParams.delete(key);
+            if ((key==='type' && value==='all') || (key==='status' && value==='active') || (key==='page' && value==='1')) url.searchParams.delete(key);
             else url.searchParams.set(key,value);
         }
         history.pushState(null,'',url);
@@ -71,7 +71,7 @@ if (root) {
     filters?.addEventListener('reset',event=>{
         event.preventDefault();
         typeSelect.value='all';
-        statusSelect.value='all';
+        statusSelect.value='active';
         currentPage=1;
         updateUrl();
         void load();
