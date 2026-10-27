@@ -21,6 +21,8 @@ final class VenueGalleryManager
 
     public const MAX_OUTPUT_DIMENSION = 500;
 
+    private const ORIGINAL_DISK = 'local';
+
     public function __construct(
         private readonly WebpImageNormalizer $normalizer,
         private readonly VenueRevisionManager $revisions,
@@ -39,13 +41,13 @@ final class VenueGalleryManager
             'image/webp' => 'webp',
             default => throw new InvalidArgumentException('Неподдерживаемый формат изображения.'),
         };
-        $originalPath = sprintf('venues/%d/originals/%s.%s', $venue->id, $uuid, $extension);
+        $originalPath = sprintf('venue-photo-originals/%d/%s.%s', $venue->id, $uuid, $extension);
 
         if (! Storage::disk($disk)->put($path, $image['contents'])) {
             throw new RuntimeException('Не удалось сохранить фотографию площадки.');
         }
 
-        if (! Storage::disk($disk)->put($originalPath, $contents)) {
+        if (! Storage::disk(self::ORIGINAL_DISK)->put($originalPath, $contents)) {
             Storage::disk($disk)->delete($path);
             throw new RuntimeException('Не удалось сохранить оригинал фотографии площадки.');
         }
@@ -69,7 +71,8 @@ final class VenueGalleryManager
                 return $this->storePublished($lockedVenue, $disk, $path, $originalPath, $image);
             });
         } catch (Throwable $exception) {
-            Storage::disk($disk)->delete([$path, $originalPath]);
+            Storage::disk($disk)->delete($path);
+            Storage::disk(self::ORIGINAL_DISK)->delete($originalPath);
             throw $exception;
         }
     }
@@ -275,7 +278,7 @@ final class VenueGalleryManager
     {
         return [
             'collection' => 'gallery', 'source' => 'upload', 'disk' => $disk, 'path' => $path,
-            'original_path' => $originalPath,
+            'original_path' => $originalPath, 'original_disk' => self::ORIGINAL_DISK,
             'mime' => $image['mime'], 'size' => strlen($image['contents']), 'sort_order' => 0,
         ];
     }
@@ -289,9 +292,16 @@ final class VenueGalleryManager
     private function deleteMediaAfterCommit(Media $media): void
     {
         $disk = $media->disk;
-        $paths = array_values(array_unique(array_filter([$media->path, $media->original_path])));
+        $path = $media->path;
+        $originalPath = $media->original_path;
+        $originalDisk = $media->original_disk ?: $disk;
         $media->delete();
-        DB::afterCommit(fn () => Storage::disk($disk)->delete($paths));
+        DB::afterCommit(function () use ($disk, $path, $originalDisk, $originalPath): void {
+            Storage::disk($disk)->delete($path);
+            if ($originalPath && ($originalPath !== $path || $originalDisk !== $disk)) {
+                Storage::disk($originalDisk)->delete($originalPath);
+            }
+        });
     }
 
     private function notFound(int $id): never
