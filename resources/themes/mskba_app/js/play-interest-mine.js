@@ -291,35 +291,14 @@ if (root) {
                 } else {
                     card.append(make('p','Поиск без конкретной площадки','muted'));
                 }
-                card.append(make('p',intent.subscription_type==='venue'
-                    ? 'Уведомления о новых играх, тренировках и турнирах'
-                    : summary(intent),'muted'));
+                card.append(make('p',summary(intent),'muted'));
                 const actions=make('div',null,'app-play-interests__actions');
-                const viewButton=button('Посмотреть',()=>openDetails(intent,viewButton));
+                const viewButton=button('Посмотреть',()=>editSubscription(intent));
                 actions.append(viewButton);
-                if(intent.subscription_type!=='venue' && !['cancelled','completed'].includes(intent.effective_status)) {
+                if(!['cancelled','completed'].includes(intent.effective_status)) {
                     // Do not replace the full game-subscription editor with a
                     // notification-only modal. Open the original first step.
                     actions.append(button('Редактировать',()=>editSubscription(intent)));
-                }
-                if(intent.subscription_type==='venue') {
-                    const update=async active=>{
-                        try{
-                            await request(venueSubscriptionsUrl+'/'+intent.id,'PATCH',{active});
-                            await load();
-                        }catch(e){showActionError(e.message,card);}
-                    };
-                    if(intent.effective_status==='active') {
-                        actions.append(button('Настроить уведомления',()=>{
-                            openDetails(intent,viewButton);
-                            void venueChannelsEditor(intent);
-                        }));
-                        actions.append(button('Отменить подписку',()=>{
-                        if(window.confirm('Отключить уведомления этой площадки?'))void update(false);
-                    }));
-                    } else actions.append(button('Восстановить подписку',()=>void update(true)));
-                    card.append(actions);outlet.append(card);
-                    continue;
                 }
                 if(intent.effective_status === 'active') {
                     actions.append(button('Приостановить',async()=>{
