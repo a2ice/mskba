@@ -25,9 +25,10 @@ if (canvas && manifestNode) {
         } catch { return null; }
     };
 
-    const loaded = (src, done) => {
+    const loaded = (src, done, priority = 'auto') => {
         const full = new Image();
         full.decoding = 'async';
+        full.fetchPriority = priority;
         full.onload = () => {
             const show = () => {
                 if (full.naturalWidth > 0) done(full);
@@ -71,7 +72,7 @@ if (canvas && manifestNode) {
                 }
                 image.src = fullSrc;
                 image.setAttribute('data-mskba-lqip-ready', '1');
-            });
+            }, image.hasAttribute('data-mskba-lqip-venue-player') ? 'high' : 'auto');
         };
         if (image.loading === 'lazy' && 'IntersectionObserver' in window
             && !image.hasAttribute('data-mskba-lqip-venue-player')) {
@@ -94,7 +95,7 @@ if (canvas && manifestNode) {
                 if (styles.isConnected) {
                     styles.textContent = styles.textContent.replaceAll(preview, original);
                 }
-            });
+            }, 'low');
         }
     }
 
@@ -114,7 +115,7 @@ if (canvas && manifestNode) {
         loaded(entry.original, () => {
             if (!element.isConnected || dynamicBackgrounds.get(element) !== entry.original) return;
             element.style.backgroundImage = background;
-        });
+        }, 'low');
     }
 
     function scan(node) {
