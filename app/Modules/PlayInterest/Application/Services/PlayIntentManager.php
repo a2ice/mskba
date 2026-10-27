@@ -20,7 +20,7 @@ final class PlayIntentManager
      *
      * @param array<string, mixed> $input
      */
-    public function save(User $user, array $input, ?PlayIntent $intent = null): PlayIntent
+    public function save(User $user, array $input, ?PlayIntent $intent = null, bool $syncVenueNews = true): PlayIntent
     {
         $canonical = $user->canonical();
         if ($canonical->isBlocked()) {
@@ -71,7 +71,7 @@ final class PlayIntentManager
             : null;
 
         try {
-            return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent, $venueId): PlayIntent {
+            return DB::transaction(function () use ($canonical, $input, $cadence, $expires, $intent, $venueId, $syncVenueNews): PlayIntent {
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
@@ -107,7 +107,7 @@ final class PlayIntentManager
 
             // A venue-news opt-in manages the same one-per-user venue subscription
             // used by the favorite-heart dialog (not a duplicate game intent).
-            if ($venueId !== null && array_key_exists('notify_venue_news', $input)) {
+            if ($syncVenueNews && $venueId !== null && array_key_exists('notify_venue_news', $input)) {
                 $manager = app(VenueSubscriptionManager::class);
                 $subscription = $manager->set($canonical, (int) $venueId, (bool) $input['notify_venue_news']);
                 if ($subscription && ! empty($input['notify_venue_news'])) {
