@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
     'disk',
     'path',
     'original_path',
+    'original_disk',
     'crop_draft',
     'crop_applied',
     'title',
