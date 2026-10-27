@@ -30,7 +30,7 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
     };
     const wrapper = {
         querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
-        querySelector: selector => selector.startsWith('img') ? img : null,
+        querySelector: selector => selector.startsWith('img') && img.hasAttribute('data-mskba-lqip-full-src') ? img : null,
     };
     const img = {
         tagName: 'IMG', nodeType: 1, loading: 'eager', isConnected: true,
