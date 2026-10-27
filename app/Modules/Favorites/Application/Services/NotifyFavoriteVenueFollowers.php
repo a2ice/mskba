@@ -5,7 +5,7 @@ namespace App\Modules\Favorites\Application\Services;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\Favorites\Domain\Models\Favorite;
+use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
@@ -51,23 +51,19 @@ final readonly class NotifyFavoriteVenueFollowers
 
     private function send(int $venueId, string $type, int $id, string $title, string $body, string $url): void
     {
-        Favorite::query()
-            ->where('entity_type', 'venue')->where('entity_id', $venueId)
-            ->whereNull('trashed_at')->where('notify_upcoming_events', true)
-            ->whereNotNull('user_id')
-            ->orderBy('id')->chunkById(100, function ($favorites) use ($type, $id, $title, $body, $url, $venueId): void {
-                foreach ($favorites as $favorite) {
+        VenueSubscription::query()
+            ->where('venue_id', $venueId)->where('status', 'active')
+            ->orderBy('id')->chunkById(100, function ($subscriptions) use ($type, $id, $title, $body, $url, $venueId): void {
+                foreach ($subscriptions as $subscription) {
                     $saved = DB::table('favorite_notification_deliveries')->insertOrIgnore([
-                        'user_id' => $favorite->user_id,
+                        'user_id' => $subscription->user_id,
                         'entity_type' => $type,
                         'entity_id' => $id,
                         'created_at' => now(),
                     ]);
-                    if ($saved === 0) {
-                        continue;
-                    }
+                    if ($saved === 0) continue;
                     $this->notifications->handle(new CreateUserNotificationDTO(
-                        userId: (int) $favorite->user_id,
+                        userId: (int) $subscription->user_id,
                         type: UserNotificationTypeEnum::REMINDER,
                         title: $title,
                         body: $body,
@@ -75,6 +71,8 @@ final readonly class NotifyFavoriteVenueFollowers
                         actionText: 'Посмотреть',
                         payload: [
                             'source' => 'favorites.venue.upcoming',
+                            'delivery_category' => 'general',
+                            'delivery_channels' => $subscription->channels(),
                             'venue_id' => $venueId,
                             $type === 'event' ? 'event_id' : 'tournament_id' => $id,
                         ],
