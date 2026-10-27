@@ -242,7 +242,7 @@ async function openDialog(){
     await nextTick();el.value?.showModal();document.body.style.overflow='hidden';
     heading.value?.focus({preventScroll:true});
     void hydrateVenue();
-    if(favoriteEnabled.value)void loadFavoriteStatus();
+
     if(!amenities.value.length){
         try{
             const r=await fetch(props.options.endpoints.amenities,{credentials:'same-origin',headers:{Accept:'application/json'}});
