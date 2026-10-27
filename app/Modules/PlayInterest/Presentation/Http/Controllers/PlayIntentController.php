@@ -30,7 +30,13 @@ final class PlayIntentController extends Controller
         $items = collect();
 
         if ($type === 'all' || $type === 'play') {
-            $games = PlayIntent::query()->where('user_id', $user->id)->with('venue')->get();
+            // A venue subscription may have a linked game search. Display the
+            // combined subscription once, not both its constituent records.
+            $linkedIds = VenueSubscription::query()->where('user_id', $user->id)
+                ->whereNotNull('play_intent_id')->where('status', 'active')
+                ->pluck('play_intent_id');
+            $games = PlayIntent::query()->where('user_id', $user->id)
+                ->whereNotIn('id', $linkedIds)->with('venue')->get();
             foreach ($games as $game) {
                 $item = $this->serialize($game);
                 if ($status === 'all' || $item['effective_status'] === $status) {
@@ -40,23 +46,38 @@ final class PlayIntentController extends Controller
             }
         }
         if ($type === 'all' || $type === 'venue') {
-            $subscriptions = VenueSubscription::query()->where('user_id', $user->id)->with('venue')->get();
+            $subscriptions = VenueSubscription::query()->where('user_id', $user->id)
+                ->with(['venue', 'playIntent'])->get();
             foreach ($subscriptions as $subscription) {
                 if ($status !== 'all' && $subscription->status !== $status) continue;
                 $venue = $subscription->venue;
-                $items->push([
-                    'id' => $subscription->id,
-                    'subscription_type' => 'venue',
-                    'name' => 'Новости площадки',
-                    'venue_id' => $subscription->venue_id,
-                    'venue' => $venue ? ['id' => (int) $venue->id, 'name' => $venue->name,
-                        'url' => route('venues.show', $venue->routeIdentifier())] : null,
-                    'status' => $subscription->status,
-                    'effective_status' => $subscription->status,
-                    'notify_venue_news' => $subscription->status === 'active',
-                    'delivery_channels' => $subscription->channels(),
-                    'updated_sort' => $subscription->updated_at?->getTimestamp() ?? 0,
-                ]);
+                $defaults = [
+                    'cadence' => 'flexible', 'weekdays' => [], 'dates' => [],
+                    'windows' => [], 'formats' => [], 'duration_minutes' => null,
+                    'access_mode' => 'any', 'venue_kind' => 'any',
+                    'amenity_preferences' => [], 'include_similar_venues' => false,
+                    'excluded_venue_ids' => [], 'radius_km' => 10,
+                    'expires_at' => null, 'notify_matches' => false,
+                    'notify_offers' => false, 'show_on_venue' => false,
+                    'game_delivery_channels' => ['in_app'],
+                ];
+                $criteria = array_replace($defaults, $subscription->criteria ?? []);
+                $criteria['name'] = $subscription->displayName();
+                $criteria['venue_id'] = $subscription->venue_id;
+                $criteria['venue'] = $venue ? [
+                    'id' => (int) $venue->id, 'name' => $venue->name,
+                    'url' => route('venues.show', $venue->routeIdentifier()),
+                ] : null;
+                $criteria['id'] = $subscription->id;
+                $criteria['subscription_type'] = 'venue';
+                $criteria['status'] = $subscription->status;
+                $criteria['effective_status'] = $subscription->status;
+                $criteria['notify_venue_news'] = (bool) $subscription->notify_venue_news;
+                $criteria['venue_delivery_channels'] = $subscription->channels();
+                $criteria['delivery_channels'] = $subscription->channels();
+                $criteria['linked_play_intent_id'] = $subscription->play_intent_id;
+                $criteria['updated_sort'] = $subscription->updated_at?->getTimestamp() ?? 0;
+                $items->push($criteria);
             }
         }
 
