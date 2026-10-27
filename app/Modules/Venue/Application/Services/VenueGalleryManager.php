@@ -28,7 +28,7 @@ final class VenueGalleryManager
 
     public function store(Venue $venue, string $contents, ?Actor $actor = null, bool $forcePublished = false): Media
     {
-        $image = $this->normalizer->normalize($contents, self::MAX_OUTPUT_DIMENSION);
+        $image = $this->normalizer->normalize($contents, self::MAX_OUTPUT_DIMENSION, 10 * 1024 * 1024);
         $disk = 'public';
         $uuid = Str::uuid();
         $path = sprintf('venues/%d/%s.webp', $venue->id, $uuid);
