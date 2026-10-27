@@ -16,10 +16,35 @@ const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), v
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
-const notifyMatches=ref(true), notifyOffers=ref(true), showOnVenue=ref(true), amenities=ref([]), priority=reactive({});
-const favoriteDesired=ref(true), favoriteState=ref('unknown'), favoriteCount=ref(Number(props.options.favoriteCount ?? 0));
-const favoriteLoading=ref(false), favoriteError=ref(''), favoriteRetryId=ref(null);
-const favoriteEnabled=computed(() => Boolean(chosenVenueId.value && props.options.endpoints?.favoriteStatuses && props.options.endpoints?.favoriteToggle));
+const notifyMatches=ref(true), notifyOffers=ref(true), notifyVenueNews=ref(true), showOnVenue=ref(true), amenities=ref([]), priority=reactive({});
+const gameChannels=ref(['in_app']), venueChannels=ref(['in_app']);
+const channelsLoading=ref(false), channelError=ref('');
+const channelAvailability=ref({in_app:{available:true,reason:null},
+    telegram:{available:false,reason:'Проверяем доступность Telegram…'},
+    email:{available:false,reason:'Проверяем подтверждение Email…'},
+    phone:{available:false,reason:'SMS-уведомления пока недоступны.'}});
+const channelList=[{key:'in_app',label:'Личные сообщения'},{key:'telegram',label:'Telegram'},
+    {key:'email',label:'Email'},{key:'phone',label:'Телефон'}];
+function channelChecked(topic,key){return (topic==='games'?gameChannels.value:venueChannels.value).includes(key);}
+function toggleChannel(topic,key,enabled){
+    const state=topic==='games'?gameChannels:venueChannels;
+    state.value=enabled?[...new Set([...state.value,key])]:state.value.filter(ch=>ch!==key);
+}
+function channelEnabled(key){return channelAvailability.value[key]?.available === true;}
+function channelReason(key){return channelAvailability.value[key]?.reason || '';}
+function addContact(key){window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{type:key}}));}
+async function refreshChannels(){
+    if(!isAuth.value||!props.options.endpoints?.channels)return;
+    channelsLoading.value=true;channelError.value='';
+    try{
+        const response=await fetch(props.options.endpoints.channels,{credentials:'same-origin',headers:{Accept:'application/json'}});
+        if(!response.ok)throw new Error('Не удалось проверить доступность каналов.');
+        channelAvailability.value=(await response.json()).channels;
+        for(const selected of [gameChannels,venueChannels])
+            selected.value=selected.value.filter(ch=>channelEnabled(ch));
+    }catch(e){channelError.value=e.message;}finally{channelsLoading.value=false;}
+}
+
 const windows=reactive({ all:[{part:'any',from:'',to:''}] });
 const days=[{id:1,name:'Пн'},{id:2,name:'Вт'},{id:3,name:'Ср'},{id:4,name:'Чт'},{id:5,name:'Пт'},{id:6,name:'Сб'},{id:7,name:'Вс'}];
 const parts=[{id:'any',label:'Не важно'},{id:'morning',label:'Утро'},{id:'day',label:'День'},{id:'evening',label:'Вечер'},{id:'night',label:'Ночь'}];
@@ -66,6 +91,8 @@ function serialize(){
         windows:out,formats:formats.value,duration_minutes:duration.value?Number(duration.value):null,
         access_mode:access.value,venue_kind:(!chosenVenueId.value || similar.value)?venueKind.value:'any',amenity_preferences:Object.entries(priority).filter(x=>x[1]).map(x=>({amenity_id:Number(x[0]),priority:x[1]})),
         notify_matches:notifyMatches.value,notify_offers:notifyOffers.value,
+        notify_venue_news:Boolean(chosenVenueId.value && notifyVenueNews.value),
+        game_delivery_channels:gameChannels.value,venue_delivery_channels:venueChannels.value,
         show_on_venue:Boolean(showOnVenue.value),
     };
     if(cadence.value==='once'&&dateMode.value==='range'){
@@ -95,6 +122,9 @@ function restore(data){
     similar.value=Boolean(data.include_similar_venues);radius.value=data.radius_km||10;
     latitude.value=data.center_latitude??latitude.value;longitude.value=data.center_longitude??longitude.value;
     access.value=data.access_mode||'any';venueKind.value=(!selectedVenueId.value || data.include_similar_venues) ? (data.venue_kind||'any') : 'any';notifyMatches.value=data.notify_matches!==false;notifyOffers.value=data.notify_offers===true;
+    notifyVenueNews.value=data.notify_venue_news!==false;
+    gameChannels.value=Array.isArray(data.game_delivery_channels)?data.game_delivery_channels:['in_app'];
+    venueChannels.value=Array.isArray(data.venue_delivery_channels)?data.venue_delivery_channels:['in_app'];
     for(const item of data.amenity_preferences||[])priority[item.amenity_id]=item.priority;
     for(const key of Object.keys(windows))delete windows[key];
     for(const w of data.windows||[]){
@@ -156,7 +186,7 @@ function chooseVenue(v){
     latitude.value=v.latitude??'';longitude.value=v.longitude??'';
     venueDisabled.value=false;venueSearch.value=v.name;venueMenu.value=false;
     excludedVenues.value=[];venueNotice.value='';
-    if(favoriteEnabled.value)void loadFavoriteStatus();
+
 }
 function chooseExcluded(v){if(withinRadius(v)&&!excludedVenues.value.some(x=>x.id===v.id))excludedVenues.value=[...excludedVenues.value,v];excludedSearch.value='';excludedMenu.value=false;}
 async function hydrateVenue(){
@@ -185,6 +215,7 @@ function next(){
     if(chosenVenueId.value&&similar.value&&(latitude.value===''||longitude.value==='')){error.value='Не удалось определить центр поиска похожих площадок.';return;}
     if(!isAuth.value){beginLogin();return;}
     step.value='options';
+    void refreshChannels();
 }
 
 function unlinkVenue(){
@@ -192,56 +223,6 @@ function unlinkVenue(){
     venueDisabled.value=!venueDisabled.value;
     if(venueDisabled.value) similar.value=false;
     venueNotice.value='';
-}
-// Always read current state before a toggle: the endpoint is not idempotent.
-async function favoriteStatus(id) {
-    const url=new URL(props.options.endpoints.favoriteStatuses, location.origin);
-    url.searchParams.append('ids[]',String(id));
-    const response=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});
-    if(!response.ok)throw new Error('Не удалось проверить избранное.');
-    const data=await response.json();
-    return {state:data.data?.[id]?.state || 'none',count:Number(data.counts?.[id] ?? 0)};
-}
-async function loadFavoriteStatus(){
-    if(!favoriteEnabled.value)return;
-    const id=Number(chosenVenueId.value);
-    favoriteLoading.value=true;
-    try {
-        const status=await favoriteStatus(id);
-        if(Number(chosenVenueId.value)===id){
-            favoriteState.value=status.state;favoriteCount.value=status.count;
-        }
-    }catch{
-        // The save path rechecks the server and never assumes the venue is absent.
-        if(Number(chosenVenueId.value)===id)favoriteState.value='unknown';
-    }finally{favoriteLoading.value=false;}
-}
-async function syncFavorite(id,desired){
-    const current=await favoriteStatus(id);
-    let state=current.state,count=current.count;
-    if((state==='active')!==desired){
-        const response=await fetch(props.options.endpoints.favoriteToggle,{
-            method:'POST',credentials:'same-origin',
-            headers:{'Content-Type':'application/json',Accept:'application/json',
-                'X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
-            body:JSON.stringify({type:'venue',id}),
-        });
-        if(!response.ok)throw new Error('Не удалось обновить избранное.');
-        const result=await response.json();
-        state=result.state;count=Number(result.count ?? count);
-        if((state==='active')!==desired)throw new Error('Не удалось подтвердить изменение избранного.');
-    }
-    favoriteState.value=state;favoriteCount.value=count;
-    window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{detail:{venueId:id,state,count}}));
-}
-async function retryFavorite(){
-    if(!favoriteRetryId.value||busy.value)return;
-    busy.value=true;
-    try {
-        await syncFavorite(favoriteRetryId.value,favoriteDesired.value);
-        favoriteRetryId.value=null;favoriteError.value='';
-    }catch{favoriteError.value='Не удалось изменить избранное. Повтори попытку.';}
-    finally{busy.value=false;}
 }
 function readPending(){
     try{
@@ -274,13 +255,13 @@ function beginLogin(){
     if(cadence.value==='once'&&dateMode.value==='dates'&&!dates.value.length){error.value='Выбери хотя бы одну дату.';return;}
     if(chosenVenueId.value && similar.value&&(latitude.value===''||longitude.value==='')){error.value='Укажи центр поиска для похожих площадок.';return;}
     const payload=serialize();
-    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:{...payload,venue:{name:selectedVenueName.value,url:selectedVenueUrl.value},excludedVenues:excludedVenues.value,manuallyNamed:manuallyNamed.value},favoriteSelected:favoriteDesired.value}));}
+    try{sessionStorage.setItem(STORAGE,JSON.stringify({path:location.pathname,createdAt:Date.now(),data:{...payload,venue:{name:selectedVenueName.value,url:selectedVenueUrl.value},excludedVenues:excludedVenues.value,manuallyNamed:manuallyNamed.value}}));}
     catch{error.value='Не удалось сохранить настройки до входа. Проверь настройки браузера.';return;}
     close(true);
     window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true,preferredRole:'player'}}));
 }
-async function save(payload,desiredFavorite=favoriteDesired.value){
-    busy.value=true;error.value='';errors.value={};favoriteError.value='';favoriteRetryId.value=null;
+async function save(payload){
+    busy.value=true;error.value='';errors.value={};
     try{
         const response=await fetch(editingId.value ? props.options.endpoints.base+'/'+editingId.value : props.options.endpoints.store,{
             method:editingId.value?'PUT':'POST',credentials:'same-origin',
@@ -296,15 +277,6 @@ async function save(payload,desiredFavorite=favoriteDesired.value){
                 'Не получилось сохранить. Повтори попытку.';return;
         }
         sessionStorage.removeItem(STORAGE);
-        // Favorite changes are separate from interest creation and must happen only
-        // after the interest is saved. Failures cannot create duplicate interests.
-        if(payload.venue_id && props.options.endpoints?.favoriteStatuses && props.options.endpoints?.favoriteToggle){
-            try { await syncFavorite(Number(payload.venue_id),Boolean(desiredFavorite)); }
-            catch {
-                favoriteRetryId.value=Number(payload.venue_id);
-                favoriteError.value='Подписка сохранена, но избранное не обновилось. Можно повторить отдельно.';
-            }
-        }
         success.value=result.data;
         window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
     }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
@@ -322,11 +294,11 @@ async function submit(){
 async function resume(){
     if(onceResume||!isAuth.value||document.querySelector('[data-onboarding-pending]'))return;
     const pending=readPending();if(!pending)return;
-    onceResume=true;restore(pending.data);favoriteDesired.value=pending.favoriteSelected!==false;
-    step.value='options';await openDialog();
+    onceResume=true;restore(pending.data);
+    step.value='options';await openDialog();void refreshChannels();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;favoriteDesired.value=true;similar.value=false;excludedVenues.value=[];venueNotice.value='';favoriteState.value='unknown';favoriteCount.value=Number(props.options.favoriteCount??0);favoriteError.value='';favoriteRetryId.value=null;selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
+function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog();}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
@@ -342,7 +314,7 @@ function onEdit(event){
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
     matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';
-    editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};favoriteDesired.value=true;favoriteState.value='unknown';favoriteError.value='';favoriteRetryId.value=null;
+    editingId.value=intent.id;step.value='form';success.value=null;error.value='';errors.value={};
     restore(intent);
     if(['expired','cancelled'].includes(intent.effective_status)&&intent.cadence==='once'){
         dates.value=[];dateMode.value='dates'; // Old game dates cannot be replayed.
@@ -355,8 +327,8 @@ function onBackdrop(e){
     const r=el.value.getBoundingClientRect();
     if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
 }
-onMounted(()=>{document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
-onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
+onMounted(()=>{window.addEventListener('mskba:contact:updated',refreshChannels);document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
+onBeforeUnmount(()=>{window.removeEventListener('mskba:contact:updated',refreshChannels);document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
 </script>
 <template>
 <Teleport to="body">
@@ -370,8 +342,6 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
         <div class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <p class="app-play-dialog__success" role="status">Подписка оформлена! Она не означает запись на игру или бронирование площадки.</p>
             <p class="muted">Изменить параметры и видимость профиля можно в разделе «Мои подписки».</p>
-            <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
-            <button v-if="favoriteRetryId" type="button" class="button secondary" :disabled="busy" @click="retryFavorite">{{busy?'Повторяем…':'Повторить изменение избранного'}}</button>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__footer--success">
             <a class="button primary" :href="options.endpoints.mine">Мои подписки</a>
@@ -555,14 +525,41 @@ onBeforeUnmount(()=>{document.removeEventListener('click',onClick);window.remove
             <h3>Настройки подписки</h3>
             <p class="app-play-dialog__hint">Проверь параметры перед оформлением подписки.</p>
             <div class="app-play-dialog__settings">
-                <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
+                <section class="app-play-dialog__notification-topic">
+                    <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
+                    <div class="app-play-dialog__notification-channels">
+                        <strong>Каналы уведомлений</strong>
+                        <div v-for="ch in channelList" :key="'game-'+ch.key" class="app-play-dialog__channel">
+                            <label class="check-label"><input type="checkbox" :checked="channelChecked('games',ch.key)"
+                                :disabled="!notifyMatches || !channelEnabled(ch.key) || channelsLoading || busy"
+                                @change="toggleChannel('games',ch.key,$event.target.checked)">{{ch.label}}</label>
+                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
+                                <small>{{channelReason(ch.key)}}</small>
+                                <button type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 <label class="check-label"><input v-model="notifyOffers" type="checkbox">Получать спецпредложения площадок</label>
-                <label v-if="chosenVenueId" class="check-label app-play-dialog__favorite-choice">
-                    <input v-model="favoriteDesired" type="checkbox" :disabled="busy">
-                    <span>Оставить площадку в избранном</span>
-                    <small class="app-play-dialog__favorite-count" :aria-busy="favoriteLoading">В избранном: {{favoriteLoading?'…':favoriteCount}}</small>
-                </label>
-                <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Согласен показывать другим посетителям мой аватар и игровые характеристики в рамках этого поиска. Логин отображается независимо от этой настройки.</span></label>
+                <section class="app-play-dialog__notification-topic">
+                    <label class="check-label"><input v-model="notifyVenueNews" type="checkbox" :disabled="!chosenVenueId">
+                        Уведомлять о новостях площадки</label>
+                    <small v-if="!chosenVenueId" class="app-play-dialog__channel-hint">Для уведомлений о новостях выбери площадку на первом шаге.</small>
+                    <div class="app-play-dialog__notification-channels">
+                        <strong>Каналы уведомлений</strong>
+                        <div v-for="ch in channelList" :key="'venue-'+ch.key" class="app-play-dialog__channel">
+                            <label class="check-label"><input type="checkbox" :checked="channelChecked('venue',ch.key)"
+                                :disabled="!chosenVenueId || !notifyVenueNews || !channelEnabled(ch.key) || channelsLoading || busy"
+                                @change="toggleChannel('venue',ch.key,$event.target.checked)">{{ch.label}}</label>
+                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
+                                <small>{{channelReason(ch.key)}}</small>
+                                <button type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <p v-if="channelError" class="error" role="alert">{{channelError}}</p>
+                <label class="check-label"><input v-model="showOnVenue" type="checkbox"><span>Показывать другим посетителям мой аватар и игровые характеристики в рамках этого поиска.</span></label>
             </div>
             <div v-if="editingId" class="app-play-dialog__matches">
                 <button type="button" class="button secondary" :disabled="matchingLoading"
