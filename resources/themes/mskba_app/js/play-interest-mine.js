@@ -144,11 +144,65 @@ if (root) {
             if(actionButton) actionButton.disabled=false;
         }
     }
+    let editedVenue = null;
+    async function venueChannelsEditor(intent) {
+        const current=detailsDialog?.querySelector('[data-venue-channels-editor]');
+        current?.remove();
+        if (!detailsDialog || intent.subscription_type!=='venue' || intent.effective_status!=='active') return;
+        const section=make('section',null,'app-subscription-channels');
+        section.dataset.venueChannelsEditor='1';
+        section.append(make('h3','Каналы уведомлений'));
+        const hint=make('p','Проверяем доступность каналов…','muted');
+        section.append(hint);
+        detailsBody.parentElement.append(section);
+        try{
+            const response=await request(root.dataset.channelsUrl || '/account/subscription-channels');
+            if (!detailsDialog.open || editedVenue?.id!==intent.id) return;
+            const available=response.channels||{};
+            hint.remove();
+            for(const [key,label] of [['in_app','Личные сообщения'],['telegram','Telegram'],['email','Email'],['phone','Телефон']]){
+                const holder=make('div',null,'app-subscription-channels__row');
+                const item=make('label');
+                const input=make('input');
+                input.type='checkbox';input.value=key;
+                input.checked=Boolean(available[key]?.available && (intent.delivery_channels||['in_app']).includes(key));
+                input.disabled=!available[key]?.available;
+                item.append(input,make('span',label));holder.append(item);
+                if(!available[key]?.available){
+                    holder.append(make('small',available[key]?.reason||'Канал недоступен','muted'));
+                    if(key!=='in_app'){
+                        const add=button('Добавить '+label,()=>window.dispatchEvent(
+                            new CustomEvent('mskba:contact:add',{detail:{type:key}})));
+                        add.className='app-play-dialog__text-button';
+                        holder.append(add);
+                    }
+                }
+                section.append(holder);
+            }
+            detailsEdit.hidden=false;
+            detailsEdit.textContent='Сохранить каналы';
+            detailsEdit.onclick=async()=>{
+                const selected=[...section.querySelectorAll('input:checked')].map(input=>input.value);
+                if(!selected.length){showActionError('Выбери хотя бы один доступный канал.',section);return;}
+                detailsEdit.disabled=true;
+                try{
+                    await request(venueSubscriptionsUrl+'/'+intent.id,'PATCH',{active:true,delivery_channels:selected});
+                    detailsDialog.close();editedVenue=null;await load();
+                }catch(e){showActionError(e.message,section);}finally{detailsEdit.disabled=false;}
+            };
+        }catch(e){hint.textContent=e.message;}
+    }
+    window.addEventListener('mskba:contact:updated',()=>{
+        if(editedVenue && detailsDialog?.open)void venueChannelsEditor(editedVenue);
+    });
+
     // The shared list exposes only generic actions. Type-specific settings
     // live in the detail viewer and in the existing subscription editor.
     function openDetails(intent, trigger) {
         if (!detailsDialog || !detailsBody) return;
         detailsTrigger=trigger;
+        editedVenue=intent.subscription_type==='venue'?intent:null;
+        detailsDialog.querySelector('[data-venue-channels-editor]')?.remove();
         detailsTitle.textContent=intent.subscription_type==='venue'
             ? 'Новости площадки' : (intent.name || 'Подписка №'+intent.id);
         detailsBody.replaceChildren();
@@ -178,6 +232,7 @@ if (root) {
         const restorable=['expired','cancelled'].includes(intent.effective_status);
         if(detailsEdit){
             detailsEdit.hidden=intent.subscription_type==='venue'||['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.textContent='Редактировать';
             detailsEdit.onclick=()=>editSubscription(intent);
         }
         if(detailsRestore){
@@ -185,6 +240,7 @@ if (root) {
             detailsRestore.onclick=()=>void restoreSubscription(intent,detailsDialog,detailsRestore);
         }
         detailsDialog.showModal();
+        if(editedVenue) void venueChannelsEditor(editedVenue);
     }
 
     function showError(message) { outlet.replaceChildren(make('p',message,'error')); }
