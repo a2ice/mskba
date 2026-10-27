@@ -38,6 +38,7 @@ const contextualModule=computed(()=>favoriteContext.value.module||null);
 const favoriteExtraVisible=computed(()=>contextSource.value==='play' && hasFavorite.value
     && contextType.value==='venue' && !!chosenVenueId.value && !editingId.value);
 const favoriteRetryNeeded=ref(false);
+let pendingSuccessToast = null;
 const supportsPlay=computed(()=>!hasFavorite.value||contextualModule.value==='play');
 const titleText=computed(()=>contextSource.value==='favorite'?favoriteTitle.value:
     editingId.value?'Редактировать подписку':'Хочу здесь играть');
@@ -114,7 +115,8 @@ async function applyFavorite(){
         if(contextType.value==='venue')window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
             detail:{venueId:Number(contextId.value),state:data.state,count:data.count},
         }));
-        toast(data.state==='active'?'Добавлено в избранное':'Удалено из избранного');
+        // Success for the optional favorite is represented by the checked
+        // control; creating the subscription produces the only success toast.
         return true;
     }catch(e){favoriteError.value=e.message;toast(e.message,true);return false;}
     finally{favoriteBusy.value=false;}
@@ -130,6 +132,7 @@ async function retryFavorite(){
 async function contextOpen(event){
     const detail=event.detail||{},id=Number(detail.id);
     if(!Number.isInteger(id)||id<=0)return;
+    pendingSuccessToast=null;
     contextSource.value='favorite';contextType.value=detail.type||'venue';contextId.value=id;
     playOpen.value=false;favoriteOpen.value=true;favoriteSelected.value=true;favoriteState.value='active';
     favoriteRetryNeeded.value=false;
@@ -355,7 +358,12 @@ function readPending(){
 function close(forAuth=false){
     if(busy.value)return;
     el.value?.close();visible.value=false;document.body.style.overflow=overflow;
-    if(!forAuth)restoreFocus?.focus?.({preventScroll:true});
+    if(!forAuth) {
+        restoreFocus?.focus?.({preventScroll:true});
+        // The native <dialog> lives in the browser's top layer. A toast in
+        // the shared page dock would be hidden behind it until close.
+        if(pendingSuccessToast){toast(pendingSuccessToast);pendingSuccessToast=null;}
+    }
 }
 async function openDialog(){
     if(visible.value)return;
@@ -404,7 +412,7 @@ async function save(payload){
         }
         sessionStorage.removeItem(STORAGE);
         success.value=result.data;
-        toast(editingId.value?'Подписка сохранена':'Подписка оформлена');
+        pendingSuccessToast=editingId.value?'Подписка сохранена':'Подписка оформлена';
         // Subscription is saved independently. Favorite is an optional second
         // operation: failure must not erase the saved subscription or create
         // another one on a retry.
@@ -432,6 +440,7 @@ async function resume(){
 }
 function authSuccess(){isAuth.value=true;void resume();}
 function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+    pendingSuccessToast=null;
     contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
@@ -449,6 +458,7 @@ async function loadMatchingVenues(){
     finally{matchingLoading.value=false;}
 }
 function onEdit(event){
+    pendingSuccessToast=null;
     const intent=event.detail?.intent;
     if(!intent || !Number.isInteger(intent.id) || intent.id<=0)return;
     matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';

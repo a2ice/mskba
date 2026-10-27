@@ -410,3 +410,15 @@ body.app-notification-popover-open .app-message-toast-region {
 }
 
 .app-message-toast__read[hidden] { display: none !important; }
+
+/* Ephemeral action results share the real-time notification dock and exact
+   compact toast geometry, but never affect unread message counters. */
+.app-message-toast-region .app-action-toast {
+    --toast-accent: var(--success, #278454);
+}
+.app-message-toast-region .app-action-toast--error {
+    --toast-accent: var(--danger, #bc3838);
+}
+.app-action-toast .app-message-toast__heading {
+    overflow-wrap: anywhere;
+}

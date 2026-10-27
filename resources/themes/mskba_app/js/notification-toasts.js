@@ -44,7 +44,8 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
             cards.set(id, card);
             region.append(card);
         }
-        region.hidden = cards.size === 0;
+        // User actions share this dock but are not unread notifications.
+        region.hidden = cards.size === 0 && !region.querySelector('.app-action-toast');
     };
 
     const remove = (id) => {

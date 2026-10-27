@@ -11,7 +11,6 @@
     const known = new Map();
     const pending = new Set();
     let frame = null;
-    let feedbackRegion = null;
     const svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#heart"/></svg>';
     const idFromLink = (href) => {
         if (!href) return null;
@@ -119,26 +118,10 @@
             loading=false;if(pending.size)setTimeout(()=>void hydrate(),0);
         }
     }
-    function toast(message, failed = false) {
-        if (!feedbackRegion) {
-            feedbackRegion=document.createElement('div');
-            feedbackRegion.className='mskba-action-toast-region';
-            feedbackRegion.setAttribute('role','region');
-            feedbackRegion.setAttribute('aria-label','Результаты действий');
-            document.body.appendChild(feedbackRegion);
-        }
-        const item=document.createElement('div');
-        item.className='mskba-action-toast'+(failed?' mskba-action-toast--error':'');
-        item.setAttribute('role',failed?'alert':'status');
-        const label=document.createElement('span');
-        label.textContent=message;
-        const close=document.createElement('button');
-        close.type='button';close.textContent='×';close.setAttribute('aria-label','Закрыть уведомление');
-        close.addEventListener('click',()=>item.remove());
-        item.append(label,close);
-        feedbackRegion.appendChild(item);
-        window.setTimeout(()=>item.remove(),6000);
-    }
+    // The shared action layer owns presentation, stacking and dismissal.
+    const toast = (message, failed = false) => window.dispatchEvent(
+        new CustomEvent('mskba:action-toast', {detail:{message, failed}})
+    );
     const contextNames={
         venue:{subject:'Площадка',added:'Площадка добавлена в избранное',removed:'Площадка убрана из избранного'},
         event:{subject:'Мероприятие',added:'Мероприятие добавлено в избранное',removed:'Мероприятие убрано из избранного'},
@@ -156,11 +139,12 @@
                 notify_upcoming_events:Boolean(result.notify_upcoming_events),
                 count:Number(result.count??known.get(id)?.count??0),
             });
-            toast(result.state==='active'?contextNames.venue.added:contextNames.venue.removed);
             if(result.state==='active') {
                 window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
                     detail:{source:'favorite',type:'venue',id},
                 }));
+            } else {
+                toast(contextNames.venue.removed);
             }
         }catch(e){toast(e.message||'Не удалось изменить избранное.',true);}
         finally{pending.delete(id);paint(id);}
@@ -173,8 +157,7 @@
         try{
             const result=await request(endpoints.toggle,'POST',{type,id});
             const words=contextNames[type];
-            toast(result.state==='active'?(words?.added||'Добавлено в избранное'):
-                (words?.removed||'Убрано из избранного'));
+            if(result.state!=='active')toast(words?.removed||'Убрано из избранного');
             if(button) {
                 button.setAttribute('aria-pressed',String(result.state==='active'));
                 button.title=result.state==='active'?'Убрать из избранного':'Добавить в избранное';
@@ -185,10 +168,6 @@
         }catch(e){toast(e.message||'Не удалось изменить избранное.',true);}
         finally{pendingGeneric.delete(key);if(button)button.disabled=false;}
     }
-    window.addEventListener('mskba:action-toast',event=>{
-        const detail=event.detail||{};
-        if(detail.message)toast(detail.message,Boolean(detail.failed));
-    });
     // Play intent dialog updates favorites through the same backend endpoints;
     // synchronize any visible catalog/card hearts without a reload.
     window.addEventListener('mskba:venue-favorite:updated',event=>{
