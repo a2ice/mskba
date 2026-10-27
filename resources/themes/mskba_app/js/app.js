@@ -2,6 +2,8 @@ import './header.js';
 import './features/appearance-preferences.js';
 import './notification-counts.js';
 import { initActionToasts } from './action-toasts.js';
+import { initModalDragging } from './modal-dragging.js';
+initModalDragging();
 initActionToasts();
 import './operator-presence.js';
 import './context-bar.js';
