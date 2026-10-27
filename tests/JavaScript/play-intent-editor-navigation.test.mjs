@@ -27,7 +27,7 @@ test('clicking a heart saves its actual entity before opening optional actions',
     assert.match(editor, /playOpen\.value=false;favoriteOpen\.value=true/);
     assert.match(hearts, /await request\(endpoints\.toggle,'POST',\{type:'venue',id\}\)/);
     assert.match(hearts, /if\(result\.state==='active'\)/);
-    assert.match(editor, /function saveFavoriteOnly\(\)/);
+    assert.match(editor, /async function saveFavoriteOnly\(\)/);
 });
 
 test('game creation keeps original first page and adds optional favorites only on page two', () => {
