@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Modules\Favorites\Application\Services\FavoriteTargetRegistry;
 use App\Modules\Favorites\Application\Services\FavoritesManager;
 use App\Modules\Favorites\Domain\Models\Favorite;
+use App\Modules\PlayInterest\Application\Services\VenueSubscriptionManager;
+use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,6 +44,16 @@ final class FavoritesController extends Controller
                     'notify_upcoming_events' => $item->notify_upcoming_events,
                 ],
             ])->all();
+
+        $subscriptions = $request->user() ? VenueSubscription::query()
+            ->where('user_id', $request->user()->canonical()->id)
+            ->where('status', 'active')->whereIn('venue_id', $ids)
+            ->pluck('id', 'venue_id')->all() : [];
+        foreach ($ids as $id) {
+            $key = (string) $id;
+            $items[$key] = [...($items[$key] ?? ['state' => 'none', 'notify_upcoming_events' => false]),
+                'subscribed' => isset($subscriptions[$id])];
+        }
 
         $counts = Favorite::query()->where('entity_type', 'venue')->whereNull('trashed_at')
             ->whereIn('entity_id', $ids)->selectRaw('entity_id, COUNT(*) AS total')
@@ -86,19 +98,30 @@ final class FavoritesController extends Controller
     public function updatePreferences(
         Request $request,
         FavoritesManager $favorites,
+        VenueSubscriptionManager $subscriptions,
     ): JsonResponse {
+        abort_unless($request->user() !== null, 401);
         $validated = $request->validate([
             'venue_id' => ['required', 'integer', 'min:1'],
             'notify_upcoming_events' => ['required', 'boolean'],
         ]);
-        $favorite = $favorites->setUpcomingEventNotifications(
-            $request, (int) $validated['venue_id'],
-            (bool) $validated['notify_upcoming_events'],
-        );
+        $venueId = (int) $validated['venue_id'];
+        $enabled = (bool) $validated['notify_upcoming_events'];
+        $subscription = $subscriptions->set($request->user(), $venueId, $enabled);
+
+        // Keep the historical preference in sync when the venue happens to be
+        // favorited. Subscription ownership and lifecycle are independent.
+        $favorite = $favorites->owned($request)->where('entity_type', 'venue')
+            ->where('entity_id', $venueId)->whereNull('trashed_at')->first();
+        if ($favorite !== null) {
+            $favorite->forceFill(['notify_upcoming_events' => $enabled])->save();
+        }
 
         return response()->json([
-            'state' => 'active',
-            'notify_upcoming_events' => $favorite->notify_upcoming_events,
+            'state' => $favorite ? 'active' : 'none',
+            'notify_upcoming_events' => $enabled,
+            'subscribed' => $subscription?->status === 'active',
+            'subscription_id' => $subscription?->id,
         ])->header('Cache-Control', 'private, no-store');
     }
 
