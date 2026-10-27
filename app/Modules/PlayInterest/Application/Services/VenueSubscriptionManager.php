@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\DB;
 
 final class VenueSubscriptionManager
 {
+    /** @param list<string> $channels */
+    public function setChannels(VenueSubscription $subscription, array $channels): void
+    {
+        $subscription->forceFill(['delivery_channels' => $channels])->save();
+    }
+
     public function set(User $user, int $venueId, bool $enabled): ?VenueSubscription
     {
         $canonical = $user->canonical();
