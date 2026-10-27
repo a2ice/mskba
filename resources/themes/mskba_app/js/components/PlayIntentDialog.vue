@@ -375,7 +375,7 @@ async function save(payload){
             error.value=response.status===419?'Сессия истекла. Обнови страницу.':
                 response.status===409?'Заверши настройку приватности.':
                 response.status===422?'Проверь выбранные условия.':
-                'Не получилось сохранить. Повтори попытку.';return;
+                'Не получилось сохранить. Повтори попытку.';toast('Не удалось сохранить подписку. Попробуй ещё раз.',true);return;
         }
         sessionStorage.removeItem(STORAGE);
         success.value=result.data;
@@ -383,11 +383,11 @@ async function save(payload){
         // Subscription is saved independently. Favorite is an optional second
         // operation: failure must not erase the saved subscription or create
         // another one on a retry.
-        if(favoriteExtraVisible.value) {
+        if(favoriteExtraVisible.value && favoriteSelected.value) {
             favoriteRetryNeeded.value=!await applyFavorite();
         }
         window.dispatchEvent(new CustomEvent('mskba:play-intent:saved',{detail:{id:result.data.id,venueId:result.data.venue_id}}));
-    }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';}
+    }catch{error.value='Проблема с соединением. Можно повторить попытку без создания дубля.';toast(error.value,true);}
     finally{busy.value=false;}
 }
 async function submit(){
@@ -662,9 +662,12 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
             <p class="app-play-dialog__hint">Шаг 2 из 2. Проверь настройки перед сохранением подписки.</p>
             <div v-if="favoriteExtraVisible" class="app-play-dialog__context-section">
                 <label class="check-label"><input v-model="favoriteSelected" type="checkbox"
-                    :disabled="favoriteBusy || favoriteState==='unknown'">
+                    :disabled="favoriteBusy || favoriteState==='unknown' || favoriteState==='active'">
                     Добавить площадку в избранное</label>
-                <p class="app-play-dialog__context-hint">Дополнительное действие. Подписка сохранится независимо от избранного.</p>
+                <p class="app-play-dialog__context-hint" v-if="favoriteState==='active'">
+                    Площадка уже в избранном.</p>
+                <p class="app-play-dialog__context-hint" v-else>
+                    Дополнительное действие. Подписка сохранится независимо от избранного.</p>
                 <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
             </div>
             <div class="app-play-dialog__settings">
