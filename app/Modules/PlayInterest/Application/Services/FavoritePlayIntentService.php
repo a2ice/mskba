@@ -25,8 +25,8 @@ final class FavoritePlayIntentService
                 ->lockForUpdate()->first();
 
             if ($intent !== null) {
-                if (! $intent->notify_venue_news) {
-                    $intent->forceFill(['notify_venue_news' => true])->save();
+                if ($intent->status === 'paused' || ! $intent->notify_venue_news) {
+                    $intent->forceFill(['status' => 'active', 'notify_venue_news' => true])->save();
                 }
                 return $intent->refresh();
             }
