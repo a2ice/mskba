@@ -38,3 +38,15 @@ test('disabled external channels have context actions rather than explanation pa
     assert.doesNotMatch(editor, /channelReason\(ch\.key\)/);
     assert.doesNotMatch(editor, /Добавить Телефон/);
 });
+
+test('checkbox text aligns vertically and inline plus replaces add-contact text links', () => {
+    const css = readFileSync(new URL('../../resources/themes/mskba_app/css/play-interest.css', import.meta.url), 'utf8');
+    assert.equal((editor.match(/class="app-play-dialog__channel-add"/g) || []).length, 3);
+    assert.equal((editor.match(/:aria-label="'Добавить '\+ch.label"/g) || []).length, 3);
+    assert.equal((editor.match(/<span aria-hidden="true">\+<\/span>/g) || []).length, 3);
+    assert.equal((editor.match(/@click="addContact\(ch.key\)"/g) || []).length, 3);
+    assert.doesNotMatch(editor, />Добавить \{\{ch.label\}\}<\/button>/);
+    assert.match(css, /\.app-play-dialog__channel\{display:flex;align-items:center;/);
+    assert.match(css, /\.app-play-dialog__settings \.app-play-dialog__channel \.check-label input\{\s*margin:0;align-self:center/);
+    assert.match(css, /\.app-play-dialog__channel-add:focus-visible\{outline:/);
+});

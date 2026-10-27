@@ -723,10 +723,14 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('games',ch.key)"
                                 :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('games',ch.key,$event.target.checked)">{{ch.label}}</label>
-                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
-                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
-                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
-                            </div>
+                            <template v-if="ch.key!=='in_app' && !channelEnabled(ch.key)">
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button"
+                                    class="app-play-dialog__channel-add" :aria-label="'Добавить '+ch.label"
+                                    :title="'Добавить '+ch.label" :disabled="channelsLoading || busy"
+                                    @click="addContact(ch.key)"><span aria-hidden="true">+</span></button>
+                                <a v-else-if="channelAction(ch.key)==='settings'"
+                                    class="app-play-dialog__channel-settings-link" href="/account/settings">Разрешить в настройках</a>
+                            </template>
                         </div>
                     </div>
                 </section>
@@ -738,10 +742,14 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('offers',ch.key)"
                                 :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('offers',ch.key,$event.target.checked)">{{ch.label}}</label>
-                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
-                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
-                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
-                            </div>
+                            <template v-if="ch.key!=='in_app' && !channelEnabled(ch.key)">
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button"
+                                    class="app-play-dialog__channel-add" :aria-label="'Добавить '+ch.label"
+                                    :title="'Добавить '+ch.label" :disabled="channelsLoading || busy"
+                                    @click="addContact(ch.key)"><span aria-hidden="true">+</span></button>
+                                <a v-else-if="channelAction(ch.key)==='settings'"
+                                    class="app-play-dialog__channel-settings-link" href="/account/settings">Разрешить в настройках</a>
+                            </template>
                         </div>
                     </div>
                 </section>
@@ -756,10 +764,14 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                             <label class="check-label"><input type="checkbox" :checked="channelChecked('venue',ch.key)"
                                 :disabled="!channelEnabled(ch.key) || channelsLoading || busy"
                                 @change="toggleChannel('venue',ch.key,$event.target.checked)">{{ch.label}}</label>
-                            <div v-if="ch.key!=='in_app' && !channelEnabled(ch.key)" class="app-play-dialog__channel-hint">
-                                <button v-if="channelAction(ch.key)==='add_contact'" type="button" class="app-play-dialog__text-button" @click="addContact(ch.key)">Добавить {{ch.label}}</button>
-                                <a v-else-if="channelAction(ch.key)==='settings'" href="/account/settings">Разрешить в настройках</a>
-                            </div>
+                            <template v-if="ch.key!=='in_app' && !channelEnabled(ch.key)">
+                                <button v-if="channelAction(ch.key)==='add_contact'" type="button"
+                                    class="app-play-dialog__channel-add" :aria-label="'Добавить '+ch.label"
+                                    :title="'Добавить '+ch.label" :disabled="channelsLoading || busy"
+                                    @click="addContact(ch.key)"><span aria-hidden="true">+</span></button>
+                                <a v-else-if="channelAction(ch.key)==='settings'"
+                                    class="app-play-dialog__channel-settings-link" href="/account/settings">Разрешить в настройках</a>
+                            </template>
                         </div>
                     </div>
                 </section>
