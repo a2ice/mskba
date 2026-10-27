@@ -292,9 +292,9 @@ final class VenueRevisionManager
     private function deleteMediaAfterCommit(Media $media): void
     {
         $disk = $media->disk;
-        $path = $media->path;
+        $paths = array_values(array_unique(array_filter([$media->path, $media->original_path])));
         $media->delete();
-        DB::afterCommit(fn () => Storage::disk($disk)->delete($path));
+        DB::afterCommit(fn () => Storage::disk($disk)->delete($paths));
     }
 
     private function nullableString(mixed $value): ?string
