@@ -21,7 +21,12 @@ return new class extends Migration {
                 $channels = $row->delivery_channels ?: json_encode(['in_app']);
                 if ($existing !== null) {
                     if ($row->status === 'active') {
+                        // Active venue news must remain active even when the
+                        // older game search was paused. Preserve its filters
+                        // but do not silently resume matched-game alerts.
                         DB::table('play_intents')->where('id', $existing->id)->update([
+                            'status' => 'active',
+                            'notify_matches' => $existing->status === 'paused' ? false : $existing->notify_matches,
                             'notify_venue_news' => true,
                             'venue_delivery_channels' => $channels,
                             'updated_at' => now(),
