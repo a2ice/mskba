@@ -11,7 +11,8 @@
     <section class="panel app-play-interests" data-play-interests
         data-list-url="{{ route('play-intents.index') }}"
         data-pause-url="{{ url('/account/play-intents') }}"
-        data-venues-url="{{ route('venues.search') }}">
+        data-venues-url="{{ route('venues.search') }}"
+        data-venue-subscriptions-url="{{ url('/account/venue-subscriptions') }}">
         <form class="app-play-interests__filters" data-subscriptions-filters aria-label="Фильтры подписок">
             <label class="field-group app-play-interests__filter-field" for="account-subscription-type">
                 <span>Тип подписки</span>
@@ -54,6 +55,7 @@
                     'amenities' => route('play-intents.amenities'),
                     'venuesSearch' => route('venues.search'),
                     'mine' => route('play-intents.mine'),
+                    'channels' => route('subscriptions.channels'),
                 ],
             ];
         @endphp
@@ -86,4 +88,12 @@
             </div>
         </dialog>
     </section>
+    @php
+        $telegramBotUsername = ltrim(trim((string) config('telegram.bot_username')), '@');
+        $vkEnabled = trim((string) config('vk.app_id')) !== '';
+        $contactEmulationEnabled = \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled();
+    @endphp
+    <div class="app-subscription-contact-dialog">
+        @include('theme::pages.account.partials.contact-add-dialog')
+    </div>
 @endsection
