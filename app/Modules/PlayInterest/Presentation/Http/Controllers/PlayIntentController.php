@@ -8,6 +8,7 @@ use App\Modules\PlayInterest\Application\Services\PlayIntentManager;
 use App\Modules\PlayInterest\Application\Services\RecommendPlayableSlots;
 use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
 use App\Modules\PlayInterest\Presentation\Http\Requests\SavePlayIntentRequest;
 use App\Modules\Venue\Domain\Models\Amenity;
 use Illuminate\Http\JsonResponse;
@@ -18,41 +19,66 @@ final class PlayIntentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $this->viewer($request);
-
         $filters = $request->validate([
-            'type' => ['sometimes', 'string', 'in:all,play'],
+            'type' => ['sometimes', 'string', 'in:all,play,venue'],
             'status' => ['sometimes', 'string', 'in:all,active,paused,expired,cancelled,completed'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
+        $type = $filters['type'] ?? 'all';
+        $status = $filters['status'] ?? 'active';
+        $page = (int) ($filters['page'] ?? 1);
+        $items = collect();
 
-        $query = PlayIntent::query()->where('user_id', $user->id);
-        $status = $filters['status'] ?? 'all';
-        if ($status === 'active') {
-            $query->where('status', 'active')->where(
-                fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now())
-            );
-        } elseif ($status === 'expired') {
-            $query->where('status', 'active')->whereNotNull('expires_at')->where('expires_at', '<=', now());
-        } elseif ($status !== 'all') {
-            $query->where('status', $status);
+        if ($type === 'all' || $type === 'play') {
+            $games = PlayIntent::query()->where('user_id', $user->id)->with('venue')->get();
+            foreach ($games as $game) {
+                $item = $this->serialize($game);
+                if ($status === 'all' || $item['effective_status'] === $status) {
+                    $item['updated_sort'] = $game->updated_at?->getTimestamp() ?? 0;
+                    $items->push($item);
+                }
+            }
+        }
+        if ($type === 'all' || $type === 'venue') {
+            $subscriptions = VenueSubscription::query()->where('user_id', $user->id)->with('venue')->get();
+            foreach ($subscriptions as $subscription) {
+                if ($status !== 'all' && $subscription->status !== $status) continue;
+                $venue = $subscription->venue;
+                $items->push([
+                    'id' => $subscription->id,
+                    'subscription_type' => 'venue',
+                    'name' => 'Новости площадки',
+                    'venue_id' => $subscription->venue_id,
+                    'venue' => $venue ? ['id' => (int) $venue->id, 'name' => $venue->name,
+                        'url' => route('venues.show', $venue->routeIdentifier())] : null,
+                    'status' => $subscription->status,
+                    'effective_status' => $subscription->status,
+                    'notify_venue_news' => $subscription->status === 'active',
+                    'delivery_channels' => $subscription->channels(),
+                    'updated_sort' => $subscription->updated_at?->getTimestamp() ?? 0,
+                ]);
+            }
         }
 
-        // Currently PlayIntent is the only implemented subscription provider.
-        // Type is deliberately explicit so additional providers can be added
-        // without pretending they are already present.
-        $page = $query->with('venue')->orderByDesc('updated_at')->orderByDesc('id')->paginate(10);
+        $items = $items->sortByDesc('updated_sort')->values();
+        $total = $items->count();
+        $perPage = 10;
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min($page, $lastPage);
+        $slice = $items->forPage($page, $perPage)->map(function (array $item): array {
+            unset($item['updated_sort']);
+            return $item;
+        })->values()->all();
 
         return response()->json([
-            'data' => $page->getCollection()->map(
-                fn (PlayIntent $intent): array => $this->serialize($intent)
-            )->values()->all(),
+            'data' => $slice,
             'meta' => [
-                'current_page' => $page->currentPage(),
-                'last_page' => $page->lastPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $total,
             ],
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function amenities(): JsonResponse
