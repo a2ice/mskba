@@ -12,7 +12,8 @@
         data-list-url="{{ route('play-intents.index') }}"
         data-pause-url="{{ url('/account/play-intents') }}"
         data-venues-url="{{ route('venues.search') }}"
-        data-venue-subscriptions-url="{{ url('/account/venue-subscriptions') }}">
+        data-venue-subscriptions-url="{{ url('/account/venue-subscriptions') }}"
+        data-channels-url="{{ route('subscriptions.channels') }}">
         <form class="app-play-interests__filters" data-subscriptions-filters aria-label="Фильтры подписок">
             <label class="field-group app-play-interests__filter-field" for="account-subscription-type">
                 <span>Тип подписки</span>
