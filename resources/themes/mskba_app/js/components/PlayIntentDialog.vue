@@ -476,7 +476,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">MSKBA / ИГРА</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
+        <div><p class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">
