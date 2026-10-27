@@ -2,6 +2,7 @@ import '../css/page-builder-today-event-map.css';
 import './page-builder-today-event-map.js';
 // Hero Slider component runtime remains shared; homepage ball JS belongs to Filament.
 import './page-builder-hero-slider.js';
+import '../themes/mskba_app/js/features/page-builder-native-lqip.js';
 
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.
 const roots = document.querySelectorAll('[data-mskba-builder-source]');

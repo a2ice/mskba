@@ -13,7 +13,10 @@
 @push('styles')
     @vite('resources/css/page-builder.css')
     @if ($builderCss !== '')
-        <style>{!! $builderCss !!}</style>
+        <style data-mskba-lqip-css>{!! $builderCss !!}</style>
+        @if ($builderCssOriginal !== $builderCss)
+            <noscript><style>{!! $builderCssOriginal !!}</style></noscript>
+        @endif
     @endif
 @endpush
 
@@ -25,6 +28,7 @@
 @endpush
 
 @section('content')
+    <noscript><style>.mskba-page-builder img[data-mskba-lqip-full-src]{display:none!important}</style></noscript>
     <div class="mskba-page-builder">
         @if ($builderPreview)
             <div class="container mskba-builder-preview-note" role="status">Предпросмотр черновика. Опубликованная страница не изменена.</div>
