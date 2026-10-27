@@ -364,3 +364,16 @@ dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop
 .app-play-dialog__matches ul{list-style:none;display:grid;gap:8px;padding:0;margin:0}
 .app-play-dialog__matches li a{font-size:14px;font-weight:650;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:640px){.app-subscription-details__fact{gap:8px}.app-subscription-details__body{padding:10px 16px}.app-subscription-details__footer>.button{flex:1}}
+
+/* Subscription second step: independent topics and delivery-channel matrix. */
+.app-play-dialog__notification-topic{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,1fr);gap:12px 20px;align-items:start;padding:12px 0;border-top:1px solid var(--line,#dce0e5)}
+.app-play-dialog__notification-topic>.check-label{margin:2px 0}
+.app-play-dialog__notification-channels{display:grid;gap:8px;min-width:0}
+.app-play-dialog__notification-channels>strong{font-size:13px;font-weight:650;color:var(--text-muted,#657181)}
+.app-play-dialog__channel{display:grid;gap:2px}
+.app-play-dialog__channel .check-label{font-size:13px;margin:0}
+.app-play-dialog__channel-hint{grid-column:1/-1;display:flex;flex-direction:column;gap:2px;font-size:12px;line-height:1.4;color:var(--text-muted,#657181)}
+.app-play-dialog__channel-hint small{font-size:12px;line-height:1.35}
+.app-play-dialog__channel-hint .app-play-dialog__text-button{text-align:left;justify-self:start;font-size:12px;padding:0;color:var(--accent,#c34c00)}
+.app-subscription-contact-dialog [data-contact-add-open]{display:none!important}
+@media(max-width:620px){.app-play-dialog__notification-topic{grid-template-columns:1fr}.app-play-dialog__notification-channels{padding-left:28px}}
