@@ -1,0 +1,12 @@
+/*
+ * Page Builder renders the lightweight preview as the ORIGINAL media node's
+ * src, never an absolutely-positioned duplicate. Keep CSS geometry intact.
+ *
+ * The venues scene previously withheld its artwork by animating opacity from
+ * zero. With a first-paint LQIP this hold must not hide the tiny image too.
+ * No overrides to positions, transforms, dimensions or parallax variables.
+ */
+.mskba-page-builder .mskba-v2-venues img[data-mskba-lqip-full-src] {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
