@@ -50,7 +50,10 @@ final class VenuePhotoCropService
 
                 $selection = $this->validatedSelection($photo->crop_draft);
                 $sourcePath = $photo->original_path ?: $photo->path;
-                $sourceContents = Storage::disk($photo->disk)->get($sourcePath);
+                $sourceDisk = $photo->original_path
+                    ? ($photo->original_disk ?: $photo->disk)
+                    : $photo->disk;
+                $sourceContents = Storage::disk($sourceDisk)->get($sourcePath);
                 $image = $this->normalizer->crop(
                     $sourceContents,
                     $selection,
@@ -68,6 +71,7 @@ final class VenuePhotoCropService
                 $previousPath = $photo->path;
                 $photo->forceFill([
                     'original_path' => $sourcePath,
+                    'original_disk' => $sourceDisk,
                     'path' => $newPath,
                     'mime' => 'image/webp',
                     'size' => strlen($bytes),
@@ -79,7 +83,7 @@ final class VenuePhotoCropService
 
                 $lockedVenue->increment('content_version');
 
-                if ($previousPath !== $sourcePath && $previousPath !== $newPath) {
+                if (($previousPath !== $sourcePath || $sourceDisk !== $photo->disk) && $previousPath !== $newPath) {
                     $disk = $photo->disk;
                     DB::afterCommit(fn () => Storage::disk($disk)->delete($previousPath));
                 }
