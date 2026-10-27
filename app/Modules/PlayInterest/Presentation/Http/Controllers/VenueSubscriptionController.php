@@ -36,7 +36,17 @@ final class VenueSubscriptionController extends Controller
         if (isset($data['delivery_channels'])) {
             $manager->setChannels($venueSubscription, $channels->validate($request->user(), $data['delivery_channels']));
         }
-        $updated = $manager->set($request->user(), (int) $venueSubscription->venue_id, (bool) $data['active']);
+        $updated = DB::transaction(function () use ($manager, $request, $venueSubscription, $data): ?VenueSubscription {
+            $updated = $manager->set($request->user(), (int) $venueSubscription->venue_id, (bool) $data['active']);
+            if ($updated?->play_intent_id && $updated->playIntent) {
+                $game = $updated->playIntent;
+                // Cancel/restore the linked search together with its parent
+                // subscription; do not leave hidden active searches behind.
+                $game->forceFill(['status' => ! $data['active'] ? 'cancelled'
+                    : (bool) data_get($updated->criteria, 'notify_matches', false) ? 'active' : 'paused'])->save();
+            }
+            return $updated;
+        });
         return response()->json(['status' => $updated?->status, 'id' => $updated?->id])
             ->header('Cache-Control', 'private, no-store');
     }
@@ -108,6 +118,9 @@ final class VenueSubscriptionController extends Controller
             $game = $linked;
             if ($matches || $linked !== null) {
                 $game = $games->save($user, $data, $linked, false);
+                if ($matches && $game->status === 'paused') {
+                    $game->forceFill(['status' => 'active'])->save();
+                }
                 if (! $matches) {
                     // Retain saved criteria but do not leave an active search
                     // running once matching notifications are disabled.
