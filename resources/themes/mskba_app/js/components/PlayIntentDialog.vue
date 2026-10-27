@@ -142,6 +142,10 @@ async function contextOpen(event){
     manuallyNamed.value=false;interestName.value='';requestId=null;
     venueDisabled.value=false;similar.value=false;radius.value=10;cadence.value='flexible';
     hasExpiry.value=false;expiryDate.value='';dayIds.value=[];dates.value=[];formats.value=[];
+    excludedVenues.value=[];latitude.value='';longitude.value='';access.value='any';venueKind.value='any';
+    for(const key of Object.keys(priority))delete priority[key];
+    for(const key of Object.keys(windows))delete windows[key];
+    windows.all=[{part:'any',from:'',to:''}];
     duration.value='';notifyMatches.value=true;notifyOffers.value=false;notifyVenueNews.value=true;
     showOnVenue.value=false;gameChannels.value=['in_app'];venueChannels.value=['in_app'];
     await openDialog();
@@ -360,7 +364,8 @@ async function openDialog(){
     heading.value?.focus({preventScroll:true});
     void hydrateVenue();
 
-    if(!amenities.value.length){
+    // Entity-only favorites do not need basketball game catalogs.
+    if(!(contextSource.value==='favorite' && contextType.value!=='venue') && !amenities.value.length){
         try{
             const r=await fetch(props.options.endpoints.amenities,{credentials:'same-origin',headers:{Accept:'application/json'}});
             if(r.ok)amenities.value=(await r.json()).data||[];
