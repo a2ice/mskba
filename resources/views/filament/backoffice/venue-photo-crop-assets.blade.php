@@ -2,7 +2,7 @@
 .venue-photo-crop { display: grid; gap: 1rem; }
 .venue-photo-crop__hint { margin: 0; font-size: .875rem; line-height: 1.5; color: #737373; }
 .venue-photo-crop__viewport { display: flex; justify-content: center; overflow: hidden; border-radius: .75rem; background: #151515; padding: .5rem; }
-.venue-photo-crop__stage { position: relative; display: inline-block; max-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; overflow: hidden; }
+.venue-photo-crop__stage { position: relative; display: inline-block; max-width: calc(100% - 48px); touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; overflow: visible; }
 .venue-photo-crop__stage img { display: block; width: auto; height: auto; max-width: 100%; max-height: min(58dvh, 600px); pointer-events: none; }
 .venue-photo-crop__frame { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 200vmax rgba(0,0,0,.57); touch-action: none; cursor: move; }
 .venue-photo-crop__thirds { pointer-events: none; position: absolute; inset: 0; background: linear-gradient(to right, transparent 33.15%,rgba(255,255,255,.5) 33.15%,rgba(255,255,255,.5) 33.45%,transparent 33.45%,transparent 66.5%,rgba(255,255,255,.5) 66.5%,rgba(255,255,255,.5) 66.8%,transparent 66.8%),linear-gradient(to bottom,transparent 33.15%,rgba(255,255,255,.5) 33.15%,rgba(255,255,255,.5) 33.45%,transparent 33.45%,transparent 66.5%,rgba(255,255,255,.5) 66.5%,rgba(255,255,255,.5) 66.8%,transparent 66.8%); }
