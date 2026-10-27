@@ -54,7 +54,7 @@ if (root) {
         else telegramLink.stop();
     }
 
-    function open(preselected = 'email') {
+    function open(preselected = 'email', skipMethod = false) {
         opener = document.activeElement;
         const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
         (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
@@ -65,8 +65,11 @@ if (root) {
         dialog.showModal();
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
-        showStep('method');
         emulator.reset();
+        // From a + button the contact kind is already known. Do not ask the
+        // user to choose it again. Keep the selection screen for normal entry.
+        if (skipMethod && radio && !radio.disabled) advanceFromMethod();
+        else showStep('method');
     }
 
     function configureValueField() {
@@ -157,8 +160,25 @@ if (root) {
         },
     });
 
+    function advanceFromMethod() {
+        kind = dialog.querySelector('input[name="new_contact_channel"]:checked')?.value || '';
+        if (!kind) { setError('Выбери способ связи.'); return; }
+        if (kind === 'email' || kind === 'phone') {
+            configureValueField();
+            showStep('value');
+        } else if (emulator.available && ['telegram', 'vk'].includes(kind)) {
+            emulator.choose(kind);
+            showStep('emulation');
+        } else {
+            showStep(kind);
+        }
+    }
+
     root.querySelector('[data-contact-add-open]')?.addEventListener('click', () => open());
-    window.addEventListener('mskba:contact:add', event => open(event.detail?.type || 'email'));
+    window.addEventListener('mskba:contact:add', event => {
+        const type = event.detail?.type;
+        open(type || 'email', Boolean(type));
+    });
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
     });
@@ -179,17 +199,7 @@ if (root) {
     next.addEventListener('click', async () => {
         if (busy) return;
         if (step === 'method') {
-            kind = dialog.querySelector('input[name="new_contact_channel"]:checked')?.value || '';
-            if (!kind) { setError('Выбери способ связи.'); return; }
-            if (kind === 'email' || kind === 'phone') {
-                configureValueField();
-                showStep('value');
-            } else if (emulator.available && ['telegram', 'vk'].includes(kind)) {
-                emulator.choose(kind);
-                showStep('emulation');
-            } else {
-                showStep(kind);
-            }
+            advanceFromMethod();
             return;
         }
 
