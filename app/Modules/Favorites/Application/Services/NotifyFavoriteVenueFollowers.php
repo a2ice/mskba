@@ -52,7 +52,7 @@ final readonly class NotifyFavoriteVenueFollowers
     private function send(int $venueId, string $type, int $id, string $title, string $body, string $url): void
     {
         VenueSubscription::query()
-            ->where('venue_id', $venueId)->where('status', 'active')
+            ->where('venue_id', $venueId)->where('status', 'active')->where('notify_venue_news', true)
             ->orderBy('id')->chunkById(100, function ($subscriptions) use ($type, $id, $title, $body, $url, $venueId): void {
                 foreach ($subscriptions as $subscription) {
                     $saved = DB::table('favorite_notification_deliveries')->insertOrIgnore([
