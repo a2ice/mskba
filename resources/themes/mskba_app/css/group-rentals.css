@@ -1,0 +1,23 @@
+
+/* Task 298 phase 1: view existing quote-backed rental coordination from the group. */
+.app-group-rentals__heading h2{font-size:22px;margin:0 0 8px}
+.app-group-rentals__list{display:grid;gap:12px}
+.app-group-rentals__card{display:grid;gap:12px;border:1px solid var(--line);border-radius:12px;padding:16px}
+.app-group-rentals__card-top{display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:12px}
+.app-group-rentals__card h3{font-size:17px;margin:0;overflow-wrap:anywhere}
+.app-group-rentals__facts{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted)}
+.app-group-rentals__card .button{justify-self:start}
+.app-group-rentals__create{border-top:1px solid var(--line);padding-top:20px}
+.app-group-rentals__create>summary{display:inline-flex;cursor:pointer;list-style:none}
+.app-group-rentals__create>summary::-webkit-details-marker{display:none}
+.app-group-rentals__create>.muted{margin-top:12px}
+.app-group-rentals__form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+.app-group-rentals__form label{display:grid;gap:7px;font-size:14px;font-weight:600;min-width:0}
+.app-group-rentals__form input,.app-group-rentals__form select{max-width:100%;min-width:0;border:1px solid var(--control-line);border-radius:8px;background:var(--surface);color:var(--text);padding:10px}
+.app-group-rentals__form .button{justify-self:start}
+.app-group-rentals__details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:0}
+.app-group-rentals__details div{min-width:0}.app-group-rentals__details dt{font-size:13px;color:var(--muted)}
+.app-group-rentals__details dd{margin:4px 0 0;font-weight:600;overflow-wrap:anywhere}
+.app-group-rentals__actions{display:flex;flex-wrap:wrap;gap:10px}
+.app-group-rentals__participants{margin-top:20px}
+@media(max-width:639px){.app-group-rentals__form,.app-group-rentals__details{grid-template-columns:minmax(0,1fr)}}
