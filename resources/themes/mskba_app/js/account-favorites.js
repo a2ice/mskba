@@ -52,6 +52,9 @@ if (root) {
                             body:JSON.stringify({ type:item.type, id:item.entity_id }),
                         });
                         if (!response.ok) throw new Error('Не получилось изменить избранное.');
+                        const change = await response.json();
+                        window.dispatchEvent(new CustomEvent('mskba:favorites:changed',
+                            { detail: { count: change.favorites_count } }));
                         loading = false;
                         await load();
                     } catch (e) {

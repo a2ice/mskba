@@ -14,6 +14,9 @@ final class FavoritesManager
 {
     public const COOKIE_NAME = 'mskba_guest_favorites';
 
+    public function __construct(private readonly FavoriteCountService $counts) {}
+
+
     private function guestHash(Request $request): ?string
     {
         $token = $request->cookie(self::COOKIE_NAME);
@@ -42,6 +45,16 @@ final class FavoritesManager
             : Favorite::query()->whereRaw('1=0');
     }
 
+    /** Guests without a valid favorites cookie have no rows: skip the DB entirely. */
+    public function activeGuestCount(Request $request): int
+    {
+        if ($request->user() !== null || $this->guestHash($request) === null) {
+            return 0;
+        }
+
+        return $this->owned($request)->whereNull('trashed_at')->count();
+    }
+
     public function status(Request $request, string $type, int $id): string
     {
         $favorite = $this->owned($request)->where('entity_type', $type)->where('entity_id', $id)->first();
@@ -65,7 +78,7 @@ final class FavoritesManager
             ));
         }
 
-        return DB::transaction(function () use ($request, $type, $id, $user, $hash): Favorite {
+        $favorite = DB::transaction(function () use ($request, $type, $id, $user, $hash): Favorite {
             $query = $user !== null
                 ? Favorite::query()->where('user_id', $user->id)
                 : Favorite::query()->where('guest_token_hash', $hash)->whereNull('user_id');
@@ -88,6 +101,12 @@ final class FavoritesManager
                 'trashed_at' => null,
             ]);
         });
+
+        if ($user !== null) {
+            $this->counts->changed($user);
+        }
+
+        return $favorite;
     }
 
     public function setUpcomingEventNotifications(Request $request, int $venueId, bool $enabled): Favorite
@@ -118,7 +137,7 @@ final class FavoritesManager
             return;
         }
 
-        DB::transaction(function () use ($user, $hash): void {
+        $claimed = DB::transaction(function () use ($user, $hash): bool {
             $guestItems = Favorite::query()->whereNull('user_id')
                 ->where('guest_token_hash', $hash)->lockForUpdate()->get();
 
@@ -139,7 +158,13 @@ final class FavoritesManager
                     $item->forceFill(['user_id' => $user->id, 'guest_token_hash' => null])->save();
                 }
             }
+
+            return $guestItems->isNotEmpty();
         });
+
+        if ($claimed) {
+            $this->counts->changed($user);
+        }
 
         Cookie::queue(Cookie::forget(self::COOKIE_NAME));
     }

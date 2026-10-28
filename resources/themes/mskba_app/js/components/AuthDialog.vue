@@ -24,6 +24,7 @@ let restoreFocus = null;
 let previousOverflow = '';
 let currentRequest = null;
 let inlineAuth = false;
+const redirectAfterAuth = ref(null);
 
 const title = computed(() => ({
     login: 'Вход в аккаунт',
@@ -35,7 +36,7 @@ const locationPath = () => window.location.pathname + window.location.search + w
 const vkUrl = computed(() => {
     if (!props.options.vk) return null;
     const url = new URL(props.options.vk, window.location.origin);
-    url.searchParams.set('redirect_to', locationPath());
+    url.searchParams.set('redirect_to', redirectAfterAuth.value || locationPath());
     return url.href;
 });
 
@@ -86,6 +87,7 @@ function openLegalDocument(kind, trigger) {
 
 function closeDialog() {
     if (busy.value) return;
+    redirectAfterAuth.value = null;
     legalDialog.value?.closeDocument();
     if (panel.value?.open) panel.value.close();
     opened.value = false;
@@ -108,12 +110,14 @@ function onDocumentClick(event) {
     const button = event.target.closest?.('[data-auth-trigger]');
     if (!button || !document.getElementById('mskba-auth-dialog-root')) return;
     event.preventDefault();
+    redirectAfterAuth.value = button.dataset.authRedirect || null;
     inlineAuth = false;
     preferredRole.value = '';
     openDialog(button.dataset.authMode || 'login');
 }
 
 function onDialogEvent(event) {
+    redirectAfterAuth.value = null;
     inlineAuth = event.detail?.stayOnPage === true;
     preferredRole.value = event.detail?.preferredRole === 'player' ? 'player' : '';
     openDialog(event.detail?.mode || 'login');
@@ -145,7 +149,7 @@ async function post(endpoint, form) {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
             },
-            body: JSON.stringify({ ...form, redirect_to: locationPath(), inline_auth: inlineAuth && mode.value === 'login' }),
+            body: JSON.stringify({ ...form, redirect_to: redirectAfterAuth.value || locationPath(), inline_auth: inlineAuth && mode.value === 'login' }),
         });
         let result = {};
         try { result = await response.json(); } catch { /* non-JSON upstream error */ }
