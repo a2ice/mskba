@@ -32,8 +32,6 @@
                 @endif
             </div>
         </div>
-    </div>
-
     <section class="panel app-venue-interest-group__content app-group-rentals" aria-labelledby="group-rentals-heading">
         <div class="app-group-rentals__heading">
             <div>
@@ -105,6 +103,7 @@
             @endif
         @endif
     </section>
+    </div>
 </section>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
