@@ -92,6 +92,7 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidat
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueGroupOfferController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
@@ -491,6 +492,13 @@ Route::prefix('venues')->group(function () {
         ->name('venues.preview');
     Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
         ->whereNumber('venue')->name('venues.interest-group');
+    Route::post('/{venue}/interest-group/offers', [VenueGroupOfferController::class, 'store'])
+        ->middleware(['auth:web', 'throttle:10,1'])->whereNumber('venue')
+        ->name('venues.interest-group.offers.store');
+    Route::post('/{venue}/interest-group/offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
+        ->middleware(['auth:web', 'throttle:20,1'])
+        ->whereNumber('venue')->whereNumber('offer')->where('action', 'publish|pause|revoke')
+        ->name('venues.interest-group.offers.transition');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 

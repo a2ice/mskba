@@ -9,6 +9,7 @@ use App\Support\Features\VenueRentalFeature;
 use App\Support\Features\VenueRentalRollout;
 use Illuminate\Database\Eloquent\Builder;
 use App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience;
+use App\Modules\PlayInterest\Application\Services\VenueGroupOffers;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -23,7 +24,7 @@ use Illuminate\Http\Response;
  */
 final class VenueInterestGroupController extends Controller
 {
-    public function __invoke(int $venue, Request $request, VenueSubscriptionAudience $audience, FeatureFlags $features, VenueRentalRollout $rollout): Response|RedirectResponse
+    public function __invoke(int $venue, Request $request, VenueSubscriptionAudience $audience, FeatureFlags $features, VenueRentalRollout $rollout, VenueGroupOffers $offers): Response|RedirectResponse
     {
         $item = Venue::query()
             ->whereKey($venue)
@@ -75,8 +76,14 @@ final class VenueInterestGroupController extends Controller
                 ->withQueryString();
         }
 
+        $canManageOffers = $offers->canManage($request->user(), $item);
+        $visibleOffers = $offers->visibleTo($request->user(), $item);
+
         return ThemeResolver::page('venues.interest-group', [
             'venue' => $item,
+            'canManageOffers' => $canManageOffers,
+            'visibleOffers' => $visibleOffers,
+            'offerCourts' => $canManageOffers ? $item->courts()->orderBy('sort_order')->get(['id', 'name']) : collect(),
             'venueTimezone' => $item->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow'),
             'venueAudience' => $members,
             'viewerHasVenueInterest' => $isSubscriber,
