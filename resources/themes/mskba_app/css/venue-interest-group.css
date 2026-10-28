@@ -1,0 +1,11 @@
+/* Task 297: permanent venue interest-group page, same player projection as the modal. */
+.app-venue-interest-group{padding:32px 0 56px;min-width:0}
+.app-venue-interest-group__header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+.app-venue-interest-group__header h1{font-size:clamp(28px,3.5vw,40px);line-height:1.2;margin:8px 0 12px}
+.app-venue-interest-group__header .muted{font-size:16px}
+.app-venue-interest-group__content{display:grid;gap:18px;padding:24px}
+.app-venue-interest-group__content>.muted{line-height:1.6}
+.app-venue-interest-group__content .app-venue-interests-dialog__list{max-height:none;overflow:visible;padding:0;margin:0}
+.app-venue-interest-group__content .app-venue-interests-dialog__player{padding-block:12px}
+.app-venue-interest-group__actions{display:flex;gap:12px;flex-wrap:wrap}
+@media(max-width:639px){.app-venue-interest-group{padding:16px 0 40px}.app-venue-interest-group__content{padding:16px}}
