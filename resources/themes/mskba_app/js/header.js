@@ -39,27 +39,40 @@ document.querySelectorAll('.app-header-nav-group').forEach((menu) => {
 if (import.meta.hot) import.meta.hot.dispose(() => controller.abort());
 
 
-/* Primary navigation is allowed to scroll away while the contextual bar remains
- * sticky. Reveal on upward scroll or mouse entering the first 18 viewport pixels.
- * The shared offset drives the venue anchors/sidebar and account sticky UI. */
+/* The primary navigation reveals on upward scroll; the contextual bar stays sticky.
+ * A dedicated button can pin the header until the user explicitly unpins it.
+ * The shared offset drives venue anchors/sidebar and account sticky UI. */
 const siteHeader = document.querySelector('[data-app-header]');
 if (siteHeader) {
     const contextBar = document.querySelector('[data-app-context-bar]');
-    const TOP_EDGE_PX = 18;
     const DIRECTION_THRESHOLD_PX = 6;
+    const pinButton = contextBar?.querySelector('[data-app-header-pin]');
+    const pinStorageKey = 'mskba:header-pinned';
     let headerHeight = siteHeader.offsetHeight;
     let contextHeight = contextBar?.offsetHeight || 0;
     let previousScrollY = Math.max(0, window.scrollY);
     let scrollDelta = 0;
     let scrollingUp = false;
-    let pointerReveal = false;
-    // Only actual mouse hover over the primary header locks it open.
-    // Hovering the breadcrumbs must not prevent normal hide-on-scroll.
-    let headerHovered = false;
+    // Persist only for this browser tab: normal navigation does not unexpectedly
+    // undo an explicit pin, but another tab keeps its own header preference.
+    let pinned = false;
+    try {
+        pinned = Boolean(pinButton) && window.sessionStorage?.getItem(pinStorageKey) === '1';
+    } catch { /* Strict browser privacy settings may forbid storage. */ }
     let previousState = '';
     let scrollFrame = null;
 
     const navigationOpen = () => Boolean(siteHeader.querySelector('details[open]'));
+
+    const updatePinButton = () => {
+        if (!pinButton) return;
+        pinButton.setAttribute('aria-pressed', String(pinned));
+        const label = pinned
+            ? 'Скрыть шапку и вернуть автоматическое поведение'
+            : 'Показать и закрепить шапку';
+        pinButton.setAttribute('aria-label', label);
+        pinButton.title = label;
+    };
 
     const updateOffsets = (visible) => {
         const root = document.documentElement;
@@ -83,9 +96,8 @@ if (siteHeader) {
         // Switching the class off there causes the visible 80px jump on scroll-up.
         // Keep the upward intent through the very top; the next downward scroll
         // will hide the header naturally.
-        const reveal = scrollingUp
-            || pointerReveal
-            || headerHovered
+        const reveal = pinned
+            || scrollingUp
             || navigationOpen()
             || siteHeader.contains(document.activeElement);
 
@@ -114,13 +126,11 @@ if (siteHeader) {
         if (Math.abs(scrollDelta) >= DIRECTION_THRESHOLD_PX) {
             scrollingUp = scrollDelta < 0;
             scrollDelta = 0;
-            if (!scrollingUp) pointerReveal = false;
         }
 
         if (current <= 1) {
             // Preserve scrollingUp at the page origin. The normal-flow and
             // sticky top=0 positions coincide, so no handover is necessary.
-            pointerReveal = false;
             scrollDelta = 0;
         }
 
@@ -133,39 +143,22 @@ if (siteHeader) {
         }
     }, { passive: true, signal });
 
-    window.addEventListener('pointermove', (event) => {
-        if (event.pointerType !== 'mouse') return;
-
-        const atEdge = event.clientY >= 0 && event.clientY <= TOP_EDGE_PX;
-        const withinRevealedNavigation = pointerReveal
-            && event.clientY >= 0
-            && event.clientY <= Math.max(
-                siteHeader.getBoundingClientRect().bottom,
-                contextBar?.getBoundingClientRect().bottom || 0,
-            );
-        const reveal = window.scrollY > 1 && (atEdge || withinRevealedNavigation);
-
-        if (reveal !== pointerReveal) {
-            pointerReveal = reveal;
-            updateVisibility();
+    // A hover at the top edge must never reveal the header. Only the user's
+    // explicit button press or upward scroll may do so.
+    pinButton?.addEventListener('click', () => {
+        pinned = !pinned;
+        if (!pinned) {
+            scrollingUp = false;
+            scrollDelta = 0;
+            closeMenus();
         }
-    }, { passive: true, signal });
+        try {
+            window.sessionStorage?.setItem(pinStorageKey, pinned ? '1' : '0');
+        } catch { /* Pinning still works until navigation if storage is blocked. */ }
+        updatePinButton();
+        updateVisibility();
+    }, { signal });
 
-    document.addEventListener('pointerleave', () => {
-        if (!pointerReveal) return;
-        pointerReveal = false;
-        updateVisibility();
-    }, { signal });
-    siteHeader.addEventListener('pointerenter', (event) => {
-        if (event.pointerType !== 'mouse') return;
-        headerHovered = true;
-        updateVisibility();
-    }, { signal });
-    siteHeader.addEventListener('pointerleave', (event) => {
-        if (event.pointerType !== 'mouse') return;
-        headerHovered = false;
-        updateVisibility();
-    }, { signal });
     siteHeader.addEventListener('toggle', updateVisibility, { capture: true, signal });
     siteHeader.addEventListener('focusin', updateVisibility, { signal });
     siteHeader.addEventListener('focusout', () => {
@@ -180,5 +173,6 @@ if (siteHeader) {
         signal.addEventListener('abort', () => observer.disconnect(), { once: true });
     }
 
+    updatePinButton();
     updateDimensions();
 }
