@@ -56,3 +56,10 @@
 .account-contracts-promo-form__wide{grid-column:1/-1}
 @media(max-width:900px){.account-contracts-workspace__filters,.account-contracts-workspace__filters--venues{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.account-contracts-workspace__filters,.account-contracts-workspace__filters--venues{grid-template-columns:1fr}.account-contracts-dialog__details,.account-contracts-dialog__permissions,.account-contracts-promo-form{grid-template-columns:1fr}.account-contracts-dialog__body{padding:14px}.account-contracts-workspace__card{padding:14px}}
+
+/* Nested contract menu links in the legacy theme. */
+.partial-sidebar-menu .sidebar-nav-group>summary{cursor:pointer;list-style:none}
+.partial-sidebar-menu .sidebar-nav-group>summary::after{content:"⌄";float:right;font-weight:700}
+.partial-sidebar-menu .sidebar-nav-group[open]>summary::after{content:"⌃"}
+.partial-sidebar-menu .sidebar-nav-group>ul{margin:4px 0 6px 14px;border-left:1px solid #cbd5e0;padding-left:9px}
+.partial-sidebar-menu .sidebar-nav-group>ul .nav-link{white-space:normal}
