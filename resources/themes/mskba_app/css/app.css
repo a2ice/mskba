@@ -32,6 +32,7 @@
 @import '../../mskba_dark/css/venue-pin.css';
 @import './venue-favorites.css';
 @import './account-favorites.css';
+@import './my-games.css';
 
 .app-shell { min-height: 100dvh; }
 

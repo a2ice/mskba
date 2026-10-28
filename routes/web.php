@@ -27,6 +27,7 @@ use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
+use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
@@ -818,10 +819,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::patch('/profile', UpdateAccountProfileController::class)
             ->middleware('throttle:20,1')
             ->name('account.profile.update');
+        Route::get('/my-games', AccountMyGamesController::class)
+            ->name('account.my-games')->defaults('breadcrumb', 'Мои игры');
         // Role-driven entry points in MSKBA App. Functional screens are introduced
         // incrementally; legacy theme keeps its established account routes.
         foreach ([
-            ['my-games', 'account.my-games', 'Мои игры', 'Игры, в которых ты участвуешь, и новые возможности для игры.'],
             ['my-trainings', 'account.my-trainings', 'Мои тренировки', 'Твои тренировки и подбор новых занятий.'],
             ['my-bookings', 'account.my-bookings', 'Бронирования', 'Запросы и бронирования площадок.'],
             ['venue-schedule', 'account.venue-schedule', 'Расписание', 'Календарь и доступность твоих площадок.'],
