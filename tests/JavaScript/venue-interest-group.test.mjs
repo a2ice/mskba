@@ -38,3 +38,11 @@ test('static group list does not register itself as a modal with close() handler
     assert.match(js, /playersList = playersDialog \|\| document\.querySelector\('\[data-venue-interest-group-users\]'\)/);
     assert.match(js, /playersList\?\.addEventListener\('click'/);
 });
+
+test('group subscribers and rental panels have distinct spacing on desktop and mobile', () => {
+    const css = file('../../resources/themes/mskba_app/css/group-rentals.css');
+    const markup = file('../../resources/themes/mskba_app/views/pages/venues/interest-group.blade.php');
+    assert.match(markup, /class="panel app-venue-interest-group__content app-group-rentals"/);
+    assert.match(css, /\.app-venue-interest-group__content\.app-group-rentals\{margin-block-start:24px\}/);
+    assert.match(css, /@media\(max-width:639px\)\{\.app-venue-interest-group__content\.app-group-rentals\{margin-block-start:16px\}\}/);
+});
