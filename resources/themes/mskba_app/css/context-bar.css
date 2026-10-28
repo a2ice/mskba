@@ -67,6 +67,19 @@ html:has(.app-context-bar) {
 .app-context-trail a:hover { color: var(--accent-hover); }
 .app-context-trail [aria-current="page"] { color: var(--text); }
 .app-context-bar__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* Explicit pin next to the Actions menu: compact, always available on touch and
+   desktop. The chevron rotates when sticky primary navigation is locked open. */
+.app-context-header-pin.app-context-quick { justify-content: center; padding: 0; }
+.app-context-header-pin.app-context-quick:is(:hover,:focus-visible) {
+    width: 44px;
+    max-width: 44px;
+}
+.app-context-header-pin > svg { transition: transform .2s ease; }
+.app-context-header-pin[aria-pressed="true"] { color: var(--accent); }
+.app-context-header-pin[aria-pressed="true"] > svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .app-context-header-pin > svg { transition: none; }
+}
 /* Task 030 review: a 44px hit area with a 36px visible control; the sticky
    bar itself stays 44px high. Labels never bleed out of collapsed controls. */
 .app-context-quick {
