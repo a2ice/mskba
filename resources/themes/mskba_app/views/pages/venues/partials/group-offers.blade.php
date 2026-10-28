@@ -33,5 +33,4 @@
 <p class="muted">Пока нет доступных предложений.</p>
 @endforelse
 {{ $visibleOffers->links() }}
-@endif
 </section>
