@@ -47,3 +47,25 @@ test('the header count reuses the private Reverb channel and reconciles other ta
         assert.match(consumer, /mskba:favorites:changed/);
     }
 });
+
+test('header favorites display an inline heart and plain counter before login/avatar', () => {
+    const css = source('../../resources/themes/mskba_app/css/header.css');
+    const blade = source('../../resources/themes/mskba_app/views/partials/header.blade.php');
+    const extract = selector => css.match(new RegExp('\\.' + selector + '\\s*\\{([^}]*)\\}'))?.[1] || '';
+    const actions = extract('app-header-actions');
+    const link = extract('app-header-favorites');
+    const count = extract('app-header-favorites__count');
+
+    assert.match(actions, /align-items:\s*center/);
+    assert.match(link, /display:\s*inline-flex/);
+    assert.match(link, /align-items:\s*center/);
+    assert.match(link, /gap:\s*6px/);
+    assert.match(link, /min-height:\s*44px/);
+    assert.match(count, /display:\s*inline-block/);
+    assert.match(count, /color:\s*currentColor/);
+    assert.doesNotMatch(count, /position:\s*absolute|border:|border-radius:|background:/);
+    assert.match(css, /\.app-header-favorites__count\[hidden\]\s*\{\s*display:\s*none/);
+    assert.ok(blade.indexOf('class="app-header-favorites"') > -1);
+    assert.ok(blade.indexOf('class="app-header-favorites"') < blade.indexOf('class="app-header-login"'));
+    assert.ok(blade.indexOf('class="app-header-favorites"') < blade.indexOf("'app-header-account'"));
+});
