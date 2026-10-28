@@ -182,8 +182,15 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $roles = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте');
         $this->assertSame(route('account.roles'), $roles['url']);
         $this->assertArrayNotHasKey('children', $roles);
-        $labels = array_column(app(MenuResolver::class)->resolve('account'), 'label');
-        $this->assertSame(array_search('Кошелёк', $labels, true) + 1, array_search('Настройки', $labels, true));
+        $menu = collect(app(MenuResolver::class)->resolve('account'));
+        $labels = $menu->pluck('label')->all();
+        $this->assertSame(array_search('Кошелёк', $labels, true) + 1, array_search('Мои контракты', $labels, true));
+        $this->assertSame(array_search('Мои контракты', $labels, true) + 1, array_search('Настройки', $labels, true));
+        $contracts = $menu->firstWhere('label', 'Мои контракты');
+        $this->assertNull($contracts['url']);
+        $this->assertSame(['Все контракты', 'Площадки'], array_column($contracts['children'], 'label'));
+        $this->assertSame(route('account.contracts'), $contracts['children'][0]['url']);
+        $this->assertSame(route('account.contracts.venues'), $contracts['children'][1]['url']);
     }
 
     public function test_player_role_shows_all_destinations_without_any_team_or_games(): void
@@ -331,7 +338,9 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::VENUE_RELATED);
         $this->actingAs($user)->get(route('account'))->assertOk();
-        $this->assertSame(['Мои площадки', 'Бронирования', 'Расписание'], $this->childLabels());
+        $this->assertSame(['Бронирования', 'Расписание'], $this->childLabels());
+        $contracts = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои контракты');
+        $this->assertSame(route('account.contracts.venues'), $contracts['children'][1]['url']);
 
         $this->get(route('account.my-bookings'))->assertOk();
         $this->get(route('account.venue-schedule'))->assertOk();

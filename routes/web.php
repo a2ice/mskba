@@ -38,6 +38,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSearchController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
+use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -1000,8 +1001,13 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmContactVerification'])
             ->middleware('throttle:20,1')
             ->name('account.contacts.verification.confirm');
-        Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
-        Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
+        Route::get('/contracts', [AccountContractsWorkspaceController::class, 'index'])
+            ->name('account.contracts')->defaults('breadcrumb', 'Мои контракты');
+        // Must precede /contracts/{number}; this is the canonical venue collection.
+        Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
+            ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/contracts/{number}', [AccountController::class, 'contract'])
+            ->name('account.contracts.show');
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
         Route::prefix('sections')->group(function () {
             Route::get('/', [AccountSportsSectionController::class, 'index'])->name('account.sports-sections.index')->defaults('breadcrumb', 'Мои секции');
@@ -1043,7 +1049,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/venues/{venue}/group-offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
             ->middleware('throttle:20,1')->whereNumber('venue')->whereNumber('offer')
             ->where('action','publish|pause|revoke')->name('account.venues.group-offers.transition');
-        Route::get('/venues', [AccountController::class, 'venues'])
+        // Backwards-compatible alias for saved links; only /contracts/venues is canonical.
+        Route::get('/venues', fn () => redirect()->route('account.contracts.venues', request()->query(), 302))
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');
         Route::prefix('venues/{venue}/commercial-memberships')

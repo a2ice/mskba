@@ -35,6 +35,8 @@ import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
 import './group-offer-copy.js';
+import './contracts-workspace.js';
+import '../css/contracts-workspace.css';
 import './venue-map-dialog.js';
 import './features/home-venues-map-expand.js';
 import './features/site-media-lqip.js';

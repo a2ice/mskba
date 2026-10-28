@@ -39,6 +39,7 @@ final class AccountMenu implements MenuHandler
         'account.wallet' => 'currency-ruble',
         'account.settings' => 'sliders',
         'account.contracts' => 'file-description',
+        'account.contracts.venues' => 'pin',
         'auth.logout' => 'arrow-up-right',
     ];
 
@@ -74,9 +75,6 @@ final class AccountMenu implements MenuHandler
             'active' => $this->isActiveRoute('account.roles, account.roles.*, account.participation-role'),
             'visible' => true,
         ];
-        if ($this->hasVenueRelations($user)) {
-            $items[] = $this->venueLink($user);
-        }
         $items[] = $this->link('Мои команды', 'account.teams');
         if (config('features.sports_sections.enabled')) {
             $items[] = [
@@ -93,9 +91,7 @@ final class AccountMenu implements MenuHandler
             'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
             'visible' => true,
         ];
-        if ($user->isConfirmed()) {
-            $items[] = $this->link('Контракты', 'account.contracts');
-        }
+        $items[] = $this->contractsGroup();
         $items[] = $this->link('Настройки', 'account.settings');
         $items[] = $this->link('Выйти', 'auth.logout', 0, true);
 
@@ -115,7 +111,7 @@ final class AccountMenu implements MenuHandler
         $roleSections = [
             UserParticipationRoleEnum::PLAYER->value => ['teams', 'games', 'trainings'],
             UserParticipationRoleEnum::COACH->value => ['sections', 'trainings', 'teams'],
-            UserParticipationRoleEnum::VENUE_RELATED->value => ['venues', 'bookings', 'schedule'],
+            UserParticipationRoleEnum::VENUE_RELATED->value => ['bookings', 'schedule'],
             UserParticipationRoleEnum::ORGANIZER->value => ['events', 'tournaments'],
             UserParticipationRoleEnum::REFEREE->value => ['games', 'assignments'],
             UserParticipationRoleEnum::STATISTICIAN->value => ['games', 'statistics'],
@@ -126,7 +122,6 @@ final class AccountMenu implements MenuHandler
             'games' => ['Мои игры', 'account.my-games', 'account.my-games'],
             'trainings' => ['Мои тренировки', 'account.my-trainings', 'account.my-trainings'],
             'sections' => ['Мои секции', 'account.sports-sections.index', 'account.sports-sections.*'],
-            'venues' => ['Мои площадки', 'account.venues', 'account.venues, account.venues.*, account.venue-bookings.inbox'],
             'bookings' => ['Бронирования', 'account.my-bookings', 'account.my-bookings'],
             'schedule' => ['Расписание', 'account.venue-schedule', 'account.venue-schedule'],
             'events' => ['Мои мероприятия', 'account.my-events', 'account.my-events'],
@@ -221,13 +216,41 @@ final class AccountMenu implements MenuHandler
             'visible' => true,
         ];
         $items[] = $this->link('Кошелёк', 'account.wallet');
-        if ($user->isConfirmed()) {
-            $items[] = $this->link('Контракты', 'account.contracts');
-        }
+        $items[] = $this->contractsGroup();
         $items[] = $this->link('Настройки', 'account.settings');
         $items[] = $this->link('Выйти', 'auth.logout', 0, true);
 
         return $items;
+    }
+
+    /** The contract group stays discoverable even before the first venue contract. */
+    private function contractsGroup(): array
+    {
+        $children = [
+            [
+                'label' => 'Все контракты',
+                'icon' => self::APP_ICONS['account.contracts'],
+                'url' => $this->routeUrl('account.contracts'),
+                'active' => $this->isActiveRoute('account.contracts, account.contracts.show'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Площадки',
+                'icon' => self::APP_ICONS['account.contracts.venues'],
+                'url' => $this->routeUrl('account.contracts.venues'),
+                'active' => $this->isActiveRoute('account.contracts.venues, account.venues.*, account.venue-bookings.inbox'),
+                'visible' => true,
+            ],
+        ];
+
+        return [
+            'label' => 'Мои контракты',
+            'icon' => self::APP_ICONS['account.contracts'],
+            'url' => null,
+            'active' => collect($children)->contains(fn (array $item): bool => $item['active']),
+            'visible' => true,
+            'children' => $children,
+        ];
     }
 
     /** @return array<string, mixed> */

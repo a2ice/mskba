@@ -38,8 +38,9 @@ final class AccountVenuesTest extends TestCase
             ->actingAs($user)
             ->get(route('account'))
             ->assertOk()
-            ->assertSee('Мои площадки')
-            ->assertSee(route('account.venues', absolute: false));
+            ->assertSee('Мои контракты')
+            ->assertSee('Площадки')
+            ->assertSee(route('account.contracts.venues', absolute: false));
     }
 
     public function test_my_venues_page_uses_current_theme_components(): void
@@ -57,14 +58,13 @@ final class AccountVenuesTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->get(route('account.venues'))
+            ->get(route('account.contracts.venues'))
             ->assertOk()
             ->assertSee('Площадка в кабинете')
-            ->assertSee('account-venue-list', false)
-            ->assertSee('account-venue-status--unconfirmed', false)
+            ->assertSee('account-contracts-workspace__cards', false)
+            ->assertSee('Без контракта')
+            ->assertSee('Контракт')
             ->assertSee('Не подтверждён')
-            ->assertSee('btn--primary', false)
-            ->assertSee('btn--secondary', false)
             ->assertDontSee('btn-primary', false)
             ->assertDontSee('btn-success', false)
             ->assertDontSee('btn-outline-primary', false);
