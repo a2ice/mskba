@@ -39,8 +39,8 @@
                         <span>Созданные мной</span>
                     </label>
                     <div class="app-team-filter-actions">
-                        <button class="button secondary" type="submit">Применить</button>
-                        <a class="app-team-link" href="{{ route('account.teams', ['status' => '']) }}">Сбросить</a>
+                        <button class="account-collection__action account-collection__action--primary" type="submit">Применить</button>
+                        <a class="app-team-link account-collection__reset" href="{{ route('account.teams', ['status' => '']) }}">Сбросить</a>
                     </div>
                 </form>
             @endif
@@ -49,7 +49,7 @@
                 <p class="app-team-card__detail">Найди команду по интересам и формату игры, отправь заявку на вступление или создай собственную.</p>
             @elseif ($teams->isEmpty())
                 <p class="app-team-card__detail">По этим условиям команды не найдены. Попробуй изменить фильтры.</p>
-                <a class="app-team-link" href="{{ route('account.teams', ['status' => '']) }}">Показать все команды</a>
+                <a class="app-team-link account-collection__reset" href="{{ route('account.teams', ['status' => '']) }}">Показать все команды</a>
             @else
                 <div class="app-team-grid account-collection__cards" aria-label="Список твоих команд">
                     @foreach ($teams as $team)
@@ -78,8 +78,8 @@
             @endif
 
             <div class="app-team-actions app-team-panel__actions">
-                <button type="button" class="button primary" data-team-placeholder-action="find">Найти команду</button>
-                <button type="button" class="button secondary" data-team-placeholder-action="create">Создать команду</button>
+                <button type="button" class="account-collection__action account-collection__action--primary" data-team-placeholder-action="find">Найти команду</button>
+                <button type="button" class="account-collection__action" data-team-placeholder-action="create">Создать команду</button>
             </div>
         </section>
 
@@ -100,8 +100,8 @@
                             <form method="POST" action="{{ route('teams.invitations.respond', $invitation->id) }}" class="app-team-card__footer">
                                 @csrf
                                 @method('PATCH')
-                                <button class="button primary" type="submit" name="decision" value="accept">Принять</button>
-                                <button class="button secondary" type="submit" name="decision" value="decline">Отклонить</button>
+                                <button class="account-collection__action account-collection__action--primary" type="submit" name="decision" value="accept">Принять</button>
+                                <button class="account-collection__action" type="submit" name="decision" value="decline">Отклонить</button>
                             </form>
                         </article>
                     @endforeach
@@ -135,7 +135,7 @@
                 <div class="app-team-pagination">{{ $applications->links() }}</div>
             @endif
             <div class="app-team-actions app-team-panel__actions">
-                <button type="button" class="button primary" data-team-placeholder-action="find">Найти команду</button>
+                <button type="button" class="account-collection__action account-collection__action--primary" data-team-placeholder-action="find">Найти команду</button>
             </div>
         </section>
 

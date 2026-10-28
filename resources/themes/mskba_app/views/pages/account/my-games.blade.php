@@ -11,7 +11,7 @@
     <section class="app-my-games account-collection account-collection--games" aria-labelledby="my-games-heading">
         <div class="app-my-games__top">
             <h2 id="my-games-heading">Мои игры и игровые тренировки</h2>
-            <a class="button secondary" href="{{ route('events.index', ['type' => 'games']) }}">Найти игру</a>
+            <a class="account-collection__action" href="{{ route('events.index', ['type' => 'games']) }}">Найти игру</a>
         </div>
         <nav class="app-my-games__filters account-collection__tabs" aria-label="Фильтр участия">
             @foreach (['all' => 'Все', ...$groups] as $key => $name)
@@ -22,7 +22,7 @@
         </nav>
         @if ($games->isEmpty())
             <p class="muted" role="status">Здесь пока нет игр или игровых тренировок с твоим участием{{ $scope !== 'all' ? ' по выбранному фильтру' : '' }}.</p>
-            <a class="button primary" href="{{ route('events.index', ['type' => 'games']) }}">Посмотреть игры</a>
+            <a class="account-collection__action account-collection__action--primary" href="{{ route('events.index', ['type' => 'games']) }}">Посмотреть игры</a>
         @else
             @foreach($scope === 'all' ? $groups : [$scope => $groups[$scope]] as $group => $heading)
                 @php($rows = $games->getCollection()->where('group', $group))
