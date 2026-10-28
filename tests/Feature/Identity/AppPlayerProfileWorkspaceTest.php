@@ -63,9 +63,12 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
             ->assertSee('Игровые характеристики')
             ->assertSee('data-player-preview', false)
             ->assertSee('body-female.png')
-            ->assertSee('Выраженность жировой ткани')
+            ->assertSee('Стройность')
             ->assertSee('character[chest_volume]', false)
-            ->assertSee('type="hidden" name="character[facial_hair]"', false);
+            ->assertSee('name="height_cm" min="150" max="220"', false)
+            ->assertSee('name="weight_kg" min="40" max="140"', false)
+            ->assertDontSee('Внешность персонажа')
+            ->assertDontSee('name="character[hairstyle]"', false);
 
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
             ->assertOk()->assertSee('Самооценка игровых навыков')
@@ -103,7 +106,7 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
           ->assertSessionHasNoErrors();
 
         $physicalPage = $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))->assertOk();
-        $this->assertMatchesRegularExpression('/<option[^>]*value="81"[^>]*selected[^>]*>/', $physicalPage->getContent());
+        $this->assertMatchesRegularExpression('/<input[^>]*name="weight_kg"[^>]*value="81"/', $physicalPage->getContent());
 
         $profile = $user->playerProfile()->with('positions', 'selfAssessment')->firstOrFail();
         $this->assertSame(182, $profile->height_cm);
@@ -156,5 +159,45 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
 
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'coach']))
             ->assertOk()->assertSee('Твоя роль')->assertDontSee('data-player-preview', false);
+    }
+
+    public function test_partial_physical_form_preserves_existing_hidden_character_appearance(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+        $user->playerProfile()->create([
+            'height_cm' => 191,
+            'weight_kg' => 85,
+            'extra' => ['character' => [
+                'skin_tone' => 'deep',
+                'hairstyle' => 'male_curls',
+                'hair_color' => 'ginger',
+                'facial_hair' => 'short_beard',
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+            ]],
+        ]);
+
+        $this->actingAs($user)->patch(route('account.player-profile.update'), [
+            'section' => 'physical',
+            'height_cm' => 195,
+            'weight_kg' => 89,
+            'character' => [
+                'adiposity' => 'low',
+                'uniform_kit' => 'city_night',
+                'shoes' => 'black',
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $profile = $user->playerProfile()->firstOrFail();
+        $appearance = $profile->extra['character'];
+        $this->assertSame('deep', $appearance['skin_tone']);
+        $this->assertSame('male_curls', $appearance['hairstyle']);
+        $this->assertSame('ginger', $appearance['hair_color']);
+        $this->assertSame('short_beard', $appearance['facial_hair']);
+        $this->assertSame('city_night', $appearance['uniform_kit']);
+        $this->assertSame('black', $appearance['shoes']);
+        $this->assertSame('low', $appearance['adiposity']);
+        $this->assertSame(195, $profile->height_cm);
+        $this->assertSame('89.0', $profile->weight_kg);
     }
 }

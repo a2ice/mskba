@@ -35,3 +35,19 @@ test('avatar starts with scaled default character and never runs generation on i
     assert.match(client,/generate\?\.addEventListener\('click'/);
     assert.match(load('css/player-profile-workspace.css'),/app-player-workspace__stage/);
 });
+
+test('player role uses guided native selects, sticky tabs and live height/weight sliders',()=>{
+    assert.match(page,/type="range" name="height_cm" min="150" max="220"/);
+    assert.match(page,/type="range" name="weight_kg" min="40" max="140"/);
+    assert.match(page,/data-physical-height-value/);
+    assert.match(page,/data-physical-weight-value/);
+    assert.match(page,/Стройность/);
+    assert.doesNotMatch(page,/Выраженность жировой ткани|Внешность персонажа/);
+    assert.doesNotMatch(page,/data-player-preview-mode|До генерации показан базовый персонаж/);
+    assert.match(page,/Одежда и обувь/);
+    assert.match(page,/account.partials.native-select-chevron/);
+    assert.match(client,/addEventListener\('input', onPhysicalInput\)/);
+    const css = load('css/player-profile-workspace.css');
+    assert.match(css,/app-player-workspace__tabs\{position:sticky/);
+    assert.match(css,/--app-sticky-offset/);
+});
