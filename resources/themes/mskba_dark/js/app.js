@@ -43,6 +43,8 @@ import './core/ui-handlers.js';
 import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
+import '../../mskba_app/js/contracts-workspace.js';
+import '../../mskba_app/css/contracts-workspace.css';
 import './features/account-privacy.js';
 import './features/account-nickname.js';
 import './features/account-wallet-bonus-grant.js';

@@ -38,5 +38,5 @@
     </div>
     <h2>Новый промокод</h2>
     {{-- Use the existing validated form; it shares the same routes in both themes. --}}
-    @include('theme::pages.venues.partials.group-offer-form')
+    @include('account.partials.group-offer-form')
 @endsection

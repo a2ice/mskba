@@ -20,10 +20,6 @@ final class VenueGroupOfferController extends Controller
         $item = $this->venue($venue);
         abort_unless($offers->canManage($request->user(), $item), 403);
 
-        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
-            return redirect()->route('account.venues.show', $item->routeIdentifier());
-        }
-
         return ThemeResolver::page('venues.group-offers-manage', [
             'venue' => $item,
             'visibleOffers' => $offers->allForVenue($item),
