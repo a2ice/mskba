@@ -9,6 +9,7 @@ use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\PlayInterest\Application\Services\VenueGroupOffers;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
@@ -117,7 +118,9 @@ final readonly class AccountContractsWorkspace
                             'role' => $role?->label() ?? $membership->access_level,
                             'scope' => $membership->scope_type->label(),
                             'assigned_by' => $contract->assignedByUser?->name
-                                ?? ($contract->assigned_by ? '#'.$contract->assigned_by : 'Не указано'),
+                                ?? ($contract->assigned_by
+                                    ? 'Пользователь #'.$contract->assigned_by
+                                    : (UserParticipationRoleAssignerEnum::tryFrom((string) $contract->assigner)?->label() ?? 'Не указано')),
                             'assigned_at' => $contract->assigned_at?->format('d.m.Y H:i'),
                             'created_at' => $contract->created_at?->format('d.m.Y H:i'),
                             'starts_at' => $contract->starts_at?->format('d.m.Y H:i'),

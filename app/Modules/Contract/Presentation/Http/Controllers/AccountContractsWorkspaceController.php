@@ -24,7 +24,11 @@ final class AccountContractsWorkspaceController extends Controller
             'type' => ['nullable', Rule::in(array_column(ContractMembershipScopeTypeEnum::cases(), 'value'))],
             'status' => ['nullable', Rule::in(array_column(ContractStatusEnum::cases(), 'value'))],
         ]);
-        $user = $check->handle($request->user());
+        try {
+            $user = $check->handle($request->user());
+        } catch (\Exception $e) {
+            abort(in_array($e->getCode(), [401, 403], true) ? $e->getCode() : 500, $e->getMessage());
+        }
 
         return ThemeResolver::page('account.contracts', [
             'contracts' => $workspace->contracts($user, $filters),
@@ -44,7 +48,11 @@ final class AccountContractsWorkspaceController extends Controller
             'status' => ['nullable', Rule::in(['active', 'inactive', 'none'])],
             'specialization' => ['nullable', Rule::in(array_column(VenueTypeEnum::cases(), 'value'))],
         ]);
-        $user = $check->handle($request->user());
+        try {
+            $user = $check->handle($request->user());
+        } catch (\Exception $e) {
+            abort(in_array($e->getCode(), [401, 403], true) ? $e->getCode() : 500, $e->getMessage());
+        }
 
         return ThemeResolver::page('account.venues', [
             'venues' => $workspace->venues($user, $filters),
