@@ -1,6 +1,7 @@
 @extends('theme::layouts.app', ['title' => $coordination->title])
 
 @section('content')
+@php($venueTimezone = $coordination->venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow'))
 <section class="section app-venue-interest-group" aria-labelledby="rental-gathering-heading">
     <div class="container">
         <header class="app-venue-interest-group__header">
@@ -21,8 +22,8 @@
             @endif
             <dl class="app-group-rentals__details">
                 <div><dt>Площадка</dt><dd><a href="{{ route('venues.show', $coordination->venue->routeIdentifier()) }}">{{ $coordination->venue->name }}</a></dd></div>
-                <div><dt>Начало</dt><dd>{{ $coordination->starts_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }}</dd></div>
-                <div><dt>Окончание</dt><dd>{{ $coordination->ends_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }}</dd></div>
+                <div><dt>Начало</dt><dd>{{ $coordination->starts_at->timezone($venueTimezone)->format('d.m.Y H:i') }}</dd></div>
+                <div><dt>Окончание</dt><dd>{{ $coordination->ends_at->timezone($venueTimezone)->format('d.m.Y H:i') }}</dd></div>
                 <div><dt>Зона</dt><dd>{{ $coordination->scope->label() }}</dd></div>
                 <div><dt>Статус</dt><dd>{{ $coordination->status->label() }}</dd></div>
             </dl>
