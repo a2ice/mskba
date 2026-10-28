@@ -1,6 +1,7 @@
 /* MSKBA App header: the accepted specimen's primitives with production navigation. */
-/* Keep the primary header in normal flow on downward scroll. Sticky top becomes
-   zero only when the user scrolls upward or enters the 18px edge activation zone. */
+/* Keep the primary header in normal flow on downward scroll. Sticky top
+   becomes zero on upward scroll or when the context-bar chevron pins it open.
+   Merely hovering the top viewport edge no longer reveals navigation. */
 .app-site-header {
     isolation: isolate;
     top: calc(0px - var(--header-height));
