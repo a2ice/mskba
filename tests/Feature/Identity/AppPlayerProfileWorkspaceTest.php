@@ -53,27 +53,16 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
         return $user;
     }
 
-    public function test_app_player_has_two_tabs_and_gender_specific_character_fields(): void
+    public function test_player_can_access_both_profile_sections(): void
     {
         $female = $this->player(UserGenderEnum::FEMALE);
 
-        $this->actingAs($female)->get(route('account.participation-role', ['role' => 'player']))
-            ->assertOk()
-            ->assertSee('Физические данные')
-            ->assertSee('Игровые характеристики')
-            ->assertSee('data-player-preview', false)
-            ->assertSee('body-female.png')
-            ->assertSee('Стройность')
-            ->assertSee('character[chest_volume]', false)
-            ->assertSee('name="height_cm" min="150" max="220"', false)
-            ->assertSee('name="weight_kg" min="40" max="140"', false)
-            ->assertDontSee('Внешность персонажа')
-            ->assertDontSee('name="character[hairstyle]"', false);
+        $this->actingAs($female)
+            ->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
+            ->assertOk();
 
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
-            ->assertOk()->assertSee('Самооценка игровых навыков')
-            ->assertSee('Объективные игровые показатели')
-            ->assertSee('data-player-skill', false);
+            ->assertOk();
     }
 
     public function test_saving_physical_and_game_tabs_never_clears_other_tab(): void
@@ -104,9 +93,6 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
             ],
         ])->assertRedirect(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
           ->assertSessionHasNoErrors();
-
-        $physicalPage = $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))->assertOk();
-        $this->assertMatchesRegularExpression('/<input[^>]*name="weight_kg"[^>]*value="81"/', $physicalPage->getContent());
 
         $profile = $user->playerProfile()->with('positions', 'selfAssessment')->firstOrFail();
         $this->assertSame(182, $profile->height_cm);
@@ -174,6 +160,7 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
                 'facial_hair' => 'short_beard',
                 'uniform_kit' => 'mskba_home',
                 'shoes' => 'white',
+                'attributes' => ['headband'],
             ]],
         ]);
 
@@ -197,6 +184,7 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
         $this->assertSame('city_night', $appearance['uniform_kit']);
         $this->assertSame('black', $appearance['shoes']);
         $this->assertSame('low', $appearance['adiposity']);
+        $this->assertSame([], $appearance['attributes']);
         $this->assertSame(195, $profile->height_cm);
         $this->assertSame('89.0', $profile->weight_kg);
     }

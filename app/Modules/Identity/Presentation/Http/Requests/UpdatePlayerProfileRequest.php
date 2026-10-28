@@ -202,10 +202,11 @@ final class UpdatePlayerProfileRequest extends FormRequest
         // This form now edits only physique, clothing and equipment. Keep
         // historical skin/hair settings that are no longer visible.
         $stored = data_get($this->user()?->playerProfile?->extra, 'character', []);
+        $submitted = (array) $this->validated('character');
         $character = array_merge(
             PlayerCharacterAppearanceOptions::defaults($profileGender),
             is_array($stored) ? $stored : [],
-            (array) $this->validated('character'),
+            $submitted,
         );
 
         return [
@@ -219,8 +220,9 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
             'shoes' => (string) ($character['shoes'] ?? 'white'),
+            // No checked accessories means clear the previous selection.
             'attributes' => PlayerCharacterAppearanceOptions::normalizeAttributes(
-                (array) ($character['attributes'] ?? []),
+                (array) ($submitted['attributes'] ?? []),
             ),
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
