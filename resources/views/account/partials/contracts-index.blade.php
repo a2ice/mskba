@@ -6,20 +6,26 @@
     </nav>
     <form class="account-contracts-workspace__filters" method="GET" action="{{ route('account.contracts') }}" aria-label="Фильтры контрактов">
         <label>Тип сущности
-            <select name="type">
+            <span class="select-control">
+                <select name="type">
                 <option value="">Все типы</option>
                 @foreach($contractTypes as $type)
                     <option value="{{ $type->value }}" @selected(($filters['type'] ?? '') === $type->value)>{{ $type->label() }}</option>
                 @endforeach
             </select>
+                @include('account.partials.native-select-chevron')
+            </span>
         </label>
         <label>Статус
-            <select name="status">
+            <span class="select-control">
+                <select name="status">
                 <option value="">Все статусы</option>
                 @foreach($contractStatuses as $status)
                     <option value="{{ $status->value }}" @selected(($filters['status'] ?? '') === $status->value)>{{ $status->label() }}</option>
                 @endforeach
             </select>
+                @include('account.partials.native-select-chevron')
+            </span>
         </label>
         <button type="submit" class="account-contracts-workspace__primary">Найти</button>
         <a class="account-contracts-workspace__reset" href="{{ route('account.contracts') }}">Сбросить</a>

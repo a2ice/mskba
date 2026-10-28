@@ -9,20 +9,26 @@
             <input name="q" type="search" maxlength="120" placeholder="Название или адрес" value="{{ $filters['q'] ?? '' }}">
         </label>
         <label>Статус контракта
-            <select name="status">
+            <span class="select-control">
+                <select name="status">
                 <option value="">Все статусы</option>
                 <option value="active" @selected(($filters['status'] ?? '') === 'active')>Действующий</option>
                 <option value="inactive" @selected(($filters['status'] ?? '') === 'inactive')>Недействующий</option>
                 <option value="none" @selected(($filters['status'] ?? '') === 'none')>Ещё без контракта</option>
             </select>
+                @include('account.partials.native-select-chevron')
+            </span>
         </label>
         <label>Специализация / тип площадки
-            <select name="specialization">
+            <span class="select-control">
+                <select name="specialization">
                 <option value="">Все специализации</option>
                 @foreach($specializations as $specialization)
                     <option value="{{ $specialization->value }}" @selected(($filters['specialization'] ?? '') === $specialization->value)>{{ $specialization->label() }}</option>
                 @endforeach
             </select>
+                @include('account.partials.native-select-chevron')
+            </span>
         </label>
         <button type="submit" class="account-contracts-workspace__primary">Найти</button>
         <a class="account-contracts-workspace__reset" href="{{ route('account.contracts.venues') }}">Сбросить</a>
