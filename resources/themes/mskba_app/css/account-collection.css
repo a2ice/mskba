@@ -107,3 +107,6 @@
  .account-collection__card,.app-play-interests__item.account-collection__card,.app-favorites__item.account-collection__card,.account-collection--teams .app-team-card.account-collection__card,.account-collection--games .app-my-games__card.account-collection__card{padding:14px}
  .account-collection__toolbar{justify-content:flex-start}
 }
+
+/* Game status badges: identical compact geometry for event kind and progress. */
+.account-collection--games .app-my-games__card.account-collection__card :is(.badge,.app-my-games__status.account-collection__status){display:inline-flex;align-items:center;justify-content:center;min-height:26px;height:26px;box-sizing:border-box;padding:4px 10px;font-size:12px;font-weight:700;line-height:18px;border-radius:999px;white-space:nowrap}

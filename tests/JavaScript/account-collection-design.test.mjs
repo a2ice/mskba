@@ -38,7 +38,7 @@ test('favorites use accessible filters and retain trashed state and restore beha
     assert.match(favoritesJs, /stateSelect.addEventListener\('change'/);
     assert.match(favoritesJs, /data-favorites-reset/);
     assert.match(favoritesJs, /app-favorites__item account-collection__card/);
-    assert.match(favoritesJs, /state === 'active' \? 'Убрать в корзину' : 'Восстановить'/);
+    assert.match(favoritesJs, /state === 'active' \? 'Удалить' : 'Восстановить'/);
     assert.match(favoritesJs, /sequence !== loadSequence/);
     assert.match(favoritesJs, /favorites:changed/);
 });

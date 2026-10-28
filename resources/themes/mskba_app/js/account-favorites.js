@@ -47,10 +47,8 @@ if (root) {
                 const heading = node('h2');
                 heading.append(title);
                 info.append(node('p', item.type_label, 'account-collection__eyebrow'), heading);
-                const badge = node('span', state === 'active' ? 'В избранном' : 'В корзине', 'account-collection__status');
-                if (state === 'active') badge.classList.add('is-active');
-                head.append(info, badge);
-                const toggle = node('button', state === 'active' ? 'Убрать в корзину' : 'Восстановить', 'button secondary account-collection__action');
+                head.append(info);
+                const toggle = node('button', state === 'active' ? 'Удалить' : 'Восстановить', 'button secondary account-collection__action');
                 toggle.type = 'button';
                 toggle.addEventListener('click', async () => {
                     toggle.disabled = true;
