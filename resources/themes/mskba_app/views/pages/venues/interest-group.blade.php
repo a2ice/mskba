@@ -53,7 +53,7 @@
                                 <h3><a href="{{ route('venue-rental-coordinations.show', $gathering) }}">{{ $gathering->title }}</a></h3>
                                 <span class="badge">{{ $gathering->status->label() }}</span>
                             </div>
-                            <p class="muted">{{ $gathering->starts_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }} — {{ $gathering->ends_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }}</p>
+                            <p class="muted">{{ $gathering->starts_at->timezone($venueTimezone)->format('d.m.Y H:i') }} — {{ $gathering->ends_at->timezone($venueTimezone)->format('d.m.Y H:i') }}</p>
                             <div class="app-group-rentals__facts">
                                 <span>{{ $gathering->scope->label() }}</span>
                                 <span>Заинтересованных: {{ $gathering->active_participants_count }}</span>
