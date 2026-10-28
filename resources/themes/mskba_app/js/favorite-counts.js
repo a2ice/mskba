@@ -3,12 +3,13 @@
 import { subscribePrivate } from '../../../js/realtime.js';
 import { normalizeFavoriteCount, formatFavoriteCount, canApplyFavoriteSync } from './favorite-counts-core.js';
 
-const link = document.querySelector('[data-header-favorites][data-favorites-sync-url]');
+const link = document.querySelector('[data-header-favorites]');
 const badge = link?.querySelector('[data-favorites-count]');
 
 if (link && badge) {
     const userId = link.dataset.favoritesUserId;
-    const storageKey = 'mskba:favorites:count:' + userId;
+    const syncUrl = link.dataset.favoritesSyncUrl;
+    const storageKey = 'mskba:favorites:count:' + (userId || 'guest');
     let latest = normalizeFavoriteCount(badge.dataset.count) ?? 0;
     let revision = 0;
     let syncSerial = 0;
@@ -29,8 +30,8 @@ if (link && badge) {
         badge.textContent = formatFavoriteCount(count);
         badge.dataset.count = String(count);
         badge.hidden = count === 0;
-        link.setAttribute('aria-label', 'Избранное: ' + count);
-        link.title = 'Избранное: ' + count;
+        link.setAttribute('aria-label', 'Избранное: ' + count + (userId ? '' : ' — войти в аккаунт'));
+        link.title = 'Избранное: ' + count + (userId ? '' : '. Войти и открыть');
         if (announce && changed) {
             try { channel?.postMessage({ count }); } catch { /* unavailable */ }
             try { localStorage.setItem(storageKey, JSON.stringify({count, at: Date.now()})); }
@@ -40,10 +41,11 @@ if (link && badge) {
     };
 
     const synchronize = async () => {
+        if (!syncUrl) return; // Guest counts come from cookie-scoped SSR and successful toggles.
         const startedRevision = revision;
         const serial = ++syncSerial;
         try {
-            const response = await fetch(link.dataset.favoritesSyncUrl, {
+            const response = await fetch(syncUrl, {
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 cache: 'no-store',

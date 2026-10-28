@@ -10,7 +10,8 @@
     $headerRoleColor = $headerUser?->system_role?->avatarBorderColor();
     $headerFavoriteCount = $headerUser
         ? app(\App\Modules\Favorites\Application\Services\FavoriteCountService::class)->forUser($headerUser)
-        : 0;
+        : app(\App\Modules\Favorites\Application\Services\FavoritesManager::class)
+            ->owned(request())->whereNull('trashed_at')->count();
 @endphp
 
 <a class="skip" href="#mskba-app">К содержимому</a>
@@ -62,8 +63,8 @@
                @else
                    data-auth-trigger data-auth-redirect="{{ route('favorites.mine', [], false) }}"
                @endauth
-               aria-label="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Избранное — войти в аккаунт' }}"
-               title="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Войти и открыть избранное' }}">
+               aria-label="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Избранное: '.$headerFavoriteCount.' — войти в аккаунт' }}"
+               title="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Избранное: '.$headerFavoriteCount.'. Войти и открыть' }}">
                 <svg aria-hidden="true"><use href="#heart"/></svg>
                 <span class="app-header-favorites__count" data-favorites-count
                       data-count="{{ $headerFavoriteCount }}"

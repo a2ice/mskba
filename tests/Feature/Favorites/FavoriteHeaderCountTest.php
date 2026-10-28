@@ -76,6 +76,20 @@ final class FavoriteHeaderCountTest extends TestCase
                 $event->userId === $user->id && $event->count === 0);
     }
 
+    public function test_guest_toggle_counts_active_cookie_favorites_without_exposing_account_count(): void
+    {
+        $this->withCredentials();
+        $this->withCookie(\App\Modules\Favorites\Application\Services\FavoritesManager::COOKIE_NAME, str_repeat('G', 64));
+        $venue = $this->venue();
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('favorites_count', 1);
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('favorites_count', 0);
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('favorites_count', 1);
+        $this->getJson(route('favorites.count'))->assertUnauthorized();
+    }
+
     public function test_header_template_renders_the_favorites_shortcut_for_both_auth_states(): void
     {
         // The default PHP test theme is mskba_dark; the modern app header is

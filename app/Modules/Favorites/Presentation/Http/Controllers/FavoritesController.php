@@ -103,7 +103,11 @@ final class FavoritesController extends Controller
                 ->whereNull('trashed_at')->count() : null,
             'type' => $type,
             'id' => $id,
-            'favorites_count' => $request->user() ? $counts->forUser($request->user()) : null,
+            'favorites_count' => $request->user()
+                ? $counts->forUser($request->user())
+                : Favorite::query()->whereNull('user_id')
+                    ->where('guest_token_hash', $favorite->guest_token_hash)
+                    ->whereNull('trashed_at')->count(),
         ])->header('Cache-Control', 'private, no-store');
     }
 
