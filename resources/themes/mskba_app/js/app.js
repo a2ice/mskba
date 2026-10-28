@@ -43,6 +43,7 @@ import './features/site-media-lqip.js';
 
 import './account-favorites.js';
 import './venue-favorites.js';
+import '../css/account-collection.css';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
 if (authRoot) {

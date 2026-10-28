@@ -8,24 +8,33 @@
 @endsection
 
 @section('account-content')
-    <section class="panel app-favorites" data-favorites-account
+    <section class="app-favorites account-collection" data-favorites-account
         data-list-url="{{ route('favorites.items') }}"
         data-toggle-url="{{ route('favorites.toggle') }}">
-        <header class="app-favorites__header">
-            <h2>Моё избранное</h2>
-            <a href="{{ route('venues.search') }}" class="button secondary">Найти площадку</a>
-        </header>
-        <div class="app-favorites__filters" role="group" aria-label="Тип объекта">
-            <button type="button" class="chip" data-favorites-type="all" aria-pressed="true">Все</button>
-            <button type="button" class="chip" data-favorites-type="venue" aria-pressed="false">Площадки</button>
-            <button type="button" class="chip" data-favorites-type="event" aria-pressed="false">Мероприятия</button>
-            <button type="button" class="chip" data-favorites-type="team" aria-pressed="false">Команды</button>
+        <div class="account-collection__toolbar">
+            <a href="{{ route('venues.search') }}" class="account-collection__action">Найти площадку</a>
         </div>
-        <div class="app-favorites__states" role="group" aria-label="Состояние">
-            <button type="button" class="chip" data-favorites-state="active" aria-pressed="true">Избранное</button>
-            <button type="button" class="chip" data-favorites-state="trashed" aria-pressed="false">Корзина</button>
-        </div>
-        <div data-favorites-results aria-live="polite" aria-atomic="false">
+        <form class="app-favorites__filter-form account-collection__filters" data-favorites-filters aria-label="Фильтры избранного">
+            <label class="account-collection__field" for="account-favorites-type">
+                <span>Тип объекта</span>
+                <select id="account-favorites-type" data-favorites-type name="type">
+                    <option value="all">Все типы</option>
+                    <option value="venue">Площадки</option>
+                    <option value="event">Мероприятия</option>
+                    <option value="team">Команды</option>
+                </select>
+            </label>
+            <label class="account-collection__field" for="account-favorites-state">
+                <span>Статус</span>
+                <select id="account-favorites-state" data-favorites-state name="state">
+                    <option value="active">Избранное</option>
+                    <option value="trashed">Корзина</option>
+                </select>
+            </label>
+            <button type="reset" class="account-collection__reset" data-favorites-reset>Сбросить</button>
+        </form>
+        <p class="account-collection__count" data-favorites-count role="status" aria-live="polite"></p>
+        <div class="account-collection__cards" data-favorites-results aria-live="polite" aria-atomic="false">
             <p class="muted">Загружаем избранное…</p>
         </div>
     </section>
