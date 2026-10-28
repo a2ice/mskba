@@ -83,7 +83,7 @@ final class VenueGroupOffersTest extends TestCase
     {
         $venue = $this->venue();
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED->value]);
-        $url = route('venues.interest-group.offers.store', ['venue' => $venue->id]);
+        $url = route('account.venues.group-offers.store', ['venue' => $venue->id]);
 
         $this->post($url, $this->values())->assertRedirect();
         $this->actingAs($user)->post($url, $this->values())->assertForbidden();
@@ -97,7 +97,7 @@ final class VenueGroupOffersTest extends TestCase
         $this->assertNotSame('AUTUMN2026', $offer->getRawOriginal('code_ciphertext'));
         $this->assertSame(1, $offer->audits()->count());
 
-        $this->post(route('venues.interest-group.offers.transition', [
+        $this->post(route('account.venues.group-offers.transition', [
             'venue' => $venue->id, 'offer' => $offer->id, 'action' => 'publish',
         ]))->assertRedirect();
 
@@ -114,14 +114,14 @@ final class VenueGroupOffersTest extends TestCase
         $stranger = User::factory()->create();
         $this->subscribe($member, $venue);
         $admin = $this->manager();
-        $this->actingAs($admin)->post(route('venues.interest-group.offers.store', ['venue'=>$venue->id]), $this->values());
+        $this->actingAs($admin)->post(route('account.venues.group-offers.store', ['venue'=>$venue->id]), $this->values());
         $offer = VenueGroupOffer::query()->sole();
         $url = route('venues.interest-group', ['venue' => $venue->id]);
 
         auth()->logout();
         $this->get($url)->assertDontSee('AUTUMN2026');
         $this->actingAs($member)->get($url)->assertDontSee('AUTUMN2026');
-        $this->actingAs($admin)->post(route('venues.interest-group.offers.transition', [
+        $this->actingAs($admin)->post(route('account.venues.group-offers.transition', [
             'venue' => $venue->id, 'offer' => $offer->id, 'action' => 'publish',
         ]))->assertRedirect();
 
@@ -138,16 +138,16 @@ final class VenueGroupOffersTest extends TestCase
         $venue = $this->venue();
         $other = $this->venue();
         $this->actingAs($this->manager())->post(
-            route('venues.interest-group.offers.store', ['venue'=>$venue->id]),
+            route('account.venues.group-offers.store', ['venue'=>$venue->id]),
             $this->values('WINTER2026'),
         );
         $offer = VenueGroupOffer::query()->sole();
 
-        $this->post(route('venues.interest-group.offers.transition', [
+        $this->post(route('account.venues.group-offers.transition', [
             'venue'=>$other->id, 'offer'=>$offer->id, 'action'=>'publish',
         ]))->assertNotFound();
 
-        $transition = fn (string $action): string => route('venues.interest-group.offers.transition', [
+        $transition = fn (string $action): string => route('account.venues.group-offers.transition', [
             'venue'=>$venue->id, 'offer'=>$offer->id, 'action'=>$action,
         ]);
         $this->post($transition('publish'))->assertRedirect();
@@ -162,7 +162,7 @@ final class VenueGroupOffersTest extends TestCase
     public function test_validation_normalization_indefinite_and_duplicate_codes(): void
     {
         $venue = $this->venue();
-        $url = route('venues.interest-group.offers.store', ['venue'=>$venue->id]);
+        $url = route('account.venues.group-offers.store', ['venue'=>$venue->id]);
         $this->actingAs($this->manager())
             ->post($url, array_replace($this->values('SAVE2026'), ['discount_value'=>95]))
             ->assertSessionHasErrors('discount_value');
