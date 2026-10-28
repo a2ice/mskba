@@ -25,3 +25,8 @@
 5. Feature + UI/regression tests, mobile/desktop, зелёный CI и dev-e.
 
 **Приоритет:** высокий. **Зависимости:** существующий `Event`, `EventParticipant`, `GameAdmission`. **Статус:** запланировано.
+
+## Реализация
+- Вместо пустого route подключён AccountMyGamesController: единая Event-проекция game/game_training из личных EventParticipant, заявок GameAdmission (только primary standalone game) и роли организатора; канонические identityIds, distinct по Event и серверная пагинация.
+- Разделы: заявки/приглашения, участвую, история; переход в существующий Event для участия/ответа без нового lifecycle; отдельное отображение типа игровой тренировки и признака турнира.
+- Реализация отгружается отдельно, после зелёных CI и dev-e проверки. Не меняются самостоятельные training и внутренняя модель mini-games.
