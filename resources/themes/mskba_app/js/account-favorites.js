@@ -1,6 +1,9 @@
 const root = document.querySelector('[data-favorites-account]');
 if (root) {
     const results = root.querySelector('[data-favorites-results]');
+    const typeSelect = root.querySelector('[data-favorites-type]');
+    const stateSelect = root.querySelector('[data-favorites-state]');
+    const count = root.querySelector('[data-favorites-count]');
     let type = 'all', state = 'active', loading = false;
     const node = (tag, value, className = '') => {
         const el = document.createElement(tag);
@@ -10,10 +13,8 @@ if (root) {
     };
     const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
     const renderSelected = () => {
-        root.querySelectorAll('[data-favorites-type]').forEach(el =>
-            el.setAttribute('aria-pressed', String(el.dataset.favoritesType === type)));
-        root.querySelectorAll('[data-favorites-state]').forEach(el =>
-            el.setAttribute('aria-pressed', String(el.dataset.favoritesState === state)));
+        typeSelect.value = type;
+        stateSelect.value = state;
     };
     const load = async () => {
         if (loading) return;
@@ -27,11 +28,14 @@ if (root) {
             if (!response.ok) throw new Error('Не удалось загрузить избранное.');
             const data = await response.json();
             results.replaceChildren();
+            if (count) count.textContent = 'Показано элементов: ' + data.data.length;
             if (!data.data.length) {
-                results.append(node('p', state === 'active' ? 'Пока ничего не добавлено в избранное.' : 'Корзина пуста.', 'muted'));
+                const empty=node('p', state === 'active' ? 'Пока ничего не добавлено в избранное.' : 'Корзина пуста.', 'app-favorites__empty account-collection__empty');
+                results.append(empty);
             }
             for (const item of data.data) {
-                const row = node('article', null, 'app-favorites__item');
+                const row = node('article', null, 'app-favorites__item account-collection__card');
+                const head = node('div', null, 'account-collection__card-head');
                 const info = node('div', null, 'app-favorites__details');
                 const title = item.available && item.url
                     ? node('a', item.title, 'app-favorites__item-link')
@@ -40,8 +44,13 @@ if (root) {
                     const url = new URL(item.url, location.origin);
                     if (url.origin === location.origin) title.href = url.href;
                 }
-                info.append(title, node('span', item.type_label, 'caption'));
-                const toggle = node('button', state === 'active' ? 'Убрать в корзину' : 'Восстановить', 'button secondary');
+                const heading = node('h2');
+                heading.append(title);
+                info.append(node('p', item.type_label, 'account-collection__eyebrow'), heading);
+                const badge = node('span', state === 'active' ? 'В избранном' : 'В корзине', 'account-collection__status');
+                if (state === 'active') badge.classList.add('is-active');
+                head.append(info, badge);
+                const toggle = node('button', state === 'active' ? 'Убрать в корзину' : 'Восстановить', 'button secondary account-collection__action');
                 toggle.type = 'button';
                 toggle.addEventListener('click', async () => {
                     toggle.disabled = true;
@@ -62,18 +71,25 @@ if (root) {
                         results.prepend(node('p', e.message, 'error'));
                     }
                 });
-                row.append(info, toggle);
+                const actions = node('div', null, 'account-collection__actions');
+                actions.append(toggle);
+                row.append(head, actions);
                 results.append(row);
             }
         } catch(e) {
+            if (count) count.textContent = '';
             results.replaceChildren(node('p', e.message, 'error'));
         } finally { loading = false; }
     };
-    root.querySelectorAll('[data-favorites-type]').forEach(el => el.addEventListener('click', () => {
-        type = el.dataset.favoritesType; void load();
-    }));
-    root.querySelectorAll('[data-favorites-state]').forEach(el => el.addEventListener('click', () => {
-        state = el.dataset.favoritesState; void load();
-    }));
+    typeSelect.addEventListener('change', () => {
+        type = typeSelect.value; void load();
+    });
+    stateSelect.addEventListener('change', () => {
+        state = stateSelect.value; void load();
+    });
+    root.querySelector('[data-favorites-reset]')?.addEventListener('click', event => {
+        event.preventDefault();
+        type = 'all'; state = 'active'; void load();
+    });
     void load();
 }

@@ -3,6 +3,7 @@ if (root) {
     const outlet = root.querySelector('[data-play-interests-list]');
     const filters = root.querySelector('[data-subscriptions-filters]');
     const pagination = root.querySelector('[data-subscriptions-pagination]');
+    const count = root.querySelector('[data-subscriptions-count]');
     const venueSubscriptionsUrl = root.dataset.venueSubscriptionsUrl || '/account/venue-subscriptions';
     const detailsDialog = root.querySelector('[data-subscription-details-dialog]');
     const detailsBody = detailsDialog?.querySelector('[data-subscription-details-body]');
@@ -111,6 +112,7 @@ if (root) {
     };
     const button = (text, action) => {
         const b = make('button',text,'button secondary');b.type='button';
+        b.classList.add('account-collection__action');
         b.addEventListener('click',action);return b;
     };
     function editSubscription(intent) {
@@ -262,18 +264,26 @@ if (root) {
                 return load();
             }
             outlet.replaceChildren();
+            if (count) count.textContent = 'Найдено подписок: ' + (response.meta?.total ?? response.data?.length ?? 0);
             renderPagination(response.meta);
             if (!response.data?.length) {
-                const empty=make('div',null,'app-play-interests__empty');
+                const empty=make('div',null,'app-play-interests__empty account-collection__empty');
                 const filtered=typeSelect.value!=='all'||statusSelect.value!=='all';
                 empty.append(make('p',filtered?'По выбранным фильтрам подписок нет.':'Пока нет подписок.'));
                 if (!filtered) empty.append(make('p','Когда ты оформишь первую подписку, она появится здесь.','muted'));
                 outlet.append(empty);return;
             }
             for (const intent of response.data) {
-                const card = make('article',null,'app-play-interests__item');
-                const head = make('div',null,'app-play-interests__item-head');
-                head.append(make('strong',intent.name || 'Подписка №'+intent.id),make('span',statusNames[intent.effective_status] || intent.status,'badge'));
+                const card = make('article',null,'app-play-interests__item account-collection__card');
+                const head = make('div',null,'app-play-interests__item-head account-collection__card-head');
+                const heading = make('div');
+                heading.append(
+                    make('p',intent.subscription_type==='venue'?'Новости площадки':'Игровая подписка','account-collection__eyebrow'),
+                    make('h2',intent.name || 'Подписка №'+intent.id),
+                );
+                const status = make('span',statusNames[intent.effective_status] || intent.status,'badge account-collection__status');
+                if (intent.effective_status === 'active') status.classList.add('is-active');
+                head.append(heading,status);
                 card.append(head);
                 if (intent.venue) {
                     const venueLine = make('p',null,'app-play-interests__venue');
@@ -292,8 +302,9 @@ if (root) {
                     card.append(make('p','Поиск без конкретной площадки','muted'));
                 }
                 card.append(make('p',summary(intent),'muted'));
-                const actions=make('div',null,'app-play-interests__actions');
+                const actions=make('div',null,'app-play-interests__actions account-collection__actions');
                 const viewButton=button('Посмотреть',()=>editSubscription(intent));
+                viewButton.classList.add('account-collection__action','account-collection__action--primary');
                 actions.append(viewButton);
                 if(!['cancelled','completed'].includes(intent.effective_status)) {
                     // Do not replace the full game-subscription editor with a
@@ -325,7 +336,7 @@ if (root) {
                 card.append(actions);outlet.append(card);
             }
         } catch (e) {
-            if(sequence===loadSequence){pagination.hidden=true;showError(e.message);}
+            if(sequence===loadSequence){pagination.hidden=true;if(count) count.textContent='';showError(e.message);}
         }
     }
     window.addEventListener('mskba:play-intent:saved',()=>{void load();});
