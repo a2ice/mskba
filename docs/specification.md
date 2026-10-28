@@ -972,6 +972,11 @@ Audit фиксирует изменения доменных сущностей 
 
 В таблице `contracts` есть поле `assigned_by`, а модель `Contract` содержит relation `assignedByUser()`.
 
+Пользовательский реестр реализуют `AccountContractsWorkspaceController` и `AccountContractsWorkspace`: `GET /account/contracts` с фильтрами `type`, `status` и `GET /account/contracts/venues` с фильтрами `q`, `status`, `specialization`. Старый `GET /account/venues` возвращает 302 на новый канонический URL, сохраняя query string; остальные `/account/venues/{id-alias}/...` не меняются. Обе темы выводят в меню группу «Мои контракты» с дочерними ссылками «Все контракты» и «Площадки».
+
+Выборки контрактов ограничены `user->canonical()->identityIds()` и `ContractFamilyEnum::MEMBERSHIP`. Сторонние договоры не отдаются клиенту даже внутри popup. Общий реестр фильтрует `contracts.status`, а площадочный вычисляет эффективное состояние с учётом `status = active`, `starts_at` и `expires_at`, включая исторические и неактивные membership-договоры в списке. Создатель без формального договора показывается как bootstrap-доступ, без синтетического контракта. У каждой площадки перечислены все возможные `VenuePermissionEnum`; активная отметка опирается на `contract_permissions` с учётом срока и отдельной совместимости OWNER/ADMIN для `venue.group-offers.manage`. Права контракта `venue_court` явно помечены как зональные, а не на всю площадку. Ссылка на промокоды появляется только после проверки серверного `VenueGroupOffers::canManage()`. Интерфейс использует native HTML `dialog`.
+
+
 ## Целевая модель контрактов
 
 Целевая техническая модель контрактов описана в [Contracts](specification/contracts.md).
