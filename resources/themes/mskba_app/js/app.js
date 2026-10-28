@@ -41,6 +41,8 @@ import './venue-map-dialog.js';
 import './features/home-venues-map-expand.js';
 import './features/site-media-lqip.js';
 
+import './player-profile-workspace.js';
+import '../css/player-profile-workspace.css';
 import './account-favorites.js';
 import './venue-favorites.js';
 import '../css/account-collection.css';
