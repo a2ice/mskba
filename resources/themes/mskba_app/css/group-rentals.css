@@ -1,5 +1,7 @@
 
 /* Task 298 phase 1: view existing quote-backed rental coordination from the group. */
+/* Keep the rental card visually separate from the venue subscribers card. */
+.app-venue-interest-group__content.app-group-rentals{margin-block-start:24px}
 .app-group-rentals__heading h2{font-size:22px;margin:0 0 8px}
 .app-group-rentals__list{display:grid;gap:12px}
 .app-group-rentals__card{display:grid;gap:12px;border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -21,3 +23,4 @@
 .app-group-rentals__actions{display:flex;flex-wrap:wrap;gap:10px}
 .app-group-rentals__participants{margin-top:20px}
 @media(max-width:639px){.app-group-rentals__form,.app-group-rentals__details{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:639px){.app-venue-interest-group__content.app-group-rentals{margin-block-start:16px}}
