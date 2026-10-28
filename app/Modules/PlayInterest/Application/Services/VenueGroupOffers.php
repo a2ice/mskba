@@ -9,6 +9,7 @@ use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
@@ -82,11 +83,17 @@ final class VenueGroupOffers
             throw ValidationException::withMessages(['discount_value' => 'Скидка не может быть больше 90%.']);
         }
 
+        if (isset($values['max_uses_per_account'], $values['max_total_uses'])
+            && $values['max_uses_per_account'] > $values['max_total_uses']) {
+            throw ValidationException::withMessages(['max_uses_per_account' => 'Лимит на аккаунт превышает общий лимит.']);
+        }
+
         if (isset($values['venue_court_id']) && ! $venue->courts()->whereKey($values['venue_court_id'])->exists()) {
             throw ValidationException::withMessages(['venue_court_id' => 'Зал не принадлежит площадке.']);
         }
 
-        return DB::transaction(static function () use ($venue, $actor, $values, $hash, $code, $start, $end, $currency, $discount): VenueGroupOffer {
+        try {
+            return DB::transaction(static function () use ($venue, $actor, $values, $hash, $code, $start, $end, $currency, $discount): VenueGroupOffer {
             $offer = VenueGroupOffer::query()->create([
                 'venue_id' => $venue->id,
                 'group_key' => VenueGroupOffer::groupKey($venue),
@@ -117,7 +124,15 @@ final class VenueGroupOffers
                 'created_at' => now(),
             ]);
             return $offer;
-        });
+            });
+        } catch (QueryException $error) {
+            // The preliminary exists() check is a usability hint, not a race
+            // guard: the unique database index is authoritative.
+            if (str_contains($error->getMessage(), 'code_hash')) {
+                throw ValidationException::withMessages(['code' => 'Этот промокод уже существует.']);
+            }
+            throw $error;
+        }
     }
 
     public function transition(VenueGroupOffer $offer, User $actor, string $action): void
