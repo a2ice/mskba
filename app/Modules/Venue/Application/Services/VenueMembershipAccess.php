@@ -3,7 +3,6 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
-use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
