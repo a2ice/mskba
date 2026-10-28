@@ -51,7 +51,7 @@ test('games and teams share the cards, including management and invitation secti
     assert.match(teams, /app-team-filters account-collection__filters/);
     assert.match(teams, /app-team-card account-collection__card/);
     assert.match(teams, /teams.invitations.respond/);
-    assert.match(teams, /app-team-placeholder-action/);
+    assert.match(teams, /data-team-placeholder-action="find"/);
 });
 
 test('shared stylesheet is imported and restricted to opt-in account sections', () => {

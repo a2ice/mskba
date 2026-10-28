@@ -78,6 +78,19 @@
 .account-collection--games .app-my-games__card h4{font-size:20px;color:#24364c}
 .account-collection--games .app-my-games__status.account-collection__status{margin-left:auto}
 .account-collection--games .app-my-games__card>.button.account-collection__action{justify-self:start}
+/* Explicit paired foregrounds for fixed light cards in arena_night appearance.
+   Domain-specific old styles sometimes use var(--text) for dark surfaces. */
+.account-collection__card .muted,
+.account-collection__card .caption{color:#637386}
+.account-collection--teams .app-team-field :is(input,select,textarea){color:#233449}
+.account-collection--teams .app-team-card__title.account-collection__card-head h3 a,
+.account-collection--games .app-my-games__card h4 a,
+.app-favorites__item .app-favorites__item-link{color:#24364c}
+.account-collection--teams .app-team-card__detail,
+.account-collection--games .app-my-games__meta{color:#637386}
+.account-collection--teams .app-team-card.account-collection__card .badge,
+.account-collection--games .app-my-games__card.account-collection__card .badge{background:#eff2f5;color:#5c6672;border:0}
+.account-collection--teams .app-team-card.account-collection__card .badge.account-collection__status.is-active{background:#e6f7eb;color:#18713a}
 @media(max-width:800px){
  .app-play-interests form.app-play-interests__filters.account-collection__filters,
  .app-favorites__filter-form.account-collection__filters{grid-template-columns:repeat(2,minmax(0,1fr))}
