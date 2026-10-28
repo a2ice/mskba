@@ -139,3 +139,19 @@ test('both themes and native map/price overlays import the shared controller and
     assert.match(darkCss,/data-mskba-modal-dragging="true"[^{}]*\.modal:not/);
     assert.match(module,/win\.visualViewport\?\.addEventListener\('resize'/);
 });
+
+
+test('all draggable modal shells display the same noninteractive grab indicator as the notification popover', () => {
+    const light = readFileSync(new URL('../../resources/themes/mskba_app/css/modal.css', import.meta.url), 'utf8');
+    const dark = readFileSync(new URL('../../resources/themes/mskba_dark/css/modal.css', import.meta.url), 'utf8');
+    const toast = readFileSync(new URL('../../resources/themes/mskba_app/js/notification-popover.js', import.meta.url), 'utf8');
+    assert.match(toast, /app-notification-popover__grip">⠿<\/span>/);
+    for (const css of [light, dark]) {
+        assert.match(css, /content:\s*"⠿"/);
+        assert.match(css, /pointer-events:\s*none/);
+    }
+    assert.match(light, /mskba-modal__header::before/);
+    assert.match(light, /app-venue-overlay__header,\.account-venue-price-dialog__head\)::before/);
+    assert.match(dark, /modal__header::before/);
+    assert.match(dark, /account-venue-price-dialog__head::before/);
+});

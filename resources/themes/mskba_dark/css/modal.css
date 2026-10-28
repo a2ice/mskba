@@ -776,6 +776,22 @@ html[data-mskba-modal-dragging="true"] .modal:not(.is-minimized) {
     backdrop-filter: none !important;
 }
 
+
+/* Match the expanded notification ⠿ grip without adding a new clickable control. */
+.modal.is-open:not(.is-minimized) .modal__header::before,
+dialog.account-venue-price-dialog[open] .account-venue-price-dialog__head::before {
+    content: "⠿";
+    display: inline-block;
+    flex: 0 0 auto;
+    align-self: center;
+    margin-inline-end: 2px;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    color: rgba(255, 255, 255, .65);
+    pointer-events: none;
+}
+
 /* Native schedule-pricing overlay uses the same drag interaction. */
 dialog.account-venue-price-dialog[open] .account-venue-price-dialog__head {
     cursor: grab; touch-action: none; user-select: none;
