@@ -45,6 +45,16 @@ final class FavoritesManager
             : Favorite::query()->whereRaw('1=0');
     }
 
+    /** Guests without a valid favorites cookie have no rows: skip the DB entirely. */
+    public function activeGuestCount(Request $request): int
+    {
+        if ($request->user() !== null || $this->guestHash($request) === null) {
+            return 0;
+        }
+
+        return $this->owned($request)->whereNull('trashed_at')->count();
+    }
+
     public function status(Request $request, string $type, int $id): string
     {
         $favorite = $this->owned($request)->where('entity_type', $type)->where('entity_id', $id)->first();

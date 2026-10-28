@@ -11,7 +11,7 @@
     $headerFavoriteCount = $headerUser
         ? app(\App\Modules\Favorites\Application\Services\FavoriteCountService::class)->forUser($headerUser)
         : app(\App\Modules\Favorites\Application\Services\FavoritesManager::class)
-            ->owned(request())->whereNull('trashed_at')->count();
+            ->activeGuestCount(request());
 @endphp
 
 <a class="skip" href="#mskba-app">К содержимому</a>
