@@ -77,6 +77,7 @@ final class VenueInterestGroupController extends Controller
 
         return ThemeResolver::page('venues.interest-group', [
             'venue' => $item,
+            'venueTimezone' => $item->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow'),
             'venueAudience' => $members,
             'viewerHasVenueInterest' => $isSubscriber,
             'gatherings' => $gatherings,
