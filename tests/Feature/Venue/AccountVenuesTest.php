@@ -38,7 +38,8 @@ final class AccountVenuesTest extends TestCase
             ->actingAs($user)
             ->get(route('account'))
             ->assertOk()
-            ->assertSee('Мои площадки')
+            ->assertSee('Мои контракты')
+            ->assertSee('Площадки')
             ->assertSee(route('account.contracts.venues', absolute: false));
     }
 

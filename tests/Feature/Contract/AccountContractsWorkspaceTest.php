@@ -67,7 +67,7 @@ final class AccountContractsWorkspaceTest extends TestCase
             ->assertOk()->assertSee('Контрактов с такими параметрами нет.');
 
         $this->get(route('account.contracts', ['type' => 'bad-type']))
-            ->assertSessionHasNoErrors()->assertStatus(302);
+            ->assertStatus(302)->assertSessionHasErrors('type');
     }
 
     public function test_venue_cards_filter_and_modal_show_all_permission_codes_with_only_granted_checked(): void
