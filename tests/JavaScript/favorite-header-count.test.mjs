@@ -66,6 +66,6 @@ test('header favorites display an inline heart and plain counter before login/av
     assert.doesNotMatch(count, /position:\s*absolute|border:|border-radius:|background:/);
     assert.match(css, /\.app-header-favorites__count\[hidden\]\s*\{\s*display:\s*none/);
     assert.ok(blade.indexOf('class="app-header-favorites"') > -1);
-    assert.ok(blade.indexOf('class="app-header-favorites"') < blade.indexOf('class="app-header-login"'));
+    assert.ok(blade.indexOf('class="app-header-favorites"') < blade.indexOf('app-header-login'));
     assert.ok(blade.indexOf('class="app-header-favorites"') < blade.indexOf("'app-header-account'"));
 });
