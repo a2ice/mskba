@@ -13,8 +13,8 @@ final class UpdatePlayerProfileHandler
 {
     /**
      * @param  array<string, mixed>  $profileData
-     * @param  array<int, PlayerPositionEnum>  $positions
-     * @param  array<string, int|null>  $selfAssessment
+     * @param  array<int, PlayerPositionEnum>|null  $positions
+     * @param  array<string, int|null>|null  $selfAssessment
      * @param  array<string, mixed>|null  $characterAppearance
      *
      * @throws AuthorizationException
@@ -22,8 +22,8 @@ final class UpdatePlayerProfileHandler
     public function handle(
         User $user,
         array $profileData,
-        array $positions,
-        array $selfAssessment,
+        ?array $positions,
+        ?array $selfAssessment,
         ?array $characterAppearance = null,
     ): PlayerProfile {
         return DB::transaction(function () use ($user, $profileData, $positions, $selfAssessment, $characterAppearance): PlayerProfile {
@@ -42,14 +42,18 @@ final class UpdatePlayerProfileHandler
                 $profile->forceFill(['extra' => $extra])->save();
             }
 
-            $profile->positions()->delete();
-            $profile->positions()->createMany(
-                collect($positions)
-                    ->map(fn (PlayerPositionEnum $position): array => ['position' => $position])
-                    ->all(),
-            );
+            if ($positions !== null) {
+                $profile->positions()->delete();
+                $profile->positions()->createMany(
+                    collect($positions)
+                        ->map(fn (PlayerPositionEnum $position): array => ['position' => $position])
+                        ->all(),
+                );
+            }
 
-            $profile->selfAssessment()->updateOrCreate([], $selfAssessment);
+            if ($selfAssessment !== null) {
+                $profile->selfAssessment()->updateOrCreate([], $selfAssessment);
+            }
 
             return $profile->refresh()->load('positions', 'selfAssessment');
         });

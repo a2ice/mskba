@@ -111,9 +111,10 @@ final class MskbaAppAccountRolesTest extends TestCase
 
         $this->get(route('account.participation-role', 'player'))
             ->assertOk()
-            ->assertSee('Параметры: Игрок')
-            ->assertSee('Индивидуальные настройки этой роли появятся здесь')
-            ->assertSee('Вернуться к ролям')
+            ->assertSee('Роль: Игрок')
+            ->assertSee('Физические данные')
+            ->assertSee('Игровые характеристики')
+            ->assertSee('data-player-preview', false)
             ->assertDontSee('View for page');
 
         $this->get(route('account.participation-role', 'coach'))->assertNotFound();

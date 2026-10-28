@@ -1,0 +1,69 @@
+/* Player role in MSKBA App: account collection geometry, accessible controls, native page tabs. */
+.app-player-workspace{display:grid;gap:18px;min-width:0}
+.app-player-workspace__notice,.app-player-workspace__error{border:1px solid #c8dfd0;border-radius:13px;padding:14px 18px;background:#ecf8ef;color:#21643f}
+.app-player-workspace__error{border-color:#edb6b6;background:#fff1f1;color:#8d2929}
+.app-player-workspace__error ul{margin:8px 0 0;padding-left:22px}
+.app-player-workspace__tabs{display:flex;flex-wrap:wrap;gap:10px;border-bottom:1px solid #d8e0e7;padding-bottom:12px}
+.app-player-workspace__tabs a{display:inline-flex;align-items:center;min-height:42px;padding:9px 16px;box-sizing:border-box;border:1px solid #d9e1e9;border-radius:11px;background:#f4f7fa;color:#405165;font-weight:700;font-size:14px;text-decoration:none}
+.app-player-workspace__tabs a.is-active{border-color:#293c52;background:#293c52;color:#fff}
+.app-player-workspace__tabs a:focus-visible,.app-player-workspace__primary:focus-visible,.app-player-workspace__secondary:focus-visible{outline:2px solid #bc550f;outline-offset:3px}
+.app-player-workspace__physical{display:grid;grid-template-columns:minmax(255px,365px) minmax(0,1fr);align-items:start;gap:18px}
+.app-player-workspace__preview,.app-player-workspace__editor,.app-player-workspace__game,.app-player-workspace__objective{background:#fff;border:1px solid #dce3ea;border-radius:16px;box-shadow:0 3px 12px rgba(25,41,57,.035);padding:20px;min-width:0;color:#304053}
+.app-player-workspace__preview{display:grid;gap:14px;position:sticky;top:95px}
+.app-player-workspace__preview-heading{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;justify-content:space-between}
+.app-player-workspace__preview-heading h2,.app-player-workspace__section-heading h2{font-size:21px;line-height:1.3;margin:0;color:#24364c}
+.app-player-workspace__eyebrow{font-size:12px;font-weight:700;color:#748296}
+.app-player-workspace__preview-kind{font-size:11px;padding:6px 9px;border-radius:999px;background:#eff2f5;color:#56677b;font-weight:700}
+.app-player-workspace__stage{position:relative;height:min(470px,70vh);min-height:340px;overflow:hidden;border:1px solid #d7e0e9;border-radius:14px;background:linear-gradient(180deg,#eaf1f7,#f6f9fc)}
+.app-player-workspace__stage::before{content:"";position:absolute;inset:0 0 8% 45px;background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(20% - 1px),#bfcddb66 calc(20% - 1px),#bfcddb66 20%);pointer-events:none}
+.app-player-workspace__scale{position:absolute;inset:7% auto 10% 0;width:58px;color:#64768b;font-size:11px}
+.app-player-workspace__scale span{position:absolute;left:6px;transform:translateY(50%);white-space:nowrap}
+.app-player-workspace__figure{position:absolute;inset:8% 8% 10% 58px;display:flex;align-items:end;justify-content:center}
+.app-player-workspace__figure img{height:var(--figure-height,74%);max-width:95%;width:auto;object-fit:contain;object-position:center bottom;transform-origin:center bottom;transform:scaleX(var(--figure-width,1));transition:height .2s ease,transform .2s ease;filter:drop-shadow(0 6px 11px #304f6880)}
+.app-player-workspace__figure img.is-generated{transform:none}
+.app-player-workspace__floor{position:absolute;bottom:10%;left:58px;right:0;border-bottom:2px solid #8b9eb1}
+.app-player-workspace__metrics{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;font-weight:700;color:#405469}
+.app-player-workspace__hint{font-size:13px;line-height:1.5;color:#637386;margin:0}
+.app-player-workspace__editor{display:grid;gap:18px}
+.app-player-workspace__section-heading{display:grid;gap:7px}
+.app-player-workspace__section-heading p,.app-player-workspace__generation p{font-size:14px;color:#64758a;line-height:1.5;margin:0}
+.app-player-workspace__editor h3,.app-player-workspace__game h3{font-size:17px;line-height:1.35;color:#24364c;margin:4px 0 0}
+.app-player-workspace__form{display:grid;gap:20px;min-width:0}
+.app-player-workspace__fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.app-player-workspace__field{display:grid;gap:6px;min-width:0;font-size:13px;font-weight:650;color:#2b3a4d}
+.app-player-workspace__field--wide{grid-column:1/-1}
+.app-player-workspace__field :is(input,select,textarea){box-sizing:border-box;width:100%;min-width:0;min-height:42px;border:1px solid #c8d3de;background:#fff;border-radius:9px;color:#233449;padding:9px 11px;font:inherit;font-size:14px;font-weight:500}
+.app-player-workspace__field textarea{resize:vertical}
+.app-player-workspace__field :is(input,select,textarea):focus-visible{outline:2px solid #b45112;outline-offset:2px}
+.app-player-workspace__field input:disabled{background:#f2f5f8;color:#5d6d7e}
+.app-player-workspace__field small{font-size:11px;color:#67798a;line-height:1.4;font-weight:400}
+.app-player-workspace__equipment{margin:0;padding:13px 15px;border:1px solid #dce3ea;border-radius:12px}
+.app-player-workspace__equipment legend{padding:0 5px;color:#293f56;font-size:15px;font-weight:700}
+.app-player-workspace__equipment p{font-size:13px;color:#64758a;margin:0 0 12px}
+.app-player-workspace__checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.app-player-workspace__checks label,.app-player-workspace__checkbox{display:flex;gap:8px;align-items:flex-start;color:#31475f;font-size:13px;line-height:1.4}
+.app-player-workspace__checks input,.app-player-workspace__checkbox input{margin-top:2px;accent-color:#ba560d;flex:none}
+.app-player-workspace__actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.app-player-workspace__primary,.app-player-workspace__secondary{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 15px;box-sizing:border-box;font-size:13px;font-weight:700;border-radius:9px;cursor:pointer}
+.app-player-workspace__primary{border:1px solid #243b54;background:#243b54;color:#fff}
+.app-player-workspace__secondary{border:1px solid #c9d5e1;background:#fff;color:#2c4158}
+.app-player-workspace__primary:disabled,.app-player-workspace__secondary:disabled{opacity:.6;cursor:wait}
+.app-player-workspace__generation{border-top:1px solid #dce3ea;padding-top:18px;display:grid;gap:15px}
+.app-player-workspace__generation-status{margin:0;min-height:20px;font-size:13px;color:#42556a}
+.app-player-workspace__generation-status.is-error{color:#af2929}
+.app-player-workspace__game{display:grid;gap:20px}
+.app-player-workspace__skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.app-player-workspace__skill{display:grid;grid-template-columns:minmax(0,1fr) 1.2fr 30px;align-items:center;gap:9px;border:1px solid #dce3ea;border-radius:12px;padding:12px;font-size:13px;color:#334a61}
+.app-player-workspace__skill input{min-width:0;width:100%;accent-color:#bb560f}
+.app-player-workspace__skill output{font-weight:750;text-align:right}
+.app-player-workspace__objective{box-shadow:none;background:#f9fbfd;display:grid;gap:13px}
+.app-player-workspace__objective-meta{font-size:13px;color:#435d75;margin:0}
+.app-player-workspace__objective-list{display:grid;gap:12px}
+.app-player-workspace__objective-item{display:grid;gap:6px}
+.app-player-workspace__objective-item>div{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.app-player-workspace__objective-item progress{width:100%;height:9px;accent-color:#29945a}
+.app-player-workspace__empty{margin:0;font-size:14px;color:#64758a}
+@media(max-width:1050px){.app-player-workspace__physical{grid-template-columns:minmax(240px,310px) minmax(0,1fr)}.app-player-workspace__skills{grid-template-columns:1fr}}
+@media(max-width:760px){.app-player-workspace__physical{grid-template-columns:1fr}.app-player-workspace__preview{position:static}.app-player-workspace__stage{height:430px;max-width:360px;width:100%;margin:auto}.app-player-workspace__skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.app-player-workspace__preview,.app-player-workspace__editor,.app-player-workspace__game{padding:15px}.app-player-workspace__fields,.app-player-workspace__checks,.app-player-workspace__skills{grid-template-columns:1fr}.app-player-workspace__stage{height:360px;min-height:320px}.app-player-workspace__skill{grid-template-columns:minmax(0,1fr) 1.1fr 26px}}
+@media(prefers-reduced-motion:reduce){.app-player-workspace__figure img{transition:none}}

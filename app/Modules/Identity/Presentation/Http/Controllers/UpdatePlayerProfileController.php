@@ -67,16 +67,19 @@ final class UpdatePlayerProfileController extends Controller
 
         $handler->handle(
             $request->user(),
-            $request->profileData(),
-            $request->positions(),
-            $request->selfAssessment(),
+            $request->profileDataForSection(),
+            $request->section() === 'physical' ? null : $request->positions(),
+            $request->section() === 'physical' ? null : $request->selfAssessment(),
             $request->characterAppearance(),
         );
 
         return redirect()
             ->route(
                 $request->shouldClose() ? 'account' : 'account.participation-role',
-                $request->shouldClose() ? [] : [UserParticipationRoleEnum::PLAYER->value],
+                $request->shouldClose() ? [] : [
+                    'role' => UserParticipationRoleEnum::PLAYER->value,
+                    ...($request->section() ? ['tab' => $request->section()] : []),
+                ],
             )
             ->with('status', 'Профиль игрока обновлён.');
     }

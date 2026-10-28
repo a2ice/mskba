@@ -54,4 +54,19 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('Do not place a team logo on the uniform', $withoutLogo);
         $this->assertStringNotContainsString('Copy that supplied team logo', $withoutLogo);
     }
+
+    public function test_visual_adiposity_is_provided_as_neutral_appearance_not_a_medical_diagnosis(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+
+        $prompt = $builder->build([
+            'body_type' => 'athletic',
+            'appearance' => ['adiposity' => 'elevated'],
+        ]);
+        $this->assertStringContainsString('visibly elevated body-fat appearance', $prompt);
+        $this->assertStringContainsString('do not infer diagnoses or stigmatize body size', $prompt);
+        $this->assertStringContainsString('athletic', $prompt);
+        $this->assertStringNotContainsString('"obesity_diagnosis"', $prompt);
+    }
+
 }

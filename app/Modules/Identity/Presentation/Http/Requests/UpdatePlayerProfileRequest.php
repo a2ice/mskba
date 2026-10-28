@@ -33,6 +33,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
         $rules = [
+            'section' => ['nullable', Rule::in(['physical', 'game'])],
             'mutation' => ['nullable', Rule::in([
                 'render_mode',
                 'face_reference',
@@ -84,7 +85,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume'],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume,adiposity'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
@@ -94,6 +95,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'character.attributes' => ['nullable', 'array', 'max:7'],
             'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
+            'character.adiposity' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::ADIPOSITY_LEVELS)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
 
@@ -155,6 +157,23 @@ final class UpdatePlayerProfileRequest extends FormRequest
     /**
      * @return array<string, mixed>
      */
+    public function section(): ?string
+    {
+        return $this->validated('section');
+    }
+
+    /** A tab can update its own fields without clearing those on the other tab. */
+    public function profileDataForSection(): array
+    {
+        $data = $this->profileData();
+
+        return match ($this->section()) {
+            'physical' => array_intersect_key($data, array_flip(['height_cm', 'weight_kg', 'body_type'])),
+            'game' => array_intersect_key($data, array_flip(['experience_started_year', 'comment'])),
+            default => $data,
+        };
+    }
+
     public function profileData(): array
     {
         return [
@@ -199,6 +218,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,
+            'adiposity' => $character['adiposity'] ?? 'average',
         ];
     }
 
