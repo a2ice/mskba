@@ -8,13 +8,13 @@
 @endsection
 
 @section('account-content')
-    <section class="panel app-play-interests" data-play-interests
+    <section class="app-play-interests account-collection" data-play-interests
         data-list-url="{{ route('play-intents.index') }}"
         data-pause-url="{{ url('/account/play-intents') }}"
         data-venues-url="{{ route('venues.search') }}"
         data-venue-subscriptions-url="{{ url('/account/venue-subscriptions') }}"
         data-channels-url="{{ route('subscriptions.channels') }}">
-        <form class="app-play-interests__filters" data-subscriptions-filters aria-label="Фильтры подписок">
+        <form class="app-play-interests__filters account-collection__filters" data-subscriptions-filters aria-label="Фильтры подписок">
             <label class="field-group app-play-interests__filter-field" for="account-subscription-type">
                 <span>Тип подписки</span>
                 <span class="select-control">
@@ -61,7 +61,8 @@
             ];
         @endphp
         <div data-mskba-play-intent-root data-options='@json($interestDialogOptions)'></div>
-        <div class="app-play-interests__list" data-play-interests-list role="region" aria-live="polite">
+        <p class="account-collection__count" data-subscriptions-count role="status" aria-live="polite"></p>
+        <div class="app-play-interests__list account-collection__cards" data-play-interests-list role="region" aria-live="polite">
             <p class="muted">Загружаем подписки…</p>
         </div>
         <nav class="app-play-interests__pagination" data-subscriptions-pagination aria-label="Страницы подписок" hidden></nav>

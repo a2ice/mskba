@@ -1,0 +1,109 @@
+/* Shared account collection pattern. Derived from /account/contracts/venues.
+   Only list-style sections opt in; communication, forms and profile pages stay distinct. */
+.account-collection{display:grid;gap:18px;min-width:0;background:transparent;border:0;box-shadow:none}
+.app-play-interests.account-collection,.app-favorites.account-collection{padding:0}
+.account-collection__toolbar{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px}
+.account-collection__filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:12px;align-items:end;background:#f5f7f9;border:1px solid #e0e5eb;border-radius:15px;padding:16px;color:#2b3a4d;min-width:0}
+.account-collection .account-collection__field{display:grid;gap:6px;min-width:0;margin:0;font-size:13px;font-weight:650;color:#2b3a4d}
+.account-collection__field>span:first-child{font-size:13px;font-weight:650}
+.account-collection__filters :is(input,select){height:42px;min-height:42px;width:100%;min-width:0;border:1px solid #c8d3de;border-radius:9px;padding:8px 11px;background:#fff;color:#233449;font:inherit;font-size:13px;box-sizing:border-box}
+.account-collection__filters :is(input,select):focus-visible{outline:2px solid #b45112;outline-offset:2px}
+.account-collection__reset,.account-collection__action{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:40px;box-sizing:border-box;padding:9px 14px;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:normal;text-align:center}
+.account-collection__reset{border:0;background:transparent;color:#42566c}
+.account-collection__action,.account-collection .button.secondary.account-collection__action{background:#fff;border:1px solid #c9d5e1;color:#2c4158}
+.account-collection__action--primary,.account-collection .button.secondary.account-collection__action--primary{background:#243b54;border-color:#243b54;color:#fff}
+.account-collection__action:hover,.account-collection__reset:hover{text-decoration:none;border-color:#a6b6c6}
+.account-collection__action--primary:hover,.account-collection .button.secondary.account-collection__action--primary:hover{background:#314b67;color:#fff}
+.account-collection :is(.account-collection__action,.account-collection__reset):focus-visible{outline:2px solid #bd530d;outline-offset:3px}
+.account-collection__count{margin:0;font-size:13px;color:var(--muted,#5d6e7b)}
+.account-collection__cards{display:grid;gap:13px;min-width:0}
+.account-collection__card{display:grid;gap:12px;min-width:0;padding:19px;background:#fff;color:#304053;border:1px solid #dce3ea;border-radius:16px;box-shadow:0 3px 12px rgba(25,41,57,.035)}
+.account-collection__card p{margin:0}
+.account-collection__card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.account-collection__card-head h2,.account-collection__card-head h3,.account-collection__card-head h4{margin:0;font-size:20px;line-height:1.3;color:#24364c}
+.account-collection__card-head :is(h2,h3,h4) a{color:inherit;text-decoration:none}
+.account-collection__card-head :is(h2,h3,h4) a:hover{text-decoration:underline}
+.account-collection__eyebrow{margin:0 0 4px;font-size:12px;font-weight:700;color:#748296;letter-spacing:.02em}
+.account-collection__status,.account-collection .badge.account-collection__status{display:inline-flex;align-items:center;max-width:100%;padding:6px 9px;border-radius:999px;font-size:12px;line-height:1.3;font-weight:700;background:#eff2f5;color:#5c6672;border:0}
+.account-collection__status.is-active,.account-collection .badge.account-collection__status.is-active{background:#e6f7eb;color:#18713a}
+.account-collection__meta{display:flex;flex-wrap:wrap;gap:7px 17px;font-size:13px;color:#637386}
+.account-collection__actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.account-collection__empty{padding:25px;border:1px dashed #ced8e2;border-radius:13px;color:#596b7e;background:#f9fbfd}
+.account-collection__tabs{display:flex;gap:10px;flex-wrap:wrap;padding:0 0 12px;border-bottom:1px solid #d8e0e7}
+.account-collection__tabs :is(a,button){display:inline-flex;align-items:center;padding:9px 15px;border-radius:11px;border:1px solid #d9e1e9;background:#f4f7fa;color:#405165;text-decoration:none;font-size:14px;font-weight:650}
+.account-collection__tabs :is([aria-current="page"],.is-current){background:#293c52;color:#fff;border-color:#293c52}
+.account-collection__tabs :is(a,button):focus-visible{outline:2px solid #b45112;outline-offset:2px}
+
+/* Subscription filters retain their established URL/JS API and custom select arrows. */
+.app-play-interests form.app-play-interests__filters.account-collection__filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:12px;align-items:end;padding:16px;border:1px solid #e0e5eb;border-radius:15px;background:#f5f7f9}
+.app-play-interests .app-play-interests__filters .app-play-interests__filter-field{gap:6px}
+.app-play-interests .app-play-interests__filters .app-play-interests__filter-field>span:first-child{color:#2b3a4d;font-weight:650}
+.app-play-interests .app-play-interests__filters .select-control select{height:42px;min-height:42px;max-height:42px;background:#fff;color:#233449;border-color:#c8d3de;border-radius:9px}
+.app-play-interests form.app-play-interests__filters>.app-play-interests__filter-reset{height:42px;min-height:42px;border:0;background:transparent;color:#42566c;justify-self:start}
+.app-play-interests__item.account-collection__card{padding:19px;border:1px solid #dce3ea}
+.app-play-interests__item-head.account-collection__card-head{align-items:flex-start}
+.app-play-interests__item-head.account-collection__card-head h2{margin:0}
+.app-play-interests__item.account-collection__card .app-play-interests__venue{font-size:14px;color:#54687c}
+.app-play-interests__actions.account-collection__actions{gap:8px}
+.app-play-interests .app-play-interests__pagination{padding-top:10px;border:0}
+.app-play-interests__empty.account-collection__empty{padding:25px;background:#f9fbfd;border-color:#ced8e2}
+
+/* Favorites: one toolbar, one filter panel, independent cards. */
+.app-favorites__filter-form.account-collection__filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto}
+.app-favorites__item.account-collection__card{padding:19px;border:1px solid #dce3ea;display:grid;align-items:stretch}
+.app-favorites__details{display:grid;gap:4px;min-width:0}
+.app-favorites__item-link{font-size:20px;line-height:1.3}
+.app-favorites__empty.account-collection__empty{margin:0}
+
+/* Teams and games are also collections. Keep their invitation and action behavior. */
+.account-collection--teams{display:block}
+.account-collection--teams .app-team-panel.account-collection__section{padding:0;border:0;background:transparent;box-shadow:none;margin:0 0 32px;gap:16px}
+.account-collection--teams .app-team-panel.account-collection__section>h2{font-size:20px;color:var(--text,#24364c)}
+.account-collection--teams .app-team-filters.account-collection__filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;border:1px solid #e0e5eb;padding:16px;background:#f5f7f9;border-radius:15px}
+.account-collection--teams .app-team-field{font-size:13px;color:#2b3a4d}
+.account-collection--teams .app-team-field :is(input,select,textarea){background:#fff;border-color:#c8d3de;border-radius:9px;min-height:42px}
+.account-collection--teams .app-team-grid.account-collection__cards{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+.account-collection--teams .app-team-card.account-collection__card{background:#fff;border:1px solid #dce3ea;border-radius:16px;padding:19px;gap:12px}
+.account-collection--teams .app-team-card__title.account-collection__card-head{flex:1}
+.account-collection--teams .app-team-card__title.account-collection__card-head h3{font-size:20px}
+.account-collection--teams .app-team-card__sports{gap:7px}
+.account-collection--teams .app-team-card>.button.account-collection__action{margin-top:0}
+.account-collection--teams .app-team-panel__actions{margin:0}
+.account-collection--games.app-my-games{padding:0;border:0;background:transparent;box-shadow:none;display:grid;gap:18px}
+.account-collection--games .app-my-games__filters.account-collection__tabs{border:0;border-bottom:1px solid #d8e0e7;padding-bottom:12px}
+.account-collection--games .app-my-games__filters.account-collection__tabs .chip{border-radius:11px;background:#f4f7fa;color:#405165;border:1px solid #d9e1e9}
+.account-collection--games .app-my-games__filters.account-collection__tabs .chip[aria-current="page"]{background:#293c52;color:#fff;border-color:#293c52}
+.account-collection--games .app-my-games__list.account-collection__cards{display:grid;grid-template-columns:minmax(0,1fr)}
+.account-collection--games .app-my-games__card.account-collection__card{background:#fff;border:1px solid #dce3ea;padding:19px;border-radius:16px}
+.account-collection--games .app-my-games__card h4{font-size:20px;color:#24364c}
+.account-collection--games .app-my-games__status.account-collection__status{margin-left:auto}
+.account-collection--games .app-my-games__card>.button.account-collection__action{justify-self:start}
+/* Explicit paired foregrounds for fixed light cards in arena_night appearance.
+   Domain-specific old styles sometimes use var(--text) for dark surfaces. */
+.account-collection__card .muted,
+.account-collection__card .caption{color:#637386}
+.account-collection--teams .app-team-field :is(input,select,textarea){color:#233449}
+.account-collection--teams .app-team-card__title.account-collection__card-head h3 a,
+.account-collection--games .app-my-games__card h4 a,
+.app-favorites__item .app-favorites__item-link{color:#24364c}
+.account-collection--teams .app-team-checkbox{color:#2b3a4d}
+.account-collection--teams .app-team-link{color:var(--muted,#42566c)}
+.account-collection--teams .app-team-filters .app-team-link{color:#42566c}
+.account-collection--teams .app-team-field :is(input,select,textarea):focus-visible{outline:2px solid #b45112;outline-offset:2px}
+.account-collection--teams .app-team-card__detail,
+.account-collection--games .app-my-games__meta{color:#637386}
+.account-collection--teams .app-team-card.account-collection__card .badge,
+.account-collection--games .app-my-games__card.account-collection__card .badge{background:#eff2f5;color:#5c6672;border:0}
+.account-collection--teams .app-team-card.account-collection__card .badge.account-collection__status.is-active{background:#e6f7eb;color:#18713a}
+@media(max-width:800px){
+ .app-play-interests form.app-play-interests__filters.account-collection__filters,
+ .app-favorites__filter-form.account-collection__filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .account-collection--teams .app-team-filters.account-collection__filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+ .app-play-interests form.app-play-interests__filters.account-collection__filters,
+ .app-favorites__filter-form.account-collection__filters,
+ .account-collection--teams .app-team-filters.account-collection__filters{grid-template-columns:minmax(0,1fr)}
+ .account-collection__card,.app-play-interests__item.account-collection__card,.app-favorites__item.account-collection__card,.account-collection--teams .app-team-card.account-collection__card,.account-collection--games .app-my-games__card.account-collection__card{padding:14px}
+ .account-collection__toolbar{justify-content:flex-start}
+}

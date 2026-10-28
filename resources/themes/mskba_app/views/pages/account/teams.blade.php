@@ -8,14 +8,14 @@
 @endsection
 
 @section('account-content')
-    <section class="app-team-section" aria-labelledby="account-teams-heading" data-app-team-actions>
+    <section class="app-team-section account-collection account-collection--teams" aria-labelledby="account-teams-heading" data-app-team-actions>
 
 
-        <section class="panel app-team-panel" aria-labelledby="account-my-teams-title">
+        <section class="app-team-panel account-collection__section" aria-labelledby="account-my-teams-title">
             <h2 id="account-my-teams-title">Мои команды</h2>
 
             @if ($hasAnyTeams)
-                <form class="app-team-filters" method="GET" action="{{ route('account.teams') }}" aria-label="Фильтры моих команд">
+                <form class="app-team-filters account-collection__filters" method="GET" action="{{ route('account.teams') }}" aria-label="Фильтры моих команд">
                     <label class="app-team-field">
                         <span>Статус команды</span>
                         <select name="status">
@@ -39,8 +39,8 @@
                         <span>Созданные мной</span>
                     </label>
                     <div class="app-team-filter-actions">
-                        <button class="button secondary" type="submit">Применить</button>
-                        <a class="app-team-link" href="{{ route('account.teams', ['status' => '']) }}">Сбросить</a>
+                        <button class="account-collection__action account-collection__action--primary" type="submit">Применить</button>
+                        <a class="app-team-link account-collection__reset" href="{{ route('account.teams', ['status' => '']) }}">Сбросить</a>
                     </div>
                 </form>
             @endif
@@ -49,19 +49,19 @@
                 <p class="app-team-card__detail">Найди команду по интересам и формату игры, отправь заявку на вступление или создай собственную.</p>
             @elseif ($teams->isEmpty())
                 <p class="app-team-card__detail">По этим условиям команды не найдены. Попробуй изменить фильтры.</p>
-                <a class="app-team-link" href="{{ route('account.teams', ['status' => '']) }}">Показать все команды</a>
+                <a class="app-team-link account-collection__reset" href="{{ route('account.teams', ['status' => '']) }}">Показать все команды</a>
             @else
-                <div class="app-team-grid" aria-label="Список твоих команд">
+                <div class="app-team-grid account-collection__cards" aria-label="Список твоих команд">
                     @foreach ($teams as $team)
                         @php($membership = $team->memberships->first())
-                        <article class="app-team-card">
+                        <article class="app-team-card account-collection__card">
                             <div class="app-team-card__top">
                                 @if ($team->logo?->publicUrl())
                                     <img class="app-team-card__logo" src="{{ $team->logo->publicUrl() }}" alt="">
                                 @endif
-                                <div class="app-team-card__title">
+                                <div class="app-team-card__title account-collection__card-head">
                                     <h3><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h3>
-                                    <span class="badge">{{ $team->status->label() }}</span>
+                                    <span class="badge account-collection__status">{{ $team->status->label() }}</span>
                                 </div>
                             </div>
                             <div class="app-team-card__sports">
@@ -70,7 +70,7 @@
                                 @endforeach
                             </div>
                             <p class="app-team-card__detail">{{ $membership?->invitation_status?->label() ?? 'Создатель команды' }}</p>
-                            <a class="button secondary" href="{{ route('teams.show', $team->routeIdentifier()) }}">Открыть команду</a>
+                            <a class="button secondary account-collection__action" href="{{ route('teams.show', $team->routeIdentifier()) }}">Открыть команду</a>
                         </article>
                     @endforeach
                 </div>
@@ -78,21 +78,21 @@
             @endif
 
             <div class="app-team-actions app-team-panel__actions">
-                <button type="button" class="button primary" data-team-placeholder-action="find">Найти команду</button>
-                <button type="button" class="button secondary" data-team-placeholder-action="create">Создать команду</button>
+                <button type="button" class="account-collection__action account-collection__action--primary" data-team-placeholder-action="find">Найти команду</button>
+                <button type="button" class="account-collection__action" data-team-placeholder-action="create">Создать команду</button>
             </div>
         </section>
 
-        <section class="panel app-team-panel" aria-labelledby="account-team-invitations-title">
+        <section class="app-team-panel account-collection__section" aria-labelledby="account-team-invitations-title">
             <h2 id="account-team-invitations-title">Приглашения в команду</h2>
             @if ($invitations->isEmpty())
                 <p class="app-team-card__detail">Новых приглашений нет.</p>
             @else
-                <div class="app-team-grid" aria-label="Приглашения в команды">
+                <div class="app-team-grid account-collection__cards" aria-label="Приглашения в команды">
                     @foreach ($invitations as $team)
                         @php($invitation = $team->memberships->first())
-                        <article class="app-team-card">
-                            <div class="app-team-card__title">
+                        <article class="app-team-card account-collection__card">
+                            <div class="app-team-card__title account-collection__card-head">
                                 <h3><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h3>
                                 <span class="badge">{{ $invitation->invitation_status->label() }}</span>
                             </div>
@@ -100,8 +100,8 @@
                             <form method="POST" action="{{ route('teams.invitations.respond', $invitation->id) }}" class="app-team-card__footer">
                                 @csrf
                                 @method('PATCH')
-                                <button class="button primary" type="submit" name="decision" value="accept">Принять</button>
-                                <button class="button secondary" type="submit" name="decision" value="decline">Отклонить</button>
+                                <button class="account-collection__action account-collection__action--primary" type="submit" name="decision" value="accept">Принять</button>
+                                <button class="account-collection__action" type="submit" name="decision" value="decline">Отклонить</button>
                             </form>
                         </article>
                     @endforeach
@@ -110,15 +110,15 @@
             @endif
         </section>
 
-        <section class="panel app-team-panel" aria-labelledby="account-team-applications-title">
+        <section class="app-team-panel account-collection__section" aria-labelledby="account-team-applications-title">
             <h2 id="account-team-applications-title">Заявки в команду</h2>
             @if ($applications->isEmpty())
                 <p class="app-team-card__detail">Ты еще не подал ни одной заявки в команду.</p>
             @else
-                <div class="app-team-grid" aria-label="Мои заявки на вступление">
+                <div class="app-team-grid account-collection__cards" aria-label="Мои заявки на вступление">
                     @foreach ($applications as $application)
-                        <article class="app-team-card">
-                            <div class="app-team-card__title">
+                        <article class="app-team-card account-collection__card">
+                            <div class="app-team-card__title account-collection__card-head">
                                 <h3><a href="{{ route('teams.show', $application->team->routeIdentifier()) }}">{{ $application->team->name }}</a></h3>
                                 <span class="badge">{{ $application->status->label() }}</span>
                             </div>
@@ -128,14 +128,14 @@
                             @if (filled($application->review_reason) && $application->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
                                 <p class="app-team-card__detail">Ответ команды: {{ $application->review_reason }}</p>
                             @endif
-                            <a class="button secondary" href="{{ route('teams.show', $application->team->routeIdentifier()) }}">Посмотреть команду</a>
+                            <a class="button secondary account-collection__action" href="{{ route('teams.show', $application->team->routeIdentifier()) }}">Посмотреть команду</a>
                         </article>
                     @endforeach
                 </div>
                 <div class="app-team-pagination">{{ $applications->links() }}</div>
             @endif
             <div class="app-team-actions app-team-panel__actions">
-                <button type="button" class="button primary" data-team-placeholder-action="find">Найти команду</button>
+                <button type="button" class="account-collection__action account-collection__action--primary" data-team-placeholder-action="find">Найти команду</button>
             </div>
         </section>
 
