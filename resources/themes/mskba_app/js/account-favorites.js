@@ -4,7 +4,7 @@ if (root) {
     const typeSelect = root.querySelector('[data-favorites-type]');
     const stateSelect = root.querySelector('[data-favorites-state]');
     const count = root.querySelector('[data-favorites-count]');
-    let type = 'all', state = 'active', loading = false;
+    let type = 'all', state = 'active', loadSequence = 0;
     const node = (tag, value, className = '') => {
         const el = document.createElement(tag);
         if (className) el.className = className;
@@ -17,8 +17,7 @@ if (root) {
         stateSelect.value = state;
     };
     const load = async () => {
-        if (loading) return;
-        loading = true;
+        const sequence = ++loadSequence;
         renderSelected();
         results.replaceChildren(node('p', 'Загружаем…', 'muted'));
         try {
@@ -27,6 +26,7 @@ if (root) {
             const response = await fetch(url, { credentials:'same-origin', headers:{ Accept:'application/json' } });
             if (!response.ok) throw new Error('Не удалось загрузить избранное.');
             const data = await response.json();
+            if (sequence !== loadSequence) return;
             results.replaceChildren();
             if (count) count.textContent = 'Показано элементов: ' + data.data.length;
             if (!data.data.length) {
@@ -64,7 +64,6 @@ if (root) {
                         const change = await response.json();
                         window.dispatchEvent(new CustomEvent('mskba:favorites:changed',
                             { detail: { count: change.favorites_count } }));
-                        loading = false;
                         await load();
                     } catch (e) {
                         toggle.disabled = false;
@@ -77,9 +76,10 @@ if (root) {
                 results.append(row);
             }
         } catch(e) {
+            if (sequence !== loadSequence) return;
             if (count) count.textContent = '';
             results.replaceChildren(node('p', e.message, 'error'));
-        } finally { loading = false; }
+        }
     };
     typeSelect.addEventListener('change', () => {
         type = typeSelect.value; void load();
