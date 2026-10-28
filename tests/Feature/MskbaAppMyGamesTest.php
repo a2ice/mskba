@@ -37,6 +37,12 @@ final class MskbaAppMyGamesTest extends TestCase
 
     private function participate(Event $event, User $user, string $status): void
     {
+        // The generic EventFactory leaves the participation version unset;
+        // real participation commands initialize it before creating a record.
+        if ($event->participation_confirmation_version === null) {
+            $event->update(['participation_confirmation_version' => 1]);
+        }
+
         EventParticipant::query()->create([
             'event_id' => $event->id,
             'user_id' => $user->id,
