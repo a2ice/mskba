@@ -16,6 +16,12 @@ final class PlayerCharacterGenerationPromptBuilder
             'height_cm' => $payload['height_cm'] ?? null,
             'weight_kg' => $payload['weight_kg'] ?? null,
             'body_type' => $payload['body_type'] ?? null,
+            'visual_body_fat_level' => match ($appearance['adiposity'] ?? 'average') {
+                'low' => 'low body-fat appearance',
+                'elevated' => 'visibly elevated body-fat appearance',
+                'pronounced' => 'pronounced body-fat appearance',
+                default => 'average body-fat appearance',
+            },
             'shoes' => $appearance['shoes'] ?? 'white',
             'attributes' => array_values((array) ($appearance['attributes'] ?? [])),
             'chest_volume' => $appearance['chest_volume'] ?? null,
@@ -68,6 +74,8 @@ Composition - STRICT:
 - Camera at approximately waist/chest height, natural perspective, no dramatic foreshortening.
 - Realistic anatomy and proportions appropriate for the requested height, weight, body type, and gender.
 - Basketball-player physique, not a bodybuilder caricature.
+- Treat visual_body_fat_level as a neutral visual appearance instruction only; do not infer diagnoses or stigmatize body size.
+- Respect both body_type (frame/muscle structure) and visual_body_fat_level (fat distribution) without exaggeration.
 
 Clothing:
 - Modern basketball jersey and matching shorts.

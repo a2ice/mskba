@@ -4,11 +4,25 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     public const GENDERS = ['male', 'female'];
 
     public const RENDER_MODES = ['2d', '3d'];
+
+    /** Visual description, not a diagnosis or a computed BMI category. */
+    public const ADIPOSITY_LEVELS = ['low', 'average', 'elevated', 'pronounced'];
+
+    public static function adiposityLabel(string $value): string
+    {
+        return match ($value) {
+            'low' => 'Низкая',
+            'average' => 'Обычная',
+            'elevated' => 'Повышенная',
+            'pronounced' => 'Выраженная',
+            default => 'Обычная',
+        };
+    }
 
     public const CHEST_VOLUMES = [
         'small',
@@ -148,6 +162,7 @@ final class PlayerCharacterAppearanceOptions
             'shoes' => 'white',
             'attributes' => [],
             'chest_volume' => $gender === 'female' ? 'medium' : null,
+            'adiposity' => 'average',
         ];
     }
 }
