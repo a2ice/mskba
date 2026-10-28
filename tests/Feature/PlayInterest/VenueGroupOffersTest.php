@@ -111,6 +111,7 @@ final class VenueGroupOffersTest extends TestCase
         $offer = VenueGroupOffer::query()->sole();
         $url = route('venues.interest-group', ['venue' => $venue->id]);
 
+        auth()->logout();
         $this->get($url)->assertDontSee('AUTUMN2026');
         $this->actingAs($member)->get($url)->assertDontSee('AUTUMN2026');
         $this->actingAs($admin)->post(route('venues.interest-group.offers.transition', [
