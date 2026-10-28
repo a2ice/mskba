@@ -28,3 +28,13 @@ test('popup and group reuse identical participant partial and privacy projection
     assert.match(partial, /public/);
     assert.match(service, /show_on_venue/);
 });
+
+
+test('static group list does not register itself as a modal with close() handler', () => {
+    const js = file('../../resources/themes/mskba_app/js/venue-detail.js');
+    const page = file('../../resources/themes/mskba_app/views/pages/venues/interest-group.blade.php');
+    assert.match(page, /data-venue-interest-group-users/);
+    assert.doesNotMatch(page, /data-venue-interests-dialog/);
+    assert.match(js, /playersList = playersDialog \|\| document\.querySelector\('\[data-venue-interest-group-users\]'\)/);
+    assert.match(js, /playersList\?\.addEventListener\('click'/);
+});

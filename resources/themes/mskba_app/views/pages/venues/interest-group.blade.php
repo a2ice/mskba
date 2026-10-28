@@ -17,7 +17,7 @@
                 <strong class="app-venue-interests-dialog__total-number">{{ $venueAudience['total'] }}</strong>
                 <span class="app-venue-interests-dialog__total-word">игроков</span>
             </div>
-            <div data-venue-interests-dialog>
+            <div data-venue-interest-group-users>
                 @if($venueAudience['total'] > 0)
                     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
                 @else

@@ -111,6 +111,7 @@ if (sectionNav) {
 // All venue maps, including PageBuilder catalog cards, are handled by
 // the shared venue-map-dialog.js module imported by app.js.
 const playersDialog = document.querySelector('[data-venue-interests-dialog]');
+const playersList = playersDialog || document.querySelector('[data-venue-interest-group-users]');
 const playerDetailsDialog = document.querySelector('[data-venue-player-details-dialog]');
 const slotDialog = document.querySelector('[data-venue-slot-dialog]');
 const createEventDialog = document.querySelector('[data-venue-create-event-dialog]');
@@ -123,7 +124,7 @@ for (const dialog of [playersDialog, playerDetailsDialog, slotDialog, createEven
     });
 }
 document.querySelector('[data-venue-interests-open]')?.addEventListener('click', () => playersDialog?.showModal());
-playersDialog?.addEventListener('click', event => {
+playersList?.addEventListener('click', event => {
     const button = event.target.closest?.('[data-venue-player-details-open]');
     if (!button || !playerDetailsDialog) return;
     const template = button.closest('.app-venue-interests-dialog__player')
