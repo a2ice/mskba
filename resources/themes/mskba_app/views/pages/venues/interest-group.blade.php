@@ -33,6 +33,78 @@
             </div>
         </div>
     </div>
+
+    <section class="panel app-venue-interest-group__content app-group-rentals" aria-labelledby="group-rentals-heading">
+        <div class="app-group-rentals__heading">
+            <div>
+                <h2 id="group-rentals-heading">Совместная аренда и сборы</h2>
+                <p class="muted">Здесь отображаются сборы для совместной аренды площадки. Сбор не является игрой, подтверждением участия, бронью или оплатой.</p>
+            </div>
+        </div>
+        @if(! $rentalEnabled)
+            <p class="muted" role="status">Сервис совместной аренды для этой группы пока недоступен.</p>
+        @else
+            @if($gatherings->isEmpty())
+                <p class="muted" role="status">Пока нет доступных сборов на этой площадке.</p>
+            @else
+                <div class="app-group-rentals__list">
+                    @foreach($gatherings as $gathering)
+                        @php($myGathering = in_array((int)$gathering->organizer_user_id, $viewerIdentityIds, true))
+                        <article class="app-group-rentals__card">
+                            <div class="app-group-rentals__card-top">
+                                <h3><a href="{{ route('venue-rental-coordinations.show', $gathering) }}">{{ $gathering->title }}</a></h3>
+                                <span class="badge">{{ $gathering->status->label() }}</span>
+                            </div>
+                            <p class="muted">{{ $gathering->starts_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }} — {{ $gathering->ends_at->timezone(config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }}</p>
+                            <div class="app-group-rentals__facts">
+                                <span>{{ $gathering->scope->label() }}</span>
+                                <span>Заинтересованных: {{ $gathering->active_participants_count }}</span>
+                                @if($myGathering)<span>Вы организатор</span>@endif
+                                @if($gathering->booking)
+                                    <span>{{ $gathering->booking->status->occupiesVenue() ? 'Слот удерживается или подтверждён' : 'Заявка на аренду: '.$gathering->booking->status->label() }}</span>
+                                @else
+                                    <span>Слот не забронирован</span>
+                                @endif
+                            </div>
+                            <a class="button secondary" href="{{ route('venue-rental-coordinations.show', $gathering) }}">Перейти к сбору</a>
+                        </article>
+                    @endforeach
+                </div>
+                {{ $gatherings->links() }}
+            @endif
+            @if($canStartRentalGathering)
+                <details class="app-group-rentals__create">
+                    <summary class="button secondary">Начать сбор на совместную аренду</summary>
+                    <p class="muted">Укажите конкретный интервал. Доступность и стоимость проверяются сервером. Создание сбора не удерживает время площадки.</p>
+                    <form method="POST" action="{{ route('venue-rental-coordinations.store') }}" class="app-group-rentals__form">
+                        @csrf
+                        <input type="hidden" name="venue_id" value="{{ $venue->id }}">
+                        <input type="hidden" name="visibility" value="public">
+                        <input type="hidden" name="participants_visibility" value="participants">
+                        <label>Название сбора
+                            <input type="text" name="title" maxlength="150" required value="{{ old('title') }}" placeholder="Например, аренда зала для игры">
+                        </label>
+                        <label>Начало (местное время площадки)
+                            <input type="datetime-local" name="starts_at" required value="{{ old('starts_at') }}">
+                        </label>
+                        <label>Длительность, минут
+                            <input type="number" name="duration_minutes" min="30" max="480" required value="{{ old('duration_minutes', 90) }}">
+                        </label>
+                        <label>Зона аренды
+                            <select name="scope">
+                                @foreach(\App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::cases() as $option)
+                                    <option value="{{ $option->value }}" @selected(old('scope', 'whole') === $option->value)>{{ $option->label() }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <button class="button primary" type="submit">Проверить условия и создать сбор</button>
+                    </form>
+                </details>
+            @elseif(!$isAuthenticated)
+                <p class="muted">Для запуска сбора необходимо войти в аккаунт и подписаться на площадку.</p>
+            @endif
+        @endif
+    </section>
 </section>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
