@@ -8,7 +8,7 @@ if (workspace) {
     const adiposity = form?.querySelector('[data-physical-adiposity]');
     const stage = workspace.querySelector('[data-player-stage]');
     const figure = workspace.querySelector('[data-player-figure]');
-    const mode = workspace.querySelector('[data-player-preview-mode]');
+
     const feedback = workspace.querySelector('[data-player-generation-status]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let lastImage = '';
@@ -34,7 +34,14 @@ if (workspace) {
         workspace.querySelector('[data-player-weight-label]').textContent =
             'Вес: ' + (weight?.value ? kg + ' кг' : 'не указан');
     }
-    [height, weight, body, adiposity].forEach(input => input?.addEventListener('change', updateFigure));
+    const heightOutput = workspace.querySelector('[data-physical-height-value]');
+    const weightOutput = workspace.querySelector('[data-physical-weight-value]');
+    function onPhysicalInput() {
+        if (heightOutput) heightOutput.textContent = height.value + ' см';
+        if (weightOutput) weightOutput.textContent = weight.value + ' кг';
+        updateFigure();
+    }
+    [height, weight, body, adiposity].forEach(input => input?.addEventListener('input', onPhysicalInput));
     updateFigure();
 
     const message = (text, error = false) => {
@@ -49,7 +56,7 @@ if (workspace) {
         lastImage = target.href;
         figure.src = lastImage;
         figure.classList.add('is-generated');
-        if (mode) mode.textContent = 'Сгенерированный образ';
+
     };
     const request = async (payload) => {
         const response = await fetch(form.action, {
@@ -142,7 +149,7 @@ if (workspace) {
                 if (result.image_data_url.startsWith('data:image/')) {
                     figure.src = result.image_data_url;
                     figure.classList.add('is-generated');
-                    mode.textContent = 'Сгенерированный образ';
+
                     message('Аватар сгенерирован.');
                 }
             } else {

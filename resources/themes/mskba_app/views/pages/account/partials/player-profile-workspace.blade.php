@@ -6,24 +6,14 @@
     $storedAppearance = is_array(data_get($profile?->extra, 'character')) ? data_get($profile->extra, 'character') : [];
     $character = array_merge(Appearance::defaults($gender), $storedAppearance);
     $tab = old('section', request()->query('tab', 'physical')) === 'game' ? 'game' : 'physical';
+    $savedHeight = old('height_cm', $profile?->height_cm);
+    $savedWeight = old('weight_kg', $profile?->weight_kg);
+    $heightValue = $savedHeight === null || $savedHeight === '' ? 185 : max(150, min(220, (int) $savedHeight));
+    $weightValue = $savedWeight === null || $savedWeight === '' ? 80 : max(40, min(140, (int) $savedWeight));
+    $slimnessLabels = ['low' => 'Высокая', 'average' => 'Средняя', 'elevated' => 'Низкая', 'pronounced' => 'Минимальная'];
     $selectedPositions = old('positions', $profile?->positions?->map(fn($entry) => $entry->position->value)->all() ?? []);
     $playerSelf = $profile?->selfAssessment;
     $objective = $user->playerObjectiveAssessment;
-    $skinTones = [
-        'porcelain' => 'Очень светлый', 'light' => 'Светлый', 'warm' => 'Тёплый',
-        'tan' => 'Загорелый', 'brown' => 'Тёмный', 'deep' => 'Очень тёмный',
-    ];
-    $hairColors = [
-        'black' => 'Чёрный', 'dark_brown' => 'Тёмно-каштановый', 'brown' => 'Каштановый',
-        'blond' => 'Светлый', 'ginger' => 'Рыжий', 'gray' => 'Седой',
-    ];
-    $hairstyles = $gender === 'female'
-        ? ['female_ponytail' => 'Хвост', 'female_bob' => 'Каре', 'female_long' => 'Длинные', 'female_curls' => 'Кудри', 'female_braids' => 'Косы']
-        : ['male_bald' => 'Без волос', 'male_buzz' => 'Ёжик', 'male_fade' => 'Фейд', 'male_short' => 'Короткие', 'male_curls' => 'Кудри'];
-    $facialHair = [
-        'none' => 'Без растительности', 'stubble' => 'Щетина', 'mustache' => 'Усы',
-        'goatee' => 'Эспаньолка', 'short_beard' => 'Короткая борода', 'full_beard' => 'Борода',
-    ];
     $chestOptions = ['small' => 'Небольшой', 'medium' => 'Средний', 'large' => 'Большой', 'full' => 'Выраженный'];
     $uniformOptions = ['mskba_home' => 'MSKBA домашняя', 'mskba_light' => 'MSKBA светлая', 'street_black' => 'Street black', 'city_night' => 'City night'];
     $shoesOptions = ['white' => 'Белые', 'black' => 'Чёрные'];
@@ -61,10 +51,6 @@
                 data-gender="{{ $gender }}"
                 data-default-src="{{ asset('images/blank/avatar/body-'.$gender.'.png') }}"
                 data-history-url="{{ route('account.player-profile.update') }}">
-                <div class="app-player-workspace__preview-heading">
-                    <div><span class="app-player-workspace__eyebrow">Твой игровой образ</span><h2>Персонаж игрока</h2></div>
-                    <span class="app-player-workspace__preview-kind" data-player-preview-mode>Базовый образ</span>
-                </div>
                 <div class="app-player-workspace__stage" data-player-stage
                     role="img" aria-label="Изображение персонажа рядом со шкалой роста">
                     <div class="app-player-workspace__scale" aria-hidden="true">
@@ -82,13 +68,12 @@
                     <span data-player-height-label>Рост: {{ $profile?->height_cm ? $profile->height_cm.' см' : '185 см (пример)' }}</span>
                     <span data-player-weight-label>Вес: {{ $profile?->weight_kg ? $profile->weight_kg.' кг' : 'не указан' }}</span>
                 </div>
-                <p class="app-player-workspace__hint">До генерации показан базовый персонаж на шкале роста. Настройки меняют его пропорции в предпросмотре; реалистичный 2D-образ обновится только после отдельной генерации.</p>
             </aside>
 
             <section class="app-player-workspace__editor" aria-labelledby="app-player-physical-title">
                 <div class="app-player-workspace__section-heading">
-                    <h2 id="app-player-physical-title">Физические параметры и внешность</h2>
-                    <p>Эти данные используются в профиле игрока и при создании игрового персонажа.</p>
+                    <h2 id="app-player-physical-title">Физические данные</h2>
+                    <p>Рост, вес, телосложение и настройки игрового образа.</p>
                 </div>
                 <form method="POST" action="{{ route('account.player-profile.update') }}" data-player-physical-form class="app-player-workspace__form">
                     @csrf @method('PATCH')
@@ -98,98 +83,76 @@
                             <input type="text" value="{{ $gender === 'female' ? 'Женский' : 'Мужской' }}" disabled>
                             <small>Меняется в основном профиле, не в параметрах персонажа.</small>
                         </label>
-                        <label class="app-player-workspace__field">Рост, см
-                            <select name="height_cm" data-physical-height>
-                                <option value="">Не указан</option>
-                                @for($height=150;$height<=220;$height++)
-                                    <option value="{{ $height }}" @selected((string)old('height_cm',$profile?->height_cm)===(string)$height)>{{ $height }}</option>
-                                @endfor
-                            </select>
+                        <label class="app-player-workspace__field app-player-workspace__range-field" for="player-height">
+                            <span class="app-player-workspace__range-heading">Рост, см <output for="player-height" data-physical-height-value>{{ $heightValue }} см</output></span>
+                            <input id="player-height" type="range" name="height_cm" min="150" max="220" step="1" value="{{ $heightValue }}" data-physical-height>
+                            <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>150 см</span><span>220 см</span></span>
                         </label>
-                        <label class="app-player-workspace__field">Вес, кг
-                            <select name="weight_kg" data-physical-weight>
-                                <option value="">Не указан</option>
-                                @for($weight=40;$weight<=140;$weight++)
-                                    <option value="{{ $weight }}" @selected(old('weight_kg',$profile?->weight_kg) !== null && old('weight_kg',$profile?->weight_kg) !== '' && (int)old('weight_kg',$profile?->weight_kg)===$weight)>{{ $weight }}</option>
-                                @endfor
-                            </select>
+                        <label class="app-player-workspace__field app-player-workspace__range-field" for="player-weight">
+                            <span class="app-player-workspace__range-heading">Вес, кг <output for="player-weight" data-physical-weight-value>{{ $weightValue }} кг</output></span>
+                            <input id="player-weight" type="range" name="weight_kg" min="40" max="140" step="1" value="{{ $weightValue }}" data-physical-weight>
+                            <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>40 кг</span><span>140 кг</span></span>
                         </label>
                         <label class="app-player-workspace__field">Телосложение
-                            <select name="body_type" data-physical-body-type>
+                            <span class="select-control">
+                                <select name="body_type" data-physical-body-type>
                                 <option value="">Не указано</option>
                                 @foreach($playerBodyTypes as $bodyType)
                                     <option value="{{ $bodyType->value }}" @selected(old('body_type',$profile?->body_type?->value)===$bodyType->value)>{{ $bodyType->label() }}</option>
                                 @endforeach
                             </select>
+                                @include('account.partials.native-select-chevron')
+                            </span>
                         </label>
-                        <label class="app-player-workspace__field">Выраженность жировой ткани
-                            <select name="character[adiposity]" data-physical-adiposity>
+                        <label class="app-player-workspace__field">Стройность
+                            <span class="select-control">
+                                <select name="character[adiposity]" data-physical-adiposity>
                                 @foreach(Appearance::ADIPOSITY_LEVELS as $level)
-                                    <option value="{{ $level }}" @selected(old('character.adiposity',$character['adiposity'] ?? 'average')===$level)>{{ Appearance::adiposityLabel($level) }}</option>
+                                    <option value="{{ $level }}" @selected(old('character.adiposity',$character['adiposity'] ?? 'average')===$level)>{{ $slimnessLabels[$level] }}</option>
                                 @endforeach
                             </select>
-                            <small>Добровольная визуальная характеристика для аватара, а не медицинская оценка.</small>
+                                @include('account.partials.native-select-chevron')
+                            </span>
                         </label>
                         @if($gender === 'female')
                             <label class="app-player-workspace__field">Объём груди
-                                <select name="character[chest_volume]">
+                                <span class="select-control">
+                                    <select name="character[chest_volume]">
                                     @foreach($chestOptions as $value=>$label)
                                         <option value="{{ $value }}" @selected(old('character.chest_volume',$character['chest_volume'] ?? 'medium')===$value)>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                    @include('account.partials.native-select-chevron')
+                                </span>
                             </label>
                         @endif
                     </div>
 
-                    <h3>Внешность персонажа</h3>
-                    <div class="app-player-workspace__fields">
-                        <label class="app-player-workspace__field">Тон кожи
-                            <select name="character[skin_tone]">
-                                @foreach($skinTones as $value=>$label)
-                                    <option value="{{ $value }}" @selected(old('character.skin_tone',$character['skin_tone'])===$value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label class="app-player-workspace__field">Причёска
-                            <select name="character[hairstyle]">
-                                @foreach($hairstyles as $value=>$label)
-                                    <option value="{{ $value }}" @selected(old('character.hairstyle',$character['hairstyle'])===$value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label class="app-player-workspace__field">Цвет волос
-                            <select name="character[hair_color]">
-                                @foreach($hairColors as $value=>$label)
-                                    <option value="{{ $value }}" @selected(old('character.hair_color',$character['hair_color'])===$value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        @if($gender === 'male')
-                            <label class="app-player-workspace__field">Растительность на лице
-                                <select name="character[facial_hair]">
-                                    @foreach($facialHair as $value=>$label)
-                                        <option value="{{ $value }}" @selected(old('character.facial_hair',$character['facial_hair'])===$value)>{{ $label }}</option>
+                    <fieldset class="app-player-workspace__equipment">
+                        <legend>Одежда и обувь</legend>
+                        <div class="app-player-workspace__fields">
+                            <label class="app-player-workspace__field">Комплект формы
+                                <span class="select-control">
+                                    <select name="character[uniform_kit]">
+                                    @foreach($uniformOptions as $value=>$label)
+                                        <option value="{{ $value }}" @selected(old('character.uniform_kit',$character['uniform_kit'])===$value)>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                    @include('account.partials.native-select-chevron')
+                                </span>
                             </label>
-                        @else
-                            <input type="hidden" name="character[facial_hair]" value="none">
-                        @endif
-                        <label class="app-player-workspace__field">Комплект формы
-                            <select name="character[uniform_kit]">
-                                @foreach($uniformOptions as $value=>$label)
-                                    <option value="{{ $value }}" @selected(old('character.uniform_kit',$character['uniform_kit'])===$value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label class="app-player-workspace__field">Обувь
-                            <select name="character[shoes]">
-                                @foreach($shoesOptions as $value=>$label)
-                                    <option value="{{ $value }}" @selected(old('character.shoes',$character['shoes'] ?? 'white')===$value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                    </div>
+                            <label class="app-player-workspace__field">Обувь
+                                <span class="select-control">
+                                    <select name="character[shoes]">
+                                    @foreach($shoesOptions as $value=>$label)
+                                        <option value="{{ $value }}" @selected(old('character.shoes',$character['shoes'] ?? 'white')===$value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                    @include('account.partials.native-select-chevron')
+                                </span>
+                            </label>
+                        </div>
+                    </fieldset>
                     <fieldset class="app-player-workspace__equipment">
                         <legend>Спортивные аксессуары</legend>
                         <div class="app-player-workspace__checks">
@@ -217,12 +180,15 @@
                             <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="right">
                         </label>
                         <label class="app-player-workspace__field">Цвета команды (необязательно)
-                            <select data-player-generation-team>
+                            <span class="select-control">
+                                <select data-player-generation-team>
                                 <option value="">Без команды</option>
                                 @foreach($playerTeams as $team)
                                     <option value="{{ $team->id }}">{{ $team->name }}</option>
                                 @endforeach
                             </select>
+                                @include('account.partials.native-select-chevron')
+                            </span>
                         </label>
                     </div>
                     <label class="app-player-workspace__checkbox"><input type="checkbox" data-player-generation-logo> Использовать логотип выбранной команды (при наличии)</label>
@@ -244,12 +210,15 @@
                 <input type="hidden" name="section" value="game">
                 <div class="app-player-workspace__fields">
                     <label class="app-player-workspace__field">Играю с
-                        <select name="experience_started_year">
+                        <span class="select-control">
+                            <select name="experience_started_year">
                             <option value="">Не указано</option>
                             @for($year=now()->year-10;$year>=now()->year-50;$year--)
                                 <option value="{{ $year }}" @selected((string)old('experience_started_year',$profile?->experience_started_year)===(string)$year)>{{ $year }}</option>
                             @endfor
                         </select>
+                            @include('account.partials.native-select-chevron')
+                        </span>
                     </label>
                 </div>
                 <fieldset class="app-player-workspace__equipment">

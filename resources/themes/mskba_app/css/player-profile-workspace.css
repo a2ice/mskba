@@ -67,3 +67,19 @@
 @media(max-width:760px){.app-player-workspace__physical{grid-template-columns:1fr}.app-player-workspace__preview{position:static}.app-player-workspace__stage{height:430px;max-width:360px;width:100%;margin:auto}.app-player-workspace__skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.app-player-workspace__preview,.app-player-workspace__editor,.app-player-workspace__game{padding:15px}.app-player-workspace__fields,.app-player-workspace__checks,.app-player-workspace__skills{grid-template-columns:1fr}.app-player-workspace__stage{height:360px;min-height:320px}.app-player-workspace__skill{grid-template-columns:minmax(0,1fr) 1.1fr 26px}}
 @media(prefers-reduced-motion:reduce){.app-player-workspace__figure img{transition:none}}
+
+/* Task 052: use the shared native-select control from design-system.css. */
+.app-player-workspace__field>.select-control{min-width:0}
+.app-player-workspace__range-field{align-content:start}
+.app-player-workspace__range-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-player-workspace__range-heading output{font-size:14px;font-weight:750;font-variant-numeric:tabular-nums;color:#263d55}
+.app-player-workspace__field input[type="range"]{appearance:none;-webkit-appearance:none;padding:0;margin:6px 0 0;min-height:26px;height:26px;width:100%;border:0;background:transparent;cursor:pointer;accent-color:var(--accent,#c2510c)}
+.app-player-workspace__field input[type="range"]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:#d8e1eb}
+.app-player-workspace__field input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:#d8e1eb}
+.app-player-workspace__field input[type="range"]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:var(--accent,#c2510c);border:3px solid #fff;box-shadow:0 0 0 1px #be5c1d}
+.app-player-workspace__field input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent,#c2510c);border:3px solid #fff;box-shadow:0 0 0 1px #be5c1d}
+.app-player-workspace__range-bounds{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#64758a;font-variant-numeric:tabular-nums}
+.app-player-workspace__equipment .app-player-workspace__fields{margin-top:6px}
+/* Stay within the player section, following the same offset as the venue anchor bar. */
+.app-player-workspace__tabs{position:sticky;top:var(--app-sticky-offset,calc(var(--header-height,80px) + var(--context-bar-height,44px)));z-index:18;min-width:0;padding:8px;border:1px solid var(--line,#d8e0e7);border-radius:12px;background:color-mix(in srgb,var(--surface,#fff) 94%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:top .28s cubic-bezier(.22,.61,.36,1)}
+@media(max-width:640px){.app-player-workspace__tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.app-player-workspace__tabs::-webkit-scrollbar{display:none}.app-player-workspace__tabs a{white-space:nowrap}}
