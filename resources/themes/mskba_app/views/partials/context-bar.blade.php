@@ -93,6 +93,14 @@
                         <button type="button" data-context-help data-help-context="{{ app(\App\Presentation\Navigation\FaqContextResolver::class)->context() }}">Помощь</button>
                     </div>
                 </details>
+                <button type="button" class="app-context-quick app-context-header-pin"
+                        data-app-header-pin aria-pressed="false"
+                        aria-label="Показать и закрепить шапку" title="Показать и закрепить шапку">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+                         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </button>
             </div>
             <span class="app-context-bar__status" role="status" aria-live="polite" data-app-context-status></span>
         </div>
