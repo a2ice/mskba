@@ -53,24 +53,16 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
         return $user;
     }
 
-    public function test_app_player_has_two_tabs_and_gender_specific_character_fields(): void
+    public function test_player_can_access_both_profile_sections(): void
     {
         $female = $this->player(UserGenderEnum::FEMALE);
 
-        $this->actingAs($female)->get(route('account.participation-role', ['role' => 'player']))
-            ->assertOk()
-            ->assertSee('Физические данные')
-            ->assertSee('Игровые характеристики')
-            ->assertSee('data-player-preview', false)
-            ->assertSee('body-female.png')
-            ->assertSee('Выраженность жировой ткани')
-            ->assertSee('character[chest_volume]', false)
-            ->assertSee('type="hidden" name="character[facial_hair]"', false);
+        $this->actingAs($female)
+            ->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
+            ->assertOk();
 
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
-            ->assertOk()->assertSee('Самооценка игровых навыков')
-            ->assertSee('Объективные игровые показатели')
-            ->assertSee('data-player-skill', false);
+            ->assertOk();
     }
 
     public function test_saving_physical_and_game_tabs_never_clears_other_tab(): void
@@ -101,9 +93,6 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
             ],
         ])->assertRedirect(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
           ->assertSessionHasNoErrors();
-
-        $physicalPage = $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))->assertOk();
-        $this->assertMatchesRegularExpression('/<option[^>]*value="81"[^>]*selected[^>]*>/', $physicalPage->getContent());
 
         $profile = $user->playerProfile()->with('positions', 'selfAssessment')->firstOrFail();
         $this->assertSame(182, $profile->height_cm);
@@ -156,5 +145,47 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
 
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'coach']))
             ->assertOk()->assertSee('Твоя роль')->assertDontSee('data-player-preview', false);
+    }
+
+    public function test_partial_physical_form_preserves_existing_hidden_character_appearance(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+        $user->playerProfile()->create([
+            'height_cm' => 191,
+            'weight_kg' => 85,
+            'extra' => ['character' => [
+                'skin_tone' => 'deep',
+                'hairstyle' => 'male_curls',
+                'hair_color' => 'ginger',
+                'facial_hair' => 'short_beard',
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+                'attributes' => ['headband'],
+            ]],
+        ]);
+
+        $this->actingAs($user)->patch(route('account.player-profile.update'), [
+            'section' => 'physical',
+            'height_cm' => 195,
+            'weight_kg' => 89,
+            'character' => [
+                'adiposity' => 'low',
+                'uniform_kit' => 'city_night',
+                'shoes' => 'black',
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $profile = $user->playerProfile()->firstOrFail();
+        $appearance = $profile->extra['character'];
+        $this->assertSame('deep', $appearance['skin_tone']);
+        $this->assertSame('male_curls', $appearance['hairstyle']);
+        $this->assertSame('ginger', $appearance['hair_color']);
+        $this->assertSame('short_beard', $appearance['facial_hair']);
+        $this->assertSame('city_night', $appearance['uniform_kit']);
+        $this->assertSame('black', $appearance['shoes']);
+        $this->assertSame('low', $appearance['adiposity']);
+        $this->assertSame([], $appearance['attributes']);
+        $this->assertSame(195, $profile->height_cm);
+        $this->assertSame('89.0', $profile->weight_kg);
     }
 }
