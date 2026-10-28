@@ -1125,6 +1125,9 @@ Route::post('/favorites/preferences',
 Route::get('/account/favorites/items',
     [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'index'])
     ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.items');
+Route::get('/account/favorites/count',
+    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'count'])
+    ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.count');
 
 Route::get('/account/favorites', function (\App\Presentation\Theming\ThemeResolver $themes) {
     abort_unless($themes->active() === 'mskba_app', 404);

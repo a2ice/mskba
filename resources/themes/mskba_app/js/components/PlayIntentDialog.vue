@@ -119,6 +119,8 @@ async function applyFavorite(){
             body:JSON.stringify({type:contextType.value,id:Number(contextId.value)})});
         if(!response.ok)throw Error('Не удалось изменить избранное.');
         const data=await response.json();
+        window.dispatchEvent(new CustomEvent('mskba:favorites:changed',
+            {detail:{count:data.favorites_count}}));
         favoriteState.value=data.state;
         if(contextType.value==='venue')window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
             detail:{venueId:Number(contextId.value),state:data.state,count:data.count},

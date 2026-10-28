@@ -79,6 +79,49 @@
 .app-header-dropdown a[aria-current]::after { content: none; }
 .app-header-divider { height: 1px; background: var(--line); margin: 6px 8px; }
 .app-header-actions { gap: 10px; }
+/* Task 294: independent favorite shortcut, placed before the login/avatar. */
+.app-header-favorites {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: var(--text);
+    text-decoration: none;
+    transition: background-color .15s ease, color .15s ease;
+}
+.app-header-favorites:hover { background: var(--surface-raised); color: var(--accent); }
+.app-header-favorites svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.app-header-favorites__count {
+    position: absolute;
+    top: -4px;
+    right: -5px;
+    display: grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 3px;
+    border: 2px solid var(--bg);
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+.app-header-favorites__count[hidden] { display: none; }
 .app-header-account { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 600; color: var(--text); text-decoration: none; }
 .app-header-account-label { max-width: 115px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Reusable MSKBA App avatar. Clip the image, not the staff-role corner marker. */

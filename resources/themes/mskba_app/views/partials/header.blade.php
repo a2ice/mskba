@@ -8,6 +8,9 @@
         ? app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)->handle($headerUser)
         : 0;
     $headerRoleColor = $headerUser?->system_role?->avatarBorderColor();
+    $headerFavoriteCount = $headerUser
+        ? app(\App\Modules\Favorites\Application\Services\FavoriteCountService::class)->forUser($headerUser)
+        : 0;
 @endphp
 
 <a class="skip" href="#mskba-app">К содержимому</a>
@@ -51,6 +54,21 @@
         </nav>
 
         <div class="header-actions app-header-actions">
+            <a class="app-header-favorites" data-header-favorites
+               href="{{ route('favorites.mine') }}"
+               @auth
+                   data-favorites-user-id="{{ $headerUser->canonical()->id }}"
+                   data-favorites-sync-url="{{ route('favorites.count') }}"
+               @else
+                   data-auth-trigger data-auth-redirect="{{ route('favorites.mine', [], false) }}"
+               @endauth
+               aria-label="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Избранное — войти в аккаунт' }}"
+               title="{{ $headerUser ? 'Избранное: '.$headerFavoriteCount : 'Войти и открыть избранное' }}">
+                <svg aria-hidden="true"><use href="#heart"/></svg>
+                <span class="app-header-favorites__count" data-favorites-count
+                      data-count="{{ $headerFavoriteCount }}"
+                      @if ($headerFavoriteCount === 0) hidden @endif>{{ $headerFavoriteCount > 99 ? '99+' : $headerFavoriteCount }}</span>
+            </a>
             @auth
                 <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
                    href="{{ route('account') }}"

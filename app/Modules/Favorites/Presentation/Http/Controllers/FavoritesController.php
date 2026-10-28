@@ -4,6 +4,7 @@ namespace App\Modules\Favorites\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Favorites\Application\Services\FavoriteTargetRegistry;
+use App\Modules\Favorites\Application\Services\FavoriteCountService;
 use App\Modules\Favorites\Application\Services\FavoritesManager;
 use App\Modules\Favorites\Domain\Models\Favorite;
 use App\Modules\PlayInterest\Application\Services\FavoritePlayIntentService;
@@ -26,6 +27,14 @@ final class FavoritesController extends Controller
         return response()->json([
             'state' => $favorites->status($request, $validated['type'], (int) $validated['id']),
         ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function count(Request $request, FavoriteCountService $counts): JsonResponse
+    {
+        abort_unless($request->user() !== null, 401);
+
+        return response()->json(['count' => $counts->forUser($request->user())])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function venueStatuses(Request $request, FavoritesManager $favorites): JsonResponse
@@ -68,6 +77,7 @@ final class FavoritesController extends Controller
         Request $request,
         FavoritesManager $favorites,
         FavoriteTargetRegistry $registry,
+        FavoriteCountService $counts,
     ): JsonResponse {
         $validated = $request->validate([
             'type' => ['required', Rule::in(array_keys(FavoriteTargetRegistry::TYPES))],
@@ -93,6 +103,7 @@ final class FavoritesController extends Controller
                 ->whereNull('trashed_at')->count() : null,
             'type' => $type,
             'id' => $id,
+            'favorites_count' => $request->user() ? $counts->forUser($request->user()) : null,
         ])->header('Cache-Control', 'private, no-store');
     }
 

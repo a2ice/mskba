@@ -122,6 +122,9 @@
     const toast = (message, failed = false) => window.dispatchEvent(
         new CustomEvent('mskba:action-toast', {detail:{message, failed}})
     );
+    const notifyFavoriteCount = result => window.dispatchEvent(
+        new CustomEvent('mskba:favorites:changed', {detail:{count:result.favorites_count}})
+    );
     const contextNames={
         venue:{subject:'Площадка',added:'Площадка добавлена в избранное',removed:'Площадка убрана из избранного'},
         event:{subject:'Мероприятие',added:'Мероприятие добавлено в избранное',removed:'Мероприятие убрано из избранного'},
@@ -134,6 +137,7 @@
         pending.add(id);paint(id);
         try{
             const result=await request(endpoints.toggle,'POST',{type:'venue',id});
+            notifyFavoriteCount(result);
             known.set(id,{
                 state:result.state,
                 notify_upcoming_events:Boolean(result.notify_upcoming_events),
@@ -156,6 +160,7 @@
         if(button)button.disabled=true;
         try{
             const result=await request(endpoints.toggle,'POST',{type,id});
+            notifyFavoriteCount(result);
             const words=contextNames[type];
             if(result.state!=='active')toast(words?.removed||'Убрано из избранного');
             if(button) {
