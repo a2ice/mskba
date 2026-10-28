@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Coordination\Domain\Models\VenueRentalCoordination;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
+use App\Support\Features\VenueRentalRollout;
 use Illuminate\Database\Eloquent\Builder;
 use App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
@@ -22,7 +23,7 @@ use Illuminate\Http\Response;
  */
 final class VenueInterestGroupController extends Controller
 {
-    public function __invoke(int $venue, Request $request, VenueSubscriptionAudience $audience, FeatureFlags $features): Response|RedirectResponse
+    public function __invoke(int $venue, Request $request, VenueSubscriptionAudience $audience, FeatureFlags $features, VenueRentalRollout $rollout): Response|RedirectResponse
     {
         $item = Venue::query()
             ->whereKey($venue)
@@ -45,8 +46,14 @@ final class VenueInterestGroupController extends Controller
         // Rental gatherings are an existing, distinct lifecycle, not PlayAssembly.
         // Private gatherings are visible only to their organizer or active participants.
         // Do not disclose even counts of private gatherings to other users or venue staff.
+        $rentalKey = (string) ($viewer?->id ?? $request->ip());
         $rentalEnabled = $features->enabled(VenueRentalFeature::RENTAL_FLOW)
-            && $features->enabled(VenueRentalFeature::COORDINATION);
+            && $features->enabled(VenueRentalFeature::COORDINATION)
+            && $rollout->allows(VenueRentalFeature::COORDINATION, $request->user(), null, null, $rentalKey, false)
+            && $rollout->allows(VenueRentalFeature::RENTAL_FLOW, $request->user(), null, null, $rentalKey, false);
+        $rentalWritable = $rentalEnabled
+            && $rollout->allows(VenueRentalFeature::COORDINATION, $request->user(), null, null, $rentalKey, true)
+            && $rollout->allows(VenueRentalFeature::RENTAL_FLOW, $request->user(), null, null, $rentalKey, true);
         $identityIds = $viewer?->identityIds() ?? [];
         $gatherings = null;
         if ($rentalEnabled) {
@@ -74,7 +81,7 @@ final class VenueInterestGroupController extends Controller
             'viewerHasVenueInterest' => $isSubscriber,
             'gatherings' => $gatherings,
             'rentalEnabled' => $rentalEnabled,
-            'canStartRentalGathering' => $rentalEnabled && $isSubscriber && $viewer?->isConfirmed(),
+            'canStartRentalGathering' => $rentalWritable && $isSubscriber && $viewer?->isConfirmed(),
             'isAuthenticated' => $request->user() !== null,
             'viewerIdentityIds' => $identityIds,
         ])->header('Cache-Control', 'private, no-store');
