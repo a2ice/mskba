@@ -1,7 +1,7 @@
 <details class="app-group-offers__create" @if($errors->any()) open @endif>
 <summary class="button secondary">Создать промокод</summary>
 <p class="muted">Создание сохраняет черновик. Отдельное действие «Опубликовать» откроет код подписчикам.</p>
-<form method="POST" action="{{ route('venues.interest-group.offers.store',['venue'=>$venue->id]) }}" class="app-group-offers__form">
+<form method="POST" action="{{ route('account.venues.group-offers.store',['venue'=>$venue->id]) }}" class="app-group-offers__form">
 @csrf
 <label>Название <input name="title" maxlength="120" required value="{{ old('title') }}"></label>
 <label>Промокод <input name="code" minlength="5" maxlength="32" pattern="[A-Za-z0-9_-]+" required autocomplete="off" value="{{ old('code') }}"></label>

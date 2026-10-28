@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -15,6 +16,20 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class VenueMembershipAccess
 {
+    /** Existing owner/admin contracts predate the dedicated offer permission.
+     * Resolve active venue-scoped roles without accidentally granting court-scoped access.
+     * Newly delegated managers still require an explicit permission snapshot.
+     */
+    public function hasActiveVenueManagementRole(User $user, Venue $venue): bool
+    {
+        return $this->baseContractQuery($user)
+            ->where('scope_id', $venue->id)
+            ->whereIn('access_level', [
+                VenueMembershipAccessLevelEnum::OWNER->value,
+                VenueMembershipAccessLevelEnum::ADMIN->value,
+            ])->exists();
+    }
+
     public function allows(User $user, Venue $venue, VenuePermissionEnum $permission): bool
     {
         return $this->baseQuery($user, $permission)

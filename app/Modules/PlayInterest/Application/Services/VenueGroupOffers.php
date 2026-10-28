@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\PlayInterest\Domain\Models\VenueGroupOffer;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,14 +17,18 @@ use Illuminate\Support\Carbon;
 
 final class VenueGroupOffers
 {
-    public function __construct(private readonly VenueCommercialAccess $commercial) {}
+    public function __construct(
+        private readonly VenueCommercialAccess $commercial,
+        private readonly VenueMembershipAccess $memberships,
+    ) {}
 
     public function canManage(?User $user, Venue $venue): bool
     {
         return $user !== null
             && $venue->allowsOperationalChanges()
             && $user->canonical()->isConfirmed()
-            && $this->commercial->allows($user, $venue, VenuePermissionEnum::MANAGE_BOOKING_POLICY);
+            && ($this->memberships->hasActiveVenueManagementRole($user->canonical(), $venue)
+                || $this->commercial->allows($user, $venue, VenuePermissionEnum::MANAGE_GROUP_OFFERS));
     }
 
     public function isMember(?User $user, Venue $venue): bool
@@ -36,26 +41,35 @@ final class VenueGroupOffers
             ->exists();
     }
 
-    /** Only the authenticated group member or authorized commercial manager can see codes. */
+    /** Public group projection never includes drafts, revoked or paused codes,
+     * even when the current visitor also manages the venue.
+     */
     public function visibleTo(?User $user, Venue $venue)
     {
-        $query = VenueGroupOffer::query()
-            ->where('venue_id', $venue->id)
-            ->where('group_key', VenueGroupOffer::groupKey($venue))
-            ->orderByDesc('created_at')->orderByDesc('id');
-
-        if ($this->canManage($user, $venue)) {
-            return $query->paginate(10, ['*'], 'offers_page')->withQueryString();
-        }
-
         if (! $this->isMember($user, $venue)) {
             return null;
         }
 
-        return $query->where('status', 'active')
+        return VenueGroupOffer::query()
+            ->where('venue_id', $venue->id)
+            ->where('group_key', VenueGroupOffer::groupKey($venue))
+            ->where('status', 'active')
             ->where('valid_from', '<=', now())
             ->where(fn (Builder $q) => $q->whereNull('valid_until')->orWhere('valid_until', '>', now()))
+            ->where(fn (Builder $q) => $q->whereNull('max_total_uses')
+                ->orWhereColumn('used_count', '<', 'max_total_uses'))
+            ->orderByDesc('created_at')->orderByDesc('id')
             ->paginate(10, ['*'], 'offers_page')->withQueryString();
+    }
+
+    /** Management projection: authorized handlers call canManage first. */
+    public function allForVenue(Venue $venue)
+    {
+        return VenueGroupOffer::query()
+            ->where('venue_id', $venue->id)
+            ->where('group_key', VenueGroupOffer::groupKey($venue))
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate(15, ['*'], 'offers_page')->withQueryString();
     }
 
     /** @param array<string, mixed> $values */

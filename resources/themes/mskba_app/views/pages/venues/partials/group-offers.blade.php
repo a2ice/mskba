@@ -1,17 +1,12 @@
 <section class="panel app-venue-interest-group__content app-group-offers" aria-labelledby="group-offers-heading">
 <h2 id="group-offers-heading">Специальные предложения</h2>
-<p class="muted">Коды доступны подписчикам этой площадки. Применение скидки при бронировании появится в №300.</p>
-@if(session('status'))<p role="status">{{ session('status') }}</p>@endif
-@if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
-@if($visibleOffers === null)
-<p class="muted">Предложения доступны после входа и подписки на площадку.</p>
-@else
+<p class="muted">Действующие предложения для подписчиков площадки. Скопируйте код для будущего бронирования; применение скидки будет добавлено в №300.</p>
 @forelse($visibleOffers as $offer)
 <article class="app-group-offers__card">
 <h3>{{ $offer->title }}</h3>
-@if($canManageOffers)<span class="badge">{{ $offer->status }}</span>@endif
 @if($offer->description)<p>{{ $offer->description }}</p>@endif
-<p>Код: <strong><code>{{ $offer->code_ciphertext }}</code></strong></p>
+<div class="app-group-offers__copy"><span>Код: <strong><code data-group-offer-code>{{ $offer->code_ciphertext }}</code></strong></span>
+<button type="button" class="button secondary" data-group-offer-copy aria-label="Скопировать промокод {{ $offer->title }}">Скопировать</button><span role="status" class="app-group-offers__copy-result" data-group-offer-copy-result aria-live="polite"></span></div>
 <p>Скидка:
 @if($offer->discount_type === 'percent')
 <strong>{{ $offer->discount_value }}%</strong>
@@ -33,12 +28,10 @@
 @endif
 @if($offer->max_total_uses !== null)<p class="muted">Всего применений не более {{ $offer->max_total_uses }}</p>@endif
 @if($offer->max_uses_per_account !== null)<p class="muted">На аккаунт не более {{ $offer->max_uses_per_account }}</p>@endif
-@if($canManageOffers)@include('theme::pages.venues.partials.group-offer-actions')@endif
 </article>
 @empty
 <p class="muted">Пока нет доступных предложений.</p>
 @endforelse
 {{ $visibleOffers->links() }}
 @endif
-@if($canManageOffers)@include('theme::pages.venues.partials.group-offer-form')@endif
 </section>

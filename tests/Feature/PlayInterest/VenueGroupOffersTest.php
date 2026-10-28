@@ -2,6 +2,13 @@
 
 namespace Tests\Feature\PlayInterest;
 
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
+use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -170,4 +177,77 @@ final class VenueGroupOffersTest extends TestCase
         $this->assertSame(hash('sha256', 'SAVE2026'), $offer->code_hash);
         $this->assertSame(1, $offer->terms_version);
     }
+    public function test_admin_and_delegated_manager_use_separate_page_not_public_venue_group(): void
+    {
+        $venue = $this->venue();
+        $otherVenue = $this->venue();
+        $admin = User::factory()->create(['status'=>UserStatusEnum::CONFIRMED->value]);
+        $delegate = User::factory()->create(['status'=>UserStatusEnum::CONFIRMED->value]);
+
+        $grant = static function (User $user, VenueMembershipAccessLevelEnum $role, array $permissions) use ($venue): Contract {
+            $contract = Contract::query()->create([
+                'family'=>ContractFamilyEnum::MEMBERSHIP,
+                'status'=>ContractStatusEnum::ACTIVE,
+                'starts_at'=>now()->subMinute(),
+                'assigner'=>UserParticipationRoleAssignerEnum::OTHER,
+            ]);
+            $contract->membership()->create([
+                'scope_type'=>ContractMembershipScopeTypeEnum::VENUE,
+                'scope_id'=>$venue->id,
+                'user_id'=>$user->id,
+                'access_level'=>$role->value,
+            ]);
+            $contract->permissions()->createMany(array_map(
+                static fn (VenuePermissionEnum $p) => ['permission'=>$p->value], $permissions,
+            ));
+            return $contract;
+        };
+
+        // Pre-existing admin role snapshots are recognized without a migration.
+        $grant($admin, VenueMembershipAccessLevelEnum::ADMIN, [VenuePermissionEnum::VIEW]);
+        $delegation = $grant($delegate, VenueMembershipAccessLevelEnum::MANAGER, [
+            VenuePermissionEnum::VIEW, VenuePermissionEnum::MANAGE_GROUP_OFFERS,
+        ]);
+        $adminUrl = route('account.venues.group-offers.index', ['venue'=>$venue->id]);
+        $groupUrl = route('venues.interest-group', ['venue'=>$venue->id]);
+
+        $this->actingAs($admin)->get($adminUrl)->assertOk()
+            ->assertSee('Создать промокод');
+        $this->actingAs($delegate)->get($adminUrl)->assertOk()
+            ->assertSee('Создать промокод');
+        $this->actingAs($delegate)->get($groupUrl)->assertOk()
+            ->assertDontSee('Создать промокод')
+            ->assertDontSee('Сохранить черновик')
+            ->assertDontSee('Опубликовать');
+
+        $this->get(route('account.venues.group-offers.index', ['venue'=>$otherVenue->id]))->assertForbidden();
+        $delegation->update(['status'=>ContractStatusEnum::INACTIVE->value]);
+        $this->get($adminUrl)->assertForbidden();
+    }
+
+    public function test_public_page_only_shows_active_offer_with_copy_button(): void
+    {
+        $venue = $this->venue();
+        $manager = $this->manager();
+        $member = User::factory()->create(['status'=>UserStatusEnum::CONFIRMED->value]);
+        $this->subscribe($member, $venue);
+        $this->actingAs($manager)->post(route('account.venues.group-offers.store',['venue'=>$venue->id]), $this->values('COPYME2026'));
+        $offer = VenueGroupOffer::query()->sole();
+        $page = route('venues.interest-group', ['venue'=>$venue->id]);
+
+        $this->actingAs($member)->get($page)->assertOk()
+            ->assertDontSee('Специальные предложения')
+            ->assertDontSee('data-group-offer-copy');
+        $this->actingAs($manager)->post(route('account.venues.group-offers.transition', [
+            'venue'=>$venue->id,'offer'=>$offer->id,'action'=>'publish',
+        ]))->assertRedirect();
+        $this->actingAs($member)->get($page)->assertOk()
+            ->assertSee('COPYME2026')->assertSee('data-group-offer-copy')
+            ->assertDontSee('Сохранить черновик')->assertDontSee('Опубликовать');
+        $this->actingAs($manager)->post(route('account.venues.group-offers.transition', [
+            'venue'=>$venue->id,'offer'=>$offer->id,'action'=>'pause',
+        ]))->assertRedirect();
+        $this->actingAs($member)->get($page)->assertDontSee('Специальные предложения');
+    }
+
 }

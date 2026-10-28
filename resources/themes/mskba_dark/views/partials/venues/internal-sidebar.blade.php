@@ -43,6 +43,10 @@
             >Условия аренды</a>
         @endif
 
+        @if($groupOffersManagementUrl ?? null)
+            <a href="{{ $groupOffersManagementUrl }}" class="venue-side-nav__link">Промокоды площадки</a>
+        @endif
+
         @if($commercialMembershipsUrl ?? null)
             <a
                 href="{{ $commercialMembershipsUrl }}"
