@@ -117,6 +117,13 @@
 .app-venue-activity{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;padding:16px 18px;text-align:left;background:var(--surface,#fff);color:var(--text);border:1px solid var(--line);border-radius:14px;cursor:pointer;transition:border-color .15s,background-color .15s}
 .app-venue-activity:hover{border-color:var(--accent);background:var(--surface-raised,#f5f6f8)}
 .app-venue-activity:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Past events remain accessible to open, but do not look active. */
+.app-venue-activity--past{background:var(--surface-raised,#f5f6f8);border-color:var(--line);color:var(--muted)}
+.app-venue-activity--past:hover{background:var(--surface-raised,#f5f6f8);border-color:var(--line)}
+.app-venue-activity--past .app-venue-activity__title,
+.app-venue-activity--past .app-venue-activity__counts b,
+.app-venue-activity--past .app-venue-activity__type{color:var(--muted)}
+.app-venue-activity--past .app-venue-activity__type{background:var(--surface,#fff)}
 .app-venue-activity__meta{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--muted)}
 .app-venue-activity__type{display:inline-flex;padding:4px 8px;border-radius:8px;background:var(--surface-raised,#f1f3f6);color:var(--text)}
 .app-venue-activity__title{display:block;font-size:16px;line-height:1.35;font-weight:750;overflow-wrap:anywhere}

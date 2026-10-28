@@ -159,9 +159,11 @@
                                     @foreach($day['slots'] as $slot)
                                         @php
                                             $isPublicEvent = !empty($slot['eventUrl']);
+                                            $isPastEvent = $isPublicEvent && !empty($slot['isPastEvent']);
                                         @endphp
                                         <li class="app-venue-activities__item">
-                                            <button type="button" class="app-venue-activity" data-venue-slot-open
+                                            <button type="button" @class(['app-venue-activity', 'app-venue-activity--past' => $isPastEvent]) data-venue-slot-open
+                                                @if($isPastEvent) data-event-past="true" @endif
                                                 data-slot-day="{{ $day['label'] ?? $day['date'] }}"
                                                 data-slot-time="{{ $slot['timeLabel'] ?? '' }}"
                                                 data-event-type="{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}"
@@ -178,6 +180,7 @@
                                                     <span class="app-venue-activity__type">{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}</span>
                                                 </span>
                                                 <strong class="app-venue-activity__title">{{ $isPublicEvent ? ($slot['eventTitle'] ?: 'Мероприятие') : 'Время занято' }}</strong>
+                                                @if($isPastEvent)<span class="sr-only">Мероприятие завершилось.</span>@endif
                                                 @if($isPublicEvent && !empty($slot['eventDescription']))
                                                     <span class="app-venue-activity__description">{{ $slot['eventDescription'] }}</span>
                                                 @endif
