@@ -102,6 +102,9 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
         ])->assertRedirect(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
           ->assertSessionHasNoErrors();
 
+        $physicalPage = $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))->assertOk();
+        $this->assertMatchesRegularExpression('/<option[^>]*value="81"[^>]*selected[^>]*>/', $physicalPage->getContent());
+
         $profile = $user->playerProfile()->with('positions', 'selfAssessment')->firstOrFail();
         $this->assertSame(182, $profile->height_cm);
         $this->assertSame('elevated', $profile->extra['character']['adiposity']);

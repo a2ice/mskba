@@ -110,7 +110,7 @@
                             <select name="weight_kg" data-physical-weight>
                                 <option value="">Не указан</option>
                                 @for($weight=40;$weight<=140;$weight++)
-                                    <option value="{{ $weight }}" @selected((string)old('weight_kg',$profile?->weight_kg)===(string)$weight)>{{ $weight }}</option>
+                                    <option value="{{ $weight }}" @selected(old('weight_kg',$profile?->weight_kg) !== null && old('weight_kg',$profile?->weight_kg) !== '' && (int)old('weight_kg',$profile?->weight_kg)===$weight)>{{ $weight }}</option>
                                 @endfor
                             </select>
                         </label>
