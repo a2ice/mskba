@@ -91,6 +91,7 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleContr
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
@@ -488,6 +489,8 @@ Route::prefix('venues')->group(function () {
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
         ->name('venues.preview');
+    Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
+        ->whereNumber('venue')->name('venues.interest-group');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
