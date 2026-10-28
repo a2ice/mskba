@@ -70,6 +70,12 @@
                 </div>
                 {{ $gatherings->links() }}
             @endif
+            @if(session('error'))
+                <p role="alert">{{ session('error') }}</p>
+            @endif
+            @if($errors->any())
+                <p role="alert">{{ $errors->first() }}</p>
+            @endif
             @if($canStartRentalGathering)
                 <details class="app-group-rentals__create">
                     <summary class="button secondary">Начать сбор на совместную аренду</summary>
