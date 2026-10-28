@@ -15,7 +15,7 @@
 .account-collection__action:hover,.account-collection__reset:hover{text-decoration:none;border-color:#a6b6c6}
 .account-collection__action--primary:hover,.account-collection .button.secondary.account-collection__action--primary:hover{background:#314b67;color:#fff}
 .account-collection :is(.account-collection__action,.account-collection__reset):focus-visible{outline:2px solid #bd530d;outline-offset:3px}
-.account-collection__count{margin:0;font-size:13px;color:#5d6e7b}
+.account-collection__count{margin:0;font-size:13px;color:var(--muted,#5d6e7b)}
 .account-collection__cards{display:grid;gap:13px;min-width:0}
 .account-collection__card{display:grid;gap:12px;min-width:0;padding:19px;background:#fff;color:#304053;border:1px solid #dce3ea;border-radius:16px;box-shadow:0 3px 12px rgba(25,41,57,.035)}
 .account-collection__card p{margin:0}
@@ -58,7 +58,7 @@
 /* Teams and games are also collections. Keep their invitation and action behavior. */
 .account-collection--teams{display:block}
 .account-collection--teams .app-team-panel.account-collection__section{padding:0;border:0;background:transparent;box-shadow:none;margin:0 0 32px;gap:16px}
-.account-collection--teams .app-team-panel.account-collection__section>h2{font-size:20px;color:#24364c}
+.account-collection--teams .app-team-panel.account-collection__section>h2{font-size:20px;color:var(--text,#24364c)}
 .account-collection--teams .app-team-filters.account-collection__filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin:0;border:1px solid #e0e5eb;padding:16px;background:#f5f7f9;border-radius:15px}
 .account-collection--teams .app-team-field{font-size:13px;color:#2b3a4d}
 .account-collection--teams .app-team-field :is(input,select,textarea){background:#fff;border-color:#c8d3de;border-radius:9px;min-height:42px}
@@ -87,7 +87,8 @@
 .account-collection--games .app-my-games__card h4 a,
 .app-favorites__item .app-favorites__item-link{color:#24364c}
 .account-collection--teams .app-team-checkbox{color:#2b3a4d}
-.account-collection--teams .app-team-link{color:#42566c}
+.account-collection--teams .app-team-link{color:var(--muted,#42566c)}
+.account-collection--teams .app-team-filters .app-team-link{color:#42566c}
 .account-collection--teams .app-team-field :is(input,select,textarea):focus-visible{outline:2px solid #b45112;outline-offset:2px}
 .account-collection--teams .app-team-card__detail,
 .account-collection--games .app-my-games__meta{color:#637386}
