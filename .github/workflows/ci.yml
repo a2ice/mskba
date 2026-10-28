@@ -70,7 +70,7 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, sqlite3, pdo_sqlite, gd, intl, zip
           coverage: none
-          ini-values: short_open_tag=1
+          ini-values: short_open_tag=1, display_errors=On, display_startup_errors=On, log_errors=On
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -144,7 +144,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
 
       - name: Validate dynamic Page Builder venues-map JavaScript syntax
         run: node --check resources/page-builder/venues-map.js

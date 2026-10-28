@@ -76,14 +76,11 @@ final class VenueInterestGroupController extends Controller
                 ->withQueryString();
         }
 
-        $canManageOffers = $offers->canManage($request->user(), $item);
         $visibleOffers = $offers->visibleTo($request->user(), $item);
 
         return ThemeResolver::page('venues.interest-group', [
             'venue' => $item,
-            'canManageOffers' => $canManageOffers,
             'visibleOffers' => $visibleOffers,
-            'offerCourts' => $canManageOffers ? $item->courts()->orderBy('sort_order')->get(['id', 'name']) : collect(),
             'venueTimezone' => $item->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow'),
             'venueAudience' => $members,
             'viewerHasVenueInterest' => $isSubscriber,

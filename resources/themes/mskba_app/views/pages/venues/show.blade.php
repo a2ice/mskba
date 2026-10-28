@@ -134,6 +134,9 @@
                         @disabled(!$canStartInterest)>Хочу здесь играть</button>
                 @endif
                 <a class="button secondary large" href="#app-venue-schedule">Расписание</a>
+                @if($groupOffersManagementUrl ?? null)
+                    <a class="button secondary large" href="{{ $groupOffersManagementUrl }}">Управление промокодами</a>
+                @endif
             </div>
         </div>
     </div>

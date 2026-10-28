@@ -109,7 +109,9 @@
             @endif
         @endif
     </section>
-    @include('theme::pages.venues.partials.group-offers')
+    @if($visibleOffers !== null && $visibleOffers->isNotEmpty())
+        @include('theme::pages.venues.partials.group-offers')
+    @endif
     </div>
 </section>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">

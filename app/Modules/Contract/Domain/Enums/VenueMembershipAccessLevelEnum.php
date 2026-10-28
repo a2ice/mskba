@@ -35,6 +35,7 @@ enum VenueMembershipAccessLevelEnum: string
         return match ($this) {
             self::OWNER => VenuePermissionEnum::cases(),
             self::ADMIN => [
+                VenuePermissionEnum::MANAGE_GROUP_OFFERS,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::EDIT,
                 VenuePermissionEnum::EDIT_SCHEDULE,
@@ -70,6 +71,7 @@ enum VenueMembershipAccessLevelEnum: string
             self::MANAGER => [
                 ...$this->defaultPermissions(),
                 VenuePermissionEnum::MANAGE_MEMBERSHIPS,
+                VenuePermissionEnum::MANAGE_GROUP_OFFERS,
                 VenuePermissionEnum::VIEW_PAYMENTS,
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
                 VenuePermissionEnum::MANAGE_FUNDS,

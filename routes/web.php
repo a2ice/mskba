@@ -492,13 +492,6 @@ Route::prefix('venues')->group(function () {
         ->name('venues.preview');
     Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
         ->whereNumber('venue')->name('venues.interest-group');
-    Route::post('/{venue}/interest-group/offers', [VenueGroupOfferController::class, 'store'])
-        ->middleware(['auth:web', 'throttle:10,1'])->whereNumber('venue')
-        ->name('venues.interest-group.offers.store');
-    Route::post('/{venue}/interest-group/offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
-        ->middleware(['auth:web', 'throttle:20,1'])
-        ->whereNumber('venue')->whereNumber('offer')->where('action', 'publish|pause|revoke')
-        ->name('venues.interest-group.offers.transition');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
@@ -1042,6 +1035,14 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::post('/{sportsSection}/sessions/{session}/coaches', [TrainingSessionController::class, 'addCoach'])->whereNumber('session')->name('account.sports-sections.sessions.coaches.store');
             Route::delete('/{sportsSection}/sessions/{session}/coaches/{coach}', [TrainingSessionController::class, 'removeCoach'])->whereNumber('session')->whereNumber('coach')->name('account.sports-sections.sessions.coaches.destroy');
         });
+        Route::get('/venues/{venue}/group-offers', [VenueGroupOfferController::class, 'index'])
+            ->whereNumber('venue')->name('account.venues.group-offers.index');
+        Route::post('/venues/{venue}/group-offers', [VenueGroupOfferController::class, 'store'])
+            ->middleware('throttle:10,1')->whereNumber('venue')
+            ->name('account.venues.group-offers.store');
+        Route::post('/venues/{venue}/group-offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
+            ->middleware('throttle:20,1')->whereNumber('venue')->whereNumber('offer')
+            ->where('action','publish|pause|revoke')->name('account.venues.group-offers.transition');
         Route::get('/venues', [AccountController::class, 'venues'])
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');

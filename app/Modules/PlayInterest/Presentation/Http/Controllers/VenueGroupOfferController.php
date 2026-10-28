@@ -7,12 +7,31 @@ use App\Modules\PlayInterest\Application\Services\VenueGroupOffers;
 use App\Modules\PlayInterest\Domain\Models\VenueGroupOffer;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 final class VenueGroupOfferController extends Controller
 {
+    public function index(int $venue, Request $request, VenueGroupOffers $offers): Response|RedirectResponse
+    {
+        $item = $this->venue($venue);
+        abort_unless($offers->canManage($request->user(), $item), 403);
+
+        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return redirect()->route('account.venues.show', $item->routeIdentifier());
+        }
+
+        return ThemeResolver::page('venues.group-offers-manage', [
+            'venue' => $item,
+            'visibleOffers' => $offers->allForVenue($item),
+            'offerCourts' => $item->courts()->orderBy('sort_order')->get(['id', 'name']),
+            'venueTimezone' => $item->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow'),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function store(int $venue, Request $request, VenueGroupOffers $offers): RedirectResponse
     {
         $item = $this->venue($venue);
@@ -36,7 +55,7 @@ final class VenueGroupOfferController extends Controller
         $data['timezone'] = $item->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
         $offers->create($item, $request->user(), $data);
 
-        return redirect()->route('venues.interest-group', ['venue' => $item->id])
+        return redirect()->route('account.venues.group-offers.index', ['venue' => $item->id])
             ->with('status', 'Промокод сохранён как черновик. Опубликуйте его для группы.');
     }
 
@@ -55,7 +74,7 @@ final class VenueGroupOfferController extends Controller
 
         $offers->transition($offer, $request->user(), $action);
 
-        return redirect()->route('venues.interest-group', ['venue' => $item->id])
+        return redirect()->route('account.venues.group-offers.index', ['venue' => $item->id])
             ->with('status', 'Статус предложения обновлён.');
     }
 

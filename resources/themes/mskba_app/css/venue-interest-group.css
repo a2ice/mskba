@@ -24,3 +24,7 @@
 .app-group-offers__form input,.app-group-offers__form select,.app-group-offers__form textarea{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid var(--control-line);border-radius:8px;background:var(--surface);color:var(--text)}
 .app-group-offers__wide{grid-column:1/-1}
 @media(max-width:639px){.app-group-offers{margin-block-start:16px}.app-group-offers__form{grid-template-columns:minmax(0,1fr)}}
+
+.app-group-offers__copy{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.app-group-offers__copy-result{font-size:13px;color:var(--muted)}
+.app-group-offers__manage{margin-block-start:0}

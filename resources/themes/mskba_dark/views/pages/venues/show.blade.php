@@ -94,6 +94,9 @@
                     @if(isset($commercialMembershipsUrl))
                         <a href="{{ $commercialMembershipsUrl }}" class="btn btn--secondary btn--sm">Коммерческие роли</a>
                     @endif
+                    @if(isset($groupOffersManagementUrl))
+                        <a href="{{ $groupOffersManagementUrl }}" class="btn btn--secondary btn--sm">Промокоды</a>
+                    @endif
                     @if(isset($bookingPolicyUrl))
                         <a href="{{ $bookingPolicyUrl }}" class="btn btn--secondary btn--sm">Условия аренды</a>
                     @endif
