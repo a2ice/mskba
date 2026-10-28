@@ -65,7 +65,7 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
             ->assertSee('body-female.png')
             ->assertSee('Выраженность жировой ткани')
             ->assertSee('character[chest_volume]', false)
-            ->assertDontSee('character[facial_hair]"', false);
+            ->assertSee('type="hidden" name="character[facial_hair]"', false);
 
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
             ->assertOk()->assertSee('Самооценка игровых навыков')
