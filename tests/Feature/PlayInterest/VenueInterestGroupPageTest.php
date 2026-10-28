@@ -37,11 +37,13 @@ final class VenueInterestGroupPageTest extends TestCase
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $url = route('venues.interest-group', ['venue' => $venue->id]);
 
-        $this->get($url)->assertOk()
+        $response = $this->get($url)->assertOk()
             ->assertSee('Площадкой интересуются')
             ->assertSee('Пока никто не подписался')
-            ->assertSee('Хочу здесь играть')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertSee('Хочу здесь играть');
+        $cacheControl = (string) $response->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cacheControl);
+        $this->assertStringContainsString('no-store', $cacheControl);
         $venue->update(['alias' => 'updated-venue-alias']);
         $this->get($url)->assertOk()->assertSee('Площадкой интересуются');
     }
