@@ -57,7 +57,7 @@ if (siteHeader) {
     // undo an explicit pin, but another tab keeps its own header preference.
     let pinned = false;
     try {
-        pinned = window.sessionStorage?.getItem(pinStorageKey) === '1';
+        pinned = Boolean(pinButton) && window.sessionStorage?.getItem(pinStorageKey) === '1';
     } catch { /* Strict browser privacy settings may forbid storage. */ }
     let previousState = '';
     let scrollFrame = null;
