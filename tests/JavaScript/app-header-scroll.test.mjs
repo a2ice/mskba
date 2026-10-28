@@ -8,7 +8,7 @@ const source = readFileSync(
     'utf8',
 ).replace('if (import.meta.hot) import.meta.hot.dispose(() => controller.abort());', '');
 
-function mountHeader(storage = new Map()) {
+function mountHeader(storage = new Map(), hasContextBar = true) {
     const callbacks = new Map();
     const headerCallbacks = new Map();
     const pinCallbacks = new Map();
@@ -52,7 +52,7 @@ function mountHeader(storage = new Map()) {
         querySelectorAll: () => [],
         querySelector: selector => ({
             '[data-app-header]': header,
-            '[data-app-context-bar]': context,
+            '[data-app-context-bar]': hasContextBar ? context : null,
         })[selector] || null,
         addEventListener: listen,
         activeElement: null,
@@ -199,4 +199,15 @@ test('the contextual toggle is a real, keyboard-accessible button with a rotated
     assert.match(css, /\.app-context-header-pin\[aria-pressed="true"\]\s*>\s*svg\s*\{\s*transform:\s*rotate\(180deg\)/);
     assert.match(javascript, /sessionStorage\?\.setItem/);
     assert.doesNotMatch(javascript, /addEventListener\('pointermove'/);
+});
+
+test('a home page without contextual controls never traps a stored pin', () => {
+    const storage = new Map([['mskba:header-pinned', '1']]);
+    const page = mountHeader(storage, false);
+    assert.equal(page.pressed, undefined);
+    assert.equal(page.classes.has('is-scroll-revealed'), false);
+    page.scrollTo(500);
+    assert.equal(page.classes.has('is-scroll-revealed'), false);
+    page.scrollTo(300);
+    assert.equal(page.classes.has('is-scroll-revealed'), true);
 });
