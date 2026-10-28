@@ -86,11 +86,11 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
             'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume,adiposity'],
-            'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
-            'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
-            'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
-            'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
-            'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character.skin_tone' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
+            'character.hairstyle' => ['sometimes', Rule::in($allowedHairstyles)],
+            'character.hair_color' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
+            'character.facial_hair' => ['sometimes', Rule::in($allowedFacialHair)],
+            'character.uniform_kit' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
             'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
             'character.attributes' => ['nullable', 'array', 'max:7'],
             'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
@@ -196,9 +196,16 @@ final class UpdatePlayerProfileRequest extends FormRequest
             return null;
         }
 
-        $character = $this->validated('character');
         $profileGender = PlayerCharacterAppearanceOptions::normalizeGender(
             $this->user()?->profile?->gender?->value,
+        );
+        // This form now edits only physique, clothing and equipment. Keep
+        // historical skin/hair settings that are no longer visible.
+        $stored = data_get($this->user()?->playerProfile?->extra, 'character', []);
+        $character = array_merge(
+            PlayerCharacterAppearanceOptions::defaults($profileGender),
+            is_array($stored) ? $stored : [],
+            (array) $this->validated('character'),
         );
 
         return [
