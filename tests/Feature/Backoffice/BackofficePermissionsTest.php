@@ -152,7 +152,8 @@ final class BackofficePermissionsTest extends TestCase
             ->assertHasNoFormErrors();
 
         $manager = app(BackofficePermissionManager::class);
-        $this->assertTrue($manager->allows($target, Permission::BACKOFFICE_ACCESS));
+        // A full snapshot intentionally revokes omitted inherited access, unlike legacy grant-sync.
+        $this->assertFalse($manager->allows($target, Permission::BACKOFFICE_ACCESS));
         $this->assertTrue($manager->allows($target, Permission::BACKOFFICE_WIDGET_EDIT));
         $this->assertFalse($manager->allows($target, Permission::BACKOFFICE_WIDGET_CREATE));
         $this->assertTrue(UserOperationalPermission::query()->where('user_id', $target->id)
