@@ -188,4 +188,55 @@ final class AppPlayerProfileWorkspaceTest extends TestCase
         $this->assertSame(195, $profile->height_cm);
         $this->assertSame('89.0', $profile->weight_kg);
     }
+    public function test_unset_body_type_uses_normal_and_preserves_old_character_slenderness(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+        $user->playerProfile()->create([
+            'body_type' => null,
+            'extra' => ['character' => [
+                'adiposity' => 'pronounced',
+                'shoes' => 'white',
+            ]],
+        ]);
+
+        $this->actingAs($user)->patch(route('account.player-profile.update'), [
+            'section' => 'physical',
+            'height_cm' => 190,
+            'weight_kg' => 90,
+            'character' => ['uniform_kit' => 'mskba_home', 'shoes' => 'blue'],
+        ])->assertSessionHasNoErrors();
+
+        $profile = $user->playerProfile()->firstOrFail();
+        $this->assertSame('normal', $profile->body_type->value);
+        $this->assertSame('pronounced', $profile->extra['character']['adiposity']);
+        $this->assertSame('blue', $profile->extra['character']['shoes']);
+    }
+
+    public function test_legacy_large_physique_and_new_sneaker_colors_are_supported(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+        $this->actingAs($user)->patch(route('account.player-profile.update'), [
+            'section' => 'physical',
+            'body_type' => 'large',
+            'character' => ['uniform_kit' => 'mskba_home', 'shoes' => 'multicolor'],
+        ])->assertSessionHasNoErrors();
+
+        $profile = $user->playerProfile()->firstOrFail();
+        $this->assertSame('large', $profile->body_type->value);
+        $this->assertSame('Упитанное', $profile->body_type->label());
+        $this->assertSame('multicolor', $profile->extra['character']['shoes']);
+    }
+
+    public function test_invalid_new_sneaker_color_is_rejected_without_overwriting_profile(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+        $this->actingAs($user)->patch(route('account.player-profile.update'), [
+            'section' => 'physical',
+            'body_type' => 'normal',
+            'character' => ['shoes' => 'invalid_shoe_color'],
+        ])->assertSessionHasErrors('character.shoes');
+
+        $this->assertNull($user->playerProfile()->first());
+    }
+
 }

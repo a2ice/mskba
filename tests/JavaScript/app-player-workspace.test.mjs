@@ -11,7 +11,7 @@ const client = load('js/player-profile-workspace.js');
 test('physical and game tabs use separate server-validated form payloads',()=>{
     assert.match(page,/name="section" value="physical"/);
     assert.match(page,/name="section" value="game"/);
-    assert.match(page,/name="character\[adiposity\]"/);
+    assert.doesNotMatch(page,/name="character\\[adiposity\\]"/);
     assert.match(page,/name="character\[chest_volume\]"/);
     assert.match(page,/name="self_assessment\[/);
     assert.match(controller,/profileDataForSection\(\)/);
@@ -41,10 +41,11 @@ test('player role uses guided native selects, sticky tabs and live height/weight
     assert.match(page,/type="range" name="weight_kg" min="40" max="140"/);
     assert.match(page,/data-physical-height-value/);
     assert.match(page,/data-physical-weight-value/);
-    assert.match(page,/Стройность/);
+    assert.doesNotMatch(page,/Стройность/);
     assert.doesNotMatch(page,/Выраженность жировой ткани|Внешность персонажа/);
     assert.doesNotMatch(page,/data-player-preview-mode|До генерации показан базовый персонаж/);
     assert.match(page,/Одежда и обувь/);
+    assert.match(page,/Кроссовки/);
     assert.match(page,/account.partials.native-select-chevron/);
     assert.match(client,/addEventListener\('input', onPhysicalInput\)/);
     const css = load('css/player-profile-workspace.css');
