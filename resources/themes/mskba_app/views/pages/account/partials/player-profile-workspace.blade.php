@@ -2,7 +2,14 @@
     use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions as Appearance;
 
     $profile = $user->playerProfile;
-    $gender = Appearance::normalizeGender($user->profile?->gender?->value);
+    $savedProfileGender = $personalProfile?->gender?->value;
+    // The character renderer may use a male placeholder; never expose it as saved profile data.
+    $gender = Appearance::normalizeGender($savedProfileGender);
+    $genderDisplay = match ($savedProfileGender) {
+        'male' => 'мужской',
+        'female' => 'женский',
+        default => 'не установлен',
+    };
     $storedAppearance = is_array(data_get($profile?->extra, 'character')) ? data_get($profile->extra, 'character') : [];
     $character = array_merge(Appearance::defaults($gender), $storedAppearance);
     $tab = old('section', request()->query('tab', 'physical')) === 'game' ? 'game' : 'physical';
@@ -68,9 +75,10 @@
                     <span data-player-weight-label>Вес: {{ $profile?->weight_kg ? $profile->weight_kg.' кг' : 'не указан' }}</span>
                 </div>
                 <p class="app-player-workspace__gender-meta">
+                    <span>Пол:</span>
                     <button type="button" class="app-player-workspace__gender-link"
-                        data-player-gender-open aria-haspopup="dialog" aria-controls="app-player-gender-explanation">Пол</button>:
-                    <span data-player-gender-value>{{ $gender === 'female' ? 'женский' : 'мужской' }}</span>
+                        data-player-gender-open data-player-gender-value
+                        aria-haspopup="dialog" aria-controls="app-player-gender-explanation">{{ $genderDisplay }}</button>
                 </p>
             </aside>
 
@@ -291,11 +299,11 @@
             </div>
             <div class="mskba-modal__body mskba-scroll app-player-workspace__personal-body">
                 <div class="app-profile" data-account-profile>
-                    @include('theme::pages.account.partials.profile-personal-editor', ['profile' => $personalProfile])
+                    @include('theme::pages.account.partials.profile-personal-editor', ['profile' => $personalProfile, 'profilePersonalInDialog' => true])
                 </div>
             </div>
-            <div class="mskba-modal__footer app-profile__request-footer">
-                <button type="button" class="button secondary" data-player-personal-close>Закрыть</button>
+            <div class="mskba-modal__footer app-profile__request-footer app-player-workspace__personal-footer">
+                @include('theme::pages.account.partials.profile-personal-actions', ['profilePersonalInDialog' => true])
             </div>
         </dialog>
         @include('theme::pages.account.partials.profile-change-request-dialog', ['profile' => $personalProfile])
