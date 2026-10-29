@@ -33,6 +33,94 @@ if (workspace) {
         });
     }
 
+    // Task 057: side selection is a UI adapter around the existing
+    // character.attributes[] wire format. No new persistence fields.
+    const equipmentDialog = workspace.querySelector('[data-player-equipment-dialog]');
+    if (form && equipmentDialog) {
+        const equipmentTitle = equipmentDialog.querySelector('[data-player-equipment-title]');
+        const leftInput = equipmentDialog.querySelector('[data-player-equipment-left]');
+        const rightInput = equipmentDialog.querySelector('[data-player-equipment-right]');
+        let activeEquipmentGroup = null;
+        let equipmentReturnFocus = null;
+
+        const valuesFor = group =>
+            Array.from(group.querySelectorAll('[data-player-equipment-values] input'))
+                .map(input => input.value);
+
+        const updateEquipmentGroup = (group, selected) => {
+            const leftValue = group.dataset.equipmentLeft;
+            const rightValue = group.dataset.equipmentRight;
+            const left = selected.includes(leftValue);
+            const right = selected.includes(rightValue);
+            const toggle = group.querySelector('[data-player-equipment-toggle]');
+            const suffix = group.querySelector('[data-player-equipment-suffix]');
+            const edit = group.querySelector('[data-player-equipment-edit]');
+            const holder = group.querySelector('[data-player-equipment-values]');
+            toggle.checked = left || right;
+            suffix.textContent = left && right ? ' (л/п)' : left ? ' (л)' : right ? ' (п)' : '';
+            edit.hidden = !(left || right);
+            holder.replaceChildren();
+            for (const value of [left && leftValue, right && rightValue].filter(Boolean)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'character[attributes][]';
+                input.value = value;
+                holder.appendChild(input);
+            }
+        };
+
+        const openEquipmentDialog = (group, trigger) => {
+            if (equipmentDialog.open) return;
+            activeEquipmentGroup = group;
+            equipmentReturnFocus = trigger;
+            const values = valuesFor(group);
+            leftInput.checked = values.includes(group.dataset.equipmentLeft);
+            rightInput.checked = values.includes(group.dataset.equipmentRight);
+            equipmentTitle.textContent = group.dataset.equipmentName + ': выбор стороны';
+            equipmentDialog.showModal();
+            equipmentTitle.focus({preventScroll:true});
+        };
+
+        workspace.querySelectorAll('[data-player-equipment-group]').forEach(group => {
+            const toggle = group.querySelector('[data-player-equipment-toggle]');
+            const edit = group.querySelector('[data-player-equipment-edit]');
+            toggle.addEventListener('change', () => {
+                if (toggle.checked) {
+                    // A click does not commit a side until the user presses Apply.
+                    toggle.checked = false;
+                    openEquipmentDialog(group, toggle);
+                } else {
+                    // Clearing the common checkbox removes both legacy side values.
+                    updateEquipmentGroup(group, []);
+                }
+            });
+            edit.addEventListener('click', () => openEquipmentDialog(group, edit));
+        });
+
+        equipmentDialog.querySelector('[data-player-equipment-apply]')?.addEventListener('click', () => {
+            if (!activeEquipmentGroup) return;
+            const selected = [];
+            if (leftInput.checked) selected.push(activeEquipmentGroup.dataset.equipmentLeft);
+            if (rightInput.checked) selected.push(activeEquipmentGroup.dataset.equipmentRight);
+            updateEquipmentGroup(activeEquipmentGroup, selected);
+            equipmentDialog.close();
+        });
+        equipmentDialog.querySelectorAll('[data-player-equipment-cancel]').forEach(button =>
+            button.addEventListener('click', () => equipmentDialog.close()));
+        equipmentDialog.addEventListener('close', () => {
+            const returnTo = equipmentReturnFocus;
+            activeEquipmentGroup = null;
+            equipmentReturnFocus = null;
+            if (returnTo?.isConnected && !returnTo.hidden) {
+                returnTo.focus({preventScroll:true});
+            } else {
+                // If the Edit button was hidden by clearing its selection,
+                // focus the still-visible common checkbox.
+                workspace.querySelector('[data-player-equipment-group] [data-player-equipment-toggle]')?.focus({preventScroll:true});
+            }
+        });
+    }
+
     // Same sticky calculation as the venue sidebar: bottom of tabs plus 15px.
     const playerNav = workspace.querySelector('[data-player-section-nav]');
     if (playerNav) {
