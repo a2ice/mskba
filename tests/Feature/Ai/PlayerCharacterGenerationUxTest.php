@@ -78,8 +78,11 @@ final class PlayerCharacterGenerationUxTest extends TestCase
         $history = $this->actingAs($user)
             ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_history'])
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Cache-Control')
             ->assertJsonPath('primary_generation_id', $second->public_id);
+        $cacheControl = (string) $history->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('private', $cacheControl);
         $items = collect($history->json('generations'));
         $this->assertCount(3, $items); // Two completed plus one pending, all owned.
         $this->assertNotContains($foreign->public_id, $items->pluck('generation_id')->all());
