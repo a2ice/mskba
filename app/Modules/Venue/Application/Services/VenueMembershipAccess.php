@@ -145,6 +145,24 @@ final class VenueMembershipAccess
     }
 
     /**
+     * Individual active memberships, not a merged venue-level permission set.
+     * Court-scoped grants are deliberately separate from their parent venue.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, ContractMembership>
+     */
+    public function activeVenueMembershipsFor(User $user): \Illuminate\Database\Eloquent\Collection
+    {
+        $venueIds = $this->baseContractQuery($user)->pluck('id');
+        $courtIds = $this->baseContractQuery($user, ContractMembershipScopeTypeEnum::VENUE_COURT)->pluck('id');
+
+        return ContractMembership::query()
+            ->whereIn('id', $venueIds->concat($courtIds)->unique()->values()->all())
+            ->with('contract.permissions')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * @return array<int>
      */
     public function contractedVenueIdsFor(User $user): array
