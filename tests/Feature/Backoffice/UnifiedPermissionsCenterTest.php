@@ -89,7 +89,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $checker = app(UserOperationalPermissionChecker::class);
         $this->assertTrue($checker->allows($target, Permission::CREATE_EVENT));
         $this->assertFalse($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
-        $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_ACCESS));
+        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_ACCESS));
     }
 
     public function test_admin_cannot_manage_equal_higher_or_system_role_accounts(): void
