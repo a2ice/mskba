@@ -45,12 +45,21 @@ final class AdminUpdateUserSystemRoleHandler
             $hadOperator = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE);
             $hadSupport = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS);
             $hadProfileReview = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
+            $wasBelowReviewRole = ! $target->system_role->atLeast(UserSystemRoleEnum::ADMIN);
             if ($target->system_role === UserSystemRoleEnum::MANAGER && $role !== UserSystemRoleEnum::MANAGER) {
                 // Stale specialist grants must not reactivate upon a later promotion.
                 $target->managerSpecializations()->detach();
                 $target->forceFill(['staff_title' => null])->save();
             }
             $target->update(['system_role' => $role]);
+            if ($wasBelowReviewRole && $role->atLeast(UserSystemRoleEnum::ADMIN)) {
+                // Previous demotion writes an explicit false reviewer tombstone.
+                // Promotion creates a new admin baseline, never resurrects old
+                // threads: a fresh review cursor is issued below.
+                $target->operationalPermissions()
+                    ->where('permission', UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES->value)
+                    ->where('is_allowed', false)->delete();
+            }
             // Do not allow stale personal grants to reactivate after a user
             // is demoted and later promoted back into the staff hierarchy.
             $profiles = app(StaffPermissionProfiles::class);
