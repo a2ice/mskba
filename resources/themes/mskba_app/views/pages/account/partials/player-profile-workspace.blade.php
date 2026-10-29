@@ -67,6 +67,11 @@
                     <span data-player-height-label>Рост: {{ $profile?->height_cm ? $profile->height_cm.' см' : '185 см (пример)' }}</span>
                     <span data-player-weight-label>Вес: {{ $profile?->weight_kg ? $profile->weight_kg.' кг' : 'не указан' }}</span>
                 </div>
+                <p class="app-player-workspace__gender-meta">
+                    <button type="button" class="app-player-workspace__gender-link"
+                        data-player-gender-open aria-haspopup="dialog" aria-controls="app-player-gender-explanation">Пол</button>:
+                    <span data-player-gender-value>{{ $gender === 'female' ? 'женский' : 'мужской' }}</span>
+                </p>
             </aside>
 
             <section class="app-player-workspace__editor" aria-labelledby="app-player-physical-title">
@@ -78,10 +83,6 @@
                     @csrf @method('PATCH')
                     <input type="hidden" name="section" value="physical">
                     <div class="app-player-workspace__fields">
-                        <label class="app-player-workspace__field">Пол из профиля
-                            <input type="text" value="{{ $gender === 'female' ? 'Женский' : 'Мужской' }}" disabled>
-                            <small>Меняется в основном профиле, не в параметрах персонажа.</small>
-                        </label>
                         <label class="app-player-workspace__field app-player-workspace__range-field" for="player-height">
                             <span class="app-player-workspace__range-heading">Рост, см <output for="player-height" data-physical-height-value>{{ $heightValue }} см</output></span>
                             <input id="player-height" type="range" name="height_cm" min="150" max="220" step="1" value="{{ $heightValue }}" data-physical-height>
@@ -258,5 +259,45 @@
                 </div>
             </section>
         </section>
+    @endif
+
+    @if($tab === 'physical')
+        <dialog class="mskba-modal app-player-workspace__gender-dialog"
+            id="app-player-gender-explanation" data-player-gender-dialog
+            aria-labelledby="app-player-gender-explanation-title">
+            <div class="mskba-modal__header app-profile__request-header">
+                <h2 id="app-player-gender-explanation-title" tabindex="-1">Пол игрока</h2>
+                <button type="button" class="app-profile__dialog-close"
+                    data-player-gender-close aria-label="Закрыть">×</button>
+            </div>
+            <div class="mskba-modal__body mskba-scroll app-profile__request-body">
+                <p>Пол игрового персонажа берётся из раздела «Личные данные» твоего профиля.
+                    Если эти сведения уже подтверждены, их можно изменить только через заявку
+                    на проверку. Остальные доступные поля редактируются как обычно.</p>
+            </div>
+            <div class="mskba-modal__footer app-profile__request-footer">
+                <button type="button" class="button secondary" data-player-gender-close>Отмена</button>
+                <button type="button" class="button primary" data-player-personal-open>Личные данные</button>
+            </div>
+        </dialog>
+
+        <dialog class="mskba-modal app-player-workspace__personal-dialog"
+            id="app-player-personal-dialog" data-player-personal-dialog
+            aria-labelledby="app-player-personal-dialog-title">
+            <div class="mskba-modal__header app-profile__request-header">
+                <h2 id="app-player-personal-dialog-title" tabindex="-1">Личные данные</h2>
+                <button type="button" class="app-profile__dialog-close"
+                    data-player-personal-close aria-label="Закрыть">×</button>
+            </div>
+            <div class="mskba-modal__body mskba-scroll app-player-workspace__personal-body">
+                <div class="app-profile" data-account-profile>
+                    @include('theme::pages.account.partials.profile-personal-editor', ['profile' => $personalProfile])
+                </div>
+            </div>
+            <div class="mskba-modal__footer app-profile__request-footer">
+                <button type="button" class="button secondary" data-player-personal-close>Закрыть</button>
+            </div>
+        </dialog>
+        @include('theme::pages.account.partials.profile-change-request-dialog', ['profile' => $personalProfile])
     @endif
 </div>

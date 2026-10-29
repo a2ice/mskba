@@ -74,7 +74,7 @@ export function initProfileInlineSave(form, { onChange = () => {} } = {}) {
             const waiting = states.some(state => dirty(state) && state.cooldownUntil > now);
             allButton.disabled = busy() || !available;
             if (!allBusy) allButton.textContent = waiting && available
-                ? 'Сохранить остальные' : 'Сохранить всё';
+                ? 'Применить остальные' : 'Применить';
         }
         if (card) {
             card.classList.toggle('is-saving', allBusy);
@@ -179,7 +179,7 @@ export function initProfileInlineSave(form, { onChange = () => {} } = {}) {
         } finally {
             selected.forEach(state => { state.saving = false; });
             allBusy = false;
-            if (saveAll && allButton) allButton.textContent = 'Сохранить всё';
+            if (saveAll && allButton) allButton.textContent = 'Применить';
             refresh();
         }
     }

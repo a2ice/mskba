@@ -9,6 +9,30 @@ if (workspace) {
     const figure = workspace.querySelector('[data-player-figure]');
 
 
+    // Gender is a single canonical profile attribute, never a separate player field.
+    // Keep the explanatory step and the full profile editor in native top-layer dialogs.
+    const genderInfo = workspace.querySelector('[data-player-gender-dialog]');
+    const personalInfo = workspace.querySelector('[data-player-personal-dialog]');
+    const genderTrigger = workspace.querySelector('[data-player-gender-open]');
+    if (genderInfo && personalInfo && genderTrigger) {
+        const focusHeading = dialog => {
+            dialog.showModal();
+            dialog.querySelector('h2[tabindex="-1"]')?.focus({preventScroll:true});
+        };
+        genderTrigger.addEventListener('click', () => focusHeading(genderInfo));
+        genderInfo.querySelectorAll('[data-player-gender-close]').forEach(button =>
+            button.addEventListener('click', () => genderInfo.close()));
+        personalInfo.querySelectorAll('[data-player-personal-close]').forEach(button =>
+            button.addEventListener('click', () => personalInfo.close()));
+        genderInfo.querySelector('[data-player-personal-open]')?.addEventListener('click', () => {
+            genderInfo.close();
+            focusHeading(personalInfo);
+        });
+        personalInfo.addEventListener('close', () => {
+            if (genderTrigger.isConnected) genderTrigger.focus({preventScroll:true});
+        });
+    }
+
     // Same sticky calculation as the venue sidebar: bottom of tabs plus 15px.
     const playerNav = workspace.querySelector('[data-player-section-nav]');
     if (playerNav) {
