@@ -41,7 +41,7 @@ final class AdminUpdateUserBasicDetailsHandler
             }
 
             if ($user->isConfirmed()) {
-                foreach (['first_name', 'last_name', 'birth_date'] as $field) {
+                foreach (['first_name', 'last_name', 'middle_name', 'birth_date'] as $field) {
                     $current = $field === 'birth_date'
                         ? $profile->birth_date?->toDateString()
                         : $profile->{$field};
