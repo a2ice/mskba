@@ -12,6 +12,8 @@
         'admin_participation_role_changed', 'admin_participation_role_reverted',
         'admin_user_permissions_changed', 'admin_user_permissions_reverted',
         'admin_venue_membership_changed', 'admin_venue_membership_reverted',
+        'admin_staff_specializations_changed', 'admin_staff_specializations_reverted',
+        'admin_system_role_changed', 'admin_system_role_reverted',
     ];
     $logs = $user ? AuditLog::query()
         ->where(fn ($query) => $query
