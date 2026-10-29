@@ -1,16 +1,16 @@
         @php
-            $canEditPersonalProfile = ! $profileConfirmed || (
-                isset($user) && app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
+            $canEditPersonalProfile = isset($user) && ! $user->isBlocked() && (! $profileConfirmed || app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
                     ->allows($user, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::EDIT_OWN_PROFILE)
             );
         @endphp
         <section class="panel app-profile__panel" aria-labelledby="app-profile-personal-heading">
             <h2 id="app-profile-personal-heading">Личные данные</h2>
             @if ($profileConfirmed)
-                <p class="app-profile__support-copy">Твои имя, фамилия, дата рождения и пол уже подтверждены. Для их изменения нужно отправить заявку.</p>
-                @unless($canEditPersonalProfile)
-                    <p class="app-profile__support-copy">Изменение личных данных недоступно для твоей системной роли. Ты можешь отправить заявку на изменение подтверждённых данных.</p>
-                @endunless
+                @if ($canEditPersonalProfile)
+                    <p class="app-profile__support-copy">Данные подтверждены. У тебя есть право изменять собственный профиль напрямую — изменения сохраняются сразу и записываются в историю.</p>
+                @else
+                    <p class="app-profile__support-copy">Твои подтверждённые личные данные меняются только после одобрения заявки.</p>
+                @endif
             @endif
             @php
                 $personalFields = [
@@ -34,7 +34,7 @@
                 @method('PATCH')
                 <div class="app-profile__field-grid">
                     @foreach ($personalFields as $field)
-                        @php($locked = ! $canEditPersonalProfile || ($profileConfirmed && $field['name'] !== 'middle_name'))
+                        @php($locked = ! $canEditPersonalProfile)
                         <div class="field-group" @unless($locked)
                              data-inline-profile-field data-field-name="{{ $field['name'] }}"
                              data-saved-value="{{ $field['value'] }}"
