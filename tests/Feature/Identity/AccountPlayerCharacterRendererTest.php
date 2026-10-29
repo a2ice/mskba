@@ -30,7 +30,7 @@ final class AccountPlayerCharacterRendererTest extends TestCase
             ->assertOk()
             ->assertSee('data-render-mode="2d"', false)
             ->assertSee('data-player-character-two', false)
-            ->assertSee('body-male.png', false)
+            ->assertSee('body-male.webp', false)
             ->assertSee('data-player-character-render-mode="3d"', false);
 
         $this->actingAs($user)
