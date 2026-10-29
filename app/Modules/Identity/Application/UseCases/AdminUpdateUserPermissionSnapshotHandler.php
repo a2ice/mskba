@@ -43,6 +43,13 @@ final class AdminUpdateUserPermissionSnapshotHandler
         string $reason,
         ?int $revertedRevisionId = null,
     ): ?AuditLog {
+        foreach (['creation' => $creation, 'privileged' => $privileged, 'backoffice' => $backoffice] as $field => $keys) {
+            if (array_filter($keys, 'is_string') !== $keys || count($keys) !== count(array_unique($keys))) {
+                throw ValidationException::withMessages([
+                    $field => 'Некорректный или повторяющийся набор разрешений.',
+                ]);
+            }
+        }
         $actor = $actor->canonical();
         $target = $target->canonical();
         app(AdminEditPersonalProfileHandler::class)->authorize($actor, $target);
