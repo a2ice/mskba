@@ -86,10 +86,6 @@ final class BackofficePermissionManager
                     continue;
                 }
                 $profiles = app(StaffPermissionProfiles::class);
-                if ($profiles->inherited($target, $permission)) {
-                    // Baseline and specialization rights cannot be disabled here.
-                    continue;
-                }
                 if (! $profiles->allowedForRole($target->system_role, $permission)) {
                     if ($enabled) {
                         throw new AuthorizationException('Право недопустимо для роли пользователя.');
@@ -107,7 +103,8 @@ final class BackofficePermissionManager
                     if ((bool) $existing->is_allowed !== $enabled) {
                         $existing->update(['is_allowed' => $enabled]);
                     }
-                } elseif ($enabled !== $permission->defaultAllowedFor($target->system_role)) {
+                } elseif ($enabled !== $profiles->inherited($target, $permission)
+                    && $enabled !== $permission->defaultAllowedFor($target->system_role)) {
                     UserOperationalPermission::query()->create([
                         'user_id' => $target->id,
                         'permission' => $permission->value,
