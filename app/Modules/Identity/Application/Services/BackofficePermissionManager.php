@@ -58,7 +58,7 @@ final class BackofficePermissionManager
     /**
      * @param list<string> $values
      */
-    public function sync(User $actor, User $target, array $values): void
+    public function sync(User $actor, User $target, array $values, bool $overrideInherited = false): void
     {
         if (! $this->mayManage($actor, $target)) {
             throw new AuthorizationException('Недостаточно прав на управление доступом Filament.');
@@ -69,7 +69,7 @@ final class BackofficePermissionManager
             throw ValidationException::withMessages(['data.backoffice_permissions' => 'Неизвестные или повторяющиеся права.']);
         }
 
-        DB::transaction(function () use ($actor, $target, $values): void {
+        DB::transaction(function () use ($actor, $target, $values, $overrideInherited): void {
             $target = User::query()->whereKey($target->canonical()->id)
                 ->lockForUpdate()->firstOrFail();
             if (! $this->mayManage($actor, $target)) {
@@ -86,6 +86,9 @@ final class BackofficePermissionManager
                     continue;
                 }
                 $profiles = app(StaffPermissionProfiles::class);
+                if (! $overrideInherited && $profiles->inherited($target, $permission)) {
+                    continue;
+                }
                 if (! $profiles->allowedForRole($target->system_role, $permission)) {
                     if ($enabled) {
                         throw new AuthorizationException('Право недопустимо для роли пользователя.');
