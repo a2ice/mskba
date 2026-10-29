@@ -376,6 +376,29 @@ jobs:
               mv "vendor.prepared.$VERIFIED_SHA/vendor" vendor
               rmdir "vendor.prepared.$VERIFIED_SHA"
             fi
+            # A safe-only cumulative server diff needs no database migrations,
+            # seeders or container recreation. Re-classify from the actual
+            # installed revision (not just the latest GitHub push), fail closed.
+            STATIC_ONLY=1
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                docs/*|resources/themes/mskba_app/css/*.css|public/images/blank/avatar/body-male.webp|public/images/blank/avatar/body-female.webp) ;;
+                *) STATIC_ONLY=0 ;;
+              esac
+            done < <(git diff --name-only "$PREVIOUS_SHA" "$VERIFIED_SHA")
+            if [ "$STATIC_ONLY" -eq 1 ]; then
+              echo 'Safe static-only deploy: publish verified assets without PHP/DB restart'
+              mkdir -p public/build
+              tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
+              cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
+              mv -f public/build/manifest.json.pending public/build/manifest.json
+              curl --fail --silent --show-error --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ >/dev/null
+              rm -rf -- "$ASSET_STAGE"
+              rm -f "$MANIFEST_BACKUP"
+              ROLLBACK_ARMED=0
+              echo 'Safe-only static deployment completed; no migrations or restarts'
+              exit 0
+            fi
             $COMPOSE config --quiet
             test -f public/build/manifest.json
             # This staging VDS has ~2 GiB RAM: never build PHP on the server.
