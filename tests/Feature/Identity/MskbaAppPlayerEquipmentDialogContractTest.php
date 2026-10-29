@@ -27,6 +27,28 @@ final class MskbaAppPlayerEquipmentDialogContractTest extends TestCase
         self::assertStringContainsString("right ? ' (п)'", $js);
     }
 
+    public function test_ui_kit_checkboxes_and_equipment_modal_footer_follow_accepted_design(): void
+    {
+        $root = __DIR__.'/../../../resources/themes/mskba_app/';
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $css = file_get_contents($root.'css/player-profile-workspace.css');
+        $designSystem = file_get_contents($root.'css/design-system.css');
+
+        self::assertStringContainsString('.check-label input{width:20px;height:20px;margin:0;accent-color:var(--accent)', $designSystem);
+        self::assertStringContainsString('class="check-label app-player-workspace__equipment-toggle"', $blade);
+        self::assertStringContainsString('class="check-label"><input type="checkbox" data-player-equipment-left>', $blade);
+        self::assertStringContainsString('class="check-label"><input type="checkbox" data-player-equipment-right>', $blade);
+        self::assertStringContainsString('data-player-equipment-cancel aria-label="Закрыть"', $blade);
+        self::assertStringNotContainsString('data-player-equipment-cancel>Отмена', $blade);
+        self::assertStringContainsString('data-player-equipment-apply>Применить', $blade);
+
+        self::assertStringContainsString('min-height:44px', $css);
+        self::assertStringContainsString('.app-player-workspace__equipment-groups .app-player-workspace__equipment-toggle', $css);
+        self::assertStringContainsString('align-self:center;min-height:44px', $css);
+        self::assertStringContainsString('accent-color:var(--accent)', $css);
+        self::assertStringNotContainsString('.app-player-workspace__equipment-side-options input{width:17px', $css);
+    }
+
     public function test_side_dialog_commits_only_on_apply_and_cancel_keeps_existing_selections(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
