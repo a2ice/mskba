@@ -4,6 +4,15 @@
     use App\Modules\Identity\Domain\Models\User;
     $user = $editedUser?->canonical();
     $profileId = $user?->profile?->id;
+    // Show before/after only for approved administrative revision event shapes.
+    // Generic Auditable events may include fields that are not safe to reveal here.
+    $revisableEvents = [
+        'admin_personal_profile_changed', 'admin_personal_profile_reverted',
+        'admin_player_profile_changed', 'admin_player_profile_reverted',
+        'admin_participation_role_changed', 'admin_participation_role_reverted',
+        'admin_user_permissions_changed', 'admin_user_permissions_reverted',
+        'admin_venue_membership_changed', 'admin_venue_membership_reverted',
+    ];
     $logs = $user ? AuditLog::query()
         ->where(fn ($query) => $query
             ->where(fn ($q) => $q->where('auditable_type', User::class)->where('auditable_id', $user->id))
@@ -15,7 +24,7 @@
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead><tr class="border-b text-left">
-                <th class="p-3">Дата</th><th class="p-3">Действие</th><th class="p-3">Автор</th><th class="p-3">Основание</th>
+                <th class="p-3">Дата</th><th class="p-3">Действие</th><th class="p-3">Автор</th><th class="p-3">Основание</th><th class="p-3">До / после</th>
             </tr></thead>
             <tbody>
             @forelse($logs as $log)
@@ -24,9 +33,22 @@
                     <td class="p-3">{{ $log->event }} #{{ $log->id }}</td>
                     <td class="p-3">{{ $log->actor_id ?? 'система' }}</td>
                     <td class="p-3">{{ $log->metadata['reason'] ?? '—' }}</td>
+                    <td class="p-3">
+                        @if(in_array($log->event, $revisableEvents, true))
+                            <details>
+                                <summary class="cursor-pointer text-orange-600">Сравнить значения</summary>
+                                <div class="mt-2 space-y-2 break-all text-xs">
+                                    <div><strong>До:</strong> {{ json_encode($log->old_values ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</div>
+                                    <div><strong>После:</strong> {{ json_encode($log->new_values ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</div>
+                                </div>
+                            </details>
+                        @else
+                            <span class="text-gray-500">—</span>
+                        @endif
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="p-3">Записей пока нет.</td></tr>
+                <tr><td colspan="5" class="p-3">Записей пока нет.</td></tr>
             @endforelse
             </tbody>
         </table>
