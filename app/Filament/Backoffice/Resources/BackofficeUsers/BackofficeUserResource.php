@@ -16,6 +16,9 @@ use App\Modules\Identity\Domain\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
@@ -153,77 +156,60 @@ final class BackofficeUserResource extends Resource
             Tabs::make('Редактирование пользователя')
                 ->persistTabInQueryString()
                 ->tabs(function (?User $record) use ($global): array {
-                    $roleTabs = [];
-                    if ($record !== null) {
-                        foreach ($record->participationRoles()->where('status', UserParticipationRoleStatusEnum::ACTIVE)->orderBy('id')->get() as $participationRole) {
-                            $role = $participationRole->role;
-                            $roleDetails = [];
-                            if ($role === UserParticipationRoleEnum::PLAYER) {
-                                $roleDetails[] = Section::make('Анкета игрока')
-                                    ->description('Редактировать параметры можно через отдельное подтверждаемое действие «Изменить профиль игрока».')
-                                    ->schema([
-                                        Placeholder::make('player_height')->label('Рост')
-                                            ->content(fn (?User $record): string => $record?->playerProfile?->height_cm !== null
-                                                ? $record->playerProfile->height_cm.' см' : '—'),
-                                        Placeholder::make('player_weight')->label('Вес')
-                                            ->content(fn (?User $record): string => $record?->playerProfile?->weight_kg !== null
-                                                ? $record->playerProfile->weight_kg.' кг' : '—'),
-                                        Placeholder::make('player_body_type')->label('Телосложение')
-                                            ->content(fn (?User $record): string => $record?->playerProfile?->body_type?->label() ?? '—'),
-                                        Placeholder::make('player_experience')->label('Занимается с')
-                                            ->content(fn (?User $record): string => (string) ($record?->playerProfile?->experience_started_year ?? '—')),
-                                        Placeholder::make('player_comment')->label('Комментарий')
-                                            ->content(fn (?User $record): string => $record?->playerProfile?->comment ?: '—'),
-                                    ])->columns(2);
-                            }
-                            $roleTabs[] = Tab::make('Роль '.$role->label())
-                                ->schema([
-                                    Section::make($role->label().' — параметры участия')
-                                        ->description('Данные роли отображаются отдельно от системных прав.')
-                                        ->schema([
-                                            Placeholder::make('participant_role_'.$role->value)
-                                                ->label('Состояние')
-                                                ->content($participationRole->status->value),
-                                            Placeholder::make('participant_role_since_'.$role->value)
-                                                ->label('Назначена')
-                                                ->content($participationRole->assigned_at?->format('d.m.Y H:i') ?? '—'),
-                                            Placeholder::make('participant_role_comment_'.$role->value)
-                                                ->label('Комментарий')
-                                                ->content($participationRole->comment ?: '—'),
-                                        ]),
-                                    ...$roleDetails,
-                                    View::make('filament.backoffice.user-participation-role-edit')
-                                        ->viewData(['participationRoleId' => $participationRole->id]),
-                                ]);
-                        }
-                    }
-
                     return [
                         Tab::make('Общее')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
-                                View::make('filament.backoffice.user-general-overview')
-                                    ->viewData(['editedUser' => $record]),
+                                Section::make('Общая информация')
+                                    ->description('Регистрационные идентификаторы и даты доступны для просмотра. Статус можно изменить в этом разделе только суперадминистратору.')
+                                    ->schema([
+                                        Placeholder::make('user_id_info')->label('ID')->content(fn (?User $record): string => (string) ($record?->id ?? '—')),
+                                        TextInput::make('account_username')->label('Логин')->disabled()->dehydrated(false),
+                                        Select::make('account_status')->label('Статус аккаунта')
+                                            ->options(collect(\\App\\Modules\\Identity\\Domain\\Enums\\UserStatusEnum::cases())->mapWithKeys(
+                                                fn ($status): array => [$status->value => $status->label()],
+                                            )->all())
+                                            ->disabled(fn (): bool => auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN)
+                                            ->dehydrated(),
+                                        Placeholder::make('registered_at_info')->label('Зарегистрирован')
+                                            ->content(fn (?User $record): string => $record?->created_at?->format('d.m.Y H:i') ?? '—'),
+                                        Placeholder::make('registration_channel_info')->label('Канал регистрации')
+                                            ->content(fn (?User $record): string => $record?->registration_channel?->value ?? '—'),
+                                        Placeholder::make('first_login_info')->label('Первый вход')
+                                            ->content(fn (?User $record): string => $record?->first_logged_in_at?->format('d.m.Y H:i') ?? '—'),
+                                        Placeholder::make('system_role_info')->label('Системная роль')
+                                            ->content(fn (?User $record): string => $record?->system_role?->label() ?? '—'),
+                                        Placeholder::make('identity_info')->label('Связанные идентификаторы')
+                                            ->content(fn (?User $record): string => (string) count($record?->identityIds() ?? [])),
+                                        Placeholder::make('telegram_info')->label('Telegram')
+                                            ->content(fn (?User $record): string => $record?->telegramAccount ? 'Подключён' : 'Не подключён'),
+                                        Placeholder::make('vk_info')->label('VK')
+                                            ->content(fn (?User $record): string => $record?->vkAccount ? 'Подключён' : 'Не подключён'),
+                                    ])->columns(2),
+                                View::make('filament.backoffice.user-save-general'),
                             ]),
                         Tab::make('Профиль')
                             ->icon('heroicon-o-identification')
                             ->schema([
                                 Section::make('Персональные данные')
-                                    ->description('Для изменения подтверждённых значений используй действие «Изменить личные данные». Каждое изменение требует основания, подтверждения и записывается в журнал.')
+                                    ->description('Изменения подтверждённых данных требуют основания. Ввод выполняется здесь, без отдельной формы в попапе.')
                                     ->schema([
-                                        Placeholder::make('profile_name')->label('Имя')
-                                            ->content(fn (?User $record): string => $record?->profile?->first_name ?? '—'),
-                                        Placeholder::make('profile_last_name')->label('Фамилия')
-                                            ->content(fn (?User $record): string => $record?->profile?->last_name ?? '—'),
-                                        Placeholder::make('profile_middle_name')->label('Отчество')
-                                            ->content(fn (?User $record): string => $record?->profile?->middle_name ?? '—'),
-                                        Placeholder::make('profile_birth')->label('Дата рождения')
-                                            ->content(fn (?User $record): string => $record?->profile?->birth_date?->format('d.m.Y') ?? '—'),
-                                        Placeholder::make('profile_gender')->label('Пол')
-                                            ->content(fn (?User $record): string => $record?->profile?->gender?->label() ?? 'Не указан'),
+                                        TextInput::make('profile_first_name')->label('Имя')->maxLength(100),
+                                        TextInput::make('profile_last_name')->label('Фамилия')->maxLength(100),
+                                        TextInput::make('profile_middle_name')->label('Отчество')->maxLength(100),
+                                        DatePicker::make('profile_birth_date')->label('Дата рождения')->maxDate(now()),
+                                        Select::make('profile_gender')->label('Пол')->placeholder('Не указан')
+                                            ->options(collect(\\App\\Modules\\Identity\\Domain\\Enums\\UserGenderEnum::cases())->mapWithKeys(
+                                                fn ($gender): array => [$gender->value => $gender->label()],
+                                            )->all()),
                                     ])->columns(2),
+                                View::make('filament.backoffice.user-save-profile'),
                             ]),
-                        ...$roleTabs,
+                        Tab::make('Роль')
+                            ->icon('heroicon-o-users')
+                            ->schema([
+                                View::make('filament.backoffice.user-participation-roles'),
+                            ]),
                         Tab::make('Роли и права')
                             ->icon('heroicon-o-shield-check')
                             ->schema([
@@ -270,13 +256,7 @@ final class BackofficeUserResource extends Resource
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
-                                                Section::make('Подтверждение изменений прав')
-                                                    ->description('Все индивидуальные назначения сохраняются отдельной операцией. Основание попадёт в журнал; перед записью появится подтверждение.')
-                                                    ->schema([
-                                                        Textarea::make('change_reason')->label('Основание изменения прав')
-                                                            ->required()->minLength(10)->maxLength(500)
-                                                            ->dehydrated(),
-                                                    ]),
+                                                View::make('filament.backoffice.user-save-permissions'),
                                             ]),
                                         Tab::make('Контекстные')
                                             ->schema([
