@@ -56,9 +56,9 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $checker = app(UserOperationalPermissionChecker::class);
         $this->assertTrue($checker->allows($target, Permission::CREATE_TOURNAMENT));
         $this->assertTrue($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
-        $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_ACCESS));
-        // Manager baseline cannot be silently revoked by an individual form.
-        $this->assertTrue($checker->allows($target, Permission::CREATE_COORDINATION));
+        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_ACCESS));
+        // Explicit individual denial now overrides a normal inherited manager baseline.
+        $this->assertFalse($checker->allows($target, Permission::CREATE_COORDINATION));
         $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
     }
 
@@ -67,8 +67,11 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $target = $this->user(UserSystemRoleEnum::MANAGER);
-        app(GlobalOperationalPermissionManager::class)->sync($super, $admin, [], [
+        $global = app(GlobalOperationalPermissionManager::class);
+        $global->sync($super, $admin, $global->granted($admin), [
             Permission::EDIT_USER_PERSONAL_DATA->value,
+            Permission::REVIEW_PROFILE_CHANGES->value,
+            Permission::EDIT_OWN_PROFILE->value,
         ]);
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
