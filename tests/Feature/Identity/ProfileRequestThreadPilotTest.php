@@ -3,6 +3,7 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -69,17 +70,18 @@ final class ProfileRequestThreadPilotTest extends TestCase
             ->handle($superadmin, $admin->id, [Permission::REVIEW_PROFILE_CHANGES]);
     }
 
-    public function test_admin_default_denied_and_late_grant_does_not_expose_prior_request(): void
+    public function test_new_admin_reviewer_baseline_does_not_expose_requests_before_role_acquisition(): void
     {
         $applicant = $this->account();
-        $superadmin = $this->account(UserSystemRoleEnum::SUPERADMIN);
-        $admin = $this->account(UserSystemRoleEnum::ADMIN);
         $old = $this->change($applicant);
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
         $this->actingAs($admin)->get(route('account.notifications.threads.profile', $old))->assertForbidden();
-        $this->grant($admin, $superadmin);
+
+        $new = $this->change($this->account());
         $this->actingAs($admin)->get(route('account.notifications.threads.profile', $old))->assertForbidden();
-        $this->get(route('account.notifications'))->assertOk()->assertDontSee('Изменение данных №'.$old->id);
-        $this->get(route('admin.profile-change-requests'))->assertOk()->assertDontSee('Исправляю ошибку в своих данных.');
+        $this->get(route('account.notifications'))->assertOk()
+            ->assertDontSee('Изменение данных №'.$old->id);
+        $this->get(route('account.notifications.threads.profile', $new))->assertOk();
     }
 
     public function test_lead_invites_late_admin_and_transfers_lead_then_removes_predecessor(): void
@@ -131,11 +133,15 @@ final class ProfileRequestThreadPilotTest extends TestCase
         $request = $this->change($applicant);
         $this->actingAs($admin)->post(route('account.notifications.threads.profile.claim', $request))->assertRedirect();
         $this->assertDatabaseHas('request_thread_memberships', ['user_id' => $admin->id, 'removed_at' => null]);
-        app(AdminUpdateUserOperationalPermissionsHandler::class)->handle($superadmin, $admin->id, []);
+        app(AdminUpdateUserSystemRoleHandler::class)
+            ->handle($superadmin, $admin->id, UserSystemRoleEnum::MANAGER);
+        $admin->refresh();
         $this->assertSame('permission_revoked', RequestThreadMembership::query()->where('user_id', $admin->id)->sole()->removal_reason);
         $this->actingAs($admin)->get(route('account.notifications.threads.profile', $request))->assertOk()->assertSee('Доступ к обсуждению прекращён');
         $this->get(route('account.notifications'))->assertOk()->assertSee('Изменение данных №'.$request->id);
-        $this->grant($admin, $superadmin);
+        app(AdminUpdateUserSystemRoleHandler::class)
+            ->handle($superadmin, $admin->id, UserSystemRoleEnum::ADMIN);
+        $admin->refresh();
         $this->get(route('account.notifications.threads.profile', $request))->assertOk()->assertSee('Доступ к обсуждению прекращён');
         $this->post(route('account.notifications.threads.profile.messages', $request), ['body' => 'Доступ запрещён'])->assertForbidden();
     }
@@ -149,12 +155,16 @@ final class ProfileRequestThreadPilotTest extends TestCase
         $this->actingAs($admin)->get(route('account.notifications.threads.profile', $visibleBeforeRevoke))
             ->assertOk();
 
-        app(AdminUpdateUserOperationalPermissionsHandler::class)->handle($superadmin, $admin->id, []);
+        app(AdminUpdateUserSystemRoleHandler::class)
+            ->handle($superadmin, $admin->id, UserSystemRoleEnum::MANAGER);
+        $admin->refresh();
         $submittedWhileRevoked = $this->change($this->account());
         $this->actingAs($admin)->get(route('account.notifications.threads.profile', $submittedWhileRevoked))
             ->assertForbidden();
 
-        $this->grant($admin, $superadmin);
+        app(AdminUpdateUserSystemRoleHandler::class)
+            ->handle($superadmin, $admin->id, UserSystemRoleEnum::ADMIN);
+        $admin->refresh();
         $this->get(route('account.notifications.threads.profile', $visibleBeforeRevoke))
             ->assertForbidden();
         $this->get(route('account.notifications.threads.profile', $submittedWhileRevoked))
@@ -191,7 +201,7 @@ final class ProfileRequestThreadPilotTest extends TestCase
         $applicant = $this->account();
         $superadmin = $this->account(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->account(UserSystemRoleEnum::ADMIN);
-        $ineligible = $this->account(UserSystemRoleEnum::ADMIN);
+        $ineligible = $this->account(UserSystemRoleEnum::MANAGER);
         $superadmin->forceFill(['username' => 'superpilot'])->save();
         $ineligible->forceFill(['username' => 'disabledpilot'])->save();
         $this->grant($admin, $superadmin);
