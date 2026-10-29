@@ -155,7 +155,7 @@ final class UserInlineEditorAcceptanceTest extends TestCase
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->user(UserSystemRoleEnum::MANAGER);
-        $specialization = \\App\\Modules\\Identity\\Domain\\Models\\ManagerSpecialization::query()
+        $specialization = \App\Modules\Identity\Domain\Models\ManagerSpecialization::query()
             ->where('code', 'editor')->firstOrFail();
         $this->actingAs($super);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
