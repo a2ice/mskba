@@ -100,7 +100,7 @@ final class GlobalOperationalPermissionManager
      * @param list<string> $creation
      * @param list<string>|null $privileged null means "leave unchanged".
      */
-    public function sync(User $actor, User $target, array $creation, ?array $privileged = null): void
+    public function sync(User $actor, User $target, array $creation, ?array $privileged = null, bool $overrideInherited = false): void
     {
         if (! $this->mayManage($actor, $target)) {
             throw new AuthorizationException('Недостаточно прав для изменения глобальных разрешений пользователя.');
@@ -132,12 +132,14 @@ final class GlobalOperationalPermissionManager
         // role ceiling or grants outside the current administrator's own scope.
         $scope = array_values(array_filter($all, static fn (Permission $permission): bool =>
             $profiles->allowedForRole($target->system_role, $permission)
+            && ($overrideInherited || ! $profiles->inherited($target->canonical(), $permission))
             && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
                 || $checker->allows($actor, $permission))
         ));
         foreach (array_merge($creation, $privileged ?? []) as $key) {
             $permission = Permission::from($key);
-            if (! in_array($permission, $scope, true)) {
+            if (! in_array($permission, $scope, true)
+                && ! (! $overrideInherited && $profiles->inherited($target->canonical(), $permission))) {
                 throw new AuthorizationException('Нельзя назначать недоступные права.');
             }
         }
