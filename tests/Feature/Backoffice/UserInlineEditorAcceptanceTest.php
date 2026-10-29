@@ -103,4 +103,33 @@ final class UserInlineEditorAcceptanceTest extends TestCase
             'auditable_id' => $target->id, 'event' => 'admin_personal_profile_changed',
         ]);
     }
+    public function test_participation_role_is_edited_inline_after_row_selection(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $audit = app(AdminAssignParticipationRoleHandler::class)->handle(
+            $super, $target, UserParticipationRoleEnum::COACH->value,
+            'Добавляем тренера перед редакторской проверкой',
+        );
+        $roleId = (int) $audit->metadata['participation_role_id'];
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->call('selectParticipationRole', $roleId)
+            ->assertSet('selectedParticipationRoleId', $roleId)
+            ->set('roleComment', 'Тренирует молодёжную команду')
+            ->callAction('saveParticipationRoleInline', data: [
+                'reason' => 'Подтверждение обновления анкеты тренера',
+            ])
+            ->assertHasNoFormErrors();
+
+        $role = $target->participationRoles(false)->findOrFail($roleId);
+        $this->assertSame('Тренирует молодёжную команду', $role->comment);
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_id' => $target->id,
+            'event' => 'admin_participation_role_changed',
+        ]);
+    }
+
 }
