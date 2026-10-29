@@ -99,12 +99,15 @@ final class ProfileRequestThreadAccess
 
     public function initializeNewSuperadminCursors(): void
     {
-        // Serialize new baseline before inserting the next request. Existing
-        // superadmins already got a zero cursor in the migration backfill.
+        // Before inserting the next request, initialize cursors for new
+        // confirmed admins and superadmins. Never expose pre-role history;
+        // existing admins receive a migration backfill at the current max id.
         $permission = UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES->value;
         $baseline = (int) (ProfileChangeRequest::query()->max('id') ?? 0);
         $ids = User::query()
-            ->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
+            ->whereIn('system_role', [
+                UserSystemRoleEnum::SUPERADMIN->value, UserSystemRoleEnum::ADMIN->value,
+            ])
             ->where('status', UserStatusEnum::CONFIRMED->value)
             ->whereDoesntHave('operationalPermissions', fn ($q) => $q
                 ->where('permission', $permission)->where('is_allowed', false))
