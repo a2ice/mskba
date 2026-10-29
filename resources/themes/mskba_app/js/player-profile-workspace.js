@@ -107,6 +107,9 @@ if (workspace) {
         updateFigure();
     }
     [height, weight, body].forEach(input => input?.addEventListener('input', onPhysicalInput));
+    // The slim height indicator reveals its cm badge on hover or while the height slider has focus.
+    height?.addEventListener('focus', () => stage?.classList.add('is-height-focused'));
+    height?.addEventListener('blur', () => stage?.classList.remove('is-height-focused'));
     updateFigure();
 
     const message = (text, error = false) => {
@@ -148,6 +151,7 @@ if (workspace) {
     const gallery = workspace.querySelector('[data-player-avatar-library]');
     const avatarRail = gallery?.querySelector('[data-player-avatar-rail]');
     const avatarCount = gallery?.querySelector('[data-player-avatar-count]');
+    const avatarHeading = gallery?.querySelector('[data-player-avatar-heading]');
     const avatarEmpty = gallery?.querySelector('[data-player-avatar-empty]');
     const avatarActions = gallery?.querySelector('[data-player-avatar-actions]');
     const makePrimary = gallery?.querySelector('[data-player-avatar-make-primary]');
@@ -175,8 +179,11 @@ if (workspace) {
     const renderAvatars = () => {
         if (!avatarRail) return;
         avatarRail.replaceChildren();
+        const hasAvatars = availableAvatars.length > 0;
         if (avatarCount) avatarCount.textContent = String(availableAvatars.length);
-        if (avatarEmpty) avatarEmpty.hidden = availableAvatars.length > 0;
+        if (avatarHeading) avatarHeading.hidden = !hasAvatars;
+        if (avatarRail) avatarRail.hidden = !hasAvatars;
+        if (avatarEmpty) avatarEmpty.hidden = hasAvatars;
         if (avatarActions) avatarActions.hidden = availableAvatars.length === 0;
         if (makePrimary) {
             makePrimary.hidden = !selectedAvatarId || selectedAvatarId === primaryAvatarId;
