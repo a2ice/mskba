@@ -134,6 +134,58 @@ final class AccountPlayerProfileTest extends TestCase
         $this->assertSame(['wristband_left'], $character['attributes']);
     }
 
+    public function test_equipment_sides_round_trip_with_legacy_character_attributes_and_clear(): void
+    {
+        $user = $this->player();
+        $url = route('account.player-profile.update');
+        $physicalPage = route('account.participation-role', ['role' => 'player', 'tab' => 'physical']);
+
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+                'attributes' => ['elbow_left', 'elbow_right', 'knee_right', 'headband'],
+            ],
+        ])->assertSessionHasNoErrors()->assertRedirect($physicalPage);
+
+        $this->assertSame(
+            ['elbow_left', 'elbow_right', 'knee_right', 'headband'],
+            $user->fresh()->playerProfile->extra['character']['attributes'],
+        );
+
+        $this->actingAs($user)->get($physicalPage)
+            ->assertOk()
+            ->assertSee('data-equipment-type="elbow"', false)
+            ->assertSee('data-equipment-type="knee"', false)
+            ->assertSee('(л/п)')
+            ->assertSee('(п)')
+            ->assertSee('data-player-equipment-dialog', false);
+
+        // A common checkbox can clear both sides without a new data model.
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+                'attributes' => ['elbow_right', 'headband'],
+            ],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(
+            ['elbow_right', 'headband'],
+            $user->fresh()->playerProfile->extra['character']['attributes'],
+        );
+
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+            ],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame([], $user->fresh()->playerProfile->extra['character']['attributes']);
+    }
+
     public function test_player_profile_shows_only_calculated_objective_metrics(): void
     {
         $user = $this->player();
