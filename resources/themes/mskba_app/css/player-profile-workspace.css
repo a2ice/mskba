@@ -107,3 +107,19 @@
   transition:none;
 }
 @media (prefers-reduced-motion:reduce){.app-player-workspace__tabs{transition:none}}
+
+/* Task 055: gender links to the canonical personal-data editor, not player settings. */
+.app-player-workspace__gender-meta{display:flex;align-items:center;gap:4px;margin:0;font-size:14px;color:var(--text);font-weight:600}
+.app-player-workspace__gender-link{border:0;border-radius:0;background:transparent;color:var(--accent);padding:0;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.app-player-workspace__gender-link:hover{color:var(--accent-hover)}
+.app-player-workspace__gender-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.app-player-workspace__gender-dialog .app-profile__request-body{color:var(--text)}
+.app-player-workspace__gender-dialog .app-profile__request-body p{margin:0}
+.app-player-workspace__personal-dialog{width:min(820px,calc(100vw - 24px))}
+.app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:20px 24px}
+.app-player-workspace__personal-dialog .app-profile__panel{box-shadow:none;border:0;padding:0;background:transparent}
+.app-player-workspace__personal-dialog .app-profile__panel>h2{display:none}
+@media(max-width:700px){
+  .app-player-workspace__personal-dialog .app-profile__field-grid{grid-template-columns:minmax(0,1fr)}
+  .app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:16px}
+}
