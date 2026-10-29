@@ -12,7 +12,11 @@ if (profileRoot) {
         const editor = initProfileInlineSave(personalForm, {
             onChange: () => {
                 // Display the persisted gender, not the renderer's default avatar gender.
-                const saved = personalForm.querySelector('[data-field-name="gender"]')?.dataset.savedValue || '';
+                const genderField = personalForm.querySelector('[data-field-name="gender"]');
+                // A confirmed gender is read-only and has no editable field wrapper.
+                // Keep its server-rendered label instead of replacing it with a placeholder.
+                if (!genderField) return;
+                const saved = genderField.dataset.savedValue || '';
                 const display = document.querySelector('[data-player-gender-value]');
                 if (display) display.textContent = ({male: 'мужской', female: 'женский'})[saved] || 'не установлен';
             },
