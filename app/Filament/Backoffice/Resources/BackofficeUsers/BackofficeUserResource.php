@@ -128,7 +128,6 @@ final class BackofficeUserResource extends Resource
         }
         $profiles = app(StaffPermissionProfiles::class);
         return ! $profiles->allowedForRole($record->system_role, $permission)
-            || $profiles->inherited($record, $permission)
             || ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
                 && ! app(UserOperationalPermissionChecker::class)->allows($actor, $permission));
     }
@@ -248,7 +247,7 @@ final class BackofficeUserResource extends Resource
                                                         CheckboxList::make('creation_permissions')->label('Индивидуальные назначения')
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
                                                             ->columns(2),
-                                                        CheckboxList::make('locked_creation_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                        CheckboxList::make('locked_creation_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
@@ -258,7 +257,7 @@ final class BackofficeUserResource extends Resource
                                                         CheckboxList::make('privileged_permissions')->label('Индивидуальные назначения')
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
                                                             ->columns(2),
-                                                        CheckboxList::make('locked_privileged_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                        CheckboxList::make('locked_privileged_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
@@ -267,7 +266,7 @@ final class BackofficeUserResource extends Resource
                                                         CheckboxList::make('backoffice_permissions')->label('Индивидуальные назначения')
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
                                                             ->columns(2),
-                                                        CheckboxList::make('locked_backoffice_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                        CheckboxList::make('locked_backoffice_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
