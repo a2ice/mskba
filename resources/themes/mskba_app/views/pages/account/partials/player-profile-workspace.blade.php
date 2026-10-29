@@ -265,17 +265,17 @@
         <dialog class="mskba-modal app-player-workspace__gender-dialog"
             id="app-player-gender-explanation" data-player-gender-dialog
             aria-labelledby="app-player-gender-explanation-title">
-            <div class="mskba-modal__header">
+            <div class="mskba-modal__header app-profile__request-header">
                 <h2 id="app-player-gender-explanation-title" tabindex="-1">Пол игрока</h2>
                 <button type="button" class="app-profile__dialog-close"
                     data-player-gender-close aria-label="Закрыть">×</button>
             </div>
-            <div class="mskba-modal__body mskba-scroll">
+            <div class="mskba-modal__body mskba-scroll app-profile__request-body">
                 <p>Пол игрового персонажа берётся из раздела «Личные данные» твоего профиля.
                     Если эти сведения уже подтверждены, их можно изменить только через заявку
                     на проверку. Остальные доступные поля редактируются как обычно.</p>
             </div>
-            <div class="mskba-modal__footer">
+            <div class="mskba-modal__footer app-profile__request-footer">
                 <button type="button" class="button secondary" data-player-gender-close>Отмена</button>
                 <button type="button" class="button primary" data-player-personal-open>Личные данные</button>
             </div>
@@ -284,17 +284,17 @@
         <dialog class="mskba-modal app-player-workspace__personal-dialog"
             id="app-player-personal-dialog" data-player-personal-dialog
             aria-labelledby="app-player-personal-dialog-title">
-            <div class="mskba-modal__header">
+            <div class="mskba-modal__header app-profile__request-header">
                 <h2 id="app-player-personal-dialog-title" tabindex="-1">Личные данные</h2>
                 <button type="button" class="app-profile__dialog-close"
                     data-player-personal-close aria-label="Закрыть">×</button>
             </div>
-            <div class="mskba-modal__body mskba-scroll">
+            <div class="mskba-modal__body mskba-scroll app-player-workspace__personal-body">
                 <div class="app-profile" data-account-profile>
                     @include('theme::pages.account.partials.profile-personal-editor', ['profile' => $personalProfile])
                 </div>
             </div>
-            <div class="mskba-modal__footer">
+            <div class="mskba-modal__footer app-profile__request-footer">
                 <button type="button" class="button secondary" data-player-personal-close>Закрыть</button>
             </div>
         </dialog>
