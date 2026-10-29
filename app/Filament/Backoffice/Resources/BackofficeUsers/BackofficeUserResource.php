@@ -10,6 +10,8 @@ use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -153,8 +155,27 @@ final class BackofficeUserResource extends Resource
                 ->tabs(function (?User $record) use ($global): array {
                     $roleTabs = [];
                     if ($record !== null) {
-                        foreach ($record->participationRoles()->orderBy('id')->get() as $participationRole) {
+                        foreach ($record->participationRoles()->where('status', UserParticipationRoleStatusEnum::ACTIVE)->orderBy('id')->get() as $participationRole) {
                             $role = $participationRole->role;
+                            $roleDetails = [];
+                            if ($role === UserParticipationRoleEnum::PLAYER) {
+                                $roleDetails[] = Section::make('Анкета игрока')
+                                    ->description('Редактировать параметры можно через отдельное подтверждаемое действие «Изменить профиль игрока».')
+                                    ->schema([
+                                        Placeholder::make('player_height')->label('Рост')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->height_cm !== null
+                                                ? $record->playerProfile->height_cm.' см' : '—'),
+                                        Placeholder::make('player_weight')->label('Вес')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->weight_kg !== null
+                                                ? $record->playerProfile->weight_kg.' кг' : '—'),
+                                        Placeholder::make('player_body_type')->label('Телосложение')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->body_type?->label() ?? '—'),
+                                        Placeholder::make('player_experience')->label('Занимается с')
+                                            ->content(fn (?User $record): string => (string) ($record?->playerProfile?->experience_started_year ?? '—')),
+                                        Placeholder::make('player_comment')->label('Комментарий')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->comment ?: '—'),
+                                    ])->columns(2);
+                            }
                             $roleTabs[] = Tab::make('Роль '.$role->label())
                                 ->schema([
                                     Section::make($role->label().' — параметры участия')
@@ -167,6 +188,7 @@ final class BackofficeUserResource extends Resource
                                                 ->label('Назначена')
                                                 ->content($participationRole->assigned_at?->format('d.m.Y H:i') ?? '—'),
                                         ]),
+                                    ...$roleDetails,
                                 ]);
                         }
                     }
