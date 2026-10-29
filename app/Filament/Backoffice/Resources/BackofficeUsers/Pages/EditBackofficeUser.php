@@ -208,13 +208,13 @@ final class EditBackofficeUser extends EditRecord
                 ->label('Изменить роль участия')
                 ->icon('heroicon-o-user-group')
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
-                    && $this->getRecord()->participationRoles()->exists())
+                    && $this->getRecord()->participationRoles(false)->exists())
                 ->modalHeading('Редактирование роли участия')
                 ->modalDescription('Изменение статуса может отключить соответствующий раздел профиля. Сохраняется отдельная аудируемая ревизия.')
                 ->modalSubmitActionLabel('Подтвердить изменение')
                 ->requiresConfirmation()
                 ->fillForm(function (array $arguments): array {
-                    $role = $this->getRecord()->participationRoles()
+                    $role = $this->getRecord()->participationRoles(false)
                         ->find((int) ($arguments['role_id'] ?? 0));
                     return $role === null ? [] : [
                         'role_id' => $role->id,
@@ -224,7 +224,7 @@ final class EditBackofficeUser extends EditRecord
                 })
                 ->schema([
                     Select::make('role_id')->label('Роль')
-                        ->options(fn (): array => $this->getRecord()->participationRoles()->get()
+                        ->options(fn (): array => $this->getRecord()->participationRoles(false)->get()
                             ->mapWithKeys(fn ($role): array => [
                                 $role->id => $role->role->label().' · '.$role->status->label(),
                             ])->all())->required()->native(false),
