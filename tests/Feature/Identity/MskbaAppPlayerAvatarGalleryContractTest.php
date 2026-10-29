@@ -29,6 +29,31 @@ final class MskbaAppPlayerAvatarGalleryContractTest extends TestCase
         self::assertStringContainsString('calc((100% - 24px)/4)', $css);
     }
 
+    public function test_acceptance_empty_gallery_page_title_and_hoverable_ruler(): void
+    {
+        $root = __DIR__.'/../../../resources/themes/mskba_app/';
+        $rolePage = file_get_contents($root.'views/pages/account/participation-role.blade.php');
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $css = file_get_contents($root.'css/player-profile-workspace.css');
+        $js = file_get_contents($root.'js/player-profile-workspace.js');
+
+        self::assertStringContainsString("\$role->value === 'player' ? \$role->label()", $rolePage);
+        self::assertStringContainsString('data-player-avatar-heading hidden', $blade);
+        self::assertStringContainsString('data-player-avatar-rail hidden', $blade);
+        self::assertStringContainsString('data-player-avatar-empty', $blade);
+        self::assertStringContainsString('avatarHeading.hidden = !hasAvatars', $js);
+        self::assertStringContainsString('avatarRail.hidden = !hasAvatars', $js);
+        self::assertStringContainsString('avatarEmpty.hidden = hasAvatars', $js);
+        self::assertStringContainsString('.app-player-workspace__avatar-heading[hidden]', $css);
+
+        self::assertStringContainsString('.app-player-workspace__height-marker:hover span', $css);
+        self::assertStringContainsString('.app-player-workspace__stage.is-height-focused', $css);
+        self::assertStringContainsString('opacity:0;visibility:hidden', $css);
+        self::assertStringContainsString('height-marker::before', $css);
+        self::assertStringContainsString("stage?.classList.add('is-height-focused')", $js);
+        self::assertStringContainsString("stage?.classList.remove('is-height-focused')", $js);
+    }
+
     public function test_height_labels_marker_and_figure_use_a_single_225cm_reference(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
