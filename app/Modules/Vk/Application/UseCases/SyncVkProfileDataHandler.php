@@ -11,11 +11,22 @@ final class SyncVkProfileDataHandler
 {
     public function handle(User $user, VkUserIdentityDTO $identity): Profile
     {
-        $user = $user->canonical();
+        // Resolve and lock the canonical status in the caller's authentication
+        // transaction. VK data must never silently update confirmed attributes.
+        $canonicalId = $user->canonical()->id;
+        $user = User::query()->whereKey($canonicalId)->lockForUpdate()->firstOrFail();
         $profile = Profile::query()->where('user_id', $user->id)->lockForUpdate()->first();
 
         if ($profile === null) {
             $profile = $user->createProfile([]);
+        }
+
+        // Preserve the existing registration/onboarding data import for
+        // unconfirmed accounts. After confirmation the user must submit a
+        // profile change request; linking or reauthenticating VK is not consent
+        // to overwrite verified identity attributes.
+        if ($user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+            return $profile;
         }
 
         $attributes = [];

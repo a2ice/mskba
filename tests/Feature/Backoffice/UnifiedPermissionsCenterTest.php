@@ -42,6 +42,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm([
+                'change_reason' => 'Проверка управления правами пользователя',
                 'creation_permissions' => [
                     Permission::CREATE_TOURNAMENT->value,
                 ],
@@ -63,14 +64,19 @@ final class UnifiedPermissionsCenterTest extends TestCase
 
     public function test_admin_can_delegate_only_own_rights_to_lower_role(): void
     {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $target = $this->user(UserSystemRoleEnum::MANAGER);
+        app(GlobalOperationalPermissionManager::class)->sync($super, $admin, [], [
+            Permission::EDIT_USER_PERSONAL_DATA->value,
+        ]);
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
         $this->get('/backoffice/backoffice-users')->assertOk();
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm([
+                'change_reason' => 'Проверка управления правами пользователя',
                 'creation_permissions' => [Permission::CREATE_EVENT->value],
                 'privileged_permissions' => [],
                 'backoffice_permissions' => [],
@@ -94,7 +100,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
 
         $this->get('/backoffice/backoffice-users/'.$peer->id.'/edit')->assertNotFound();
         $this->get('/backoffice/backoffice-users/'.$super->id.'/edit')->assertNotFound();
-        $this->get('/backoffice/backoffice-users/'.$editor->id.'/edit')->assertOk();
+        $this->get('/backoffice/backoffice-users/'.$editor->id.'/edit')->assertForbidden();
     }
 
     public function test_critical_permissions_cannot_be_granted_by_admin_via_service(): void
@@ -167,6 +173,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
             ->assertActionVisible('changeSystemRole')
             ->callAction('changeSystemRole', data: [
                 'new_system_role' => UserSystemRoleEnum::MANAGER->value,
+                'reason' => 'Назначение менеджера по проверке прав',
             ])
             ->assertHasNoFormErrors();
 
@@ -189,6 +196,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->callAction('changeSystemRole', data: [
                 'new_system_role' => UserSystemRoleEnum::USER->value,
+                'reason' => 'Снятие административной роли по заявлению',
             ])->assertHasNoFormErrors();
 
         $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
@@ -196,8 +204,12 @@ final class UnifiedPermissionsCenterTest extends TestCase
 
     public function test_role_action_is_hidden_from_admin_without_explicit_role_management_right(): void
     {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $target = $this->user();
+        app(GlobalOperationalPermissionManager::class)->sync($super, $admin, [], [
+            Permission::EDIT_USER_PERSONAL_DATA->value,
+        ]);
         $this->actingAs($admin);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
@@ -217,6 +229,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
             Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
                 ->callAction('changeSystemRole', data: [
                     'new_system_role' => $forbidden->value,
+                    'reason' => 'Проверка запрета назначения служебной роли',
                 ])
                 ->assertHasFormErrors(['new_system_role']);
 

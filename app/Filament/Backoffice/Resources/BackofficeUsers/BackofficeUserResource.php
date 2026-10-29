@@ -10,12 +10,17 @@ use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -36,7 +41,7 @@ final class BackofficeUserResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Пользователи и права';
+        return 'Пользователи';
     }
 
     public static function getModelLabel(): string
@@ -71,7 +76,8 @@ final class BackofficeUserResource extends Resource
         $actor = auth('web')->user();
 
         return $actor !== null && $record instanceof User
-            && app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record);
+            && app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record)
+            && app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA);
     }
 
     public static function canCreate(): bool
@@ -143,130 +149,151 @@ final class BackofficeUserResource extends Resource
     public static function form(Schema $schema): Schema
     {
         $global = app(GlobalOperationalPermissionManager::class);
-        $optionMap = static function (array $permissions): array {
-            $options = [];
-            foreach ($permissions as $permission) {
-                $options[$permission->value] = $permission->label();
-            }
-
-            return $options;
-        };
 
         return $schema->components([
-            Tabs::make('Управление пользователем')
+            Tabs::make('Редактирование пользователя')
                 ->persistTabInQueryString()
-                ->tabs([
-                    Tab::make('Системная роль')
-                        ->icon('heroicon-o-user-circle')
-                        ->schema([
-                            Section::make('Системная роль пользователя')
-                                ->description('Роль определяет уровень системных полномочий. Для назначения или снятия роли используйте действие «Изменить системную роль» вверху страницы. Разрешены только роли ниже вашей.')
+                ->tabs(function (?User $record) use ($global): array {
+                    $roleTabs = [];
+                    if ($record !== null) {
+                        foreach ($record->participationRoles()->where('status', UserParticipationRoleStatusEnum::ACTIVE)->orderBy('id')->get() as $participationRole) {
+                            $role = $participationRole->role;
+                            $roleDetails = [];
+                            if ($role === UserParticipationRoleEnum::PLAYER) {
+                                $roleDetails[] = Section::make('Анкета игрока')
+                                    ->description('Редактировать параметры можно через отдельное подтверждаемое действие «Изменить профиль игрока».')
+                                    ->schema([
+                                        Placeholder::make('player_height')->label('Рост')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->height_cm !== null
+                                                ? $record->playerProfile->height_cm.' см' : '—'),
+                                        Placeholder::make('player_weight')->label('Вес')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->weight_kg !== null
+                                                ? $record->playerProfile->weight_kg.' кг' : '—'),
+                                        Placeholder::make('player_body_type')->label('Телосложение')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->body_type?->label() ?? '—'),
+                                        Placeholder::make('player_experience')->label('Занимается с')
+                                            ->content(fn (?User $record): string => (string) ($record?->playerProfile?->experience_started_year ?? '—')),
+                                        Placeholder::make('player_comment')->label('Комментарий')
+                                            ->content(fn (?User $record): string => $record?->playerProfile?->comment ?: '—'),
+                                    ])->columns(2);
+                            }
+                            $roleTabs[] = Tab::make('Роль '.$role->label())
                                 ->schema([
-                                    Placeholder::make('current_system_role')
-                                        ->label('Текущая системная роль')
-                                        ->content(fn (?User $record): string => $record?->system_role->label() ?? '—'),
-                                ]),
-                        ]),
-                    Tab::make('Специализации')
-                        ->icon('heroicon-o-identification')
-                        ->schema([
-                            Section::make('Специализации менеджера')
-                                ->description('Назначаются одновременно; изменение общего профиля действует на всех менеджеров с этой специализацией.')
-                                ->schema([
-                                    Placeholder::make('manager_specialization_summary')
-                                        ->label('Активные специализации')
-                                        ->content(fn (?User $record): string => $record?->system_role === UserSystemRoleEnum::MANAGER
-                                            ? ($record->managerSpecializations()->pluck('name')->implode(' · ') ?: 'Не назначены')
-                                            : 'Специализации доступны только системной роли Manager.'),
-                                ]),
-                        ]),
-                    Tab::make('Глобальные права')
-                        ->icon('heroicon-o-plus-circle')
-                        ->schema([
-                            Section::make('Глобальные права — создание')
-                                ->description('Действуют на уровне портала. Базовые права роли и специализаций не снимаются индивидуально. Недоступные разрешения показаны неактивными.')
-                                ->schema([
-                                    CheckboxList::make('creation_permissions')
-                                        ->label('Создание объектов — индивидуальные назначения')
-                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
-                                        ->columns(2)->bulkToggleable(),
-                                    CheckboxList::make('locked_creation_permissions')
-                                        ->label('Наследуемые или недоступные права (только просмотр)')
-                                        ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
-                                        ->disabled()->dehydrated(false)
-                                        ->columns(2),
-                                ]),
-                        ]),
-                    Tab::make('Администрирование')
-                        ->icon('heroicon-o-shield-check')
-                        ->schema([
-                            Section::make('Глобальные права — администрирование и техподдержка')
-                                ->description('Назначение разрешено только в пределах собственных полномочий и системной роли получателя; недоступные права остаются видимы.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
-                                ->schema([
-                                    CheckboxList::make('privileged_permissions')
-                                        ->label('Критичные разрешения — индивидуальные назначения')
-                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
-                                        ->columns(1)->bulkToggleable(),
-                                    CheckboxList::make('locked_privileged_permissions')
-                                        ->label('Наследуемые или недоступные права (только просмотр)')
-                                        ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
-                                        ->disabled()->dehydrated(false)
-                                        ->columns(1),
-                                ]),
-                        ]),
-                    Tab::make('Filament')
-                        ->icon('heroicon-o-cog-6-tooth')
-                        ->schema([
-                            Section::make('Filament — административный интерфейс')
-                                ->description('Вход и ресурсы Filament. Администратор может передать только имеющиеся у него разрешения. Базовые права роли и специализаций неотзываемы.')
-                                ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role?->atLeast(UserSystemRoleEnum::ADMIN) ?? false)
-                                ->schema([
-                                    CheckboxList::make('backoffice_permissions')
-                                        ->label('Разрешения Filament — индивидуальные назначения')
-                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
-                                        ->columns(2)->bulkToggleable(),
-                                    CheckboxList::make('locked_backoffice_permissions')
-                                        ->label('Наследуемые или недоступные права (только просмотр)')
-                                        ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
-                                        ->disabled()->dehydrated(false)
-                                        ->columns(2),
-                                ]),
-                        ]),
-                    Tab::make('Права сущностей')
-                        ->icon('heroicon-o-building-office-2')
-                        ->schema([
-                            Section::make('Права внутри сущностей')
-                                ->description('Команды, площадки, мероприятия, турниры и секции: доступ назначается участникам или сотрудникам в конкретной сущности. Полный набор принадлежит владельцу/создателю/администратору самой сущности и superadmin. Глобальные флажки выше не предоставляют управление всеми чужими объектами.')
-                                ->schema([
-                                    Placeholder::make('contextual_scope')
-                                        ->label('Отдельный контекст доступа')
-                                        ->content('Настройка разрешений команды, площадки или мероприятия остаётся привязана к соответствующей сущности. Подключение их просмотра здесь — следующий этап, без выдачи глобальных объектных прав.'),
-                                ]),
-                        ]),
-                    Tab::make('Источники прав')
-                        ->icon('heroicon-o-information-circle')
-                        ->schema([
-                            Section::make('Источники глобальных прав')
-                                ->description('Показывает, почему действует значение: правило системной роли, индивидуальная выдача или явный запрет.')
-                                ->collapsed()
-                                ->schema([
-                                    Placeholder::make('global_sources')
-                                        ->label('Текущие назначения')
-                                        ->content(function (?User $record) use ($global): string {
-                                            if ($record === null) {
-                                                return 'Выберите пользователя.';
-                                            }
-                                            $sources = $global->sources($record);
+                                    Section::make($role->label().' — параметры участия')
+                                        ->description('Данные роли отображаются отдельно от системных прав.')
+                                        ->schema([
+                                            Placeholder::make('participant_role_'.$role->value)
+                                                ->label('Состояние')
+                                                ->content($participationRole->status->value),
+                                            Placeholder::make('participant_role_since_'.$role->value)
+                                                ->label('Назначена')
+                                                ->content($participationRole->assigned_at?->format('d.m.Y H:i') ?? '—'),
+                                            Placeholder::make('participant_role_comment_'.$role->value)
+                                                ->label('Комментарий')
+                                                ->content($participationRole->comment ?: '—'),
+                                        ]),
+                                    ...$roleDetails,
+                                    View::make('filament.backoffice.user-participation-role-edit')
+                                        ->viewData(['participationRoleId' => $participationRole->id]),
+                                ]);
+                        }
+                    }
 
-                                            return implode(' | ', array_map(
-                                                static fn (Permission $p): string => $p->label().': '.($sources[$p->value] ?? '—'),
-                                                array_merge($global->creationPermissions(), $global->privilegedPermissions()),
-                                            ));
-                                        }),
-                                ]),
-                        ]),
-                ])
+                    return [
+                        Tab::make('Общее')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                View::make('filament.backoffice.user-general-overview')
+                                    ->viewData(['editedUser' => $record]),
+                            ]),
+                        Tab::make('Профиль')
+                            ->icon('heroicon-o-identification')
+                            ->schema([
+                                Section::make('Персональные данные')
+                                    ->description('Для изменения подтверждённых значений используй действие «Изменить личные данные». Каждое изменение требует основания, подтверждения и записывается в журнал.')
+                                    ->schema([
+                                        Placeholder::make('profile_name')->label('Имя')
+                                            ->content(fn (?User $record): string => $record?->profile?->first_name ?? '—'),
+                                        Placeholder::make('profile_last_name')->label('Фамилия')
+                                            ->content(fn (?User $record): string => $record?->profile?->last_name ?? '—'),
+                                        Placeholder::make('profile_middle_name')->label('Отчество')
+                                            ->content(fn (?User $record): string => $record?->profile?->middle_name ?? '—'),
+                                        Placeholder::make('profile_birth')->label('Дата рождения')
+                                            ->content(fn (?User $record): string => $record?->profile?->birth_date?->format('d.m.Y') ?? '—'),
+                                        Placeholder::make('profile_gender')->label('Пол')
+                                            ->content(fn (?User $record): string => $record?->profile?->gender?->label() ?? 'Не указан'),
+                                    ])->columns(2),
+                            ]),
+                        ...$roleTabs,
+                        Tab::make('Роли и права')
+                            ->icon('heroicon-o-shield-check')
+                            ->schema([
+                                Tabs::make('Уровень разрешений')
+                                    ->persistTabInQueryString('permission-scope')
+                                    ->tabs([
+                                        Tab::make('Системные')
+                                            ->schema([
+                                                View::make('filament.backoffice.user-system-roles')
+                                                    ->viewData(['editedUser' => $record]),
+                                                Section::make('Специализации менеджера')
+                                                    ->description('Меняются отдельным действием вверху страницы; не подменяют системные роли.')
+                                                    ->schema([
+                                                        Placeholder::make('manager_specialization_summary')->label('Активные специализации')
+                                                            ->content(fn (?User $record): string => $record?->system_role === UserSystemRoleEnum::MANAGER
+                                                                ? ($record->managerSpecializations()->pluck('name')->implode(' · ') ?: 'Не назначены')
+                                                                : 'Доступны только менеджеру.'),
+                                                    ]),
+                                                Section::make('Глобальные права — создание')
+                                                    ->schema([
+                                                        CheckboxList::make('creation_permissions')->label('Индивидуальные назначения')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
+                                                            ->columns(2),
+                                                        CheckboxList::make('locked_creation_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
+                                                            ->disabled()->dehydrated(false)->columns(2),
+                                                    ]),
+                                                Section::make('Системные полномочия и модерация')
+                                                    ->description('Делегировать можно только права, имеющиеся у администратора и допускаемые ролью получателя.')
+                                                    ->schema([
+                                                        CheckboxList::make('privileged_permissions')->label('Индивидуальные назначения')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
+                                                            ->columns(2),
+                                                        CheckboxList::make('locked_privileged_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
+                                                            ->disabled()->dehydrated(false)->columns(2),
+                                                    ]),
+                                                Section::make('Разрешения Filament')
+                                                    ->schema([
+                                                        CheckboxList::make('backoffice_permissions')->label('Индивидуальные назначения')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
+                                                            ->columns(2),
+                                                        CheckboxList::make('locked_backoffice_permissions')->label('Наследуемые или недоступные (просмотр)')
+                                                            ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
+                                                            ->disabled()->dehydrated(false)->columns(2),
+                                                    ]),
+                                                Section::make('Подтверждение изменений прав')
+                                                    ->description('Все индивидуальные назначения сохраняются отдельной операцией. Основание попадёт в журнал; перед записью появится подтверждение.')
+                                                    ->schema([
+                                                        Textarea::make('change_reason')->label('Основание изменения прав')
+                                                            ->required()->minLength(10)->maxLength(500)
+                                                            ->dehydrated(),
+                                                    ]),
+                                            ]),
+                                        Tab::make('Контекстные')
+                                            ->schema([
+                                                View::make('filament.backoffice.user-venue-context')
+                                                    ->viewData(['editedUser' => $record]),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('История изменений')
+                            ->icon('heroicon-o-clock')
+                            ->schema([
+                                View::make('filament.backoffice.user-personal-audit')
+                                    ->viewData(['editedUser' => $record]),
+                            ]),
+                    ];
+                })
                 ->columnSpanFull(),
         ]);
     }
@@ -284,7 +311,19 @@ final class BackofficeUserResource extends Resource
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),
         ])
             ->defaultSort('id', 'desc')
-            ->recordActions([EditAction::make()->label('Роли и права')]);
+            ->recordActions([
+                EditAction::make()->label('Редактировать')->visible(fn (User $record): bool => self::canEdit($record)),
+                Action::make('editDenied')
+                    ->label('Редактировать')
+                    ->icon('heroicon-o-lock-closed')
+                    ->color('gray')
+                    ->visible(fn (User $record): bool => ! self::canEdit($record))
+                    ->modalHeading('Нет доступа к редактированию')
+                    ->modalDescription('У вас нет права для редактирования пользователя.')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Закрыть')
+                    ->action(static function (): void {}),
+            ]);
     }
 
     public static function getPages(): array

@@ -11,6 +11,8 @@ enum UserOperationalPermissionEnum: string
     case CREATE_TOURNAMENT = 'tournament.create';
     case MANAGE_SYSTEM_ROLES = 'user.system_role.manage';
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
+    case EDIT_OWN_PROFILE = 'identity.profile.self_edit';
+    case EDIT_USER_PERSONAL_DATA = 'identity.user.personal_edit';
     case HANDLE_SUPPORT_TICKETS = 'support.ticket.handle';
     case OPERATOR_PRESENCE_VIEW = 'operator.presence.view';
     case OPERATOR_SESSION_HISTORY_VIEW = 'operator.session_history.view';
@@ -97,7 +99,9 @@ enum UserOperationalPermissionEnum: string
             self::CREATE_EVENT => 'Создание мероприятий',
             self::CREATE_TOURNAMENT => 'Создание турниров',
             self::MANAGE_SYSTEM_ROLES => 'Управление системными ролями',
-            self::REVIEW_PROFILE_CHANGES => 'Рассматривать изменения подтверждённых данных',
+            self::REVIEW_PROFILE_CHANGES => 'Модерировать заявки на изменение подтверждённых данных пользователей',
+            self::EDIT_OWN_PROFILE => 'Изменять данные собственного профиля',
+            self::EDIT_USER_PERSONAL_DATA => 'Редактировать личные данные пользователей',
             self::HANDLE_SUPPORT_TICKETS => 'Обрабатывать обращения в техподдержку',
             self::OPERATOR_PRESENCE_VIEW => 'Видеть текущую страницу пользователей',
             self::OPERATOR_SESSION_HISTORY_VIEW => 'Видеть историю переходов в текущей сессии',
@@ -146,7 +150,8 @@ enum UserOperationalPermissionEnum: string
         }
 
         return match ($this) {
-            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS,
+            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES,
+            self::EDIT_OWN_PROFILE, self::EDIT_USER_PERSONAL_DATA, self::HANDLE_SUPPORT_TICKETS,
             self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
             self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND => false,
             default => true,
@@ -175,7 +180,14 @@ enum UserOperationalPermissionEnum: string
                 ], true);
         }
 
-        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS,
+        if (in_array($this, [self::EDIT_OWN_PROFILE, self::REVIEW_PROFILE_CHANGES], true)) {
+            return $systemRole->atLeast(UserSystemRoleEnum::ADMIN);
+        }
+        if ($this === self::EDIT_USER_PERSONAL_DATA) {
+            return $systemRole === UserSystemRoleEnum::SUPERADMIN;
+        }
+
+        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::HANDLE_SUPPORT_TICKETS,
             self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
             self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND], true)) {
             return $systemRole === UserSystemRoleEnum::SUPERADMIN;

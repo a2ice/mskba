@@ -70,6 +70,13 @@ final class StaffPermissionProfiles
      */
     public function allowedInProfile(Role $role, Permission $permission): bool
     {
+        // Admin reviewer is an explicitly approved baseline with an
+        // incremental cursor assigned at migration/promotion. Support tickets
+        // still require a separate individual-grant cursor.
+        if ($role === Role::ADMIN && $permission === Permission::REVIEW_PROFILE_CHANGES) {
+            return true;
+        }
+
         return $this->allowedForRole($role, $permission)
             && ! in_array($permission, [
                 Permission::HANDLE_SUPPORT_TICKETS, Permission::REVIEW_PROFILE_CHANGES,

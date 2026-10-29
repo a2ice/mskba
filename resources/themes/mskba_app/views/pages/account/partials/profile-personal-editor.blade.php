@@ -1,7 +1,16 @@
+        @php
+            $canEditPersonalProfile = ! $profileConfirmed || (
+                isset($user) && app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
+                    ->allows($user, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::EDIT_OWN_PROFILE)
+            );
+        @endphp
         <section class="panel app-profile__panel" aria-labelledby="app-profile-personal-heading">
             <h2 id="app-profile-personal-heading">Личные данные</h2>
             @if ($profileConfirmed)
                 <p class="app-profile__support-copy">Твои имя, фамилия, дата рождения и пол уже подтверждены. Для их изменения нужно отправить заявку.</p>
+                @unless($canEditPersonalProfile)
+                    <p class="app-profile__support-copy">Изменение личных данных недоступно для твоей системной роли. Ты можешь отправить заявку на изменение подтверждённых данных.</p>
+                @endunless
             @endif
             @php
                 $personalFields = [
@@ -25,7 +34,7 @@
                 @method('PATCH')
                 <div class="app-profile__field-grid">
                     @foreach ($personalFields as $field)
-                        @php($locked = $profileConfirmed && $field['name'] !== 'middle_name')
+                        @php($locked = ! $canEditPersonalProfile || ($profileConfirmed && $field['name'] !== 'middle_name'))
                         <div class="field-group" @unless($locked)
                              data-inline-profile-field data-field-name="{{ $field['name'] }}"
                              data-saved-value="{{ $field['value'] }}"

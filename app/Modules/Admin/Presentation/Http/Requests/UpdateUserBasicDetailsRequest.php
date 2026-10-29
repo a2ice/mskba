@@ -55,7 +55,8 @@ final class UpdateUserBasicDetailsRequest extends FormRequest
                 ? $this->nullableTrimmed($validated['first_name']) : $profile?->first_name,
             'last_name' => array_key_exists('last_name', $validated)
                 ? $this->nullableTrimmed($validated['last_name']) : $profile?->last_name,
-            'middle_name' => $this->nullableTrimmed($validated['middle_name'] ?? null),
+            'middle_name' => array_key_exists('middle_name', $validated)
+                ? $this->nullableTrimmed($validated['middle_name']) : $profile?->middle_name,
             'birth_date' => array_key_exists('birth_date', $validated)
                 ? $validated['birth_date'] : $profile?->birth_date?->toDateString(),
             'password' => ($validated['password'] ?? '') === '' ? null : (string) $validated['password'],

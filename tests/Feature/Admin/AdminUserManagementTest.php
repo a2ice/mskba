@@ -75,6 +75,7 @@ final class AdminUserManagementTest extends TestCase
         $target->createProfile([
             'first_name' => 'Мария',
             'last_name' => 'Иванова',
+            'middle_name' => 'Петровна',
             'birth_date' => '2001-05-20',
             'gender' => UserGenderEnum::FEMALE,
         ]);
@@ -92,12 +93,19 @@ final class AdminUserManagementTest extends TestCase
         $this->assertSame('Мария', $target->profile->fresh()->first_name);
 
         $this->put(route('admin.users.update', $target), [
+            'middle_name' => 'Изменённое',
+        ])->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHas('error');
+        $this->assertSame('Петровна', $target->profile->fresh()->middle_name);
+
+        $this->put(route('admin.users.update', $target), [
             'password' => 'OtherStrong1!',
             'password_confirmation' => 'OtherStrong1!',
         ])->assertRedirect(route('admin.users.edit', $target))
             ->assertSessionHas('success');
 
         $this->assertSame('Мария', $target->profile->fresh()->first_name);
+        $this->assertSame('Петровна', $target->profile->fresh()->middle_name);
     }
 
     public function test_admin_cannot_confirm_user_with_incomplete_identification_data(): void
