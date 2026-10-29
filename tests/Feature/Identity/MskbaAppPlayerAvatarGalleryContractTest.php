@@ -71,7 +71,8 @@ final class MskbaAppPlayerAvatarGalleryContractTest extends TestCase
 
         $this->assertStringContainsString('scaleHeight / 225 * 100', $js);
         $this->assertStringContainsString('max="220"', $blade);
-        $this->assertGreaterThan(196 / 225, 220 / 225);
+        $this->assertStringContainsString("stage.style.setProperty('--figure-height', (scaleHeight / 225 * 100)", $js);
+        $this->assertStringContainsString("heightMarker.style.bottom = (scaleHeight / 225 * 100)", $js);
         $this->assertStringContainsString('height:1px;background:var(--accent', $css);
     }
 
