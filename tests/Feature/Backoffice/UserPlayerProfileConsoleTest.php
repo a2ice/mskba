@@ -5,6 +5,7 @@ namespace Tests\Feature\Backoffice;
 use App\Modules\Identity\Application\UseCases\AdminEditPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -31,6 +32,7 @@ final class UserPlayerProfileConsoleTest extends TestCase
             'role' => UserParticipationRoleEnum::PLAYER,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
             'assigned_at' => now(),
+            'assigner' => UserParticipationRoleAssignerEnum::FLOW,
         ]);
     }
 
