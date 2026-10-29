@@ -166,7 +166,7 @@ final class BackofficeUserResource extends Resource
                                         Placeholder::make('user_id_info')->label('ID')->content(fn (?User $record): string => (string) ($record?->id ?? '—')),
                                         TextInput::make('account_username')->label('Логин')->disabled()->dehydrated(false),
                                         Select::make('account_status')->label('Статус аккаунта')
-                                            ->options(collect(\\App\\Modules\\Identity\\Domain\\Enums\\UserStatusEnum::cases())->mapWithKeys(
+                                            ->options(collect(\App\Modules\Identity\Domain\Enums\UserStatusEnum::cases())->mapWithKeys(
                                                 fn ($status): array => [$status->value => $status->label()],
                                             )->all())
                                             ->disabled(fn (): bool => auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN)
@@ -199,7 +199,7 @@ final class BackofficeUserResource extends Resource
                                         TextInput::make('profile_middle_name')->label('Отчество')->maxLength(100),
                                         DatePicker::make('profile_birth_date')->label('Дата рождения')->maxDate(now()),
                                         Select::make('profile_gender')->label('Пол')->placeholder('Не указан')
-                                            ->options(collect(\\App\\Modules\\Identity\\Domain\\Enums\\UserGenderEnum::cases())->mapWithKeys(
+                                            ->options(collect(\App\Modules\Identity\Domain\Enums\UserGenderEnum::cases())->mapWithKeys(
                                                 fn ($gender): array => [$gender->value => $gender->label()],
                                             )->all()),
                                     ])->columns(2),
