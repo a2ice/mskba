@@ -62,12 +62,8 @@ final class GlobalOperationalPermissionManager
         $sources = [];
         foreach (array_merge($this->creationPermissions(), $this->privilegedPermissions()) as $p) {
             $explicit = $snapshots->get($p->value);
-            if (app(StaffPermissionProfiles::class)->inherited($target, $p)) {
-                $sources[$p->value] = 'Наследуется от роли или специализации';
-                continue;
-            }
             $sources[$p->value] = $explicit === null
-                ? ($p->defaultAllowedFor($target->system_role) ? 'По роли / по умолчанию' : 'Не предоставлено')
+                ? (app(StaffPermissionProfiles::class)->inherited($target, $p) ? 'Наследуется от роли или специализации' : 'Не предоставлено')
                 : ($explicit->is_allowed ? 'Выдано индивидуально' : 'Явно запрещено');
         }
 
@@ -132,20 +128,16 @@ final class GlobalOperationalPermissionManager
         $all = $privileged === null
             ? $this->creationPermissions()
             : array_merge($this->creationPermissions(), $this->privilegedPermissions());
-        // The form edits only individual grants: never overwrite role/specialization
-        // defaults or permissions outside the grantor's own scope.
+        // Individual decisions may override ordinary inherited defaults, but never the
+        // role ceiling or grants outside the current administrator's own scope.
         $scope = array_values(array_filter($all, static fn (Permission $permission): bool =>
             $profiles->allowedForRole($target->system_role, $permission)
-            && ! $profiles->inherited($target->canonical(), $permission)
             && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
                 || $checker->allows($actor, $permission))
         ));
         foreach (array_merge($creation, $privileged ?? []) as $key) {
             $permission = Permission::from($key);
-            // Backward compatible payloads may contain immutable inherited
-            // grants, but they must never create an individual override.
-            if (! in_array($permission, $scope, true)
-                && ! $profiles->inherited($target->canonical(), $permission)) {
+            if (! in_array($permission, $scope, true)) {
                 throw new AuthorizationException('Нельзя назначать недоступные права.');
             }
         }
