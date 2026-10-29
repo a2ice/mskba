@@ -163,10 +163,11 @@
     position:static;left:auto;right:auto;transform:none;
 }
 .app-player-workspace__height-marker{
-    pointer-events:auto;cursor:help;
+    pointer-events:auto;cursor:ns-resize;touch-action:none;
+    user-select:none;-webkit-user-select:none;
 }
 .app-player-workspace__height-marker::before{
-    content:"";position:absolute;left:0;right:0;top:-9px;bottom:-9px;
+    content:"";position:absolute;left:0;right:0;top:-11px;bottom:-11px;
     background:transparent;
 }
 .app-player-workspace__scale .app-player-workspace__height-marker span{
@@ -178,7 +179,8 @@
     transition:opacity .15s ease,transform .15s ease,visibility .15s ease;
 }
 .app-player-workspace__height-marker:hover span,
-.app-player-workspace__stage.is-height-focused .app-player-workspace__height-marker span{
+.app-player-workspace__stage.is-height-focused .app-player-workspace__height-marker span,
+.app-player-workspace__stage.is-height-dragging .app-player-workspace__height-marker span{
     opacity:1;visibility:visible;transform:translateY(0);
 }
 .app-player-workspace__avatar-heading[hidden],
