@@ -20,6 +20,10 @@ use App\Modules\Identity\Application\UseCases\AdminEditPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\Venue\Application\UseCases\AdminChangeVenueMembershipHandler;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -187,6 +191,61 @@ final class EditBackofficeUser extends EditRecord
                     abort_unless($actor !== null, 403);
                     app(AdminRevertPlayerProfileHandler::class)->handle(
                         $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('editVenueContract')
+                ->label('Изменить договорные права площадки')
+                ->icon('heroicon-o-building-office-2')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && app(VenueMembershipAccess::class)->activeVenueMembershipsFor($this->getRecord())->isNotEmpty())
+                ->modalHeading('Контекстная роль управления площадкой')
+                ->modalDescription('Меняется только действующий договор. Владелец не может быть переназначен. Права зала не становятся правами всей площадки.')
+                ->modalSubmitActionLabel('Подтвердить изменение')
+                ->requiresConfirmation()
+                ->fillForm(function (array $arguments): array {
+                    $membership = app(VenueMembershipAccess::class)
+                        ->activeVenueMembershipsFor($this->getRecord())
+                        ->firstWhere('id', (int) ($arguments['membership_id'] ?? 0));
+                    return $membership === null ? [] : [
+                        'membership_id' => $membership->id,
+                        'access_level' => $membership->access_level,
+                        'permissions' => $membership->contract->permissions->pluck('permission')->all(),
+                    ];
+                })
+                ->schema([
+                    Select::make('membership_id')->label('Действующий договор')
+                        ->options(fn (): array => app(VenueMembershipAccess::class)
+                            ->activeVenueMembershipsFor($this->getRecord())
+                            ->filter(fn ($membership): bool => VenueMembershipAccessLevelEnum::tryFrom((string) $membership->access_level)?->isCommercialRole()
+                                && $membership->access_level !== VenueMembershipAccessLevelEnum::OWNER->value)
+                            ->mapWithKeys(fn ($membership): array => [
+                                $membership->id => 'Договор #'.$membership->contract_id.' · '.($membership->contract?->name ?? 'Площадка'),
+                            ])->all())
+                        ->required()->native(false),
+                    Select::make('access_level')->label('Специализация')
+                        ->options(collect(VenueMembershipAccessLevelEnum::cases())
+                            ->filter(fn (VenueMembershipAccessLevelEnum $level): bool => $level->isCommercialRole()
+                                && $level !== VenueMembershipAccessLevelEnum::OWNER)
+                            ->mapWithKeys(fn (VenueMembershipAccessLevelEnum $level): array => [$level->value => $level->label()])
+                            ->all())->required()->native(false),
+                    CheckboxList::make('permissions')->label('Разрешения договора')
+                        ->options(collect(VenuePermissionEnum::cases())
+                            ->mapWithKeys(fn (VenuePermissionEnum $permission): array => [
+                                $permission->value => $permission->label(),
+                            ])->all())->columns(2),
+                    Textarea::make('reason')->label('Основание изменения')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminChangeVenueMembershipHandler::class)->handle(
+                        $actor, $this->getRecord(),
+                        (int) ($data['membership_id'] ?? 0),
+                        (string) ($data['access_level'] ?? ''),
+                        (array) ($data['permissions'] ?? []),
+                        (string) ($data['reason'] ?? ''),
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
