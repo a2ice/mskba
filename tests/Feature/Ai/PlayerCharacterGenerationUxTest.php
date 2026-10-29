@@ -59,6 +59,45 @@ final class PlayerCharacterGenerationUxTest extends TestCase
         $this->assertFalse((bool) $items->firstWhere('generation_id', $newer->public_id)['is_primary']);
     }
 
+    public function test_gallery_history_returns_only_owned_images_and_read_does_not_change_primary(): void
+    {
+        $user = $this->player();
+        $other = $this->player();
+        $first = $this->completedGeneration($user, now()->subMinutes(5));
+        $second = $this->completedGeneration($user, now()->subMinute());
+        $foreign = $this->completedGeneration($other, now());
+        PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+            'reference_media_ids' => [],
+            'payload_snapshot' => [],
+        ]);
+
+        $history = $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_history'])
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertJsonPath('primary_generation_id', $second->public_id);
+        $items = collect($history->json('generations'));
+        $this->assertCount(3, $items); // Two completed plus one pending, all owned.
+        $this->assertNotContains($foreign->public_id, $items->pluck('generation_id')->all());
+        $this->assertCount(2, $items->where('status', 'completed')->whereNotNull('image_url'));
+        $this->assertStringContainsString(
+            $first->public_id,
+            $items->firstWhere('generation_id', $first->public_id)['image_url'],
+        );
+        $this->assertNull(data_get($user->playerProfile()->firstOrFail()->extra, 'character.primary_generation_id'));
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generation_primary',
+                'generation_id' => $foreign->public_id,
+            ])->assertNotFound();
+        $this->assertNull(data_get($user->playerProfile()->firstOrFail()->fresh()->extra, 'character.primary_generation_id'));
+    }
+
     public function test_generation_preferences_return_saved_visual_options(): void
     {
         $user = $this->player();
