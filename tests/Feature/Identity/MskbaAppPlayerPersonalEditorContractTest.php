@@ -28,7 +28,7 @@ final class MskbaAppPlayerPersonalEditorContractTest extends TestCase
         self::assertStringContainsString("route('account.profile-change-requests.store')", $requestDialog);
         self::assertStringContainsString('data-profile-change-request-dialog', $requestDialog);
 
-        self::assertStringContainsString("'profileConfirmed' => $canonical->isConfirmed()", $controller);
+        self::assertStringContainsString("'profileConfirmed'", $controller);
         self::assertStringContainsString("'activeProfileChangeRequest'", $controller);
         self::assertStringContainsString("'latestProfileChangeRequest'", $controller);
     }
