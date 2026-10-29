@@ -16,6 +16,10 @@ use Filament\Forms\Components\DatePicker;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminEditPersonalProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPersonalProfileHandler;
+use App\Modules\Identity\Application\UseCases\AdminEditPlayerProfileHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -106,6 +110,82 @@ final class EditBackofficeUser extends EditRecord
                     $actor = auth('web')->user();
                     abort_unless($actor !== null, 403);
                     app(AdminRevertPersonalProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('editPlayerProfile')
+                ->label('Изменить профиль игрока')
+                ->icon('heroicon-o-adjustments-horizontal')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && $this->getRecord()->hasActiveRole(UserParticipationRoleEnum::PLAYER->value))
+                ->modalHeading('Параметры игрока')
+                ->modalDescription('Изменение характеристик потребует основания и будет доступно для безопасного отката.')
+                ->modalSubmitActionLabel('Подтвердить изменение')
+                ->requiresConfirmation()
+                ->fillForm(function (): array {
+                    $profile = $this->getRecord()->playerProfile;
+                    return [
+                        'height_cm' => $profile?->height_cm,
+                        'weight_kg' => $profile?->weight_kg,
+                        'body_type' => $profile?->body_type?->value,
+                        'experience_started_year' => $profile?->experience_started_year,
+                        'comment' => $profile?->comment,
+                    ];
+                })
+                ->schema([
+                    TextInput::make('height_cm')->label('Рост, см')->numeric()->minValue(150)->maxValue(220),
+                    TextInput::make('weight_kg')->label('Вес, кг')->numeric()->minValue(30)->maxValue(250),
+                    Select::make('body_type')->label('Телосложение')
+                        ->options(collect(PlayerBodyTypeEnum::cases())->mapWithKeys(
+                            fn (PlayerBodyTypeEnum $type): array => [$type->value => $type->label()],
+                        )->all()),
+                    TextInput::make('experience_started_year')->label('Год начала занятий')
+                        ->numeric()->minValue(1950)->maxValue(now()->year),
+                    Textarea::make('comment')->label('Комментарий')->maxLength(2000),
+                    Textarea::make('reason')->label('Основание изменения')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $values = [];
+                    foreach (AdminEditPlayerProfileHandler::EDITABLE as $key) {
+                        $values[$key] = ($data[$key] ?? null) === '' ? null : ($data[$key] ?? null);
+                    }
+                    app(AdminEditPlayerProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), $values, (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('revertPlayerProfile')
+                ->label('Откатить параметры игрока')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_player_profile_changed')->exists())
+                ->modalHeading('Откат параметров игрока')
+                ->modalDescription('Сверяем текущие значения с выбранной ревизией. Более поздние изменения не перезаписываются.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_player_profile_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertPlayerProfileHandler::class)->handle(
                         $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
