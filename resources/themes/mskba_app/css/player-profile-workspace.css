@@ -195,7 +195,7 @@
 /* Task 057: one accessory checkbox per type; side choices in the shared native modal. */
 .app-player-workspace__equipment-groups{gap:0 18px;align-items:start}
 .app-player-workspace__equipment-group{display:flex;align-items:center;flex-wrap:wrap;column-gap:12px;min-height:44px;min-width:0}
-.app-player-workspace__equipment-toggle{display:inline-flex;align-items:center;gap:12px;min-height:44px;color:var(--text);font-size:14px;line-height:20px;cursor:pointer}
+.app-player-workspace__equipment-groups .app-player-workspace__equipment-toggle{display:inline-flex;align-items:center;gap:12px;min-height:44px;color:var(--text);font-size:14px;line-height:20px;cursor:pointer}
 .app-player-workspace__equipment-toggle input{width:20px;height:20px;margin:0;accent-color:var(--accent);flex:none}
 .app-player-workspace__equipment-edit{display:inline-flex;align-items:center;align-self:center;min-height:44px;background:transparent;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;line-height:20px;font-weight:700;text-decoration:underline;text-underline-offset:2px;padding:0 2px;border-radius:4px}
 .app-player-workspace__equipment-edit:hover{color:var(--accent-hover,var(--accent))}
