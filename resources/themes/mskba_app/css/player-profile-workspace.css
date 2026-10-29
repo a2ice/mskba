@@ -123,3 +123,10 @@
   .app-player-workspace__personal-dialog .app-profile__field-grid{grid-template-columns:minmax(0,1fr)}
   .app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:16px}
 }
+
+/* Task 055 acceptance: only the saved value is interactive; actions stay in the fixed footer. */
+.app-player-workspace__personal-footer .button{min-height:44px}
+.app-player-workspace__personal-footer{flex-wrap:wrap;gap:12px}
+@media(max-width:600px){
+  .app-player-workspace__personal-footer .button{flex:1 1 auto}
+}

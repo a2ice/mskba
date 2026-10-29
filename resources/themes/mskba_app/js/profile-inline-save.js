@@ -4,7 +4,10 @@
 export function initProfileInlineSave(form, { onChange = () => {} } = {}) {
     if (!form) return null;
 
-    const allButton = form.querySelector('[data-inline-profile-save-all]');
+    // The player dialog keeps its actions in the fixed modal footer, outside
+    // the scrollable form. Both layouts use the same save controller.
+    const allButton = form.querySelector('[data-inline-profile-save-all]')
+        || form.closest('dialog')?.querySelector('[data-inline-profile-save-all][form="' + form.id + '"]');
     const feedback = form.querySelector('[data-inline-profile-feedback]');
     const card = form.closest('.app-confirmation__card, .app-profile__panel');
     const csrf = form.querySelector('input[name="_token"]')?.value || '';
