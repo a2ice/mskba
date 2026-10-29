@@ -8,6 +8,7 @@
     // Generic Auditable events may include fields that are not safe to reveal here.
     $revisableEvents = [
         'admin_personal_profile_changed', 'admin_personal_profile_reverted',
+        'self_confirmed_profile_updated',
         'admin_player_profile_changed', 'admin_player_profile_reverted',
         'admin_participation_role_changed', 'admin_participation_role_reverted',
         'admin_user_permissions_changed', 'admin_user_permissions_reverted',
