@@ -7,6 +7,12 @@ use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
@@ -175,6 +181,110 @@ final class MskbaAppAccountProfileTest extends TestCase
             'first_name' => 'Попытка',
         ])->assertForbidden();
         $this->assertSame('Мария', $user->profile->fresh()->first_name);
+    }
+
+    public function test_confirmed_superadmin_can_edit_own_personal_fields_immediately_and_audit(): void
+    {
+        $super = $this->account(UserStatusEnum::CONFIRMED);
+        $super->forceFill(['system_role' => UserSystemRoleEnum::SUPERADMIN])->save();
+
+        $this->actingAs($super)->get(route('account.profile'))->assertOk()
+            ->assertSee('name="first_name"', false)
+            ->assertSee('name="last_name"', false)
+            ->assertSee('name="birth_date"', false)
+            ->assertSee('name="gender"', false)
+            ->assertSee('data-inline-profile-save-all', false)
+            ->assertDontSee('data-profile-change-request-open', false)
+            ->assertDontSee('data-profile-change-request-dialog', false);
+
+        $this->patchJson(route('account.profile.update'), [
+            'first_name' => '  Анна  ',
+            'last_name' => 'Петрова',
+            'birth_date' => '1994-04-04',
+            'gender' => 'male',
+        ])->assertOk()->assertJsonPath('values.first_name', 'Анна')
+            ->assertJsonPath('values.gender', 'male');
+
+        $saved = $super->profile->fresh();
+        $this->assertSame('Анна', $saved->first_name);
+        $this->assertSame('Петрова', $saved->last_name);
+        $this->assertSame('1994-04-04', $saved->birth_date->toDateString());
+        $this->assertSame(UserGenderEnum::MALE, $saved->gender);
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_type' => User::class,
+            'auditable_id' => $super->id,
+            'event' => 'self_confirmed_profile_updated',
+        ]);
+        $this->assertDatabaseCount('profile_change_requests', 0);
+    }
+
+    public function test_confirmed_admin_permission_can_be_revoked_and_restored_for_public_self_edit(): void
+    {
+        $admin = $this->account(UserStatusEnum::CONFIRMED);
+        $admin->forceFill(['system_role' => UserSystemRoleEnum::ADMIN])->save();
+        $this->actingAs($admin)->patchJson(route('account.profile.update'), [
+            'middle_name' => 'Владимировна',
+        ])->assertOk();
+
+        UserOperationalPermission::query()->updateOrCreate([
+            'user_id' => $admin->id,
+            'permission' => Permission::EDIT_OWN_PROFILE->value,
+        ], ['is_allowed' => false]);
+        $this->get(route('account.profile'))->assertOk()
+            ->assertSee('data-profile-change-request-open', false)
+            ->assertDontSee('data-inline-profile-save-all', false);
+        $this->patchJson(route('account.profile.update'), [
+            'first_name' => 'Запрещено',
+        ])->assertForbidden();
+        $this->assertSame('Мария', $admin->profile->fresh()->first_name);
+
+        UserOperationalPermission::query()->where('user_id', $admin->id)
+            ->where('permission', Permission::EDIT_OWN_PROFILE->value)->update(['is_allowed' => true]);
+        $this->patchJson(route('account.profile.update'), [
+            'first_name' => 'Елена',
+        ])->assertOk();
+        $this->assertSame('Елена', $admin->profile->fresh()->first_name);
+    }
+
+    public function test_delegated_regular_user_can_edit_confirmed_data_but_other_fields_stay_protected(): void
+    {
+        $user = $this->account(UserStatusEnum::CONFIRMED);
+        UserOperationalPermission::query()->create([
+            'user_id' => $user->id,
+            'permission' => Permission::EDIT_OWN_PROFILE->value,
+            'is_allowed' => true,
+        ]);
+        $this->actingAs($user)->patchJson(route('account.profile.update'), [
+            'first_name' => '',
+            'system_role' => 'superadmin',
+        ])->assertUnprocessable()->assertJsonValidationErrors('first_name');
+        $this->assertSame('Мария', $user->profile->fresh()->first_name);
+        $this->patchJson(route('account.profile.update'), [
+            'first_name' => 'Делегировано',
+            'system_role' => 'superadmin',
+        ])->assertOk();
+        $this->assertSame('Делегировано', $user->profile->fresh()->first_name);
+        $this->assertSame(UserSystemRoleEnum::USER, $user->fresh()->system_role);
+    }
+
+    public function test_confirmed_superadmin_player_dialog_has_editable_personal_fields(): void
+    {
+        $super = $this->account(UserStatusEnum::CONFIRMED);
+        $super->forceFill(['system_role' => UserSystemRoleEnum::SUPERADMIN])->save();
+        $super->participationRoles(false)->create([
+            'role' => UserParticipationRoleEnum::PLAYER,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+            'assigned_by' => $super->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+        $this->actingAs($super)
+            ->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()->assertSee('data-player-personal-dialog', false)
+            ->assertSee('id="app-player-personal-form"', false)
+            ->assertSee('name="birth_date"', false)
+            ->assertSee('name="gender"', false)
+            ->assertDontSee('data-profile-change-request-open', false);
     }
 
     public function test_contact_management_screen_lists_contacts_and_allows_switching_primary(): void
