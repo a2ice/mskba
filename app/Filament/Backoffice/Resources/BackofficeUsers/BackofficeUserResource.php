@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -256,6 +257,7 @@ final class BackofficeUserResource extends Resource
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
+                                                Hidden::make('change_reason'),
                                                 View::make('filament.backoffice.user-save-permissions'),
                                             ]),
                                         Tab::make('Контекстные')
