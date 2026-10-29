@@ -22,6 +22,8 @@ use App\Modules\Identity\Application\UseCases\AdminUpdateUserPermissionSnapshotH
 use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotHandler;
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateStaffSpecializationsWithAuditHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertStaffSpecializationsHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -463,13 +465,47 @@ final class EditBackofficeUser extends EditRecord
                     // Reload effective defaults after changing the user's role.
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $target]));
                 }),
+            Action::make('revertStaffSpecializations')
+                ->label('Откатить специализации менеджера')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_staff_specializations_changed')->exists())
+                ->modalHeading('Откат назначений менеджера')
+                ->modalDescription('Проверим роль, должность и действующие специализации перед возвратом прав.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия специализаций')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_staff_specializations_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertStaffSpecializationsHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
             Action::make('assignSpecializations')
                 ->label('Назначить специализации')
                 ->icon('heroicon-o-identification')
                 ->visible(fn (): bool => auth('web')->user() !== null
                     && app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $this->getRecord()))
                 ->modalHeading('Специализации менеджера')
-                ->modalDescription('Можно выбрать несколько профилей. Каждый добавляет фиксированные права, управляемые суперадминистратором.')
+                ->modalDescription('Можно выбрать несколько профилей. Каждое изменение требует основания и фиксируется в журнале.')
+                ->modalSubmitActionLabel('Подтвердить назначение')
+                ->requiresConfirmation()
                 ->fillForm(fn (): array => [
                     'staff_title' => $this->getRecord()->staff_title,
                     'specialization_ids' => $this->getRecord()->managerSpecializations()
@@ -481,6 +517,8 @@ final class EditBackofficeUser extends EditRecord
                         ->label('Функциональные специализации')
                         ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->columns(2),
+                    Textarea::make('reason')->label('Основание изменения')
+                        ->required()->minLength(10)->maxLength(500),
                 ])
                 ->action(function (array $data): void {
                     $actor = auth('web')->user();
@@ -489,7 +527,10 @@ final class EditBackofficeUser extends EditRecord
                     if (! is_array($ids)) {
                         throw ValidationException::withMessages(['specialization_ids' => 'Неверный список специализаций.']);
                     }
-                    app(StaffSpecializationManager::class)->sync($actor, $this->getRecord(), $ids, (string) ($data['staff_title'] ?? ''));
+                    app(AdminUpdateStaffSpecializationsWithAuditHandler::class)->handle(
+                        $actor, $this->getRecord(), $ids,
+                        (string) ($data['staff_title'] ?? ''), (string) ($data['reason'] ?? ''),
+                    );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
         ];
