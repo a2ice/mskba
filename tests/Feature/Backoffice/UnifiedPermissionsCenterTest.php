@@ -68,7 +68,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $target = $this->user(UserSystemRoleEnum::MANAGER);
         $global = app(GlobalOperationalPermissionManager::class);
-        $global->sync($super, $admin, $global->granted($admin), [
+        $global->sync($super, $admin, array_map(static fn (Permission $p): string => $p->value, $global->creationPermissions()), [
             Permission::EDIT_USER_PERSONAL_DATA->value,
             Permission::REVIEW_PROFILE_CHANGES->value,
             Permission::EDIT_OWN_PROFILE->value,
