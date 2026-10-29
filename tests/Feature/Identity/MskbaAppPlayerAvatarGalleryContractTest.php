@@ -85,6 +85,8 @@ final class MskbaAppPlayerAvatarGalleryContractTest extends TestCase
         $this->assertStringContainsString("addEventListener('pointerdown'", $js);
         $this->assertStringContainsString("addEventListener('pointermove'", $js);
         $this->assertStringContainsString("'pointerup', 'pointercancel', 'lostpointercapture'", $js);
+        $this->assertStringContainsString('heightDragOffsetY = event.clientY - markerCenterY', $js);
+        $this->assertStringContainsString('applyPointerHeight(event.clientY - heightDragOffsetY)', $js);
         $this->assertStringContainsString('setPointerCapture(event.pointerId)', $js);
         $this->assertStringContainsString('releasePointerCapture(event.pointerId)', $js);
         $this->assertStringContainsString('(rect.bottom - clientY) / rect.height * 225', $js);
