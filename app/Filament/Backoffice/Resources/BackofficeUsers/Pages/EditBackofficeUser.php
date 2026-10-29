@@ -21,6 +21,9 @@ use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserPermissionSnapshotHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotHandler;
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
+use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateStaffSpecializationsWithAuditHandler;
 use App\Modules\Identity\Application\UseCases\AdminChangeUserSystemRoleWithAuditHandler;
@@ -50,51 +53,218 @@ final class EditBackofficeUser extends EditRecord
 {
     protected static string $resource = BackofficeUserResource::class;
 
+    public ?int $selectedParticipationRoleId = null;
+    public ?string $roleComment = null;
+    public ?string $rolePlayerHeight = null;
+    public ?string $rolePlayerWeight = null;
+    public ?string $rolePlayerBodyType = null;
+    public ?string $rolePlayerExperience = null;
+    public ?string $rolePlayerComment = null;
+
+    public function selectParticipationRole(int $roleId): void
+    {
+        abort_unless(BackofficeUserResource::canEdit($this->getRecord()), 403);
+        $role = $this->getRecord()->participationRoles(false)->findOrFail($roleId);
+        $this->selectedParticipationRoleId = $role->id;
+        $this->roleComment = $role->comment;
+        if ($role->role === UserParticipationRoleEnum::PLAYER) {
+            $profile = $this->getRecord()->playerProfile;
+            $this->rolePlayerHeight = $profile?->height_cm === null ? null : (string) $profile->height_cm;
+            $this->rolePlayerWeight = $profile?->weight_kg === null ? null : (string) $profile->weight_kg;
+            $this->rolePlayerBodyType = $profile?->body_type?->value;
+            $this->rolePlayerExperience = $profile?->experience_started_year === null ? null : (string) $profile->experience_started_year;
+            $this->rolePlayerComment = $profile?->comment;
+        } else {
+            $this->rolePlayerHeight = $this->rolePlayerWeight = $this->rolePlayerBodyType
+                = $this->rolePlayerExperience = $this->rolePlayerComment = null;
+        }
+    }
+
     /** Role changes intentionally have their own save operation. Changing role
      * defaults must not accidentally persist stale permission checkboxes. */
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('editPersonalProfile')
-                ->label('Изменить личные данные')
-                ->icon('heroicon-o-pencil-square')
-                ->visible(fn (): bool => auth('web')->user() !== null && BackofficeUserResource::canEdit($this->getRecord()))
-                ->modalHeading('Редактирование персональных данных')
-                ->modalDescription('Это действие изменяет личные данные напрямую, в том числе подтверждённые. Укажи основание; прежнее состояние сохранится в журнале аудита.')
-                ->modalSubmitActionLabel('Подтвердить изменение')
+            Action::make('saveGeneralInline')
+                ->label('Сохранить общие данные')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                ->modalHeading('Подтвердить изменение статуса')
+                ->modalSubmitActionLabel('Подтвердить')
                 ->requiresConfirmation()
-                ->fillForm(function (): array {
-                    $profile = $this->getRecord()->profile;
-                    return [
-                        'first_name' => $profile?->first_name,
-                        'last_name' => $profile?->last_name,
-                        'middle_name' => $profile?->middle_name,
-                        'birth_date' => $profile?->birth_date?->toDateString(),
-                        'gender' => $profile?->gender?->value,
-                    ];
-                })
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user()?->canonical();
+                    abort_unless($actor?->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+                    $status = UserStatusEnum::tryFrom((string) ($this->form->getState()['account_status'] ?? ''));
+                    if ($status === null) {
+                        throw ValidationException::withMessages(['account_status' => 'Неизвестный статус пользователя.']);
+                    }
+                    $before = $this->getRecord()->fresh()->status;
+                    if ($before === $status) {
+                        throw ValidationException::withMessages(['account_status' => 'Статус не изменён.']);
+                    }
+                    DB::transaction(function () use ($actor, $status, $before, $data): void {
+                        app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
+                        AuditLog::query()->create([
+                            'actor_id' => $actor->id,
+                            'auditable_type' => User::class,
+                            'auditable_id' => $this->getRecord()->id,
+                            'event' => 'admin_user_status_changed',
+                            'old_values' => ['status' => $before->value],
+                            'new_values' => ['status' => $status->value],
+                            'metadata' => ['reason' => (string) $data['reason']],
+                        ]);
+                    });
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('savePersonalInline')
+                ->label('Сохранить профиль')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Подтвердить изменение личных данных')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $state = $this->form->getState();
+                    $values = [];
+                    foreach (AdminEditPersonalProfileHandler::EDITABLE as $field) {
+                        $key = 'profile_'.$field;
+                        $values[$field] = ($state[$key] ?? null) === '' ? null : ($state[$key] ?? null);
+                    }
+                    app(AdminEditPersonalProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), $values, (string) $data['reason'],
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('savePermissionsInline')
+                ->label('Сохранить системные разрешения')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Подтвердить изменение системных прав')
+                ->modalDescription('Индивидуальное разрешение или запрет перекрывает обычные предустановки роли. Ограничения иерархии сохраняются.')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null && BackofficeUserResource::canEdit($this->getRecord()), 403);
+                    $state = $this->form->getState();
+                    app(AdminUpdateUserPermissionSnapshotHandler::class)->handle(
+                        $actor, $this->getRecord(),
+                        (array) ($state['creation_permissions'] ?? []),
+                        (array) ($state['privileged_permissions'] ?? []),
+                        (array) ($state['backoffice_permissions'] ?? []),
+                        (string) $data['reason'],
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('addParticipationRole')
+                ->label('Добавить роль')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Добавить роль участия')
+                ->modalDescription('В списке только роли, которые ещё не назначены, включая отключённые.')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
                 ->schema([
-                    TextInput::make('first_name')->label('Имя')->maxLength(100),
-                    TextInput::make('last_name')->label('Фамилия')->maxLength(100),
-                    TextInput::make('middle_name')->label('Отчество')->maxLength(100),
-                    DatePicker::make('birth_date')->label('Дата рождения')->maxDate(now()),
-                    Select::make('gender')->label('Пол')->options([
-                        UserGenderEnum::MALE->value => UserGenderEnum::MALE->label(),
-                        UserGenderEnum::FEMALE->value => UserGenderEnum::FEMALE->label(),
-                    ])->placeholder('Не установлен'),
-                    Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500),
+                    Select::make('role')->label('Роль')->native(false)->required()
+                        ->options(function (): array {
+                            $existing = $this->getRecord()->participationRoles(false)->pluck('role')
+                                ->map(fn ($role): string => $role instanceof UserParticipationRoleEnum ? $role->value : (string) $role)->all();
+                            $options = [];
+                            foreach (UserParticipationRoleEnum::cases() as $role) {
+                                if (! in_array($role->value, $existing, true)) {
+                                    $options[$role->value] = $role->label();
+                                }
+                            }
+                            return $options;
+                        }),
+                    Textarea::make('reason')->label('Основание назначения')->required()->minLength(10)->maxLength(500),
                 ])
                 ->action(function (array $data): void {
                     $actor = auth('web')->user();
                     abort_unless($actor !== null, 403);
-                    $values = [];
-                    foreach (AdminEditPersonalProfileHandler::EDITABLE as $key) {
-                        $values[$key] = ($data[$key] ?? null) === '' ? null : ($data[$key] ?? null);
-                    }
-                    app(AdminEditPersonalProfileHandler::class)->handle(
-                        $actor, $this->getRecord(), $values, (string) ($data['reason'] ?? ''),
+                    $audit = app(AdminAssignParticipationRoleHandler::class)->handle(
+                        $actor, $this->getRecord(), (string) $data['role'], (string) $data['reason'],
                     );
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                    $this->selectParticipationRole((int) $audit->metadata['participation_role_id']);
+                }),
+            Action::make('toggleParticipationRole')
+                ->label('Изменить состояние роли')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Подтвердить отключение или восстановление роли')
+                ->modalDescription('Данные роли и профиль сохраняются. Операция будет зафиксирована в истории.')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $arguments, array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $role = $this->getRecord()->participationRoles(false)->findOrFail((int) ($arguments['role_id'] ?? 0));
+                    $next = $role->status === UserParticipationRoleStatusEnum::ACTIVE
+                        ? UserParticipationRoleStatusEnum::INACTIVE : UserParticipationRoleStatusEnum::ACTIVE;
+                    app(AdminEditParticipationRoleHandler::class)->handle(
+                        $actor, $this->getRecord(), $role->id, $next->value,
+                        $role->comment, (string) $data['reason'],
+                    );
+                    $this->selectParticipationRole($role->id);
+                }),
+            Action::make('saveParticipationRoleInline')
+                ->label('Сохранить роль')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Подтвердить изменения роли')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $role = $this->getRecord()->participationRoles(false)->findOrFail((int) $this->selectedParticipationRoleId);
+                    if ($role->status !== UserParticipationRoleStatusEnum::ACTIVE) {
+                        throw ValidationException::withMessages(['role' => 'Сначала активируйте роль.']);
+                    }
+                    $reason = (string) $data['reason'];
+                    $comment = trim((string) ($this->roleComment ?? '')) ?: null;
+                    $playerValues = [
+                        'height_cm' => $this->rolePlayerHeight === null || $this->rolePlayerHeight === '' ? null : (int) $this->rolePlayerHeight,
+                        'weight_kg' => $this->rolePlayerWeight === null || $this->rolePlayerWeight === '' ? null : (int) $this->rolePlayerWeight,
+                        'body_type' => $this->rolePlayerBodyType === '' ? null : $this->rolePlayerBodyType,
+                        'experience_started_year' => $this->rolePlayerExperience === null || $this->rolePlayerExperience === '' ? null : (int) $this->rolePlayerExperience,
+                        'comment' => $this->rolePlayerComment === '' ? null : $this->rolePlayerComment,
+                    ];
+                    DB::transaction(function () use ($actor, $role, $comment, $playerValues, $reason): void {
+                        $changed = false;
+                        if ($role->comment !== $comment) {
+                            app(AdminEditParticipationRoleHandler::class)->handle(
+                                $actor, $this->getRecord(), $role->id,
+                                UserParticipationRoleStatusEnum::ACTIVE->value, $comment, $reason,
+                            );
+                            $changed = true;
+                        }
+                        if ($role->role === UserParticipationRoleEnum::PLAYER) {
+                            $profile = $this->getRecord()->playerProfile;
+                            $changedValues = [];
+                            foreach ($playerValues as $field => $value) {
+                                $raw = $profile?->getRawOriginal($field);
+                                if (($raw === null && $value === null)
+                                    || ($raw !== null && $value !== null && (string) $raw === (string) $value)) {
+                                    continue;
+                                }
+                                $changedValues[$field] = $value;
+                            }
+                            if ($changedValues !== []) {
+                                app(AdminEditPlayerProfileHandler::class)->handle(
+                                    $actor, $this->getRecord(), $changedValues, $reason,
+                                );
+                                $changed = true;
+                            }
+                        }
+                        if (! $changed) {
+                            throw ValidationException::withMessages(['role' => 'Параметры роли не изменены.']);
+                        }
+                    });
+                    $this->selectParticipationRole($role->id);
                 }),
             Action::make('revertPersonalProfile')
                 ->label('Откатить изменение личных данных')
@@ -128,50 +298,6 @@ final class EditBackofficeUser extends EditRecord
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
-            Action::make('editPlayerProfile')
-                ->label('Изменить профиль игрока')
-                ->icon('heroicon-o-adjustments-horizontal')
-                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
-                    && $this->getRecord()->hasActiveRole(UserParticipationRoleEnum::PLAYER->value))
-                ->modalHeading('Параметры игрока')
-                ->modalDescription('Изменение характеристик потребует основания и будет доступно для безопасного отката.')
-                ->modalSubmitActionLabel('Подтвердить изменение')
-                ->requiresConfirmation()
-                ->fillForm(function (): array {
-                    $profile = $this->getRecord()->playerProfile;
-                    return [
-                        'height_cm' => $profile?->height_cm,
-                        'weight_kg' => $profile?->weight_kg,
-                        'body_type' => $profile?->body_type?->value,
-                        'experience_started_year' => $profile?->experience_started_year,
-                        'comment' => $profile?->comment,
-                    ];
-                })
-                ->schema([
-                    TextInput::make('height_cm')->label('Рост, см')->numeric()->minValue(150)->maxValue(220),
-                    TextInput::make('weight_kg')->label('Вес, кг')->numeric()->minValue(40)->maxValue(140),
-                    Select::make('body_type')->label('Телосложение')
-                        ->options(collect(PlayerBodyTypeEnum::cases())->mapWithKeys(
-                            fn (PlayerBodyTypeEnum $type): array => [$type->value => $type->label()],
-                        )->all()),
-                    TextInput::make('experience_started_year')->label('Год начала занятий')
-                        ->numeric()->minValue(now()->year - 50)->maxValue(now()->year - 10),
-                    Textarea::make('comment')->label('Комментарий')->maxLength(1000),
-                    Textarea::make('reason')->label('Основание изменения')
-                        ->required()->minLength(10)->maxLength(500),
-                ])
-                ->action(function (array $data): void {
-                    $actor = auth('web')->user();
-                    abort_unless($actor !== null, 403);
-                    $values = [];
-                    foreach (AdminEditPlayerProfileHandler::EDITABLE as $key) {
-                        $values[$key] = ($data[$key] ?? null) === '' ? null : ($data[$key] ?? null);
-                    }
-                    app(AdminEditPlayerProfileHandler::class)->handle(
-                        $actor, $this->getRecord(), $values, (string) ($data['reason'] ?? ''),
-                    );
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
-                }),
             Action::make('revertPlayerProfile')
                 ->label('Откатить параметры игрока')
                 ->icon('heroicon-o-arrow-uturn-left')
@@ -201,50 +327,6 @@ final class EditBackofficeUser extends EditRecord
                     abort_unless($actor !== null, 403);
                     app(AdminRevertPlayerProfileHandler::class)->handle(
                         $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
-                    );
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
-                }),
-            Action::make('editParticipationRole')
-                ->label('Изменить роль участия')
-                ->icon('heroicon-o-user-group')
-                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
-                    && $this->getRecord()->participationRoles(false)->exists())
-                ->modalHeading('Редактирование роли участия')
-                ->modalDescription('Изменение статуса может отключить соответствующий раздел профиля. Сохраняется отдельная аудируемая ревизия.')
-                ->modalSubmitActionLabel('Подтвердить изменение')
-                ->requiresConfirmation()
-                ->fillForm(function (array $arguments): array {
-                    $role = $this->getRecord()->participationRoles(false)
-                        ->find((int) ($arguments['role_id'] ?? 0));
-                    return $role === null ? [] : [
-                        'role_id' => $role->id,
-                        'status' => $role->status->value,
-                        'comment' => $role->comment,
-                    ];
-                })
-                ->schema([
-                    Select::make('role_id')->label('Роль')
-                        ->options(fn (): array => $this->getRecord()->participationRoles(false)->get()
-                            ->mapWithKeys(fn ($role): array => [
-                                $role->id => $role->role->label().' · '.$role->status->label(),
-                            ])->all())->required()->native(false),
-                    Select::make('status')->label('Статус')
-                        ->options(collect(UserParticipationRoleStatusEnum::cases())
-                            ->mapWithKeys(fn (UserParticipationRoleStatusEnum $status): array => [
-                                $status->value => $status->label(),
-                            ])->all())->required(),
-                    Textarea::make('comment')->label('Комментарий к роли')->maxLength(2000),
-                    Textarea::make('reason')->label('Основание изменения')
-                        ->required()->minLength(10)->maxLength(500),
-                ])
-                ->action(function (array $data): void {
-                    $actor = auth('web')->user();
-                    abort_unless($actor !== null, 403);
-                    app(AdminEditParticipationRoleHandler::class)->handle(
-                        $actor, $this->getRecord(), (int) ($data['role_id'] ?? 0),
-                        (string) ($data['status'] ?? ''),
-                        isset($data['comment']) ? (string) $data['comment'] : null,
-                        (string) ($data['reason'] ?? ''),
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
@@ -585,6 +667,14 @@ final class EditBackofficeUser extends EditRecord
             'privileged_permissions' => $global->privilegedPermissions(),
             'backoffice_permissions' => Permission::backofficeCases(),
         ];
+        $data['account_username'] = $target->username;
+        $data['account_status'] = $target->status->value;
+        $profile = $target->profile;
+        foreach (AdminEditPersonalProfileHandler::EDITABLE as $field) {
+            $value = $profile?->$field;
+            $data['profile_'.$field] = $field === 'gender' ? $value?->value
+                : ($field === 'birth_date' ? $value?->toDateString() : $value);
+        }
         foreach ($groups as $field => $permissions) {
             $data[$field] = [];
             $data['locked_'.$field] = [];
@@ -601,6 +691,12 @@ final class EditBackofficeUser extends EditRecord
         }
 
         return $data;
+    }
+
+    /** Saving is tab-scoped: every editable tab has its own confirmed action. */
+    protected function getFormActions(): array
+    {
+        return [];
     }
 
     protected function getSaveFormAction(): Action
