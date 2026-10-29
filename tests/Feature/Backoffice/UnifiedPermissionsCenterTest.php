@@ -173,6 +173,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
             ->assertActionVisible('changeSystemRole')
             ->callAction('changeSystemRole', data: [
                 'new_system_role' => UserSystemRoleEnum::MANAGER->value,
+                'reason' => 'Назначение менеджера по проверке прав',
             ])
             ->assertHasNoFormErrors();
 
@@ -195,6 +196,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->callAction('changeSystemRole', data: [
                 'new_system_role' => UserSystemRoleEnum::USER->value,
+                'reason' => 'Снятие административной роли по заявлению',
             ])->assertHasNoFormErrors();
 
         $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
@@ -227,6 +229,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
             Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
                 ->callAction('changeSystemRole', data: [
                     'new_system_role' => $forbidden->value,
+                    'reason' => 'Проверка запрета назначения служебной роли',
                 ])
                 ->assertHasFormErrors(['new_system_role']);
 
