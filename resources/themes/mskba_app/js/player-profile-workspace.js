@@ -87,7 +87,12 @@ if (workspace) {
         const bmi = kg / Math.pow(cm / 100, 2);
         const bodyAdjustment = {slim:-0.09, normal:0, athletic:0, muscular:0.12, stocky:0.15, large:0.20}[body?.value] || 0;
         const width = Math.min(1.4, Math.max(0.78, 1 + (bmi-23)*0.009 + bodyAdjustment));
-        stage.style.setProperty('--figure-height', (Math.min(220, Math.max(150, cm)) / 250 * 100) + '%');
+        const scaleHeight = Math.max(0, Math.min(225, cm));
+        stage.style.setProperty('--figure-height', (scaleHeight / 225 * 100) + '%');
+        const heightMarker = workspace.querySelector('[data-player-height-marker]');
+        if (heightMarker) heightMarker.style.bottom = (scaleHeight / 225 * 100) + '%';
+        const heightMarkerLabel = workspace.querySelector('[data-player-height-marker-label]');
+        if (heightMarkerLabel) heightMarkerLabel.textContent = cm + ' см';
         stage.style.setProperty('--figure-width', String(width));
         workspace.querySelector('[data-player-height-label]').textContent =
             'Рост: ' + (height?.value ? cm + ' см' : '185 см (пример)');
@@ -139,16 +144,112 @@ if (workspace) {
         return request(payload);
     };
     // The existing pipeline owns image storage, access checks, and billing.
-    async function showExisting() {
+    // The gallery shows only completed images from the authorized history endpoint.
+    const gallery = workspace.querySelector('[data-player-avatar-library]');
+    const avatarRail = gallery?.querySelector('[data-player-avatar-rail]');
+    const avatarCount = gallery?.querySelector('[data-player-avatar-count]');
+    const avatarEmpty = gallery?.querySelector('[data-player-avatar-empty]');
+    const avatarActions = gallery?.querySelector('[data-player-avatar-actions]');
+    const makePrimary = gallery?.querySelector('[data-player-avatar-make-primary]');
+    const primaryLabel = gallery?.querySelector('[data-player-avatar-primary-label]');
+    const avatarFeedback = gallery?.querySelector('[data-player-avatar-feedback]');
+    let availableAvatars = [];
+    let selectedAvatarId = null;
+    let primaryAvatarId = null;
+    let selectingPrimary = false;
+
+    const ownImageUrl = value => {
+        if (typeof value !== 'string' || !value) return null;
+        try {
+            const url = new URL(value, location.origin);
+            return url.origin === location.origin ? url.href : null;
+        } catch {
+            return null;
+        }
+    };
+    const avatarStatus = (status, error = false) => {
+        if (!avatarFeedback) return;
+        avatarFeedback.textContent = status;
+        avatarFeedback.classList.toggle('is-error', error);
+    };
+    const renderAvatars = () => {
+        if (!avatarRail) return;
+        avatarRail.replaceChildren();
+        if (avatarCount) avatarCount.textContent = String(availableAvatars.length);
+        if (avatarEmpty) avatarEmpty.hidden = availableAvatars.length > 0;
+        if (avatarActions) avatarActions.hidden = availableAvatars.length === 0;
+        if (makePrimary) {
+            makePrimary.hidden = !selectedAvatarId || selectedAvatarId === primaryAvatarId;
+            makePrimary.disabled = selectingPrimary;
+        }
+        if (primaryLabel) primaryLabel.hidden = !selectedAvatarId || selectedAvatarId !== primaryAvatarId;
+        availableAvatars.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'app-player-workspace__avatar-item';
+            button.setAttribute('role', 'listitem');
+            button.setAttribute('aria-label', 'Аватар ' + (index + 1) +
+                (item.generation_id === primaryAvatarId ? ', основной' : ''));
+            button.setAttribute('aria-pressed', String(item.generation_id === selectedAvatarId));
+            if (item.generation_id === selectedAvatarId) button.classList.add('is-selected');
+            const img = document.createElement('img');
+            img.src = item.image_url;
+            img.alt = '';
+            img.loading = 'lazy';
+            button.append(img);
+            if (item.generation_id === primaryAvatarId) {
+                const badge = document.createElement('span');
+                badge.className = 'app-player-workspace__avatar-item-badge';
+                badge.textContent = 'Основной';
+                button.append(badge);
+            }
+            button.addEventListener('click', () => {
+                selectedAvatarId = item.generation_id;
+                setImage(item.image_url);
+                avatarStatus('');
+                renderAvatars();
+            });
+            avatarRail.append(button);
+        });
+    };
+    const showExisting = async () => {
         if (!form) return;
         try {
             const history = await jsonMutation({mutation:'generation_history'});
-            const image = history.generations?.find(item => item.is_primary && item.image_url);
-            if (image?.image_url) setImage(image.image_url);
+            // Keep only own completed entries that expose authorized same-origin image URLs.
+            availableAvatars = (Array.isArray(history.generations) ? history.generations : [])
+                .filter(item => item.status === 'completed' && item.generation_id && ownImageUrl(item.image_url))
+                .map(item => ({generation_id:item.generation_id, image_url:ownImageUrl(item.image_url)}));
+            const availableIds = new Set(availableAvatars.map(item => item.generation_id));
+            primaryAvatarId = availableIds.has(history.primary_generation_id)
+                ? history.primary_generation_id : (availableAvatars[0]?.generation_id || null);
+            if (!availableIds.has(selectedAvatarId)) selectedAvatarId = primaryAvatarId;
+            const selected = availableAvatars.find(item => item.generation_id === selectedAvatarId);
+            if (selected) setImage(selected.image_url);
+            renderAvatars();
             const pending = history.generations?.find(item => ['pending','processing'].includes(item.status));
             if (pending) message('Генерация ранее запущена. Обнови страницу позже, чтобы увидеть результат.');
-        } catch { /* A missing generation must not block profile editing. */ }
-    }
+        } catch {
+            avatarStatus('Не удалось загрузить библиотеку аватаров.', true);
+        }
+    };
+    makePrimary?.addEventListener('click', async () => {
+        if (selectingPrimary || !selectedAvatarId || selectedAvatarId === primaryAvatarId) return;
+        selectingPrimary = true;
+        avatarStatus('Сохраняем основной аватар…');
+        renderAvatars();
+        try {
+            const result = await jsonMutation({mutation:'generation_primary', generation_id:selectedAvatarId});
+            if (result.generation_id !== selectedAvatarId) throw new Error('Не удалось подтвердить выбор.');
+            primaryAvatarId = selectedAvatarId;
+            avatarStatus('Основной аватар обновлён.');
+        } catch (error) {
+            avatarStatus(error.message || 'Не удалось выбрать основной аватар.', true);
+        } finally {
+            selectingPrimary = false;
+            renderAvatars();
+        }
+    });
 
     async function pollGeneration(statusUrl, id) {
         const target = new URL(statusUrl, location.origin);
@@ -164,6 +265,7 @@ if (workspace) {
                 try {
                     await jsonMutation({mutation:'generation_primary',generation_id:id});
                 } catch { /* Image remains visible even if primary selection fails. */ }
+                await showExisting();
                 message('Аватар готов и установлен на шкале роста.');
                 return;
             }
