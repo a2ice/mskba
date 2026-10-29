@@ -11,7 +11,13 @@ use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Models\ManagerSpecialization;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\DatePicker;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
+use App\Modules\Identity\Application\UseCases\AdminEditPersonalProfileHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertPersonalProfileHandler;
+use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -31,6 +37,79 @@ final class EditBackofficeUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('editPersonalProfile')
+                ->label('Изменить личные данные')
+                ->icon('heroicon-o-pencil-square')
+                ->visible(fn (): bool => auth('web')->user() !== null && BackofficeUserResource::canEdit($this->getRecord()))
+                ->modalHeading('Редактирование персональных данных')
+                ->modalDescription('Это действие изменяет личные данные напрямую, в том числе подтверждённые. Укажи основание; прежнее состояние сохранится в журнале аудита.')
+                ->modalSubmitActionLabel('Подтвердить изменение')
+                ->requiresConfirmation()
+                ->fillForm(function (): array {
+                    $profile = $this->getRecord()->profile;
+                    return [
+                        'first_name' => $profile?->first_name,
+                        'last_name' => $profile?->last_name,
+                        'middle_name' => $profile?->middle_name,
+                        'birth_date' => $profile?->birth_date?->toDateString(),
+                        'gender' => $profile?->gender?->value,
+                    ];
+                })
+                ->schema([
+                    TextInput::make('first_name')->label('Имя')->maxLength(100),
+                    TextInput::make('last_name')->label('Фамилия')->maxLength(100),
+                    TextInput::make('middle_name')->label('Отчество')->maxLength(100),
+                    DatePicker::make('birth_date')->label('Дата рождения')->maxDate(now()),
+                    Select::make('gender')->label('Пол')->options([
+                        UserGenderEnum::MALE->value => UserGenderEnum::MALE->label(),
+                        UserGenderEnum::FEMALE->value => UserGenderEnum::FEMALE->label(),
+                    ])->placeholder('Не установлен'),
+                    Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    $values = [];
+                    foreach (AdminEditPersonalProfileHandler::EDITABLE as $key) {
+                        $values[$key] = ($data[$key] ?? null) === '' ? null : ($data[$key] ?? null);
+                    }
+                    app(AdminEditPersonalProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), $values, (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('revertPersonalProfile')
+                ->label('Откатить изменение личных данных')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => auth('web')->user() !== null
+                    && BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_personal_profile_changed')->exists())
+                ->modalHeading('Откат изменения персональных данных')
+                ->modalDescription('Откат будет отклонён, если изменённые поля успели поменяться после выбранной ревизии. Журнал изменений сохраняется.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_personal_profile_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertPersonalProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
             Action::make('changeSystemRole')
                 ->label('Изменить системную роль')
                 ->icon('heroicon-o-user-circle')
