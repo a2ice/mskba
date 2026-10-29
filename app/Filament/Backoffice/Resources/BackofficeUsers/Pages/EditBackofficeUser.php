@@ -87,6 +87,7 @@ final class EditBackofficeUser extends EditRecord
         return [
             Action::make('saveGeneralInline')
                 ->label('Сохранить общие данные')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
                     && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
                 ->modalHeading('Подтвердить изменение статуса')
@@ -120,6 +121,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('savePersonalInline')
                 ->label('Сохранить профиль')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
                 ->modalHeading('Подтвердить изменение личных данных')
                 ->modalSubmitActionLabel('Подтвердить')
@@ -141,6 +143,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('savePermissionsInline')
                 ->label('Сохранить системные разрешения')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
                 ->modalHeading('Подтвердить изменение системных прав')
                 ->modalDescription('Индивидуальное разрешение или запрет перекрывает обычные предустановки роли. Ограничения иерархии сохраняются.')
@@ -162,6 +165,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('addParticipationRole')
                 ->label('Добавить роль')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
                 ->modalHeading('Добавить роль участия')
                 ->modalDescription('В списке только роли, которые ещё не назначены, включая отключённые.')
@@ -192,6 +196,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('toggleParticipationRole')
                 ->label('Изменить состояние роли')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
                 ->modalHeading('Подтвердить отключение или восстановление роли')
                 ->modalDescription('Данные роли и профиль сохраняются. Операция будет зафиксирована в истории.')
@@ -212,6 +217,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('saveParticipationRoleInline')
                 ->label('Сохранить роль')
+                ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
                 ->modalHeading('Подтвердить изменения роли')
                 ->modalSubmitActionLabel('Подтвердить')
