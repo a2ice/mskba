@@ -9,7 +9,8 @@ use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Immutable role/specialization grants and a hard system-role permission ceiling.
+ * Role/specialization permission defaults and a hard system-role permission ceiling.
+ * The effective checker allows audited individual overrides of ordinary defaults.
  * Missing tables during a rolling deployment retain legacy enum defaults.
  */
 final class StaffPermissionProfiles
