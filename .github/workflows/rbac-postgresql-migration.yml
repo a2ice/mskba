@@ -3,6 +3,19 @@ name: RBAC PostgreSQL Migration
 on:
   pull_request:
     branches: [dev]
+    # This matrix tests a specific RBAC schema-upgrade contract; UI/CSS,
+    # images and unrelated frontend changes cannot affect that migration.
+    paths:
+      - 'database/migrations/**'
+      - 'app/Modules/Identity/Domain/Models/**'
+      - 'app/Modules/Identity/Domain/Enums/**'
+      - 'app/Modules/Identity/Application/**'
+      - 'app/Modules/Identity/Infrastructure/**'
+      - 'tests/Integration/StaffRbacPostgresUpgrade.php'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/rbac-postgresql-migration.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read

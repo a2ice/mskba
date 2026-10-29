@@ -64,7 +64,46 @@ jobs:
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           fi
 
+      # Only docs, MSKBA App CSS and known static avatar WebP files may skip backend suites.
+      # Blade/PHP/JS, migrations, security/config/workflow files always run the full suite.
+      - name: Classify changed paths and check UI guideline trace
+        id: change_scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          full_suite=true
+          if [ -n "${BASE_SHA:-}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git diff --name-only "${BASE_SHA}" HEAD > "$RUNNER_TEMP/changed-files.txt"
+            cat "$RUNNER_TEMP/changed-files.txt"
+            safe_only=true
+            ui_changed=false
+            ui_docs_changed=false
+            while IFS= read -r file; do
+              case "$file" in
+                docs/*|resources/themes/mskba_app/css/*.css|public/images/blank/avatar/body-male.webp|public/images/blank/avatar/body-female.webp) ;;
+                *) safe_only=false ;;
+              esac
+              case "$file" in
+                resources/themes/mskba_app/views/*.blade.php|resources/themes/mskba_app/css/*.css|resources/themes/mskba_app/js/*.js) ui_changed=true ;;
+                docs/mskba_app/tasks/*/description.md|docs/specification/ui-design-system.md) ui_docs_changed=true ;;
+              esac
+            done < "$RUNNER_TEMP/changed-files.txt"
+            if [ "$ui_changed" = true ] && [ "$ui_docs_changed" != true ]; then
+              echo '::error::UI changes require task description or design-system update in the same change.'
+              exit 1
+            fi
+            if [ "$safe_only" = true ] && [ -s "$RUNNER_TEMP/changed-files.txt" ]; then
+              full_suite=false
+              echo 'Safe CSS/static/docs change: skip PHP and DB; Vite build and deploy still run.'
+            fi
+          else
+            echo 'Unknown baseline: full suite required.'
+          fi
+          echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
       - name: Setup PHP
+        if: steps.change_scope.outputs.full_suite == 'true'
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -79,6 +118,7 @@ jobs:
           cache: npm
 
       - name: Cache Composer packages
+        if: steps.change_scope.outputs.full_suite == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
@@ -87,10 +127,11 @@ jobs:
             composer-${{ runner.os }}-
 
       - name: Install PHP dependencies
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Archive tested PHP dependencies (Composer change only)
-        if: steps.composer_change.outputs.changed == 'true'
+        if: steps.change_scope.outputs.full_suite == 'true' && steps.composer_change.outputs.changed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -100,7 +141,7 @@ jobs:
           cp composer.lock verified-php-dependencies/composer.lock
 
       - name: Upload tested PHP dependencies
-        if: steps.composer_change.outputs.changed == 'true'
+        if: steps.change_scope.outputs.full_suite == 'true' && steps.composer_change.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dev-verified-php-dependencies
@@ -109,11 +150,13 @@ jobs:
           retention-days: 1
 
       - name: Prepare application
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: |
           cp .env.example .env
           php artisan key:generate
 
       - name: Validate production compose and Gotenberg release guard
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: |
           docker compose -f compose.yaml -f compose.prod.yaml config --quiet
           docker compose -f compose.yaml -f compose.prod.yaml config --format json | python3 -c '
@@ -128,6 +171,7 @@ jobs:
           '
 
       - name: Validate isolated dev compose
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: |
           DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
           services="$(DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --services)"
@@ -138,15 +182,18 @@ jobs:
           fi
 
       - name: Run PHP tests
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: php artisan test
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
 
       - name: Validate dynamic Page Builder venues-map JavaScript syntax
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: node --check resources/page-builder/venues-map.js
 
       - name: Build frontend
@@ -328,6 +375,29 @@ jobs:
               mv vendor "vendor.rollback.$VERIFIED_SHA"
               mv "vendor.prepared.$VERIFIED_SHA/vendor" vendor
               rmdir "vendor.prepared.$VERIFIED_SHA"
+            fi
+            # A safe-only cumulative server diff needs no database migrations,
+            # seeders or container recreation. Re-classify from the actual
+            # installed revision (not just the latest GitHub push), fail closed.
+            STATIC_ONLY=1
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                docs/*|resources/themes/mskba_app/css/*.css|public/images/blank/avatar/body-male.webp|public/images/blank/avatar/body-female.webp) ;;
+                *) STATIC_ONLY=0 ;;
+              esac
+            done < <(git diff --name-only "$PREVIOUS_SHA" "$VERIFIED_SHA")
+            if [ "$STATIC_ONLY" -eq 1 ]; then
+              echo 'Safe static-only deploy: publish verified assets without PHP/DB restart'
+              mkdir -p public/build
+              tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
+              cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
+              mv -f public/build/manifest.json.pending public/build/manifest.json
+              curl --fail --silent --show-error --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ >/dev/null
+              rm -rf -- "$ASSET_STAGE"
+              rm -f "$MANIFEST_BACKUP"
+              ROLLBACK_ARMED=0
+              echo 'Safe-only static deployment completed; no migrations or restarts'
+              exit 0
             fi
             $COMPOSE config --quiet
             test -f public/build/manifest.json

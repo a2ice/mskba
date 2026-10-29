@@ -28,7 +28,7 @@ test('avatar generation requires price confirmation and uses existing paid backe
 
 test('avatar starts with scaled default character and never runs generation on input alone',()=>{
     assert.match(page,/data-player-stage/);
-    assert.match(page,/body-'.\$gender.'.png/);
+    assert.match(page,/body-'.\$gender.'.webp/);
     assert.match(client,/function updateFigure\(\)/);
     assert.match(client,/--figure-height/);
     assert.match(client,/--figure-width/);

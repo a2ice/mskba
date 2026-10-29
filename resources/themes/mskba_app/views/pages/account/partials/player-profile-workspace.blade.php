@@ -55,7 +55,7 @@
         <div class="app-player-workspace__physical">
             <aside class="app-player-workspace__preview" aria-label="Предпросмотр персонажа" data-player-preview
                 data-gender="{{ $gender }}"
-                data-default-src="{{ asset('images/blank/avatar/body-'.$gender.'.png') }}"
+                data-default-src="{{ asset('images/blank/avatar/body-'.$gender.'.webp') }}"
                 data-history-url="{{ route('account.player-profile.update') }}">
                 <div class="app-player-workspace__stage" data-player-stage
                     role="img" aria-label="Изображение персонажа рядом со шкалой роста">
@@ -71,7 +71,7 @@
                         </div>
                     </div>
                     <div class="app-player-workspace__figure">
-                        <img src="{{ asset('images/blank/avatar/body-'.$gender.'.png') }}"
+                        <img src="{{ asset('images/blank/avatar/body-'.$gender.'.webp') }}"
                             alt="Внешний вид баскетболиста" data-player-figure>
                     </div>
                     <div class="app-player-workspace__floor" aria-hidden="true"></div>
