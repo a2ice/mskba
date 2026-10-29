@@ -63,6 +63,23 @@ final class UserParticipationRoleConsoleTest extends TestCase
         $this->assertNotNull($revision->fresh());
     }
 
+    public function test_inactive_role_can_be_reactivated_without_bypassing_permission_checks(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $role = $this->role($target);
+        $role->update(['status' => UserParticipationRoleStatusEnum::INACTIVE]);
+        $this->actingAs($super);
+
+        $revision = app(AdminEditParticipationRoleHandler::class)->handle(
+            $super, $target, $role->id, 'active', 'Проверено администратором',
+            'Восстановление ранее отключённой роли тренера',
+        );
+
+        $this->assertSame(UserParticipationRoleStatusEnum::ACTIVE, $role->fresh()->status);
+        $this->assertSame('inactive', $revision->old_values['status']);
+    }
+
     public function test_admin_without_personal_edit_permission_is_denied_coach_role_mutation(): void
     {
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
