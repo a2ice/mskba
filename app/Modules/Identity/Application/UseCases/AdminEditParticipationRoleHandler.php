@@ -33,7 +33,7 @@ final class AdminEditParticipationRoleHandler
         return DB::transaction(function () use ($actor, $target, $roleId, $status, $comment, $reason): AuditLog {
             $target = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
             app(AdminEditPersonalProfileHandler::class)->authorize($actor, $target);
-            $role = $target->participationRoles()->whereKey($roleId)->lockForUpdate()->firstOrFail();
+            $role = $target->participationRoles(false)->whereKey($roleId)->lockForUpdate()->firstOrFail();
             $before = ['status' => $role->getRawOriginal('status'), 'comment' => $role->getRawOriginal('comment')];
             $role->forceFill(['status' => $status, 'comment' => $comment])->save();
             $role->refresh();
