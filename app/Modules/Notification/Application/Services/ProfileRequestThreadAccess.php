@@ -97,7 +97,7 @@ final class ProfileRequestThreadAccess
         return null;
     }
 
-    public function initializeNewSuperadminCursors(): void
+    public function initializeNewReviewerCursors(): void
     {
         // Before inserting the next request, initialize cursors for new
         // confirmed admins and superadmins. Never expose pre-role history;
