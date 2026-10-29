@@ -84,7 +84,30 @@ final class PlayerCharacterAppearanceOptions
     public const SHOES = [
         'white',
         'black',
+        'gray',
+        'blue',
+        'red',
+        'green',
+        'orange',
+        'yellow',
+        'multicolor',
     ];
+
+    /** UI labels share the same keys as the validated character options. */
+    public static function shoeLabels(): array
+    {
+        return [
+            'white' => 'Белые',
+            'black' => 'Чёрные',
+            'gray' => 'Серые',
+            'blue' => 'Синие',
+            'red' => 'Красные',
+            'green' => 'Зелёные',
+            'orange' => 'Оранжевые',
+            'yellow' => 'Жёлтые',
+            'multicolor' => 'Разноцветные',
+        ];
+    }
 
     public const ATTRIBUTES = [
         'elbow_left',

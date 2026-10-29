@@ -10,13 +10,12 @@
     $savedWeight = old('weight_kg', $profile?->weight_kg);
     $heightValue = $savedHeight === null || $savedHeight === '' ? 185 : max(150, min(220, (int) $savedHeight));
     $weightValue = $savedWeight === null || $savedWeight === '' ? 80 : max(40, min(140, (int) $savedWeight));
-    $slimnessLabels = ['low' => 'Высокая', 'average' => 'Средняя', 'elevated' => 'Низкая', 'pronounced' => 'Минимальная'];
     $selectedPositions = old('positions', $profile?->positions?->map(fn($entry) => $entry->position->value)->all() ?? []);
     $playerSelf = $profile?->selfAssessment;
     $objective = $user->playerObjectiveAssessment;
     $chestOptions = ['small' => 'Небольшой', 'medium' => 'Средний', 'large' => 'Большой', 'full' => 'Выраженный'];
     $uniformOptions = ['mskba_home' => 'MSKBA домашняя', 'mskba_light' => 'MSKBA светлая', 'street_black' => 'Street black', 'city_night' => 'City night'];
-    $shoesOptions = ['white' => 'Белые', 'black' => 'Чёрные'];
+    $shoesOptions = Appearance::shoeLabels();
     $equipmentOptions = [
         'elbow_left' => 'Налокотник слева', 'elbow_right' => 'Налокотник справа',
         'wristband_left' => 'Напульсник слева', 'wristband_right' => 'Напульсник справа',
@@ -96,19 +95,8 @@
                         <label class="app-player-workspace__field">Телосложение
                             <span class="select-control">
                                 <select name="body_type" data-physical-body-type>
-                                <option value="">Не указано</option>
                                 @foreach($playerBodyTypes as $bodyType)
-                                    <option value="{{ $bodyType->value }}" @selected(old('body_type',$profile?->body_type?->value)===$bodyType->value)>{{ $bodyType->label() }}</option>
-                                @endforeach
-                            </select>
-                                @include('account.partials.native-select-chevron')
-                            </span>
-                        </label>
-                        <label class="app-player-workspace__field">Стройность
-                            <span class="select-control">
-                                <select name="character[adiposity]" data-physical-adiposity>
-                                @foreach(Appearance::ADIPOSITY_LEVELS as $level)
-                                    <option value="{{ $level }}" @selected(old('character.adiposity',$character['adiposity'] ?? 'average')===$level)>{{ $slimnessLabels[$level] }}</option>
+                                    <option value="{{ $bodyType->value }}" @selected(old('body_type',$profile?->body_type?->value ?? 'normal')===$bodyType->value)>{{ $bodyType->label() }}</option>
                                 @endforeach
                             </select>
                                 @include('account.partials.native-select-chevron')
@@ -141,7 +129,7 @@
                                     @include('account.partials.native-select-chevron')
                                 </span>
                             </label>
-                            <label class="app-player-workspace__field">Обувь
+                            <label class="app-player-workspace__field">Кроссовки
                                 <span class="select-control">
                                     <select name="character[shoes]">
                                     @foreach($shoesOptions as $value=>$label)
@@ -163,7 +151,7 @@
                         </div>
                     </fieldset>
                     <div class="app-player-workspace__actions">
-                        <button class="app-player-workspace__primary" type="submit">Сохранить физические данные</button>
+                        <button class="app-player-workspace__primary" type="submit">Применить</button>
                     </div>
                 </form>
                 <section class="app-player-workspace__generation" aria-labelledby="app-player-generation-title">

@@ -181,7 +181,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'weight_kg' => $this->nullableInteger('weight_kg'),
             'body_type' => $this->filled('body_type')
                 ? PlayerBodyTypeEnum::from($this->string('body_type')->toString())
-                : null,
+                : ($this->section() === 'physical' ? PlayerBodyTypeEnum::NORMAL : null),
             'experience_started_year' => $this->nullableInteger('experience_started_year'),
             'comment' => $this->filled('comment') ? trim($this->string('comment')->toString()) : null,
         ];

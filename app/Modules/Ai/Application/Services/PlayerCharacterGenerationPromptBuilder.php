@@ -16,11 +16,15 @@ final class PlayerCharacterGenerationPromptBuilder
             'height_cm' => $payload['height_cm'] ?? null,
             'weight_kg' => $payload['weight_kg'] ?? null,
             'body_type' => $payload['body_type'] ?? null,
-            'visual_body_fat_level' => match ($appearance['adiposity'] ?? 'average') {
-                'low' => 'low body-fat appearance',
-                'elevated' => 'visibly elevated body-fat appearance',
-                'pronounced' => 'pronounced body-fat appearance',
-                default => 'average body-fat appearance',
+            // No hidden body-fat setting: physiology is described only through
+            // the visible body type and the player's recorded height and weight.
+            'body_type_description' => match ($payload['body_type'] ?? 'normal') {
+                'slim' => 'slim build',
+                'athletic' => 'athletic build',
+                'muscular' => 'muscular build',
+                'stocky' => 'stocky build',
+                'large' => 'fuller build',
+                default => 'normal build',
             },
             'shoes' => $appearance['shoes'] ?? 'white',
             'attributes' => array_values((array) ($appearance['attributes'] ?? [])),
@@ -74,8 +78,8 @@ Composition - STRICT:
 - Camera at approximately waist/chest height, natural perspective, no dramatic foreshortening.
 - Realistic anatomy and proportions appropriate for the requested height, weight, body type, and gender.
 - Basketball-player physique, not a bodybuilder caricature.
-- Treat visual_body_fat_level as a neutral visual appearance instruction only; do not infer diagnoses or stigmatize body size.
-- Respect both body_type (frame/muscle structure) and visual_body_fat_level (fat distribution) without exaggeration.
+- Respect the selected body_type and requested body proportions without exaggeration. Do not infer diagnoses or stigmatize body size.
+- Use height and weight for realistic body proportions; do not infer or reuse any hidden visual body-fat control.
 
 Clothing:
 - Modern basketball jersey and matching shorts.
