@@ -17,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
@@ -264,6 +265,13 @@ final class BackofficeUserResource extends Resource
                                                         CheckboxList::make('locked_backoffice_permissions')->label('Наследуемые или недоступные (просмотр)')
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
+                                                    ]),
+                                                Section::make('Подтверждение изменений прав')
+                                                    ->description('Все индивидуальные назначения сохраняются отдельной операцией. Основание попадёт в журнал; перед записью появится подтверждение.')
+                                                    ->schema([
+                                                        Textarea::make('change_reason')->label('Основание изменения прав')
+                                                            ->required()->minLength(10)->maxLength(500)
+                                                            ->dehydrated(),
                                                     ]),
                                             ]),
                                         Tab::make('Контекстные')
