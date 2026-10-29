@@ -37,14 +37,14 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         $checker = app(UserOperationalPermissionChecker::class);
         $this->assertTrue($checker->allows($target, Permission::CREATE_TEAM));
 
-        $global->sync($super, $target, [], []);
+        $global->sync($super, $target, [], [], true);
         $this->assertFalse($checker->allows($target->fresh(), Permission::CREATE_TEAM));
         $this->assertDatabaseHas('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => Permission::CREATE_TEAM->value,
             'is_allowed' => false,
         ]);
-        $global->sync($super, $target, [Permission::CREATE_TEAM->value], []);
+        $global->sync($super, $target, [Permission::CREATE_TEAM->value], [], true);
         $this->assertTrue($checker->allows($target->fresh(), Permission::CREATE_TEAM));
     }
 
