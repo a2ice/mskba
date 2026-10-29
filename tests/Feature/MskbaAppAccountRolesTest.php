@@ -111,7 +111,8 @@ final class MskbaAppAccountRolesTest extends TestCase
 
         $this->get(route('account.participation-role', 'player'))
             ->assertOk()
-            ->assertSee('Роль: Игрок')
+            ->assertSee('<h1 id="account-section-title">Игрок</h1>', false)
+            ->assertDontSee('Роль: Игрок')
             ->assertSee('Физические данные')
             ->assertSee('Игровые характеристики')
             ->assertSee('data-player-preview', false)
