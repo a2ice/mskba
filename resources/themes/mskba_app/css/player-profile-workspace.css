@@ -118,7 +118,7 @@
 .app-player-workspace__personal-dialog{width:min(820px,calc(100vw - 24px))}
 .app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:20px 24px}
 .app-player-workspace__personal-dialog .app-profile__panel{box-shadow:none;border:0;padding:0;background:transparent}
-.app-player-workspace__personal-dialog .app-profile__panel>h2{display:none}
+.app-player-workspace__personal-dialog #app-profile-personal-heading{display:none}
 @media(max-width:700px){
   .app-player-workspace__personal-dialog .app-profile__field-grid{grid-template-columns:minmax(0,1fr)}
   .app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:16px}
