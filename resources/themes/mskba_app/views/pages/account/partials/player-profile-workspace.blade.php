@@ -87,9 +87,9 @@
                         aria-haspopup="dialog" aria-controls="app-player-gender-explanation">{{ $genderDisplay }}</button>
                 </p>
                 <section class="app-player-workspace__avatar-library" aria-label="Мои сгенерированные аватары" data-player-avatar-library>
-                    <h3 class="app-player-workspace__avatar-heading">Аватаров: <span data-player-avatar-count>0</span></h3>
+                    <h3 class="app-player-workspace__avatar-heading" data-player-avatar-heading hidden>Аватаров: <span data-player-avatar-count>0</span></h3>
                     <div class="app-player-workspace__avatar-rail mskba-scroll"
-                        role="group" aria-label="Выбор аватара для предпросмотра" data-player-avatar-rail></div>
+                        role="group" aria-label="Выбор аватара для предпросмотра" data-player-avatar-rail hidden></div>
                     <p class="app-player-workspace__avatar-empty" data-player-avatar-empty>Сгенерированных аватаров пока нет.</p>
                     <div class="app-player-workspace__avatar-actions" data-player-avatar-actions hidden>
                         <button type="button" class="app-player-workspace__secondary" data-player-avatar-make-primary hidden>Сделать основным</button>
