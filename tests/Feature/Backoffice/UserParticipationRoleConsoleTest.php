@@ -5,6 +5,7 @@ namespace Tests\Feature\Backoffice;
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -33,6 +34,7 @@ final class UserParticipationRoleConsoleTest extends TestCase
             'role' => UserParticipationRoleEnum::COACH,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
             'assigned_at' => now(),
+            'assigner' => UserParticipationRoleAssignerEnum::FLOW,
             'comment' => 'До проверки',
         ]);
     }
