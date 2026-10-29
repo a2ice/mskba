@@ -141,6 +141,62 @@ final class EditBackofficeUser extends EditRecord
                     );
                     $this->getRecord()->refresh();
                 }),
+            Action::make('saveSystemRoleInline')
+                ->label('Сохранить системную роль')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible(fn (): bool => auth('web')->user()?->can('manage-user-system-role', $this->getRecord()) ?? false)
+                ->modalHeading('Подтвердить системную роль')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user()?->canonical();
+                    $target = $this->getRecord();
+                    abort_unless($actor !== null && $actor->can('manage-user-system-role', $target), 403);
+                    $state = $this->form->getState();
+                    $role = UserSystemRoleEnum::tryFrom((string) ($state['requested_system_role'] ?? ''));
+                    if ($role === null || in_array($role, [
+                        UserSystemRoleEnum::SUPERADMIN, UserSystemRoleEnum::SYSTEM,
+                        UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR,
+                    ], true) || $role->numericValue() >= $actor->system_role->numericValue()) {
+                        throw ValidationException::withMessages(['requested_system_role' => 'Недопустимая системная роль.']);
+                    }
+                    if ($role === $target->system_role) {
+                        throw ValidationException::withMessages(['requested_system_role' => 'Системная роль не изменилась.']);
+                    }
+                    app(AdminChangeUserSystemRoleWithAuditHandler::class)->handle(
+                        $actor, $target, $role, (string) $data['reason'],
+                    );
+                    $target->refresh();
+                    // Role changes also change the set of permitted grants. Refresh the
+                    // editor to avoid accidental submission of old permission checkboxes.
+                    $this->fillForm();
+                }),
+            Action::make('saveSpecializationsInline')
+                ->label('Сохранить специализации')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible(fn (): bool => auth('web')->user() !== null
+                    && app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $this->getRecord()))
+                ->modalHeading('Подтвердить специализации менеджера')
+                ->modalSubmitActionLabel('Подтвердить')
+                ->requiresConfirmation()
+                ->schema([Textarea::make('reason')->label('Основание изменения')->required()->minLength(10)->maxLength(500)])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null
+                        && app(StaffSpecializationManager::class)->mayManage($actor, $this->getRecord()), 403);
+                    $state = $this->form->getState();
+                    $ids = $state['manager_specialization_ids'] ?? [];
+                    if (! is_array($ids)) {
+                        throw ValidationException::withMessages(['manager_specialization_ids' => 'Некорректный список специализаций.']);
+                    }
+                    app(AdminUpdateStaffSpecializationsWithAuditHandler::class)->handle(
+                        $actor, $this->getRecord(), $ids,
+                        (string) ($state['manager_staff_title'] ?? ''), (string) $data['reason'],
+                    );
+                    $this->getRecord()->refresh();
+                    $this->fillForm();
+                }),
             Action::make('savePermissionsInline')
                 ->label('Сохранить системные разрешения')
                 ->extraAttributes(['style' => 'display:none'])
@@ -524,6 +580,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('changeSystemRole')
                 ->label('Изменить системную роль')
+                ->extraAttributes(['style' => 'display:none'])
                 ->icon('heroicon-o-user-circle')
                 ->visible(fn (): bool => auth('web')->user()?->can(
                     'manage-user-system-role', $this->getRecord(),
@@ -625,6 +682,7 @@ final class EditBackofficeUser extends EditRecord
                 }),
             Action::make('assignSpecializations')
                 ->label('Назначить специализации')
+                ->extraAttributes(['style' => 'display:none'])
                 ->icon('heroicon-o-identification')
                 ->visible(fn (): bool => auth('web')->user() !== null
                     && app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $this->getRecord()))
@@ -674,6 +732,10 @@ final class EditBackofficeUser extends EditRecord
             'privileged_permissions' => $global->privilegedPermissions(),
             'backoffice_permissions' => Permission::backofficeCases(),
         ];
+        $data['requested_system_role'] = $target->system_role->value;
+        $data['manager_staff_title'] = $target->staff_title;
+        $data['manager_specialization_ids'] = $target->managerSpecializations()
+            ->pluck('manager_specializations.id')->map(fn ($id): string => (string) $id)->all();
         $data['account_username'] = $target->username;
         $data['account_status'] = $target->status->value;
         $profile = $target->profile;
