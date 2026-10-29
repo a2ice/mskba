@@ -18,6 +18,8 @@ use App\Modules\Identity\Application\UseCases\AdminEditPersonalProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPersonalProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminEditPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserPermissionSnapshotHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -283,6 +285,38 @@ final class EditBackofficeUser extends EditRecord
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
+            Action::make('revertUserPermissions')
+                ->label('Откатить изменение системных прав')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_user_permissions_changed')->exists())
+                ->modalHeading('Откат системных разрешений')
+                ->modalDescription('Откат допустим только при неизменной системной роли и отсутствии более поздних изменений действующих прав.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия прав')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_user_permissions_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertUserPermissionSnapshotHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
             Action::make('changeSystemRole')
                 ->label('Изменить системную роль')
                 ->icon('heroicon-o-user-circle')
@@ -412,48 +446,30 @@ final class EditBackofficeUser extends EditRecord
         return $data;
     }
 
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->requiresConfirmation()
+            ->modalHeading('Подтвердить изменение прав')
+            ->modalDescription('Назначения изменятся только после подтверждения. Основание и состояние до/после будут записаны в аудит.');
+    }
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         /** @var User $record */
         $actor = auth('web')->user()?->canonical();
-        $global = app(GlobalOperationalPermissionManager::class);
-        abort_unless($actor && $global->mayManage($actor, $record), 403);
+        abort_unless($actor !== null && BackofficeUserResource::canEdit($record), 403);
 
-        $isSuper = $actor->system_role === UserSystemRoleEnum::SUPERADMIN;
-        $creation = $data['creation_permissions'] ?? [];
-        if (! is_array($creation)) {
-            throw ValidationException::withMessages([
-                'data.creation_permissions' => 'Неверный список разрешений.',
-            ]);
-        }
-
-        $privileged = null;
-        $backoffice = null;
-        if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
-            $privileged = $data['privileged_permissions'] ?? [];
-            $backoffice = $data['backoffice_permissions'] ?? [];
-            if (! is_array($privileged) || ! is_array($backoffice)) {
-                throw ValidationException::withMessages([
-                    'data.privileged_permissions' => 'Неверный список разрешений.',
-                ]);
-            }
-            $expected = array_map(static fn (Permission $p): string => $p->value, Permission::backofficeCases());
-            if (array_filter($backoffice, 'is_string') !== $backoffice
-                || count($backoffice) !== count(array_unique($backoffice))
-                || array_diff($backoffice, $expected) !== []) {
-                throw ValidationException::withMessages([
-                    'data.backoffice_permissions' => 'Некорректный набор разрешений Filament.',
-                ]);
-            }
-        }
-        // Do not trust hidden fields from a forged admin Livewire request.
-        // Neither user status/system role nor unrelated permissions are writable.
-        DB::transaction(function () use ($actor, $record, $global, $creation, $privileged, $backoffice, $isSuper): void {
-            $global->sync($actor, $record, array_values($creation), $privileged);
-            if ($actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
-                app(BackofficePermissionManager::class)->sync($actor, $record, array_values($backoffice));
-            }
-        });
+        // Never accept hidden/forged fields as user or role attributes.
+        // The use case performs a second permission check under a transaction.
+        app(AdminUpdateUserPermissionSnapshotHandler::class)->handle(
+            $actor,
+            $record,
+            (array) ($data['creation_permissions'] ?? []),
+            (array) ($data['privileged_permissions'] ?? []),
+            (array) ($data['backoffice_permissions'] ?? []),
+            (string) ($data['change_reason'] ?? ''),
+        );
 
         return $record->refresh();
     }
