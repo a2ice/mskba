@@ -172,7 +172,7 @@
 }
 .app-player-workspace__scale .app-player-workspace__height-marker span{
     position:absolute;left:0;right:auto;bottom:6px;top:auto;
-    display:inline-block;width:max-content;max-width:calc(100% - 8px);
+    display:inline-block;width:max-content;/*max-width:calc(100% - 8px);*/
     padding:3px 7px;border-radius:5px;white-space:nowrap;
     opacity:0;visibility:hidden;pointer-events:none;
     transform:translateY(3px);
