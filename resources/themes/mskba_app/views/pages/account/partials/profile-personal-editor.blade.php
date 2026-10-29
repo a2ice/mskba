@@ -18,6 +18,7 @@
                 ];
             @endphp
             <form method="POST" action="{{ route('account.profile.update') }}"
+                  id="{{ ($profilePersonalInDialog ?? false) ? 'app-player-personal-form' : 'app-profile-personal-form' }}"
                   class="app-profile__personal-form" data-profile-personal-form
                   data-save-url="{{ route('account.profile.update') }}">
                 @csrf
@@ -71,13 +72,14 @@
                         </div>
                     @endforeach
                 </div>
-                <div class="app-profile__form-actions">
-                    <button type="submit" class="button primary" data-inline-profile-save-all disabled>Применить</button>
-                    @if ($profileConfirmed && $activeProfileChangeRequest === null)
-                        <button type="button" class="button secondary" data-profile-change-request-open>Запросить изменение подтверждённых данных</button>
-                    @endif
+                @unless ($profilePersonalInDialog ?? false)
+                    <div class="app-profile__form-actions">
+                        @include('theme::pages.account.partials.profile-personal-actions')
+                        <p class="app-profile__save-feedback" data-inline-profile-feedback role="status" aria-live="polite"></p>
+                    </div>
+                @else
                     <p class="app-profile__save-feedback" data-inline-profile-feedback role="status" aria-live="polite"></p>
-                </div>
+                @endunless
             </form>
         </section>
 
