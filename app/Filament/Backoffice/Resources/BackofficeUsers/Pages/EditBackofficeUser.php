@@ -592,7 +592,6 @@ final class EditBackofficeUser extends EditRecord
                 $effective = $checker->allows($target, $permission);
                 $editable = $actor !== null
                     && $profiles->allowedForRole($target->system_role, $permission)
-                    && ! $profiles->inherited($target, $permission)
                     && ($actor->system_role === UserSystemRoleEnum::SUPERADMIN
                         || $checker->allows($actor, $permission));
                 if ($effective) {
