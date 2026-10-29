@@ -117,7 +117,7 @@
                     </div>
 
                     <fieldset class="app-player-workspace__equipment">
-                        <legend>Одежда и обувь</legend>
+                        <legend>Одежда и кроссовки</legend>
                         <div class="app-player-workspace__fields">
                             <label class="app-player-workspace__field">Комплект формы
                                 <span class="select-control">
