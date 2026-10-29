@@ -102,6 +102,38 @@ final class AccountPlayerProfileTest extends TestCase
         );
     }
 
+    public function test_player_can_apply_physical_form_with_normal_body_type_and_character_options(): void
+    {
+        $user = $this->player();
+
+        // Match the actual MSKBA App physical form, including its 'section'.
+        // This must work on legacy player profiles that never stored body_type.
+        $this->actingAs($user)
+            ->patch(route('account.player-profile.update'), [
+                'section' => 'physical',
+                'height_cm' => 185,
+                'weight_kg' => 80,
+                'body_type' => 'normal',
+                'character' => [
+                    'uniform_kit' => 'mskba_home',
+                    'shoes' => 'blue',
+                    'attributes' => ['wristband_left'],
+                ],
+            ])
+            ->assertRedirect(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('player_profiles', [
+            'user_id' => $user->id,
+            'height_cm' => 185,
+            'weight_kg' => 80,
+            'body_type' => 'normal',
+        ]);
+        $character = $user->fresh()->playerProfile->extra['character'];
+        $this->assertSame('blue', $character['shoes']);
+        $this->assertSame(['wristband_left'], $character['attributes']);
+    }
+
     public function test_player_profile_shows_only_calculated_objective_metrics(): void
     {
         $user = $this->player();
