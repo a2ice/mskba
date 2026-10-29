@@ -37,7 +37,7 @@ final class AdminRevertParticipationRoleHandler
                 throw ValidationException::withMessages(['revision' => 'Недопустимая ревизия роли участия.']);
             }
 
-            $role = $target->participationRoles()
+            $role = $target->participationRoles(false)
                 ->whereKey((int) ($revision->metadata['participation_role_id'] ?? 0))
                 ->lockForUpdate()->firstOrFail();
             if ($role->role->value !== ($revision->metadata['participation_role'] ?? null)) {
