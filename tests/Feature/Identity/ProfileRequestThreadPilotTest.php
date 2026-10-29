@@ -290,7 +290,7 @@ final class ProfileRequestThreadPilotTest extends TestCase
         $applicant = $this->account();
         // The domain service initializes a default grant before real submissions;
         // this fixture inserts test records directly, so initialize explicitly.
-        app(ProfileRequestThreadAccess::class)->initializeNewSuperadminCursors();
+        app(ProfileRequestThreadAccess::class)->initializeNewReviewerCursors();
         $original = ['first_name' => 'Мария', 'last_name' => 'Иванова', 'birth_date' => '2000-05-20', 'gender' => 'female'];
         for ($i = 0; $i < 24; $i++) {
             $request = ProfileChangeRequest::query()->create([
