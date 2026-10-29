@@ -40,10 +40,10 @@ final class UpdateAccountProfileController
         $rules = ['middle_name' => ['sometimes', 'nullable', 'string', 'max:255']];
         if (! $canonical->isConfirmed() || $selfEdit) {
             $rules += [
-                'first_name' => ['sometimes', 'required', 'string', 'max:255'],
-                'last_name' => ['sometimes', 'required', 'string', 'max:255'],
-                'birth_date' => ['sometimes', 'required', 'date_format:Y-m-d', 'before:today'],
-                'gender' => ['sometimes', 'required', Rule::enum(UserGenderEnum::class)],
+                'first_name' => ['sometimes', $canonical->isConfirmed() ? 'required' : 'nullable', 'string', 'max:255'],
+                'last_name' => ['sometimes', $canonical->isConfirmed() ? 'required' : 'nullable', 'string', 'max:255'],
+                'birth_date' => ['sometimes', $canonical->isConfirmed() ? 'required' : 'nullable', 'date_format:Y-m-d', 'before:today'],
+                'gender' => ['sometimes', $canonical->isConfirmed() ? 'required' : 'nullable', Rule::enum(UserGenderEnum::class)],
             ];
         }
         $data = $request->validate($rules);
