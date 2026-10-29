@@ -32,10 +32,10 @@ final class AdminEditPlayerProfileHandler
 
         $values = Validator::make($values, [
             'height_cm' => ['sometimes', 'nullable', 'integer', 'between:150,220'],
-            'weight_kg' => ['sometimes', 'nullable', 'numeric', 'between:30,250'],
+            'weight_kg' => ['sometimes', 'nullable', 'integer', 'between:40,140'],
             'body_type' => ['sometimes', 'nullable', Rule::enum(PlayerBodyTypeEnum::class)],
-            'experience_started_year' => ['sometimes', 'nullable', 'integer', 'between:1950,'.now()->year],
-            'comment' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'experience_started_year' => ['sometimes', 'nullable', 'integer', 'between:'.(now()->year - 50).','.(now()->year - 10)],
+            'comment' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ])->validate();
 
         return DB::transaction(function () use ($actor, $target, $values, $reason): AuditLog {
