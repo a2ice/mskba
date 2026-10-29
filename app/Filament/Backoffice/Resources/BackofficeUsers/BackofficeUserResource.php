@@ -247,7 +247,7 @@ final class BackofficeUserResource extends Resource
                                                             })
                                                             ->disabled(fn (?User $record): bool => $record === null
                                                                 || ! (auth('web')->user()?->can('manage-user-system-role', $record) ?? false))
-                                                            ->native(false)->dehydrated(false),
+                                                            ->native(false),
                                                         View::make('filament.backoffice.user-save-system-role'),
                                                     ]),
                                                 Section::make('Специализации менеджера')
@@ -256,7 +256,7 @@ final class BackofficeUserResource extends Resource
                                                     ->schema([
                                                         TextInput::make('manager_staff_title')->label('Должность (не влияет на разрешения)')->maxLength(120)
                                                             ->disabled(fn (?User $record): bool => $record === null
-                                                                || ! app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $record)),
+                                                                || (auth('web')->user() === null || ! app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $record))),
                                                         CheckboxList::make('manager_specialization_ids')->label('Функциональные специализации')
                                                             ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
                                                             ->columns(2)
