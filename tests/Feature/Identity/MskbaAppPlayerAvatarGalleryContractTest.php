@@ -54,6 +54,46 @@ final class MskbaAppPlayerAvatarGalleryContractTest extends TestCase
         self::assertStringContainsString("stage?.classList.remove('is-height-focused')", $js);
     }
 
+    public function test_avatar_figure_reaches_220cm_without_width_clamp_and_ruler_is_thin(): void
+    {
+        $root = __DIR__.'/../../../resources/themes/mskba_app/';
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $css = file_get_contents($root.'css/player-profile-workspace.css');
+        $js = file_get_contents($root.'js/player-profile-workspace.js');
+
+        preg_match('/\\.app-player-workspace__figure img\\{([^}]+)\\}/', $css, $match);
+        $this->assertNotEmpty($match);
+        $imageRules = $match[1];
+        $this->assertStringContainsString('flex:0 0 auto', $imageRules);
+        $this->assertStringContainsString('height:var(--figure-height', $imageRules);
+        $this->assertStringContainsString('max-width:none', $imageRules);
+        $this->assertStringNotContainsString('max-width:95%', $imageRules);
+
+        $this->assertStringContainsString('scaleHeight / 225 * 100', $js);
+        $this->assertStringContainsString('max="220"', $blade);
+        $this->assertGreaterThan(196 / 225, 220 / 225);
+        $this->assertStringContainsString('height:1px;background:var(--accent', $css);
+    }
+
+    public function test_ruler_can_be_dragged_on_mouse_or_touch_and_updates_native_height_slider(): void
+    {
+        $root = __DIR__.'/../../../resources/themes/mskba_app/';
+        $css = file_get_contents($root.'css/player-profile-workspace.css');
+        $js = file_get_contents($root.'js/player-profile-workspace.js');
+
+        $this->assertStringContainsString("addEventListener('pointerdown'", $js);
+        $this->assertStringContainsString("addEventListener('pointermove'", $js);
+        $this->assertStringContainsString("'pointerup', 'pointercancel', 'lostpointercapture'", $js);
+        $this->assertStringContainsString('setPointerCapture(event.pointerId)', $js);
+        $this->assertStringContainsString('releasePointerCapture(event.pointerId)', $js);
+        $this->assertStringContainsString('(rect.bottom - clientY) / rect.height * 225', $js);
+        $this->assertStringContainsString('Math.max(Number(height.min), Math.min(Number(height.max)', $js);
+        $this->assertStringContainsString("height.dispatchEvent(new Event('input'", $js);
+        $this->assertStringContainsString('touch-action:none', $css);
+        $this->assertStringContainsString('cursor:ns-resize', $css);
+        $this->assertStringContainsString('.app-player-workspace__stage.is-height-dragging', $css);
+    }
+
     public function test_height_labels_marker_and_figure_use_a_single_225cm_reference(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
