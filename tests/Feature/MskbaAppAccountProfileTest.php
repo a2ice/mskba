@@ -393,7 +393,7 @@ final class MskbaAppAccountProfileTest extends TestCase
         $this->assertSame(UserGenderEnum::MALE, $profile->gender);
     }
 
-    public function test_confirmed_user_can_edit_patronymic_but_not_verified_attributes(): void
+    public function test_confirmed_user_without_self_edit_permission_uses_change_request_instead(): void
     {
         $user = $this->account(UserStatusEnum::CONFIRMED);
 
@@ -409,8 +409,8 @@ final class MskbaAppAccountProfileTest extends TestCase
 
         $this->patch(route('account.profile.update'), [
             'middle_name' => 'Андреевна',
-        ])->assertRedirect(route('account.profile'));
-        $this->assertSame('Андреевна', $user->profile->fresh()->middle_name);
+        ])->assertForbidden();
+        $this->assertSame('Сергеевна', $user->profile->fresh()->middle_name);
 
         foreach (['first_name', 'last_name', 'birth_date', 'gender'] as $attribute) {
             $this->patch(route('account.profile.update'), [
