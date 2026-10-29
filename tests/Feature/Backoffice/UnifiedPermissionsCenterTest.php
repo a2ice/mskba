@@ -42,6 +42,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm([
+                'change_reason' => 'Проверка управления правами пользователя',
                 'creation_permissions' => [
                     Permission::CREATE_TOURNAMENT->value,
                 ],
@@ -75,6 +76,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $this->get('/backoffice/backoffice-users')->assertOk();
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm([
+                'change_reason' => 'Проверка управления правами пользователя',
                 'creation_permissions' => [Permission::CREATE_EVENT->value],
                 'privileged_permissions' => [],
                 'backoffice_permissions' => [],
