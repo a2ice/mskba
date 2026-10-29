@@ -23,12 +23,12 @@
     $chestOptions = ['small' => 'Небольшой', 'medium' => 'Средний', 'large' => 'Большой', 'full' => 'Выраженный'];
     $uniformOptions = ['mskba_home' => 'MSKBA домашняя', 'mskba_light' => 'MSKBA светлая', 'street_black' => 'Street black', 'city_night' => 'City night'];
     $shoesOptions = Appearance::shoeLabels();
-    $equipmentOptions = [
-        'elbow_left' => 'Налокотник слева', 'elbow_right' => 'Налокотник справа',
-        'wristband_left' => 'Напульсник слева', 'wristband_right' => 'Напульсник справа',
-        'knee_left' => 'Наколенник слева', 'knee_right' => 'Наколенник справа',
-        'headband' => 'Повязка на голову',
+    $equipmentGroups = [
+        'elbow' => ['name' => 'Налокотник', 'left' => 'elbow_left', 'right' => 'elbow_right'],
+        'wristband' => ['name' => 'Напульсник', 'left' => 'wristband_left', 'right' => 'wristband_right'],
+        'knee' => ['name' => 'Наколенник', 'left' => 'knee_left', 'right' => 'knee_right'],
     ];
+    $selectedEquipment = Appearance::normalizeAttributes((array) old('character.attributes', $character['attributes'] ?? []));
 @endphp
 
 <div class="app-player-workspace" data-player-workspace>
@@ -169,11 +169,34 @@
                     </fieldset>
                     <fieldset class="app-player-workspace__equipment">
                         <legend>Спортивные аксессуары</legend>
-                        <div class="app-player-workspace__checks">
-                            @foreach($equipmentOptions as $value=>$label)
-                                <label><input type="checkbox" name="character[attributes][]" value="{{ $value }}"
-                                    @checked(in_array($value,(array)old('character.attributes',$character['attributes'] ?? []),true))> {{ $label }}</label>
+                        <div class="app-player-workspace__checks app-player-workspace__equipment-groups">
+                            @foreach($equipmentGroups as $type => $option)
+                                @php
+                                    $hasLeft = in_array($option['left'], $selectedEquipment, true);
+                                    $hasRight = in_array($option['right'], $selectedEquipment, true);
+                                    $equipmentSuffix = $hasLeft && $hasRight ? ' (л/п)' : ($hasLeft ? ' (л)' : ($hasRight ? ' (п)' : ''));
+                                @endphp
+                                <div class="app-player-workspace__equipment-group" data-player-equipment-group
+                                    data-equipment-type="{{ $type }}" data-equipment-name="{{ $option['name'] }}"
+                                    data-equipment-left="{{ $option['left'] }}" data-equipment-right="{{ $option['right'] }}">
+                                    <label class="app-player-workspace__equipment-toggle">
+                                        <input type="checkbox" data-player-equipment-toggle @checked($hasLeft || $hasRight)>
+                                        <span>{{ $option['name'] }}<span data-player-equipment-suffix>{{ $equipmentSuffix }}</span></span>
+                                    </label>
+                                    <button class="app-player-workspace__equipment-edit" type="button"
+                                        data-player-equipment-edit @if(!($hasLeft || $hasRight)) hidden @endif
+                                        aria-label="Выбрать стороны: {{ $option['name'] }}">Изменить</button>
+                                    <span data-player-equipment-values>
+                                        @if($hasLeft)<input type="hidden" name="character[attributes][]" value="{{ $option['left'] }}">@endif
+                                        @if($hasRight)<input type="hidden" name="character[attributes][]" value="{{ $option['right'] }}">@endif
+                                    </span>
+                                </div>
                             @endforeach
+                            <label class="app-player-workspace__equipment-toggle app-player-workspace__equipment-headband">
+                                <input type="checkbox" name="character[attributes][]" value="headband"
+                                    @checked(in_array('headband', $selectedEquipment, true))>
+                                <span>Повязка на голову</span>
+                            </label>
                         </div>
                     </fieldset>
                     <div class="app-player-workspace__actions">
@@ -284,6 +307,29 @@
                 </div>
             </section>
         </section>
+    @endif
+
+    @if($tab === 'physical')
+        <dialog class="mskba-modal app-player-workspace__equipment-dialog"
+            id="app-player-equipment-dialog" data-player-equipment-dialog
+            aria-labelledby="app-player-equipment-dialog-title">
+            <div class="mskba-modal__header app-profile__request-header">
+                <h2 id="app-player-equipment-dialog-title" tabindex="-1" data-player-equipment-title>Выбор стороны</h2>
+                <button type="button" class="app-profile__dialog-close"
+                    data-player-equipment-cancel aria-label="Закрыть">×</button>
+            </div>
+            <div class="mskba-modal__body mskba-scroll app-profile__request-body">
+                <p>Укажи, с какой стороны использовать аксессуар. Можно выбрать обе стороны.</p>
+                <div class="app-player-workspace__equipment-side-options">
+                    <label><input type="checkbox" data-player-equipment-left> Слева</label>
+                    <label><input type="checkbox" data-player-equipment-right> Справа</label>
+                </div>
+            </div>
+            <div class="mskba-modal__footer app-profile__request-footer">
+                <button type="button" class="button secondary" data-player-equipment-cancel>Отмена</button>
+                <button type="button" class="button primary" data-player-equipment-apply>Применить</button>
+            </div>
+        </dialog>
     @endif
 
     @if($tab === 'physical')
