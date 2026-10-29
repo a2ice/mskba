@@ -11,6 +11,7 @@ use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
@@ -36,7 +37,7 @@ final class BackofficeUserResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Пользователи и права';
+        return 'Пользователи';
     }
 
     public static function getModelLabel(): string
@@ -71,7 +72,8 @@ final class BackofficeUserResource extends Resource
         $actor = auth('web')->user();
 
         return $actor !== null && $record instanceof User
-            && app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record);
+            && app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record)
+            && app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA);
     }
 
     public static function canCreate(): bool
@@ -284,7 +286,19 @@ final class BackofficeUserResource extends Resource
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),
         ])
             ->defaultSort('id', 'desc')
-            ->recordActions([EditAction::make()->label('Роли и права')]);
+            ->recordActions([
+                EditAction::make()->label('Редактировать')->visible(fn (User $record): bool => self::canEdit($record)),
+                Action::make('editDenied')
+                    ->label('Редактировать')
+                    ->icon('heroicon-o-lock-closed')
+                    ->color('gray')
+                    ->visible(fn (User $record): bool => ! self::canEdit($record))
+                    ->modalHeading('Нет доступа к редактированию')
+                    ->modalDescription('У вас нет права для редактирования пользователя.')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Закрыть')
+                    ->action(static function (): void {}),
+            ]);
     }
 
     public static function getPages(): array
