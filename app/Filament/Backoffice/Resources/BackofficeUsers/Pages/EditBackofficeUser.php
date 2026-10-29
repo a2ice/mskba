@@ -23,6 +23,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Application\UseCases\AdminChangeVenueMembershipHandler;
+use App\Modules\Venue\Application\UseCases\AdminRevertVenueMembershipHandler;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
@@ -246,6 +247,39 @@ final class EditBackofficeUser extends EditRecord
                         (string) ($data['access_level'] ?? ''),
                         (array) ($data['permissions'] ?? []),
                         (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('revertVenueContract')
+                ->label('Откатить договорные права')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_venue_membership_changed')->exists())
+                ->modalHeading('Откат изменения договора')
+                ->modalDescription('Разрешён только для активного договора, если роль и права всё ещё совпадают с выбранной ревизией.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Изменение договора')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_venue_membership_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · договор #'.($log->metadata['contract_id'] ?? '?')
+                                    .' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertVenueMembershipHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
