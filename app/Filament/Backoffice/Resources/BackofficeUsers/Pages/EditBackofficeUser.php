@@ -23,6 +23,8 @@ use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotH
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateStaffSpecializationsWithAuditHandler;
+use App\Modules\Identity\Application\UseCases\AdminChangeUserSystemRoleWithAuditHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertUserSystemRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertStaffSpecializationsHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
@@ -399,6 +401,38 @@ final class EditBackofficeUser extends EditRecord
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
                 }),
+            Action::make('revertSystemRole')
+                ->label('Откатить изменение системной роли')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_system_role_changed')->exists())
+                ->modalHeading('Откат системной роли')
+                ->modalDescription('Откат допустим только при неизменных правах и специализациях. Ранее отозванные права не восстановятся автоматически.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия системной роли')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_system_role_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertUserSystemRoleHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
             Action::make('changeSystemRole')
                 ->label('Изменить системную роль')
                 ->icon('heroicon-o-user-circle')
@@ -407,7 +441,8 @@ final class EditBackofficeUser extends EditRecord
                 ) ?? false)
                 ->modalHeading('Назначение системной роли')
                 ->modalDescription('Можно назначить только роль ниже собственной. Роль «Пользователь» снимает административную роль. Глобальные права сохраняются отдельно.')
-                ->modalSubmitActionLabel('Сохранить роль')
+                ->modalSubmitActionLabel('Подтвердить роль')
+                ->requiresConfirmation()
                 ->fillForm(fn (): array => [
                     'new_system_role' => $this->getRecord()->system_role->value,
                 ])
@@ -437,6 +472,8 @@ final class EditBackofficeUser extends EditRecord
                         })
                         ->native(false)
                         ->required(),
+                    Textarea::make('reason')->label('Основание изменения')
+                        ->required()->minLength(10)->maxLength(500),
                 ])
                 ->action(function (array $data): void {
                     $actor = auth('web')->user()?->canonical();
@@ -459,8 +496,8 @@ final class EditBackofficeUser extends EditRecord
 
                     // Reuse the existing production use case to preserve role
                     // hierarchy, history grants, revocations and audit events.
-                    app(AdminUpdateUserSystemRoleHandler::class)
-                        ->handle($actor, $target->id, $role);
+                    app(AdminChangeUserSystemRoleWithAuditHandler::class)
+                        ->handle($actor, $target, $role, (string) ($data['reason'] ?? ''));
 
                     // Reload effective defaults after changing the user's role.
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $target]));
