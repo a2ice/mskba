@@ -54,7 +54,7 @@ final class ProfileChangeRequestService
                 throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в данных профиля.']);
             }
 
-            $this->threadAccess->initializeNewSuperadminCursors();
+            $this->threadAccess->initializeNewReviewerCursors();
             $request = ProfileChangeRequest::query()->create([
                 'user_id' => $user->id,
                 'status' => ProfileChangeRequest::PENDING,
