@@ -34,6 +34,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
@@ -722,7 +723,25 @@ class AccountController extends Controller
                 ->get(['id', 'name', 'colors']);
         }
 
-        return ThemeResolver::page('account.participation-role', [
+        // The player role reuses the profile editor, including existing moderation
+        // states and permissions. Only load these details for the MSKBA App UI.
+        $personalData = [];
+        if ($roleEnum === UserParticipationRoleEnum::PLAYER
+            && app(ThemeResolver::class)->active() === 'mskba_app') {
+            $canonical = $user->canonical()->loadMissing('profile');
+            $requests = ProfileChangeRequest::query()->where('user_id', $canonical->id);
+            $personalData = [
+                'personalProfile' => $canonical->profile,
+                'profileConfirmed' => $canonical->isConfirmed(),
+                'genders' => UserGenderEnum::cases(),
+                'latestProfileChangeRequest' => (clone $requests)->latest('id')->first(),
+                'activeProfileChangeRequest' => (clone $requests)
+                    ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])
+                    ->first(),
+            ];
+        }
+
+        return ThemeResolver::page('account.participation-role', array_merge([
             'user' => $user,
             'participationRole' => $participationRole,
             'role' => $roleEnum,
@@ -732,7 +751,7 @@ class AccountController extends Controller
             'playerSkills' => PlayerSelfAssessment::SKILLS,
             'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
             'playerTeams' => $playerTeams,
-        ]);
+        ], $personalData));
     }
 
     public function contracts(ListAccountContractsHandler $listAccountContracts): Response
