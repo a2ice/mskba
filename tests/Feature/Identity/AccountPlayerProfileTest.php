@@ -154,13 +154,9 @@ final class AccountPlayerProfileTest extends TestCase
             $user->fresh()->playerProfile->extra['character']['attributes'],
         );
 
-        $this->actingAs($user)->get($physicalPage)
-            ->assertOk()
-            ->assertSee('data-equipment-type="elbow"', false)
-            ->assertSee('data-equipment-type="knee"', false)
-            ->assertSee('(л/п)')
-            ->assertSee('(п)')
-            ->assertSee('data-player-equipment-dialog', false);
+        // The persisted format is shared with the legacy theme. The new
+        // MSKBA App markup is verified by the dedicated UI contract test.
+        $this->actingAs($user)->get($physicalPage)->assertOk();
 
         // A common checkbox can clear both sides without a new data model.
         $this->actingAs($user)->patch($url, [
