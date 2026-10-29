@@ -101,6 +101,7 @@ final class UpdateAccountProfileController
                     'old_values' => $before,
                     'new_values' => $after,
                     'metadata' => [
+                        'reason' => 'Самостоятельное изменение по разрешению роли или индивидуальному праву',
                         'source' => 'account.profile.update',
                         'permission' => UserOperationalPermissionEnum::EDIT_OWN_PROFILE->value,
                         'profile_id' => $profile->id,
