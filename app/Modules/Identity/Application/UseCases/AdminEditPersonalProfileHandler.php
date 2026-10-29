@@ -11,6 +11,9 @@ use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 
 final class AdminEditPersonalProfileHandler
 {
@@ -29,6 +32,13 @@ final class AdminEditPersonalProfileHandler
         if ($values === [] || array_diff(array_keys($values), self::EDITABLE) !== []) {
             throw ValidationException::withMessages(['profile' => 'Недопустимые поля профиля.']);
         }
+        Validator::make($values, [
+            'first_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'last_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'middle_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'birth_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before_or_equal:today', 'after_or_equal:1900-01-01'],
+            'gender' => ['sometimes', 'nullable', Rule::enum(UserGenderEnum::class)],
+        ])->validate();
 
         return DB::transaction(function () use ($actor, $target, $values, $reason): AuditLog {
             $target = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
