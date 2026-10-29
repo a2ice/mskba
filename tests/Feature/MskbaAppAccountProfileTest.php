@@ -401,7 +401,7 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertSee('Запросить изменение подтверждённых данных')
             ->assertSee('data-profile-change-request-dialog', false)
             ->assertDontSee('data-account-confirmation-guide-open', false)
-            ->assertSee('name="middle_name"', false)
+            ->assertDontSee('name="middle_name"', false)
             ->assertSee('action="'.route('account.profile-change-requests.store').'"', false)
             ->assertSee('name="first_name"', false)
             ->assertSee('name="birth_date"', false)
