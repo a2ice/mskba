@@ -60,9 +60,15 @@
                 <div class="app-player-workspace__stage" data-player-stage
                     role="img" aria-label="Изображение персонажа рядом со шкалой роста">
                     <div class="app-player-workspace__scale" aria-hidden="true">
-                        @foreach([250,200,150,100,50,0] as $height)
-                            <span style="bottom:{{ $height / 2.5 }}%">{{ $height }} см</span>
+                        @foreach([0,50,100,150,200,225] as $height)
+                            <div class="app-player-workspace__scale-tick" style="bottom:{{ round($height / 225 * 100, 4) }}%">
+                                <span>{{ $height }} см</span>
+                            </div>
                         @endforeach
+                        <div class="app-player-workspace__height-marker" data-player-height-marker
+                            style="bottom:{{ round($heightValue / 225 * 100, 4) }}%">
+                            <span data-player-height-marker-label>{{ $heightValue }} см</span>
+                        </div>
                     </div>
                     <div class="app-player-workspace__figure">
                         <img src="{{ asset('images/blank/avatar/body-'.$gender.'.png') }}"
@@ -80,6 +86,17 @@
                         data-player-gender-open data-player-gender-value
                         aria-haspopup="dialog" aria-controls="app-player-gender-explanation">{{ $genderDisplay }}</button>
                 </p>
+                <section class="app-player-workspace__avatar-library" aria-label="Мои сгенерированные аватары" data-player-avatar-library>
+                    <h3 class="app-player-workspace__avatar-heading">Аватаров: <span data-player-avatar-count>0</span></h3>
+                    <div class="app-player-workspace__avatar-rail mskba-scroll"
+                        role="list" aria-label="Выбор аватара для предпросмотра" data-player-avatar-rail></div>
+                    <p class="app-player-workspace__avatar-empty" data-player-avatar-empty>Сгенерированных аватаров пока нет.</p>
+                    <div class="app-player-workspace__avatar-actions" data-player-avatar-actions hidden>
+                        <button type="button" class="app-player-workspace__secondary" data-player-avatar-make-primary hidden>Сделать основным</button>
+                        <span class="app-player-workspace__avatar-primary-label" data-player-avatar-primary-label hidden>Основной аватар</span>
+                    </div>
+                    <p class="app-player-workspace__avatar-feedback" role="status" aria-live="polite" data-player-avatar-feedback></p>
+                </section>
             </aside>
 
             <section class="app-player-workspace__editor" aria-labelledby="app-player-physical-title">
