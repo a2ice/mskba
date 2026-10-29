@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\ManagerSpecialization;
+use App\Modules\Identity\Application\Services\StaffSpecializationManager;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
@@ -219,15 +221,48 @@ final class BackofficeUserResource extends Resource
                                     ->tabs([
                                         Tab::make('Системные')
                                             ->schema([
-                                                View::make('filament.backoffice.user-system-roles')
-                                                    ->viewData(['editedUser' => $record]),
-                                                Section::make('Специализации менеджера')
-                                                    ->description('Меняются отдельным действием вверху страницы; не подменяют системные роли.')
+                                                Section::make('Системная роль пользователя')
+                                                    ->description('Смена роли подтверждается отдельно и может изменить доступные права. Служебные и старшие роли не назначаются.')
                                                     ->schema([
-                                                        Placeholder::make('manager_specialization_summary')->label('Активные специализации')
-                                                            ->content(fn (?User $record): string => $record?->system_role === UserSystemRoleEnum::MANAGER
-                                                                ? ($record->managerSpecializations()->pluck('name')->implode(' · ') ?: 'Не назначены')
-                                                                : 'Доступны только менеджеру.'),
+                                                        Select::make('requested_system_role')->label('Системная роль')
+                                                            ->options(function (?User $record): array {
+                                                                $actorRole = auth('web')->user()?->canonical()->system_role;
+                                                                $options = [];
+                                                                foreach (UserSystemRoleEnum::cases() as $role) {
+                                                                    if ($actorRole !== null
+                                                                        && ! in_array($role, [
+                                                                            UserSystemRoleEnum::SUPERADMIN,
+                                                                            UserSystemRoleEnum::SYSTEM,
+                                                                            UserSystemRoleEnum::MODERATOR,
+                                                                            UserSystemRoleEnum::EDITOR,
+                                                                        ], true)
+                                                                        && $role->numericValue() < $actorRole->numericValue()) {
+                                                                        $options[$role->value] = $role->label();
+                                                                    }
+                                                                }
+                                                                if ($record !== null && ! isset($options[$record->system_role->value])) {
+                                                                    $options[$record->system_role->value] = $record->system_role->label().' (текущая)';
+                                                                }
+                                                                return $options;
+                                                            })
+                                                            ->disabled(fn (?User $record): bool => $record === null
+                                                                || ! (auth('web')->user()?->can('manage-user-system-role', $record) ?? false))
+                                                            ->native(false)->dehydrated(false),
+                                                        View::make('filament.backoffice.user-save-system-role'),
+                                                    ]),
+                                                Section::make('Специализации менеджера')
+                                                    ->description('Специализации и должность редактируются здесь; изменения подтверждаются отдельно от системной роли.')
+                                                    ->visible(fn (?User $record): bool => $record?->system_role === UserSystemRoleEnum::MANAGER)
+                                                    ->schema([
+                                                        TextInput::make('manager_staff_title')->label('Должность (не влияет на разрешения)')->maxLength(120)
+                                                            ->disabled(fn (?User $record): bool => $record === null
+                                                                || ! app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $record)),
+                                                        CheckboxList::make('manager_specialization_ids')->label('Функциональные специализации')
+                                                            ->options(fn (): array => ManagerSpecialization::query()->orderBy('name')->pluck('name', 'id')->all())
+                                                            ->columns(2)
+                                                            ->disabled(fn (?User $record): bool => $record === null
+                                                                || ! app(StaffSpecializationManager::class)->mayManage(auth('web')->user(), $record)),
+                                                        View::make('filament.backoffice.user-save-specializations'),
                                                     ]),
                                                 Section::make('Глобальные права — создание')
                                                     ->schema([
