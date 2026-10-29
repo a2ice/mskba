@@ -109,14 +109,15 @@ if (workspace) {
             button.addEventListener('click', () => equipmentDialog.close()));
         equipmentDialog.addEventListener('close', () => {
             const returnTo = equipmentReturnFocus;
+            const group = activeEquipmentGroup;
             activeEquipmentGroup = null;
             equipmentReturnFocus = null;
             if (returnTo?.isConnected && !returnTo.hidden) {
                 returnTo.focus({preventScroll:true});
             } else {
-                // If the Edit button was hidden by clearing its selection,
-                // focus the still-visible common checkbox.
-                workspace.querySelector('[data-player-equipment-group] [data-player-equipment-toggle]')?.focus({preventScroll:true});
+                // When Apply clears both sides, the Edit control becomes hidden.
+                // Return focus to that group's checkbox rather than another group.
+                group?.querySelector('[data-player-equipment-toggle]')?.focus({preventScroll:true});
             }
         });
     }
