@@ -44,7 +44,7 @@ final class BackofficePermissionsTest extends TestCase
         );
     }
 
-    public function test_confirmed_admin_baseline_cannot_be_revoked_individually(): void
+    public function test_superadmin_can_override_inherited_admin_backoffice_baseline(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
@@ -55,12 +55,12 @@ final class BackofficePermissionsTest extends TestCase
 
         $this->grant($super, $admin, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW]);
         $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
+        $this->assertFalse(Gate::forUser($admin)->allows('update', $widget));
 
         $this->grant($super, $admin, []);
-        $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
-        $this->actingAs($admin)->get('/backoffice')->assertOk();
+        $this->assertFalse($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertFalse(Gate::forUser($admin)->allows('update', $widget));
+        $this->actingAs($admin)->get('/backoffice')->assertForbidden();
     }
 
     public function test_delegated_editor_can_edit_a_regular_widget_without_becoming_admin(): void
