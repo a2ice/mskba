@@ -64,8 +64,8 @@ final class AdminUpdateUserPermissionSnapshotHandler
             $target = User::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
             app(AdminEditPersonalProfileHandler::class)->authorize($actor, $target);
             $before = $this->snapshot($target);
-            app(GlobalOperationalPermissionManager::class)->sync($actor, $target, $creation, $privileged);
-            app(BackofficePermissionManager::class)->sync($actor, $target, $backoffice);
+            app(GlobalOperationalPermissionManager::class)->sync($actor, $target, $creation, $privileged, true);
+            app(BackofficePermissionManager::class)->sync($actor, $target, $backoffice, true);
             $after = $this->snapshot($target->fresh());
             if ($before === $after) {
                 return null;

@@ -51,17 +51,17 @@ final class UserOperationalPermissionChecker
             }
         }
 
-        // Baseline role and specialization grants are never user-deniable.
-        if ($profiles->inherited($user, $permission)) {
-            return true;
-        }
-
+        // An explicit individual decision overrides ordinary role and specialization defaults.
+        // Hard security checks above (role ceiling, confirmed status, superadmin recovery) remain authoritative.
         $snapshot = $user->operationalPermissions()
             ->where('permission', $permission->value)
             ->first();
 
         if ($snapshot !== null) {
             return (bool) $snapshot->is_allowed;
+        }
+        if ($profiles->inherited($user, $permission)) {
+            return true;
         }
 
         // When a managed role profile exists, it is authoritative. Legacy

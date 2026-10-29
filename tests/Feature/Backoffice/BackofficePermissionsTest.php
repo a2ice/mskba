@@ -36,15 +36,16 @@ final class BackofficePermissionsTest extends TestCase
     }
 
     /** @param list<Permission> $permissions */
-    private function grant(User $actor, User $target, array $permissions): void
+    private function grant(User $actor, User $target, array $permissions, bool $overrideInherited = false): void
     {
         app(BackofficePermissionManager::class)->sync(
             $actor, $target,
-            array_map(static fn (Permission $permission): string => $permission->value, $permissions)
+            array_map(static fn (Permission $permission): string => $permission->value, $permissions),
+            $overrideInherited,
         );
     }
 
-    public function test_confirmed_admin_baseline_cannot_be_revoked_individually(): void
+    public function test_superadmin_can_override_inherited_admin_backoffice_baseline(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
@@ -53,14 +54,14 @@ final class BackofficePermissionsTest extends TestCase
         $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
         $this->assertFalse(Gate::forUser($admin)->allows('delete', $widget));
 
-        $this->grant($super, $admin, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW]);
+        $this->grant($super, $admin, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW], true);
         $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
+        $this->assertFalse(Gate::forUser($admin)->allows('update', $widget));
 
-        $this->grant($super, $admin, []);
-        $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
-        $this->assertTrue(Gate::forUser($admin)->allows('update', $widget));
-        $this->actingAs($admin)->get('/backoffice')->assertOk();
+        $this->grant($super, $admin, [], true);
+        $this->assertFalse($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertFalse(Gate::forUser($admin)->allows('update', $widget));
+        $this->actingAs($admin)->get('/backoffice')->assertForbidden();
     }
 
     public function test_delegated_editor_can_edit_a_regular_widget_without_becoming_admin(): void
@@ -151,7 +152,8 @@ final class BackofficePermissionsTest extends TestCase
             ->assertHasNoFormErrors();
 
         $manager = app(BackofficePermissionManager::class);
-        $this->assertTrue($manager->allows($target, Permission::BACKOFFICE_ACCESS));
+        // A full snapshot intentionally revokes omitted inherited access, unlike legacy grant-sync.
+        $this->assertFalse($manager->allows($target, Permission::BACKOFFICE_ACCESS));
         $this->assertTrue($manager->allows($target, Permission::BACKOFFICE_WIDGET_EDIT));
         $this->assertFalse($manager->allows($target, Permission::BACKOFFICE_WIDGET_CREATE));
         $this->assertTrue(UserOperationalPermission::query()->where('user_id', $target->id)

@@ -58,7 +58,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS));
     }
 
-    public function test_explicit_denial_cannot_override_system_role_baseline(): void
+    public function test_explicit_denial_overrides_system_role_baseline(): void
     {
         $admin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -71,7 +71,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
             'is_allowed' => false,
         ]);
 
-        $this->assertTrue(
+        $this->assertFalse(
             app(UserOperationalPermissionChecker::class)
                 ->allows($admin, UserOperationalPermissionEnum::CREATE_TOURNAMENT),
         );
