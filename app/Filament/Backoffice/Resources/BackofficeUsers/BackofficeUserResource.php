@@ -188,8 +188,13 @@ final class BackofficeUserResource extends Resource
                                             Placeholder::make('participant_role_since_'.$role->value)
                                                 ->label('Назначена')
                                                 ->content($participationRole->assigned_at?->format('d.m.Y H:i') ?? '—'),
+                                            Placeholder::make('participant_role_comment_'.$role->value)
+                                                ->label('Комментарий')
+                                                ->content($participationRole->comment ?: '—'),
                                         ]),
                                     ...$roleDetails,
+                                    View::make('filament.backoffice.user-participation-role-edit')
+                                        ->viewData(['participationRoleId' => $participationRole->id]),
                                 ]);
                         }
                     }
