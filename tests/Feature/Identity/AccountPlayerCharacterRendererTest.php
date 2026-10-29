@@ -120,7 +120,7 @@ final class AccountPlayerCharacterRendererTest extends TestCase
             ->assertOk()
             ->assertSee('Объём груди')
             ->assertSee('data-player-character-input="chest-volume"', false)
-            ->assertSee('body-female.png', false);
+            ->assertSee('body-female.webp', false);
     }
 
     public function test_male_profile_does_not_accept_chest_volume_as_body_inference(): void
