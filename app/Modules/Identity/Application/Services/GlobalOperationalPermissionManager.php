@@ -99,6 +99,8 @@ final class GlobalOperationalPermissionManager
     /**
      * @param list<string> $creation
      * @param list<string>|null $privileged null means "leave unchanged".
+     * @param bool $overrideInherited Full editor mode: persist explicit denials of role defaults;
+     *                                legacy grant-only callers preserve their historical behavior.
      */
     public function sync(User $actor, User $target, array $creation, ?array $privileged = null, bool $overrideInherited = false): void
     {
