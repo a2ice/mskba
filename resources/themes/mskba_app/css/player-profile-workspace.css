@@ -156,3 +156,35 @@
 .app-player-workspace__avatar-primary-label{font-size:12px;font-weight:700;color:var(--accent,#d45b06)}
 .app-player-workspace__avatar-actions[hidden],.app-player-workspace__avatar-actions [hidden]{display:none!important}
 @media(max-width:540px){.app-player-workspace__avatar-item{min-width:0}}
+
+/* Task 056 visual acceptance: ruler marker stays a line until hovered or the height control is focused. */
+.app-player-workspace__scale .app-player-workspace__scale-tick span{
+    position:static;left:auto;right:auto;transform:none;
+}
+.app-player-workspace__height-marker{
+    pointer-events:auto;cursor:help;
+}
+.app-player-workspace__height-marker::before{
+    content:"";position:absolute;left:0;right:0;top:-9px;bottom:-9px;
+    background:transparent;
+}
+.app-player-workspace__scale .app-player-workspace__height-marker span{
+    position:absolute;left:0;right:auto;bottom:6px;top:auto;
+    display:inline-block;width:max-content;max-width:calc(100% - 8px);
+    padding:3px 7px;border-radius:5px;white-space:nowrap;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transform:translateY(3px);
+    transition:opacity .15s ease,transform .15s ease,visibility .15s ease;
+}
+.app-player-workspace__height-marker:hover span,
+.app-player-workspace__stage.is-height-focused .app-player-workspace__height-marker span{
+    opacity:1;visibility:visible;transform:translateY(0);
+}
+.app-player-workspace__avatar-heading[hidden],
+.app-player-workspace__avatar-rail[hidden],
+.app-player-workspace__avatar-empty[hidden]{
+    display:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+    .app-player-workspace__scale .app-player-workspace__height-marker span{transition:none}
+}
