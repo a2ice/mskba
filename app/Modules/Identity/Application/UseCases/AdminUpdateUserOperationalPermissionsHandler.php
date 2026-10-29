@@ -94,6 +94,10 @@ final class AdminUpdateUserOperationalPermissionsHandler
                     }
                     continue;
                 }
+                // Legacy bulk callers preserve role defaults; unified Filament uses an explicit scope.
+                if ($scope === null && $profiles->inherited($target, $permission)) {
+                    continue;
+                }
                 if ($lockedActor->system_role !== UserSystemRoleEnum::SUPERADMIN
                     && ! $checker->allows($lockedActor, $permission)) {
                     if ($enabled) {
