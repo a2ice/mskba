@@ -1,3 +1,11 @@
+@php
+    // Blade @include has its own variable scope: do not rely on the editor
+    // partial to define this flag for sibling footer/dialog includes.
+    $canEditPersonalProfile = isset($user) && ! $user->isBlocked() && (
+        ! $profileConfirmed || app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
+            ->allows($user, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::EDIT_OWN_PROFILE)
+    );
+@endphp
     @if ($profileConfirmed && ! ($canEditPersonalProfile ?? false) && $activeProfileChangeRequest === null)
         <dialog class="mskba-modal app-profile__request-dialog" data-profile-change-request-dialog
                 aria-labelledby="app-profile-request-heading">
