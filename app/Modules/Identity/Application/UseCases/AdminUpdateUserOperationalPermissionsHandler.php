@@ -94,9 +94,6 @@ final class AdminUpdateUserOperationalPermissionsHandler
                     }
                     continue;
                 }
-                if ($profiles->inherited($target, $permission)) {
-                    continue;
-                }
                 if ($lockedActor->system_role !== UserSystemRoleEnum::SUPERADMIN
                     && ! $checker->allows($lockedActor, $permission)) {
                     if ($enabled) {
@@ -114,7 +111,8 @@ final class AdminUpdateUserOperationalPermissionsHandler
                     if ((bool) $current->is_allowed !== $enabled) {
                         $current->update(['is_allowed' => $enabled]);
                     }
-                } elseif ($enabled !== $permission->defaultAllowedFor($target->system_role)) {
+                } elseif ($enabled !== $profiles->inherited($target, $permission)
+                    && $enabled !== $permission->defaultAllowedFor($target->system_role)) {
                     UserOperationalPermission::query()->create([
                         'user_id' => $target->id, 'permission' => $permission->value,
                         'is_allowed' => $enabled,
