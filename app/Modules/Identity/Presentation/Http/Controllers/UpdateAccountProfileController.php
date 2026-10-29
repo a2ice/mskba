@@ -3,6 +3,8 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +27,16 @@ final class UpdateAccountProfileController
         $locked = ['first_name', 'last_name', 'birth_date', 'gender'];
         $canonical = $actor->canonical();
         abort_if($canonical->isBlocked(), 403);
+        // Initial profile setup remains part of registration/confirmation.
+        // After confirmation, changing one's own personal data requires an
+        // explicit system permission; a profile-change request remains available.
+        if ($canonical->isConfirmed()) {
+            abort_unless(
+                app(UserOperationalPermissionChecker::class)->allows($canonical, UserOperationalPermissionEnum::EDIT_OWN_PROFILE),
+                403,
+                'У вас нет права изменять собственный профиль. Для подтверждённых данных отправьте заявку.',
+            );
+        }
         if ($canonical->isConfirmed()) {
             foreach ($locked as $field) {
                 abort_if($request->exists($field), 403, 'Изменение подтверждённых данных возможно только по заявке.');
