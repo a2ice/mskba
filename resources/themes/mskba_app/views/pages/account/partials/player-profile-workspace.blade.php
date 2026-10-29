@@ -179,7 +179,7 @@
                                 <div class="app-player-workspace__equipment-group" data-player-equipment-group
                                     data-equipment-type="{{ $type }}" data-equipment-name="{{ $option['name'] }}"
                                     data-equipment-left="{{ $option['left'] }}" data-equipment-right="{{ $option['right'] }}">
-                                    <label class="app-player-workspace__equipment-toggle">
+                                    <label class="check-label app-player-workspace__equipment-toggle">
                                         <input type="checkbox" data-player-equipment-toggle @checked($hasLeft || $hasRight)>
                                         <span>{{ $option['name'] }}<span data-player-equipment-suffix>{{ $equipmentSuffix }}</span></span>
                                     </label>
@@ -192,7 +192,7 @@
                                     </span>
                                 </div>
                             @endforeach
-                            <label class="app-player-workspace__equipment-toggle app-player-workspace__equipment-headband">
+                            <label class="check-label app-player-workspace__equipment-toggle app-player-workspace__equipment-headband">
                                 <input type="checkbox" name="character[attributes][]" value="headband"
                                     @checked(in_array('headband', $selectedEquipment, true))>
                                 <span>Повязка на голову</span>
@@ -321,12 +321,11 @@
             <div class="mskba-modal__body mskba-scroll app-profile__request-body">
                 <p>Укажи, с какой стороны использовать аксессуар. Можно выбрать обе стороны.</p>
                 <div class="app-player-workspace__equipment-side-options">
-                    <label><input type="checkbox" data-player-equipment-left> Слева</label>
-                    <label><input type="checkbox" data-player-equipment-right> Справа</label>
+                    <label class="check-label"><input type="checkbox" data-player-equipment-left> Слева</label>
+                    <label class="check-label"><input type="checkbox" data-player-equipment-right> Справа</label>
                 </div>
             </div>
             <div class="mskba-modal__footer app-profile__request-footer">
-                <button type="button" class="button secondary" data-player-equipment-cancel>Отмена</button>
                 <button type="button" class="button primary" data-player-equipment-apply>Применить</button>
             </div>
         </dialog>
