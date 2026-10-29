@@ -1,4 +1,4 @@
-    @if ($profileConfirmed && $activeProfileChangeRequest === null)
+    @if ($profileConfirmed && ! ($canEditPersonalProfile ?? false) && $activeProfileChangeRequest === null)
         <dialog class="mskba-modal app-profile__request-dialog" data-profile-change-request-dialog
                 aria-labelledby="app-profile-request-heading">
             <div class="mskba-modal__header app-profile__request-header">
