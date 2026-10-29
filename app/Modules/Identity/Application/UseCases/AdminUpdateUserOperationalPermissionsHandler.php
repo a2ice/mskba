@@ -111,8 +111,9 @@ final class AdminUpdateUserOperationalPermissionsHandler
                     if ((bool) $current->is_allowed !== $enabled) {
                         $current->update(['is_allowed' => $enabled]);
                     }
-                } elseif ($enabled !== $profiles->inherited($target, $permission)
-                    && $enabled !== $permission->defaultAllowedFor($target->system_role)) {
+                } elseif ($enabled !== ($profiles->inherited($target, $permission)
+                    || (in_array($target->system_role, [UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR], true)
+                        && $permission->defaultAllowedFor($target->system_role)))) {
                     UserOperationalPermission::query()->create([
                         'user_id' => $target->id, 'permission' => $permission->value,
                         'is_allowed' => $enabled,
