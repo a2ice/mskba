@@ -51,3 +51,15 @@ test('player role uses guided native selects, sticky tabs and live height/weight
     assert.match(css,/app-player-workspace__tabs\{position:sticky/);
     assert.match(css,/--app-sticky-offset/);
 });
+
+test('player nav matches venue sticky controls and follows header transitions',()=>{
+    assert.match(page,/data-player-section-nav/);
+    assert.match(client,/--player-preview-sticky-top/);
+    assert.match(client,/Math\.ceil\(Math\.max\(navRect\.bottom, boundary\) \+ 15\)/);
+    assert.match(client,/classList\.toggle\('is-stuck'/);
+    assert.match(client,/mskba:header-visibility/);
+    const css=load('css/player-profile-workspace.css');
+    assert.match(css,/\.app-player-workspace__tabs\.is-stuck\{border-top-left-radius:0;border-top-right-radius:0\}/);
+    assert.match(css,/\.app-player-workspace__tabs a\[aria-current="page"\]/);
+    assert.match(css,/color:var\(--accent\)/);
+});

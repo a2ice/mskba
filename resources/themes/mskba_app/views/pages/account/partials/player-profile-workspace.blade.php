@@ -36,7 +36,7 @@
         </div>
     @endif
 
-    <nav class="app-player-workspace__tabs" aria-label="Параметры роли Игрок">
+    <nav class="app-player-workspace__tabs" aria-label="Параметры роли Игрок" data-player-section-nav>
         <a href="{{ route('account.participation-role', ['role' => 'player', 'tab' => 'physical']) }}"
             class="{{ $tab === 'physical' ? 'is-active' : '' }}"
             @if($tab === 'physical') aria-current="page" @endif>Физические данные</a>

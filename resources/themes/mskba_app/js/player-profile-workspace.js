@@ -9,6 +9,44 @@ if (workspace) {
     const stage = workspace.querySelector('[data-player-stage]');
     const figure = workspace.querySelector('[data-player-figure]');
 
+
+    // Same sticky calculation as the venue sidebar: bottom of tabs plus 15px.
+    const playerNav = workspace.querySelector('[data-player-section-nav]');
+    if (playerNav) {
+        let stickyPending = false;
+        const updateSticky = () => {
+            stickyPending = false;
+            if (!playerNav.getClientRects().length) return;
+            const contextBottom = document.querySelector('.app-context-bar')?.getBoundingClientRect().bottom || 0;
+            const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
+            const boundary = Math.max(0, contextBottom, headerBottom);
+            const navRect = playerNav.getBoundingClientRect();
+            preview?.style.setProperty('--player-preview-sticky-top',
+                Math.ceil(Math.max(navRect.bottom, boundary) + 15) + 'px');
+            const top = Number.parseFloat(window.getComputedStyle(playerNav).top) || boundary;
+            playerNav.classList.toggle('is-stuck', window.scrollY > 0 && Math.abs(navRect.top - top) <= 2);
+        };
+        const scheduleSticky = () => {
+            if (stickyPending) return;
+            stickyPending = true;
+            window.requestAnimationFrame(updateSticky);
+        };
+        window.addEventListener('scroll', scheduleSticky, {passive:true});
+        window.addEventListener('resize', scheduleSticky);
+        if ('ResizeObserver' in window) new ResizeObserver(scheduleSticky).observe(playerNav);
+        let transitionFrame = null;
+        window.addEventListener('mskba:header-visibility', () => {
+            const until = performance.now() + 340;
+            if (transitionFrame !== null) cancelAnimationFrame(transitionFrame);
+            const follow = () => {
+                scheduleSticky();
+                transitionFrame = performance.now() < until ? requestAnimationFrame(follow) : null;
+            };
+            transitionFrame = requestAnimationFrame(follow);
+        });
+        scheduleSticky();
+    }
+
     const feedback = workspace.querySelector('[data-player-generation-status]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let lastImage = '';
