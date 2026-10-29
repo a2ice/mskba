@@ -187,7 +187,6 @@ if (workspace) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'app-player-workspace__avatar-item';
-            button.setAttribute('role', 'listitem');
             button.setAttribute('aria-label', 'Аватар ' + (index + 1) +
                 (item.generation_id === primaryAvatarId ? ', основной' : ''));
             button.setAttribute('aria-pressed', String(item.generation_id === selectedAvatarId));
@@ -208,6 +207,8 @@ if (workspace) {
                 setImage(item.image_url);
                 avatarStatus('');
                 renderAvatars();
+                // Rebuilding the list should not discard keyboard focus.
+                avatarRail.querySelectorAll('button')[index]?.focus({preventScroll:true});
             });
             avatarRail.append(button);
         });
@@ -248,6 +249,10 @@ if (workspace) {
         } finally {
             selectingPrimary = false;
             renderAvatars();
+            if (primaryAvatarId === selectedAvatarId) {
+                const index = availableAvatars.findIndex(item => item.generation_id === selectedAvatarId);
+                avatarRail?.querySelectorAll('button')[index]?.focus({preventScroll:true});
+            }
         }
     });
 
