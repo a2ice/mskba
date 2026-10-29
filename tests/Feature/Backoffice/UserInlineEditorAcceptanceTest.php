@@ -96,8 +96,8 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm(['profile_first_name' => 'Иван'])
-            ->callAction('savePersonalInline', ['reason' => 'Подтверждено по обращению владельца'])
-            ->assertHasNoActionErrors();
+            ->callAction('savePersonalInline', data: ['reason' => 'Подтверждено по обращению владельца'])
+            ->assertHasNoFormErrors();
         $this->assertSame('Иван', $target->profile->fresh()->first_name);
         $this->assertDatabaseHas('audit_logs', [
             'auditable_id' => $target->id, 'event' => 'admin_personal_profile_changed',
