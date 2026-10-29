@@ -110,6 +110,53 @@ if (workspace) {
     // The slim height indicator reveals its cm badge on hover or while the height slider has focus.
     height?.addEventListener('focus', () => stage?.classList.add('is-height-focused'));
     height?.addEventListener('blur', () => stage?.classList.remove('is-height-focused'));
+
+    // Drag the orange height line itself. The same native range input owns the
+    // value, so drag, keyboard and range-slider edits share one update path.
+    const heightMarkerDrag = workspace.querySelector('[data-player-height-marker]');
+    const heightScale = heightMarkerDrag?.parentElement;
+    let activeHeightPointer = null;
+    let heightDragOffsetY = 0;
+    const applyPointerHeight = clientY => {
+        if (!height || !heightScale) return;
+        const rect = heightScale.getBoundingClientRect();
+        if (rect.height <= 0) return;
+        const proposedCm = Math.round((rect.bottom - clientY) / rect.height * 225);
+        const cm = Math.max(Number(height.min), Math.min(Number(height.max), proposedCm));
+        if (Number(height.value) === cm) return;
+        height.value = String(cm);
+        height.dispatchEvent(new Event('input', {bubbles:true}));
+    };
+    heightMarkerDrag?.addEventListener('pointerdown', event => {
+        if (!height || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const bounds = heightScale?.getBoundingClientRect();
+        if (!bounds?.height) return;
+        event.preventDefault();
+        // Preserve the initial marker position when the user grabs the
+        // enlarged transparent hit area above or below the 1px line.
+        const markerCenterY = bounds.bottom - Number(height.value) / 225 * bounds.height;
+        heightDragOffsetY = event.clientY - markerCenterY;
+        activeHeightPointer = event.pointerId;
+        heightMarkerDrag.setPointerCapture(event.pointerId);
+        stage?.classList.add('is-height-dragging');
+    });
+    heightMarkerDrag?.addEventListener('pointermove', event => {
+        if (event.pointerId !== activeHeightPointer) return;
+        event.preventDefault();
+        applyPointerHeight(event.clientY - heightDragOffsetY);
+    });
+    const endHeightDrag = event => {
+        if (event.pointerId !== activeHeightPointer) return;
+        activeHeightPointer = null;
+        heightDragOffsetY = 0;
+        stage?.classList.remove('is-height-dragging');
+        if (heightMarkerDrag?.hasPointerCapture(event.pointerId)) {
+            heightMarkerDrag.releasePointerCapture(event.pointerId);
+        }
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type =>
+        heightMarkerDrag?.addEventListener(type, endHeightDrag));
+
     updateFigure();
 
     const message = (text, error = false) => {
