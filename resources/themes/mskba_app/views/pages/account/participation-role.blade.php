@@ -2,7 +2,9 @@
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => isset($role) ? 'Роль: '.$role->label() : 'Параметры роли',
+        'heading' => isset($role)
+            ? ($role->value === 'player' ? $role->label() : 'Роль: '.$role->label())
+            : 'Параметры роли',
         'intro' => isset($role) && $role->value === 'player'
             ? 'Создай свой игровой образ и настрой характеристики для игр, команд и турниров.'
             : (isset($role) ? $role->description() : 'Информация о твоём участии в проекте.'),
