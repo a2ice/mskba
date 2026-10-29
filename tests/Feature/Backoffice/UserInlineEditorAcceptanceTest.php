@@ -132,4 +132,48 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         ]);
     }
 
+    public function test_system_role_is_saved_from_inline_selector_with_reason(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm(['requested_system_role' => UserSystemRoleEnum::MANAGER->value])
+            ->callAction('saveSystemRoleInline', data: [
+                'reason' => 'Назначение менеджера после подтверждённой заявки',
+            ])->assertHasNoFormErrors();
+
+        $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_id' => $target->id, 'event' => 'admin_system_role_changed',
+        ]);
+    }
+
+    public function test_manager_specializations_are_saved_from_inline_fields(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::MANAGER);
+        $specialization = \\App\\Modules\\Identity\\Domain\\Models\\ManagerSpecialization::query()
+            ->where('code', 'editor')->firstOrFail();
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm([
+                'manager_staff_title' => 'Координатор площадок',
+                'manager_specialization_ids' => [(string) $specialization->id],
+            ])
+            ->callAction('saveSpecializationsInline', data: [
+                'reason' => 'Назначение функциональной специализации менеджера',
+            ])->assertHasNoFormErrors();
+
+        $this->assertSame('Координатор площадок', $target->fresh()->staff_title);
+        $this->assertTrue($target->managerSpecializations()->whereKey($specialization->id)->exists());
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_id' => $target->id, 'event' => 'admin_staff_specializations_changed',
+        ]);
+    }
+
 }
