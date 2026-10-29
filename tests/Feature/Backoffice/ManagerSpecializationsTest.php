@@ -35,7 +35,7 @@ final class ManagerSpecializationsTest extends TestCase
         $this->assertFalse($checker->allows($manager, Permission::OPERATOR_MARKETING_SEND));
     }
 
-    public function test_role_and_specialization_rights_survive_personal_denial(): void
+    public function test_explicit_denial_overrides_role_and_specialization_defaults(): void
     {
         $super = $this->actor(Role::SUPERADMIN);
         $manager = $this->actor(Role::MANAGER);
@@ -47,8 +47,8 @@ final class ManagerSpecializationsTest extends TestCase
             ]);
         }
         $checker = app(UserOperationalPermissionChecker::class);
-        $this->assertTrue($checker->allows($manager, Permission::CONTENT_MANAGE));
-        $this->assertTrue($checker->allows($manager, Permission::BACKOFFICE_ACCESS));
+        $this->assertFalse($checker->allows($manager, Permission::CONTENT_MANAGE));
+        $this->assertFalse($checker->allows($manager, Permission::BACKOFFICE_ACCESS));
     }
 
     public function test_multiple_specializations_union_rights(): void
