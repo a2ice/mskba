@@ -20,6 +20,9 @@ use App\Modules\Identity\Application\UseCases\AdminEditPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertPlayerProfileHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserPermissionSnapshotHandler;
 use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotHandler;
+use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
+use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -193,6 +196,83 @@ final class EditBackofficeUser extends EditRecord
                     $actor = auth('web')->user();
                     abort_unless($actor !== null, 403);
                     app(AdminRevertPlayerProfileHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('editParticipationRole')
+                ->label('Изменить роль участия')
+                ->icon('heroicon-o-user-group')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && $this->getRecord()->participationRoles()->exists())
+                ->modalHeading('Редактирование роли участия')
+                ->modalDescription('Изменение статуса может отключить соответствующий раздел профиля. Сохраняется отдельная аудируемая ревизия.')
+                ->modalSubmitActionLabel('Подтвердить изменение')
+                ->requiresConfirmation()
+                ->fillForm(function (array $arguments): array {
+                    $role = $this->getRecord()->participationRoles()
+                        ->find((int) ($arguments['role_id'] ?? 0));
+                    return $role === null ? [] : [
+                        'role_id' => $role->id,
+                        'status' => $role->status->value,
+                        'comment' => $role->comment,
+                    ];
+                })
+                ->schema([
+                    Select::make('role_id')->label('Роль')
+                        ->options(fn (): array => $this->getRecord()->participationRoles()->get()
+                            ->mapWithKeys(fn ($role): array => [
+                                $role->id => $role->role->label().' · '.$role->status->label(),
+                            ])->all())->required()->native(false),
+                    Select::make('status')->label('Статус')
+                        ->options(collect(UserParticipationRoleStatusEnum::cases())
+                            ->mapWithKeys(fn (UserParticipationRoleStatusEnum $status): array => [
+                                $status->value => $status->label(),
+                            ])->all())->required(),
+                    Textarea::make('comment')->label('Комментарий к роли')->maxLength(2000),
+                    Textarea::make('reason')->label('Основание изменения')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminEditParticipationRoleHandler::class)->handle(
+                        $actor, $this->getRecord(), (int) ($data['role_id'] ?? 0),
+                        (string) ($data['status'] ?? ''),
+                        isset($data['comment']) ? (string) $data['comment'] : null,
+                        (string) ($data['reason'] ?? ''),
+                    );
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                }),
+            Action::make('revertParticipationRole')
+                ->label('Откатить изменение роли участия')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && AuditLog::query()->where('auditable_type', User::class)
+                        ->where('auditable_id', $this->getRecord()->id)
+                        ->where('event', 'admin_participation_role_changed')->exists())
+                ->modalHeading('Откат изменения роли участия')
+                ->modalDescription('Если статус или комментарий изменились позднее, откат будет отклонён.')
+                ->modalSubmitActionLabel('Подтвердить откат')
+                ->requiresConfirmation()
+                ->schema([
+                    Select::make('revision_id')->label('Ревизия роли')->required()
+                        ->options(fn (): array => AuditLog::query()
+                            ->where('auditable_type', User::class)
+                            ->where('auditable_id', $this->getRecord()->id)
+                            ->where('event', 'admin_participation_role_changed')
+                            ->latest('id')->limit(30)->get()
+                            ->mapWithKeys(fn (AuditLog $log): array => [
+                                $log->id => '#'.$log->id.' · '.($log->metadata['participation_role'] ?? 'роль')
+                                    .' · '.$log->created_at?->format('d.m.Y H:i'),
+                            ])->all()),
+                    Textarea::make('reason')->label('Основание отката')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null, 403);
+                    app(AdminRevertParticipationRoleHandler::class)->handle(
                         $actor, $this->getRecord(), (int) $data['revision_id'], (string) ($data['reason'] ?? ''),
                     );
                     $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
