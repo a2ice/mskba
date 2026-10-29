@@ -145,14 +145,14 @@ final class EditBackofficeUser extends EditRecord
                 })
                 ->schema([
                     TextInput::make('height_cm')->label('Рост, см')->numeric()->minValue(150)->maxValue(220),
-                    TextInput::make('weight_kg')->label('Вес, кг')->numeric()->minValue(30)->maxValue(250),
+                    TextInput::make('weight_kg')->label('Вес, кг')->numeric()->minValue(40)->maxValue(140),
                     Select::make('body_type')->label('Телосложение')
                         ->options(collect(PlayerBodyTypeEnum::cases())->mapWithKeys(
                             fn (PlayerBodyTypeEnum $type): array => [$type->value => $type->label()],
                         )->all()),
                     TextInput::make('experience_started_year')->label('Год начала занятий')
-                        ->numeric()->minValue(1950)->maxValue(now()->year),
-                    Textarea::make('comment')->label('Комментарий')->maxLength(2000),
+                        ->numeric()->minValue(now()->year - 50)->maxValue(now()->year - 10),
+                    Textarea::make('comment')->label('Комментарий')->maxLength(1000),
                     Textarea::make('reason')->label('Основание изменения')
                         ->required()->minLength(10)->maxLength(500),
                 ])
