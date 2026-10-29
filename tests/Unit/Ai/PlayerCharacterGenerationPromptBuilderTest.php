@@ -55,18 +55,33 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringNotContainsString('Copy that supplied team logo', $withoutLogo);
     }
 
-    public function test_visual_adiposity_is_provided_as_neutral_appearance_not_a_medical_diagnosis(): void
+    public function test_removed_body_fat_setting_does_not_affect_ai_prompt(): void
     {
         $builder = new PlayerCharacterGenerationPromptBuilder();
 
-        $prompt = $builder->build([
-            'body_type' => 'athletic',
-            'appearance' => ['adiposity' => 'elevated'],
+        $withHistoricalValue = $builder->build([
+            'body_type' => 'large',
+            'appearance' => ['adiposity' => 'elevated', 'shoes' => 'orange'],
         ]);
-        $this->assertStringContainsString('visibly elevated body-fat appearance', $prompt);
-        $this->assertStringContainsString('do not infer diagnoses or stigmatize body size', $prompt);
-        $this->assertStringContainsString('athletic', $prompt);
-        $this->assertStringNotContainsString('"obesity_diagnosis"', $prompt);
+        $withoutHistoricalValue = $builder->build([
+            'body_type' => 'large',
+            'appearance' => ['shoes' => 'orange'],
+        ]);
+
+        $this->assertSame($withoutHistoricalValue, $withHistoricalValue);
+        $this->assertStringContainsString('fuller build', $withHistoricalValue);
+        $this->assertStringContainsString('"shoes": "orange"', $withHistoricalValue);
+        $this->assertStringNotContainsString('visual_body_fat_level', $withHistoricalValue);
     }
+
+    public function test_new_normal_body_type_is_described_in_ai_prompt(): void
+    {
+        $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([
+            'body_type' => 'normal',
+        ]);
+
+        $this->assertStringContainsString('normal build', $prompt);
+    }
+
 
 }

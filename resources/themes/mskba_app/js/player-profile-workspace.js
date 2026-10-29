@@ -5,7 +5,6 @@ if (workspace) {
     const height = form?.querySelector('[data-physical-height]');
     const weight = form?.querySelector('[data-physical-weight]');
     const body = form?.querySelector('[data-physical-body-type]');
-    const adiposity = form?.querySelector('[data-physical-adiposity]');
     const stage = workspace.querySelector('[data-player-stage]');
     const figure = workspace.querySelector('[data-player-figure]');
 
@@ -62,9 +61,8 @@ if (workspace) {
         const cm = Number(height?.value || 185);
         const kg = Number(weight?.value || 80);
         const bmi = kg / Math.pow(cm / 100, 2);
-        const bodyAdjustment = {slim:-0.09, athletic:0, muscular:0.12, stocky:0.15, large:0.20}[body?.value] || 0;
-        const fatAdjustment = {low:-0.09, average:0, elevated:0.12, pronounced:0.23}[adiposity?.value] || 0;
-        const width = Math.min(1.4, Math.max(0.78, 1 + (bmi-23)*0.009 + bodyAdjustment + fatAdjustment));
+        const bodyAdjustment = {slim:-0.09, normal:0, athletic:0, muscular:0.12, stocky:0.15, large:0.20}[body?.value] || 0;
+        const width = Math.min(1.4, Math.max(0.78, 1 + (bmi-23)*0.009 + bodyAdjustment));
         stage.style.setProperty('--figure-height', (Math.min(220, Math.max(150, cm)) / 250 * 100) + '%');
         stage.style.setProperty('--figure-width', String(width));
         workspace.querySelector('[data-player-height-label]').textContent =
@@ -79,7 +77,7 @@ if (workspace) {
         if (weightOutput) weightOutput.textContent = weight.value + ' кг';
         updateFigure();
     }
-    [height, weight, body, adiposity].forEach(input => input?.addEventListener('input', onPhysicalInput));
+    [height, weight, body].forEach(input => input?.addEventListener('input', onPhysicalInput));
     updateFigure();
 
     const message = (text, error = false) => {
