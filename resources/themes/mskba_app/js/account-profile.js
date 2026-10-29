@@ -9,7 +9,14 @@ if (profileRoot) {
 
     const personalForm = profileRoot.querySelector('[data-profile-personal-form]');
     if (personalForm) {
-        const editor = initProfileInlineSave(personalForm);
+        const editor = initProfileInlineSave(personalForm, {
+            onChange: () => {
+                // Display the persisted gender, not the renderer's default avatar gender.
+                const saved = personalForm.querySelector('[data-field-name="gender"]')?.dataset.savedValue || '';
+                const display = document.querySelector('[data-player-gender-value]');
+                if (display) display.textContent = ({male: 'мужской', female: 'женский'})[saved] || 'не установлен';
+            },
+        });
         personalForm.addEventListener('submit', event => {
             event.preventDefault();
             if (editor.busy()) return;
