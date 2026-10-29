@@ -116,6 +116,7 @@ if (workspace) {
     const heightMarkerDrag = workspace.querySelector('[data-player-height-marker]');
     const heightScale = heightMarkerDrag?.parentElement;
     let activeHeightPointer = null;
+    let heightDragOffsetY = 0;
     const applyPointerHeight = clientY => {
         if (!height || !heightScale) return;
         const rect = heightScale.getBoundingClientRect();
@@ -128,20 +129,26 @@ if (workspace) {
     };
     heightMarkerDrag?.addEventListener('pointerdown', event => {
         if (!height || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const bounds = heightScale?.getBoundingClientRect();
+        if (!bounds?.height) return;
         event.preventDefault();
+        // Preserve the initial marker position when the user grabs the
+        // enlarged transparent hit area above or below the 1px line.
+        const markerCenterY = bounds.bottom - Number(height.value) / 225 * bounds.height;
+        heightDragOffsetY = event.clientY - markerCenterY;
         activeHeightPointer = event.pointerId;
         heightMarkerDrag.setPointerCapture(event.pointerId);
         stage?.classList.add('is-height-dragging');
-        applyPointerHeight(event.clientY);
     });
     heightMarkerDrag?.addEventListener('pointermove', event => {
         if (event.pointerId !== activeHeightPointer) return;
         event.preventDefault();
-        applyPointerHeight(event.clientY);
+        applyPointerHeight(event.clientY - heightDragOffsetY);
     });
     const endHeightDrag = event => {
         if (event.pointerId !== activeHeightPointer) return;
         activeHeightPointer = null;
+        heightDragOffsetY = 0;
         stage?.classList.remove('is-height-dragging');
         if (heightMarkerDrag?.hasPointerCapture(event.pointerId)) {
             heightMarkerDrag.releasePointerCapture(event.pointerId);
