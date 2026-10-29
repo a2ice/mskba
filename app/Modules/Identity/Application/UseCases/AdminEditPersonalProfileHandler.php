@@ -52,6 +52,12 @@ final class AdminEditPersonalProfileHandler
             }
 
             $profile->fill($after)->save();
+            $profile->refresh();
+            // Persist database-normalized values, not uncast form strings.
+            // Rollback compares them with raw persisted state under a lock.
+            foreach (array_keys($after) as $key) {
+                $after[$key] = $profile->getRawOriginal($key);
+            }
 
             return AuditLog::query()->create([
                 'actor_id' => app(CurrentActorResolver::class)->resolveForRequest(request())?->id,
