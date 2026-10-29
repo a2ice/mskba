@@ -116,7 +116,7 @@ final class EditBackofficeUser extends EditRecord
                             'metadata' => ['reason' => (string) $data['reason']],
                         ]);
                     });
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                    $this->getRecord()->refresh();
                 }),
             Action::make('savePersonalInline')
                 ->label('Сохранить профиль')
@@ -137,7 +137,7 @@ final class EditBackofficeUser extends EditRecord
                     app(AdminEditPersonalProfileHandler::class)->handle(
                         $actor, $this->getRecord(), $values, (string) $data['reason'],
                     );
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                    $this->getRecord()->refresh();
                 }),
             Action::make('savePermissionsInline')
                 ->label('Сохранить системные разрешения')
@@ -158,7 +158,7 @@ final class EditBackofficeUser extends EditRecord
                         (array) ($state['backoffice_permissions'] ?? []),
                         (string) $data['reason'],
                     );
-                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $this->getRecord()]));
+                    $this->getRecord()->refresh();
                 }),
             Action::make('addParticipationRole')
                 ->label('Добавить роль')
@@ -248,7 +248,8 @@ final class EditBackofficeUser extends EditRecord
                             foreach ($playerValues as $field => $value) {
                                 $raw = $profile?->getRawOriginal($field);
                                 if (($raw === null && $value === null)
-                                    || ($raw !== null && $value !== null && (string) $raw === (string) $value)) {
+                                    || ($raw !== null && $value !== null && ((string) $raw === (string) $value
+                                        || ($field === 'weight_kg' && (float) $raw === (float) $value)))) {
                                     continue;
                                 }
                                 $changedValues[$field] = $value;
