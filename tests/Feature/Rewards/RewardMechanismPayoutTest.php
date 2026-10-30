@@ -22,12 +22,14 @@ use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
 use App\Modules\Rewards\Domain\Models\RewardGrant;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 final class RewardMechanismPayoutTest extends TestCase
 {
-    use RefreshDatabase;
+    // These tests exercise after-commit listeners. An outer test transaction
+    // would suppress queue execution until after test teardown.
+    use DatabaseMigrations;
 
     public function test_confirming_direct_referral_credits_300_bonus_rubles_once(): void
     {
