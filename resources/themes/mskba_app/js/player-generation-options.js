@@ -4,16 +4,134 @@ if (workspace) {
     workspace.querySelector('[data-player-billing-open]')?.addEventListener('click', () => billing?.showModal());
     billing?.querySelector('[data-player-billing-close]')?.addEventListener('click', () => billing.close());
 
-    // Face inputs remain ordinary multipart file inputs. Only their presentation
-    // changes: the server continues validating the actual file and camera angle.
-    workspace.querySelectorAll('[data-face-upload]').forEach(tile => {
+    // Saved, private face references are independent of paid avatar generation.
+    // The green check means THIS exact media ID was used in a completed generation,
+    // never that a file was merely selected or uploaded.
+    const faceStatus = workspace.querySelector('[data-player-generation-status]');
+    const faceTiles = [...workspace.querySelectorAll('[data-face-upload]')];
+    const faceForm = workspace.querySelector('[data-player-physical-form]');
+    const faceCsrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    let activeFaceMutations = 0;
+    const faceFeedback = (text, error = false) => {
+        if (!faceStatus) return;
+        faceStatus.textContent = text;
+        faceStatus.classList.toggle('is-error', error);
+    };
+    const faceRequest = async (mutation, fields = {}) => {
+        const payload = new FormData();
+        payload.set('_method', 'PATCH');
+        payload.set('_token', faceCsrf);
+        payload.set('mutation', mutation);
+        Object.entries(fields).forEach(([key,value]) => payload.set(key,value));
+        let response;
+        try {
+            response = await fetch(faceForm.action, {
+                method:'POST', credentials:'same-origin',
+                headers:{Accept:'application/json','X-CSRF-TOKEN':faceCsrf},
+                body:payload,
+            });
+        } catch {
+            throw new Error('Не удалось соединиться с сервером. Проверьте подключение к интернету.');
+        }
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const detail = json?.errors ? Object.values(json.errors).flat()[0] : null;
+            throw new Error(detail || json?.message || ({
+                413:'Файл слишком большой.',
+                419:'Сессия истекла. Обновите страницу.',
+                429:'Слишком много запросов. Повторите попытку позже.',
+            }[response.status] || 'Не удалось сохранить фотографию (HTTP ' + response.status + ').'));
+        }
+        if (!json || typeof json !== 'object') throw new Error('Сервер вернул некорректный ответ.');
+        return json;
+    };
+    const renderFaceReference = (tile, reference) => {
+        const image = tile.querySelector('[data-face-photo]');
+        const filename = tile.querySelector('[data-face-filename]');
+        const remove = tile.querySelector('[data-face-delete]');
+        const hasPhoto = !!reference?.id;
+        tile.classList.toggle('has-file', hasPhoto);
+        tile.classList.toggle('is-verified', hasPhoto && reference.verified === true);
+        if (remove) remove.hidden = !hasPhoto;
+        if (filename) filename.textContent = hasPhoto ? 'Заменить фото' : 'Добавить фото';
+        if (image) {
+            // The private endpoint is on this origin; never display a foreign URL.
+            let url = null;
+            if (hasPhoto && typeof reference.url === 'string') {
+                try {
+                    const candidate = new URL(reference.url, location.origin);
+                    if (candidate.origin === location.origin) url = candidate.href;
+                } catch { /* Fall back to the silhouette. */ }
+            }
+            image.src = url || image.dataset.facePlaceholder;
+        }
+    };
+    const renderFaceReferences = references => {
+        for (const tile of faceTiles) {
+            if (tile.classList.contains('is-uploading')) continue;
+            renderFaceReference(tile, references?.[tile.dataset.faceUpload] || null);
+        }
+    };
+    const refreshFaceReferences = async () => {
+        if (!faceForm || !faceTiles.length) return;
+        const response = await faceRequest('generation_preferences');
+        renderFaceReferences(response.face_references || {});
+    };
+    const runFaceMutation = async (tile, mutation, fields) => {
+        if (tile.classList.contains('is-uploading')) return;
+        const action = mutation === 'face_reference' ? 'Сохраняем фотографию…' : 'Удаляем фотографию…';
+        tile.classList.add('is-uploading');
+        activeFaceMutations++;
+        workspace.dataset.playerFaceUploading = 'true';
+        faceFeedback(action);
+        try {
+            const result = await faceRequest(mutation, fields);
+            if (mutation === 'face_reference') {
+                renderFaceReference(tile, {
+                    id:Number(result.preview_url?.match(/v=(\\d+)/)?.[1]) || 1,
+                    url:result.preview_url,
+                    verified:false,
+                });
+                faceFeedback('Фото сохранено. Для генерации нужен анфас и хотя бы один профиль.');
+            } else {
+                renderFaceReference(tile, null);
+                faceFeedback('Фото удалено.');
+            }
+        } catch (error) {
+            faceFeedback(error.message || 'Не удалось изменить фотографию.', true);
+        } finally {
+            tile.classList.remove('is-uploading');
+            activeFaceMutations--;
+            workspace.dataset.playerFaceUploading = activeFaceMutations > 0 ? 'true' : 'false';
+            tile.querySelector('[data-player-face-slot]').value = '';
+        }
+    };
+    for (const tile of faceTiles) {
+        const slot = tile.dataset.faceUpload;
         const input = tile.querySelector('[data-player-face-slot]');
         input?.addEventListener('change', () => {
             const file = input.files?.[0];
-            tile.classList.toggle('has-file', Boolean(file));
-            const label = tile.querySelector('[data-face-filename]');
-            if (label) label.textContent = file ? file.name : 'Добавить фото';
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                faceFeedback('Фотография должна быть не больше 5 МБ.', true);
+                input.value = '';
+                return;
+            }
+            if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+                faceFeedback('Поддерживаются только JPG, PNG и WebP.', true);
+                input.value = '';
+                return;
+            }
+            void runFaceMutation(tile, 'face_reference', {face_reference_slot:slot,face_reference:file});
         });
+        tile.querySelector('[data-face-delete]')?.addEventListener('click', () =>
+            void runFaceMutation(tile, 'face_reference_delete', {face_reference_slot:slot}));
+    }
+    workspace.addEventListener('mskba:avatar-generated', () => {
+        void refreshFaceReferences().catch(() => {});
+    });
+    void refreshFaceReferences().catch(() => {
+        faceFeedback('Не удалось загрузить сохранённые фотографии. Обновите страницу.', true);
     });
 
     const uniform = workspace.querySelector('[data-player-generation-team]');
