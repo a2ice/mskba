@@ -243,6 +243,7 @@ class VenueController extends Controller
         CreateVenueRequest $request,
         CreateAccountVenueHandler $createVenue,
         CurrentActorResolver $actors,
+        VenueGalleryManager $gallery,
     ): RedirectResponse|JsonResponse {
         try {
             $venue = $createVenue->handle(
@@ -264,6 +265,19 @@ class VenueController extends Controller
                 ->with('error', $e->getMessage());
         }
 
+        $photoWarning = null;
+        if ($request->hasFile('photo')) {
+            try {
+                $contents = $request->file('photo')->get();
+                $gallery->store($venue, $contents, $actors->resolveForRequest($request));
+            } catch (\Throwable $exception) {
+                report($exception);
+                // The venue already exists: never return a failed creation and
+                // invite a duplicate retry when just the optional photo failed.
+                $photoWarning = 'Площадка создана, но фото не добавлено. Загрузите его при редактировании.';
+            }
+        }
+
         if ($request->expectsJson()) {
             $claim = VenueOwnershipClaim::query()->where('venue_id', $venue->id)
                 ->where('applicant_user_id', $request->user()->canonical()->id)
@@ -271,6 +285,7 @@ class VenueController extends Controller
 
             return response()->json([
                 'message' => 'Площадка создана. Проверьте данные и отправьте её на модерацию.',
+                'warning' => $photoWarning,
                 'venue' => $this->venuePayload($venue),
                 'management_url' => $claim ? route('account.venue-ownership.show', $claim) : null,
                 'ownership_claim' => $claim ? ['id' => $claim->public_id, 'status' => $claim->status->value] : null,
@@ -279,7 +294,8 @@ class VenueController extends Controller
 
         return redirect()
             ->route('account.venues.edit', $venue->routeIdentifier())
-            ->with('status', 'Площадка создана. Проверьте и дополните данные.');
+            ->with('status', 'Площадка создана. Проверьте и дополните данные.')
+            ->with('photo_warning', $photoWarning);
     }
 
     public function show(
