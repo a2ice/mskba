@@ -125,7 +125,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
         return $group === null ? [] : array_column($group['children'], 'label');
     }
 
-    public function test_a_single_conditional_destination_is_flat_in_desktop_and_expands_mobile_sidebar_when_active(): void
+    public function test_a_single_conditional_destination_is_flat_and_marks_collapsed_mobile_sidebar_when_active(): void
     {
         // Today's roles normally expose >=2 destinations. Render a synthetic
         // single visible destination to cover the future real one-link case.
@@ -153,8 +153,45 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
-        self::assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        self::assertSame(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        self::assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary/span/span[@class="app-account-nav__current-dot"]')->length);
+        self::assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary[@aria-label="Разделы аккаунта, текущий раздел выбран"]')->length);
         self::assertSame(2, $xpath->query('//a[@aria-current="page"]')->length);
+    }
+
+    public function test_mobile_navigation_marks_direct_active_item_and_stays_closed(): void
+    {
+        $user = User::factory()->create();
+        $html = $this->actingAs($user)->get(route('account.profile'))->assertOk()->getContent();
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        $mobile = '//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")]';
+        self::assertSame(1, $xpath->query($mobile)->length);
+        self::assertSame(0, $xpath->query($mobile.'[@open]')->length);
+        self::assertSame(1, $xpath->query($mobile.'/summary/span/span[@class="app-account-nav__current-dot"]')->length);
+        self::assertSame(1, $xpath->query($mobile.'//a[@aria-current="page"]')->length);
+    }
+
+    public function test_mobile_navigation_without_active_item_has_no_indicator(): void
+    {
+        $this->app->instance(MenuResolver::class, new class implements MenuResolver
+        {
+            public function resolve(string $page): array
+            {
+                return [[
+                    'label' => 'Профиль',
+                    'url' => '/account/profile',
+                    'active' => false,
+                    'visible' => true,
+                ]];
+            }
+        });
+
+        $html = view('theme::partials.account.sidebar')->render();
+        self::assertStringNotContainsString('app-account-nav__current-dot', $html);
+        self::assertStringNotContainsString('aria-label="Разделы аккаунта, текущий раздел выбран"', $html);
     }
 
     public function test_account_without_roles_has_no_group_and_wallet_precedes_settings(): void
@@ -282,7 +319,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertSame(2, $xpath->query($groupPath.'/summary')->length);
         $this->assertSame(0, $xpath->query($groupPath.'/summary//a')->length);
         $this->assertSame(2, $xpath->query($groupPath.'//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
-        $this->assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        $this->assertSame(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        $this->assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary/span/span[@class="app-account-nav__current-dot"]')->length);
         $this->assertSame(0, $xpath->query('//details[summary/span[@class="app-account-nav__label"][text()="Участие"]][@open]')->length);
     }
 
