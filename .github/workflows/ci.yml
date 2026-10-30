@@ -273,14 +273,6 @@ jobs:
             echo '::error::Shared AI callback secret is unexpectedly short.'
             exit 1
           fi
-          auth_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
-            --header "Authorization: Bearer ${GITHUB_AI_DISPATCH_TOKEN}" \
-            --header 'Accept: application/vnd.github+json' \
-            https://api.github.com/user)"
-          if [ "$auth_status" != 200 ]; then
-            echo "::error::Shared GitHub AI dispatch token verification failed (HTTP $auth_status)."
-            exit 1
-          fi
           workflow_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
             --header "Authorization: Bearer ${GITHUB_AI_DISPATCH_TOKEN}" \
             --header 'Accept: application/vnd.github+json' \
@@ -289,7 +281,9 @@ jobs:
             echo "::error::Shared GitHub AI workflow is not readable (HTTP $workflow_status)."
             exit 1
           fi
-          echo 'Shared production AI credentials present and GitHub workflow reachable; no paid model request made.'
+          # An explicitly authorized workflow GET checks PATs and GitHub App
+          # installation tokens alike; /user is not available to every token type.
+          echo 'Shared production AI credentials present and authorized workflow readable; no paid model request made.'
 
       - name: Stage built assets on development server
         uses: appleboy/scp-action@v1
