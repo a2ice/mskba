@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Application\UseCases;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\SuperadminSelfEditAccess;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
@@ -83,8 +84,9 @@ final class AdminEditPersonalProfileHandler
 
     public function authorize(User $actor, User $target): void
     {
-        if (! app(GlobalOperationalPermissionManager::class)->mayManage($actor, $target)
-            || ! app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA)) {
+        if (! SuperadminSelfEditAccess::allows($actor, $target)
+            && (! app(GlobalOperationalPermissionManager::class)->mayManage($actor, $target)
+                || ! app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA))) {
             throw new AuthorizationException('У вас нет права для редактирования пользователя.');
         }
     }
