@@ -144,7 +144,7 @@ final class UserRoleDetailPageTest extends TestCase
         $membership = $team->memberships()->where('user_id', $target->id)->firstOrFail();
         $this->assertSame('accepted', $membership->invitation_status->value);
         $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->status);
-        $this->assertTrue($membership->hasSportRole(\\App\\Modules\\Team\\Domain\\Enums\\TeamMemberTypeEnum::PLAYER));
+        $this->assertTrue($membership->hasSportRole(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER));
         $this->assertGreaterThan(0, $membership->sportLineupAssignments()->count());
 
         $this->expectException(ValidationException::class);
@@ -161,7 +161,7 @@ final class UserRoleDetailPageTest extends TestCase
         $this->assignPlayer($target);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
         $this->actingAs($admin);
-        $this->expectException(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(AdminAddPlayerToTeamHandler::class)->handle(
             $admin, $target, $team, 'Администратору не разрешено прямое включение',
         );
