@@ -222,30 +222,22 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
     }
 
 
-    public function test_avatar_summary_uses_three_cards_and_keeps_topup_inside_bonus_value(): void
+    public function test_avatar_summary_has_compact_help_and_generation_options(): void
     {
         $user = $this->player();
-        $response = $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']));
-        $response->assertOk()
-            ->assertSee('Сегодня — ваш игровой аватар.')
-            ->assertSee('хайлайты сыгранных матчей')
-            ->assertSee('app-player-workspace__generation-value-row', false)
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
             ->assertSee('data-player-offer-bonus', false)
             ->assertSee('data-player-offer-count', false)
-            ->assertDontSee('data-player-offer-total', false)
-            ->assertDontSee('Доступно для оплаты (всего)')
-            ->assertSee('Как пополнить?');
-
-        $html = $response->getContent();
-        $this->assertSame(1, substr_count($html, 'data-player-topup-open'));
-        $this->assertMatchesRegularExpression(
-            '/data-player-offer-bonus[^>]*>.*?<\\/strong>\\s*<button[^>]*data-player-topup-open/s',
-            $html,
-        );
-        $this->assertMatchesRegularExpression(
-            '/class="app-player-workspace__metrics"[^>]*>\\s*<span class="app-player-workspace__gender-meta">.*?data-player-height-label.*?data-player-weight-label/s',
-            $html,
-        );
+            ->assertSee('data-player-topup-open', false)
+            ->assertSee('data-player-billing-open', false)
+            ->assertSee('data-player-generation-team', false)
+            ->assertSee('data-player-logo-dialog', false)
+            ->assertSee('data-player-face-slot="front"', false)
+            ->assertSee('data-player-face-slot="left"', false)
+            ->assertSee('data-player-face-slot="right"', false)
+            ->assertDontSee('class="app-player-workspace__generation-hint"', false)
+            ->assertDontSee('Доступно для оплаты (всего)');
     }
 
     public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
