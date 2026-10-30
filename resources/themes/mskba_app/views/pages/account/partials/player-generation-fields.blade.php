@@ -1,19 +1,24 @@
 <div data-player-generation-fields @if(! $avatarCanGenerate) hidden @endif>
     <fieldset class="app-player-workspace__equipment">
         <legend>Фотографии лица для генерации</legend>
-        <p>Загрузите анфас и хотя бы один профиль — слева или справа.</p>
+        <p>Загрузите анфас и хотя бы один профиль — слева или справа. Фото сохраняются и могут быть заменены или удалены.</p>
         <div class="app-player-workspace__face-uploads">
             @foreach(['front' => 'Анфас', 'left' => 'Слева', 'right' => 'Справа'] as $slot => $label)
-                <label class="app-player-workspace__face-upload" data-face-upload="{{ $slot }}">
-                    <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="{{ $slot }}" aria-label="Фото {{ $label }}">
-                    <span class="app-player-workspace__face-icon" aria-hidden="true">
-                        <img src="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
-                            alt="" width="94" height="94" decoding="async">
-                        <span class="app-player-workspace__face-tick">✓</span>
-                    </span>
-                    <span>{{ $label }}</span>
-                    <small data-face-filename>Добавить фото</small>
-                </label>
+                <div class="app-player-workspace__face-upload" data-face-upload="{{ $slot }}">
+                    <label class="app-player-workspace__face-select">
+                        <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="{{ $slot }}" aria-label="Загрузить или заменить фото: {{ $label }}">
+                        <span class="app-player-workspace__face-icon">
+                            <img src="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
+                                data-face-photo data-face-placeholder="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
+                                alt="" width="94" height="94" decoding="async">
+                            <span class="app-player-workspace__face-tick" aria-label="Фотография использована в успешной генерации">✓</span>
+                        </span>
+                        <span>{{ $label }}</span>
+                        <small data-face-filename>Добавить фото</small>
+                    </label>
+                    <button type="button" class="app-player-workspace__face-delete"
+                        data-face-delete aria-label="Удалить фото {{ $label }}" hidden>Удалить фото</button>
+                </div>
             @endforeach
         </div>
     </fieldset>
