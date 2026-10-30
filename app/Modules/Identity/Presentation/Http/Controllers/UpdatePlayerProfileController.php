@@ -24,6 +24,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -379,16 +381,21 @@ final class UpdatePlayerProfileController extends Controller
                 'code' => 'face_reference_invalid_file',
                 'message' => $exception->getMessage(),
             ], 422);
-        } catch (RuntimeException $exception) {
+        } catch (Throwable $exception) {
+            // Unexpected PHP/driver exceptions must not become an HTML 500 that
+            // the browser silently reduces to "Не удалось выполнить операцию".
+            $errorId = (string) Str::uuid();
             Log::error('Player character generation failed unexpectedly.', [
+                'error_id' => $errorId,
                 'user_id' => $request->user()->id,
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
 
             return response()->json([
-                'code' => 'generation_failed',
-                'message' => 'Не удалось сгенерировать модель игрока.',
+                'code' => 'generation_unexpected_error',
+                'message' => 'Не удалось запустить генерацию. Средства не должны списываться за неудачный запуск. Если ошибка повторится, сообщите код в поддержку.',
+                'error_id' => $errorId,
             ], 502);
         }
 
