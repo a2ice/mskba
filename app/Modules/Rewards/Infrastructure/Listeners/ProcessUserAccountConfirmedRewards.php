@@ -15,7 +15,11 @@ final class ProcessUserAccountConfirmedRewards implements ShouldQueue
 
     public function __construct(
         private readonly RewardEngine $engine,
-    ) {}
+    ) {
+        // A caller may wrap moderation or confirmation in an outer transaction.
+        // Defer the queued listener until that transaction actually commits.
+        $this->afterCommit();
+    }
 
     public int $tries = 5;
 
