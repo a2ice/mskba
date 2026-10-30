@@ -1,35 +1,21 @@
 /* MSKBA 063: user-funded actions stay separate from wallet mutations. */
 const topup = document.querySelector('[data-player-topup-dialog]');
 if (topup) {
-    const tabs = Array.from(topup.querySelectorAll('[data-topup-tab]'));
-    const panels = Array.from(topup.querySelectorAll('[data-topup-panel]'));
-    const setTab = key => {
-        tabs.forEach(tab => {
-            const active = tab.dataset.topupTab === key;
-            tab.setAttribute('aria-selected', String(active));
-            tab.tabIndex = active ? 0 : -1;
-        });
-        panels.forEach(panel => { panel.hidden = panel.dataset.topupPanel !== key; });
-    };
-    tabs.forEach((tab, index) => {
-        tab.addEventListener('click', () => setTab(tab.dataset.topupTab));
-        tab.addEventListener('keydown', event => {
-            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-            event.preventDefault();
-            const nextIndex = event.key === 'Home' ? 0 : event.key === 'End'
-                ? tabs.length - 1
-                : (index + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length;
-            setTab(tabs[nextIndex].dataset.topupTab);
-            tabs[nextIndex].focus();
-        });
-    });
-    topup.querySelectorAll('[data-topup-task]').forEach(details => {
-        details.addEventListener('toggle', () => {
-            if (details.open) topup.querySelectorAll('[data-topup-task]').forEach(other => {
-                if (other !== details) other.open = false;
+    // Independently nested accordions: opening a method closes other methods;
+    // opening a task closes only sibling tasks, never its parent method.
+    const exclusiveDetails = selector => {
+        const items = Array.from(topup.querySelectorAll(selector));
+        items.forEach(item => {
+            item.addEventListener('toggle', () => {
+                if (!item.open) return;
+                items.forEach(other => {
+                    if (other !== item && other.open) other.open = false;
+                });
             });
         });
-    });
+    };
+    exclusiveDetails('[data-topup-method]');
+    exclusiveDetails('[data-topup-task]');
 
     const subdialogs = {
         venue: document.querySelector('[data-player-venue-dialog]'),
