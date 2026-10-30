@@ -80,6 +80,7 @@ final class StaffPermissionProfiles
 
         return $this->allowedForRole($role, $permission)
             && ! in_array($permission, [
+                Permission::WALLET_USER_BALANCE_CREDIT,
                 Permission::HANDLE_SUPPORT_TICKETS, Permission::REVIEW_PROFILE_CHANGES,
             ], true);
     }
@@ -87,6 +88,9 @@ final class StaffPermissionProfiles
     /** Explicit upper bound: a functional manager cannot become a system admin. */
     public function allowedForRole(Role $role, Permission $permission): bool
     {
+        if ($permission === Permission::WALLET_USER_BALANCE_CREDIT) {
+            return in_array($role, [Role::SUPERADMIN, Role::ADMIN], true);
+        }
         if ($role === Role::SUPERADMIN || $role === Role::ADMIN) {
             return true;
         }
