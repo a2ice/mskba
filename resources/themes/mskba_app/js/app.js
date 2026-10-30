@@ -42,6 +42,9 @@ import './features/home-venues-map-expand.js';
 import './features/site-media-lqip.js';
 
 import './player-profile-workspace.js';
+import './balance-topup.js';
+// Reuse the production location suggestion and reverse-geolocation adapter.
+import '../../mskba_dark/js/features/address-suggest.js';
 import '../css/player-profile-workspace.css';
 import './account-favorites.js';
 import './venue-favorites.js';
