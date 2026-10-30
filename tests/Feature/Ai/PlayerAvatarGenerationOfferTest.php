@@ -152,4 +152,18 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
         $this->assertNotContains('venue_first_approval', collect($after['bonus_opportunities'])->pluck('code')->all());
         $this->assertSame(0, WalletOperation::query()->count());
     }
+
+    public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
+    {
+        $this->getJson(route('faq.help-content', ['context' => 'payments']))
+            ->assertOk()
+            ->assertJsonPath('section', 'payments')
+            ->assertJsonPath('breadcrumbs.1.label', 'Оплата и бонусы')
+            ->assertJsonPath('bonus_opportunities.0.code', 'venue_first_approval');
+
+        Reward::query()->where('code', 'venue_first_approval')->update(['is_enabled' => false]);
+        $this->getJson(route('faq.help-content', ['context' => 'payments']))
+            ->assertOk()
+            ->assertJsonMissing(['code' => 'venue_first_approval']);
+    }
 }
