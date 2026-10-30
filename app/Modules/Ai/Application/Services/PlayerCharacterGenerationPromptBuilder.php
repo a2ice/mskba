@@ -43,14 +43,14 @@ final class PlayerCharacterGenerationPromptBuilder
 
         $teamLogoInstruction = $withTeamLogo
             ? <<<'TEXT'
-- The LAST supplied image is the team-logo reference. It is NOT a face or identity reference.
-- Copy that supplied team logo onto the jersey as faithfully and literally as possible in a natural basketball-uniform placement.
-- Do NOT redesign, stylize, simplify, reinterpret, substitute, replace, or invent the team logo.
+- The LAST supplied image is the selected logo reference. It is NOT a face or identity reference.
+- Copy that supplied selected logo onto the jersey as faithfully and literally as possible in a natural basketball-uniform placement.
+- Do NOT redesign, stylize, simplify, reinterpret, substitute, replace, or invent the selected logo.
 - Preserve the logo's geometry, layout, colors, proportions, internal marks, and high-contrast details. If the logo is a QR code, preserve the QR module pattern and quiet-zone structure as accurately as possible.
-- The jersey logo must visually match the LAST supplied image, not merely represent the team's identity or theme.
+- The jersey logo must visually match the LAST supplied image, not merely represent the team identity or theme.
 TEXT
             : <<<'TEXT'
-- Do not place a team logo on the uniform.
+- Do not place a selected logo on the uniform.
 TEXT;
 
         return <<<PROMPT
@@ -84,6 +84,7 @@ Composition - STRICT:
 Clothing:
 - Modern basketball jersey and matching shorts.
 - If team colors are supplied, use those colors as the uniform palette.
+- If no team colors are supplied, use a neutral light slate/gray jersey and matching shorts; do not invent team colors or branding.
 {$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
 - Apply requested shoes and ONLY the explicitly requested sports attributes.
 

@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -126,21 +127,25 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
-        $withTeamLogo = (bool) ($options['with_team_logo'] ?? false);
-        if ($withTeamLogo && $team === null) {
-            throw new PlayerCharacterFlowException(
-                'team_logo_unavailable',
-                'Сначала выберите команду с логотипом.',
-                422,
-            );
+        $logoMode = (string) ($options['logo_mode'] ?? (
+            ($options['with_team_logo'] ?? false) ? 'team' : 'none'
+        ));
+        if (! in_array($logoMode, ['none', 'team', 'custom'], true)) {
+            throw new PlayerCharacterFlowException('logo_mode_invalid', 'Неизвестный вариант логотипа.', 422);
         }
-
-        if ($withTeamLogo && $team?->logo === null) {
-            throw new PlayerCharacterFlowException(
-                'team_logo_unavailable',
-                'У выбранной команды нет логотипа.',
-                422,
-            );
+        $withTeamLogo = $logoMode === 'team';
+        if ($withTeamLogo && ($team === null || $team->logo === null)) {
+            throw new PlayerCharacterFlowException('team_logo_unavailable', 'Выберите команду с логотипом.', 422);
+        }
+        $customLogo = null;
+        if ($logoMode === 'custom') {
+            $customLogo = Media::query()->where('mediable_type', User::class)
+                ->whereIn('mediable_id', $user->identityIds())
+                ->where('collection', 'player_generation_logos')
+                ->find((int) ($options['custom_logo_id'] ?? 0));
+            if ($customLogo === null) {
+                throw new PlayerCharacterFlowException('custom_logo_unavailable', 'Выберите свой загруженный логотип.', 422);
+            }
         }
 
         if ($playerProfile !== null) {
@@ -149,6 +154,8 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             $extra['character'] = array_merge($persistedCharacter, $character, [
                 'generation_team_id' => $team?->id,
                 'with_team_logo' => $withTeamLogo,
+                'generation_logo_mode' => $logoMode,
+                'generation_custom_logo_id' => $customLogo?->id,
             ]);
 
             $profileUpdates = ['extra' => $extra];
@@ -276,21 +283,15 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ];
         }
 
+        $selectedLogo = $withTeamLogo ? $team?->logo : $customLogo;
         $teamLogoPayload = null;
-        if ($withTeamLogo && $team?->logo !== null) {
-            $logoDisk = Storage::disk($team->logo->disk);
-            if (! $logoDisk->exists($team->logo->path)) {
-                throw new PlayerCharacterFlowException(
-                    'team_logo_unavailable',
-                    'Логотип выбранной команды временно недоступен.',
-                    422,
-                );
+        if ($selectedLogo !== null) {
+            $disk = Storage::disk($selectedLogo->disk);
+            if (! $disk->exists($selectedLogo->path)) {
+                throw new PlayerCharacterFlowException('logo_unavailable', 'Выбранный логотип временно недоступен.', 422);
             }
-
-            $teamLogoPayload = [
-                'contents' => $logoDisk->get($team->logo->path),
-                'mime' => $team->logo->mime ?: 'image/png',
-            ];
+            $teamLogoPayload = ['contents' => $disk->get($selectedLogo->path),
+                'mime' => $selectedLogo->mime ?: 'image/webp'];
         }
 
         $generationPayload = [
@@ -306,12 +307,10 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 ? $options['body_type']
                 : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
             'appearance' => $character,
-            'team' => $team ? [
-                'id' => $team->id,
-                'name' => $team->name,
-                'colors' => $team->colors,
-                'with_logo' => $withTeamLogo,
-                'logo_mime' => $withTeamLogo ? ($team->logo?->mime ?: 'image/png') : null,
+            'team' => ($team || $selectedLogo) ? [
+                'id' => $team?->id, 'name' => $team?->name, 'colors' => $team?->colors,
+                'with_logo' => $selectedLogo !== null, 'logo_source' => $logoMode,
+                'logo_mime' => $selectedLogo?->mime,
             ] : null,
             'face_references' => $facePayload,
             'team_logo_reference' => $teamLogoPayload,
@@ -324,8 +323,8 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 ->mapWithKeys(fn ($media, string $slot): array => [$slot => (int) $media->id])
                 ->all();
 
-            if ($withTeamLogo && $team?->logo !== null) {
-                $referenceMediaIds['team_logo'] = (int) $team->logo->id;
+            if ($selectedLogo !== null) {
+                $referenceMediaIds['team_logo'] = (int) $selectedLogo->id;
             }
 
             $payloadSnapshot = collect($generationPayload)

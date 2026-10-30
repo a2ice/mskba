@@ -57,6 +57,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySetti
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
+use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
@@ -902,6 +903,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.roles.update-one');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
+        Route::get('/participation/player/logos', [PlayerGenerationLogoController::class, 'index'])->name('account.player-character.logos.index');
+        Route::post('/participation/player/logos', [PlayerGenerationLogoController::class, 'store'])->middleware('throttle:6,1')->name('account.player-character.logos.store');
+        Route::get('/participation/player/logos/{media}/image', [PlayerGenerationLogoController::class, 'show'])->name('account.player-character.logos.show');
+        Route::delete('/participation/player/logos/{media}', [PlayerGenerationLogoController::class, 'destroy'])->middleware('throttle:10,1')->name('account.player-character.logos.destroy');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
             ->name('account.player-profile.update');
         Route::get('/participation/player/face-reference/{slot}', PlayerCharacterFaceReferencePreviewController::class)

@@ -5,6 +5,8 @@ namespace App\Modules\Ai\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,15 +42,20 @@ final class GitHubOpenAiGenerationReferenceController extends Controller
     {
         abort_unless((bool) data_get($generation->payload_snapshot, 'team.with_logo', false), 404);
 
-        $teamId = (int) data_get($generation->payload_snapshot, 'team.id', 0);
         $mediaId = (int) ($generation->reference_media_ids['team_logo'] ?? 0);
-        abort_if($teamId < 1 || $mediaId < 1, 404);
-
-        $team = Team::query()->with('logo')->find($teamId);
-        $logo = $team?->logo;
-        abort_if($logo === null || (int) $logo->id !== $mediaId, 404);
-
-        return $this->imageResponse($logo->disk, $logo->path, $logo->mime ?: 'image/png');
+        abort_if($mediaId < 1, 404);
+        if (data_get($generation->payload_snapshot, 'team.logo_source') === 'custom') {
+            $logo = Media::query()->whereKey($mediaId)
+                ->where('mediable_type', User::class)
+                ->whereIn('mediable_id', $generation->user->identityIds())
+                ->where('collection', 'player_generation_logos')->first();
+        } else {
+            $teamId = (int) data_get($generation->payload_snapshot, 'team.id', 0);
+            $logo = Team::query()->with('logo')->find($teamId)?->logo;
+            abort_if($logo === null || (int) $logo->id !== $mediaId, 404);
+        }
+        abort_if($logo === null, 404);
+        return $this->imageResponse($logo->disk, $logo->path, $logo->mime ?: 'image/webp');
     }
 
     private function imageResponse(string $diskName, string $path, string $mime): Response

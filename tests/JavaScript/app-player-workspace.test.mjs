@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const path = 'resources/themes/mskba_app/';
 const load = name => readFileSync(new URL('../../' + path + name, import.meta.url), 'utf8');
 const page = load('views/pages/account/partials/player-profile-workspace.blade.php');
+const generation = load('views/pages/account/partials/player-generation-fields.blade.php');
 const controller = readFileSync(new URL('../../app/Modules/Identity/Presentation/Http/Controllers/UpdatePlayerProfileController.php',import.meta.url),'utf8');
 const client = load('js/player-profile-workspace.js');
 
@@ -44,8 +45,10 @@ test('player role uses guided native selects, sticky tabs and live height/weight
     assert.doesNotMatch(page,/Стройность/);
     assert.doesNotMatch(page,/Выраженность жировой ткани|Внешность персонажа/);
     assert.doesNotMatch(page,/data-player-preview-mode|До генерации показан базовый персонаж/);
-    assert.match(page,/Одежда и кроссовки/);
-    assert.match(page,/Кроссовки/);
+    assert.match(generation,/Форма и кроссовки/);
+    assert.match(generation,/Кроссовки/);
+    assert.match(generation,/data-player-generation-team/);
+    assert.match(generation,/data-player-face-slot/);
     assert.match(page,/account.partials.native-select-chevron/);
     assert.match(client,/addEventListener\('input', onPhysicalInput\)/);
     const css = load('css/player-profile-workspace.css');

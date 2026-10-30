@@ -9,7 +9,8 @@ final class MskbaAppPlayerEquipmentDialogContractTest extends TestCase
     public function test_grouped_equipment_renders_one_checkbox_per_type_and_legacy_side_fields(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
-        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php')
+            .file_get_contents($root.'views/pages/account/partials/player-generation-fields.blade.php');
         $js = file_get_contents($root.'js/player-profile-workspace.js');
 
         self::assertStringContainsString("'elbow' => ['name' => 'Налокотник'", $blade);
@@ -30,7 +31,8 @@ final class MskbaAppPlayerEquipmentDialogContractTest extends TestCase
     public function test_ui_kit_checkboxes_and_equipment_modal_footer_follow_accepted_design(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
-        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php')
+            .file_get_contents($root.'views/pages/account/partials/player-generation-fields.blade.php');
         $css = file_get_contents($root.'css/player-profile-workspace.css');
         $designSystem = file_get_contents($root.'css/design-system.css');
 
@@ -52,7 +54,8 @@ final class MskbaAppPlayerEquipmentDialogContractTest extends TestCase
     public function test_side_dialog_commits_only_on_apply_and_cancel_keeps_existing_selections(): void
     {
         $root = __DIR__.'/../../../resources/themes/mskba_app/';
-        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php');
+        $blade = file_get_contents($root.'views/pages/account/partials/player-profile-workspace.blade.php')
+            .file_get_contents($root.'views/pages/account/partials/player-generation-fields.blade.php');
         $js = file_get_contents($root.'js/player-profile-workspace.js');
         $css = file_get_contents($root.'css/player-profile-workspace.css');
 
