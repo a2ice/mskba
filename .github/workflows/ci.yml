@@ -556,7 +556,14 @@ jobs:
                   fwrite(STDERR, "Staging player generation gateway is not ready.\n");
                   exit(1);
               }
-              echo "Staging GitHub/OpenAI generation gateway ready.\n";
+              $response = \Illuminate\Support\Facades\Http::withToken((string) config("services.github_openai.token"))
+                  ->acceptJson()->connectTimeout(10)->timeout(20)
+                  ->get("https://api.github.com/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml");
+              if (!$response->ok()) {
+                  fwrite(STDERR, "Staging PHP container cannot access GitHub AI workflow (HTTP ".$response->status().").\n");
+                  exit(1);
+              }
+              echo "Staging GitHub/OpenAI generation gateway and authenticated GitHub API connection ready.\n";
             '
             # The panel must at least respond with HTTP 302 (portal login) to guests;
             # a missing route or server error is a release failure.
