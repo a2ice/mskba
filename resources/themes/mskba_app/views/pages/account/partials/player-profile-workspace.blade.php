@@ -374,7 +374,7 @@
                     </div>
                     <div class="app-player-workspace__topup-body">
                         <p>Отправьте другу вашу персональную ссылку. Реферальные бонусы начисляются по условиям действующего задания.</p>
-                        @if($user->canonical()->isConfirmed())
+                        @if($user->canonical()->isConfirmed() && filled($user->canonical()->username))
                             @php $referralUrl = route('referral.entry', ['username' => $user->canonical()->username]); @endphp
                             <div class="app-player-workspace__referral-link">
                                 <input type="text" value="{{ $referralUrl }}" readonly aria-label="Реферальная ссылка" data-referral-url>
@@ -382,6 +382,9 @@
                             </div>
                             <button type="button" class="app-player-workspace__primary" data-referral-share>Пригласить друга</button>
                             <p role="status" aria-live="polite" data-referral-status></p>
+                        @elseif($user->canonical()->isConfirmed())
+                            <p>Чтобы получить реферальную ссылку, сначала укажите логин в своём профиле.</p>
+                            <a href="{{ route('account.profile') }}" class="app-player-workspace__primary">Указать логин</a>
                         @else
                             <p>Для работы реферальной ссылки сперва подтвердите аккаунт.</p>
                             <a href="{{ route('account.confirmation') }}" class="app-player-workspace__primary">Подтвердить аккаунт</a>
