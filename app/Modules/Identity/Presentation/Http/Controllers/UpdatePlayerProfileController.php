@@ -320,7 +320,7 @@ final class UpdatePlayerProfileController extends Controller
                 'name' => (string) $team->name,
                 'has_logo' => $team->logo !== null,
             ])->values(),
-        ]);
+        ], 200, ['Cache-Control' => 'private, no-store']);
     }
 
     private function generationHistory(UpdatePlayerProfileRequest $request): JsonResponse
