@@ -8,6 +8,7 @@ enum UserPrivacySettingTypeEnum: string
     case CONTACTS = 'contacts';
     case MESSAGES = 'messages';
     case GROUP_INVITATIONS = 'group_invitations';
+    case WALLET_TRANSFER_REQUESTS = 'wallet_transfer_requests';
     case PROFILE = 'profile';
     case AVATAR = 'avatar';
     case PROFILE_GENDER = 'profile_gender';
@@ -37,6 +38,7 @@ enum UserPrivacySettingTypeEnum: string
             self::CONTACTS => 'Показывать мои контакты',
             self::MESSAGES => 'Кто может писать мне сообщения',
             self::GROUP_INVITATIONS => 'Кто может добавлять меня в группы',
+            self::WALLET_TRANSFER_REQUESTS => 'Разрешить запрос на перевод баллов',
             self::PROFILE => 'Публичная страница профиля',
             self::AVATAR => 'Аватар в публичном профиле',
             self::PROFILE_GENDER => 'Пол в профиле',
@@ -70,6 +72,7 @@ enum UserPrivacySettingTypeEnum: string
             self::PROFILE_AGE => 'Показывать возраст (не дату рождения) на открытой странице профиля.',
             self::MESSAGES => 'Кому разрешено писать вам первым. Если вы сами написали участнику, он может ответить в этой переписке даже при настройке «Никому». Блокировка пользователя всегда запрещает общение.',
             self::GROUP_INVITATIONS => 'Кто сможет приглашать вас в команды, чаты и другие группы.',
+            self::WALLET_TRANSFER_REQUESTS => 'Кто может присылать запрос на добровольный перевод бонусов. Сам запрос ничего не списывает.',
             self::PROFILE, self::AVATAR, self::ROLE_COACH, self::COACH_SECTIONS => 'Видимость в профиле. Имя, аватар, роль тренера и открытые секции действующего тренера всегда публичны; остальные данные сохраняют свои ограничения.',
             default => 'Кому доступна эта страница или блок профиля. Видимость блока не открывает закрытую страницу.',
         };
@@ -116,7 +119,7 @@ enum UserPrivacySettingTypeEnum: string
     public function defaultVisibility(): UserPrivacyVisibilityEnum
     {
         return match ($this) {
-            self::DISCOVERABILITY, self::GROUP_INVITATIONS, self::PROFILE, self::AVATAR => UserPrivacyVisibilityEnum::EVERYONE,
+            self::DISCOVERABILITY, self::GROUP_INVITATIONS, self::WALLET_TRANSFER_REQUESTS, self::PROFILE, self::AVATAR => UserPrivacyVisibilityEnum::EVERYONE,
             default => UserPrivacyVisibilityEnum::NOBODY,
         };
     }
