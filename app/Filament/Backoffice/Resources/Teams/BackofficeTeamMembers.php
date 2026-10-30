@@ -31,7 +31,9 @@ final class BackofficeTeamMembers
     private function validateMember(array $data, bool $creating): array
     {
         $rules = [
-            'access_level' => ['required', Rule::in(['responsible', 'captain', 'coach', 'player'])],
+            'access_level' => ['required', Rule::in($creating
+                ? ['responsible', 'captain', 'coach', 'player']
+                : ['owner', 'responsible', 'captain', 'coach', 'player'])],
             'sport_roles' => ['required', 'array', 'min:1'],
             'sport_roles.*' => ['required', 'distinct', Rule::enum(TeamMemberTypeEnum::class)],
             'is_captain' => ['boolean'],
@@ -131,6 +133,9 @@ final class BackofficeTeamMembers
             $membership = $this->acceptedMembers($team)->whereKey($membership->id)
                 ->lockForUpdate()->firstOrFail();
             $owner = $membership->access_level === TeamMembershipAccessLevelEnum::OWNER->value;
+            if (! $owner && $data['access_level'] === 'owner') {
+                throw ValidationException::withMessages(['access_level' => 'Назначать нового владельца здесь нельзя.']);
+            }
             $player = in_array('player', $data['sport_roles'], true);
             $captain = $player && ((bool) ($data['is_captain'] ?? false) || $data['access_level'] === 'captain');
             $this->checkJersey($team, $data['jersey_number'] ?? null, $membership->id);
