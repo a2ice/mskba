@@ -77,15 +77,15 @@
                     <div class="app-player-workspace__floor" aria-hidden="true"></div>
                 </div>
                 <div class="app-player-workspace__metrics" aria-live="polite">
+                    <span class="app-player-workspace__gender-meta">
+                        <span>Пол:</span>
+                        <button type="button" class="app-player-workspace__gender-link"
+                            data-player-gender-open data-player-gender-value
+                            aria-haspopup="dialog" aria-controls="app-player-gender-explanation">{{ $genderDisplay }}</button>
+                    </span>
                     <span data-player-height-label>Рост: {{ $profile?->height_cm ? $profile->height_cm.' см' : '185 см (пример)' }}</span>
                     <span data-player-weight-label>Вес: {{ $profile?->weight_kg ? $profile->weight_kg.' кг' : 'не указан' }}</span>
                 </div>
-                <p class="app-player-workspace__gender-meta">
-                    <span>Пол:</span>
-                    <button type="button" class="app-player-workspace__gender-link"
-                        data-player-gender-open data-player-gender-value
-                        aria-haspopup="dialog" aria-controls="app-player-gender-explanation">{{ $genderDisplay }}</button>
-                </p>
                 <section class="app-player-workspace__avatar-library" aria-label="Мои сгенерированные аватары" data-player-avatar-library>
                     <h3 class="app-player-workspace__avatar-heading" data-player-avatar-heading hidden>Аватаров: <span data-player-avatar-count>0</span></h3>
                     <div class="app-player-workspace__avatar-rail mskba-scroll"
@@ -231,20 +231,20 @@
                     data-player-generation-offer data-player-generation-affordable="{{ $avatarCanGenerate ? 'true' : 'false' }}">
                     <div class="app-player-workspace__section-heading">
                         <h3 id="app-player-generation-title">Генерация аватара</h3>
-                        <p>Реалистичное изображение игрока по проверенным фотографиям анфас и слева или справа.</p>
+                        <p>Сегодня — ваш игровой аватар. Скоро — командные фотосессии, хайлайты сыгранных матчей и виртуальная примерка формы: от клубной до собственной, которую можно будет создать и заказать для всей команды.</p>
                     </div>
                     <div class="app-player-workspace__generation-summary" aria-label="Стоимость и баланс генерации">
                         <div class="app-player-workspace__generation-stat">
                             <span>Стоимость генерации</span>
                             <strong data-player-offer-price>{{ $avatarPrice === null ? 'Недоступна' : $formatRub($avatarPrice) }}</strong>
                         </div>
-                        <div class="app-player-workspace__generation-stat">
+                        <div class="app-player-workspace__generation-stat app-player-workspace__generation-stat--bonus">
                             <span>Бонусный баланс</span>
-                            <strong data-player-offer-bonus>{{ $formatRub((int) $avatarOffer['bonus_balance_minor']) }}</strong>
-                        </div>
-                        <div class="app-player-workspace__generation-stat">
-                            <span>Доступно для оплаты (всего)</span>
-                            <strong data-player-offer-total>{{ $formatRub((int) $avatarOffer['available_minor']) }}</strong>
+                            <div class="app-player-workspace__generation-value-row">
+                                <strong data-player-offer-bonus>{{ $formatRub((int) $avatarOffer['bonus_balance_minor']) }}</strong>
+                                <button type="button" class="app-player-workspace__generation-help" data-player-topup-open
+                                    aria-haspopup="dialog" aria-controls="app-player-topup-dialog">Как пополнить?</button>
+                            </div>
                         </div>
                         <div class="app-player-workspace__generation-stat">
                             <span>Доступно генераций</span>
@@ -256,10 +256,6 @@
                         @if($avatarCanGenerate) hidden @endif>
                         {{ $avatarPrice === null ? 'Стоимость генерации временно недоступна.' : 'Недостаточно средств для генерации аватара.' }}
                     </p>
-                    <div class="app-player-workspace__generation-topup">
-                        <button type="button" class="app-player-workspace__generation-help" data-player-topup-open
-                            aria-haspopup="dialog" aria-controls="app-player-topup-dialog">Как пополнить?</button>
-                    </div>
                     <div data-player-generation-fields @if(! $avatarCanGenerate) hidden @endif>
                         <div class="app-player-workspace__fields">
                             <label class="app-player-workspace__field">Анфас
@@ -300,8 +296,8 @@
                     <div class="app-player-workspace__topup-body">
                         <p>Существует несколько способов пополнения баланса, а текущий остаток всегда можно посмотреть в <a href="{{ route('account.wallet') }}">кошельке</a>.</p>
                         <div class="app-player-workspace__topup-methods" aria-label="Способы пополнения">
-                            <details class="app-player-workspace__topup-method" data-topup-method="tasks" open>
-                                <summary>За выполнение заданий <span aria-hidden="true" class="app-player-workspace__topup-chevron">⌄</span></summary>
+                            <details class="app-player-workspace__topup-method" data-topup-method="tasks">
+                                <summary><span>За выполнение заданий</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
                                 <div class="app-player-workspace__topup-method-content">
                                     <p class="app-player-workspace__topup-note">Бонусы начисляются только после выполнения задания и проверки результата.</p>
                                     @forelse($avatarOffer['bonus_opportunities'] as $opportunity)
@@ -336,7 +332,7 @@
                                 </div>
                             </details>
                             <details class="app-player-workspace__topup-method" data-topup-method="payment">
-                                <summary>Пополнение баланса <span aria-hidden="true" class="app-player-workspace__topup-chevron">⌄</span></summary>
+                                <summary><span>Пополнение баланса</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
                                 <div class="app-player-workspace__topup-method-content">
                                     <h4>Пополнение баланса картой</h4>
                                     <p class="app-player-workspace__topup-note">Банковское пополнение пока не подключено. Эта форма не списывает деньги и не начисляет средства.</p>
@@ -347,7 +343,7 @@
                                 </div>
                             </details>
                             <details class="app-player-workspace__topup-method" data-topup-method="friend">
-                                <summary>Перевод от друга <span aria-hidden="true" class="app-player-workspace__topup-chevron">⌄</span></summary>
+                                <summary><span>Перевод от друга</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
                                 <div class="app-player-workspace__topup-method-content">
                                     <h4>Запросить перевод у друга</h4>
                                     <p class="app-player-workspace__topup-note">Вы можете запросить перевод у своего друга. Он сам решит, переводить ли бонусы. Запрос не списывает средства.</p>

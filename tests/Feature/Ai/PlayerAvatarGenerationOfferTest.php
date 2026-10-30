@@ -196,7 +196,10 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
         $user = $this->player();
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
             ->assertOk()
-            ->assertSee('data-topup-method="tasks" open', false)
+            ->assertSee('data-topup-method="tasks"', false)
+            ->assertDontSee('data-topup-method="tasks" open', false)
+            ->assertSee('data-topup-more', false)
+            ->assertSee('data-topup-less', false)
             ->assertSee('data-topup-method="payment"', false)
             ->assertSee('data-topup-method="friend"', false)
             ->assertSee('data-topup-task', false)
@@ -215,6 +218,33 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertOk()
             ->assertSee('125 баллов')
             ->assertDontSee('100,00 ₽ бонусами');
+    }
+
+
+    public function test_avatar_summary_uses_three_cards_and_keeps_topup_inside_bonus_value(): void
+    {
+        $user = $this->player();
+        $response = $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']));
+        $response->assertOk()
+            ->assertSee('Сегодня — ваш игровой аватар.')
+            ->assertSee('хайлайты сыгранных матчей')
+            ->assertSee('app-player-workspace__generation-value-row', false)
+            ->assertSee('data-player-offer-bonus', false)
+            ->assertSee('data-player-offer-count', false)
+            ->assertDontSee('data-player-offer-total', false)
+            ->assertDontSee('Доступно для оплаты (всего)')
+            ->assertSee('Как пополнить?');
+
+        $html = $response->getContent();
+        $this->assertSame(1, substr_count($html, 'data-player-topup-open'));
+        $this->assertMatchesRegularExpression(
+            '/data-player-offer-bonus[^>]*>.*?<\\/strong>\\s*<button[^>]*data-player-topup-open/s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/class="app-player-workspace__metrics"[^>]*>\\s*<span class="app-player-workspace__gender-meta">.*?data-player-height-label.*?data-player-weight-label/s',
+            $html,
+        );
     }
 
     public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
