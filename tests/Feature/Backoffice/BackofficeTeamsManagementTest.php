@@ -16,6 +16,8 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Filament\Facades\Filament;
+use Livewire\Livewire;
+use App\Filament\Backoffice\Resources\Teams\Pages\CreateTeam;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +75,40 @@ final class BackofficeTeamsManagementTest extends TestCase
         $this->assertContains(Permission::BACKOFFICE_TEAM_MANAGE, Permission::backofficeCases());
         $this->get(TeamResource::getUrl('index'))->assertOk()->assertSee('Команды');
         $this->get(TeamResource::getUrl('create'))->assertOk()->assertSee('Владелец команды');
+    }
+
+    public function test_current_authenticated_superadmin_is_selected_by_default_and_is_owner_without_an_override(): void
+    {
+        $super = $this->superadmin();
+
+        Livewire::test(CreateTeam::class)
+            ->assertSet('data.owner_user_id', $super->id);
+
+        $team = app(BackofficeTeamEditor::class)->create([
+            'name' => 'Моя команда по умолчанию',
+            'status' => 'active',
+            'sport_types' => ['basketball'],
+            // The backend applies the same default even when the form omits it.
+        ]);
+
+        $owner = $team->memberships()->with('contract')->firstOrFail();
+        $this->assertSame($super->id, $owner->user_id);
+        $this->assertSame(TeamMembershipAccessLevelEnum::OWNER->value, $owner->access_level);
+        $this->assertSame(ContractStatusEnum::ACTIVE, $owner->contract->status);
+    }
+
+    public function test_public_team_creator_is_already_owner_without_a_separate_owner_field(): void
+    {
+        $creator = $this->user();
+        $this->actingAs($creator)->post(route('teams.store'), [
+            'name' => 'Команда пользователя по умолчанию',
+            'sport_types' => ['basketball'],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $team = Team::query()->where('name', 'Команда пользователя по умолчанию')->firstOrFail();
+        $membership = $team->memberships()->firstOrFail();
+        $this->assertSame($creator->id, $membership->user_id);
+        $this->assertSame(TeamMembershipAccessLevelEnum::OWNER->value, $membership->access_level);
     }
 
     public function test_create_persists_real_owner_contract_sports_and_colors_and_edit_keeps_owner(): void
