@@ -22,16 +22,16 @@ test('physical and game tabs use separate server-validated form payloads',()=>{
 
 test('avatar generation runs directly with sequential status and clear failures',()=>{
     assert.match(client,/mutation:'generation_quote'/);
-    assert.doesNotMatch(client,/window.confirm\\(/);
+    assert.doesNotMatch(client,/window.confirm\(/);
     assert.match(client,/Проверяем стоимость и баланс/);
     assert.match(client,/Генерация аватара/);
     assert.match(client,/Готово! Аватар создан/);
     assert.match(client,/Ошибка генерации/);
-    assert.match(client,/payload.set\\('mutation','generate_2d'\\)/);
+    assert.match(client,/payload.set\('mutation','generate_2d'\)/);
     assert.match(client,/mutation:'generation_primary'/);
     assert.match(client,/target.origin !== location.origin/);
     assert.match(client,/response.status/);
-    assert.match(client,/workspace.dispatchEvent\\(new CustomEvent\\('mskba:avatar-generated'\\)\\)/);
+    assert.match(client,/workspace.dispatchEvent\(new CustomEvent\('mskba:avatar-generated'\)\)/);
 });
 
 test('face references persist with private previews and deletion, verified only after generation',()=>{
