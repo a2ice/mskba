@@ -49,6 +49,17 @@ test('face references persist with private previews and deletion, verified only 
     assert.match(generationStyles,/object-fit:cover/);
 });
 
+test('face photo errors are displayed by the selected thumbnail, never under Generate',()=> {
+    assert.match(generation,/data-face-feedback/);
+    assert.match(generation,/data-player-face-group-feedback/);
+    assert.match(generation,/role="status" aria-live="polite"/);
+    assert.match(generationOptions,/tile\?\.querySelector\('\[data-face-feedback\]'\)/);
+    assert.match(generationOptions,/faceFeedback\(tile, error.message/);
+    assert.match(generationOptions,/faceFeedback\(tile, 'Фотография должна быть не больше 5 МБ.'/);
+    assert.match(generationStyles,/face-feedback.is-error/);
+    assert.doesNotMatch(generationOptions,/querySelector\('\[data-player-generation-status\]'\)/);
+});
+
 test('avatar starts with scaled default character and never runs generation on input alone',()=>{
     assert.match(page,/data-player-stage/);
     assert.match(page,/body-'.\$gender.'.webp/);
