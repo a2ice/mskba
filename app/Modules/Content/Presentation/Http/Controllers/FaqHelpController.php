@@ -19,6 +19,7 @@ final class FaqHelpController extends Controller
         ]);
         return response()->json([
             ...$catalog->content($data['context'] ?? null, $data['section'] ?? null, $data['article'] ?? null),
+            'bonus_opportunities' => app(GetPlayerAvatarGenerationOffer::class)->bonusOpportunities(),
             'authenticated' => $request->user() !== null,
             'csrf_token' => csrf_token(),
         ]);
