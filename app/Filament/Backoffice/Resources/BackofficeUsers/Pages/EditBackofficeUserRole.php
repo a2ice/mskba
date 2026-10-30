@@ -88,6 +88,9 @@ final class EditBackofficeUserRole extends Page
         return [
             BackofficeUserResource::getUrl('index') => 'Пользователи',
             BackofficeUserResource::getUrl('edit', ['record' => $user]) => $user->username,
+            BackofficeUserResource::getUrl('edit', [
+                'record' => $user, 'tab' => 'rol::data::tab',
+            ]) => 'Роли',
             $this->assignment()->role->label(),
         ];
     }
