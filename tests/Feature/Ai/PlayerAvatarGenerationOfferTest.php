@@ -175,6 +175,22 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
     }
 
 
+
+    public function test_confirmed_player_without_username_cannot_receive_broken_referral_url(): void
+    {
+        $user = $this->player();
+        $user->forceFill([
+            'username' => null,
+            'status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED->value,
+        ])->save();
+
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('Чтобы получить реферальную ссылку, сначала укажите логин')
+            ->assertSee(route('account.profile'), false)
+            ->assertDontSee('data-referral-url', false);
+    }
+
     public function test_topup_uses_three_exclusive_details_and_reward_key_value_rows(): void
     {
         $user = $this->player();
