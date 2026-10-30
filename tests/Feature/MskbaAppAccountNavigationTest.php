@@ -155,7 +155,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $xpath = new \DOMXPath($dom);
         self::assertSame(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
         self::assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary/span/span[@class="app-account-nav__current-dot"]')->length);
-        self::assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary[@aria-label="Разделы аккаунта, текущий раздел выбран"]')->length);
+        // DOMDocument::loadHTML defaults to a legacy encoding for Cyrillic attributes.
+        self::assertStringContainsString('aria-label="Разделы аккаунта, текущий раздел выбран"', $html);
         self::assertSame(2, $xpath->query('//a[@aria-current="page"]')->length);
     }
 
