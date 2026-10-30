@@ -21,6 +21,12 @@
 .app-player-workspace__face-upload.is-uploading .app-player-workspace__face-delete{pointer-events:none}
 .app-player-workspace__face-delete{border:0;background:transparent;padding:2px 4px;color:#af3e2c;font-size:11px;font-weight:500;text-decoration:underline;cursor:pointer}
 .app-player-workspace__face-delete[hidden]{display:none!important}
+.app-player-workspace__face-feedback{display:block;max-width:190px;margin:2px auto 0;font-size:11px;line-height:1.4;font-weight:500;color:#426047;text-wrap:balance}
+.app-player-workspace__face-feedback.is-error{color:#c52e30;font-weight:600}
+.app-player-workspace__face-feedback[hidden],.app-player-workspace__face-group-feedback[hidden]{display:none!important}
+.app-player-workspace__face-group-feedback{margin:10px 0 0;font-size:12px;line-height:1.5;color:#426047}
+.app-player-workspace__face-group-feedback.is-error{color:#c52e30}
+
 .app-player-workspace__logo-modes,.app-player-workspace__logo-options{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:#334961}
 .app-player-workspace__logo-modes>span{font-weight:700}
 .app-player-workspace__logo-modes label,.app-player-workspace__logo-options label{display:inline-flex;align-items:center;gap:7px;min-height:36px;cursor:pointer}

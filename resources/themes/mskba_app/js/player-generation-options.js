@@ -7,16 +7,20 @@ if (workspace) {
     // Saved, private face references are independent of paid avatar generation.
     // The green check means THIS exact media ID was used in a completed generation,
     // never that a file was merely selected or uploaded.
-    const faceStatus = workspace.querySelector('[data-player-generation-status]');
     const faceTiles = [...workspace.querySelectorAll('[data-face-upload]')];
+    const faceGroupStatus = workspace.querySelector('[data-player-face-group-feedback]');
     const faceForm = workspace.querySelector('[data-player-physical-form]');
     const faceCsrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let activeFaceMutations = 0;
     let faceSnapshotVersion = 0;
-    const faceFeedback = (text, error = false) => {
-        if (!faceStatus) return;
-        faceStatus.textContent = text;
-        faceStatus.classList.toggle('is-error', error);
+    // Upload messages belong to the photo area, never the paid generation status.
+    const faceFeedback = (tile, text, error = false) => {
+        const status = tile?.querySelector('[data-face-feedback]') || faceGroupStatus;
+        if (!status) return;
+        status.textContent = text;
+        status.hidden = !text;
+        status.classList.toggle('is-error', error);
+        status.setAttribute('role', error ? 'alert' : 'status');
     };
     const faceRequest = async (mutation, fields = {}) => {
         const payload = new FormData();
@@ -77,7 +81,10 @@ if (workspace) {
         if (!faceForm || !faceTiles.length) return;
         const version = faceSnapshotVersion;
         const response = await faceRequest('generation_preferences');
-        if (version === faceSnapshotVersion) renderFaceReferences(response.face_references || {});
+        if (version === faceSnapshotVersion) {
+            renderFaceReferences(response.face_references || {});
+            faceFeedback(null, '');
+        }
     };
     const runFaceMutation = async (tile, mutation, fields) => {
         if (tile.classList.contains('is-uploading')) return;
@@ -86,7 +93,7 @@ if (workspace) {
         faceSnapshotVersion++;
         activeFaceMutations++;
         workspace.dataset.playerFaceUploading = 'true';
-        faceFeedback(action);
+        faceFeedback(tile, action);
         try {
             const result = await faceRequest(mutation, fields);
             if (mutation === 'face_reference') {
@@ -95,13 +102,13 @@ if (workspace) {
                     url:result.preview_url,
                     verified:false,
                 });
-                faceFeedback('Фото сохранено. Для генерации нужен анфас и хотя бы один профиль.');
+                faceFeedback(tile, 'Фото сохранено.');
             } else {
                 renderFaceReference(tile, null);
-                faceFeedback('Фото удалено.');
+                faceFeedback(tile, 'Фото удалено.');
             }
         } catch (error) {
-            faceFeedback(error.message || 'Не удалось изменить фотографию.', true);
+            faceFeedback(tile, error.message || 'Не удалось изменить фотографию.', true);
         } finally {
             tile.classList.remove('is-uploading');
             activeFaceMutations--;
@@ -116,12 +123,12 @@ if (workspace) {
             const file = input.files?.[0];
             if (!file) return;
             if (file.size > 5 * 1024 * 1024) {
-                faceFeedback('Фотография должна быть не больше 5 МБ.', true);
+                faceFeedback(tile, 'Фотография должна быть не больше 5 МБ.', true);
                 input.value = '';
                 return;
             }
             if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
-                faceFeedback('Поддерживаются только JPG, PNG и WebP.', true);
+                faceFeedback(tile, 'Поддерживаются только JPG, PNG и WebP.', true);
                 input.value = '';
                 return;
             }
@@ -134,7 +141,7 @@ if (workspace) {
         void refreshFaceReferences().catch(() => {});
     });
     void refreshFaceReferences().catch(() => {
-        faceFeedback('Не удалось загрузить сохранённые фотографии. Обновите страницу.', true);
+        faceFeedback(null, 'Не удалось загрузить сохранённые фотографии. Обновите страницу.', true);
     });
 
     const uniform = workspace.querySelector('[data-player-generation-team]');
