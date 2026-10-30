@@ -235,23 +235,18 @@
                     </div>
                     <div class="app-player-workspace__generation-summary" aria-label="Стоимость и баланс генерации">
                         <div class="app-player-workspace__generation-stat">
-                            <span>Стоимость генерации</span>
+                            <div class="app-player-workspace__stat-heading"><span>Стоимость генерации</span><button type="button" class="app-player-workspace__help-dot" data-player-billing-open title="Как списываются средства?" aria-label="Как списываются средства?" data-tooltip="Как списываются средства?" aria-haspopup="dialog" aria-controls="app-player-billing-dialog">?</button></div>
                             <strong data-player-offer-price>{{ $avatarPrice === null ? 'Недоступна' : $formatRub($avatarPrice) }}</strong>
                         </div>
-                        <div class="app-player-workspace__generation-stat app-player-workspace__generation-stat--bonus">
-                            <span>Бонусный баланс</span>
-                            <div class="app-player-workspace__generation-value-row">
-                                <strong data-player-offer-bonus>{{ $formatRub((int) $avatarOffer['bonus_balance_minor']) }}</strong>
-                                <button type="button" class="app-player-workspace__generation-help" data-player-topup-open
-                                    aria-haspopup="dialog" aria-controls="app-player-topup-dialog">Как пополнить?</button>
-                            </div>
-                        </div>
                         <div class="app-player-workspace__generation-stat">
-                            <span>Доступно генераций</span>
+                            <div class="app-player-workspace__stat-heading"><span>Бонусный баланс</span><button type="button" class="app-player-workspace__help-dot" data-player-topup-open title="Как пополнить?" aria-label="Как пополнить?" data-tooltip="Как пополнить?" aria-haspopup="dialog" aria-controls="app-player-topup-dialog">?</button></div>
+                            <strong data-player-offer-bonus>{{ $formatRub((int) $avatarOffer['bonus_balance_minor']) }}</strong>
+                        </div>
+                                                <div class="app-player-workspace__generation-stat">
+                            <span class="app-player-workspace__stat-label-nowrap">Доступно генераций</span>
                             <strong data-player-offer-count>{{ $avatarPrice === null ? '—' : ($avatarPrice === 0 ? 'Без оплаты' : (string) $avatarOffer['available_generations']) }}</strong>
                         </div>
                     </div>
-                    <p class="app-player-workspace__generation-hint">При оплате используются сначала бонусные средства, затем реальные. Стоимость и баланс проверяются ещё раз непосредственно перед списанием.</p>
                     <p class="app-player-workspace__generation-no-funds" data-player-offer-unavailable role="status"
                         @if($avatarCanGenerate) hidden @endif>
                         {{ $avatarPrice === null ? 'Стоимость генерации временно недоступна.' : 'Недостаточно средств для генерации аватара.' }}
@@ -287,6 +282,7 @@
                     </div>
                     <p class="app-player-workspace__generation-status" data-player-generation-status role="status" aria-live="polite"></p>
                 </section>
+                <dialog id="app-player-billing-dialog" class="app-player-workspace__topup-dialog" data-player-billing-dialog aria-labelledby="app-player-billing-title"><div class="app-player-workspace__topup-head"><h3 id="app-player-billing-title">Как списываются средства?</h3><button type="button" class="app-player-workspace__secondary" data-player-billing-close>Закрыть</button></div><div class="app-player-workspace__topup-body"><p>При оплате используются сначала бонусные средства, затем реальные. Стоимость и баланс проверяются ещё раз непосредственно перед списанием.</p></div></dialog>
                 <dialog id="app-player-topup-dialog" class="app-player-workspace__topup-dialog" data-player-topup-dialog
                     aria-labelledby="app-player-topup-title">
                     <div class="app-player-workspace__topup-head">
