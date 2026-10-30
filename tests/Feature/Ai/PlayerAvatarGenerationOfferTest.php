@@ -174,6 +174,33 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
         $this->assertSame(0, WalletOperation::query()->count());
     }
 
+
+    public function test_topup_uses_three_exclusive_details_and_reward_key_value_rows(): void
+    {
+        $user = $this->player();
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('data-topup-method="tasks" open', false)
+            ->assertSee('data-topup-method="payment"', false)
+            ->assertSee('data-topup-method="friend"', false)
+            ->assertSee('data-topup-task', false)
+            ->assertSee('Вознаграждение:')
+            ->assertSee('100 баллов')
+            ->assertSee('Условие:')
+            ->assertSee('После первой успешной модерации новой площадки.')
+            ->assertDontSee('role="tablist"', false)
+            ->assertDontSee('100,00 ₽ бонусами');
+
+        // Amounts are always read from the current reward version, not hard coded.
+        $reward = Reward::query()->where('code', 'venue_first_approval')->firstOrFail();
+        $version = $reward->currentVersion;
+        $version->update(['amount_minor' => 12500]);
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('125 баллов')
+            ->assertDontSee('100,00 ₽ бонусами');
+    }
+
     public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
     {
         $this->getJson(route('faq.help-content', ['context' => 'payments']))

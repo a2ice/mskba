@@ -3,21 +3,29 @@
 .app-player-workspace__subdialog{width:min(720px,calc(100vw - 24px))}
 .app-player-workspace__venue-dialog{width:min(820px,calc(100vw - 24px))}
 .app-player-workspace__topup-dialog [hidden],.app-wallet [hidden],.app-venue-create [hidden]{display:none!important}
-.app-player-workspace__topup-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #dce3ea;padding-bottom:10px}
-.app-player-workspace__topup-tabs button{border:1px solid transparent;background:transparent;color:#42546b;border-radius:9px;padding:10px 12px;font-weight:650;cursor:pointer;min-height:42px}
-.app-player-workspace__topup-tabs button[aria-selected="true"]{background:#f3f4f6;color:#c44b00;border-color:#e5e7eb}
-.app-player-workspace__topup-body [role="tabpanel"]{display:grid;gap:12px;min-width:0}
-.app-player-workspace__topup-body [role="tabpanel"]>h4{margin:0}
-.app-player-workspace__topup-note{color:#62758a;font-size:14px;line-height:1.55;margin:0}
+.app-player-workspace__topup-methods{display:grid;gap:10px;min-width:0}
+.app-player-workspace__topup-method{background:#f8fafc;border:1px solid #dce3ea;border-radius:10px;overflow:hidden;min-width:0}
+.app-player-workspace__topup-method>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:14px;font-size:15px;font-weight:700;color:#293b50;list-style:none;cursor:pointer}
+.app-player-workspace__topup-method>summary::-webkit-details-marker{display:none}
+.app-player-workspace__topup-method[open]>summary{color:#c44b00}
+.app-player-workspace__topup-method[open]>summary .app-player-workspace__topup-chevron{transform:rotate(180deg)}
+.app-player-workspace__topup-method-content{display:grid;gap:12px;padding:0 14px 14px;min-width:0}
+.app-player-workspace__topup-method-content>h4{font-size:15px;margin:0}
+.app-player-workspace__topup-method-content .app-player-workspace__topup-task{background:#fff}
+.app-player-workspace__topup-method-content .app-player-workspace__topup-task summary{font-size:14px}
 .app-player-workspace__topup-task{background:#f8fafc;border:1px solid #dce3ea;border-radius:10px;overflow:hidden}
-.app-player-workspace__topup-task summary{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:14px;min-height:54px;font-weight:700;color:#293b50}
+.app-player-workspace__topup-task summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:14px;min-height:54px;font-weight:700;color:#293b50}
 .app-player-workspace__topup-task summary::-webkit-details-marker{display:none}
-.app-player-workspace__topup-task-amount{font-size:13px;color:#c44b00;white-space:nowrap}
 .app-player-workspace__topup-chevron{font-size:20px;transform:rotate(0);transition:transform .2s}
 .app-player-workspace__topup-task[open] .app-player-workspace__topup-chevron{transform:rotate(180deg)}
 .app-player-workspace__topup-task-content{display:grid;gap:10px;padding:0 14px 14px}
 .app-player-workspace__topup-task-content p{margin:0;color:#62758a;font-size:14px;line-height:1.5}
 .app-player-workspace__topup-task-content button{justify-self:start}
+.app-player-workspace__topup-task-properties{display:grid;gap:9px;margin:0;font-size:13px;line-height:1.5}
+.app-player-workspace__topup-task-properties>div{display:grid;grid-template-columns:minmax(100px,auto) minmax(0,1fr);gap:6px 10px}
+.app-player-workspace__topup-task-properties dt{font-weight:700;color:#293b50}
+.app-player-workspace__topup-task-properties dd{margin:0;color:#62758a}
+.app-player-workspace__topup-task-properties>div:first-child dd{font-weight:700;color:#c44b00}
 .app-player-workspace__referral-link{display:flex;align-items:stretch;gap:8px}
 .app-player-workspace__referral-link input{width:100%;min-width:0;padding:10px;border:1px solid #dce3ea;border-radius:8px}
 .app-player-workspace__transfer-results{display:grid;gap:3px;max-height:200px;overflow:auto;border:1px solid #dce3ea;border-radius:8px;padding:4px}
@@ -67,12 +75,8 @@
 .app-balance-privacy form{display:grid;gap:12px;justify-items:start}
 @media(max-width:600px){
     .app-venue-create__grid,.app-wallet__balances,.app-wallet__transfer form{grid-template-columns:minmax(0,1fr)}
-    .app-player-workspace__topup-task summary{grid-template-columns:minmax(0,1fr) auto}
-    .app-player-workspace__topup-task-amount{grid-column:1/2;grid-row:2;white-space:normal}
-    .app-player-workspace__topup-chevron{grid-column:2;grid-row:1/3}
-    .app-player-workspace__topup-tabs button{flex:1 1 100%}
+    .app-player-workspace__topup-task-properties>div{grid-template-columns:minmax(0,1fr);gap:2px}
     .app-player-workspace__referral-link{flex-wrap:wrap}
 }
 
 .app-player-workspace__referral-copy{display:inline-flex;align-items:center;gap:6px}
-.app-player-workspace__topup-task:not([open]) .app-player-workspace__topup-task-amount{display:none}
