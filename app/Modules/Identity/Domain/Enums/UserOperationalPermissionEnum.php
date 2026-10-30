@@ -13,6 +13,7 @@ enum UserOperationalPermissionEnum: string
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
     case EDIT_OWN_PROFILE = 'identity.profile.self_edit';
     case EDIT_USER_PERSONAL_DATA = 'identity.user.personal_edit';
+    case WALLET_USER_BALANCE_CREDIT = 'wallet.user_balance.credit';
     case HANDLE_SUPPORT_TICKETS = 'support.ticket.handle';
     case OPERATOR_PRESENCE_VIEW = 'operator.presence.view';
     case OPERATOR_SESSION_HISTORY_VIEW = 'operator.session_history.view';
@@ -104,6 +105,7 @@ enum UserOperationalPermissionEnum: string
             self::REVIEW_PROFILE_CHANGES => 'Модерировать заявки на изменение подтверждённых данных пользователей',
             self::EDIT_OWN_PROFILE => 'Изменять данные собственного профиля',
             self::EDIT_USER_PERSONAL_DATA => 'Редактировать личные данные пользователей',
+            self::WALLET_USER_BALANCE_CREDIT => 'Пополнять пользовательский баланс',
             self::HANDLE_SUPPORT_TICKETS => 'Обрабатывать обращения в техподдержку',
             self::OPERATOR_PRESENCE_VIEW => 'Видеть текущую страницу пользователей',
             self::OPERATOR_SESSION_HISTORY_VIEW => 'Видеть историю переходов в текущей сессии',
@@ -154,7 +156,7 @@ enum UserOperationalPermissionEnum: string
 
         return match ($this) {
             self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES,
-            self::EDIT_OWN_PROFILE, self::EDIT_USER_PERSONAL_DATA, self::HANDLE_SUPPORT_TICKETS,
+            self::EDIT_OWN_PROFILE, self::EDIT_USER_PERSONAL_DATA, self::WALLET_USER_BALANCE_CREDIT, self::HANDLE_SUPPORT_TICKETS,
             self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
             self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND => false,
             default => true,
@@ -181,6 +183,10 @@ enum UserOperationalPermissionEnum: string
                     self::BACKOFFICE_ACCESS, self::BACKOFFICE_WIDGET_VIEW,
                     self::BACKOFFICE_WIDGET_CREATE, self::BACKOFFICE_WIDGET_EDIT,
                 ], true);
+        }
+
+        if ($this === self::WALLET_USER_BALANCE_CREDIT) {
+            return $systemRole === UserSystemRoleEnum::SUPERADMIN;
         }
 
         if (in_array($this, [self::EDIT_OWN_PROFILE, self::REVIEW_PROFILE_CHANGES], true)) {
