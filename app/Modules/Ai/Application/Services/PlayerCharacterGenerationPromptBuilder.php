@@ -84,6 +84,7 @@ Composition - STRICT:
 Clothing:
 - Modern basketball jersey and matching shorts.
 - If team colors are supplied, use those colors as the uniform palette.
+- If no team colors are supplied, use a neutral light slate/gray jersey and matching shorts; do not invent team colors or branding.
 {$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
 - Apply requested shoes and ONLY the explicitly requested sports attributes.
 
