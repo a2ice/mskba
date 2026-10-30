@@ -27,14 +27,14 @@ use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
 use App\Modules\Rewards\Domain\Models\RewardGrant;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Tests\TestCase;
 
 final class RewardMechanismPayoutTest extends TestCase
 {
-    // These tests exercise after-commit listeners. An outer test transaction
-    // would suppress queue execution until after test teardown.
-    use DatabaseMigrations;
+    // After-commit dispatch needs real commits; truncation isolates tests without
+    // the SQLite-incompatible down() migrations or an outer test transaction.
+    use DatabaseTruncation;
 
     public function test_confirming_direct_referral_credits_300_bonus_rubles_once(): void
     {
