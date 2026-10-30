@@ -252,9 +252,10 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertSee('images/blank/avatar/right-male.png', false)
             ->assertDontSee('images/blank/avatar/front-female.png', false);
 
-        $user->profile()->update(['gender' => UserGenderEnum::FEMALE]);
+        $female = $this->player();
+        $female->profile()->update(['gender' => UserGenderEnum::FEMALE]);
 
-        $this->actingAs($user)->get($route)
+        $this->actingAs($female)->get($route)
             ->assertOk()
             ->assertSee('images/blank/avatar/front-female.png', false)
             ->assertSee('images/blank/avatar/left-female.png', false)
