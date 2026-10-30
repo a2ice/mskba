@@ -574,6 +574,32 @@ jobs:
               $COMPOSE logs --tail=50 queue
               exit 1
             fi
+            # Reward settlement MUST stay out of the confirming user's HTTP
+            # request. Inspect the live worker's resolved connection and
+            # listener dispatch semantics, without printing .env or secrets.
+            $COMPOSE exec -T queue php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $connection = config("queue.default");
+              $engine = $app->make(\App\Modules\Rewards\Application\Services\RewardEngine::class);
+              $listeners = [
+                  new \App\Modules\Rewards\Infrastructure\Listeners\ProcessUserAccountConfirmedRewards($engine),
+                  new \App\Modules\Rewards\Infrastructure\Listeners\ProcessVenueFirstApprovalReward($engine),
+              ];
+              if (!in_array($connection, ["database", "redis"], true)) {
+                  fwrite(STDERR, "Rewards require an asynchronous queue connection.\n");
+                  exit(1);
+              }
+              foreach ($listeners as $listener) {
+                  if (!($listener instanceof \Illuminate\Contracts\Queue\ShouldQueue)
+                      || $listener->afterCommit !== true) {
+                      fwrite(STDERR, "Reward listener must be queued after transaction commit.\n");
+                      exit(1);
+                  }
+              }
+              echo "Dev rewards queue is asynchronous and listeners are after-commit.\n";
+            '
             rm -rf -- "$ASSET_STAGE"
             if [ "$COMPOSER_CHANGED" -eq 1 ]; then
               rm -rf -- "vendor.rollback.$VERIFIED_SHA" "$VENDOR_STAGE"

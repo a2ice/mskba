@@ -13,6 +13,7 @@ use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardGrant;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
+use App\Modules\Rewards\Infrastructure\Services\NotifyCompletedRewardGrant;
 use Illuminate\Support\Facades\DB;
 
 final class RewardEngine
@@ -21,6 +22,7 @@ final class RewardEngine
         private readonly RewardMechanismRegistry $mechanisms,
         private readonly EnsureWalletHandler $ensureWallet,
         private readonly CreditWalletHandler $creditWallet,
+        private readonly NotifyCompletedRewardGrant $rewardNotifications,
     ) {}
 
     public function process(string $rewardCode, RewardMechanismContext $context): ?RewardGrant
@@ -136,6 +138,11 @@ final class RewardEngine
                     'wallet_operation_id' => $operation->id,
                     'completed_at' => now(),
                 ])->save();
+
+                // The financial ledger is already idempotent; tie the durable
+                // notification to the *first* completed transition under lock.
+                // Replayed events/jobs do not generate duplicate toasts.
+                $this->rewardNotifications->create($locked);
             }
 
             return $locked->refresh();
