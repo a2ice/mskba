@@ -13,6 +13,7 @@ use App\Modules\Identity\Application\UseCases\StorePlayerCharacterFaceReferenceH
 use App\Modules\Identity\Application\UseCases\UpdatePlayerCharacterRenderModeHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerProfileHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\UpdatePlayerProfileRequest;
@@ -24,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 use InvalidArgumentException;
@@ -45,6 +47,10 @@ final class UpdatePlayerProfileController extends Controller
 
         if ($request->mutation() === 'face_reference') {
             return $this->storeFaceReference($request, $faceReferenceHandler);
+        }
+
+        if ($request->mutation() === 'face_reference_delete') {
+            return $this->deleteFaceReference($request);
         }
 
         if ($request->mutation() === 'generation_quote') {
@@ -119,6 +125,13 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerProfileRequest $request,
         StorePlayerCharacterFaceReferenceHandler $handler,
     ): JsonResponse {
+        if ($this->hasActiveGeneration($request->user())) {
+            return response()->json([
+                'code' => 'generation_in_progress',
+                'message' => 'Дождитесь завершения генерации, прежде чем заменять фотографии лица.',
+            ], 409);
+        }
+
         $slot = $request->faceReferenceSlot();
         $file = $request->faceReferenceFile();
 
@@ -170,13 +183,107 @@ final class UpdatePlayerProfileController extends Controller
         }
 
         return response()->json([
-            'message' => 'Фото проверено и сохранено.',
+            'message' => 'Фотография сохранена. Проверка результата генерации ещё не выполнена.',
             'slot' => $slot,
             'status' => 'stored',
+            'verified' => false,
             'width' => $result['width'],
             'height' => $result['height'],
             'preview_url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$result['media']->id,
         ]);
+    }
+
+    private function deleteFaceReference(UpdatePlayerProfileRequest $request): JsonResponse
+    {
+        if ($this->hasActiveGeneration($request->user())) {
+            return response()->json([
+                'code' => 'generation_in_progress',
+                'message' => 'Дождитесь завершения генерации, прежде чем удалять фотографии лица.',
+            ], 409);
+        }
+
+        $slot = $request->faceReferenceSlot();
+        $profile = $request->user()->profile;
+        if ($slot === null || $profile === null) {
+            return response()->json([
+                'code' => 'face_reference_missing',
+                'message' => 'Не удалось определить фотографию лица.',
+            ], 422);
+        }
+
+        $reference = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot($slot))
+            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
+            ->latest('id')
+            ->first();
+
+        if ($reference !== null) {
+            $disk = $reference->disk;
+            $path = $reference->path;
+            $reference->forceDelete();
+            Storage::disk($disk)->delete($path);
+        }
+
+        return response()->json([
+            'slot' => $slot,
+            'deleted' => true,
+            'message' => 'Фотография удалена.',
+        ]);
+    }
+
+    private function hasActiveGeneration(User $user): bool
+    {
+        return PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $user->identityIds())
+            ->whereIn('status', [
+                PlayerCharacterGenerationStatusEnum::PENDING->value,
+                PlayerCharacterGenerationStatusEnum::PROCESSING->value,
+            ])
+            ->where(function ($query): void {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+    }
+
+    /**
+     * Stored face references and whether exactly these media were included
+     * in a successfully completed generation (not merely uploaded).
+     *
+     * @return array<string, array{id: int, url: string, verified: bool}>
+     */
+    private function faceReferenceState(User $user): array
+    {
+        $profile = $user->profile;
+        if ($profile === null) {
+            return [];
+        }
+
+        $references = $profile->media()
+            ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
+            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
+            ->latest('id')
+            ->get()
+            ->unique('collection');
+
+        $result = [];
+        foreach ($references as $reference) {
+            $slot = PlayerCharacterFaceReferenceOptions::slotForCollection($reference->collection);
+            if ($slot === null) {
+                continue;
+            }
+            $verified = PlayerCharacterGeneration::query()
+                ->whereIn('user_id', $user->identityIds())
+                ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
+                ->whereJsonContains('reference_media_ids->'.$slot, (int) $reference->id)
+                ->exists();
+            $result[$slot] = [
+                'id' => (int) $reference->id,
+                'url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$reference->id,
+                'verified' => $verified,
+            ];
+        }
+
+        return $result;
     }
 
     private function generationQuote(
@@ -206,6 +313,7 @@ final class UpdatePlayerProfileController extends Controller
             'character' => $character,
             'generation_team_id' => data_get($character, 'generation_team_id'),
             'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
+            'face_references' => $this->faceReferenceState($request->user()),
             'teams' => $teams->map(fn (Team $team): array => [
                 'id' => (int) $team->id,
                 'name' => (string) $team->name,
