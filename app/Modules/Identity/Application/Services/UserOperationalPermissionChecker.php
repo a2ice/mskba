@@ -40,6 +40,12 @@ final class UserOperationalPermissionChecker
             return false;
         }
 
+        // The superadmin role has a non-revocable full permission set, not
+        // merely the Filament access subset. Account state checks above still apply.
+        if ($user->system_role === UserSystemRoleEnum::SUPERADMIN && $user->isConfirmed()) {
+            return true;
+        }
+
         if ($permission->isBackoffice()) {
             if (! $user->isConfirmed() || $user->system_role === UserSystemRoleEnum::SYSTEM) {
                 return false;
