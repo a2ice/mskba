@@ -108,6 +108,7 @@ final class StaffPermissionProfiles
                 Permission::BACKOFFICE_WIDGET_CREATE, Permission::BACKOFFICE_WIDGET_EDIT,
                 Permission::BACKOFFICE_STYLE_MANAGE, Permission::BACKOFFICE_VENUE_MANAGE,
                 Permission::BACKOFFICE_VENUE_MODERATE, Permission::BACKOFFICE_EVENT_MANAGE,
+                Permission::BACKOFFICE_TEAM_MANAGE,
                 Permission::BACKOFFICE_STYLE_VIEW, Permission::BACKOFFICE_THEME_VIEW,
                 Permission::BACKOFFICE_BUILDER_VIEW,
                 Permission::BACKOFFICE_GRAPHQL_EXPLORER_VIEW,

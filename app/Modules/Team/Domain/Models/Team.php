@@ -6,6 +6,7 @@ use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
@@ -85,6 +86,11 @@ class Team extends Model
     public function joinRequests(): HasMany
     {
         return $this->hasMany(TeamJoinRequest::class);
+    }
+
+    public function gameSides(): HasMany
+    {
+        return $this->hasMany(GameSide::class);
     }
 
     public function sportProfiles(): HasMany
