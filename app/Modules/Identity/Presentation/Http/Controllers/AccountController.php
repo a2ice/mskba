@@ -2,6 +2,8 @@
 
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
+
 use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
@@ -751,6 +753,9 @@ class AccountController extends Controller
             'playerSkills' => PlayerSelfAssessment::SKILLS,
             'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
             'playerTeams' => $playerTeams,
+            'generationOffer' => $roleEnum === UserParticipationRoleEnum::PLAYER
+                ? app(GetPlayerAvatarGenerationOffer::class)->handle($user)
+                : null,
         ], $personalData));
     }
 

@@ -155,6 +155,29 @@ if (actions && help) {
             return;
         }
         const section = groups.find(s => s.key === faqSection);
+        if (faqSection === 'payments') {
+            // The avatar top-up dialog and contextual FAQ consume the same
+            // enabled Rewards catalogue returned by the help endpoint.
+            const intro = node('p', 'Бонусы начисляются после подтверждения условия. Пополнение картой пока не подключено и не списывает деньги.');
+            articleList.append(intro);
+            const rewards = Array.isArray(faq.bonus_opportunities) ? faq.bonus_opportunities : [];
+            if (rewards.length) {
+                const listing = node('ul', '', 'app-context-help__bonus-list');
+                for (const item of rewards) {
+                    const line = node('li');
+                    const amount = (Number(item.amount_minor) / 100).toLocaleString('ru-RU', {
+                        style: 'currency', currency: 'RUB',
+                    });
+                    line.append(node('strong', item.title + ' — ' + amount));
+                    line.append(node('p', item.description));
+                    listing.append(line);
+                }
+                articleList.append(listing);
+            } else {
+                articleList.append(node('p', 'Сейчас нет активных бонусных программ.'));
+            }
+            if (!section?.articles?.length) return;
+        }
         if (!section?.articles?.length) {
             articleList.append(node('p', 'По данному разделу пока нет информации. Вы можете задать вопрос ниже.'));
             return;

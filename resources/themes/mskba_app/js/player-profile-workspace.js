@@ -422,16 +422,72 @@ if (workspace) {
     }
 
     const generate = workspace.querySelector('[data-player-generate]');
+    const generationOffer = workspace.querySelector('[data-player-generation-offer]');
+    const generationFields = generationOffer?.querySelector('[data-player-generation-fields]');
+    const offerPrice = generationOffer?.querySelector('[data-player-offer-price]');
+    const offerBonus = generationOffer?.querySelector('[data-player-offer-bonus]');
+    const offerTotal = generationOffer?.querySelector('[data-player-offer-total]');
+    const offerCount = generationOffer?.querySelector('[data-player-offer-count]');
+    const offerUnavailable = generationOffer?.querySelector('[data-player-offer-unavailable]');
+    const topupDialog = workspace.querySelector('[data-player-topup-dialog]');
+    const money = minor => (Number(minor) / 100).toLocaleString('ru-RU', {
+        style: 'currency', currency: 'RUB',
+    });
+    let canGenerate = generate ? !generate.disabled : false;
+    const displayOffer = quote => {
+        const available = !!quote.can_generate;
+        canGenerate = available;
+        if (offerPrice) offerPrice.textContent = quote.price_minor === null
+            ? 'Недоступна' : money(quote.price_minor);
+        if (offerBonus) offerBonus.textContent = money(quote.bonus_balance_minor || 0);
+        if (offerTotal) offerTotal.textContent = money(quote.available_minor || 0);
+        if (offerCount) offerCount.textContent = quote.price_minor === null
+            ? '—' : Number(quote.price_minor) === 0
+                ? 'Без оплаты' : String(quote.available_generations ?? 0);
+        if (generationFields) generationFields.hidden = !available;
+        if (offerUnavailable) {
+            offerUnavailable.hidden = available;
+            offerUnavailable.textContent = quote.price_minor === null
+                ? 'Стоимость генерации временно недоступна.'
+                : 'Недостаточно средств для генерации аватара.';
+        }
+        if (generate) generate.disabled = !available;
+    };
+    const refreshOffer = async () => {
+        if (!generationOffer) return null;
+        const quote = await jsonMutation({mutation:'generation_quote'});
+        displayOffer(quote);
+        return quote;
+    };
+    topupDialog?.querySelector('[data-player-topup-close]')?.addEventListener('click', () => topupDialog.close());
+    topupDialog?.addEventListener('click', event => {
+        if (event.target === topupDialog) topupDialog.close();
+    });
+    generationOffer?.querySelector('[data-player-topup-open]')?.addEventListener('click', () => {
+        if (topupDialog?.showModal && !topupDialog.open) topupDialog.showModal();
+    });
+    if (generationOffer) {
+        void refreshOffer().catch(() => {
+            if (generate) generate.disabled = true;
+            canGenerate = false;
+            if (generationFields) generationFields.hidden = true;
+            if (offerUnavailable) {
+                offerUnavailable.hidden = false;
+                offerUnavailable.textContent = 'Не удалось проверить стоимость и баланс. Обнови страницу.';
+            }
+        });
+    }
     generate?.addEventListener('click', async () => {
         generate.disabled = true;
         try {
-            message('Проверяем стоимость...');
-            const quote = await jsonMutation({mutation:'generation_quote'});
-            const rubles = (Number(quote.price_minor || 0) / 100).toLocaleString('ru-RU', {
-                style:'currency', currency:'RUB',
-            });
-            if (!window.confirm('Создать реалистичный аватар за ' + rubles +
-                '? Для этого используются прикреплённые фотографии лица.')) {
+            message('Проверяем стоимость и баланс...');
+            const quote = await refreshOffer();
+            if (!quote || !quote.can_generate || quote.price_minor === null) {
+                message('Недостаточно средств или стоимость генерации временно недоступна.', true);
+                return;
+            }
+            if (!window.confirm('Создать реалистичный аватар за ' + money(quote.price_minor) +
+                '? Сначала будут списаны бонусные средства, затем реальные.')) {
                 message('Генерация не запускалась.');
                 return;
             }
@@ -453,6 +509,7 @@ if (workspace) {
             const result = await request(payload);
             if (result.status === 'pending' && result.status_url) {
                 message('Генерация запущена. Проверяем результат...');
+                await refreshOffer().catch(() => {});
                 await pollGeneration(result.status_url,result.generation_id);
             } else if (result.image_data_url) {
                 // A successful synchronous response contains the already validated image.
@@ -468,7 +525,8 @@ if (workspace) {
         } catch (error) {
             message(error.message || 'Не удалось создать аватар.', true);
         } finally {
-            generate.disabled = false;
+            generate.disabled = !canGenerate;
+            await refreshOffer().catch(() => {});
         }
     });
     void showExisting();

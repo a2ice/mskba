@@ -13,6 +13,7 @@ return [
         'sections' => ['label' => 'Секции и тренировки', 'keys' => ['faq.creation.sections']],
         'coordination' => ['label' => 'Координация', 'keys' => ['faq.creation.coordination']],
         'account' => ['label' => 'Аккаунт и профиль', 'keys' => []],
+        'payments' => ['label' => 'Оплата и бонусы', 'keys' => []],
         'other' => ['label' => 'Другие вопросы', 'keys' => []],
     ],
     'question_topics' => [

@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
 use App\Modules\Content\Application\Services\FaqHelpCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ final class FaqHelpController extends Controller
         ]);
         return response()->json([
             ...$catalog->content($data['context'] ?? null, $data['section'] ?? null, $data['article'] ?? null),
+            'bonus_opportunities' => app(GetPlayerAvatarGenerationOffer::class)->bonusOpportunities(),
             'authenticated' => $request->user() !== null,
             'csrf_token' => csrf_token(),
         ]);

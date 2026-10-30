@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
 use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
@@ -15,7 +16,6 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\UpdatePlayerProfileRequest;
-use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -35,7 +35,7 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerCharacterRenderModeHandler $renderModeHandler,
         StorePlayerCharacterFaceReferenceHandler $faceReferenceHandler,
         GeneratePlayerCharacterTwoDimensionalHandler $generationHandler,
-        PricingPriceResolver $prices,
+        GetPlayerAvatarGenerationOffer $generationOffer,
     ): JsonResponse|RedirectResponse {
         if ($request->mutation() === 'render_mode') {
             return $this->updateRenderMode($request, $renderModeHandler);
@@ -46,7 +46,7 @@ final class UpdatePlayerProfileController extends Controller
         }
 
         if ($request->mutation() === 'generation_quote') {
-            return $this->generationQuote($prices);
+            return $this->generationQuote($request, $generationOffer);
         }
 
         if ($request->mutation() === 'generation_preferences') {
@@ -177,21 +177,18 @@ final class UpdatePlayerProfileController extends Controller
         ]);
     }
 
-    private function generationQuote(PricingPriceResolver $prices): JsonResponse
-    {
-        $price = $prices->resolve(GeneratePlayerCharacterTwoDimensionalHandler::SERVICE_CODE);
-
-        if ($price === null) {
-            return response()->json([
-                'code' => 'pricing_unavailable',
-                'message' => 'Цена генерации временно недоступна.',
-            ], 503);
-        }
-
-        return response()->json([
-            'price_minor' => (int) $price->amount_minor,
-            'currency' => 'RUB',
-        ]);
+    private function generationQuote(
+        UpdatePlayerProfileRequest $request,
+        GetPlayerAvatarGenerationOffer $offer,
+    ): JsonResponse {
+        // A quote is an authorized read-only snapshot: price and both wallet
+        // buckets from the same source as the rendered page and debit handler.
+        // The actual debit always rechecks the active price and locked balance.
+        return response()->json(
+            $offer->handle($request->user()),
+            200,
+            ['Cache-Control' => 'private, no-store'],
+        );
     }
 
     private function generationPreferences(UpdatePlayerProfileRequest $request): JsonResponse
