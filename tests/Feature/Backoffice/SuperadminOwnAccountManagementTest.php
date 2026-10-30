@@ -94,7 +94,13 @@ final class SuperadminOwnAccountManagementTest extends TestCase
         }
 
         $all = app(AdminUpdateUserPermissionSnapshotHandler::class)->snapshot($super);
-        $this->assertCount(count(Permission::cases()), $all['permissions']);
+        $global = app(GlobalOperationalPermissionManager::class);
+        $snapshotted = array_merge(
+            $global->creationPermissions(),
+            $global->privilegedPermissions(),
+            Permission::backofficeCases(),
+        );
+        $this->assertCount(count($snapshotted), $all['permissions']);
         $this->assertSame(UserSystemRoleEnum::SUPERADMIN->value, $all['role']);
     }
 
