@@ -25,6 +25,7 @@ use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 final readonly class GeneratePlayerCharacterTwoDimensionalHandler
 {
@@ -371,6 +372,19 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 $exception->httpStatus,
                 ['validated_face_media_ids' => $validatedFaceMediaIds],
             );
+        } catch (Throwable $exception) {
+            // Never strand an unexpected provider/billing failure as "pending".
+            // The billable gateway owns any compensating wallet refund.
+            if ($generation !== null) {
+                $generation->forceFill([
+                    'status' => PlayerCharacterGenerationStatusEnum::FAILED,
+                    'error_code' => 'generation_unexpected_error',
+                    'error_message' => 'Генерация завершилась ошибкой. Попробуйте позже.',
+                    'failed_at' => now(),
+                ])->save();
+            }
+
+            throw $exception;
         }
 
         if ($image->isPending() && $generation !== null) {

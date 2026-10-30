@@ -37,6 +37,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'mutation' => ['nullable', Rule::in([
                 'render_mode',
                 'face_reference',
+                'face_reference_delete',
                 'generate_2d',
                 'generation_quote',
                 'generation_preferences',
@@ -50,7 +51,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'face_reference_slot' => [
                 'nullable',
-                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'face_reference'),
+                Rule::requiredIf(fn (): bool => in_array($this->input('mutation'), ['face_reference', 'face_reference_delete'], true)),
                 Rule::in(PlayerCharacterFaceReferenceOptions::SLOTS),
             ],
             'face_reference' => [

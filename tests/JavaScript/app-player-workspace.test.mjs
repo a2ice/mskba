@@ -6,6 +6,8 @@ const path = 'resources/themes/mskba_app/';
 const load = name => readFileSync(new URL('../../' + path + name, import.meta.url), 'utf8');
 const page = load('views/pages/account/partials/player-profile-workspace.blade.php');
 const generation = load('views/pages/account/partials/player-generation-fields.blade.php');
+const generationOptions = load('js/player-generation-options.js');
+const generationStyles = load('css/player-generation-options.css');
 const controller = readFileSync(new URL('../../app/Modules/Identity/Presentation/Http/Controllers/UpdatePlayerProfileController.php',import.meta.url),'utf8');
 const client = load('js/player-profile-workspace.js');
 
@@ -18,13 +20,33 @@ test('physical and game tabs use separate server-validated form payloads',()=>{
     assert.match(controller,/profileDataForSection\(\)/);
 });
 
-test('avatar generation requires price confirmation and uses existing paid backend',()=>{
+test('avatar generation runs directly with sequential status and clear failures',()=>{
     assert.match(client,/mutation:'generation_quote'/);
-    assert.match(client,/window.confirm\(/);
+    assert.doesNotMatch(client,/window.confirm\(/);
+    assert.match(client,/Проверяем стоимость и баланс/);
+    assert.match(client,/Генерация аватара/);
+    assert.match(client,/Готово! Аватар создан/);
+    assert.match(client,/Ошибка генерации/);
     assert.match(client,/payload.set\('mutation','generate_2d'\)/);
-    assert.match(client,/generation_face_references\[/);
     assert.match(client,/mutation:'generation_primary'/);
     assert.match(client,/target.origin !== location.origin/);
+    assert.match(client,/response.status/);
+    assert.match(client,/workspace.dispatchEvent\(new CustomEvent\('mskba:avatar-generated'\)\)/);
+});
+
+test('face references persist with private previews and deletion, verified only after generation',()=>{
+    assert.match(generation,/data-face-photo/);
+    assert.match(generation,/data-face-placeholder/);
+    assert.match(generation,/data-face-delete/);
+    assert.match(generationOptions,/face_reference_delete/);
+    assert.match(generationOptions,/face_reference'/);
+    assert.match(generationOptions,/generation_preferences/);
+    assert.match(generationOptions,/face_references/);
+    assert.match(generationOptions,/mskba:avatar-generated/);
+    assert.match(generationOptions,/reference.verified === true/);
+    assert.doesNotMatch(generationStyles,/face-upload.has-file .app-player-workspace__face-tick/);
+    assert.match(generationStyles,/face-upload.is-verified .app-player-workspace__face-tick/);
+    assert.match(generationStyles,/object-fit:cover/);
 });
 
 test('avatar starts with scaled default character and never runs generation on input alone',()=>{

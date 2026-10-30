@@ -6,6 +6,8 @@ use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
 use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
 use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
+use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Ai\Infrastructure\Gateways\NullPlayerCharacterAiGateway;
 use App\Modules\Finance\Application\UseCases\CreditWalletHandler;
 use App\Modules\Finance\Application\UseCases\EnsureWalletHandler;
@@ -22,6 +24,7 @@ use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class PlayerCharacterAiFlowTest extends TestCase
@@ -469,6 +472,129 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ])
             ->assertStatus(503)
             ->assertJsonPath('code', 'ai_connection_failed');
+    }
+
+    public function test_saved_face_references_are_reloaded_privately_and_can_be_deleted_without_charge(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $other = $this->player();
+        $this->uploadReference($user, 'front');
+
+        $reference = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonPath('face_references.front.id', $reference->id)
+            ->assertJsonPath('face_references.front.verified', false)
+            ->assertJsonPath('face_references.front.url',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$reference->id);
+
+        $this->actingAs($other)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonMissingPath('face_references.front');
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'face_reference_delete',
+                'face_reference_slot' => 'front',
+            ])
+            ->assertOk()
+            ->assertJsonPath('deleted', true);
+
+        Storage::disk('local')->assertMissing($reference->path);
+        $this->actingAs($user)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertNotFound();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonMissingPath('face_references.front');
+    }
+
+    public function test_green_check_requires_same_photo_in_completed_generation_and_resets_on_replacement(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'right');
+        $front = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $right = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('right'))
+            ->firstOrFail();
+
+        $pending = PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::FAILED,
+            'reference_media_ids' => ['front' => $front->id, 'right' => $right->id],
+            'payload_snapshot' => [],
+        ]);
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', false);
+
+        $pending->forceFill(['status' => PlayerCharacterGenerationStatusEnum::COMPLETED])->save();
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', true)
+            ->assertJsonPath('face_references.right.verified', true);
+
+        $this->uploadReference($user, 'front');
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', false)
+            ->assertJsonPath('face_references.right.verified', true);
+    }
+
+    public function test_active_generation_prevents_reference_replacement_or_deletion(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $this->uploadReference($user, 'front');
+
+        PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+            'reference_media_ids' => [],
+            'payload_snapshot' => [],
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'face_reference_delete',
+                'face_reference_slot' => 'front',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'generation_in_progress');
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'face_reference',
+                'face_reference_slot' => 'front',
+                'face_reference' => UploadedFile::fake()->image('other.jpg', 1200, 900),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'generation_in_progress');
+
+        $this->assertSame(1, $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))->count());
     }
 
     private function bindGateway(
