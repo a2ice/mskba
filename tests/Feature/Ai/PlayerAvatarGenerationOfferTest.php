@@ -240,6 +240,29 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertDontSee('Доступно для оплаты (всего)');
     }
 
+    public function test_face_upload_placeholders_match_saved_gender_for_all_three_views(): void
+    {
+        $user = $this->player();
+        $route = route('account.participation-role', ['role' => 'player']);
+
+        $this->actingAs($user)->get($route)
+            ->assertOk()
+            ->assertSee('images/blank/avatar/front-male.png', false)
+            ->assertSee('images/blank/avatar/left-male.png', false)
+            ->assertSee('images/blank/avatar/right-male.png', false)
+            ->assertDontSee('images/blank/avatar/front-female.png', false);
+
+        $female = $this->player();
+        $female->profile()->update(['gender' => UserGenderEnum::FEMALE]);
+
+        $this->actingAs($female)->get($route)
+            ->assertOk()
+            ->assertSee('images/blank/avatar/front-female.png', false)
+            ->assertSee('images/blank/avatar/left-female.png', false)
+            ->assertSee('images/blank/avatar/right-female.png', false)
+            ->assertDontSee('images/blank/avatar/front-male.png', false);
+    }
+
     public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
     {
         $this->getJson(route('faq.help-content', ['context' => 'payments']))

@@ -10,7 +10,7 @@
 .app-player-workspace__face-upload{display:grid;place-items:center;align-content:start;gap:7px;position:relative;text-align:center;cursor:pointer;font-size:13px;font-weight:700;color:#304760}
 .app-player-workspace__face-upload input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .app-player-workspace__face-icon{width:clamp(62px,7vw,94px);height:clamp(62px,7vw,94px);border:1px solid #b9d3e4;border-radius:50%;background:#e7f3fa;display:grid;place-items:center;position:relative;transition:background .15s,border-color .15s}
-.app-player-workspace__face-icon svg{width:68%;height:68%;stroke:#779bb4}
+.app-player-workspace__face-icon img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;pointer-events:none}
 .app-player-workspace__face-upload:hover .app-player-workspace__face-icon,.app-player-workspace__face-upload:focus-within .app-player-workspace__face-icon{border-color:var(--accent,#c9520b);background:#f0f8fc}
 .app-player-workspace__face-tick{display:none;position:absolute;right:-2px;top:0;width:23px;height:23px;line-height:23px;text-align:center;border-radius:50%;background:#24884f;color:#fff}
 .app-player-workspace__face-upload.has-file .app-player-workspace__face-tick{display:block}
