@@ -46,6 +46,15 @@ final class UserOperationalPermissionChecker
             return true;
         }
 
+        // Financial delegation is a dangerous privilege: for non-superadmins
+        // it is opt-in ONLY via an explicit individual permission row, never
+        // inherited from a role or mutable staff template.
+        if ($permission === UserOperationalPermissionEnum::WALLET_USER_BALANCE_CREDIT) {
+            return (bool) $user->operationalPermissions()
+                ->where('permission', $permission->value)
+                ->value('is_allowed');
+        }
+
         if ($permission->isBackoffice()) {
             if (! $user->isConfirmed() || $user->system_role === UserSystemRoleEnum::SYSTEM) {
                 return false;
