@@ -7,10 +7,10 @@ use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Services\RewardEngine;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class ProcessVenueFirstApprovalReward implements ShouldQueue
+final class ProcessVenueFirstApprovalReward implements ShouldQueueAfterCommit
 {
     use Queueable;
 
