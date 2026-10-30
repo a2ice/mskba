@@ -468,6 +468,8 @@ jobs:
             test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
             grep -qx 'PLAYER_CHARACTER_AI_PROVIDER=github_openai' .env
             grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            AI_ENV_CHANGED=0
+            if ! cmp -s "$AI_ENV_BACKUP" .env; then AI_ENV_CHANGED=1; fi
             echo 'Shared production generation credentials synchronized to staging (values hidden).'
 
             git reset --hard "$VERIFIED_SHA"
@@ -487,7 +489,7 @@ jobs:
                 *) STATIC_ONLY=0 ;;
               esac
             done < <(git diff --name-only "$PREVIOUS_SHA" "$VERIFIED_SHA")
-            if [ "$STATIC_ONLY" -eq 1 ]; then
+            if [ "$STATIC_ONLY" -eq 1 ] && [ "$AI_ENV_CHANGED" -eq 0 ]; then
               echo 'Safe static-only deploy: publish verified assets without PHP/DB restart'
               mkdir -p public/build
               tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
@@ -495,7 +497,7 @@ jobs:
               mv -f public/build/manifest.json.pending public/build/manifest.json
               curl --fail --silent --show-error --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ >/dev/null
               rm -rf -- "$ASSET_STAGE"
-              rm -f "$MANIFEST_BACKUP"
+              rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
               ROLLBACK_ARMED=0
               echo 'Safe-only static deployment completed; no migrations or restarts'
               exit 0
