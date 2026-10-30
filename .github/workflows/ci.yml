@@ -252,6 +252,45 @@ jobs:
           target: '/home/deploy/mskba-dev-vendor/${{ github.sha }}'
           strip_components: 1
 
+      # Reuse the exact production GitHub/OpenAI credentials. The OpenAI key
+      # stays exclusively on GitHub runners; only dispatch and callback secrets
+      # are sent to the dev server. Never print or upload their values.
+      - name: Verify shared production AI credentials for dev
+        shell: bash
+        env:
+          GITHUB_AI_DISPATCH_TOKEN: ${{ secrets.MSKBA_GITHUB_AI_TOKEN }}
+          GITHUB_AI_CALLBACK_SECRET: ${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}
+          OPENAI_RUNNER_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          for name in GITHUB_AI_DISPATCH_TOKEN GITHUB_AI_CALLBACK_SECRET OPENAI_RUNNER_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required shared AI credential $name is unavailable in the development environment."
+              exit 1
+            fi
+          done
+          if [ "${#GITHUB_AI_CALLBACK_SECRET}" -lt 32 ]; then
+            echo '::error::Shared AI callback secret is unexpectedly short.'
+            exit 1
+          fi
+          auth_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${GITHUB_AI_DISPATCH_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            https://api.github.com/user)"
+          if [ "$auth_status" != 200 ]; then
+            echo "::error::Shared GitHub AI dispatch token verification failed (HTTP $auth_status)."
+            exit 1
+          fi
+          workflow_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${GITHUB_AI_DISPATCH_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml)"
+          if [ "$workflow_status" != 200 ]; then
+            echo "::error::Shared GitHub AI workflow is not readable (HTTP $workflow_status)."
+            exit 1
+          fi
+          echo 'Shared production AI credentials present and GitHub workflow reachable; no paid model request made.'
+
       - name: Stage built assets on development server
         uses: appleboy/scp-action@v1
         with:
@@ -267,11 +306,13 @@ jobs:
         env:
           VERIFIED_SHA: ${{ github.sha }}
           VENDOR_BUNDLE_NEEDED: ${{ needs.test.outputs.vendor_bundle_needed }}
+          SHARED_GITHUB_AI_TOKEN: ${{ secrets.MSKBA_GITHUB_AI_TOKEN }}
+          SHARED_GITHUB_AI_CALLBACK_SECRET: ${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: deploy
           key: ${{ secrets.DEV_SERVER_SSH_KEY }}
-          envs: VERIFIED_SHA,VENDOR_BUNDLE_NEEDED
+          envs: VERIFIED_SHA,VENDOR_BUNDLE_NEEDED,SHARED_GITHUB_AI_TOKEN,SHARED_GITHUB_AI_CALLBACK_SECRET
           command_timeout: 30m
           script: |
             set -euo pipefail
@@ -351,10 +392,19 @@ jobs:
             MANIFEST_BACKUP="public/build/manifest.json.rollback.$VERIFIED_SHA"
             test ! -e "$MANIFEST_BACKUP"
             cp public/build/manifest.json "$MANIFEST_BACKUP"
+            # Preserve the exact staging environment for rollback; never copy
+            # production .env or publish this private file as an artifact.
+            AI_ENV_BACKUP=".env.ai-rollback.$VERIFIED_SHA"
+            test ! -e "$AI_ENV_BACKUP"
             ROLLBACK_ARMED=0
             rollback_if_needed() {
               code=$?
               trap - EXIT
+              if [ "$code" -ne 0 ] && [ -f "$AI_ENV_BACKUP" ]; then
+                # Restore staging-only configuration before restarting old code.
+                cp -p "$AI_ENV_BACKUP" .env || true
+                rm -f "$AI_ENV_BACKUP"
+              fi
               if [ "$code" -ne 0 ] && [ "$ROLLBACK_ARMED" -eq 1 ]; then
                 echo 'Deploy failed: restoring previous source and PHP dependencies'
                 if [ -d "vendor.rollback.$VERIFIED_SHA" ]; then
@@ -368,6 +418,57 @@ jobs:
               exit "$code"
             }
             trap rollback_if_needed EXIT
+
+            # Set only the generation-specific staging values from the existing
+            # production GitHub Actions secrets; preserve APP_URL, APP_KEY, DB,
+            # wallet, Telegram, and every other dev-only environment variable.
+            cp -p .env "$AI_ENV_BACKUP"
+            python3 - <<'PY'
+            import os
+            import re
+            from pathlib import Path
+
+            shared = {
+                "GITHUB_AI_TOKEN": os.environ.get("SHARED_GITHUB_AI_TOKEN", ""),
+                "GITHUB_AI_CALLBACK_SECRET": os.environ.get("SHARED_GITHUB_AI_CALLBACK_SECRET", ""),
+                "GITHUB_AI_REPOSITORY": "a2ice/mskba",
+                "GITHUB_AI_REF": "main",
+                "PLAYER_CHARACTER_AI_PROVIDER": "github_openai",
+            }
+            for key in ("GITHUB_AI_TOKEN", "GITHUB_AI_CALLBACK_SECRET"):
+                # The production credentials are printable opaque tokens; an
+                # unexpected quote/newline must not inject a second .env key.
+                if not re.fullmatch(r"[a-zA-Z0-9_+=./:-]{16,512}", shared[key]):
+                    raise SystemExit(f"Shared AI secret {key} is unavailable or unsafe for dotenv")
+
+            target = Path(".env")
+            with target.open("r+", encoding="utf-8") as stream:
+                lines = stream.read().splitlines()
+                updated = []
+                replaced = set()
+                for line in lines:
+                    match = re.match(r"^([A-Z][A-Z0-9_]*)=", line)
+                    key = match.group(1) if match else None
+                    if key in shared:
+                        if key not in replaced:
+                            updated.append(f"{key}={shared[key]}")
+                            replaced.add(key)
+                    else:
+                        updated.append(line)
+                for key, value in shared.items():
+                    if key not in replaced:
+                        updated.append(f"{key}={value}")
+                stream.seek(0)
+                stream.write("\n".join(updated) + "\n")
+                stream.truncate()
+                stream.flush()
+                os.fsync(stream.fileno())
+            PY
+            unset SHARED_GITHUB_AI_TOKEN SHARED_GITHUB_AI_CALLBACK_SECRET
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'PLAYER_CHARACTER_AI_PROVIDER=github_openai' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            echo 'Shared production generation credentials synchronized to staging (values hidden).'
 
             git reset --hard "$VERIFIED_SHA"
             ROLLBACK_ARMED=1
@@ -447,6 +548,20 @@ jobs:
               $COMPOSE ps
               exit 1
             fi
+            # Check the actual Laravel-resolved gateway in the running staging
+            # PHP container. Never use config:show (would expose secrets).
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $gateway = $app->make(\App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway::class);
+              if (!($gateway instanceof \App\Modules\Ai\Infrastructure\Gateways\BillableGitHubOpenAiPlayerCharacterAiGateway)
+                  || config("app.url") !== "https://dev.mskba.ru") {
+                  fwrite(STDERR, "Staging player generation gateway is not ready.\n");
+                  exit(1);
+              }
+              echo "Staging GitHub/OpenAI generation gateway ready.\n";
+            '
             # The panel must at least respond with HTTP 302 (portal login) to guests;
             # a missing route or server error is a release failure.
             BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
@@ -460,7 +575,7 @@ jobs:
             if [ "$COMPOSER_CHANGED" -eq 1 ]; then
               rm -rf -- "vendor.rollback.$VERIFIED_SHA" "$VENDOR_STAGE"
             fi
-            rm -f "$MANIFEST_BACKUP"
+            rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
             ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
