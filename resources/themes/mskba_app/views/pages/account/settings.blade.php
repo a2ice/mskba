@@ -12,6 +12,22 @@
         $designThemes = app(\App\Presentation\Theming\DesignThemeManager::class)->options();
         $selectedAppearance = $user?->canonical()?->design_theme_id;
     @endphp
+    @php
+        $transferPrivacy = $user?->canonical()?->privacySettings()
+            ->where('type', \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::WALLET_TRANSFER_REQUESTS->value)
+            ->first()?->visibility;
+        $requestsAllowed = $transferPrivacy === null || $transferPrivacy === \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::EVERYONE;
+    @endphp
+    @if(session('status')) <p class="app-player-workspace__notice" role="status">{{ session('status') }}</p> @endif
+    <section class="panel app-balance-privacy" aria-labelledby="balance-privacy-title">
+        <h2 id="balance-privacy-title">Запросы переводов</h2>
+        <p>Управляйте тем, могут ли другие участники присылать вам запросы на перевод бонусов. Это не разрешение автоматически списывать баллы.</p>
+        <form action="{{ route('account.settings.transfer-request-privacy.update') }}" method="POST">
+            @csrf
+            <label class="app-player-workspace__checkbox"><input type="checkbox" name="allow_requests" value="1" @checked($requestsAllowed)> Разрешить запрос на перевод баллов</label>
+            <button class="button primary" type="submit">Сохранить</button>
+        </form>
+    </section>
     <section class="panel app-appearance-settings" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Оформление сайта</h2>
         <p class="muted">Выбери тему для своего аккаунта или используй оформление, установленное для всех.</p>

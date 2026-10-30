@@ -281,33 +281,98 @@
                     aria-labelledby="app-player-topup-title">
                     <div class="app-player-workspace__topup-head">
                         <h3 id="app-player-topup-title">Как пополнить баланс?</h3>
-                        <button type="button" class="app-player-workspace__secondary" data-player-topup-close
-                            aria-label="Закрыть окно пополнения">Закрыть</button>
+                        <button type="button" class="app-player-workspace__secondary" data-player-topup-close>Закрыть</button>
                     </div>
                     <div class="app-player-workspace__topup-body">
-                        <p>Бонусы начисляются автоматически после выполнения условий и подтверждения результата. Текущий остаток можно посмотреть в <a href="{{ route('account.wallet') }}">кошельке</a>.</p>
-                        @if($avatarOffer['bonus_opportunities'] !== [])
-                            <ul class="app-player-workspace__bonus-options">
-                                @foreach($avatarOffer['bonus_opportunities'] as $opportunity)
-                                    <li>
-                                        <strong>{{ $opportunity['title'] }}</strong>
-                                        <span>{{ $formatRub($opportunity['amount_minor']) }} бонусами</span>
+                        <p>Существует несколько способов пополнения баланса, а текущий остаток всегда можно посмотреть в <a href="{{ route('account.wallet') }}">кошельке</a>.</p>
+                        <div class="app-player-workspace__topup-tabs" role="tablist" aria-label="Способы пополнения">
+                            <button id="player-topup-tab-tasks" type="button" role="tab" aria-controls="player-topup-panel-tasks" aria-selected="true" data-topup-tab="tasks">За выполнение заданий</button>
+                            <button id="player-topup-tab-payment" type="button" role="tab" aria-controls="player-topup-panel-payment" aria-selected="false" tabindex="-1" data-topup-tab="payment">Пополнение баланса</button>
+                            <button id="player-topup-tab-friend" type="button" role="tab" aria-controls="player-topup-panel-friend" aria-selected="false" tabindex="-1" data-topup-tab="friend">Перевод от друга</button>
+                        </div>
+                        <section id="player-topup-panel-tasks" role="tabpanel" aria-labelledby="player-topup-tab-tasks" data-topup-panel="tasks">
+                            <p class="app-player-workspace__topup-note">Бонусы начисляются только после выполнения задания и проверки результата.</p>
+                            @forelse($avatarOffer['bonus_opportunities'] as $opportunity)
+                                <details class="app-player-workspace__topup-task" data-topup-task @if($loop->first) open @endif>
+                                    <summary>
+                                        <span>{{ $opportunity['title'] }}</span>
+                                        <span class="app-player-workspace__topup-task-amount">{{ $formatRub($opportunity['amount_minor']) }} бонусами</span>
+                                        <span aria-hidden="true" class="app-player-workspace__topup-chevron">⌄</span>
+                                    </summary>
+                                    <div class="app-player-workspace__topup-task-content">
                                         <p>{{ $opportunity['description'] }}</p>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            <p>Активных бонусных предложений сейчас нет. Новые предложения появятся здесь после их включения в каталоге наград.</p>
-                        @endif
-                        <div class="app-player-workspace__topup-payment">
-                            <h4>Пополнение картой</h4>
-                            <p>Банковское пополнение пока не подключено. Эта форма не проводит оплату и не начисляет средства.</p>
-                            <label class="app-player-workspace__field" for="app-player-topup-amount">Сумма пополнения, ₽
+                                        @if($opportunity['code'] === 'venue_first_approval')
+                                            <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="venue">Добавить площадку</button>
+                                        @elseif($opportunity['code'] === 'referral_user_confirmed')
+                                            <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">Пригласить друга</button>
+                                        @elseif($opportunity['code'] === 'referral_second_level_user_confirmed')
+                                            <p>Бонус второго уровня появится после того, как приглашённый вами участник пригласит друга и тот подтвердит аккаунт.</p>
+                                            <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">Начать с приглашения</button>
+                                        @endif
+                                    </div>
+                                </details>
+                            @empty
+                                <p>Сейчас нет активных бонусных заданий. Они появятся здесь, когда будут включены в каталоге наград.</p>
+                            @endforelse
+                        </section>
+                        <section id="player-topup-panel-payment" role="tabpanel" aria-labelledby="player-topup-tab-payment" data-topup-panel="payment" hidden>
+                            <h4>Пополнение баланса картой</h4>
+                            <p class="app-player-workspace__topup-note">Банковское пополнение пока не подключено. Эта форма не списывает деньги и не начисляет средства.</p>
+                            <label class="app-player-workspace__field" for="app-player-topup-amount">Сумма, ₽
                                 <input id="app-player-topup-amount" type="number" min="1" step="1" value="500" inputmode="numeric">
                             </label>
-                            <button type="button" class="app-player-workspace__secondary" disabled
-                                aria-disabled="true">Оплата картой пока недоступна</button>
-                        </div>
+                            <button type="button" class="app-player-workspace__secondary" disabled aria-disabled="true">Оплата картой пока недоступна</button>
+                        </section>
+                        <section id="player-topup-panel-friend" role="tabpanel" aria-labelledby="player-topup-tab-friend" data-topup-panel="friend" hidden>
+                            <h4>Запросить перевод у друга</h4>
+                            <p class="app-player-workspace__topup-note">Вы можете запросить перевод у своего друга. Он сам решит, переводить ли бонусы. Запрос не списывает средства.</p>
+                            <form data-player-transfer-request-form data-search-url="{{ route('account.wallet.transfer-recipients') }}" action="{{ route('account.wallet.transfer-requests.store') }}">
+                                <label class="app-player-workspace__field" for="player-transfer-friend">Найти пользователя
+                                    <input id="player-transfer-friend" type="search" autocomplete="off" placeholder="Имя, никнейм или логин (от 2 символов)" data-transfer-query>
+                                </label>
+                                <div class="app-player-workspace__transfer-results" role="listbox" aria-label="Найденные пользователи" data-transfer-results hidden></div>
+                                <input type="hidden" name="recipient_user_id" data-transfer-selected>
+                                <p class="app-player-workspace__topup-note">Показываются только подтверждённые пользователи, разрешившие поиск и запросы на перевод.</p>
+                                <button class="app-player-workspace__primary" type="submit" data-transfer-submit disabled>Отправить запрос</button>
+                                <p role="status" aria-live="polite" data-transfer-status></p>
+                            </form>
+                        </section>
+                    </div>
+                </dialog>
+                <dialog id="app-player-referral-dialog" class="app-player-workspace__topup-dialog app-player-workspace__subdialog"
+                    data-player-referral-dialog aria-labelledby="app-player-referral-title">
+                    <div class="app-player-workspace__topup-head">
+                        <h3 id="app-player-referral-title">Пригласить друга</h3>
+                        <button type="button" class="app-player-workspace__secondary" data-topup-subdialog-close>Закрыть</button>
+                    </div>
+                    <div class="app-player-workspace__topup-body">
+                        <p>Отправьте другу вашу персональную ссылку. Реферальные бонусы начисляются по условиям действующего задания.</p>
+                        @if($user->canonical()->isConfirmed())
+                            @php $referralUrl = route('referral.entry', ['username' => $user->canonical()->username]); @endphp
+                            <div class="app-player-workspace__referral-link">
+                                <input type="text" value="{{ $referralUrl }}" readonly aria-label="Реферальная ссылка" data-referral-url>
+                                <button type="button" class="app-player-workspace__secondary" data-referral-copy aria-label="Скопировать реферальную ссылку">Скопировать</button>
+                            </div>
+                            <button type="button" class="app-player-workspace__primary" data-referral-share>Пригласить друга</button>
+                            <p role="status" aria-live="polite" data-referral-status></p>
+                        @else
+                            <p>Для работы реферальной ссылки сперва подтвердите аккаунт.</p>
+                            <a href="{{ route('account.confirmation') }}" class="app-player-workspace__primary">Подтвердить аккаунт</a>
+                        @endif
+                    </div>
+                </dialog>
+                <dialog id="app-player-venue-dialog" class="app-player-workspace__topup-dialog app-player-workspace__subdialog app-player-workspace__venue-dialog"
+                    data-player-venue-dialog aria-labelledby="app-player-venue-title">
+                    <div class="app-player-workspace__topup-head">
+                        <h3 id="app-player-venue-title">Добавить площадку</h3>
+                        <button type="button" class="app-player-workspace__secondary" data-topup-subdialog-close>Закрыть</button>
+                    </div>
+                    <div class="app-player-workspace__topup-body">
+                        @include('theme::pages.venues.partials.create-form', [
+                            'instance' => 'player-topup',
+                            'types' => \App\Modules\Venue\Domain\Enums\VenueTypeEnum::cases(),
+                            'metros' => app(\App\Modules\Location\Application\UseCases\ListMetrostationsHandler::class)->handle(),
+                        ])
                     </div>
                 </dialog>
             </section>
