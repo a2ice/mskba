@@ -6,10 +6,10 @@ use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Services\RewardEngine;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class ProcessUserAccountConfirmedRewards implements ShouldQueue
+final class ProcessUserAccountConfirmedRewards implements ShouldQueueAfterCommit
 {
     use Queueable;
 
