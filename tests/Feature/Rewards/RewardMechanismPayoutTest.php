@@ -36,6 +36,17 @@ final class RewardMechanismPayoutTest extends TestCase
     // the SQLite-incompatible down() migrations or an outer test transaction.
     use DatabaseTruncation;
 
+    // Migrations seed these immutable catalogs; truncating them would erase
+    // active reward rules and pricing defaults for this and subsequent suites.
+    protected array $exceptTables = [
+        'rewards',
+        'reward_versions',
+        'pricing_categories',
+        'pricing_services',
+        'pricing_variants',
+        'pricing_prices',
+    ];
+
     public function test_confirming_direct_referral_credits_300_bonus_rubles_once(): void
     {
         $referrer = $this->confirmedUser('reward_root');
