@@ -454,6 +454,7 @@ if (workspace) {
                     selectedAsPrimary = true;
                 } catch { /* Avatar is ready even if making it primary failed. */ }
                 await showExisting();
+                workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
                 message(selectedAsPrimary
                     ? 'Готово! Аватар создан и установлен как основной.'
                     : 'Готово! Аватар создан. При необходимости выберите его основным.');
@@ -537,6 +538,9 @@ if (workspace) {
             if (!quote || !quote.can_generate || quote.price_minor === null) {
                 throw new Error('Недостаточно средств или стоимость генерации временно недоступна.');
             }
+            if (workspace.dataset.playerFaceUploading === 'true') {
+                throw new Error('Дождитесь завершения сохранения фотографий лица.');
+            }
 
             const payload = new FormData(form);
             payload.set('_method','PATCH');
@@ -569,6 +573,7 @@ if (workspace) {
                 figure.src = result.image_data_url;
                 figure.classList.add('is-generated');
                 message('Готово! Аватар создан.');
+                workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
             } else {
                 throw new Error('Сервер не подтвердил запуск генерации. Проверьте библиотеку аватаров перед повторной попыткой.');
             }
