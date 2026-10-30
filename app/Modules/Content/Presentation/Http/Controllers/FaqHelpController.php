@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
 use App\Modules\Content\Application\Services\FaqHelpCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
