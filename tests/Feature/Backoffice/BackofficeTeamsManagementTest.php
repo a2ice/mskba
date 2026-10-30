@@ -18,6 +18,7 @@ use App\Modules\Team\Domain\Models\Team;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use App\Filament\Backoffice\Resources\Teams\Pages\CreateTeam;
+use App\Filament\Backoffice\Resources\Teams\Pages\ListTeams;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -198,6 +199,11 @@ final class BackofficeTeamsManagementTest extends TestCase
         $this->assertSame('image/webp', $logo->mime);
         $this->assertLessThanOrEqual(500, max($logo->width, $logo->height));
         Storage::disk('public')->assertExists($logo->path);
+
+        // The table must render /storage/teams/{id}/...webp directly, not
+        // pass the public URL back to Filament's storage URL generator.
+        Livewire::test(ListTeams::class)
+            ->assertSee('/storage/'.$logo->path, false);
 
         app(BackofficeTeamEditor::class)->delete($team);
         $this->assertSoftDeleted('teams', ['id' => $team->id]);
