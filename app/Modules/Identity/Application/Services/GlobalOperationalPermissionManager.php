@@ -33,6 +33,7 @@ final class GlobalOperationalPermissionManager
         return [
             Permission::MANAGE_SYSTEM_ROLES, Permission::REVIEW_PROFILE_CHANGES,
             Permission::EDIT_OWN_PROFILE, Permission::EDIT_USER_PERSONAL_DATA,
+            Permission::WALLET_USER_BALANCE_CREDIT,
             Permission::HANDLE_SUPPORT_TICKETS,
             Permission::OPERATOR_PRESENCE_VIEW,
             Permission::OPERATOR_SESSION_HISTORY_VIEW,
