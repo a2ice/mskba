@@ -214,7 +214,7 @@
                     $formatRub = static fn (int $minor): string => number_format($minor / 100, 2, ',', ' ').' ₽';
                 @endphp
                 <section class="app-player-workspace__generation" aria-labelledby="app-player-generation-title"
-                    data-player-generation-offer>
+                    data-player-generation-offer data-player-generation-affordable="{{ $avatarCanGenerate ? 'true' : 'false' }}">
                     <div class="app-player-workspace__section-heading">
                         <h3 id="app-player-generation-title">Генерация аватара</h3>
                         <p>Реалистичное изображение игрока по проверенным фотографиям анфас и слева или справа.</p>
