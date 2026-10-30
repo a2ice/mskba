@@ -84,7 +84,7 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertSee('Генерация аватара')
             ->assertSee('Недостаточно средств')
             ->assertSee('Как пополнить?')
-            ->assertSee('data-player-generation-fields hidden', false)
+            ->assertSee('data-player-generation-affordable="false"', false)
             ->assertSee('Оплата картой пока недоступна');
 
         $this->assertSame(0, WalletOperation::query()->count());
@@ -122,7 +122,7 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertSee('175,00')
             ->assertSee('205,00')
             ->assertSee('data-player-generation-fields', false)
-            ->assertDontSee('data-player-generation-fields hidden', false);
+            ->assertSee('data-player-generation-affordable="true"', false);
         $this->assertSame(2, WalletOperation::query()->count());
     }
 
