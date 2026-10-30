@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
@@ -74,6 +75,7 @@ final class TelegramEventIntegrationTest extends TestCase
             'event_id' => $event->id,
             'created_by_actor_id' => $event->organizer_actor_id,
             'title' => 'Игра до семи',
+            'status' => GameStatusEnum::SCHEDULED->value,
             'side_a_size' => 2,
             'side_b_size' => 2,
         ]);
@@ -103,22 +105,29 @@ final class TelegramEventIntegrationTest extends TestCase
             'status' => 'published',
         ]);
 
-        Http::assertSent(function ($request) use ($event): bool {
-            $buttons = $request['reply_markup']['inline_keyboard'];
+        // Assert the recorded request field by field. The previous compound
+        // predicate reported only "An expected request was not recorded" and
+        // concealed the actual mismatch, despite a published DB row.
+        $sent = Http::recorded()->first(
+            fn (array $record) => $record[0]->url()
+                === 'https://api.telegram.org/bot123456:test-token/sendMessage',
+        );
+        $this->assertNotNull($sent, 'Expected one Telegram sendMessage request.');
+        $request = $sent[0];
+        $text = (string) $request['text'];
+        $buttons = $request['reply_markup']['inline_keyboard'];
 
-            return $request->url() === 'https://api.telegram.org/bot123456:test-token/sendMessage'
-                && $request['chat_id'] === '-1002136558099'
-                && str_contains($request['text'], '<b>Играем на '.$event->venue->name.'</b>')
-                && str_contains($request['text'], 'Тип активности: Игровая тренировка')
-                && str_contains($request['text'], 'Описание: —')
-                && str_contains($request['text'], 'Участники: 2/10')
-                && str_contains($request['text'], 'Ответственные: game-responsible')
-                && str_contains($request['text'], 'Игра до семи')
-                && str_contains($request['text'], 'Оранжевые <b>—:—</b> Чёрные')
-                && count($buttons) === 1
-                && ! array_key_exists('callback_data', $buttons[0][0])
-                && $buttons[0][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
-        });
+        $this->assertSame('-1002136558099', (string) $request['chat_id']);
+        $this->assertStringContainsString('<b>Играем на '.$event->venue->name.'</b>', $text);
+        $this->assertStringContainsString('Тип активности: Игровая тренировка', $text);
+        $this->assertStringContainsString('Описание: —', $text);
+        $this->assertStringContainsString('Участники: 2/10', $text);
+        $this->assertStringContainsString('Ответственные: game-responsible', $text);
+        $this->assertStringContainsString('Игра до семи', $text);
+        $this->assertStringContainsString('Оранжевые <b>—:—</b> Чёрные', $text);
+        $this->assertCount(1, $buttons);
+        $this->assertArrayNotHasKey('callback_data', $buttons[0][0]);
+        $this->assertSame("https://t.me/MSKBABot?startapp=event_{$event->id}", $buttons[0][0]['url']);
     }
 
     public function test_event_publications_are_prepared_for_each_selected_chat(): void
