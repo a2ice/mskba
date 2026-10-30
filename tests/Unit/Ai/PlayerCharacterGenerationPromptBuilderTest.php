@@ -46,12 +46,12 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
             ],
         ]);
 
-        $this->assertStringContainsString('LAST supplied image is the team-logo reference', $withLogo);
-        $this->assertStringContainsString('Copy that supplied team logo', $withLogo);
+        $this->assertStringContainsString('LAST supplied image is the selected logo reference', $withLogo);
+        $this->assertStringContainsString('Copy that supplied selected logo', $withLogo);
         $this->assertStringContainsString('Do NOT redesign, stylize, simplify, reinterpret, substitute, replace', $withLogo);
         $this->assertStringContainsString('If the logo is a QR code, preserve the QR module pattern', $withLogo);
         $this->assertStringContainsString('must visually match the LAST supplied image', $withLogo);
-        $this->assertStringContainsString('Do not place a team logo on the uniform', $withoutLogo);
+        $this->assertStringContainsString('Do not place a selected logo on the uniform', $withoutLogo);
         $this->assertStringNotContainsString('Copy that supplied team logo', $withoutLogo);
     }
 
