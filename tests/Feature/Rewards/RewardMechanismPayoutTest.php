@@ -212,6 +212,27 @@ final class RewardMechanismPayoutTest extends TestCase
         $this->assertSame(0, RewardGrant::query()->count());
     }
 
+    public function test_rolled_back_confirmation_does_not_enqueue_a_reward(): void
+    {
+        config()->set('queue.default', 'database');
+
+        $confirmed = $this->confirmedUser('queue_rollback_subject');
+
+        try {
+            DB::transaction(function () use ($confirmed): void {
+                event(new UserAccountConfirmed((int) $confirmed->id));
+                throw new \RuntimeException('rollback on purpose');
+            });
+            $this->fail('Expected outer transaction rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('rollback on purpose', $exception->getMessage());
+        }
+
+        $this->assertSame(0, $this->queuedRewardCount('ProcessUserAccountConfirmedRewards'));
+        $this->assertSame(0, RewardGrant::query()->count());
+        $this->assertSame(0, UserNotification::query()->where('type', 'finance')->count());
+    }
+
     public function test_personal_referral_link_is_attached_only_on_new_users_first_login(): void
     {
         $referrer = $this->confirmedUser('referral_link_owner');
