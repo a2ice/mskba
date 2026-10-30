@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\BackofficeUsers;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
+use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUserRole;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\ListBackofficeUsers;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
@@ -347,6 +348,7 @@ final class BackofficeUserResource extends Resource
         return [
             'index' => ListBackofficeUsers::route('/'),
             'edit' => EditBackofficeUser::route('/{record}/edit'),
+            'role' => EditBackofficeUserRole::route('/{record}/roles/{participationRole}'),
         ];
     }
 }
