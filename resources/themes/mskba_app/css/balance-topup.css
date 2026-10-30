@@ -73,3 +73,6 @@
     .app-player-workspace__topup-tabs button{flex:1 1 100%}
     .app-player-workspace__referral-link{flex-wrap:wrap}
 }
+
+.app-player-workspace__referral-copy{display:inline-flex;align-items:center;gap:6px}
+.app-player-workspace__topup-task:not([open]) .app-player-workspace__topup-task-amount{display:none}
