@@ -120,7 +120,8 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
             ->assertOk()
             ->assertSee('175,00')
-            ->assertSee('205,00')
+            ->assertDontSee('Доступно для оплаты (всего)')
+            ->assertSee('data-player-offer-count', false)
             ->assertSee('data-player-generation-fields', false)
             ->assertSee('data-player-generation-affordable="true"', false);
         $this->assertSame(2, WalletOperation::query()->count());
