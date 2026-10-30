@@ -186,6 +186,7 @@ final class UpdatePlayerProfileController extends Controller
             'message' => 'Фотография сохранена. Проверка результата генерации ещё не выполнена.',
             'slot' => $slot,
             'status' => 'stored',
+            'media_id' => (int) $result['media']->id,
             'verified' => false,
             'width' => $result['width'],
             'height' => $result['height'],
