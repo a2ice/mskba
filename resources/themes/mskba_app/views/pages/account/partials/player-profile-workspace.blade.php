@@ -104,7 +104,7 @@
                     <h2 id="app-player-physical-title">Физические данные</h2>
                     <p>Рост, вес, телосложение и настройки игрового образа.</p>
                 </div>
-                <form method="POST" action="{{ route('account.player-profile.update') }}" data-player-physical-form class="app-player-workspace__form">
+                <form method="POST" action="{{ route('account.player-profile.update') }}" data-player-physical-form id="player-physical-form" class="app-player-workspace__form">
                     @csrf @method('PATCH')
                     <input type="hidden" name="section" value="physical">
                     <div class="app-player-workspace__fields">
@@ -142,63 +142,6 @@
                         @endif
                     </div>
 
-                    <fieldset class="app-player-workspace__equipment">
-                        <legend>Одежда и кроссовки</legend>
-                        <div class="app-player-workspace__fields">
-                            <label class="app-player-workspace__field">Комплект формы
-                                <span class="select-control">
-                                    <select name="character[uniform_kit]">
-                                    @foreach($uniformOptions as $value=>$label)
-                                        <option value="{{ $value }}" @selected(old('character.uniform_kit',$character['uniform_kit'])===$value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                    @include('account.partials.native-select-chevron')
-                                </span>
-                            </label>
-                            <label class="app-player-workspace__field">Кроссовки
-                                <span class="select-control">
-                                    <select name="character[shoes]">
-                                    @foreach($shoesOptions as $value=>$label)
-                                        <option value="{{ $value }}" @selected(old('character.shoes',$character['shoes'] ?? 'white')===$value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                    @include('account.partials.native-select-chevron')
-                                </span>
-                            </label>
-                        </div>
-                    </fieldset>
-                    <fieldset class="app-player-workspace__equipment">
-                        <legend>Спортивные аксессуары</legend>
-                        <div class="app-player-workspace__checks app-player-workspace__equipment-groups">
-                            @foreach($equipmentGroups as $type => $option)
-                                @php
-                                    $hasLeft = in_array($option['left'], $selectedEquipment, true);
-                                    $hasRight = in_array($option['right'], $selectedEquipment, true);
-                                    $equipmentSuffix = $hasLeft && $hasRight ? ' (л/п)' : ($hasLeft ? ' (л)' : ($hasRight ? ' (п)' : ''));
-                                @endphp
-                                <div class="app-player-workspace__equipment-group" data-player-equipment-group
-                                    data-equipment-type="{{ $type }}" data-equipment-name="{{ $option['name'] }}"
-                                    data-equipment-left="{{ $option['left'] }}" data-equipment-right="{{ $option['right'] }}">
-                                    <label class="check-label app-player-workspace__equipment-toggle">
-                                        <input type="checkbox" data-player-equipment-toggle @checked($hasLeft || $hasRight)>
-                                        <span>{{ $option['name'] }}<span data-player-equipment-suffix>{{ $equipmentSuffix }}</span></span>
-                                    </label>
-                                    <button class="app-player-workspace__equipment-edit" type="button"
-                                        data-player-equipment-edit @if(!($hasLeft || $hasRight)) hidden @endif
-                                        aria-label="Выбрать стороны: {{ $option['name'] }}">Изменить</button>
-                                    <span data-player-equipment-values>
-                                        @if($hasLeft)<input type="hidden" name="character[attributes][]" value="{{ $option['left'] }}">@endif
-                                        @if($hasRight)<input type="hidden" name="character[attributes][]" value="{{ $option['right'] }}">@endif
-                                    </span>
-                                </div>
-                            @endforeach
-                            <label class="check-label app-player-workspace__equipment-toggle app-player-workspace__equipment-headband">
-                                <input type="checkbox" name="character[attributes][]" value="headband"
-                                    @checked(in_array('headband', $selectedEquipment, true))>
-                                <span>Повязка на голову</span>
-                            </label>
-                        </div>
-                    </fieldset>
                     <div class="app-player-workspace__actions">
                         <button class="app-player-workspace__primary" type="submit">Применить</button>
                     </div>
@@ -251,38 +194,11 @@
                         @if($avatarCanGenerate) hidden @endif>
                         {{ $avatarPrice === null ? 'Стоимость генерации временно недоступна.' : 'Недостаточно средств для генерации аватара.' }}
                     </p>
-                    <div data-player-generation-fields @if(! $avatarCanGenerate) hidden @endif>
-                        <div class="app-player-workspace__fields">
-                            <label class="app-player-workspace__field">Анфас
-                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="front">
-                            </label>
-                            <label class="app-player-workspace__field">Левый профиль
-                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="left">
-                            </label>
-                            <label class="app-player-workspace__field">Правый профиль
-                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="right">
-                            </label>
-                            <label class="app-player-workspace__field">Цвета команды (необязательно)
-                                <span class="select-control">
-                                    <select data-player-generation-team>
-                                        <option value="">Без команды</option>
-                                        @foreach($playerTeams as $team)
-                                            <option value="{{ $team->id }}">{{ $team->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @include('account.partials.native-select-chevron')
-                                </span>
-                            </label>
-                        </div>
-                        <label class="app-player-workspace__checkbox"><input type="checkbox" data-player-generation-logo> Использовать логотип выбранной команды (при наличии)</label>
-                        <div class="app-player-workspace__actions">
-                            <button type="button" class="app-player-workspace__secondary" data-player-generate
-                                @disabled(! $avatarCanGenerate)>Сгенерировать</button>
-                        </div>
-                    </div>
+                    @include('theme::pages.account.partials.player-generation-fields')
                     <p class="app-player-workspace__generation-status" data-player-generation-status role="status" aria-live="polite"></p>
                 </section>
                 <dialog id="app-player-billing-dialog" class="app-player-workspace__topup-dialog" data-player-billing-dialog aria-labelledby="app-player-billing-title"><div class="app-player-workspace__topup-head"><h3 id="app-player-billing-title">Как списываются средства?</h3><button type="button" class="app-player-workspace__secondary" data-player-billing-close>Закрыть</button></div><div class="app-player-workspace__topup-body"><p>При оплате используются сначала бонусные средства, затем реальные. Стоимость и баланс проверяются ещё раз непосредственно перед списанием.</p></div></dialog>
+                @include('theme::pages.account.partials.player-generation-dialogs')
                 <dialog id="app-player-topup-dialog" class="app-player-workspace__topup-dialog" data-player-topup-dialog
                     aria-labelledby="app-player-topup-title">
                     <div class="app-player-workspace__topup-head">
