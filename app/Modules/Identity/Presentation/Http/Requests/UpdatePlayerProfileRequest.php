@@ -62,6 +62,8 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'generation_team_id' => ['nullable', 'integer'],
             'generation_with_team_logo' => ['nullable', 'boolean'],
+            'generation_logo_mode' => ['nullable', Rule::in(['none', 'team', 'custom'])],
+            'generation_custom_logo_id' => ['nullable', 'integer', 'min:1'],
             'generation_id' => [
                 'nullable',
                 Rule::requiredIf(fn (): bool => $this->input('mutation') === 'generation_primary'),
@@ -283,6 +285,12 @@ final class UpdatePlayerProfileRequest extends FormRequest
 
         if ($this->has('generation_with_team_logo')) {
             $options['with_team_logo'] = $this->boolean('generation_with_team_logo');
+        }
+        if ($this->has('generation_logo_mode')) {
+            $options['logo_mode'] = (string) $this->input('generation_logo_mode');
+        }
+        if ($this->filled('generation_custom_logo_id')) {
+            $options['custom_logo_id'] = (int) $this->input('generation_custom_logo_id');
         }
 
         if ($this->has('character')) {
