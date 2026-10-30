@@ -9,6 +9,7 @@ use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,6 +33,10 @@ class CreateVenueRequest extends FormRequest
             'creation_role' => ['sometimes', Rule::enum(VenueCreationRoleEnum::class)],
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
+            'court_count' => ['sometimes', 'integer', 'between:1,10'],
+            'hoops_count' => ['sometimes', 'integer', 'between:0,20'],
+            'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
+            'photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'dimensions:max_width=6000,max_height=6000'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'access_type' => ['sometimes', Rule::in(['unknown', 'free', 'paid'])],
             'requires_booking_approval' => ['sometimes', 'boolean'],

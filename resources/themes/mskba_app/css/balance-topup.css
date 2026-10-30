@@ -1,0 +1,78 @@
+/* 063: account money actions and shared venue create form; light UI Kit tokens. */
+.app-player-workspace__topup-dialog{width:min(690px,calc(100vw - 24px))}
+.app-player-workspace__subdialog{width:min(720px,calc(100vw - 24px))}
+.app-player-workspace__venue-dialog{width:min(820px,calc(100vw - 24px))}
+.app-player-workspace__topup-dialog [hidden],.app-wallet [hidden],.app-venue-create [hidden]{display:none!important}
+.app-player-workspace__topup-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #dce3ea;padding-bottom:10px}
+.app-player-workspace__topup-tabs button{border:1px solid transparent;background:transparent;color:#42546b;border-radius:9px;padding:10px 12px;font-weight:650;cursor:pointer;min-height:42px}
+.app-player-workspace__topup-tabs button[aria-selected="true"]{background:#f3f4f6;color:#c44b00;border-color:#e5e7eb}
+.app-player-workspace__topup-body [role="tabpanel"]{display:grid;gap:12px;min-width:0}
+.app-player-workspace__topup-body [role="tabpanel"]>h4{margin:0}
+.app-player-workspace__topup-note{color:#62758a;font-size:14px;line-height:1.55;margin:0}
+.app-player-workspace__topup-task{background:#f8fafc;border:1px solid #dce3ea;border-radius:10px;overflow:hidden}
+.app-player-workspace__topup-task summary{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:14px;min-height:54px;font-weight:700;color:#293b50}
+.app-player-workspace__topup-task summary::-webkit-details-marker{display:none}
+.app-player-workspace__topup-task-amount{font-size:13px;color:#c44b00;white-space:nowrap}
+.app-player-workspace__topup-chevron{font-size:20px;transform:rotate(0);transition:transform .2s}
+.app-player-workspace__topup-task[open] .app-player-workspace__topup-chevron{transform:rotate(180deg)}
+.app-player-workspace__topup-task-content{display:grid;gap:10px;padding:0 14px 14px}
+.app-player-workspace__topup-task-content p{margin:0;color:#62758a;font-size:14px;line-height:1.5}
+.app-player-workspace__topup-task-content button{justify-self:start}
+.app-player-workspace__referral-link{display:flex;align-items:stretch;gap:8px}
+.app-player-workspace__referral-link input{width:100%;min-width:0;padding:10px;border:1px solid #dce3ea;border-radius:8px}
+.app-player-workspace__transfer-results{display:grid;gap:3px;max-height:200px;overflow:auto;border:1px solid #dce3ea;border-radius:8px;padding:4px}
+.app-player-workspace__transfer-choice{width:100%;border:0;background:#f8fafc;color:#293b50;text-align:left;padding:10px 12px;border-radius:7px;cursor:pointer}
+.app-player-workspace__transfer-choice:hover,.app-player-workspace__transfer-choice:focus-visible{background:#edf0f4}
+.app-player-workspace__topup-body form{display:grid;gap:12px}
+.app-player-workspace__topup-body form button[type=submit]{justify-self:start}
+.app-venue-create{display:grid;gap:17px;color:#2c3d52}
+.app-venue-create__help{margin:0;color:#68788b;font-size:14px}
+.app-venue-create__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.app-venue-create__field{display:grid;gap:6px;font-size:14px;font-weight:600;min-width:0}
+.app-venue-create__field small{font-size:12px;font-weight:400;color:#697b8d}
+.app-venue-create input,.app-venue-create select,.app-venue-create textarea{width:100%;min-width:0;padding:10px;border:1px solid #ccd5df;border-radius:8px;background:white;color:#283a50;font:inherit}
+.app-venue-create__address{display:grid;gap:10px;min-width:0;margin:0;padding:12px;border:1px solid #dce3ea;border-radius:10px}
+.app-venue-create__address legend{font-weight:700;padding:0 5px}
+.app-venue-create__address-actions{display:flex;flex-wrap:wrap;gap:8px}
+.app-venue-create__metro{font-size:13px;color:#65778d}
+.app-venue-create__metro strong{color:#293b50}
+.app-venue-create__warning,.app-venue-create__error{color:#a13616;font-size:13px}
+.app-venue-create__hidden-metro{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
+.app-venue-create .d-none{display:none!important}
+.app-venue-create .address-suggest__input-wrap{position:relative}
+.app-venue-create .address-suggest__list{position:absolute;z-index:5;top:100%;left:0;right:0;border:1px solid #cbd5e1;background:#fff;max-height:240px;overflow:auto;border-radius:8px;box-shadow:0 12px 24px #1d2a3a24}
+.app-venue-create .address-suggest__item{display:grid;gap:4px;text-align:left;width:100%;padding:9px 12px;border:0;border-bottom:1px solid #e4e9ef;background:white;cursor:pointer;color:#293b50}
+.app-venue-create .address-suggest__item:hover,.app-venue-create .address-suggest__item:focus{background:#f5f7fa}
+.app-venue-create .address-suggest__metro{font-size:12px;color:#68788b}
+.app-venue-create .address-suggest__control{position:absolute;right:3px;top:3px;width:34px;height:34px;background:#f4f6f8;border:0;border-radius:6px}
+.app-venue-create__actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.app-venue-create__page{padding:20px}
+.app-wallet{display:grid;gap:16px}
+.app-wallet .panel{padding:20px}
+.app-wallet__hero{display:grid;gap:8px}
+.app-wallet__hero>strong{font-size:28px;color:#283b50}
+.app-wallet__balances{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.app-wallet__balances p{display:grid;gap:5px;padding:12px;border-radius:10px;background:#f7f8fa;margin:0}
+.app-wallet__transfer form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.app-wallet__transfer form>label{display:grid;gap:6px}
+.app-wallet__transfer input{width:100%;padding:10px;border:1px solid #ccd5df;border-radius:8px}
+.app-wallet__transfer form>p{grid-column:1/-1;margin:0}
+.app-wallet__transfer .app-player-workspace__transfer-results{grid-column:1/-1}
+.app-wallet__table-wrap{overflow:auto}
+.app-wallet table{border-collapse:collapse;width:100%;text-align:left}
+.app-wallet th,.app-wallet td{border-bottom:1px solid #e4e9ef;padding:12px}
+.app-wallet td small{display:block;color:#66758a}
+.app-balance-privacy{display:grid;gap:12px;padding:20px;margin-bottom:16px}
+.app-balance-privacy h2,.app-wallet h2{margin:0}
+.app-balance-privacy form{display:grid;gap:12px;justify-items:start}
+@media(max-width:600px){
+    .app-venue-create__grid,.app-wallet__balances,.app-wallet__transfer form{grid-template-columns:minmax(0,1fr)}
+    .app-player-workspace__topup-task summary{grid-template-columns:minmax(0,1fr) auto}
+    .app-player-workspace__topup-task-amount{grid-column:1/2;grid-row:2;white-space:normal}
+    .app-player-workspace__topup-chevron{grid-column:2;grid-row:1/3}
+    .app-player-workspace__topup-tabs button{flex:1 1 100%}
+    .app-player-workspace__referral-link{flex-wrap:wrap}
+}
+
+.app-player-workspace__referral-copy{display:inline-flex;align-items:center;gap:6px}
+.app-player-workspace__topup-task:not([open]) .app-player-workspace__topup-task-amount{display:none}

@@ -36,6 +36,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\AccountWalletController;
 use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBonusGrantController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSearchController;
+use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
@@ -53,6 +54,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileControll
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
@@ -852,6 +854,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/wallet/transfer-recipients', WalletTransferRecipientSearchController::class)
             ->middleware('throttle:60,1')
             ->name('account.wallet.transfer-recipients');
+        Route::post('/wallet/transfer-requests', WalletTransferRequestController::class)
+            ->middleware('throttle:5,1')
+            ->name('account.wallet.transfer-requests.store');
         Route::post('/wallet/transfers', WalletTransferController::class)
             ->middleware('throttle:20,1')
             ->name('account.wallet.transfers.store');
@@ -912,6 +917,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
             ->name('account.settings.password.update');
+        Route::post('/settings/transfer-request-privacy', UpdateWalletTransferRequestPrivacyController::class)
+            ->middleware('throttle:15,1')
+            ->name('account.settings.transfer-request-privacy.update');
         Route::put('/settings/privacy', UpdateAccountPrivacySettingsController::class)
             ->middleware('throttle:20,1')
             ->name('account.settings.privacy.update');
