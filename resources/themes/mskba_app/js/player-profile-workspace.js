@@ -64,6 +64,7 @@ if (workspace) {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'character[attributes][]';
+                input.setAttribute('form', 'player-physical-form');
                 input.value = value;
                 holder.appendChild(input);
             }
@@ -499,9 +500,14 @@ if (workspace) {
             payload.set('_method','PATCH');
             payload.set('mutation','generate_2d');
             const team = workspace.querySelector('[data-player-generation-team]');
-            if (team?.value) payload.set('generation_team_id',team.value);
-            if (workspace.querySelector('[data-player-generation-logo]')?.checked) {
-                payload.set('generation_with_team_logo','1');
+            if (team?.value && team.value !== '__custom__') payload.set('generation_team_id',team.value);
+            const mode = workspace.dataset.playerGenerationLogoMode || 'none';
+            if (mode === 'custom' && !workspace.dataset.playerGenerationCustomLogoId) {
+                throw new Error('Выберите свой логотип в окне «Мои логотипы».');
+            }
+            payload.set('generation_logo_mode', mode);
+            if (mode === 'custom') {
+                payload.set('generation_custom_logo_id', workspace.dataset.playerGenerationCustomLogoId);
             }
             for (const input of workspace.querySelectorAll('[data-player-face-slot]')) {
                 if (input.files?.[0]) {
