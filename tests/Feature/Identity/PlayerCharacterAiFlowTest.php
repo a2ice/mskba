@@ -31,9 +31,11 @@ final class PlayerCharacterAiFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_face_reference_is_not_persisted_when_ai_is_not_configured(): void
+    public function test_face_reference_is_saved_with_no_ai_provider_configured(): void
     {
         Storage::fake('local');
+        // The unconfigured/null provider must not be involved in free uploads.
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
         $user = $this->player();
 
         $this->actingAs($user)
@@ -44,19 +46,40 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 'face_reference_slot' => 'front',
                 'face_reference' => UploadedFile::fake()->image('front.jpg', 1200, 900),
             ])
-            ->assertStatus(503)
-            ->assertJsonPath('code', 'ai_not_configured');
+            ->assertOk()
+            ->assertJsonPath('status', 'stored')
+            ->assertJsonPath('verified', false);
 
-        $this->assertDatabaseMissing('media', [
-            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
-        ]);
-        $this->assertSame([], Storage::disk('local')->allFiles());
+        $reference = $user->profile->media()->where(
+            'collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
+        )->firstOrFail();
+        Storage::disk('local')->assertExists($reference->path);
+        $this->actingAs($user)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertOk();
     }
 
-    public function test_face_reference_wrong_angle_is_not_persisted(): void
+    public function test_face_upload_is_independent_of_external_angle_validation(): void
     {
         Storage::fake('local');
-        $this->bindGateway(faceValid: false);
+        // An unavailable/rejecting AI gateway does not invalidate the profile
+        // photo upload; actual angle validation is a separate feature.
+        $gateway = $this->bindGateway(faceValid: false);
+        $user = $this->player();
+
+        $this->uploadReference($user, 'left');
+
+        $this->assertSame(0, $gateway->validationCalls);
+        $this->assertFalse($gateway->generationCalled);
+        $this->assertDatabaseHas('media', [
+            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('left'),
+        ]);
+    }
+
+    public function test_invalid_small_image_is_not_persisted_even_when_ai_is_offline(): void
+    {
+        Storage::fake('local');
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
         $user = $this->player();
 
         $this->actingAs($user)
@@ -65,10 +88,10 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 '_method' => 'PATCH',
                 'mutation' => 'face_reference',
                 'face_reference_slot' => 'front',
-                'face_reference' => UploadedFile::fake()->image('profile.jpg', 1200, 900),
+                'face_reference' => UploadedFile::fake()->image('small.png', 100, 100),
             ])
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'face_reference_invalid');
+            ->assertJsonPath('code', 'face_reference_invalid_file');
 
         $this->assertDatabaseMissing('media', [
             'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
@@ -76,20 +99,20 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_failed_ai_replacement_keeps_previous_confirmed_reference(): void
+    public function test_replacing_existing_face_photo_works_when_ai_validator_is_unavailable(): void
     {
         Storage::fake('local');
         $user = $this->player();
-
         $this->bindGateway();
         $this->uploadReference($user, 'front');
 
         $profile = $user->profile()->firstOrFail();
-        $reference = $profile->media()
+        $old = $profile->media()
             ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
             ->firstOrFail();
+        $oldPath = $old->path;
 
-        $this->bindGateway(faceValid: false);
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
 
         $this->actingAs($user)
             ->withHeader('Accept', 'application/json')
@@ -97,23 +120,19 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 '_method' => 'PATCH',
                 'mutation' => 'face_reference',
                 'face_reference_slot' => 'front',
-                'face_reference' => UploadedFile::fake()->image('wrong-angle.jpg', 1200, 900),
+                'face_reference' => UploadedFile::fake()->image('replacement.jpg', 1200, 900),
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('code', 'face_reference_invalid');
+            ->assertOk()
+            ->assertJsonPath('status', 'stored');
 
-        $this->assertDatabaseHas('media', [
-            'id' => $reference->id,
-            'path' => $reference->path,
-            'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
-        ]);
-        Storage::disk('local')->assertExists($reference->path);
-        $this->assertSame(
-            1,
-            $profile->media()
-                ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
-                ->count(),
-        );
+        $new = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $this->assertNotSame($old->id, $new->id);
+        $this->assertSame(1, $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))->count());
+        Storage::disk('local')->assertMissing($oldPath);
+        Storage::disk('local')->assertExists($new->path);
     }
 
     public function test_confirmed_face_reference_can_be_previewed_only_by_its_owner(): void
