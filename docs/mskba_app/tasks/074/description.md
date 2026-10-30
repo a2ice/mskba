@@ -15,15 +15,15 @@
 
 ## Изменения
 
-1. Сохраняются существующие доменные события `UserAccountConfirmed` и `ModerationRequestApproved` и `RewardsServiceProvider`, который подписывает на них два `ShouldQueue` listener:
+1. Сохраняются существующие доменные события `UserAccountConfirmed` и `ModerationRequestApproved` и `RewardsServiceProvider`, который подписывает на них два `ShouldQueueAfterCommit` listener:
    - `ProcessUserAccountConfirmedRewards`;
    - `ProcessVenueFirstApprovalReward`.
-2. Оба listener теперь явно вызывают `afterCommit()`. Если Identity/Moderation оказались внутри внешней DB-транзакции, начисление ставится в очередь **только после окончательного commit**. При rollback не возникает job и reward.
+2. Оба listener реализуют Laravel `ShouldQueueAfterCommit` и явно вызывают `afterCommit()`. Если Identity/Moderation оказались внутри внешней DB-транзакции, начисление ставится в очередь **только после окончательного commit**. При rollback не возникает job и reward.
 3. Каждый успешный переход `RewardGrant` из pending в completed, защищённый row lock, **в той же DB-транзакции** создаёт одно `UserNotification` типа `FINANCE` с `reward_grant_id`, `wallet_operation_id`, кодом механизма и суммой. Начисление денег происходит только в Finance. Повторный event/retry/конкурентный settle не создаёт второй toast и не начисляет повторно деньги.
 4. После commit вызывается стандартный `UserNotificationCreated`: обновляется счётчик и через уже существующий Reverb/private `users.{id}` event `notification.created` появляется toast. Уведомление остаётся в центре и на следующей синхронизации, если получатель был офлайн/сокет недоступен. Новый JS/toast-компонент не создаётся.
 5. Тексты содержат происхождение бонуса и точную сумму; кнопка «Открыть кошелёк» ведёт на `/account/wallet`. Уведомление формируется только **после реального успеха начисления**, а не при подаче заявки на модерацию или регистрации по ссылке.
-6. Существующий dev `compose.dev.yaml` запускает `queue:work` в отдельном сервисе. В `deploy_dev` добавлен read-only runtime guard: сервис running, `queue.default` обязан быть `database|redis`, оба Rewards listeners `ShouldQueue` и `afterCommit=true`. Production workflow не меняется.
-7. Интеграционные Rewards-тесты теперь идут без внешней тестовой DB-транзакции (`DatabaseMigrations`), чтобы можно было проверить реальный after-commit. Покрываются выплаты, уведомления, повторная обработка и отложенная очередь.
+6. Существующий dev `compose.dev.yaml` запускает `queue:work` в отдельном сервисе. В `deploy_dev` добавлен read-only runtime guard: сервис running, `queue.default` обязан быть `database|redis`, оба Rewards listeners `ShouldQueueAfterCommit` и `afterCommit=true`. Production workflow не меняется.
+7. Интеграционные Rewards-тесты теперь идут без внешней тестовой DB-транзакции (`DatabaseTruncation`), чтобы можно было проверить реальный after-commit. Покрываются выплаты, уведомления, повторная обработка и отложенная очередь.
 
 ## Приёмка на dev
 
