@@ -161,7 +161,7 @@ final class UserRoleDetailPageTest extends TestCase
         $this->assignPlayer($target);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
         $this->actingAs($admin);
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
         app(AdminAddPlayerToTeamHandler::class)->handle(
             $admin, $target, $team, 'Администратору не разрешено прямое включение',
         );
