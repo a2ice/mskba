@@ -176,6 +176,9 @@
     font-weight:700;
   }
   .app-account-nav__mobile-trigger::-webkit-details-marker { display:none; }
+  .app-account-nav__mobile-label { display:inline-flex;align-items:center;gap:8px;min-width:0; }
+  /* The orange dot signals an active destination without forcing the menu open. */
+  .app-account-nav__current-dot { display:inline-block;flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:var(--accent); }
   .app-account-nav__mobile-trigger svg { color:var(--muted); transition:transform .16s; }
   .app-account-nav--mobile[open] .app-account-nav__mobile-trigger svg {
     transform:rotate(180deg);
