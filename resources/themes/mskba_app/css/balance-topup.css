@@ -7,8 +7,10 @@
 .app-player-workspace__topup-method{background:#f8fafc;border:1px solid #dce3ea;border-radius:10px;overflow:hidden;min-width:0}
 .app-player-workspace__topup-method>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:14px;font-size:15px;font-weight:700;color:#293b50;list-style:none;cursor:pointer}
 .app-player-workspace__topup-method>summary::-webkit-details-marker{display:none}
-.app-player-workspace__topup-method[open]>summary{color:#c44b00}
-.app-player-workspace__topup-method[open]>summary .app-player-workspace__topup-chevron{transform:rotate(180deg)}
+.app-player-workspace__topup-method>summary .app-player-workspace__topup-method-action{margin-left:auto;color:var(--accent,#c44b00);font-size:13px;font-weight:750;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.app-player-workspace__topup-method>summary [data-topup-less],.app-player-workspace__topup-method[open]>summary [data-topup-more]{display:none}
+.app-player-workspace__topup-method[open]>summary [data-topup-less]{display:inline}
+.app-player-workspace__topup-method>summary:focus-visible{outline:2px solid var(--accent,#c44b00);outline-offset:-3px}
 .app-player-workspace__topup-method-content{display:grid;gap:12px;padding:0 14px 14px;min-width:0}
 .app-player-workspace__topup-method-content>h4{font-size:15px;margin:0}
 .app-player-workspace__topup-method-content .app-player-workspace__topup-task{background:#fff}

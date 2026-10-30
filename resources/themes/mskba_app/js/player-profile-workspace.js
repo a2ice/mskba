@@ -122,20 +122,19 @@ if (workspace) {
         });
     }
 
-    // Same sticky calculation as the venue sidebar: bottom of tabs plus 15px.
+    // Sticky preview follows the CSS sticky offsets, not a transient nav
+    // getBoundingClientRect().bottom. That rectangle may reflect a pre-restored
+    // scroll position on reload and previously left the preview too far down.
     const playerNav = workspace.querySelector('[data-player-section-nav]');
     if (playerNav) {
         let stickyPending = false;
         const updateSticky = () => {
             stickyPending = false;
             if (!playerNav.getClientRects().length) return;
-            const contextBottom = document.querySelector('.app-context-bar')?.getBoundingClientRect().bottom || 0;
-            const headerBottom = document.querySelector('.site-header')?.getBoundingClientRect().bottom || 0;
-            const boundary = Math.max(0, contextBottom, headerBottom);
+            const navHeight = Math.ceil(playerNav.getBoundingClientRect().height);
+            workspace.style.setProperty('--player-nav-height', navHeight + 'px');
             const navRect = playerNav.getBoundingClientRect();
-            preview?.style.setProperty('--player-preview-sticky-top',
-                Math.ceil(Math.max(navRect.bottom, boundary) + 15) + 'px');
-            const top = Number.parseFloat(window.getComputedStyle(playerNav).top) || boundary;
+            const top = Number.parseFloat(window.getComputedStyle(playerNav).top) || 0;
             playerNav.classList.toggle('is-stuck', window.scrollY > 0 && Math.abs(navRect.top - top) <= 2);
         };
         const scheduleSticky = () => {
@@ -143,9 +142,15 @@ if (workspace) {
             stickyPending = true;
             window.requestAnimationFrame(updateSticky);
         };
+        // Set the height synchronously on DOM startup: CSS already has a
+        // stable 58px fallback until the ResizeObserver picks up real geometry.
+        workspace.style.setProperty('--player-nav-height', Math.ceil(playerNav.offsetHeight) + 'px');
         window.addEventListener('scroll', scheduleSticky, {passive:true});
-        window.addEventListener('resize', scheduleSticky);
+        window.addEventListener('resize', scheduleSticky, {passive:true});
+        window.addEventListener('pageshow', scheduleSticky);
+        window.addEventListener('load', scheduleSticky, {once:true});
         if ('ResizeObserver' in window) new ResizeObserver(scheduleSticky).observe(playerNav);
+        document.fonts?.ready?.then(scheduleSticky);
         let transitionFrame = null;
         window.addEventListener('mskba:header-visibility', () => {
             const until = performance.now() + 340;
@@ -426,7 +431,6 @@ if (workspace) {
     const generationFields = generationOffer?.querySelector('[data-player-generation-fields]');
     const offerPrice = generationOffer?.querySelector('[data-player-offer-price]');
     const offerBonus = generationOffer?.querySelector('[data-player-offer-bonus]');
-    const offerTotal = generationOffer?.querySelector('[data-player-offer-total]');
     const offerCount = generationOffer?.querySelector('[data-player-offer-count]');
     const offerUnavailable = generationOffer?.querySelector('[data-player-offer-unavailable]');
     const topupDialog = workspace.querySelector('[data-player-topup-dialog]');
@@ -440,7 +444,6 @@ if (workspace) {
         if (offerPrice) offerPrice.textContent = quote.price_minor === null
             ? 'Недоступна' : money(quote.price_minor);
         if (offerBonus) offerBonus.textContent = money(quote.bonus_balance_minor || 0);
-        if (offerTotal) offerTotal.textContent = money(quote.available_minor || 0);
         if (offerCount) offerCount.textContent = quote.price_minor === null
             ? '—' : Number(quote.price_minor) === 0
                 ? 'Без оплаты' : String(quote.available_generations ?? 0);
