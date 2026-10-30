@@ -88,7 +88,7 @@ if (workspace) {
             const result = await faceRequest(mutation, fields);
             if (mutation === 'face_reference') {
                 renderFaceReference(tile, {
-                    id:Number(result.preview_url?.match(/v=(\\d+)/)?.[1]) || 1,
+                    id:Number(result.media_id),
                     url:result.preview_url,
                     verified:false,
                 });
