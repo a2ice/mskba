@@ -65,6 +65,9 @@ final class UserRoleDetailPageTest extends TestCase
             ->assertSee('Команды')
             ->assertSee('Мероприятия')
             ->assertSee('Игры и статистика');
+        foreach (['game', 'teams', 'events', 'games'] as $tab) {
+            $this->get($link.'?tab='.$tab)->assertOk();
+        }
         $this->get(BackofficeUserResource::getUrl('edit', [
             'record' => $target, 'tab' => 'rol::data::tab',
         ]))->assertOk()->assertSee($link, false);
