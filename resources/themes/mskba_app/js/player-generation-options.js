@@ -12,6 +12,7 @@ if (workspace) {
     const faceForm = workspace.querySelector('[data-player-physical-form]');
     const faceCsrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let activeFaceMutations = 0;
+    let faceSnapshotVersion = 0;
     const faceFeedback = (text, error = false) => {
         if (!faceStatus) return;
         faceStatus.textContent = text;
@@ -74,13 +75,15 @@ if (workspace) {
     };
     const refreshFaceReferences = async () => {
         if (!faceForm || !faceTiles.length) return;
+        const version = faceSnapshotVersion;
         const response = await faceRequest('generation_preferences');
-        renderFaceReferences(response.face_references || {});
+        if (version === faceSnapshotVersion) renderFaceReferences(response.face_references || {});
     };
     const runFaceMutation = async (tile, mutation, fields) => {
         if (tile.classList.contains('is-uploading')) return;
         const action = mutation === 'face_reference' ? 'Сохраняем фотографию…' : 'Удаляем фотографию…';
         tile.classList.add('is-uploading');
+        faceSnapshotVersion++;
         activeFaceMutations++;
         workspace.dataset.playerFaceUploading = 'true';
         faceFeedback(action);
