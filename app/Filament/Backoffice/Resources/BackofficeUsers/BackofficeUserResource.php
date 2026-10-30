@@ -232,6 +232,11 @@ final class BackofficeUserResource extends Resource
                             ->schema([
                                 View::make('filament.backoffice.user-participation-roles'),
                             ]),
+                        Tab::make('Кошелёк')
+                            ->icon('heroicon-o-wallet')
+                            ->schema([
+                                View::make('filament.backoffice.user-wallet'),
+                            ]),
                         Tab::make('Роли и права')
                             ->icon('heroicon-o-shield-check')
                             ->schema([

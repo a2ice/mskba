@@ -29,9 +29,14 @@ final readonly class TransferUserWalletBalanceHandler
         int $amountMinor,
         WalletBalanceTypeEnum $balanceType,
         string $idempotencyKey,
+        ?User $performedBy = null,
+        ?string $adminReason = null,
     ): WalletTransferResult {
         $sender = $sender->canonical();
         $recipient = $recipient->canonical();
+        $performedBy = $performedBy?->canonical();
+        // Only the protected backoffice service supplies an alternate actor.
+        // Public transfers keep the sender as the original operator.
 
         if (! $sender->isConfirmed() || ! $recipient->isConfirmed()) {
             throw new WalletException('Переводы доступны только между подтверждёнными аккаунтами.');
@@ -89,6 +94,8 @@ final readonly class TransferUserWalletBalanceHandler
             $requestHash,
             $senderHandle,
             $recipientHandle,
+            $performedBy,
+            $adminReason,
         ): WalletTransferResult {
             $lockedWallets = Wallet::query()
                 ->whereIn('id', [$sourceWallet->id, $destinationWallet->id])
@@ -110,8 +117,8 @@ final readonly class TransferUserWalletBalanceHandler
                 'type' => WalletOperationTypeEnum::USER_TRANSFER->value,
                 'idempotency_key' => $idempotencyKey,
                 'request_hash' => $requestHash,
-                'performed_by_user_id' => $sender->id,
-                'reference_type' => 'user_transfer',
+                'performed_by_user_id' => $performedBy?->id ?? $sender->id,
+                'reference_type' => $performedBy === null ? 'user_transfer' : 'backoffice_bonus_transfer',
                 'reference_key' => (string) $recipient->id,
                 'metadata' => json_encode([
                     'sender_user_id' => (int) $sender->id,
@@ -119,6 +126,12 @@ final readonly class TransferUserWalletBalanceHandler
                     'sender_handle' => $senderHandle,
                     'recipient_handle' => $recipientHandle,
                     'balance_type' => $balanceType->value,
+                    ...($performedBy === null ? [] : [
+                        'source' => 'backoffice_superadmin_bonus_transfer',
+                        'source_superadmin_user_id' => $sender->id,
+                        'admin_operator_user_id' => $performedBy->id,
+                        'reason' => $adminReason,
+                    ]),
                 ], JSON_THROW_ON_ERROR),
                 'status' => WalletOperationStatusEnum::PROCESSING->value,
                 'created_at' => $now,
