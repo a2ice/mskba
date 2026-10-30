@@ -91,6 +91,7 @@ final class TeamResource extends Resource
                             ->options(self::options(TeamStatusEnum::class))
                             ->default(TeamStatusEnum::ACTIVE->value),
                         Select::make('owner_user_id')->label('Владелец команды')->required()
+                            ->default(fn (): ?int => auth('web')->user()?->canonical()->id)
                             ->searchable()->searchDebounce(300)
                             ->visible(fn (?Team $record): bool => $record === null)
                             ->getSearchResultsUsing(fn (string $search): array => User::query()
