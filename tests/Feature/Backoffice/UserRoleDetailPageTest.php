@@ -5,6 +5,11 @@ namespace Tests\Feature\Backoffice;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUserRole;
 use App\Modules\Identity\Application\UseCases\AdminEditPlayerGameAttributesHandler;
+use App\Modules\Identity\Application\UseCases\AdminAddPlayerToTeamHandler;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Team\Domain\Models\Team;
+use Database\Seeders\GameLifecycleDemoSeeder;
+use Illuminate\Validation\ValidationException;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -124,4 +129,42 @@ final class UserRoleDetailPageTest extends TestCase
             'record' => $target->id, 'participationRole' => $role->id,
         ])->assertSee('Роль отключена');
     }
+    public function test_superadmin_can_add_player_to_team_with_real_contract_rosters_and_audit(): void
+    {
+        $this->seed(GameLifecycleDemoSeeder::class);
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $this->assignPlayer($target);
+        $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
+        $this->actingAs($super);
+        $audit = app(AdminAddPlayerToTeamHandler::class)->handle(
+            $super, $target, $team, 'Административное включение игрока с проверкой договора',
+        );
+        $this->assertSame('admin_player_joined_team', $audit->event);
+        $membership = $team->memberships()->where('user_id', $target->id)->firstOrFail();
+        $this->assertSame('accepted', $membership->invitation_status->value);
+        $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->status);
+        $this->assertTrue($membership->hasSportRole(\\App\\Modules\\Team\\Domain\\Enums\\TeamMemberTypeEnum::PLAYER));
+        $this->assertGreaterThan(0, $membership->sportLineupAssignments()->count());
+
+        $this->expectException(ValidationException::class);
+        app(AdminAddPlayerToTeamHandler::class)->handle(
+            $super, $target, $team, 'Повторное назначение той же роли в той же команде',
+        );
+    }
+
+    public function test_admin_without_superadmin_role_cannot_directly_include_player_in_team(): void
+    {
+        $this->seed(GameLifecycleDemoSeeder::class);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $this->assignPlayer($target);
+        $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
+        $this->actingAs($admin);
+        $this->expectException(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
+        app(AdminAddPlayerToTeamHandler::class)->handle(
+            $admin, $target, $team, 'Администратору не разрешено прямое включение',
+        );
+    }
+
 }
