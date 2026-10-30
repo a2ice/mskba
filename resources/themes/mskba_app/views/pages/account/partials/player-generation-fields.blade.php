@@ -7,15 +7,8 @@
                 <label class="app-player-workspace__face-upload" data-face-upload="{{ $slot }}">
                     <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="{{ $slot }}" aria-label="Фото {{ $label }}">
                     <span class="app-player-workspace__face-icon" aria-hidden="true">
-                        <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
-                            @if($slot === 'front')
-                                <path d="M22 16Q32 6 42 16V34Q40 48 32 50Q24 48 22 34Z"/>
-                            @elseif($slot === 'left')
-                                <path d="M40 13Q22 5 20 23V32L15 38L24 41L26 51Q40 56 44 39V23Q44 17 40 13Z"/>
-                            @else
-                                <path d="M24 13Q42 5 44 23V32L49 38L40 41L38 51Q24 56 20 39V23Q20 17 24 13Z"/>
-                            @endif
-                        </svg>
+                        <img src="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
+                            alt="" width="94" height="94" decoding="async">
                         <span class="app-player-workspace__face-tick">✓</span>
                     </span>
                     <span>{{ $label }}</span>
