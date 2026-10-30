@@ -9,6 +9,7 @@ use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Application\Services\SuperadminSelfEditAccess;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -83,8 +84,9 @@ final class BackofficeUserResource extends Resource
         $actor = auth('web')->user();
 
         return $actor !== null && $record instanceof User
-            && app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record)
-            && app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA);
+            && (SuperadminSelfEditAccess::allows($actor, $record)
+                || (app(GlobalOperationalPermissionManager::class)->mayManage($actor, $record)
+                    && app(UserOperationalPermissionChecker::class)->allows($actor, Permission::EDIT_USER_PERSONAL_DATA)));
     }
 
     public static function canCreate(): bool
@@ -107,13 +109,18 @@ final class BackofficeUserResource extends Resource
         $query = parent::getEloquentQuery()
             ->whereNull('canonical_user_id');
 
-        // A system admin can only delegate to lower system roles. A superadmin
-        // can manage admins too. Never list superadmin/system as grant targets.
-        $role = auth('web')->user()?->canonical()->system_role;
+        // Superadmins may edit their own profile, but neither other
+        // superadmins nor system accounts are delegation targets.
+        $actor = auth('web')->user()?->canonical();
+        $role = $actor?->system_role;
         if ($role === UserSystemRoleEnum::SUPERADMIN) {
-            return $query->whereNotIn('system_role', [
-                UserSystemRoleEnum::SUPERADMIN->value, UserSystemRoleEnum::SYSTEM->value,
-            ]);
+            return $query->where(function (Builder $query) use ($actor): void {
+                $query->whereKey($actor->id)
+                    ->orWhereNotIn('system_role', [
+                        UserSystemRoleEnum::SUPERADMIN->value,
+                        UserSystemRoleEnum::SYSTEM->value,
+                    ]);
+            });
         }
         if ($role === UserSystemRoleEnum::ADMIN) {
             return $query->whereIn('system_role', [
@@ -125,6 +132,14 @@ final class BackofficeUserResource extends Resource
         }
 
         return $query->whereRaw('1 = 0');
+    }
+
+    private static function isOwnSuperadmin(?User $record): bool
+    {
+        $actor = auth('web')->user();
+
+        return $actor !== null && $record !== null
+            && SuperadminSelfEditAccess::allows($actor, $record);
     }
 
     private static function cannotDelegate(?User $record, Permission $permission): bool
@@ -173,7 +188,10 @@ final class BackofficeUserResource extends Resource
                                             ->options(collect(\App\Modules\Identity\Domain\Enums\UserStatusEnum::cases())->mapWithKeys(
                                                 fn ($status): array => [$status->value => $status->label()],
                                             )->all())
-                                            ->disabled(fn (): bool => auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN)
+                                            ->disabled(fn (?User $record): bool =>
+                                                $record === null
+                                                || auth('web')->user()?->canonical()->system_role !== UserSystemRoleEnum::SUPERADMIN
+                                                || self::isOwnSuperadmin($record))
                                             ->dehydrated(),
                                         Placeholder::make('registered_at_info')->label('Зарегистрирован')
                                             ->content(fn (?User $record): string => $record?->created_at?->format('d.m.Y H:i') ?? '—'),
@@ -268,9 +286,11 @@ final class BackofficeUserResource extends Resource
                                                 Section::make('Глобальные права — создание')
                                                     ->schema([
                                                         CheckboxList::make('creation_permissions')->label('Индивидуальные назначения')
+                                                            ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, false))
                                                             ->columns(2),
                                                         CheckboxList::make('locked_creation_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
+                                                            ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->creationPermissions(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
@@ -278,23 +298,32 @@ final class BackofficeUserResource extends Resource
                                                     ->description('Делегировать можно только права, имеющиеся у администратора и допускаемые ролью получателя.')
                                                     ->schema([
                                                         CheckboxList::make('privileged_permissions')->label('Индивидуальные назначения')
+                                                            ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, false))
                                                             ->columns(2),
                                                         CheckboxList::make('locked_privileged_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
+                                                            ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions($global->privilegedPermissions(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
                                                 Section::make('Разрешения Filament')
                                                     ->schema([
                                                         CheckboxList::make('backoffice_permissions')->label('Индивидуальные назначения')
+                                                            ->disabled(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, false))
                                                             ->columns(2),
                                                         CheckboxList::make('locked_backoffice_permissions')->label('Недопустимые по роли или делегированию (просмотр)')
+                                                            ->hidden(fn (?User $record): bool => self::isOwnSuperadmin($record))
                                                             ->options(fn (?User $record): array => self::selectablePermissions(Permission::backofficeCases(), $record, true))
                                                             ->disabled()->dehydrated(false)->columns(2),
                                                     ]),
+                                                Placeholder::make('superadmin_permission_notice')
+                                                    ->label('Права суперадминистратора')
+                                                    ->content('Все права предоставлены системной ролью, включены по умолчанию и недоступны для отключения.')
+                                                    ->visible(fn (?User $record): bool => self::isOwnSuperadmin($record)),
                                                 Hidden::make('change_reason'),
-                                                View::make('filament.backoffice.user-save-permissions'),
+                                                View::make('filament.backoffice.user-save-permissions')
+                                                    ->visible(fn (?User $record): bool => ! self::isOwnSuperadmin($record)),
                                             ]),
                                         Tab::make('Контекстные')
                                             ->schema([

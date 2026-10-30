@@ -9,6 +9,8 @@ use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -52,6 +54,11 @@ final class AdminUpdateUserPermissionSnapshotHandler
         }
         $actor = $actor->canonical();
         $target = $target->canonical();
+        // Editing one's own profile must never enable a permission change.
+        // The privileged system role is immutable even via a forged request.
+        if ($target->system_role === UserSystemRoleEnum::SUPERADMIN) {
+            throw new AuthorizationException('Права суперадминистратора нельзя изменять.');
+        }
         app(AdminEditPersonalProfileHandler::class)->authorize($actor, $target);
         $reason = trim($reason);
         if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {

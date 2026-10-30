@@ -8,6 +8,7 @@ use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager
 use App\Modules\Identity\Application\Services\StaffSpecializationManager;
 use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Application\Services\SuperadminSelfEditAccess;
 use App\Modules\Identity\Domain\Models\ManagerSpecialization;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
@@ -89,7 +90,8 @@ final class EditBackofficeUser extends EditRecord
                 ->label('Сохранить общие данные')
                 ->extraAttributes(['style' => 'display:none'])
                 ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
-                    && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
+                    && auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN
+                    && ! SuperadminSelfEditAccess::allows(auth('web')->user(), $this->getRecord()))
                 ->modalHeading('Подтвердить изменение статуса')
                 ->modalSubmitActionLabel('Подтвердить')
                 ->requiresConfirmation()
@@ -200,7 +202,8 @@ final class EditBackofficeUser extends EditRecord
             Action::make('savePermissionsInline')
                 ->label('Сохранить системные разрешения')
                 ->extraAttributes(['style' => 'display:none'])
-                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord()))
+                ->visible(fn (): bool => BackofficeUserResource::canEdit($this->getRecord())
+                    && ! SuperadminSelfEditAccess::allows(auth('web')->user(), $this->getRecord()))
                 ->modalHeading('Подтвердить изменение системных прав')
                 ->modalDescription('Индивидуальное разрешение или запрет перекрывает обычные предустановки роли. Ограничения иерархии сохраняются.')
                 ->modalSubmitActionLabel('Подтвердить')
