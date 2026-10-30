@@ -64,13 +64,50 @@ final class UserRoleDetailPageTest extends TestCase
             ->assertSee('Игровые характеристики')
             ->assertSee('Команды')
             ->assertSee('Мероприятия')
-            ->assertSee('Игры и статистика');
+            ->assertSee('Игры и статистика')
+            ->assertSee('class="mskba-role-tabs"', false)
+            ->assertSee('mskba-role-tab is-active', false)
+            ->assertSee('class="mskba-role-fields"', false)
+            ->assertSee('class="mskba-role-actions"', false);
+        $breadcrumbs = Livewire::test(EditBackofficeUserRole::class, [
+            'record' => $target->id, 'participationRole' => $role->id,
+        ])->instance()->getBreadcrumbs();
+        $this->assertSame('Роли', array_values($breadcrumbs)[2]);
+        $this->assertStringContainsString('tab=rol', (string) array_keys($breadcrumbs)[2]);
         foreach (['game', 'teams', 'events', 'games'] as $tab) {
             $this->get($link.'?tab='.$tab)->assertOk();
         }
         $this->get(BackofficeUserResource::getUrl('edit', [
             'record' => $target, 'tab' => 'rol::data::tab',
         ]))->assertOk()->assertSee($link, false);
+    }
+
+    public function test_non_player_role_has_roles_breadcrumb_and_spaced_form_without_player_tabs(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $role = $target->participationRoles(false)->create([
+            'role' => UserParticipationRoleEnum::VENUE_RELATED,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+            'assigned_by' => $super->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $url = BackofficeUserResource::getUrl('role', [
+            'record' => $target, 'participationRole' => $role->id,
+        ]);
+        $this->get($url)->assertOk()
+            ->assertSee('Представитель площадки')
+            ->assertSee('class="mskba-role-form"', false)
+            ->assertSee('class="mskba-role-actions"', false)
+            ->assertDontSee('<nav class="mskba-role-tabs"', false);
+        $breadcrumbs = Livewire::test(EditBackofficeUserRole::class, [
+            'record' => $target->id, 'participationRole' => $role->id,
+        ])->instance()->getBreadcrumbs();
+        $this->assertSame('Роли', array_values($breadcrumbs)[2]);
     }
 
     public function test_cannot_open_another_users_role_or_edit_without_permission(): void
