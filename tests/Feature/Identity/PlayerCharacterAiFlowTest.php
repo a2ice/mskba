@@ -425,7 +425,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame(['elbow_left', 'wristband_right', 'knee_right'], $gateway->lastPayload['appearance']['attributes']);
     }
 
-    public function test_confirmed_face_references_are_reused_for_repeat_generation(): void
+    public function test_saved_face_references_are_reused_without_revalidating_on_repeat_generation(): void
     {
         Storage::fake('local');
         $user = $this->player();
@@ -448,7 +448,10 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertOk();
 
         $this->assertTrue($gateway->generationCalled);
-        $this->assertSame(2, $gateway->validationCalls);
+        // Free profile uploads and generation from saved references must not
+        // call the external angle validator; the provider-specific generation
+        // pipeline receives the same persisted media IDs.
+        $this->assertSame(0, $gateway->validationCalls);
         $this->assertArrayHasKey('front', $gateway->lastPayload['face_references']);
         $this->assertArrayHasKey('left', $gateway->lastPayload['face_references']);
     }
