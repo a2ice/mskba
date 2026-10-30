@@ -17,12 +17,33 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Rewards\Domain\Models\Reward;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class PlayerAvatarGenerationOfferTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+    }
+
+    protected function tearDown(): void
+    {
+        config()->set('themes.active', $this->previousTheme);
+        View::replaceNamespace('theme', resource_path('themes/'.$this->previousTheme.'/views'));
+        app()->forgetInstance(ThemeResolver::class);
+        parent::tearDown();
+    }
 
     private function player(): User
     {
