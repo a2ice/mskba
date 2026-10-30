@@ -268,18 +268,45 @@ if (workspace) {
         figure.classList.add('is-generated');
 
     };
-    const request = async (payload) => {
-        const response = await fetch(form.action, {
-            method:'POST', credentials:'same-origin',
-            headers:{Accept:'application/json', 'X-CSRF-TOKEN':csrf},
-            body:payload,
-        });
-        const data = await response.json().catch(() => ({}));
+    const readJson = async response => {
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-            const detail = data.errors ? Object.values(data.errors).flat()[0] : null;
-            throw new Error(detail || data.message || 'Не удалось выполнить операцию.');
+            const detail = data?.errors ? Object.values(data.errors).flat()[0] : null;
+            const fallback = {
+                401:'Войдите в аккаунт заново и повторите попытку.',
+                403:'У вас нет доступа к генерации аватара.',
+                413:'Фотографии слишком большие для загрузки. Уменьшите их размер и повторите попытку.',
+                419:'Сессия истекла. Обновите страницу и повторите попытку.',
+                422:'Проверьте выбранные фотографии и параметры генерации.',
+                429:'Слишком много запросов. Повторите попытку позднее.',
+                502:'Сервис генерации временно недоступен. Попробуйте позднее.',
+                503:'Сервис генерации временно недоступен. Попробуйте позднее.',
+                504:'Сервис генерации не ответил вовремя. Попробуйте позднее.',
+            }[response.status] || (response.status >= 500
+                ? 'Ошибка сервера при генерации аватара. Попробуйте позднее.'
+                : 'Не удалось выполнить запрос. Проверьте данные и повторите попытку.');
+            const reason = typeof detail === 'string' && detail.trim() ? detail
+                : (typeof data?.message === 'string' && data.message.trim() ? data.message : fallback);
+            const errorId = typeof data?.error_id === 'string' ? ' Код: ' + data.error_id : '';
+            throw new Error(reason + errorId);
+        }
+        if (!data || typeof data !== 'object') {
+            throw new Error('Сервер вернул некорректный ответ. Проверьте результат перед повторной попыткой.');
         }
         return data;
+    };
+    const request = async payload => {
+        let response;
+        try {
+            response = await fetch(form.action, {
+                method:'POST', credentials:'same-origin',
+                headers:{Accept:'application/json', 'X-CSRF-TOKEN':csrf},
+                body:payload,
+            });
+        } catch {
+            throw new Error('Нет соединения с сервером. Проверьте интернет и повторите попытку.');
+        }
+        return readJson(response);
     };
     const jsonMutation = async body => {
         const payload = new FormData();
@@ -408,23 +435,41 @@ if (workspace) {
     async function pollGeneration(statusUrl, id) {
         const target = new URL(statusUrl, location.origin);
         if (target.origin !== location.origin) throw new Error('Неверный адрес генерации.');
+        let lastStatus = '';
         for (let i=0;i<90;i++) {
             await new Promise(resolve => setTimeout(resolve, 2000));
-            const response = await fetch(target.href,{credentials:'same-origin',headers:{Accept:'application/json'}});
-            if (!response.ok) throw new Error('Не удалось проверить генерацию.');
-            const data = await response.json();
-            if (data.status === 'failed') throw new Error(data.message || 'Генерация не удалась.');
+            let response;
+            try {
+                response = await fetch(target.href,{credentials:'same-origin',headers:{Accept:'application/json'}});
+            } catch {
+                throw new Error('Нет соединения с сервером при проверке генерации. Результат можно проверить позднее.');
+            }
+            const data = await readJson(response);
+            if (data.status === 'failed') throw new Error(data.message || 'Не удалось сгенерировать аватар.');
             if (data.status === 'completed' && data.image_url) {
                 setImage(data.image_url);
+                let selectedAsPrimary = false;
                 try {
                     await jsonMutation({mutation:'generation_primary',generation_id:id});
-                } catch { /* Image remains visible even if primary selection fails. */ }
+                    selectedAsPrimary = true;
+                } catch { /* Avatar is ready even if making it primary failed. */ }
                 await showExisting();
-                message('Аватар готов и установлен на шкале роста.');
+                message(selectedAsPrimary
+                    ? 'Готово! Аватар создан и установлен как основной.'
+                    : 'Готово! Аватар создан. При необходимости выберите его основным.');
                 return;
             }
+            if (data.status === 'completed') {
+                throw new Error('Генерация завершилась, но изображение недоступно. Проверьте библиотеку аватаров.');
+            }
+            if (data.status !== lastStatus) {
+                message(data.status === 'processing'
+                    ? 'Генерация аватара… Обрабатываем фотографии и создаём изображение.'
+                    : 'Генерация аватара… Ожидаем начала обработки.');
+                lastStatus = data.status;
+            }
         }
-        message('Генерация ещё продолжается. Результат появится после обновления страницы.');
+        message('Генерация ещё выполняется. Результат появится в библиотеке аватаров после обновления страницы.');
     }
 
     const generate = workspace.querySelector('[data-player-generate]');
@@ -439,6 +484,7 @@ if (workspace) {
         style: 'currency', currency: 'RUB',
     });
     let canGenerate = generate ? !generate.disabled : false;
+    let isGenerating = false;
     const displayOffer = quote => {
         const available = !!quote.can_generate;
         canGenerate = available;
@@ -455,7 +501,7 @@ if (workspace) {
                 ? 'Стоимость генерации временно недоступна.'
                 : 'Недостаточно средств для генерации аватара.';
         }
-        if (generate) generate.disabled = !available;
+        if (generate) generate.disabled = !available || isGenerating;
     };
     const refreshOffer = async () => {
         if (!generationOffer) return null;
@@ -482,18 +528,14 @@ if (workspace) {
         });
     }
     generate?.addEventListener('click', async () => {
+        if (isGenerating) return;
+        isGenerating = true;
         generate.disabled = true;
         try {
-            message('Проверяем стоимость и баланс...');
+            message('Проверяем стоимость и баланс…');
             const quote = await refreshOffer();
             if (!quote || !quote.can_generate || quote.price_minor === null) {
-                message('Недостаточно средств или стоимость генерации временно недоступна.', true);
-                return;
-            }
-            if (!window.confirm('Создать реалистичный аватар за ' + money(quote.price_minor) +
-                '? Сначала будут списаны бонусные средства, затем реальные.')) {
-                message('Генерация не запускалась.');
-                return;
+                throw new Error('Недостаточно средств или стоимость генерации временно недоступна.');
             }
 
             const payload = new FormData(form);
@@ -511,31 +553,31 @@ if (workspace) {
             }
             for (const input of workspace.querySelectorAll('[data-player-face-slot]')) {
                 if (input.files?.[0]) {
+                    if (input.files[0].size > 5 * 1024 * 1024) {
+                        throw new Error('Каждая фотография лица должна быть не больше 5 МБ. Уменьшите размер и повторите попытку.');
+                    }
                     payload.set('generation_face_references[' + input.dataset.playerFaceSlot + ']',input.files[0]);
                 }
             }
-            message('Загружаем фотографии и запускаем генерацию...');
+            message('Генерация аватара… Отправляем фотографии и параметры.');
             const result = await request(payload);
             if (result.status === 'pending' && result.status_url) {
-                message('Генерация запущена. Проверяем результат...');
+                message('Генерация аватара… Ожидаем начала обработки.');
                 await refreshOffer().catch(() => {});
                 await pollGeneration(result.status_url,result.generation_id);
-            } else if (result.image_data_url) {
-                // A successful synchronous response contains the already validated image.
-                if (result.image_data_url.startsWith('data:image/')) {
-                    figure.src = result.image_data_url;
-                    figure.classList.add('is-generated');
-
-                    message('Аватар сгенерирован.');
-                }
+            } else if (result.image_data_url?.startsWith('data:image/')) {
+                figure.src = result.image_data_url;
+                figure.classList.add('is-generated');
+                message('Готово! Аватар создан.');
             } else {
-                message(result.message || 'Генерация запущена.');
+                throw new Error('Сервер не подтвердил запуск генерации. Проверьте библиотеку аватаров перед повторной попыткой.');
             }
         } catch (error) {
-            message(error.message || 'Не удалось создать аватар.', true);
+            message('Ошибка генерации: ' + (error.message || 'Не удалось создать аватар.'), true);
         } finally {
-            generate.disabled = !canGenerate;
+            isGenerating = false;
             await refreshOffer().catch(() => {});
+            generate.disabled = !canGenerate;
         }
     });
     void showExisting();
