@@ -12,7 +12,7 @@
     <div class="mskba-role-editor">
         <div class="mskba-role-summary">
             <div class="mskba-role-summary-text">
-                <a class="text-orange-600 hover:underline" href="{{ \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource::getUrl('edit', ['record' => $editedUser, 'tab' => 'rol']) }}">
+                <a class="text-orange-600 hover:underline" href="{{ \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource::getUrl('edit', ['record' => $editedUser, 'tab' => 'rol::data::tab']) }}">
                     К списку ролей пользователя
                 </a>
                 <span class="mx-2">/</span>
