@@ -28,24 +28,21 @@ use App\Modules\Rewards\Domain\Models\RewardGrant;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Tests\TestCase;
 
 final class RewardMechanismPayoutTest extends TestCase
 {
-    // After-commit dispatch needs real commits; truncation isolates tests without
-    // the SQLite-incompatible down() migrations or an outer test transaction.
+    // after-commit dispatch needs real commits, not the ambient transaction
+    // from RefreshDatabase. SQLite :memory: PDO connections are reset between
+    // tests in the complete suite; migrate:fresh is required for each one.
+    // Unlike DatabaseMigrations, it never invokes incompatible down() methods.
     use DatabaseTruncation;
 
-    // Migrations seed these immutable catalogs; truncating them would erase
-    // active reward rules and pricing defaults for this and subsequent suites.
-    protected array $exceptTables = [
-        'rewards',
-        'reward_versions',
-        'pricing_categories',
-        'pricing_services',
-        'pricing_variants',
-        'pricing_prices',
-    ];
+    protected function beforeTruncatingDatabase(): void
+    {
+        RefreshDatabaseState::$migrated = false;
+    }
 
     public function test_confirming_direct_referral_credits_300_bonus_rubles_once(): void
     {
