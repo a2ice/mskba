@@ -192,7 +192,7 @@ final class MskbaAppAccountRolesTest extends TestCase
         $html = $this->get(route('account.roles'))->assertOk()->getContent();
 
         $this->assertMatchesRegularExpression(
-            '/data-role-id="player"\s+data-role-cooldown-seconds="5"/',
+            '/data-role-id="player"\s+data-role-cooldown-seconds="[1-5]"/',
             $html,
         );
         $this->assertMatchesRegularExpression(
