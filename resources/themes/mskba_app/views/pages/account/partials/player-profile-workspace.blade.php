@@ -203,37 +203,113 @@
                         <button class="app-player-workspace__primary" type="submit">Применить</button>
                     </div>
                 </form>
-                <section class="app-player-workspace__generation" aria-labelledby="app-player-generation-title">
-                    <h3 id="app-player-generation-title">Реалистичный 2D-аватар</h3>
-                    <p>Для генерации нужны проверенные фотографии лица: анфас и один боковой ракурс. Генерация платная — стоимость и подтверждение появятся до списания средств.</p>
-                    <div class="app-player-workspace__fields">
-                        <label class="app-player-workspace__field">Анфас
-                            <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="front">
-                        </label>
-                        <label class="app-player-workspace__field">Левый профиль
-                            <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="left">
-                        </label>
-                        <label class="app-player-workspace__field">Правый профиль
-                            <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="right">
-                        </label>
-                        <label class="app-player-workspace__field">Цвета команды (необязательно)
-                            <span class="select-control">
-                                <select data-player-generation-team>
-                                <option value="">Без команды</option>
-                                @foreach($playerTeams as $team)
-                                    <option value="{{ $team->id }}">{{ $team->name }}</option>
-                                @endforeach
-                            </select>
-                                @include('account.partials.native-select-chevron')
-                            </span>
-                        </label>
+                @php
+                    $avatarOffer = $generationOffer ?? [
+                        'price_minor' => null, 'currency' => 'RUB', 'bonus_balance_minor' => 0,
+                        'real_balance_minor' => 0, 'available_minor' => 0,
+                        'available_generations' => null, 'can_generate' => false, 'bonus_opportunities' => [],
+                    ];
+                    $avatarPrice = $avatarOffer['price_minor'];
+                    $avatarCanGenerate = (bool) $avatarOffer['can_generate'];
+                    $formatRub = static fn (int $minor): string => number_format($minor / 100, 2, ',', ' ').' ₽';
+                @endphp
+                <section class="app-player-workspace__generation" aria-labelledby="app-player-generation-title"
+                    data-player-generation-offer>
+                    <div class="app-player-workspace__section-heading">
+                        <h3 id="app-player-generation-title">Генерация аватара</h3>
+                        <p>Реалистичное изображение игрока по проверенным фотографиям анфас и слева или справа.</p>
                     </div>
-                    <label class="app-player-workspace__checkbox"><input type="checkbox" data-player-generation-logo> Использовать логотип выбранной команды (при наличии)</label>
-                    <div class="app-player-workspace__actions">
-                        <button type="button" class="app-player-workspace__secondary" data-player-generate>Проверить стоимость и сгенерировать</button>
+                    <div class="app-player-workspace__generation-summary" aria-label="Стоимость и баланс генерации">
+                        <div class="app-player-workspace__generation-stat">
+                            <span>Стоимость генерации</span>
+                            <strong data-player-offer-price>{{ $avatarPrice === null ? 'Недоступна' : $formatRub($avatarPrice) }}</strong>
+                        </div>
+                        <div class="app-player-workspace__generation-stat">
+                            <span>Бонусный баланс</span>
+                            <strong data-player-offer-bonus>{{ $formatRub((int) $avatarOffer['bonus_balance_minor']) }}</strong>
+                        </div>
+                        <div class="app-player-workspace__generation-stat">
+                            <span>Доступно для оплаты (всего)</span>
+                            <strong data-player-offer-total>{{ $formatRub((int) $avatarOffer['available_minor']) }}</strong>
+                        </div>
+                        <div class="app-player-workspace__generation-stat">
+                            <span>Доступно генераций</span>
+                            <strong data-player-offer-count>{{ $avatarPrice === null ? '—' : ($avatarPrice === 0 ? 'Без оплаты' : (string) $avatarOffer['available_generations']) }}</strong>
+                        </div>
+                    </div>
+                    <p class="app-player-workspace__generation-hint">При оплате используются сначала бонусные средства, затем реальные. Стоимость и баланс проверяются ещё раз непосредственно перед списанием.</p>
+                    <p class="app-player-workspace__generation-no-funds" data-player-offer-unavailable role="status"
+                        @if($avatarCanGenerate) hidden @endif>
+                        {{ $avatarPrice === null ? 'Стоимость генерации временно недоступна.' : 'Недостаточно средств для генерации аватара.' }}
+                    </p>
+                    <div class="app-player-workspace__generation-topup">
+                        <button type="button" class="app-player-workspace__generation-help" data-player-topup-open
+                            aria-haspopup="dialog" aria-controls="app-player-topup-dialog">Как пополнить?</button>
+                    </div>
+                    <div data-player-generation-fields @if(! $avatarCanGenerate) hidden @endif>
+                        <div class="app-player-workspace__fields">
+                            <label class="app-player-workspace__field">Анфас
+                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="front">
+                            </label>
+                            <label class="app-player-workspace__field">Левый профиль
+                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="left">
+                            </label>
+                            <label class="app-player-workspace__field">Правый профиль
+                                <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="right">
+                            </label>
+                            <label class="app-player-workspace__field">Цвета команды (необязательно)
+                                <span class="select-control">
+                                    <select data-player-generation-team>
+                                        <option value="">Без команды</option>
+                                        @foreach($playerTeams as $team)
+                                            <option value="{{ $team->id }}">{{ $team->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @include('account.partials.native-select-chevron')
+                                </span>
+                            </label>
+                        </div>
+                        <label class="app-player-workspace__checkbox"><input type="checkbox" data-player-generation-logo> Использовать логотип выбранной команды (при наличии)</label>
+                        <div class="app-player-workspace__actions">
+                            <button type="button" class="app-player-workspace__secondary" data-player-generate
+                                @disabled(! $avatarCanGenerate)>Сгенерировать</button>
+                        </div>
                     </div>
                     <p class="app-player-workspace__generation-status" data-player-generation-status role="status" aria-live="polite"></p>
                 </section>
+                <dialog id="app-player-topup-dialog" class="app-player-workspace__topup-dialog" data-player-topup-dialog
+                    aria-labelledby="app-player-topup-title">
+                    <div class="app-player-workspace__topup-head">
+                        <h3 id="app-player-topup-title">Как пополнить баланс?</h3>
+                        <button type="button" class="app-player-workspace__secondary" data-player-topup-close
+                            aria-label="Закрыть окно пополнения">Закрыть</button>
+                    </div>
+                    <div class="app-player-workspace__topup-body">
+                        <p>Бонусы начисляются автоматически после выполнения условий и подтверждения результата. Текущий остаток можно посмотреть в <a href="{{ route('account.wallet') }}">кошельке</a>.</p>
+                        @if($avatarOffer['bonus_opportunities'] !== [])
+                            <ul class="app-player-workspace__bonus-options">
+                                @foreach($avatarOffer['bonus_opportunities'] as $opportunity)
+                                    <li>
+                                        <strong>{{ $opportunity['title'] }}</strong>
+                                        <span>{{ $formatRub($opportunity['amount_minor']) }} бонусами</span>
+                                        <p>{{ $opportunity['description'] }}</p>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <p>Активных бонусных предложений сейчас нет. Новые предложения появятся здесь после их включения в каталоге наград.</p>
+                        @endif
+                        <div class="app-player-workspace__topup-payment">
+                            <h4>Пополнение картой</h4>
+                            <p>Банковское пополнение пока не подключено. Эта форма не проводит оплату и не начисляет средства.</p>
+                            <label class="app-player-workspace__field" for="app-player-topup-amount">Сумма пополнения, ₽
+                                <input id="app-player-topup-amount" type="number" min="1" step="1" value="500" inputmode="numeric">
+                            </label>
+                            <button type="button" class="app-player-workspace__secondary" disabled
+                                aria-disabled="true">Оплата картой пока недоступна</button>
+                        </div>
+                    </div>
+                </dialog>
             </section>
         </div>
     @else
