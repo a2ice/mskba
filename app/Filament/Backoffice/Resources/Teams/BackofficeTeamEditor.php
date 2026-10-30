@@ -61,9 +61,12 @@ final class BackofficeTeamEditor
     public function create(array $data): Team
     {
         abort_unless(TeamResource::authorized(), 403);
-        $data = $this->validate($data, true);
         $actor = app(CurrentActorResolver::class)->resolve(auth('web')->user(), null);
         abort_if($actor?->user_id === null, 403);
+        // The creator is the default owner in both the backoffice and public flow.
+        // An explicitly selected different owner in Filament always takes precedence.
+        $data['owner_user_id'] ??= $actor->user?->canonical()->id;
+        $data = $this->validate($data, true);
         return DB::transaction(function () use ($data, $actor): Team {
             $owner = User::query()->whereKey($data['owner_user_id'])
                 ->whereNull('canonical_user_id')->lockForUpdate()->firstOrFail();
