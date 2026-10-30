@@ -151,8 +151,12 @@ final class TeamResource extends Resource
     {
         return $table->columns([
             TextColumn::make('id')->label('ID')->sortable(),
-            ImageColumn::make('logo_image')->label('Логотип')
-                ->getStateUsing(fn (Team $record): ?string => $record->logo?->publicUrl())
+            // Filament ImageColumn expects a storage-relative path, not a
+            // public URL. Passing /storage/... makes it encode the URL as a
+            // second storage path and the image disappears.
+            ImageColumn::make('logo.path')->label('Логотип')
+                ->disk('public')
+                ->defaultImageUrl(asset('images/team-placeholder.webp'))
                 ->square()->height(42),
             TextColumn::make('name')->label('Команда')->searchable()->sortable()->weight('bold'),
             TextColumn::make('status')->label('Статус')->badge()
