@@ -4,6 +4,10 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Finance\Application\Services\BackofficeUserWalletFunding;
+use App\Modules\Finance\Application\Services\RubleAmountParser;
+use App\Modules\Finance\Application\Services\SuperadminWalletBonusGrant;
+use App\Modules\Finance\Domain\Exceptions\WalletException;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Application\Services\StaffSpecializationManager;
 use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
@@ -11,6 +15,8 @@ use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\Services\SuperadminSelfEditAccess;
 use App\Modules\Identity\Domain\Models\ManagerSpecialization;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\DatePicker;
@@ -49,6 +55,7 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 final class EditBackofficeUser extends EditRecord
 {
@@ -86,6 +93,103 @@ final class EditBackofficeUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            // Hidden in the main page header: buttons in the Wallet tab
+            // mount these guarded actions without leaving the user editor.
+            Action::make('grantOwnWalletBonus')
+                ->label('Пополнить свой бонусный баланс')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible(function (): bool {
+                    $actor = auth('web')->user();
+                    return $actor !== null
+                        && (int) $actor->canonical()->id === (int) $this->getRecord()->canonical()->id
+                        && app(SuperadminWalletBonusGrant::class)->allowed($actor);
+                })
+                ->modalHeading('Пополнение бонусного баланса superadmin')
+                ->modalDescription('Введите сумму и текущий пароль superadmin. Будет создана неизменяемая финансовая операция.')
+                ->modalSubmitActionLabel('Подтвердить начисление')
+                ->schema([
+                    TextInput::make('grant_amount')->label('Сумма, ₽')->required()
+                        ->maxLength(32)->placeholder('5000,00'),
+                    TextInput::make('grant_password')->label('Текущий пароль superadmin')
+                        ->password()->required()->maxLength(255),
+                    Hidden::make('idempotency_key')->default(fn (): string => (string) Str::uuid()),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    abort_unless($actor !== null
+                        && (int) $actor->canonical()->id === (int) $this->getRecord()->canonical()->id
+                        && app(SuperadminWalletBonusGrant::class)->allowed($actor), 403);
+
+                    try {
+                        $amount = app(RubleAmountParser::class)->parse((string) ($data['grant_amount'] ?? ''));
+                    } catch (WalletException $exception) {
+                        throw ValidationException::withMessages(['grant_amount' => $exception->getMessage()]);
+                    }
+                    try {
+                        app(SuperadminWalletBonusGrant::class)->grant(
+                            user: $actor,
+                            currentPassword: (string) ($data['grant_password'] ?? ''),
+                            amountMinor: $amount,
+                            idempotencyKey: (string) ($data['idempotency_key'] ?? ''),
+                        );
+                    } catch (WalletException $exception) {
+                        throw ValidationException::withMessages(['grant_password' => $exception->getMessage()]);
+                    }
+                    Notification::make()->success()->title('Бонусный баланс пополнен')->send();
+                }),
+            Action::make('fundUserWalletBonus')
+                ->label('Начислить бонусы пользователю')
+                ->extraAttributes(['style' => 'display:none'])
+                ->visible(function (): bool {
+                    $actor = auth('web')->user();
+                    return $actor !== null
+                        && app(BackofficeUserWalletFunding::class)->canFund($actor, $this->getRecord());
+                })
+                ->modalHeading('Перевод бонусов из кошелька superadmin')
+                ->modalDescription('Сумма списывается с выбранного бонусного баланса superadmin и зачисляется пользователю. Источник, исполнитель и основание сохраняются в истории.')
+                ->modalSubmitActionLabel('Перевести бонусы')
+                ->schema([
+                    Select::make('source_superadmin_user_id')
+                        ->label('Кошелёк-источник (superadmin)')->required()
+                        ->native(false)
+                        ->options(fn (): array => auth('web')->user() === null ? []
+                            : app(BackofficeUserWalletFunding::class)->sourceOptions(auth('web')->user()))
+                        ->default(fn (): ?int => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN
+                            ? (int) auth('web')->user()->canonical()->id : null),
+                    TextInput::make('amount')->label('Сумма бонусов, ₽')->required()
+                        ->maxLength(32)->placeholder('500,00'),
+                    Textarea::make('reason')->label('Основание начисления')
+                        ->required()->minLength(10)->maxLength(500),
+                    Hidden::make('idempotency_key')->default(fn (): string => (string) Str::uuid()),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user();
+                    $target = $this->getRecord();
+                    $funding = app(BackofficeUserWalletFunding::class);
+                    abort_unless($actor !== null && $funding->canFund($actor, $target), 403);
+
+                    try {
+                        $amount = app(RubleAmountParser::class)->parse((string) ($data['amount'] ?? ''));
+                    } catch (WalletException $exception) {
+                        throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
+                    }
+                    try {
+                        $result = $funding->fund(
+                            actor: $actor,
+                            recipient: $target,
+                            sourceSuperadminId: (int) ($data['source_superadmin_user_id'] ?? 0),
+                            amountMinor: $amount,
+                            reason: (string) ($data['reason'] ?? ''),
+                            idempotencyKey: (string) ($data['idempotency_key'] ?? ''),
+                        );
+                    } catch (WalletException $exception) {
+                        throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
+                    }
+
+                    Notification::make()->success()
+                        ->title($result->replayed ? 'Этот перевод уже выполнен' : 'Бонусы перечислены пользователю')
+                        ->send();
+                }),
             Action::make('saveGeneralInline')
                 ->label('Сохранить общие данные')
                 ->extraAttributes(['style' => 'display:none'])
