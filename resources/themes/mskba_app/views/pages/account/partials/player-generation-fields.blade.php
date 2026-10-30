@@ -18,9 +18,11 @@
                     </label>
                     <button type="button" class="app-player-workspace__face-delete"
                         data-face-delete aria-label="Удалить фото {{ $label }}" hidden>Удалить фото</button>
+                    <small class="app-player-workspace__face-feedback" data-face-feedback role="status" aria-live="polite" hidden></small>
                 </div>
             @endforeach
         </div>
+        <p class="app-player-workspace__face-group-feedback" data-player-face-group-feedback role="status" aria-live="polite" hidden></p>
     </fieldset>
     <fieldset class="app-player-workspace__equipment">
         <legend>Форма и кроссовки</legend>
