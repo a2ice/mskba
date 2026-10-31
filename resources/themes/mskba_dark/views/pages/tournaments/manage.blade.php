@@ -27,6 +27,7 @@
         <ul class="sidebar-nav nav flex-column">
             @if($pendingMembership)<li class="nav-item"><a class="nav-link" href="#invitation">Приглашение</a></li>@endif
             @if($canManageMain)<li class="nav-item"><a class="nav-link" href="#main">Основное</a></li>@endif
+            @if($canManageMain)<li class="nav-item"><a class="nav-link" href="#banner">Баннер</a></li>@endif
             @if($canManageGames)
                 <li class="nav-item"><a class="nav-link" href="#participants">Участники</a></li>
                 @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT)
@@ -54,7 +55,7 @@
 
 @section('section-content')
 @if($canManageMain)
-    <div class="mb-4" id="banner">@include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])</div>
+    <div id="banner">@include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])</div>
 @endif
 
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
