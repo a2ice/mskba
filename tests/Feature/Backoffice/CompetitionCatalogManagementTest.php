@@ -4,11 +4,13 @@ namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\Competitions\CompetitionCatalogEditor;
 use App\Filament\Backoffice\Resources\Leagues\BackofficeLeagueEditor;
+use App\Filament\Backoffice\Resources\Teams\BackofficeTeamEditor;
 use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
 use App\Filament\Backoffice\Resources\Seasons\BackofficeSeasonEditor;
 use App\Filament\Backoffice\Resources\Seasons\SeasonResource;
 use App\Filament\Backoffice\Resources\Tournaments\TournamentResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -16,6 +18,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Models\Tournament;
+use App\Modules\Tournament\Application\Services\TournamentAdmissionService;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -203,4 +207,68 @@ final class CompetitionCatalogManagementTest extends TestCase
             'title' => 'Запрещённый турнир', 'starts_on' => '2026-12-01',
         ]);
     }
+    public function test_superadmin_can_invite_team_without_being_the_tournament_owner(): void
+    {
+        $creator = $this->user(UserSystemRoleEnum::USER);
+        $creatorActor = app(CurrentActorResolver::class)->resolve($creator, null);
+        $tournament = Tournament::factory()->create([
+            'created_by_actor_id' => $creatorActor->id,
+            'status' => 'confirmed',
+            'format' => 'basketball_5x5',
+            'recruitment_mode' => 'preformed_teams',
+            'starts_on' => today()->addDays(10),
+        ]);
+
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->login($super);
+        $team = app(BackofficeTeamEditor::class)->create([
+            'name' => 'Сборная для приглашений',
+            'status' => 'active',
+            'sport_types' => ['basketball'],
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($super, null);
+        $this->assertNotSame($actor->id, $tournament->created_by_actor_id);
+
+        $admission = app(TournamentAdmissionService::class)->invite($tournament, $actor, $team);
+        $this->assertSame(TournamentAdmissionStatusEnum::PENDING, $admission->status);
+        $this->assertSame($team->id, $admission->team_id);
+        $this->get(TournamentResource::getUrl('edit', ['record' => $tournament]))
+            ->assertOk()->assertSee('Заявки и приглашения');
+    }
+
+    public function test_tournament_view_permission_does_not_grant_participant_management(): void
+    {
+        $creator = $this->user(UserSystemRoleEnum::USER);
+        $creatorActor = app(CurrentActorResolver::class)->resolve($creator, null);
+        $tournament = Tournament::factory()->create([
+            'created_by_actor_id' => $creatorActor->id,
+            'status' => 'confirmed',
+            'format' => 'basketball_5x5',
+            'recruitment_mode' => 'preformed_teams',
+            'starts_on' => today()->addDays(10),
+        ]);
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->login($super);
+        $team = app(BackofficeTeamEditor::class)->create([
+            'name' => 'Команда без допуска',
+            'status' => 'active',
+            'sport_types' => ['basketball'],
+        ]);
+        $manager = $this->user(UserSystemRoleEnum::MANAGER);
+        app(BackofficePermissionManager::class)->sync($super, $manager, [
+            Permission::BACKOFFICE_ACCESS->value,
+            Permission::BACKOFFICE_TOURNAMENT_VIEW->value,
+        ], overrideInherited: true);
+        $this->login($manager);
+
+        $this->assertTrue(TournamentResource::canViewAny());
+        $this->assertFalse(TournamentResource::canManageParticipants());
+        $this->expectException(\InvalidArgumentException::class);
+        app(TournamentAdmissionService::class)->invite(
+            $tournament,
+            app(CurrentActorResolver::class)->resolve($manager, null),
+            $team,
+        );
+    }
+
 }

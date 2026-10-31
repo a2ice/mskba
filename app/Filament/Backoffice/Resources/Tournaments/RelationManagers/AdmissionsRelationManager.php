@@ -59,7 +59,8 @@ final class AdmissionsRelationManager extends RelationManager
         ->headerActions([
             Action::make('inviteTeam')->label('Пригласить команду')->icon('heroicon-o-user-plus')
                 ->visible(fn (): bool => TournamentResource::canManageParticipants()
-                    && $this->getOwnerRecord()->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS)
+                    && $this->getOwnerRecord()->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+                    && $this->getOwnerRecord()->acceptsAdmissions())
                 ->schema([
                     Select::make('team_id')->label('Команда')->required()->searchable()
                         ->getSearchResultsUsing(fn (string $search): array => Team::query()
@@ -75,7 +76,8 @@ final class AdmissionsRelationManager extends RelationManager
                 }),
             Action::make('invitePlayer')->label('Пригласить игрока')->icon('heroicon-o-user-plus')
                 ->visible(fn (): bool => TournamentResource::canManageParticipants()
-                    && $this->getOwnerRecord()->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT)
+                    && $this->getOwnerRecord()->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
+                    && $this->getOwnerRecord()->acceptsAdmissions())
                 ->schema([
                     Select::make('user_id')->label('Игрок')->required()->searchable()
                         ->getSearchResultsUsing(fn (string $search): array => User::query()
