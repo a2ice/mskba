@@ -16,6 +16,7 @@ final class PublicLeaguePagesTest extends TestCase
     {
         parent::setUp();
         config()->set('themes.active', 'mskba_app');
+        view()->replaceNamespace('theme', [resource_path('themes/mskba_app/views')]);
     }
 
     private function league(string $name, string $status = 'active'): League
