@@ -2,6 +2,8 @@
 
 namespace App\Modules\Contract\Domain\Enums;
 
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionAccessLevelEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
@@ -17,6 +19,8 @@ enum ContractMembershipScopeTypeEnum: string
     case TEAM = 'team';
     case COMPANY = 'company';
     case TOURNAMENT = 'tournament';
+    case LEAGUE = 'league';
+    case SEASON = 'season';
     case SPORTS_SECTION = 'sports_section';
 
     public function label(): string
@@ -28,6 +32,8 @@ enum ContractMembershipScopeTypeEnum: string
             self::TEAM => 'Команда',
             self::COMPANY => 'Компания',
             self::TOURNAMENT => 'Турнир',
+            self::LEAGUE => 'Лига',
+            self::SEASON => 'Сезон',
             self::SPORTS_SECTION => 'Секция',
         };
     }
@@ -39,6 +45,8 @@ enum ContractMembershipScopeTypeEnum: string
             self::VENUE_COURT => VenueCourt::class,
             self::TEAM => Team::class,
             self::TOURNAMENT => Tournament::class,
+            self::LEAGUE => League::class,
+            self::SEASON => LeagueSeason::class,
             self::SPORTS_SECTION => SportsSection::class,
 
             self::EVENT,
@@ -53,6 +61,8 @@ enum ContractMembershipScopeTypeEnum: string
             self::VENUE_COURT => null,
             self::TEAM => 'teams.show',
             self::TOURNAMENT => 'tournaments.show',
+            self::LEAGUE => 'leagues.show',
+            self::SEASON => null,
             self::SPORTS_SECTION => 'sports-sections.show',
 
             self::EVENT,
@@ -65,7 +75,9 @@ enum ContractMembershipScopeTypeEnum: string
         return match ($this) {
             self::VENUE,
             self::VENUE_COURT,
-            self::TEAM => 'name',
+            self::TEAM,
+            self::LEAGUE,
+            self::SEASON => 'name',
             self::TOURNAMENT => 'title',
             self::SPORTS_SECTION => 'name',
 
@@ -84,7 +96,9 @@ enum ContractMembershipScopeTypeEnum: string
 
             self::EVENT,
             self::COMPANY,
-            self::TOURNAMENT => null,
+            self::TOURNAMENT,
+            self::LEAGUE,
+            self::SEASON => null,
         };
     }
 }
