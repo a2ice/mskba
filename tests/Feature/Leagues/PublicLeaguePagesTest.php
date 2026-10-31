@@ -12,6 +12,12 @@ final class PublicLeaguePagesTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('themes.active', 'mskba_app');
+    }
+
     private function league(string $name, string $status = 'active'): League
     {
         static $sequence = 0;
