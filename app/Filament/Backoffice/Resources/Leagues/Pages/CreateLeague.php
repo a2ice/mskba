@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Backoffice\Resources\${group}\Pages;
+namespace App\Filament\Backoffice\Resources\Leagues\Pages;
 
-use App\Filament\Backoffice\Resources\Competitions\CompetitionCatalogEditor;
-use App\Filament\Backoffice\Resources\${group}\${resource};
-use Filament\Resources\Pages\${parent};
+use App\Filament\Backoffice\Resources\Leagues\BackofficeLeagueEditor;
+use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
+use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
 final class CreateLeague extends CreateRecord
@@ -13,6 +13,6 @@ final class CreateLeague extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        return app(CompetitionCatalogEditor::class)->createLeague($data);
+        return app(BackofficeLeagueEditor::class)->create($data);
     }
 }

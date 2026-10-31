@@ -6,24 +6,20 @@ use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
-use App\Modules\Tournament\Domain\Models\League;
-use App\Modules\Tournament\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Models\Tournament;
+use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Backoffice writes go through a single authorization and domain-invariant gate.
- * Existing competition records, admissions, results and player statistics stay intact.
- */
+/** Backoffice integration over the existing tournament lifecycle and database. */
 final class CompetitionCatalogEditor
 {
     private function actorId(Permission $permission): int
@@ -32,116 +28,11 @@ final class CompetitionCatalogEditor
         if ($user === null
             || ! app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_ACCESS)
             || ! app(BackofficePermissionManager::class)->allows($user, $permission)) {
-            throw new AuthorizationException('Недостаточно прав для управления соревнованиями.');
+            throw new AuthorizationException('Недостаточно прав для управления турнирами.');
         }
 
         return app(CurrentActorResolver::class)->resolve($user, null)?->id
             ?? throw new AuthorizationException('Невозможно определить администратора.');
-    }
-
-    private function validateLeague(array $data, ?League $record = null): array
-    {
-        $data['slug'] = Str::slug((string) (($data['slug'] ?? null) ?: ($data['name'] ?? $record?->name ?? '')));
-        return Validator::make($data, [
-            'name' => ['required', 'string', 'min:2', 'max:160'],
-            'slug' => ['required', 'string', 'max:180', Rule::unique('leagues', 'slug')->ignore($record?->id)],
-            'description' => ['nullable', 'string', 'max:10000'],
-            'status' => ['required', Rule::in(['active', 'archived'])],
-        ])->validate();
-    }
-
-    public function createLeague(array $data): League
-    {
-        $actorId = $this->actorId(Permission::BACKOFFICE_LEAGUE_MANAGE);
-        $validated = $this->validateLeague(['status' => 'active', ...$data]);
-        return League::query()->create([...$validated, 'created_by_actor_id' => $actorId]);
-    }
-
-    public function updateLeague(League $league, array $data): League
-    {
-        $this->actorId(Permission::BACKOFFICE_LEAGUE_MANAGE);
-        abort_if($league->trashed(), 404);
-        $league->update($this->validateLeague([...$league->only(['name', 'slug', 'description', 'status']), ...$data], $league));
-        return $league->refresh();
-    }
-
-    public function deleteLeague(League $league): void
-    {
-        $this->actorId(Permission::BACKOFFICE_LEAGUE_MANAGE);
-        if ($league->seasons()->withTrashed()->exists() || $league->tournaments()->withTrashed()->exists()) {
-            throw ValidationException::withMessages(['league' => 'Лига связана с сезонами или турнирами. Вместо удаления переведите её в архив.']);
-        }
-        $league->delete();
-    }
-
-    public function restoreLeague(League $league): void
-    {
-        $this->actorId(Permission::BACKOFFICE_LEAGUE_MANAGE);
-        $league->restore();
-    }
-
-    private function validateSeason(array $data, ?LeagueSeason $record = null): array
-    {
-        $data['slug'] = Str::slug((string) (($data['slug'] ?? null) ?: ($data['name'] ?? $record?->name ?? '')));
-        $data['starts_on'] = ($data['starts_on'] ?? null) ?: null;
-        $data['ends_on'] = ($data['ends_on'] ?? null) ?: null;
-
-        $validated = Validator::make($data, [
-            'league_id' => ['required', 'integer', Rule::exists('leagues', 'id')->whereNull('deleted_at')],
-            'name' => ['required', 'string', 'min:2', 'max:160'],
-            'slug' => ['required', 'string', 'max:180',
-                Rule::unique('league_seasons', 'slug')->where('league_id', $data['league_id'] ?? 0)->ignore($record?->id)],
-            'starts_on' => ['nullable', 'date'],
-            'ends_on' => array_filter(['nullable', 'date', $data['starts_on'] ? 'after_or_equal:starts_on' : null]),
-            'description' => ['nullable', 'string', 'max:10000'],
-            'status' => ['required', Rule::in(['planned', 'active', 'completed', 'archived'])],
-        ])->validate();
-
-        $league = League::query()->findOrFail($validated['league_id']);
-        if ($league->status !== 'active' && ($record === null || (int) $record->league_id !== (int) $league->id)) {
-            throw ValidationException::withMessages(['league_id' => 'Нельзя создавать или переносить сезон в архивную лигу.']);
-        }
-        if ($record !== null && (int) $record->league_id !== (int) $validated['league_id']
-            && $record->tournaments()->withTrashed()->exists()) {
-            throw ValidationException::withMessages(['league_id' => 'Нельзя менять лигу сезона, к которому привязаны турниры.']);
-        }
-        return $validated;
-    }
-
-    public function createSeason(array $data): LeagueSeason
-    {
-        $actorId = $this->actorId(Permission::BACKOFFICE_SEASON_MANAGE);
-        $validated = $this->validateSeason(['status' => 'planned', ...$data]);
-        return LeagueSeason::query()->create([...$validated, 'created_by_actor_id' => $actorId]);
-    }
-
-    public function updateSeason(LeagueSeason $season, array $data): LeagueSeason
-    {
-        $this->actorId(Permission::BACKOFFICE_SEASON_MANAGE);
-        abort_if($season->trashed(), 404);
-        $season->update($this->validateSeason([
-            ...$season->only(['league_id', 'name', 'slug', 'starts_on', 'ends_on', 'description', 'status']),
-            ...$data,
-        ], $season));
-        return $season->refresh();
-    }
-
-    public function deleteSeason(LeagueSeason $season): void
-    {
-        $this->actorId(Permission::BACKOFFICE_SEASON_MANAGE);
-        if ($season->tournaments()->withTrashed()->exists()) {
-            throw ValidationException::withMessages(['season' => 'У сезона есть турниры. Для сохранения истории переведите его в архив.']);
-        }
-        $season->delete();
-    }
-
-    public function restoreSeason(LeagueSeason $season): void
-    {
-        $this->actorId(Permission::BACKOFFICE_SEASON_MANAGE);
-        if ($season->league()->whereNull('deleted_at')->doesntExist()) {
-            throw ValidationException::withMessages(['season' => 'Сначала восстановите лигу.']);
-        }
-        $season->restore();
     }
 
     private function validateTournament(array $data, ?Tournament $record = null): array
@@ -168,7 +59,7 @@ final class CompetitionCatalogEditor
             'league_season_id' => ['nullable', 'integer', Rule::exists('league_seasons', 'id')->whereNull('deleted_at')],
             'recruitment_mode' => ['required', Rule::in(array_column(TournamentRecruitmentModeEnum::cases(), 'value'))],
             'enrollment_policy' => ['required', Rule::in(array_column(TournamentEnrollmentPolicyEnum::cases(), 'value'))],
-            'round_robin_legs' => ['required', 'integer', 'between:1,4'],
+            'round_robin_legs' => ['required', 'integer', 'between:1,2'],
         ])->validate();
 
         if ($validated['league_season_id'] !== null) {
@@ -195,7 +86,7 @@ final class CompetitionCatalogEditor
 
     public function createTournament(array $data): Tournament
     {
-        $actorId = $this->actorId(Permission::BACKOFFICE_TOURNAMENT_MANAGE);
+        $actorId = $this->actorId(Permission::BACKOFFICE_TOURNAMENT_CREATE);
         $validated = $this->validateTournament([
             'status' => TournamentStatusEnum::UNCONFIRMED->value,
             'recruitment_mode' => TournamentRecruitmentModeEnum::PREFORMED_TEAMS->value,
@@ -206,14 +97,14 @@ final class CompetitionCatalogEditor
 
         return Tournament::query()->create([
             ...$validated,
-            'alias' => Str::slug($validated['title']).'-'.Str::lower(Str::random(7)),
+            'alias' => (Str::slug(app(CyrillicTransliterator::class)->transliterate($validated['title'])) ?: 'tournament').'-'.Str::lower(Str::random(7)),
             'created_by_actor_id' => $actorId,
         ]);
     }
 
     public function updateTournament(Tournament $tournament, array $data): Tournament
     {
-        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_MANAGE);
+        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_EDIT);
         abort_if($tournament->trashed(), 404);
         $values = $tournament->only([
             'title', 'status', 'status_comment', 'starts_on', 'ends_on',
@@ -232,7 +123,7 @@ final class CompetitionCatalogEditor
 
     public function deleteTournament(Tournament $tournament): void
     {
-        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_MANAGE);
+        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_DELETE);
         if ($tournament->matches()->withTrashed()->exists()
             || $tournament->entries()->exists()
             || $tournament->admissions()->exists()) {
@@ -243,7 +134,7 @@ final class CompetitionCatalogEditor
 
     public function restoreTournament(Tournament $tournament): void
     {
-        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_MANAGE);
+        $this->actorId(Permission::BACKOFFICE_TOURNAMENT_DELETE);
         $tournament->restore();
     }
 }

@@ -29,8 +29,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'created_by_actor_id',
-    'league_id',
-    'league_season_id',
     'default_venue_id',
     'league_id',
     'league_season_id',
@@ -95,16 +93,6 @@ class Tournament extends Model
     public function leagueSeason(): BelongsTo
     {
         return $this->belongsTo(LeagueSeason::class);
-    }
-
-    public function league(): BelongsTo
-    {
-        return $this->belongsTo(League::class);
-    }
-
-    public function season(): BelongsTo
-    {
-        return $this->belongsTo(LeagueSeason::class, 'league_season_id');
     }
 
     public function defaultVenue(): BelongsTo

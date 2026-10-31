@@ -14,8 +14,8 @@ use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permissio
 use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
-use App\Modules\Tournament\Domain\Models\League;
-use App\Modules\Tournament\Domain\Models\LeagueSeason;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -49,20 +49,20 @@ final class TournamentResource extends Resource
     public static function getModelLabel(): string { return 'турнир'; }
     public static function getPluralModelLabel(): string { return 'турниры'; }
 
-    private static function authorized(): bool
+    public static function allows(Permission $permission): bool
     {
         $user = auth('web')->user();
         return $user !== null
             && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_ACCESS)
-            && app(BackofficePermissionManager::class)->allows($user, Permission::BACKOFFICE_TOURNAMENT_MANAGE);
+            && app(BackofficePermissionManager::class)->allows($user, $permission);
     }
 
-    public static function canViewAny(): bool { return self::authorized(); }
-    public static function canView(Model $record): bool { return $record instanceof Tournament && self::authorized(); }
-    public static function canCreate(): bool { return self::authorized(); }
-    public static function canEdit(Model $record): bool { return self::canView($record) && ! $record->trashed(); }
-    public static function canDelete(Model $record): bool { return self::canEdit($record); }
-    public static function canRestore(Model $record): bool { return self::canView($record) && $record->trashed(); }
+    public static function canViewAny(): bool { return self::allows(Permission::BACKOFFICE_TOURNAMENT_VIEW); }
+    public static function canView(Model $record): bool { return $record instanceof Tournament && self::canViewAny(); }
+    public static function canCreate(): bool { return self::allows(Permission::BACKOFFICE_TOURNAMENT_CREATE); }
+    public static function canEdit(Model $record): bool { return $record instanceof Tournament && ! $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_EDIT); }
+    public static function canDelete(Model $record): bool { return $record instanceof Tournament && ! $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_DELETE); }
+    public static function canRestore(Model $record): bool { return $record instanceof Tournament && $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_DELETE); }
     public static function canDeleteAny(): bool { return false; }
     public static function canForceDelete(Model $record): bool { return false; }
     public static function canForceDeleteAny(): bool { return false; }
@@ -124,7 +124,7 @@ final class TournamentResource extends Resource
                             ->options(self::options(TournamentEnrollmentPolicyEnum::class))
                             ->default(TournamentEnrollmentPolicyEnum::FIXED_POOL->value),
                         TextInput::make('round_robin_legs')->label('Количество кругов')->integer()
-                            ->minValue(1)->maxValue(4)->default(1)->required(),
+                            ->minValue(1)->maxValue(2)->default(1)->required(),
                     ]),
                 ]),
             ]),
@@ -137,7 +137,7 @@ final class TournamentResource extends Resource
             TextColumn::make('id')->label('ID')->sortable(),
             TextColumn::make('title')->label('Турнир')->searchable()->sortable()->weight('bold'),
             TextColumn::make('league.name')->label('Лига')->placeholder('Независимый'),
-            TextColumn::make('season.name')->label('Сезон')->placeholder('Без сезона'),
+            TextColumn::make('leagueSeason.name')->label('Сезон')->placeholder('Без сезона'),
             TextColumn::make('starts_on')->label('Начало')->date('d.m.Y')->sortable(),
             TextColumn::make('ends_on')->label('Окончание')->date('d.m.Y')->placeholder('Не указано'),
             TextColumn::make('status')->label('Статус')->badge()

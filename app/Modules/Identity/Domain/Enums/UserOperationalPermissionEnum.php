@@ -33,9 +33,6 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_VENUE_MODERATE = 'backoffice.venue.moderate';
     case BACKOFFICE_EVENT_MANAGE = 'backoffice.event.manage';
     case BACKOFFICE_TEAM_MANAGE = 'backoffice.team.manage';
-    case BACKOFFICE_LEAGUE_MANAGE = 'backoffice.league.manage';
-    case BACKOFFICE_SEASON_MANAGE = 'backoffice.season.manage';
-    case BACKOFFICE_TOURNAMENT_MANAGE = 'backoffice.tournament.manage';
     case BACKOFFICE_LEAGUE_VIEW = 'backoffice.league.view';
     case BACKOFFICE_LEAGUE_CREATE = 'backoffice.league.create';
     case BACKOFFICE_LEAGUE_EDIT = 'backoffice.league.edit';
@@ -86,9 +83,6 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MODERATE,
             self::BACKOFFICE_EVENT_MANAGE,
             self::BACKOFFICE_TEAM_MANAGE,
-            self::BACKOFFICE_LEAGUE_MANAGE,
-            self::BACKOFFICE_SEASON_MANAGE,
-            self::BACKOFFICE_TOURNAMENT_MANAGE,
             self::BACKOFFICE_LEAGUE_VIEW,
             self::BACKOFFICE_LEAGUE_CREATE,
             self::BACKOFFICE_LEAGUE_EDIT,
@@ -160,9 +154,6 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MODERATE => 'Рассмотрение заявок модерации площадок и разрешение дублей в Filament',
             self::BACKOFFICE_EVENT_MANAGE => 'Управление мероприятиями, участниками и их бронированиями в Filament',
             self::BACKOFFICE_TEAM_MANAGE => 'Управление командами, участниками, составами и оформлением в Filament',
-            self::BACKOFFICE_LEAGUE_MANAGE => 'Управление лигами в Filament',
-            self::BACKOFFICE_SEASON_MANAGE => 'Управление сезонами лиг в Filament',
-            self::BACKOFFICE_TOURNAMENT_MANAGE => 'Управление турнирами в Filament',
             self::BACKOFFICE_LEAGUE_VIEW => 'Просмотр лиг в Filament',
             self::BACKOFFICE_LEAGUE_CREATE => 'Создание лиг в Filament',
             self::BACKOFFICE_LEAGUE_EDIT => 'Редактирование лиг в Filament',
