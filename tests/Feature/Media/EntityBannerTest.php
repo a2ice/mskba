@@ -99,8 +99,9 @@ final class EntityBannerTest extends TestCase
         $league = $this->league($owner);
 
         $this->actingAs($owner);
+        $upload = UploadedFile::fake()->image('banner.jpg', 1200, 900);
         app(EntityBannerManager::class)->replace(
-            $league, (string) UploadedFile::fake()->image('banner.jpg', 1200, 900)->getContent(),
+            $league, (string) file_get_contents($upload->getRealPath()),
             $this->validCrop(),
         );
 
