@@ -1,3 +1,5 @@
+import { resolvePlayerLogoPreview } from './player-generation-logo-state.js';
+
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
     const billing = workspace.querySelector('[data-player-billing-dialog]');
@@ -156,34 +158,37 @@ if (workspace) {
     uniformDialog?.querySelector('[data-player-uniform-close]')?.addEventListener('click', () => uniformDialog.close());
 
     const logoDialog = workspace.querySelector('[data-player-logo-dialog]');
+    const logoCheckbox = workspace.querySelector('[data-player-logo-enabled]');
     const logoOptions = workspace.querySelector('[data-player-logo-options]');
     const picker = workspace.querySelector('[data-player-logo-picker-open]');
+    const preview = workspace.querySelector('[data-player-logo-preview]');
     const selectedText = workspace.querySelector('[data-player-logo-selected]');
     const status = logoDialog?.querySelector('[data-player-logo-status]');
     const gallery = logoDialog?.querySelector('[data-player-logo-gallery]');
     const dropzone = logoDialog?.querySelector('[data-player-logo-dropzone]');
     const upload = logoDialog?.querySelector('[data-player-logo-upload]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    let selectedLogoId = null;
+    let selectedLogoId = Number(logoOptions?.dataset.savedLogoId || 0) || null;
     let logos = [];
-    const enabled = () => workspace.querySelector('[data-player-logo-enabled]:checked')?.value === 'yes';
-    const source = () => workspace.querySelector('[data-player-logo-source]:checked')?.value || 'team';
+    const enabled = () => logoCheckbox?.checked === true;
     const setStatus = text => { if (status) status.textContent = text; };
     const refreshMode = () => {
-        if (logoOptions) logoOptions.hidden = !enabled();
-        if (picker) picker.hidden = !enabled() || source() !== 'custom';
-        if (selectedText) selectedText.textContent = enabled() && source() === 'custom'
-            ? (logos.find(logo => logo.id === selectedLogoId)?.name || 'Логотип не выбран')
-            : '';
-        workspace.dataset.playerGenerationLogoMode = !enabled() ? 'none' : source();
+        const withLogo = enabled();
+        if (logoOptions) logoOptions.hidden = !withLogo;
+        const image = resolvePlayerLogoPreview(
+            logos, selectedLogoId, window.location.origin, preview?.dataset.logoPlaceholder || '',
+        );
+        if (preview) {
+            preview.src = image.src;
+            preview.alt = image.alt;
+        }
+        if (selectedText) selectedText.textContent = image.label;
+        // Keep generation payload consistent with checkbox state; missing
+        // selections are rejected before the paid generation request.
+        workspace.dataset.playerGenerationLogoMode = withLogo ? 'custom' : 'none';
         workspace.dataset.playerGenerationCustomLogoId = selectedLogoId ? String(selectedLogoId) : '';
     };
-    workspace.querySelectorAll('[data-player-logo-enabled],[data-player-logo-source]').forEach(input => {
-        input.addEventListener('change', () => {
-            refreshMode();
-            if (enabled() && source() === 'custom' && selectedLogoId === null) openPicker();
-        });
-    });
+    logoCheckbox?.addEventListener('change', refreshMode);
     const asJson = async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'Не удалось выполнить операцию.');
@@ -198,7 +203,7 @@ if (workspace) {
             const choose = document.createElement('button');
             choose.type = 'button';
             choose.className = 'app-player-workspace__logo-choice';
-            choose.setAttribute('aria-pressed', String(logo.id === selectedLogoId));
+            choose.setAttribute('aria-pressed', String(Number(logo.id) === selectedLogoId));
             const img = document.createElement('img');
             img.src = logo.url;
             img.alt = logo.name || 'Логотип';
@@ -207,7 +212,7 @@ if (workspace) {
             name.textContent = logo.name || 'Логотип';
             choose.append(name);
             choose.addEventListener('click', () => {
-                selectedLogoId = logo.id;
+                selectedLogoId = Number(logo.id);
                 refreshMode();
                 logoDialog.close();
             });
@@ -222,7 +227,7 @@ if (workspace) {
                         method: 'DELETE', credentials: 'same-origin',
                         headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
                     }));
-                    if (selectedLogoId === logo.id) selectedLogoId = null;
+                    if (selectedLogoId === Number(logo.id)) selectedLogoId = null;
                     await loadLogos();
                     refreshMode();
                     setStatus('Логотип удалён.');
@@ -243,7 +248,11 @@ if (workspace) {
             credentials: 'same-origin', headers: {Accept: 'application/json'},
         }));
         logos = Array.isArray(data.logos) ? data.logos : [];
+        if (selectedLogoId !== null && !logos.some(logo => Number(logo.id) === selectedLogoId)) {
+            selectedLogoId = null; // The saved logo may have been deleted elsewhere.
+        }
         renderGallery();
+        refreshMode();
     }
     async function openPicker() {
         if (!logoDialog || logoDialog.open) return;
@@ -254,6 +263,7 @@ if (workspace) {
     }
     picker?.addEventListener('click', openPicker);
     logoDialog?.querySelector('[data-player-logo-close]')?.addEventListener('click', () => logoDialog.close());
+    logoDialog?.addEventListener('close', () => picker?.focus({preventScroll:true}));
     async function uploadLogo(file) {
         if (!file) return;
         if (logos.length >= 3) { setStatus('Достигнут лимит трёх логотипов.'); return; }
@@ -265,7 +275,7 @@ if (workspace) {
                 method: 'POST', credentials: 'same-origin',
                 headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'}, body: data,
             }));
-            selectedLogoId = payload.logo.id;
+            selectedLogoId = Number(payload.logo.id);
             await loadLogos();
             refreshMode();
             setStatus('Логотип загружен и выбран.');
@@ -288,4 +298,8 @@ if (workspace) {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); upload?.click(); }
     });
     refreshMode();
+    // Restore the last selected private logo from stored profile preferences.
+    if (enabled() && selectedLogoId !== null) {
+        void loadLogos().catch(() => { /* Retry through the chooser. */ });
+    }
 }
