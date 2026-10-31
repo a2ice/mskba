@@ -4,7 +4,7 @@
     $type = $targets->type($model);
     $id = $targets->id($model);
     $context = $context ?? 'account';
-    $banner = $model->banner;
+    $banner = array_key_exists('bannerOverride', get_defined_vars()) ? $bannerOverride : $model->banner;
     $updateUrl = route('entity-banners.update', compact('context', 'type', 'id'));
     $sourceUrl = $banner?->original_path
         ? route('entity-banners.source', compact('context', 'type', 'id'))
