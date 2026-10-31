@@ -35,3 +35,5 @@
 .app-league-team img{width:36px;height:36px;object-fit:contain;border-radius:8px}
 @media(max-width:980px){.app-league-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.app-league-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.app-league-grid,.app-league-detail-grid,.app-league-filters{grid-template-columns:minmax(0,1fr)}.app-league-card,.app-league-block,.app-league-hero,.app-league-filters{padding:16px}.app-league-hero{gap:14px}.app-league-logo--large{width:72px;height:72px;font-size:30px}.app-league-block--wide{grid-column:auto}.app-league-card>.button{align-self:stretch}}
+
+.app-league-owner-actions { margin: 0 0 14px; display: flex; justify-content: flex-end; }
