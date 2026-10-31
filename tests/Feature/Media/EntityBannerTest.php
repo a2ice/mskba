@@ -84,7 +84,7 @@ final class EntityBannerTest extends TestCase
         ])->assertOk();
 
         $this->assertNotSame($banner->path, $league->fresh()->banner->path);
-        $this->assertSame(1, $league->media()->where('collection', 'banner')->count());
+        $this->assertSame(1, $league->fresh()->banner()->count());
 
         $this->delete(route('entity-banners.destroy', [
             'context' => 'account', 'type' => 'league', 'id' => $league->id,
@@ -121,9 +121,10 @@ final class EntityBannerTest extends TestCase
         $league = $this->league($owner);
         $this->actingAs($owner);
 
-        $this->postJson($this->url($league), [
+        $this->post($this->url($league), [
+            'image' => UploadedFile::fake()->image('banner.jpg', 1200, 900),
             'crop' => ['x' => 0.9, 'y' => 0.1, 'width' => 0.5, 'height' => 0.5],
-        ])->assertUnprocessable();
+        ], ['Accept' => 'application/json'])->assertUnprocessable();
         $this->assertNull($league->fresh()->banner);
     }
 
