@@ -85,6 +85,44 @@ final class PublicLeaguePagesTest extends TestCase
             ->assertOk()->assertSee('Сезон 2026')->assertDontSee('Неопубликованный сезон');
     }
 
+    public function test_owner_has_banner_editor_links_without_exposing_editing_to_guests(): void
+    {
+        $league = $this->league('Лига для оформления');
+        $season = $this->season($league, 'Осенний сезон');
+        $owner = User::query()->findOrFail($league->owner_user_id);
+
+        $this->get(route('leagues.show', $league->alias))
+            ->assertOk()
+            ->assertDontSee('Изменить баннер');
+        $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))
+            ->assertOk()
+            ->assertDontSee('Изменить баннер');
+
+        $this->actingAs($owner)->get(route('leagues.show', $league->alias))
+            ->assertOk()
+            ->assertSee('Изменить баннер')
+            ->assertSee(route('account.leagues.banner', $league->id));
+        $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))
+            ->assertOk()
+            ->assertSee('Изменить баннер')
+            ->assertSee(route('account.leagues.seasons.banner', [$league->id, $season->id]));
+
+        $this->get(route('account.leagues.banner', $league->id))
+            ->assertOk()
+            ->assertSee('Лига и сезоны')
+            ->assertSee('data-entity-banner-editor', false)
+            ->assertSee('data-banner-delete-confirm', false)
+            ->assertSee('aria-current="page"', false);
+        $this->get(route('account.leagues.seasons.banner', [$league->id, $season->id]))
+            ->assertOk()
+            ->assertSee('Осенний сезон')
+            ->assertSee('data-banner-canvas', false);
+
+        $otherUser = User::factory()->create();
+        $this->actingAs($otherUser)->get(route('account.leagues.banner', $league->id))
+            ->assertForbidden();
+    }
+
     public function test_draft_league_does_not_expose_active_season(): void
     {
         $league = $this->league('Черновик лиги', 'draft');
