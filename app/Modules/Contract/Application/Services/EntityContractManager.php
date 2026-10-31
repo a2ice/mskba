@@ -326,7 +326,8 @@ final class EntityContractManager
             }
             $available = $this->effectivePermissions($issuer, $membership->scope_type, (int) $membership->scope_id);
             $this->assertDelegation($membership->scope_type, $available,
-                $membership->contract->permissions->pluck('permission')->all(), false);
+                $membership->contract->permissions->pluck('permission')->all(),
+                ! $this->isOwner($issuer, $membership->scope_type, (int) $membership->scope_id));
             $membership->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
             $membership->contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
         });

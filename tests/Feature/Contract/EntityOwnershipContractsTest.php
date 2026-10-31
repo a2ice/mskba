@@ -55,6 +55,48 @@ final class EntityOwnershipContractsTest extends TestCase
             ->where('access_level', $role)->firstOrFail();
     }
 
+    public function test_public_league_creation_requires_global_permission_and_issues_own_contract(): void
+    {
+        $regular = $this->user();
+        $this->actingAs($regular)->get(route('leagues.create'))->assertForbidden();
+
+        $creator = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($creator)->get(route('leagues.create'))->assertOk();
+        $response = $this->post(route('leagues.store'), [
+            'name' => 'Любительская лига',
+            'description' => 'Московская баскетбольная лига',
+        ]);
+        $entity = \App\Modules\League\Domain\Models\League::query()
+            ->where('name', 'Любительская лига')->firstOrFail();
+        $response->assertRedirect(route('leagues.manage', $entity->id));
+        $contract = $this->membership(Scope::LEAGUE, $entity->id);
+        $this->assertSame($creator->id, $contract->user_id);
+        $this->assertSame('accepted', $contract->invitation_status->value);
+
+        $other = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($other)->get(route('leagues.manage', $entity->id))->assertForbidden();
+    }
+
+    public function test_public_season_creation_requires_league_contract_and_assumes_league_owner(): void
+    {
+        $owner = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $other = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($owner)->post(route('leagues.store'), ['name' => 'Лига новых сезонов']);
+        $league = \App\Modules\League\Domain\Models\League::query()->where('name', 'Лига новых сезонов')->firstOrFail();
+
+        $this->actingAs($other)->post(route('leagues.seasons.store', $league->id), [
+            'name' => 'Весна 2027',
+        ])->assertForbidden();
+
+        $this->actingAs($owner)->post(route('leagues.seasons.store', $league->id), [
+            'name' => 'Весна 2027',
+        ])->assertRedirect();
+        $season = \App\Modules\League\Domain\Models\LeagueSeason::query()->where('name', 'Весна 2027')->firstOrFail();
+        $contract = $this->membership(Scope::SEASON, $season->id);
+        $this->assertSame($owner->id, $contract->user_id);
+        $this->assertSame('accepted', $contract->invitation_status->value);
+    }
+
     public function test_backoffice_global_edit_is_independent_from_public_contracts(): void
     {
         $admin = $this->user(UserSystemRoleEnum::SUPERADMIN);
