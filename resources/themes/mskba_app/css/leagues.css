@@ -1,9 +1,9 @@
 /* Public leagues and seasons follow MSKBA theme tokens. */
 .app-league-section{min-width:0;padding-top:32px;padding-bottom:64px}
-.app-league-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(150px,.65fr) minmax(190px,1fr) auto;gap:14px;align-items:end;padding:20px;margin:0 0 24px;border-radius:var(--radius-card)}
+.app-league-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(150px,.65fr) minmax(190px,1fr) auto;gap:16px;align-items:end;padding:20px;margin:0 0 24px;border-radius:var(--radius-card)}
 .app-league-filters .app-team-filter-actions{min-height:44px;align-items:center}
 .app-league-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.app-league-card{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:18px;padding:22px;border-radius:var(--radius-card)}
+.app-league-card{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:16px;padding:24px;border-radius:var(--radius-card)}
 .app-league-card__head{display:flex;align-items:center;gap:16px;min-width:0}
 .app-league-card__head>div{min-width:0}
 .app-league-card h2{margin:0 0 9px;font-size:21px;line-height:1.25;overflow-wrap:anywhere}
@@ -14,21 +14,21 @@
 .app-league-logo--large{width:100px;height:100px;font-size:42px}
 .app-league-card__description{margin:0;color:var(--muted);line-height:1.6;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .app-league-card>.button{align-self:flex-start;margin-top:auto;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
-.app-league-breadcrumbs{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:20px;font-size:14px;color:var(--muted)}
+.app-league-breadcrumbs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:20px;font-size:14px;color:var(--muted)}
 .app-league-breadcrumbs a{color:var(--muted);text-decoration:none}
 .app-league-breadcrumbs a:hover{color:var(--accent)}
-.app-league-hero{display:flex;align-items:flex-start;gap:24px;padding:28px;border-radius:var(--radius-card);margin-bottom:20px}
+.app-league-hero{display:flex;align-items:center;gap:24px;padding:24px;border-radius:var(--radius-card);margin-bottom:20px}
 .app-league-hero>div{min-width:0}
 .app-league-hero h1{font-size:clamp(25px,3vw,38px);line-height:1.2;margin:10px 0 16px;overflow-wrap:anywhere}
 .app-league-description{white-space:pre-line;line-height:1.65;margin:12px 0 0;max-width:800px}
 .app-league-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
 .app-league-block{display:flex;flex-direction:column;gap:12px;min-width:0;padding:24px;border-radius:var(--radius-card)}
 .app-league-block--wide{grid-column:1/-1}
-.app-league-block h2{font-size:22px;margin:0 0 6px}
-.app-league-item{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 0;border-bottom:1px solid var(--line);min-width:0;color:var(--text);text-decoration:none}
+.app-league-block h2{font-size:22px;margin:0 0 8px}
+.app-league-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);min-width:0;color:var(--text);text-decoration:none}
 .app-league-item:last-child{border-bottom:none}
 .app-league-item:hover strong{color:var(--accent)}
-.app-league-item>span:first-child{display:flex;flex-direction:column;gap:5px;min-width:0}
+.app-league-item>span:first-child{display:flex;flex-direction:column;gap:8px;min-width:0}
 .app-league-item strong{font-size:15px;overflow-wrap:anywhere}
 .app-league-item small{font-size:13px;color:var(--muted);line-height:1.4}
 .app-league-item>span.app-league-team{display:flex;flex-direction:row;align-items:center;gap:12px}
@@ -41,7 +41,7 @@
 
 /* Accepted card rhythm and baseline alignment. Keep filters aligned by the field,
    not by the tallest label, and do not let icon/text rows split vertically. */
-.app-league-filters{align-items:start;row-gap:18px}
+.app-league-filters{align-items:start;row-gap:20px}
 .app-league-filters .app-team-field{display:grid;grid-template-rows:minmax(20px,auto) minmax(44px,auto);gap:8px;min-width:0}
 .app-league-filters .app-team-field>span{display:flex;align-items:center;min-height:20px;line-height:20px}
 .app-league-filters .app-team-filter-actions{align-self:end;display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:44px}
@@ -58,7 +58,7 @@
 .app-league-banner-workspace>.entity-banner-editor{margin:0}
 .app-league-banner-nav{display:grid;gap:16px;padding:20px;border-radius:var(--radius-card)}
 .app-league-banner-nav h2{margin:0;font-size:20px;line-height:26px}
-.app-league-banner-tabs{display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-width:0}
+.app-league-banner-tabs{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0}
 .app-league-banner-tab{display:inline-flex;align-items:center;justify-content:center;min-height:44px;max-width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:var(--radius-control,12px);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;line-height:20px;text-decoration:none;transition:border-color .15s,background-color .15s}
 .app-league-banner-tab span{min-width:0;overflow-wrap:anywhere}
 .app-league-banner-tab:hover{border-color:var(--accent);background:var(--surface-raised)}
@@ -74,5 +74,10 @@
 
 .app-league-ownership-links {display:grid;gap:16px;margin:0 0 20px;padding:20px}
 .app-league-ownership-links h2 {margin:0;font-size:21px;line-height:28px}
-.app-league-ownership-links__list {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.app-league-ownership-links__list {display:flex;align-items:center;flex-wrap:wrap;gap:12px}
 .app-league-ownership-links__list .button {min-height:44px;align-items:center}
+
+/* The league placeholder uses the existing Tabler sprite, not a platform-dependent emoji. */
+.app-league-logo--empty svg { width:32px; height:32px; color:var(--muted); }
+.app-league-logo--large.app-league-logo--empty svg { width:48px; height:48px; }
+@media(max-width:640px) { .app-league-logo--large.app-league-logo--empty svg { width:32px; height:32px; } }
