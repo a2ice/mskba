@@ -6,6 +6,8 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as BackofficePermission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
@@ -109,7 +111,7 @@ final class TournamentAdmissionService
             }
 
             if ($locked->direction === TournamentAdmissionDirectionEnum::APPLICATION) {
-                $this->tournamentAccess->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+                $this->assertCanManageAdmissions($lockedTournament, $actor);
             } else {
                 $this->assertCandidateMayAct($locked->team ?? $locked->user, $actor);
             }
@@ -142,7 +144,7 @@ final class TournamentAdmissionService
     {
         DB::transaction(function () use ($tournament, $admission, $actor): void {
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
-            $this->tournamentAccess->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            $this->assertCanManageAdmissions($lockedTournament, $actor);
             $locked = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
             $this->assertBelongsToTournament($locked, $lockedTournament);
             if ($locked->status === TournamentAdmissionStatusEnum::ACCEPTED && $lockedTournament->participant_pool_locked_at !== null) {
@@ -165,7 +167,7 @@ final class TournamentAdmissionService
             $candidate = $candidate instanceof User ? $candidate->canonical() : $candidate;
             $this->assertTournamentAcceptsCandidates($locked);
             if ($direction === TournamentAdmissionDirectionEnum::INVITATION) {
-                $this->tournamentAccess->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+                $this->assertCanManageAdmissions($locked, $actor);
             }
             $this->assertCandidateMatchesMode($locked, $candidate);
             if ($direction === TournamentAdmissionDirectionEnum::APPLICATION
@@ -247,6 +249,22 @@ final class TournamentAdmissionService
             'name' => $admission->team->name,
             'status' => TournamentEntryStatusEnum::ACTIVE,
         ]);
+    }
+
+    /**
+     * Staff permission is scoped to admissions only, not game administration.
+     * The tournament owner / contract permissions still work unchanged.
+     */
+    private function assertCanManageAdmissions(Tournament $tournament, Actor $actor): void
+    {
+        $user = $actor->user?->canonical();
+        if ($user !== null
+            && app(BackofficePermissionManager::class)->allows($user, BackofficePermission::BACKOFFICE_ACCESS)
+            && app(BackofficePermissionManager::class)->allows($user, BackofficePermission::BACKOFFICE_TOURNAMENT_PARTICIPANTS_MANAGE)) {
+            return;
+        }
+
+        $this->tournamentAccess->assertAllows($tournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
     }
 
     private function assertCandidateMayAct(Team|User $candidate, Actor $actor): void

@@ -8,6 +8,9 @@ use App\Filament\Backoffice\Resources\Teams\Pages\ListTeams;
 use App\Filament\Backoffice\Resources\Teams\RelationManagers\MembersRelationManager;
 use App\Filament\Backoffice\Resources\Teams\RelationManagers\LineupsRelationManager;
 use App\Filament\Backoffice\Resources\Teams\RelationManagers\GamesRelationManager;
+use App\Filament\Backoffice\Resources\Teams\RelationManagers\LeaguesRelationManager;
+use App\Filament\Backoffice\Resources\Teams\RelationManagers\SeasonsRelationManager;
+use App\Filament\Backoffice\Resources\Teams\RelationManagers\TournamentsRelationManager;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
@@ -138,9 +141,9 @@ final class TeamResource extends Resource
                         ]),
                 ]),
                 Tab::make('Турниры и лиги')->icon('heroicon-o-trophy')->schema([
-                    Section::make('Участие в соревнованиях')->description('В разработке')->schema([
+                    Section::make('Участие в соревнованиях')->description('Текущие связи доступны во вкладках «Лиги», «Сезоны» и «Турниры» ниже.')->schema([
                         Placeholder::make('competitions_roadmap')->label('Будущие данные')
-                            ->content('Заявки на участие в турнирах и лигах, рейтинги и сводная турнирная статистика появятся после подключения соответствующего модуля.'),
+                            ->content('Состав команд в лиге и сезоне изменяется в их административных разделах. Допуски турниров проходят через заявки и приглашения.'),
                     ]),
                 ]),
             ]),
@@ -187,7 +190,7 @@ final class TeamResource extends Resource
 
     public static function getRelations(): array
     {
-        return [MembersRelationManager::class, LineupsRelationManager::class, GamesRelationManager::class];
+        return [MembersRelationManager::class, LineupsRelationManager::class, GamesRelationManager::class, LeaguesRelationManager::class, SeasonsRelationManager::class, TournamentsRelationManager::class];
     }
 
     public static function getPages(): array

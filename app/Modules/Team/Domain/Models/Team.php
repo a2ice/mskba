@@ -8,6 +8,9 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
+use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
@@ -88,6 +91,11 @@ class Team extends Model
         return $this->hasMany(TeamJoinRequest::class);
     }
 
+    public function tournamentEntries(): HasMany
+    {
+        return $this->hasMany(TournamentEntry::class);
+    }
+
     public function gameSides(): HasMany
     {
         return $this->hasMany(GameSide::class);
@@ -111,6 +119,16 @@ class Team extends Model
     public function sportsSections(): BelongsToMany
     {
         return $this->belongsToMany(SportsSection::class, 'sports_section_team')->withTimestamps();
+    }
+
+    public function leagues(): BelongsToMany
+    {
+        return $this->belongsToMany(League::class, 'league_team')->withTimestamps();
+    }
+
+    public function leagueSeasons(): BelongsToMany
+    {
+        return $this->belongsToMany(LeagueSeason::class, 'league_season_team')->withTimestamps();
     }
 
     public function media(): MorphMany
