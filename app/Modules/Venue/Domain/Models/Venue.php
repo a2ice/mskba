@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -53,7 +54,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Venue extends Model
 {
     /** @use HasFactory<VenueFactory> */
-    use Auditable, HasFactory, SoftDeletes;
+    use Auditable, HasEntityBanner, HasFactory, SoftDeletes;
 
     /** @var array<string, mixed> */
     protected $attributes = [
