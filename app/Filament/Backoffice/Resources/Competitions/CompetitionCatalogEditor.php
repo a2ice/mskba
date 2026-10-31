@@ -41,7 +41,7 @@ final class CompetitionCatalogEditor
 
     private function validateLeague(array $data, ?League $record = null): array
     {
-        $data['slug'] = Str::slug((string) ($data['slug'] ?: ($data['name'] ?? $record?->name ?? '')));
+        $data['slug'] = Str::slug((string) (($data['slug'] ?? null) ?: ($data['name'] ?? $record?->name ?? '')));
         return Validator::make($data, [
             'name' => ['required', 'string', 'min:2', 'max:160'],
             'slug' => ['required', 'string', 'max:180', Rule::unique('leagues', 'slug')->ignore($record?->id)],
@@ -83,8 +83,8 @@ final class CompetitionCatalogEditor
     private function validateSeason(array $data, ?LeagueSeason $record = null): array
     {
         $data['slug'] = Str::slug((string) (($data['slug'] ?? null) ?: ($data['name'] ?? $record?->name ?? '')));
-        $data['starts_on'] = $data['starts_on'] ?: null;
-        $data['ends_on'] = $data['ends_on'] ?: null;
+        $data['starts_on'] = ($data['starts_on'] ?? null) ?: null;
+        $data['ends_on'] = ($data['ends_on'] ?? null) ?: null;
 
         $validated = Validator::make($data, [
             'league_id' => ['required', 'integer', Rule::exists('leagues', 'id')->whereNull('deleted_at')],
@@ -92,7 +92,7 @@ final class CompetitionCatalogEditor
             'slug' => ['required', 'string', 'max:180',
                 Rule::unique('league_seasons', 'slug')->where('league_id', $data['league_id'] ?? 0)->ignore($record?->id)],
             'starts_on' => ['nullable', 'date'],
-            'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
+            'ends_on' => array_filter(['nullable', 'date', $data['starts_on'] ? 'after_or_equal:starts_on' : null]),
             'description' => ['nullable', 'string', 'max:10000'],
             'status' => ['required', Rule::in(['planned', 'active', 'completed', 'archived'])],
         ])->validate();
@@ -146,17 +146,17 @@ final class CompetitionCatalogEditor
 
     private function validateTournament(array $data, ?Tournament $record = null): array
     {
-        $data['league_id'] = $data['league_id'] ?: null;
-        $data['league_season_id'] = $data['league_season_id'] ?: null;
-        $data['ends_on'] = $data['ends_on'] ?: null;
-        $data['format'] = $data['format'] ?: null;
+        $data['league_id'] = ($data['league_id'] ?? null) ?: null;
+        $data['league_season_id'] = ($data['league_season_id'] ?? null) ?: null;
+        $data['ends_on'] = ($data['ends_on'] ?? null) ?: null;
+        $data['format'] = ($data['format'] ?? null) ?: null;
 
         $validated = Validator::make($data, [
             'title' => ['required', 'string', 'min:2', 'max:150'],
             'status' => ['required', Rule::in(array_column(TournamentStatusEnum::cases(), 'value'))],
             'status_comment' => ['nullable', 'string', 'max:5000'],
             'starts_on' => ['required', 'date'],
-            'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
+            'ends_on' => array_filter(['nullable', 'date', $data['starts_on'] ? 'after_or_equal:starts_on' : null]),
             'short_description' => ['nullable', 'string', 'max:10000'],
             'full_description' => ['nullable', 'string', 'max:50000'],
             'format' => ['nullable', Rule::in([
