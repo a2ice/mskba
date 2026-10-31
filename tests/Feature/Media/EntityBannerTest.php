@@ -128,6 +128,37 @@ final class EntityBannerTest extends TestCase
         $this->assertNull($league->fresh()->banner);
     }
 
+    public function test_each_entity_exposes_independent_banner_relation(): void
+    {
+        foreach ([
+            \App\Modules\League\Domain\Models\League::class,
+            \App\Modules\League\Domain\Models\LeagueSeason::class,
+            \App\Modules\Team\Domain\Models\Team::class,
+            \App\Modules\Tournament\Domain\Models\Tournament::class,
+            \App\Modules\Venue\Domain\Models\Venue::class,
+            \App\Modules\Identity\Domain\Models\Profile::class,
+        ] as $class) {
+            $this->assertInstanceOf(
+                \Illuminate\Database\Eloquent\Relations\MorphOne::class,
+                (new $class())->banner(),
+            );
+        }
+    }
+
+    public function test_owner_can_manage_banner_of_own_league_and_its_season_but_not_another_parent(): void
+    {
+        $owner = $this->owner();
+        $league = $this->league($owner);
+        $second = $this->league($this->owner());
+        $season = $league->seasons()->create(['name' => 'Сезон 2026', 'status' => 'active']);
+        $this->actingAs($owner);
+
+        $this->get(route('account.leagues.banner', $league->id))->assertOk();
+        $this->get(route('account.leagues.seasons.banner', [$league->id, $season->id]))->assertOk();
+        $this->get(route('account.leagues.seasons.banner', [$second->id, $season->id]))->assertNotFound();
+        $this->get(route('account.leagues.banner', $second->id))->assertForbidden();
+    }
+
     public function test_login_and_backoffice_rights_remain_separate(): void
     {
         $league = $this->league($this->owner());
