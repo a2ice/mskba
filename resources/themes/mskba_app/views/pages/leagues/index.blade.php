@@ -42,7 +42,7 @@
                     @if ($league->logo_path)
                         <img class="app-league-logo" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="" loading="lazy">
                     @else
-                        <span class="app-league-logo app-league-logo--empty" aria-hidden="true">🏀</span>
+                        <span class="app-league-logo app-league-logo--empty" aria-hidden="true"><svg><use href="#ball"></use></svg></span>
                     @endif
                     <div>
                         <h2><a href="{{ route('leagues.show', $league->alias) }}">{{ $league->name }}</a></h2>
