@@ -160,6 +160,37 @@ final class EntityBannerTest extends TestCase
         $this->get(route('account.leagues.banner', $second->id))->assertForbidden();
     }
 
+    public function test_confirmed_venue_banner_waits_for_moderation_before_becoming_public(): void
+    {
+        $owner = $this->owner();
+        $actor = app(\App\Modules\Identity\Application\Services\CurrentActorResolver::class)
+            ->resolve($owner, null);
+        $venue = \App\Modules\Venue\Domain\Models\Venue::factory()->create([
+            'created_by_actor_id' => $actor->id,
+            'status' => \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED,
+        ]);
+        $this->actingAs($owner);
+        $route = route('entity-banners.update', [
+            'context' => 'account', 'type' => 'venue', 'id' => $venue->id,
+        ]);
+
+        $this->post($route, [
+            'image' => UploadedFile::fake()->image('venue-banner.jpg', 1200, 900),
+            'crop' => $this->validCrop(),
+        ])->assertOk()->assertJsonPath('message',
+            'Баннер сохранён в черновике. Отправьте изменения площадки на модерацию.');
+
+        $revision = $venue->fresh()->revisions()->whereNull('applied_at')->latest('id')->firstOrFail();
+        $this->assertNotNull($revision->banner);
+        $this->assertNull($venue->fresh()->banner);
+        $this->assertIsArray($revision->payload['banner']);
+
+        app(\App\Modules\Venue\Application\Services\VenueRevisionManager::class)->apply($revision);
+        $this->assertNotNull($venue->fresh()->banner);
+        $this->assertSame($revision->banner?->id ?? $revision->payload['banner']['id'],
+            $venue->fresh()->banner->id);
+    }
+
     public function test_login_and_backoffice_rights_remain_separate(): void
     {
         $league = $this->league($this->owner());
