@@ -82,6 +82,6 @@
     <input type="hidden" data-banner-csrf value="{{ csrf_token() }}">
 </section>
 @once
-    <link rel="stylesheet" href="{{ asset('css/entity-banner-editor.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/entity-banner-editor.css').'?v=20261031-2' }}">
     <script src="{{ asset('js/entity-banner-editor.js') }}" defer></script>
 @endonce
