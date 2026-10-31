@@ -45,8 +45,8 @@ final class TournamentStaffService
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_STAFF);
             $identityIds = $user->identityIds();
 
-            if ($locked->createdByActor()->whereIn('user_id', $identityIds)->exists()) {
-                throw new InvalidArgumentException('Создателю турнира договор не требуется.');
+            if ($this->access->isOwner($locked, $actor)) {
+                throw new InvalidArgumentException('Владельцу турнира дополнительный контракт не требуется.');
             }
             $exists = ContractMembership::query()
                 ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)

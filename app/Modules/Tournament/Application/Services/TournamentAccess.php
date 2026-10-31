@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tournament\Application\Services;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -28,16 +29,31 @@ final class TournamentAccess
 
     public function isOwner(Tournament $tournament, Actor $actor): bool
     {
-        if ((int) $actor->id === (int) $tournament->created_by_actor_id) {
-            return true;
+        $user = $actor->user?->canonical();
+        if ($user === null || ! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+            return false;
         }
 
-        $user = $actor->user?->canonical();
+        $hasContractOwner = ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
+            ->where('scope_id', $tournament->id)
+            ->where('access_level', 'owner')
+            ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+            ->exists();
 
-        return $user !== null
-            && ! $user->isBlocked()
-            && ! $user->trashed()
-            && $tournament->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
+        if ($hasContractOwner) {
+            return ContractMembership::query()
+                ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
+                ->where('scope_id', $tournament->id)
+                ->where('access_level', 'owner')
+                ->whereIn('user_id', $user->identityIds())
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+                ->exists();
+        }
+
+        // Historical tournaments without an owner contract retain legacy access.
+        return $tournament->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
     }
 
     public function allows(Tournament $tournament, Actor $actor, TournamentPermissionEnum $permission): bool
