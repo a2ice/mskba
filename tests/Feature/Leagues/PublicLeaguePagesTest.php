@@ -58,7 +58,7 @@ final class PublicLeaguePagesTest extends TestCase
         $this->get(route('leagues.index', ['q' => 'Первая']))->assertOk()
             ->assertSee($one->name)->assertDontSee($two->name);
         $this->get(route('leagues.index', ['status' => 'archived']))->assertOk()
-            ->assertSee($two->name)->assertDontSee($one->name);
+            ->assertSee($two->name)->assertDontSee('href="'.route('leagues.show', $one->alias).'"', false);
         $this->get(route('leagues.index', ['season' => $season->id]))->assertOk()
             ->assertSee($one->name)->assertDontSee($two->name);
     }
