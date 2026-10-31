@@ -31,6 +31,10 @@
 @endsection
 
 @section('section-content')
+@if($venue !== null && ! $hasPendingModeration)
+    <div class="mb-4">@include('components.entity-banner-editor', ['model' => $venue, 'context' => 'account'])</div>
+@endif
+
     @if(isset($error))
         <div class="alert alert-danger">
             {{ $error['message'] }}
