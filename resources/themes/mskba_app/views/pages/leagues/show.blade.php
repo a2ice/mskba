@@ -3,6 +3,10 @@
 @section('content')
 <section class="container app-league-section" aria-labelledby="league-heading">
     <nav class="app-league-breadcrumbs" aria-label="Навигация по лиге"><a href="{{ route('leagues.index') }}">Лиги</a><span aria-hidden="true">/</span><span>{{ $league->name }}</span></nav>
+    @include('components.entity-public-banner', ['bannerUrl' => $league->bannerUrl()])
+    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+        <p class="app-league-owner-actions"><a class="button secondary" href="{{ route('account.leagues.banner', $league->id) }}">Управлять баннером лиги и сезонов</a></p>
+    @endif
     <header class="panel app-league-hero">
         @if ($league->logo_path)
             <img class="app-league-logo app-league-logo--large" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="">
