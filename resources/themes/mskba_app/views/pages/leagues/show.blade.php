@@ -3,11 +3,11 @@
 @section('content')
 <section class="container app-league-section" aria-labelledby="league-heading">
     <nav class="app-league-breadcrumbs" aria-label="Навигация по лиге"><a href="{{ route('leagues.index') }}">Лиги</a><span aria-hidden="true">/</span><span>{{ $league->name }}</span></nav>
-    @if(method_exists($league, 'bannerUrl') && view()->exists('components.entity-public-banner'))
-        @include('components.entity-public-banner', ['bannerUrl' => $league->bannerUrl()])
-    @endif
-    @if(auth()->user()?->canonical()->id === $league->owner_user_id && \Illuminate\Support\Facades\Route::has('account.leagues.banner'))
-        <p class="app-league-owner-actions"><a class="button secondary" href="{{ route('account.leagues.banner', $league->id) }}">Управлять баннером лиги и сезонов</a></p>
+    @include('components.entity-public-banner', ['bannerUrl' => $league->bannerUrl()])
+    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+        <div class="app-league-owner-actions">
+            <a class="button secondary" href="{{ route('account.leagues.banner', $league->id) }}">Изменить баннер</a>
+        </div>
     @endif
     <header class="panel app-league-hero">
         @if ($league->logo_path)
@@ -37,7 +37,7 @@
                     <span class="badge">{{ $season->status === 'active' ? 'Активный' : 'Архив' }}</span>
                 </a>
             @empty
-                <p class="app-team-card__detail">Опубликованных сезонов пока нет.</p>
+                <p class="app-team-card__detail">Сезонов пока нет.</p>
             @endforelse
         </section>
 
@@ -64,7 +64,7 @@
                     </span>
                 </a>
             @empty
-                <p class="app-team-card__detail">Опубликованных турниров пока нет.</p>
+                <p class="app-team-card__detail">Турниров пока нет.</p>
             @endforelse
         </section>
     </div>
