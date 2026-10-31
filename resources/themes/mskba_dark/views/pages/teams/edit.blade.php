@@ -13,6 +13,8 @@
 </ul></div>
 @endsection
 @section('section-content')
+@include('components.entity-banner-editor', ['model' => $team, 'context' => 'account'])
+
 @php
     $savedTeamColors = $team->colors ?? [];
     $pageHomePrimary = data_get($savedTeamColors, 'home_primary');
