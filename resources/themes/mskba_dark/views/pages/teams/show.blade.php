@@ -55,6 +55,7 @@
 </ul></div>
 @endsection
 @section('section-content')
+@include('components.entity-public-banner', ['bannerUrl' => $team->bannerUrl()])
 <article class="team-profile">
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
