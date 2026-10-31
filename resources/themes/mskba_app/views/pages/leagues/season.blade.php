@@ -7,6 +7,10 @@
         <a href="{{ route('leagues.show', $league->alias) }}">{{ $league->name }}</a><span aria-hidden="true">/</span>
         <span>{{ $season->name }}</span>
     </nav>
+    @include('components.entity-public-banner', ['bannerUrl' => $season->bannerUrl()])
+    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+        <p class="app-league-owner-actions"><a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Управлять баннером сезона</a></p>
+    @endif
     <header class="panel app-league-hero">
         @if ($league->logo_path)
             <img class="app-league-logo app-league-logo--large" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="">
