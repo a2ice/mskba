@@ -25,7 +25,7 @@
                 <legend class="mb-2">Полномочия</legend>
                 @foreach($permissions as $permission)
                     <label class="d-flex align-items-center gap-2">
-                        <input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(in_array($permission->value, old('permissions', []), true))>
+                        <input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(in_array($permission->value, (array) old('permissions', []), true))>
                         <span>{{ $permission->label() }}</span>
                     </label>
                 @endforeach

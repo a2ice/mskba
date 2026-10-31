@@ -5,6 +5,8 @@ namespace App\Modules\Contract\Application\Services;
 use App\Modules\Contract\Application\DTO\ContractMembershipScopeDTO;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use BackedEnum;
 use Illuminate\Database\Eloquent\Model;
 
@@ -82,10 +84,21 @@ final class ContractMembershipPresenter
 
     private function urlForScope(?string $routeName, ?Model $entity): ?string
     {
+        if ($entity instanceof League) {
+            return route('leagues.show', $entity->alias);
+        }
+        if ($entity instanceof LeagueSeason) {
+            return $entity->league === null ? null : route('leagues.seasons.show', [
+                'league' => $entity->league->alias,
+                'season' => $entity->id,
+            ]);
+        }
         if ($routeName === null || $entity === null) {
             return null;
         }
-
+        if (method_exists($entity, 'routeIdentifier')) {
+            return route($routeName, $entity->routeIdentifier());
+        }
         return route($routeName, $entity);
     }
 }

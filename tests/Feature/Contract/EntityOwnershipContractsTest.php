@@ -136,7 +136,6 @@ final class EntityOwnershipContractsTest extends TestCase
         $owner = $this->user();
         $delegate = $this->user();
         $other = $this->user();
-        $league = $this->actingAs($owner);
         $this->office($this->user(UserSystemRoleEnum::SUPERADMIN));
         $entity = app(BackofficeLeagueEditor::class)->create([
             'name' => 'Лига выдачи прав', 'status' => 'active', 'owner_user_id' => $owner->id,

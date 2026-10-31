@@ -312,14 +312,14 @@ final class EntityContractManager
             }
             $available = $this->effectivePermissions($issuer, $membership->scope_type, (int) $membership->scope_id);
             $this->assertDelegation($membership->scope_type, $available,
-                $membership->contract->permissions->pluck('permission')->all());
+                $membership->contract->permissions->pluck('permission')->all(), false);
             $membership->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
             $membership->contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
         });
     }
 
     /** @param list<string> $available @param list<string> $requested */
-    private function assertDelegation(Scope $scope, array $available, array $requested): void
+    private function assertDelegation(Scope $scope, array $available, array $requested, bool $strictlyLower = true): void
     {
         $manage = $this->managePermission($scope);
         if ($manage === null || ! in_array($manage, $available, true)) {
@@ -327,7 +327,8 @@ final class EntityContractManager
         }
         if ($requested === [] || count($requested) !== count(array_unique($requested))
             || array_diff($requested, $this->allPermissions($scope)) !== []
-            || array_diff($requested, $available) !== []) {
+            || array_diff($requested, $available) !== []
+            || ($strictlyLower && array_diff($available, $requested) === [])) {
             throw ValidationException::withMessages(['permissions' => 'Нельзя назначить выбранные права.']);
         }
     }
