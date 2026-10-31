@@ -1,3 +1,22 @@
-.entity-public-banner { position:relative; width:100%; margin:0 0 20px; overflow:hidden; aspect-ratio:3/1; border-radius:12px; background:rgba(128,128,128,.09); }
-.entity-public-banner img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; }
-@media (max-width:640px) { .entity-public-banner { border-radius:9px; margin-bottom:14px; } }
+.entity-public-banner {
+    position:relative;
+    width:100%;
+    aspect-ratio:3/1;
+    margin:0 0 var(--s6,24px);
+    overflow:hidden;
+    border-radius:var(--radius-hero,24px);
+    background:var(--surface-raised,#e8e9ea);
+}
+.entity-public-banner img {
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+}
+@media(max-width:639px) {
+    .entity-public-banner {
+        margin-bottom:var(--s4,16px);
+        border-radius:var(--radius-card,24px);
+    }
+}
