@@ -1210,3 +1210,20 @@ Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Conten
     abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
     return app(PageBuilderController::class)->dynamic($slug, $renderer);
 })->name('page-builder.dynamic');
+
+
+/*
+ * Independent entity banners. Context selects the appropriate server-side
+ * permission policy: Filament edit permission or delegated owner/editor access.
+ */
+Route::middleware('auth:web')
+    ->prefix('entity-banners/{context}/{type}/{id}')
+    ->where(['context' => 'account|backoffice', 'type' => 'league|season|tournament|team|venue|user', 'id' => '[0-9]+'])
+    ->group(function (): void {
+        Route::get('/source', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'source'])
+            ->name('entity-banners.source');
+        Route::post('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'update'])
+            ->middleware('throttle:10,1')->name('entity-banners.update');
+        Route::delete('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'destroy'])
+            ->middleware('throttle:10,1')->name('entity-banners.destroy');
+    });
