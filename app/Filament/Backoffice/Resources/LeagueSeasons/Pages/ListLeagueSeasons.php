@@ -6,7 +6,7 @@ use App\Filament\Backoffice\Resources\${group}\${resource};
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
-final class ListLeagueSeason extends ListRecords
+final class ListLeagueSeasons extends ListRecords
 {
     protected static string $resource = LeagueSeasonResource::class;
 
