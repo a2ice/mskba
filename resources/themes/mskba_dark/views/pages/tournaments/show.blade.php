@@ -40,6 +40,7 @@
 @endsection
 
 @section('section-content')
+@include('components.entity-public-banner', ['bannerUrl' => $tournament->bannerUrl()])
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
 
     <article class="section-card tournament-show-hero mb-4">
