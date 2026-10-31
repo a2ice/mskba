@@ -15,19 +15,22 @@
     </section>
 @endpush
 @section('account-content')
-@php($bannerOwnedLeagues = \App\Modules\League\Domain\Models\League::query()->where('owner_user_id', auth()->user()?->canonical()->id)->orderBy('name')->get())
-@if($bannerOwnedLeagues->isNotEmpty())
-    <section class="entity-banner-editor" aria-label="Оформление моих лиг">
-        <h3>Оформление моих лиг и сезонов</h3>
-        @foreach($bannerOwnedLeagues as $ownedLeague)
-            <p><a href="{{ route('account.leagues.banner', $ownedLeague->id) }}">{{ $ownedLeague->name }} — баннеры лиги и сезонов</a></p>
-        @endforeach
-    </section>
-@endif
-
-@if(($user ?? auth()->user())?->canonical()->profile)
-    @include('components.entity-banner-editor', ['model' => ($user ?? auth()->user())->canonical()->profile, 'context' => 'account'])
-@endif
+    @php($bannerOwnedLeagues = \App\Modules\League\Domain\Models\League::query()
+        ->where('owner_user_id', auth()->user()?->canonical()->id)
+        ->orderBy('name')
+        ->get())
+    @if($bannerOwnedLeagues->isNotEmpty())
+        <section class="panel app-league-ownership-links" aria-label="Мои лиги">
+            <h2>Мои лиги</h2>
+            <div class="app-league-ownership-links__list">
+                @foreach($bannerOwnedLeagues as $ownedLeague)
+                    <a class="button secondary" href="{{ route('account.leagues.banner', $ownedLeague->id) }}">
+                        {{ $ownedLeague->name }}
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     @if (isset($error))
         <p class="notice" role="alert">{{ $error['message'] }}</p>

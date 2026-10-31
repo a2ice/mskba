@@ -92,10 +92,10 @@ final class BackofficePanelProvider extends PanelProvider
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
-                '<link rel="stylesheet" href="'.e(asset('css/entity-banner-editor.css')).'">'
+                '<link rel="stylesheet" href="'.e(asset('css/entity-banner-editor.css').'?v=20261031-2').'">'
             ))
             ->renderHook(PanelsRenderHook::BODY_END, fn (): HtmlString => new HtmlString(
-                '<script src="'.e(asset('js/entity-banner-editor.js')).'" defer></script>'
+                '<script src="'.e(asset('js/entity-banner-editor.js').'?v=20261031-2').'" defer></script>'
             ))
             // Filament's support chat uses the same browser-safe Reverb key
             // as the portal, never a private app secret or compiled .env.

@@ -117,6 +117,10 @@
 
         </div>
 
+        @if($profile && ! $user->isBlocked())
+            @include('components.entity-banner-editor', ['model' => $profile, 'context' => 'account'])
+        @endif
+
         @include('theme::pages.account.partials.profile-personal-editor')
     </div>
 

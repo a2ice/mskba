@@ -7,11 +7,11 @@
         <a href="{{ route('leagues.show', $league->alias) }}">{{ $league->name }}</a><span aria-hidden="true">/</span>
         <span>{{ $season->name }}</span>
     </nav>
-    @if(method_exists($season, 'bannerUrl') && view()->exists('components.entity-public-banner'))
-        @include('components.entity-public-banner', ['bannerUrl' => $season->bannerUrl()])
-    @endif
-    @if(auth()->user()?->canonical()->id === $league->owner_user_id && \Illuminate\Support\Facades\Route::has('account.leagues.seasons.banner'))
-        <p class="app-league-owner-actions"><a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Управлять баннером сезона</a></p>
+    @include('components.entity-public-banner', ['bannerUrl' => $season->bannerUrl()])
+    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+        <div class="app-league-owner-actions">
+            <a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Изменить баннер</a>
+        </div>
     @endif
     <header class="panel app-league-hero">
         @if ($league->logo_path)
@@ -55,7 +55,7 @@
                     </span>
                 </a>
             @empty
-                <p class="app-team-card__detail">Опубликованных турниров пока нет.</p>
+                <p class="app-team-card__detail">Турниров пока нет.</p>
             @endforelse
         </section>
     </div>
