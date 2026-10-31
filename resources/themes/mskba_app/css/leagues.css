@@ -71,3 +71,8 @@
     .app-league-owner-actions>.button{width:100%}
     .app-league-banner-tab{flex:1 1 auto}
 }
+
+.app-league-ownership-links {display:grid;gap:16px;margin:0 0 20px;padding:20px}
+.app-league-ownership-links h2 {margin:0;font-size:21px;line-height:28px}
+.app-league-ownership-links__list {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.app-league-ownership-links__list .button {min-height:44px;align-items:center}
