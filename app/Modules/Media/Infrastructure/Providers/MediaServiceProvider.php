@@ -7,6 +7,8 @@ use App\Modules\Media\Domain\Models\SiteMediaAsset;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
@@ -31,6 +33,8 @@ class MediaServiceProvider extends ServiceProvider
             'venue_revision' => VenueRevision::class,
             'content_item' => ContentItem::class,
             'team' => Team::class,
+            'league' => League::class,
+            'league_season' => LeagueSeason::class,
             'tournament' => Tournament::class,
             'tournament_entry' => TournamentEntry::class,
             'sports_section' => SportsSection::class,
