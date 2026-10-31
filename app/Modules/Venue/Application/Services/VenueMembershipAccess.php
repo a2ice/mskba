@@ -58,6 +58,31 @@ final class VenueMembershipAccess
             ->exists();
     }
 
+    public function hasActivePrimaryManager(Venue $venue): bool
+    {
+        return $this->primaryManagerQuery()->where('scope_id', $venue->id)->exists();
+    }
+
+    /** @return list<int> */
+    public function activePrimaryManagedVenueIds(): array
+    {
+        return $this->primaryManagerQuery()->distinct()->pluck('scope_id')
+            ->map(fn ($id): int => (int) $id)->all();
+    }
+
+    private function primaryManagerQuery(): Builder
+    {
+        $now = now();
+        return ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('access_level', 'primary_manager')
+            ->where('invitation_status', \App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn (Builder $q) => $q
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
+    }
+
     public function activeOwnerMembership(Venue $venue): ?ContractMembership
     {
         return $this->baseOwnerQuery()
@@ -186,7 +211,7 @@ final class VenueMembershipAccess
 
         return Venue::query()
             ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
-            ->whereNotIn('id', $this->activeOwnerVenueIds())
+            ->whereNotIn('id', [...$this->activeOwnerVenueIds(), ...$this->activePrimaryManagedVenueIds()])
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->all();

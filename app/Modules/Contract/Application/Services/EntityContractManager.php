@@ -47,7 +47,7 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::MANAGE_CONTRACTS->value,
             Scope::TOURNAMENT => TournamentPermissionEnum::MANAGE_STAFF->value,
             Scope::TEAM => TeamPermissionEnum::MANAGE_PERMISSIONS->value,
-            Scope::VENUE => VenuePermissionEnum::MANAGE_MEMBERSHIPS->value,
+            Scope::VENUE => VenuePermissionEnum::MANAGE_CONTRACTS->value,
             default => null,
         };
     }
@@ -113,7 +113,7 @@ final class EntityContractManager
                 VenuePermissionEnum::EDIT->value,
                 VenuePermissionEnum::EDIT_SCHEDULE->value,
                 VenuePermissionEnum::REMOVE->value,
-                VenuePermissionEnum::MANAGE_MEMBERSHIPS->value,
+                VenuePermissionEnum::MANAGE_CONTRACTS->value,
             ] : $this->allPermissions($scope),
         ));
         if ($owner->id !== $issuer->id) {
