@@ -53,6 +53,10 @@
 @endsection
 
 @section('section-content')
+@if($canManageMain)
+    <div class="mb-4" id="banner">@include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])</div>
+@endif
+
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
