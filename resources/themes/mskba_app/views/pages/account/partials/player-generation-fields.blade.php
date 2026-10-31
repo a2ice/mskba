@@ -51,16 +51,24 @@
                 </span>
             </label>
         </div>
-        <div class="app-player-workspace__logo-modes">
-            <span>Логотип на форме</span>
-            <label><input type="radio" name="generation_logo_enabled" value="no" data-player-logo-enabled checked> Без логотипа</label>
-            <label><input type="radio" name="generation_logo_enabled" value="yes" data-player-logo-enabled> С логотипом</label>
-        </div>
-        <div class="app-player-workspace__logo-options" data-player-logo-options hidden>
-            <label><input type="radio" name="generation_logo_source" value="team" data-player-logo-source checked> Логотип команды</label>
-            <label><input type="radio" name="generation_logo_source" value="custom" data-player-logo-source> Свой логотип</label>
-            <button type="button" class="app-player-workspace__secondary" data-player-logo-picker-open hidden>Выбрать логотип</button>
-            <span data-player-logo-selected></span>
+        <div class="app-player-workspace__logo-control">
+            <label class="check-label app-player-workspace__logo-toggle">
+                <input type="checkbox" data-player-logo-enabled
+                    @checked(($character['generation_logo_mode'] ?? '') === 'custom')>
+                <span>С логотипом</span>
+            </label>
+            <div class="app-player-workspace__logo-options" data-player-logo-options
+                data-saved-logo-id="{{ (int) ($character['generation_custom_logo_id'] ?? 0) }}"
+                @if(($character['generation_logo_mode'] ?? '') !== 'custom') hidden @endif>
+                <span class="app-player-workspace__logo-preview">
+                    <img src="{{ asset('images/team-placeholder.webp') }}" data-player-logo-preview
+                        data-logo-placeholder="{{ asset('images/team-placeholder.webp') }}"
+                        alt="Логотип не выбран" width="35" height="35" decoding="async">
+                </span>
+                <button type="button" class="app-player-workspace__secondary" data-player-logo-picker-open
+                    aria-haspopup="dialog" aria-controls="app-player-logo-dialog">Выбрать логотип</button>
+                <span class="app-player-workspace__logo-selected" data-player-logo-selected aria-live="polite">Логотип не выбран</span>
+            </div>
         </div>
     </fieldset>
     <fieldset class="app-player-workspace__equipment">
