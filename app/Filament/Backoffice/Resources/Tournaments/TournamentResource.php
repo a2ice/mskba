@@ -27,6 +27,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
@@ -78,6 +79,10 @@ final class TournamentResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Турнир')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Основное')->schema([
                     Section::make('Параметры турнира')->columns(2)->schema([
                         TextInput::make('title')->label('Название')->required()->minLength(2)->maxLength(150)->columnSpanFull(),
