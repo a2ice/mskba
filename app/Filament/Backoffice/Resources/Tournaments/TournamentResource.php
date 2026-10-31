@@ -6,6 +6,7 @@ use App\Filament\Backoffice\Resources\Competitions\CompetitionCatalogEditor;
 use App\Filament\Backoffice\Resources\Tournaments\Pages\CreateTournament;
 use App\Filament\Backoffice\Resources\Tournaments\Pages\EditTournament;
 use App\Filament\Backoffice\Resources\Tournaments\Pages\ListTournaments;
+use App\Filament\Backoffice\Resources\Tournaments\RelationManagers\AdmissionsRelationManager;
 use App\Filament\Backoffice\Resources\Tournaments\RelationManagers\EntriesRelationManager;
 use App\Filament\Backoffice\Resources\Tournaments\RelationManagers\MatchesRelationManager;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
@@ -63,6 +64,7 @@ final class TournamentResource extends Resource
     public static function canEdit(Model $record): bool { return $record instanceof Tournament && ! $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_EDIT); }
     public static function canDelete(Model $record): bool { return $record instanceof Tournament && ! $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_DELETE); }
     public static function canRestore(Model $record): bool { return $record instanceof Tournament && $record->trashed() && self::allows(Permission::BACKOFFICE_TOURNAMENT_DELETE); }
+    public static function canManageParticipants(): bool { return self::canViewAny() && self::allows(Permission::BACKOFFICE_TOURNAMENT_PARTICIPANTS_MANAGE); }
     public static function canDeleteAny(): bool { return false; }
     public static function canForceDelete(Model $record): bool { return false; }
     public static function canForceDeleteAny(): bool { return false; }
@@ -169,7 +171,7 @@ final class TournamentResource extends Resource
 
     public static function getRelations(): array
     {
-        return [EntriesRelationManager::class, MatchesRelationManager::class];
+        return [AdmissionsRelationManager::class, EntriesRelationManager::class, MatchesRelationManager::class];
     }
 
     public static function getPages(): array
