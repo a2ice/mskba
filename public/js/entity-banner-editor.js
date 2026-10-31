@@ -12,6 +12,7 @@
         root.dataset.bannerReady = '1';
 
         const fileInput = root.querySelector('[data-banner-file]');
+        const dropzone = root.querySelector('[data-banner-dropzone]');
         const fileName = root.querySelector('[data-banner-file-name]');
         const canvas = root.querySelector('[data-banner-canvas]');
         const ctx = canvas.getContext('2d');
@@ -35,6 +36,7 @@
         let x = 0;
         let y = 0;
         let dragging = null;
+        let userSelectedFile = false;
 
         function message(value, error = false) {
             status.textContent = value;
@@ -67,6 +69,7 @@
 
         function setBusy(next) {
             busy = next;
+            root.setAttribute('aria-busy', String(next));
             save.disabled = next || !image;
             remove.disabled = next;
             reset.disabled = next || !image;
@@ -131,20 +134,37 @@
             objectUrl = null;
         }
 
-        fileInput.addEventListener('change', () => {
-            const candidate = fileInput.files?.[0];
-            if (!candidate) return;
+        function selectFile(candidate) {
+            if (!candidate || busy) return;
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(candidate.type)
                 || candidate.size > 10 * 1024 * 1024) {
                 fileInput.value = '';
                 message('Выберите изображение JPG, PNG или WebP до 10 МБ.', true);
                 return;
             }
+            userSelectedFile = true;
             revoke();
             objectUrl = URL.createObjectURL(candidate);
             fileName.textContent = candidate.name;
             confirmation.hidden = true;
             load(objectUrl, candidate);
+        }
+
+        fileInput.addEventListener('change', () => selectFile(fileInput.files?.[0]));
+
+        for (const name of ['dragenter', 'dragover']) {
+            dropzone.addEventListener(name, event => {
+                event.preventDefault();
+                if (!busy) dropzone.classList.add('is-dragover');
+            });
+        }
+        for (const name of ['dragleave', 'dragend']) {
+            dropzone.addEventListener(name, () => dropzone.classList.remove('is-dragover'));
+        }
+        dropzone.addEventListener('drop', event => {
+            event.preventDefault();
+            dropzone.classList.remove('is-dragover');
+            selectFile(event.dataTransfer?.files?.[0]);
         });
 
         function applyZoom(next) {
@@ -191,6 +211,20 @@
         for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
             canvas.addEventListener(eventName, () => { dragging = null; });
         }
+
+        canvas.addEventListener('keydown', event => {
+            if (!image || busy) return;
+            const distance = event.shiftKey ? 48 : 12;
+            switch (event.key) {
+                case 'ArrowLeft': x += distance; break;
+                case 'ArrowRight': x -= distance; break;
+                case 'ArrowUp': y += distance; break;
+                case 'ArrowDown': y -= distance; break;
+                default: return;
+            }
+            event.preventDefault();
+            render();
+        });
 
         function crop() {
             const size = dimensions();
@@ -294,7 +328,7 @@
                     return response.blob();
                 })
                 .then(blob => {
-                    if (fileInput.files?.length) return;
+                    if (userSelectedFile || fileInput.files?.length) return;
                     revoke();
                     objectUrl = URL.createObjectURL(blob);
                     let savedCrop = null;
