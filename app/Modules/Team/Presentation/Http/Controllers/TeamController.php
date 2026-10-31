@@ -5,6 +5,7 @@ namespace App\Modules\Team\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -164,20 +165,11 @@ final class TeamController extends Controller
                     'status' => TeamStatusEnum::ACTIVE,
                 ]);
                 $this->syncSportTypes($team, $sportTypes);
-                $contract = Contract::create([
-                    'family' => ContractFamilyEnum::MEMBERSHIP,
-                    'name' => "Владелец команды «{$team->name}»",
-                    'status' => ContractStatusEnum::ACTIVE,
-                    'assigned_by' => $actor->user_id,
-                    'assigner' => UserParticipationRoleAssignerEnum::USER,
-                ]);
-                $contract->membership()->create([
-                    'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
-                    'scope_id' => $team->id,
-                    'user_id' => $actor->user_id,
-                    'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
-                    'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
-                ]);
+                app(EntityContractManager::class)->grantOwner(
+                    ContractMembershipScopeTypeEnum::TEAM, $team->id,
+                    $actor->user->canonical(), $actor->user->canonical(),
+                    'Владелец команды «'.$team->name.'»',
+                );
 
                 if ($logoContents !== null) {
                     $createdLogo = $logos->store($team, $actor, $logoContents, 'preset');

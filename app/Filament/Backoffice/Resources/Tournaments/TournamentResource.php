@@ -12,6 +12,7 @@ use App\Filament\Backoffice\Resources\Tournaments\RelationManagers\MatchesRelati
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
@@ -86,6 +87,13 @@ final class TournamentResource extends Resource
                 Tab::make('Основное')->schema([
                     Section::make('Параметры турнира')->columns(2)->schema([
                         TextInput::make('title')->label('Название')->required()->minLength(2)->maxLength(150)->columnSpanFull(),
+                        Select::make('owner_user_id')->label('Владелец турнира')
+                            ->default(fn (): ?int => auth('web')->user()?->canonical()->id)
+                            ->visible(fn (?Tournament $record): bool => $record === null)
+                            ->searchable()->getSearchResultsUsing(fn (string $search): array => User::query()
+                                ->whereNull('canonical_user_id')->whereLike('username', '%'.$search.'%')
+                                ->limit(30)->pluck('username', 'id')->all())
+                            ->getOptionLabelUsing(fn ($value): ?string => User::query()->whereKey($value)->value('username')),
                         Select::make('status')->label('Статус')->required()
                             ->options(self::options(TournamentStatusEnum::class))
                             ->default(TournamentStatusEnum::UNCONFIRMED->value),

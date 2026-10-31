@@ -2,10 +2,13 @@
 
 namespace App\Filament\Backoffice\Resources\Competitions;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
@@ -14,6 +17,7 @@ use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -44,6 +48,7 @@ final class CompetitionCatalogEditor
 
         $validated = Validator::make($data, [
             'title' => ['required', 'string', 'min:2', 'max:150'],
+            'owner_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('canonical_user_id')->whereNull('deleted_at')],
             'status' => ['required', Rule::in(array_column(TournamentStatusEnum::cases(), 'value'))],
             'status_comment' => ['nullable', 'string', 'max:5000'],
             'starts_on' => ['required', 'date'],
@@ -95,11 +100,22 @@ final class CompetitionCatalogEditor
             ...$data,
         ]);
 
-        return Tournament::query()->create([
-            ...$validated,
-            'alias' => (Str::slug(app(CyrillicTransliterator::class)->transliterate($validated['title'])) ?: 'tournament').'-'.Str::lower(Str::random(7)),
-            'created_by_actor_id' => $actorId,
-        ]);
+        $owner = User::query()->findOrFail($validated['owner_user_id'] ?? auth('web')->user()->canonical()->id);
+        $issuer = auth('web')->user()->canonical();
+        unset($validated['owner_user_id']);
+
+        return DB::transaction(function () use ($validated, $actorId, $owner, $issuer): Tournament {
+            $tournament = Tournament::query()->create([
+                ...$validated,
+                'alias' => (Str::slug(app(CyrillicTransliterator::class)->transliterate($validated['title'])) ?: 'tournament').'-'.Str::lower(Str::random(7)),
+                'created_by_actor_id' => $actorId,
+            ]);
+            app(EntityContractManager::class)->grantOwner(
+                Scope::TOURNAMENT, $tournament->id, $owner, $issuer,
+                'Владелец турнира «'.$tournament->title.'»',
+            );
+            return $tournament;
+        });
     }
 
     public function updateTournament(Tournament $tournament, array $data): Tournament

@@ -29,7 +29,11 @@ final class TeamManagementAccess
             return false;
         }
 
-        if ($this->isCreator($team, $actor)) {
+        // Preserve legacy creator access only until an owner contract exists.
+        if ($this->isCreator($team, $actor) && ! $team->memberships()
+            ->where('access_level', 'owner')
+            ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+            ->exists()) {
             return true;
         }
 

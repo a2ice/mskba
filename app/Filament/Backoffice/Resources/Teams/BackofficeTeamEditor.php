@@ -2,6 +2,7 @@
 
 namespace App\Filament\Backoffice\Resources\Teams;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -89,22 +90,10 @@ final class BackofficeTeamEditor
             foreach ($data['sport_types'] as $sport) {
                 $team->sportProfiles()->create(['sport_type' => $sport]);
             }
-            $contract = Contract::query()->create([
-                'family' => ContractFamilyEnum::MEMBERSHIP,
-                'name' => 'Владелец команды «'.$team->name.'»',
-                'status' => ContractStatusEnum::ACTIVE,
-                'assigned_by' => $actor->user_id,
-                'assigned_at' => now(),
-                'assigner' => UserParticipationRoleAssignerEnum::USER,
-            ]);
-            $contract->membership()->create([
-                'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
-                'scope_id' => $team->id,
-                'user_id' => $owner->id,
-                'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
-                'sport_roles' => [],
-                'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
-            ]);
+            app(EntityContractManager::class)->grantOwner(
+                ContractMembershipScopeTypeEnum::TEAM, $team->id, $owner, $actor->user->canonical(),
+                'Владелец команды «'.$team->name.'»',
+            );
             return $team;
         });
     }

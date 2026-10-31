@@ -2,6 +2,8 @@
 
 namespace App\Filament\Backoffice\Resources\Leagues;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
@@ -46,7 +48,7 @@ final class BackofficeLeagueEditor
         }
         $actor = app(CurrentActorResolver::class)->resolve($user, null);
 
-        return DB::transaction(function () use ($data, $actor, $teamIds): League {
+        return DB::transaction(function () use ($data, $actor, $teamIds, $user): League {
             $name = trim($data['name']);
             $slug = Str::slug(app(CyrillicTransliterator::class)->transliterate($name)) ?: 'league';
             $league = League::query()->create([
@@ -59,6 +61,10 @@ final class BackofficeLeagueEditor
                 'status' => $data['status'],
             ]);
             $league->teams()->sync($teamIds);
+            app(EntityContractManager::class)->grantOwner(
+                Scope::LEAGUE, $league->id, User::query()->findOrFail($data['owner_user_id']), $user,
+                'Владелец лиги «'.$league->name.'»',
+            );
 
             return $league;
         });
