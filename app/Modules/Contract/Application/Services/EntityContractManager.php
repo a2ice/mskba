@@ -73,8 +73,11 @@ final class EntityContractManager
             throw ValidationException::withMessages(['owner' => 'Выберите подтверждённого пользователя.']);
         }
 
+        // Venue catalogue responsibility is not proof of property ownership.
+        // A confirmed commercial owner continues to use the separate claim process.
+        $ownerRole = $scope === Scope::VENUE ? 'primary_manager' : 'owner';
         $existing = $this->membershipQuery($scope, $scopeId)
-            ->where('access_level', 'owner')
+            ->where('access_level', $ownerRole)
             ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
             ->lockForUpdate()->first();
         if ($existing !== null) {
@@ -98,14 +101,20 @@ final class EntityContractManager
             'scope_type' => $scope,
             'scope_id' => $scopeId,
             'user_id' => $owner->id,
-            'access_level' => 'owner',
+            'access_level' => $ownerRole,
             'invitation_status' => $owner->id === $issuer->id
                 ? TeamInvitationStatusEnum::ACCEPTED
                 : TeamInvitationStatusEnum::PENDING,
         ]);
         $contract->permissions()->createMany(array_map(
             static fn (string $permission): array => ['permission' => $permission],
-            $this->allPermissions($scope),
+            $scope === Scope::VENUE ? [
+                VenuePermissionEnum::VIEW->value,
+                VenuePermissionEnum::EDIT->value,
+                VenuePermissionEnum::EDIT_SCHEDULE->value,
+                VenuePermissionEnum::REMOVE->value,
+                VenuePermissionEnum::MANAGE_MEMBERSHIPS->value,
+            ] : $this->allPermissions($scope),
         ));
         if ($owner->id !== $issuer->id) {
             $this->notifyInvitation($owner->id, $scope->label(), $contract->name);
@@ -209,7 +218,7 @@ final class EntityContractManager
     {
         DB::transaction(function () use ($membership, $issuer): void {
             $membership = ContractMembership::query()->with('contract.permissions')->lockForUpdate()->findOrFail($membership->id);
-            if ($membership->access_level === 'owner') {
+            if (in_array($membership->access_level, ['owner', 'primary_manager'], true)) {
                 abort(403);
             }
             $available = $this->effectivePermissions($issuer, $membership->scope_type, (int) $membership->scope_id);

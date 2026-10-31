@@ -29,6 +29,7 @@ final class ContractMembershipPresenter
         return match ($membership->access_level) {
             'owner' => 'Владелец',
             'responsible' => 'Ответственный',
+            'primary_manager' => 'Главный ответственный',
             default => $membership->access_level,
         };
     }

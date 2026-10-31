@@ -9,6 +9,7 @@ use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationMana
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PhotosRelationManager;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
@@ -103,6 +104,14 @@ final class VenueResource extends Resource
                 Tab::make('Основное')->schema([
                     Section::make('Карточка площадки')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(3)->maxLength(255),
+                        Select::make('owner_user_id')->label('Ответственный за площадку')
+                            ->default(fn (): ?int => auth('web')->user()?->canonical()->id)
+                            ->visible(fn (?Venue $record): bool => $record === null)
+                            ->searchable()->getSearchResultsUsing(fn (string $search): array => User::query()
+                                ->whereNull('canonical_user_id')->whereLike('username', '%'.$search.'%')
+                                ->limit(30)->pluck('username', 'id')->all())
+                            ->getOptionLabelUsing(fn ($value): ?string => User::query()->whereKey($value)->value('username')),
+
                         TextInput::make('alias')->label('URL-алиас')->maxLength(255)
                             ->regex('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D')
                             ->helperText('Можно оставить пустым при создании — алиас будет сформирован автоматически. URL использует ID площадки.'),
