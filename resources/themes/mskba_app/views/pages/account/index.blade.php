@@ -17,11 +17,16 @@
 @section('account-content')
 @php($bannerOwnedLeagues = \App\Modules\League\Domain\Models\League::query()->where('owner_user_id', auth()->user()?->canonical()->id)->orderBy('name')->get())
 @if($bannerOwnedLeagues->isNotEmpty())
-    <section class="entity-banner-editor" aria-label="Оформление моих лиг">
-        <h3>Оформление моих лиг и сезонов</h3>
-        @foreach($bannerOwnedLeagues as $ownedLeague)
-            <p><a href="{{ route('account.leagues.banner', $ownedLeague->id) }}">{{ $ownedLeague->name }} — баннеры лиги и сезонов</a></p>
-        @endforeach
+    <section class="panel app-league-account-links" aria-labelledby="account-owned-leagues-title">
+        <h2 id="account-owned-leagues-title">Мои лиги</h2>
+        <div class="app-league-account-links__list">
+            @foreach($bannerOwnedLeagues as $ownedLeague)
+                <div class="app-league-account-links__row">
+                    <strong>{{ $ownedLeague->name }}</strong>
+                    <a class="button secondary" href="{{ route('account.leagues.banner', $ownedLeague->id) }}">Оформление лиги и сезонов</a>
+                </div>
+            @endforeach
+        </div>
     </section>
 @endif
 
