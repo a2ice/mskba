@@ -60,6 +60,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileContr
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueController;
+use App\Modules\League\Presentation\Http\Controllers\LeagueManagementController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
@@ -456,6 +457,22 @@ Route::prefix('admin')
 
 Route::prefix('leagues')->group(function () {
     Route::get('/', [LeagueController::class, 'index'])->name('leagues.index')->defaults('breadcrumb', 'Лиги');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [LeagueManagementController::class, 'createLeague'])->name('leagues.create');
+        Route::post('/', [LeagueManagementController::class, 'storeLeague'])->middleware('throttle:10,1')->name('leagues.store');
+        Route::get('/{league}/edit', [LeagueManagementController::class, 'editLeague'])
+            ->whereNumber('league')->name('leagues.manage');
+        Route::put('/{league}', [LeagueManagementController::class, 'updateLeague'])
+            ->whereNumber('league')->name('leagues.update');
+        Route::get('/{league}/seasons/create', [LeagueManagementController::class, 'createSeason'])
+            ->whereNumber('league')->name('leagues.seasons.create');
+        Route::post('/{league}/seasons', [LeagueManagementController::class, 'storeSeason'])
+            ->whereNumber('league')->middleware('throttle:10,1')->name('leagues.seasons.store');
+        Route::get('/{league}/seasons/{season}/edit', [LeagueManagementController::class, 'editSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.manage');
+        Route::put('/{league}/seasons/{season}', [LeagueManagementController::class, 'updateSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.update');
+    });
     Route::get('/{league}', [LeagueController::class, 'show'])->name('leagues.show');
     Route::get('/{league}/seasons/{season}', [LeagueController::class, 'season'])->whereNumber('season')->name('leagues.seasons.show');
 });
