@@ -28,6 +28,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -87,6 +88,10 @@ final class TeamResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Команда')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о команде')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(2)->maxLength(140),
