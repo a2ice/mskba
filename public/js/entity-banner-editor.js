@@ -1,5 +1,7 @@
 (() => {
     'use strict';
+    if (window.__mskbaBannerEditorInitialized) return;
+    window.__mskbaBannerEditorInitialized = true;
 
     const virtualWidth = 1200;
     const virtualHeight = 400;
@@ -196,18 +198,14 @@
                 file = null;
                 fileInput.value = '';
                 message(data.message || 'Баннер сохранён.');
-                if (root.dataset.originalUrl) {
-                    // A new immutable original is now available to authorized editors.
-                    const response = await fetch(root.dataset.originalUrl, {credentials:'same-origin'});
-                    if (response.ok) {
-                        revoke();
-                        objectUrl = URL.createObjectURL(await response.blob());
-                        load(objectUrl);
-                    }
-                } else {
-                    // After the first upload, next crop is performed from the stored original.
-                    root.dataset.originalUrl = root.dataset.uploadUrl + '/source';
+                root.dataset.originalUrl ||= root.dataset.uploadUrl.replace(/\/$/, '') + '/source';
+                const original = await fetch(root.dataset.originalUrl, {credentials:'same-origin'});
+                if (original.ok) {
+                    revoke();
+                    objectUrl = URL.createObjectURL(await original.blob());
+                    load(objectUrl);
                 }
+
             } catch (error) {
                 message(error.message, true);
             } finally {
