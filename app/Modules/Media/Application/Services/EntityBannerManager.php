@@ -54,6 +54,9 @@ final class EntityBannerManager
         }
 
         $rendered = $this->images->crop($original, $crop, self::OUTPUT_WIDTH);
+        if (abs($rendered['width'] / $rendered['height'] - 3) > 0.05) {
+            throw new InvalidArgumentException('Баннер должен иметь пропорции 3:1. Исправьте область кадрирования.');
+        }
         $type = $entity->getMorphClass();
         $uuid = (string) Str::uuid();
         $source = "entity-banner-originals/{$type}/{$entity->getKey()}/{$uuid}.{$extension}";
@@ -70,6 +73,7 @@ final class EntityBannerManager
 
         try {
             return DB::transaction(function () use ($entity, $source, $published, $rendered, $crop): Media {
+                $entity->newQuery()->whereKey($entity->getKey())->lockForUpdate()->firstOrFail();
                 $current = $entity->banner()->lockForUpdate()->first();
                 if ($current instanceof Media) {
                     $current->delete();
