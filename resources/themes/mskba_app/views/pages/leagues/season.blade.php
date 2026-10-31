@@ -10,14 +10,11 @@
     @if(method_exists($season, 'bannerUrl') && view()->exists('components.entity-public-banner'))
         @include('components.entity-public-banner', ['bannerUrl' => $season->bannerUrl()])
     @endif
-    @if(auth()->user()?->canonical()->id === $league->owner_user_id && \Illuminate\Support\Facades\Route::has('account.leagues.seasons.banner'))
-        <p class="app-league-owner-actions"><a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Управлять баннером сезона</a></p>
-    @endif
     <header class="panel app-league-hero">
         @if ($league->logo_path)
             <img class="app-league-logo app-league-logo--large" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="">
         @else
-            <span class="app-league-logo app-league-logo--large app-league-logo--empty" aria-hidden="true">🏀</span>
+            <span class="app-league-logo app-league-logo--large app-league-logo--empty" aria-hidden="true"><svg><use href="#ball"></use></svg></span>
         @endif
         <div>
             <span class="badge">{{ $season->status === 'active' ? 'Активный сезон' : 'Архивный сезон' }}</span>
@@ -31,6 +28,11 @@
             @endif
             @if ($season->description)<p class="app-league-description">{{ $season->description }}</p>@endif
         </div>
+        @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+            <div class="app-league-hero__action">
+                <a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Изменить баннер</a>
+            </div>
+        @endif
     </header>
     <div class="app-league-detail-grid">
         <section class="panel app-league-block" aria-labelledby="season-teams-heading">
