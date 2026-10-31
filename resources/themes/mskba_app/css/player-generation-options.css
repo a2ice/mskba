@@ -31,7 +31,6 @@
 /* Same native 20px checkbox and 44px touch target as equipment/UI Kit. */
 .app-player-workspace__logo-control{display:grid;gap:8px;margin-top:14px;min-width:0}
 .app-player-workspace__logo-toggle{display:inline-flex;justify-self:start;align-items:center;gap:12px;min-height:44px;font-size:14px;font-weight:600;color:var(--text)}
-.app-player-workspace__logo-toggle input{width:20px;height:20px;margin:0;flex:0 0 20px;accent-color:var(--accent)}
 .app-player-workspace__logo-options{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
 .app-player-workspace__logo-options[hidden]{display:none!important}
 .app-player-workspace__logo-preview{display:block;box-sizing:border-box;flex:0 0 35px;width:35px;height:35px;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface-raised)}
