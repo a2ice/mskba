@@ -4,9 +4,10 @@
 <section class="container app-league-section" aria-labelledby="league-heading">
     <nav class="app-league-breadcrumbs" aria-label="Навигация по лиге"><a href="{{ route('leagues.index') }}">Лиги</a><span aria-hidden="true">/</span><span>{{ $league->name }}</span></nav>
     @include('components.entity-public-banner', ['bannerUrl' => $league->bannerUrl()])
-    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+    @if($canEditLeague)
         <div class="app-league-owner-actions">
             <a class="button secondary" href="{{ route('account.leagues.banner', $league->id) }}">Изменить баннер</a>
+            <a class="button secondary" href="{{ route('leagues.manage', $league->id) }}">Редактировать лигу</a>
         </div>
     @endif
     <header class="panel app-league-hero">
@@ -24,7 +25,12 @@
 
     <div class="app-league-detail-grid">
         <section class="panel app-league-block" aria-labelledby="league-seasons-heading">
-            <h2 id="league-seasons-heading">Сезоны</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+                <h2 id="league-seasons-heading">Сезоны</h2>
+                @if($canCreateSeason)
+                    <a class="button secondary" href="{{ route('leagues.seasons.create', $league->id) }}">Создать сезон</a>
+                @endif
+            </div>
             @forelse ($league->seasons as $season)
                 <a class="app-league-item" href="{{ route('leagues.seasons.show', [$league->alias, $season->id]) }}">
                     <span><strong>{{ $season->name }}</strong>

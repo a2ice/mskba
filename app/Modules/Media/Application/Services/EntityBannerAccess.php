@@ -8,8 +8,12 @@ use App\Filament\Backoffice\Resources\Seasons\SeasonResource;
 use App\Filament\Backoffice\Resources\Teams\TeamResource;
 use App\Filament\Backoffice\Resources\Tournaments\TournamentResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
+use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
@@ -52,8 +56,12 @@ final class EntityBannerAccess
 
         return match (true) {
             $entity instanceof Profile => (int) $entity->user_id === (int) $user->id,
-            $entity instanceof League => (int) $entity->owner_user_id === (int) $user->id,
-            $entity instanceof LeagueSeason => (int) $entity->league?->owner_user_id === (int) $user->id,
+            $entity instanceof League => app(EntityContractManager::class)->allows(
+                $user, Scope::LEAGUE, $entity->id, LeaguePermissionEnum::EDIT->value,
+            ),
+            $entity instanceof LeagueSeason => app(EntityContractManager::class)->allows(
+                $user, Scope::SEASON, $entity->id, SeasonPermissionEnum::EDIT->value,
+            ),
             $entity instanceof Team => $actor !== null
                 && app(TeamManagementAccess::class)->allows($entity, $actor, TeamPermissionEnum::EDIT_SETTINGS),
             $entity instanceof Tournament => $actor !== null

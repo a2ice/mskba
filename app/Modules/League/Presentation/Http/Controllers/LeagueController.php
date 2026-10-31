@@ -3,6 +3,12 @@
 namespace App\Modules\League\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
+use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
@@ -63,6 +69,8 @@ final class LeagueController extends Controller
             'leagues' => $leagues,
             'seasons' => $seasons,
             'filters' => ['q' => $search, 'status' => $status, 'season' => $seasonId],
+            'canCreateLeague' => $request->user()?->isConfirmed()
+                && app(UserOperationalPermissionChecker::class)->allows($request->user(), Permission::CREATE_LEAGUE),
         ]);
     }
 
@@ -81,7 +89,15 @@ final class LeagueController extends Controller
             ])
             ->firstOrFail();
 
-        return ThemeResolver::page('leagues.show', ['league' => $item]);
+        $user = auth('web')->user();
+        $contracts = app(EntityContractManager::class);
+        return ThemeResolver::page('leagues.show', [
+            'league' => $item,
+            'canEditLeague' => $user !== null && $contracts->allows($user, Scope::LEAGUE, $item->id, LeaguePermissionEnum::EDIT->value),
+            'canCreateSeason' => $user?->isConfirmed()
+                && app(UserOperationalPermissionChecker::class)->allows($user, Permission::CREATE_SEASON)
+                && $contracts->allows($user, Scope::LEAGUE, $item->id, LeaguePermissionEnum::MANAGE_SEASONS->value),
+        ]);
     }
 
     public function season(string $league, int $season): Response
@@ -103,6 +119,12 @@ final class LeagueController extends Controller
             ])
             ->firstOrFail();
 
-        return ThemeResolver::page('leagues.season', ['league' => $parent, 'season' => $item]);
+        $user = auth('web')->user();
+        return ThemeResolver::page('leagues.season', [
+            'league' => $parent, 'season' => $item,
+            'canEditSeason' => $user !== null && app(EntityContractManager::class)->allows(
+                $user, Scope::SEASON, $item->id, SeasonPermissionEnum::EDIT->value,
+            ),
+        ]);
     }
 }

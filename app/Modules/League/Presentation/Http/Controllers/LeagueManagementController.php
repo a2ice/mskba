@@ -135,7 +135,12 @@ final class LeagueManagementController extends Controller
             return $season;
         });
 
-        return redirect()->route('leagues.seasons.manage', [$parent->id, $season->id])
+        $mayEdit = app(EntityContractManager::class)->allows(
+            $creator, Scope::SEASON, $season->id, SeasonPermissionEnum::EDIT->value,
+        );
+        return redirect()->to($mayEdit
+            ? route('leagues.seasons.manage', [$parent->id, $season->id])
+            : route('account.contracts'))
             ->with('status', 'Сезон создан.');
     }
 
