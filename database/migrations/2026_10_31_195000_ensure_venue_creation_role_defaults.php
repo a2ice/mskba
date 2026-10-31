@@ -16,10 +16,14 @@ return new class extends Migration
                 return;
             }
             $current = json_decode((string) $profile->permissions, true);
-            if (! is_array($current) || in_array('venue.create', $current, true)) {
+            if (! is_array($current)) {
                 return;
             }
-            $current[] = 'venue.create';
+            $required = ['venue.create'];
+            if (in_array($profile->role, ['admin', 'superadmin'], true)) {
+                $required = [...$required, 'league.create', 'season.create'];
+            }
+            $current = [...$current, ...$required];
             DB::table('system_role_permission_profiles')->where('role', $profile->role)
                 ->update(['permissions' => json_encode(array_values(array_unique($current))), 'updated_at' => now()]);
         });

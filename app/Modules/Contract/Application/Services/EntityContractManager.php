@@ -83,8 +83,11 @@ final class EntityContractManager
         }
         $owner = $owner->canonical();
         $issuer = $issuer->canonical();
-        if (! $owner->isConfirmed() || $owner->isBlocked() || $owner->trashed()) {
-            throw ValidationException::withMessages(['owner' => 'Выберите подтверждённого пользователя.']);
+        // A catalogue contributor may create a venue before identity confirmation.
+        // A delegated ownership invitation still requires a confirmed recipient.
+        if ($owner->isBlocked() || $owner->trashed()
+            || (! $owner->isConfirmed() && $owner->id !== $issuer->id)) {
+            throw ValidationException::withMessages(['owner' => 'Выберите доступного подтверждённого пользователя.']);
         }
 
         // Venue catalogue responsibility is not proof of property ownership.

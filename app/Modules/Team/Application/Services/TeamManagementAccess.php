@@ -29,10 +29,14 @@ final class TeamManagementAccess
             return false;
         }
 
-        // Preserve legacy creator access only until an owner contract exists.
+        // Historic seeders and older teams have owner membership rows without
+        // explicit capability snapshots. Preserve creator fallback for those
+        // only; new/backfilled owner contracts contain EDIT_SETTINGS.
         if ($this->isCreator($team, $actor) && ! $team->memberships()
             ->where('access_level', 'owner')
-            ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+            ->whereHas('contract', fn ($q) => $q
+                ->whereHas('permissions', fn ($rights) => $rights
+                    ->where('permission', TeamPermissionEnum::EDIT_SETTINGS->value)))
             ->exists()) {
             return true;
         }

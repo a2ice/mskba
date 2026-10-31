@@ -30,7 +30,7 @@ final class TournamentAccess
     public function isOwner(Tournament $tournament, Actor $actor): bool
     {
         $user = $actor->user?->canonical();
-        if ($user === null || ! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+        if ($user === null || $user->isBlocked() || $user->trashed()) {
             return false;
         }
 
@@ -42,6 +42,9 @@ final class TournamentAccess
             ->exists();
 
         if ($hasContractOwner) {
+            if (! $user->isConfirmed()) {
+                return false;
+            }
             return ContractMembership::query()
                 ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
                 ->where('scope_id', $tournament->id)
