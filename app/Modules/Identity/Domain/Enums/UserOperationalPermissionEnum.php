@@ -33,6 +33,21 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_VENUE_MODERATE = 'backoffice.venue.moderate';
     case BACKOFFICE_EVENT_MANAGE = 'backoffice.event.manage';
     case BACKOFFICE_TEAM_MANAGE = 'backoffice.team.manage';
+    case BACKOFFICE_LEAGUE_VIEW = 'backoffice.league.view';
+    case BACKOFFICE_LEAGUE_CREATE = 'backoffice.league.create';
+    case BACKOFFICE_LEAGUE_EDIT = 'backoffice.league.edit';
+    case BACKOFFICE_LEAGUE_DELETE = 'backoffice.league.delete';
+    case BACKOFFICE_LEAGUE_TEAMS_MANAGE = 'backoffice.league.teams.manage';
+    case BACKOFFICE_SEASON_VIEW = 'backoffice.season.view';
+    case BACKOFFICE_SEASON_CREATE = 'backoffice.season.create';
+    case BACKOFFICE_SEASON_EDIT = 'backoffice.season.edit';
+    case BACKOFFICE_SEASON_DELETE = 'backoffice.season.delete';
+    case BACKOFFICE_SEASON_TEAMS_MANAGE = 'backoffice.season.teams.manage';
+    case BACKOFFICE_TOURNAMENT_VIEW = 'backoffice.tournament.view';
+    case BACKOFFICE_TOURNAMENT_CREATE = 'backoffice.tournament.create';
+    case BACKOFFICE_TOURNAMENT_EDIT = 'backoffice.tournament.edit';
+    case BACKOFFICE_TOURNAMENT_DELETE = 'backoffice.tournament.delete';
+    case BACKOFFICE_TOURNAMENT_PARTICIPANTS_MANAGE = 'backoffice.tournament.participants.manage';
     case BACKOFFICE_SITE_MEDIA_VIEW = 'backoffice.site_media.view';
     case BACKOFFICE_SITE_MEDIA_UPLOAD = 'backoffice.site_media.upload';
     case BACKOFFICE_SITE_MEDIA_EDIT = 'backoffice.site_media.edit';
@@ -68,6 +83,21 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MODERATE,
             self::BACKOFFICE_EVENT_MANAGE,
             self::BACKOFFICE_TEAM_MANAGE,
+            self::BACKOFFICE_LEAGUE_VIEW,
+            self::BACKOFFICE_LEAGUE_CREATE,
+            self::BACKOFFICE_LEAGUE_EDIT,
+            self::BACKOFFICE_LEAGUE_DELETE,
+            self::BACKOFFICE_LEAGUE_TEAMS_MANAGE,
+            self::BACKOFFICE_SEASON_VIEW,
+            self::BACKOFFICE_SEASON_CREATE,
+            self::BACKOFFICE_SEASON_EDIT,
+            self::BACKOFFICE_SEASON_DELETE,
+            self::BACKOFFICE_SEASON_TEAMS_MANAGE,
+            self::BACKOFFICE_TOURNAMENT_VIEW,
+            self::BACKOFFICE_TOURNAMENT_CREATE,
+            self::BACKOFFICE_TOURNAMENT_EDIT,
+            self::BACKOFFICE_TOURNAMENT_DELETE,
+            self::BACKOFFICE_TOURNAMENT_PARTICIPANTS_MANAGE,
             self::BACKOFFICE_SITE_MEDIA_VIEW,
             self::BACKOFFICE_SITE_MEDIA_UPLOAD,
             self::BACKOFFICE_SITE_MEDIA_EDIT,
@@ -124,6 +154,21 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MODERATE => 'Рассмотрение заявок модерации площадок и разрешение дублей в Filament',
             self::BACKOFFICE_EVENT_MANAGE => 'Управление мероприятиями, участниками и их бронированиями в Filament',
             self::BACKOFFICE_TEAM_MANAGE => 'Управление командами, участниками, составами и оформлением в Filament',
+            self::BACKOFFICE_LEAGUE_VIEW => 'Просмотр лиг в Filament',
+            self::BACKOFFICE_LEAGUE_CREATE => 'Создание лиг в Filament',
+            self::BACKOFFICE_LEAGUE_EDIT => 'Редактирование лиг в Filament',
+            self::BACKOFFICE_LEAGUE_DELETE => 'Удаление или архивирование лиг в Filament',
+            self::BACKOFFICE_LEAGUE_TEAMS_MANAGE => 'Управление командами лиг в Filament',
+            self::BACKOFFICE_SEASON_VIEW => 'Просмотр сезонов в Filament',
+            self::BACKOFFICE_SEASON_CREATE => 'Создание сезонов в Filament',
+            self::BACKOFFICE_SEASON_EDIT => 'Редактирование сезонов в Filament',
+            self::BACKOFFICE_SEASON_DELETE => 'Удаление или архивирование сезонов в Filament',
+            self::BACKOFFICE_SEASON_TEAMS_MANAGE => 'Управление командами сезонов в Filament',
+            self::BACKOFFICE_TOURNAMENT_VIEW => 'Просмотр турниров в Filament',
+            self::BACKOFFICE_TOURNAMENT_CREATE => 'Создание турниров в Filament',
+            self::BACKOFFICE_TOURNAMENT_EDIT => 'Редактирование турниров в Filament',
+            self::BACKOFFICE_TOURNAMENT_DELETE => 'Удаление или архивирование турниров в Filament',
+            self::BACKOFFICE_TOURNAMENT_PARTICIPANTS_MANAGE => 'Управление участниками турниров в Filament',
             self::BACKOFFICE_SITE_MEDIA_VIEW => 'Просмотр медиабиблиотеки сайта',
             self::BACKOFFICE_SITE_MEDIA_UPLOAD => 'Загрузка изображений сайта',
             self::BACKOFFICE_SITE_MEDIA_EDIT => 'Редактирование и замена изображений сайта',
