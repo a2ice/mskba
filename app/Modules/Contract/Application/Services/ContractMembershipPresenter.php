@@ -26,7 +26,11 @@ final class ContractMembershipPresenter
             }
         }
 
-        return $membership->access_level;
+        return match ($membership->access_level) {
+            'owner' => 'Владелец',
+            'responsible' => 'Ответственный',
+            default => $membership->access_level,
+        };
     }
 
     /**

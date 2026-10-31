@@ -40,6 +40,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRequestContr
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
+use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -1026,6 +1027,14 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         // Must precede /contracts/{number}; this is the canonical venue collection.
         Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
             ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/contracts/memberships/{membership}/manage', [EntityContractController::class, 'show'])
+            ->whereNumber('membership')->name('account.contracts.manage');
+        Route::post('/contracts/memberships/{membership}/invite', [EntityContractController::class, 'invite'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.invite');
+        Route::post('/contracts/memberships/{membership}/respond', [EntityContractController::class, 'respond'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.respond');
+        Route::delete('/contracts/memberships/{membership}/delegates/{target}', [EntityContractController::class, 'revoke'])
+            ->whereNumber('membership')->whereNumber('target')->name('account.contracts.revoke');
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])
             ->name('account.contracts.show');
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');

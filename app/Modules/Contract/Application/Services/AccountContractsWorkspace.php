@@ -48,11 +48,18 @@ final readonly class AccountContractsWorkspace
         }
 
         $page = $query->paginate(12)->withQueryString();
-        $page->getCollection()->transform(function (Contract $contract): array {
+        $page->getCollection()->transform(function (Contract $contract) use ($user): array {
             return [
                 'contract' => $contract,
                 'scopes' => $this->presenter->scopesFor($contract),
                 'access_label' => $this->presenter->accessLevelLabelFor($contract->membership),
+                'can_manage' => ($contract->membership?->scope_type !== null)
+                    && (function () use ($contract, $user): bool {
+                        $manager = app(EntityContractManager::class);
+                        $permission = $manager->managePermission($contract->membership->scope_type);
+                        return $permission !== null && $manager->allows($user,
+                            $contract->membership->scope_type, (int) $contract->membership->scope_id, $permission);
+                    })(),
             ];
         });
 

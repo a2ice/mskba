@@ -46,7 +46,7 @@
                     <div>
                         <strong>{{ $record->contract?->name ?? 'Контракт' }}</strong>
                         <p class="mb-1">{{ $record->user?->username ?? 'Пользователь' }}</p>
-                        <small>{{ $record->invitation_status?->label() ?? '—' }}</small>
+                        <small>{{ match ($record->invitation_status?->value) { 'accepted' => 'Принят', 'pending' => 'Ожидает подтверждения', 'declined' => 'Отклонён', 'revoked' => 'Отозван', default => '—' } }}</small>
                         <p class="mb-0">{{ $record->contract?->permissions?->map(fn ($p) => collect($permissions)->firstWhere('value', $p->permission)?->label())->filter()->join(', ') }}</p>
                     </div>
                     @if($record->access_level !== 'owner' && $record->contract?->status === \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE)
