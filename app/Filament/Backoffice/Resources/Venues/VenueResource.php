@@ -35,6 +35,7 @@ use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -95,6 +96,10 @@ final class VenueResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Площадка')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Основное')->schema([
                     Section::make('Карточка площадки')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(3)->maxLength(255),
