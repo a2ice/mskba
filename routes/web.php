@@ -58,6 +58,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferReque
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
+use App\Modules\League\Presentation\Http\Controllers\LeagueController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
@@ -451,6 +452,12 @@ Route::prefix('admin')
         Route::put('/telegram-chats/{telegramChat}', [AdminTelegramChatsController::class, 'update'])
             ->name('admin.telegram-chats.update');
     });
+
+Route::prefix('leagues')->group(function () {
+    Route::get('/', [LeagueController::class, 'index'])->name('leagues.index')->defaults('breadcrumb', 'Лиги');
+    Route::get('/{league}', [LeagueController::class, 'show'])->name('leagues.show');
+    Route::get('/{league}/seasons/{season}', [LeagueController::class, 'season'])->whereNumber('season')->name('leagues.seasons.show');
+});
 
 Route::prefix('venues')->group(function () {
     Route::get('/', [VenueController::class, 'index'])
