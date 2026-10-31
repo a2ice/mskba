@@ -35,6 +35,7 @@
         let y = 0;
         let dragging = null;
         let imageGeneration = 0;
+        let userSelectedFile = false;
         let initialCrop;
         try {
             initialCrop = JSON.parse(root.dataset.initialCrop || '{}');
@@ -125,6 +126,7 @@
 
         function selectFile(candidate) {
             if (!candidate || busy) return;
+            userSelectedFile = true;
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(candidate.type)
                 || candidate.size > 10 * 1024 * 1024) {
                 message('Выберите изображение JPG, PNG или WebP размером до 10 МБ.', true);
@@ -337,6 +339,7 @@
                     return response.blob();
                 })
                 .then(blob => {
+                    if (userSelectedFile) return;
                     objectUrl = URL.createObjectURL(blob);
                     load(objectUrl, null, initialCrop);
                 })
