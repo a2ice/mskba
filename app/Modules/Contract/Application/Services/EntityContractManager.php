@@ -40,7 +40,16 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::cases(),
             Scope::TOURNAMENT => TournamentPermissionEnum::cases(),
             Scope::TEAM => TeamPermissionEnum::cases(),
-            Scope::VENUE => VenuePermissionEnum::cases(),
+            // Ordinary public contracts may manage venue catalogue data only.
+            // Commercial rental permissions are delegated through the verified
+            // venue ownership/commercial roles workflow, never this editor.
+            Scope::VENUE => [
+                VenuePermissionEnum::VIEW,
+                VenuePermissionEnum::EDIT,
+                VenuePermissionEnum::EDIT_SCHEDULE,
+                VenuePermissionEnum::REMOVE,
+                VenuePermissionEnum::MANAGE_CONTRACTS,
+            ],
             default => [],
         };
     }
@@ -114,13 +123,7 @@ final class EntityContractManager
         ]);
         $contract->permissions()->createMany(array_map(
             static fn (string $permission): array => ['permission' => $permission],
-            $scope === Scope::VENUE ? [
-                VenuePermissionEnum::VIEW->value,
-                VenuePermissionEnum::EDIT->value,
-                VenuePermissionEnum::EDIT_SCHEDULE->value,
-                VenuePermissionEnum::REMOVE->value,
-                VenuePermissionEnum::MANAGE_CONTRACTS->value,
-            ] : $this->allPermissions($scope),
+            $this->allPermissions($scope),
         ));
         if ($owner->id !== $issuer->id) {
             $this->notifyInvitation($owner->id, $scope->label(), $contract->name);
