@@ -10,6 +10,8 @@ use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Tournament\Domain\Models\TournamentMatch;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +25,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'event_id',
     'created_by_actor_id',
+    'league_id',
+    'league_season_id',
     'title',
     'description',
     'status',
@@ -63,6 +67,16 @@ class Game extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function league(): BelongsTo
+    {
+        return $this->belongsTo(League::class);
+    }
+
+    public function leagueSeason(): BelongsTo
+    {
+        return $this->belongsTo(LeagueSeason::class);
     }
 
     public function createdByActor(): BelongsTo
