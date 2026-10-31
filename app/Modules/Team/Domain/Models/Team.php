@@ -3,6 +3,7 @@
 namespace App\Modules\Team\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\Event;
@@ -40,7 +41,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Team extends Model
 {
-    use Auditable, SoftDeletes;
+    use Auditable, HasEntityBanner, SoftDeletes;
 
     public function routeIdentifier(): string
     {
