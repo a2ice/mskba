@@ -63,7 +63,7 @@ final class LeagueResource extends Resource
         return $schema->columns(1)->components([
             Tabs::make('Лига')->persistTabInQueryString()->tabs([
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
-                    Section::make('Информация о лиге')->columns(2)->schema([
+                    Section::make('Информация о лиге')->description('После создания лиги сезоны добавляются и редактируются в разделе «Сезоны» внутри карточки лиги.')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->maxLength(150)->minLength(2),
                         Select::make('status')->label('Статус')->required()
                             ->options(['draft' => 'Черновик', 'active' => 'Активная', 'archived' => 'В архиве'])->default('draft'),
