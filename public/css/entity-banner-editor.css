@@ -177,3 +177,65 @@
 @media(prefers-reduced-motion:reduce) {
     .entity-banner-editor__choose { transition:none; }
 }
+
+/* Standard MSKBA dialog structure; fallback styling for Filament and legacy theme. */
+.entity-banner-delete-dialog {
+    box-sizing:border-box;
+    position:fixed;
+    inset:0;
+    width:min(480px,calc(100vw - 32px));
+    max-height:90dvh;
+    min-width:0;
+    margin:auto;
+    padding:0;
+    color:var(--text,#202124);
+    background:var(--surface,var(--card,#fff));
+    border:1px solid var(--line,#d9dfe6);
+    border-radius:var(--radius-card,24px);
+    box-shadow:0 32px 100px var(--shadow-modal,#0004);
+}
+.entity-banner-delete-dialog[open] { display:flex; flex-direction:column; }
+.entity-banner-delete-dialog::backdrop { background:var(--backdrop-bg,#0009); }
+.entity-banner-delete-dialog__header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:var(--s4,16px);
+    padding:var(--s6,24px) var(--s6,24px) var(--s4,16px);
+}
+.entity-banner-delete-dialog__header h2 { margin:0; font-size:20px; line-height:26px; }
+.entity-banner-delete-dialog__close {
+    flex:0 0 44px;
+    display:grid;
+    place-items:center;
+    width:44px;
+    height:44px;
+    padding:0;
+    border:0;
+    border-radius:var(--radius-control,12px);
+    background:transparent;
+    color:var(--muted,#69717d);
+    font-size:25px;
+    cursor:pointer;
+}
+.entity-banner-delete-dialog__body {
+    padding:0 var(--s6,24px) var(--s6,24px);
+    color:var(--muted,#69717d);
+    line-height:1.6;
+}
+.entity-banner-delete-dialog__body p { margin:0; }
+.entity-banner-delete-dialog__footer {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-end;
+    gap:var(--s3,12px);
+    padding:var(--s4,16px) var(--s6,24px) var(--s6,24px);
+    border-top:1px solid var(--line,#d9dfe6);
+}
+@media(max-width:639px) {
+    .entity-banner-delete-dialog__header { padding:20px 20px 16px; }
+    .entity-banner-delete-dialog__body { padding:0 20px 20px; }
+    .entity-banner-delete-dialog__footer { padding:16px 20px 20px; }
+    .entity-banner-delete-dialog__footer .button { flex:1 1 120px; }
+}
