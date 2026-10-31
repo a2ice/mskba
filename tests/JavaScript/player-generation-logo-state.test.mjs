@@ -34,7 +34,7 @@ test('private previews never load cross-origin or executable URLs', () => {
         { id: 1, name: 'External', url: 'https://other.test/steal' },
         { id: 2, name: 'Script', url: 'javascript:alert(1)' },
         { id: 3, name: 'Invalid', url: 'http://dev.mskba.ru/insecure' },
-        { id: 4, name: 'Invalid', url: '%00' },
+        { id: 4, name: 'Invalid', url: 'http://[' },
     ];
     for (const logo of invalid) {
         assert.equal(resolvePlayerLogoPreview(invalid, logo.id, origin, placeholder).src, placeholder);
