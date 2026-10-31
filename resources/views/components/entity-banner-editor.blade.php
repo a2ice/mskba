@@ -52,15 +52,15 @@
             <label for="banner-zoom-{{ $context }}-{{ $type }}-{{ $id }}">Масштаб</label>
             <input id="banner-zoom-{{ $context }}-{{ $type }}-{{ $id }}" type="range"
                 min="1" max="3" step="0.01" value="1" data-banner-zoom aria-label="Масштаб изображения">
-            <button class="button secondary" type="button" data-banner-reset>Сбросить</button>
+            <button class="button secondary btn btn--secondary" type="button" data-banner-reset>Сбросить</button>
         </div>
         <p class="entity-banner-editor__hint">Перетаскивайте изображение, чтобы выбрать нужную часть.</p>
     </div>
 
     <footer class="entity-banner-editor__footer">
         <div class="entity-banner-editor__actions">
-            <button class="button primary" type="button" data-banner-save disabled>Сохранить баннер</button>
-            <button class="button danger" type="button" data-banner-delete @if(!$banner) hidden @endif>Удалить баннер</button>
+            <button class="button primary btn btn--primary" type="button" data-banner-save disabled>Сохранить баннер</button>
+            <button class="button danger btn btn--danger" type="button" data-banner-delete @if(!$banner) hidden @endif>Удалить баннер</button>
         </div>
         <p class="entity-banner-editor__status" data-banner-status role="status" aria-live="polite"></p>
     </footer>
@@ -75,8 +75,8 @@
             <p>Баннер исчезнет со страницы. Остальные изображения сохранятся.</p>
         </div>
         <footer class="mskba-modal__footer entity-banner-delete-dialog__footer">
-            <button class="button secondary" type="button" data-banner-cancel>Отмена</button>
-            <button class="button danger" type="button" data-banner-confirm-delete>Удалить</button>
+            <button class="button secondary btn btn--secondary" type="button" data-banner-cancel>Отмена</button>
+            <button class="button danger btn btn--danger" type="button" data-banner-confirm-delete>Удалить</button>
         </footer>
     </dialog>
     <input type="hidden" data-banner-csrf value="{{ csrf_token() }}">
