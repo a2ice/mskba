@@ -74,7 +74,7 @@ final class LeagueController extends Controller
             ->with([
                 'teams' => fn ($teams) => $teams->competitionEligible()->with('logo')->orderBy('name'),
                 'seasons' => fn ($seasons) => $seasons->whereIn('status', self::PUBLIC_STATUSES)
-                    ->withCount('teams')->orderByDesc('starts_on')->orderByDesc('id'),
+                    ->withCount(['teams' => fn ($teams) => $teams->competitionEligible()])->orderByDesc('starts_on')->orderByDesc('id'),
                 'tournaments' => fn ($tournaments) => $tournaments
                     ->whereIn('status', self::PUBLIC_TOURNAMENT_STATUSES)
                     ->orderByDesc('starts_on')->orderByDesc('id'),
