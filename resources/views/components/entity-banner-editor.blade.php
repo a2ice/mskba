@@ -13,6 +13,7 @@
 @endphp
 <section class="entity-banner-editor panel"
     data-entity-banner-editor
+    data-banner-context="{{ $context }}"
     data-upload-url="{{ $updateUrl }}"
     data-delete-url="{{ $deleteUrl }}"
     data-original-url="{{ $sourceUrl }}"
@@ -63,6 +64,21 @@
         </div>
         <p class="entity-banner-editor__status" data-banner-status role="status" aria-live="polite"></p>
     </footer>
+    <dialog class="mskba-modal entity-banner-delete-dialog" data-banner-confirm
+        aria-labelledby="banner-delete-title-{{ $context }}-{{ $type }}-{{ $id }}">
+        <header class="mskba-modal__header entity-banner-delete-dialog__header">
+            <h2 id="banner-delete-title-{{ $context }}-{{ $type }}-{{ $id }}">Удалить баннер?</h2>
+            <button type="button" class="entity-banner-delete-dialog__close"
+                data-banner-cancel aria-label="Закрыть">×</button>
+        </header>
+        <div class="mskba-modal__body entity-banner-delete-dialog__body">
+            <p>Баннер исчезнет со страницы. Остальные изображения сохранятся.</p>
+        </div>
+        <footer class="mskba-modal__footer entity-banner-delete-dialog__footer">
+            <button class="button secondary" type="button" data-banner-cancel>Отмена</button>
+            <button class="button danger" type="button" data-banner-confirm-delete>Удалить</button>
+        </footer>
+    </dialog>
     <input type="hidden" data-banner-csrf value="{{ csrf_token() }}">
 </section>
 @once
