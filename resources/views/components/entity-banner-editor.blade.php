@@ -25,7 +25,7 @@
     </header>
 
     <div class="entity-banner-editor__saved" data-banner-saved @if(!$banner) hidden @endif>
-        <span class="entity-banner-editor__caption">Сейчас на странице</span>
+        <span class="entity-banner-editor__caption">Сохранённый баннер</span>
         <div class="entity-banner-editor__saved-image">
             <img data-banner-published @if($banner) src="{{ $banner->publicUrl() }}" @endif alt="Текущий баннер" loading="lazy">
         </div>
