@@ -182,6 +182,9 @@
 @endsection
 
 @section('section-content')
+@if(isset($venue))
+    @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
+@endif
     @if(!empty($venue))
         <div class="venue-show">
             <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
