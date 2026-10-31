@@ -2,12 +2,14 @@
 
 namespace App\Modules\Venue\Application\Services;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -56,6 +58,30 @@ final class VenueMembershipAccess
         return $this->baseOwnerQuery()
             ->where('scope_id', $venue->id)
             ->exists();
+    }
+
+    public function hasActivePrimaryManager(Venue $venue): bool
+    {
+        return $this->primaryManagerQuery()->where('scope_id', $venue->id)->exists();
+    }
+
+    /** @return list<int> */
+    public function activePrimaryManagedVenueIds(): array
+    {
+        return $this->primaryManagerQuery()->distinct()->pluck('scope_id')
+            ->map(fn ($id): int => (int) $id)->all();
+    }
+
+    private function primaryManagerQuery(): Builder
+    {
+        $now = now();
+        return ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('access_level', 'primary_manager')
+            ->whereHas('contract', fn (Builder $q) => $q
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
     }
 
     public function activeOwnerMembership(Venue $venue): ?ContractMembership
@@ -186,7 +212,7 @@ final class VenueMembershipAccess
 
         return Venue::query()
             ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
-            ->whereNotIn('id', $this->activeOwnerVenueIds())
+            ->whereNotIn('id', [...$this->activeOwnerVenueIds(), ...$this->activePrimaryManagedVenueIds()])
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
             ->all();
@@ -200,6 +226,16 @@ final class VenueMembershipAccess
         return ContractMembership::query()
             ->where('scope_type', $scope->value)
             ->whereIn('user_id', $user->identityIds())
+            ->where(function (Builder $memberships): void {
+                // Generic entity-management invitations do not grant access
+                // before the recipient explicitly accepts. Keep legacy rental
+                // membership behavior untouched.
+                $memberships->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->orWhereHas('contract', fn (Builder $contracts) => $contracts
+                        ->where(fn (Builder $query) => $query
+                            ->where('comment', '!=', EntityContractManager::COMMENT_MARKER)
+                            ->orWhereNull('comment')));
+            })
             ->whereHas('contract', function (Builder $query) use ($now): void {
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)

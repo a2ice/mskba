@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tournament\Application\Services;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -28,16 +29,43 @@ final class TournamentAccess
 
     public function isOwner(Tournament $tournament, Actor $actor): bool
     {
-        if ((int) $actor->id === (int) $tournament->created_by_actor_id) {
+        // The existence of any owner contract (including revoked/expired)
+        // ends the legacy creator shortcut. Never silently restore privileges.
+        $hasOwnerContract = ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
+            ->where('scope_id', $tournament->id)
+            ->where('access_level', 'owner')
+            ->exists();
+
+        if (! $hasOwnerContract && (int) $tournament->created_by_actor_id === (int) $actor->id) {
+            // Historic tournaments, including actor-only test fixtures.
             return true;
         }
 
         $user = $actor->user?->canonical();
+        if ($user === null || $user->isBlocked() || $user->trashed()) {
+            return false;
+        }
 
-        return $user !== null
-            && ! $user->isBlocked()
-            && ! $user->trashed()
-            && $tournament->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
+        if (! $hasOwnerContract) {
+            return $tournament->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
+        }
+
+        if (! $user->isConfirmed()) {
+            return false;
+        }
+
+        return ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
+            ->where('scope_id', $tournament->id)
+            ->where('access_level', 'owner')
+            ->whereIn('user_id', $user->identityIds())
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($q) => $q
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+            ->exists();
     }
 
     public function allows(Tournament $tournament, Actor $actor, TournamentPermissionEnum $permission): bool

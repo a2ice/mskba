@@ -7,6 +7,12 @@
         <p>Баскетбольные лиги Москвы: команды, сезоны и турниры.</p>
     </header>
 
+    @if($canCreateLeague)
+        <div class="app-league-owner-actions" style="margin-block:16px">
+            <a class="button primary" href="{{ route('leagues.create') }}">Создать лигу</a>
+        </div>
+    @endif
+
     <form class="panel app-league-filters" method="GET" action="{{ route('leagues.index') }}" aria-label="Поиск лиг">
         <label class="app-team-field">
             <span>Название или описание</span>

@@ -166,6 +166,13 @@ final class BackofficeTeamMembers
     public function remove(Team $team, ContractMembership $membership): void
     {
         abort_unless(TeamResource::canEdit($team), 403);
+        // The owner is never removable, including an unaccepted owner
+        // invitation issued by a backoffice operator.
+        if ($membership->scope_type === ContractMembershipScopeTypeEnum::TEAM
+            && (int) $membership->scope_id === (int) $team->id
+            && $membership->access_level === TeamMembershipAccessLevelEnum::OWNER->value) {
+            throw ValidationException::withMessages(['member' => 'Владельца нельзя исключить.']);
+        }
         DB::transaction(function () use ($team, $membership): void {
             $team = Team::query()->whereKey($team->id)->lockForUpdate()->firstOrFail();
             $membership = $this->acceptedMembers($team)->whereKey($membership->id)

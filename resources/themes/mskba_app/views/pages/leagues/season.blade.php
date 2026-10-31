@@ -8,9 +8,10 @@
         <span>{{ $season->name }}</span>
     </nav>
     @include('components.entity-public-banner', ['bannerUrl' => $season->bannerUrl()])
-    @if(auth()->user()?->canonical()->id === $league->owner_user_id)
+    @if($canEditSeason)
         <div class="app-league-owner-actions">
             <a class="button secondary" href="{{ route('account.leagues.seasons.banner', [$league->id, $season->id]) }}">Изменить баннер</a>
+            <a class="button secondary" href="{{ route('leagues.seasons.manage', [$league->id, $season->id]) }}">Редактировать сезон</a>
         </div>
     @endif
     <header class="panel app-league-hero">

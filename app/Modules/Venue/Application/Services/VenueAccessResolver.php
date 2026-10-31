@@ -123,7 +123,7 @@ final class VenueAccessResolver
             ? []
             : Venue::query()
                 ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
-                ->whereNotIn('id', $this->memberships->activeOwnerVenueIds())
+                ->whereNotIn('id', [...$this->memberships->activeOwnerVenueIds(), ...$this->memberships->activePrimaryManagedVenueIds()])
                 ->pluck('id')
                 ->map(fn (mixed $id): int => (int) $id)
                 ->all();
@@ -145,13 +145,15 @@ final class VenueAccessResolver
     {
         return $user !== null
             && in_array((int) $venue->creatorActor?->user_id, $user->canonical()->identityIds(), true)
-            && ! $this->memberships->hasActiveOwner($venue);
+            && ! $this->memberships->hasActiveOwner($venue)
+            && ! $this->memberships->hasActivePrimaryManager($venue);
     }
 
     private function isActorCreator(?Actor $actor, Venue $venue): bool
     {
         $user = $actor?->user?->canonical();
-        if ($user === null || $this->memberships->hasActiveOwner($venue)) {
+        if ($user === null || $this->memberships->hasActiveOwner($venue)
+            || $this->memberships->hasActivePrimaryManager($venue)) {
             return false;
         }
 

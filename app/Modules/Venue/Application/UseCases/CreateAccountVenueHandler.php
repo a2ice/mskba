@@ -2,6 +2,10 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
@@ -38,6 +42,9 @@ final class CreateAccountVenueHandler
         if ($actor?->user_id === null) {
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы добавить площадку.');
         }
+        abort_unless(app(UserOperationalPermissionChecker::class)->allows(
+            $actor->user, UserOperationalPermissionEnum::CREATE_VENUE,
+        ), 403);
 
         $draft = null;
         try {
@@ -92,6 +99,13 @@ final class CreateAccountVenueHandler
                     'raw_address' => $rawAddress,
                 ]);
 
+                // A contributor contract covers catalogue management; verified
+                // commercial ownership still requires the existing claim workflow.
+                $creator = User::query()->findOrFail($actor->user_id)->canonical();
+                app(EntityContractManager::class)->grantOwner(
+                    Scope::VENUE, $venue->id, $creator, $creator,
+                    'Ответственный за площадку «'.$venue->name.'»',
+                );
                 $this->tagSynchronizer->sync($venue, $tagNames);
 
                 // Only the new shared create form requests initial zones. Legacy

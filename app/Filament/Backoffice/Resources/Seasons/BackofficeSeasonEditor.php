@@ -2,6 +2,9 @@
 
 namespace App\Filament\Backoffice\Resources\Seasons;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +27,7 @@ final class BackofficeSeasonEditor
         ];
         if ($creating) {
             $rules['league_id'] = ['required', 'integer', Rule::exists('leagues', 'id')->whereNull('deleted_at')];
+            $rules['owner_user_id'] = ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('canonical_user_id')->whereNull('deleted_at')];
         }
         return Validator::make($data, $rules)->validate();
     }
@@ -36,13 +40,17 @@ final class BackofficeSeasonEditor
         if ($league->status === 'archived') {
             throw ValidationException::withMessages(['league_id' => 'Нельзя создавать сезон архивной лиги.']);
         }
+        // A season belongs by default to the owner of its league, not the staff member creating it.
+        $owner = User::query()->findOrFail($data['owner_user_id'] ?? $league->owner_user_id);
+        $issuer = auth('web')->user()?->canonical();
+        abort_if($issuer === null, 403);
         $teamIds = $data['team_ids'] ?? [];
         $this->assertLeagueTeams($league, $teamIds);
         if ($teamIds !== []) {
             abort_unless(SeasonResource::canManageTeams(), 403);
         }
 
-        return DB::transaction(function () use ($data, $league, $teamIds): LeagueSeason {
+        return DB::transaction(function () use ($data, $league, $teamIds, $owner, $issuer): LeagueSeason {
             $season = $league->seasons()->create([
                 'name' => trim($data['name']),
                 'description' => $data['description'] ?? null,
@@ -51,6 +59,10 @@ final class BackofficeSeasonEditor
                 'status' => $data['status'],
             ]);
             $season->teams()->sync($teamIds);
+            app(EntityContractManager::class)->grantOwner(
+                Scope::SEASON, $season->id, $owner, $issuer,
+                'Владелец сезона «'.$season->name.'»',
+            );
             return $season;
         });
     }

@@ -7,6 +7,7 @@ use App\Filament\Backoffice\Resources\Seasons\Pages\EditSeason;
 use App\Filament\Backoffice\Resources\Seasons\Pages\ListSeasons;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use Filament\Actions\Action;
@@ -74,6 +75,13 @@ final class SeasonResource extends Resource
                                 ->orderBy('name')->pluck('name', 'id')->all())
                             ->searchable()->visible(fn (?LeagueSeason $record): bool => $record === null),
                         TextInput::make('name')->label('Название')->required()->minLength(2)->maxLength(150),
+                        Select::make('owner_user_id')->label('Владелец сезона')->searchable()
+                            ->visible(fn (?LeagueSeason $record): bool => $record === null)
+                            ->getSearchResultsUsing(fn (string $search): array => User::query()
+                                ->whereNull('canonical_user_id')->whereLike('username', '%'.$search.'%')
+                                ->limit(30)->pluck('username', 'id')->all())
+                            ->getOptionLabelUsing(fn ($value): ?string => User::query()->whereKey($value)->value('username'))
+                            ->helperText('Если не выбран, владельцем станет владелец лиги.'),
                         Select::make('status')->label('Статус')->required()
                             ->options(['draft'=>'Черновик','active'=>'Активный','archived'=>'В архиве'])->default('draft'),
                         DatePicker::make('starts_on')->label('Начало')->native(false),

@@ -2,6 +2,8 @@
 
 namespace App\Modules\Tournament\Application\UseCases;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -36,7 +38,8 @@ final class CreateTournamentHandler
             ? TournamentEnrollmentPolicyEnum::from($data['enrollment_policy'] ?? TournamentEnrollmentPolicyEnum::FIXED_POOL->value)
             : TournamentEnrollmentPolicyEnum::FIXED_POOL;
 
-        return DB::transaction(fn (): Tournament => Tournament::query()->create([
+        return DB::transaction(function () use ($actor, $data, $startsOn, $endsOn, $format, $recruitmentMode, $enrollmentPolicy): Tournament {
+            $tournament = Tournament::query()->create([
             'created_by_actor_id' => $actor->id,
             'default_venue_id' => $data['default_venue_id'] ?? null,
             'title' => $data['title'],
@@ -53,7 +56,14 @@ final class CreateTournamentHandler
             'round_robin_legs' => (int) ($data['round_robin_legs'] ?? 1),
             'accepts_unconfirmed_participants' => $recruitmentMode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                 && (bool) ($data['accepts_unconfirmed_participants'] ?? false),
-        ]));
+            ]);
+            $owner = $actor->user->canonical();
+            app(EntityContractManager::class)->grantOwner(
+                Scope::TOURNAMENT, $tournament->id, $owner, $owner,
+                'Владелец турнира «'.$tournament->title.'»',
+            );
+            return $tournament;
+        });
     }
 
     /** @param array<string, mixed> $data @return array{CarbonImmutable, CarbonImmutable|null} */

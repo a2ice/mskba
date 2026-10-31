@@ -10,6 +10,7 @@ enum VenuePermissionEnum: string
 
     case REMOVE = 'remove';
     case MANAGE_MEMBERSHIPS = 'rental.memberships.manage';
+    case MANAGE_CONTRACTS = 'venue.contracts.manage';
     case MANAGE_BOOKING_POLICY = 'rental.policy.manage';
     case MANAGE_GROUP_OFFERS = 'venue.group-offers.manage';
     case VIEW_BOOKING_REQUESTS = 'rental.bookings.view';
@@ -27,6 +28,7 @@ enum VenuePermissionEnum: string
 
             self::REMOVE => 'Удаление',
             self::MANAGE_MEMBERSHIPS => 'Управление коммерческими ролями',
+            self::MANAGE_CONTRACTS => 'Назначение контрактов площадки',
             self::MANAGE_BOOKING_POLICY => 'Управление условиями аренды',
             self::MANAGE_GROUP_OFFERS => 'Управление промокодами площадки',
             self::VIEW_BOOKING_REQUESTS => 'Просмотр заявок на аренду',

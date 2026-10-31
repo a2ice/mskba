@@ -2,6 +2,8 @@
 
 namespace App\Filament\Backoffice\Resources\Venues;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -182,6 +184,12 @@ final class VenueBackofficeEditor
                 $attributes['status'] = VenueStatusEnum::UNCONFIRMED->value;
                 $attributes['created_by_actor_id'] = $this->actorResolver->resolve($actor, null)?->id;
                 $venue = Venue::query()->create($attributes);
+                $ownerId = $data['owner_user_id'] ?? $actor->canonical()->id;
+                $owner = User::query()->findOrFail($ownerId);
+                app(EntityContractManager::class)->grantOwner(
+                    Scope::VENUE, $venue->id, $owner, $actor->canonical(),
+                    'Главный ответственный за площадку «'.$venue->name.'»',
+                );
             } else {
                 $venue->update($attributes);
             }

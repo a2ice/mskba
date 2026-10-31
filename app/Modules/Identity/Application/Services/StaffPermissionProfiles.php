@@ -105,6 +105,7 @@ final class StaffPermissionProfiles
                 Permission::CONTENT_MANAGE,
                 Permission::CREATE_COORDINATION, Permission::CREATE_TEAM,
                 Permission::CREATE_EVENT, Permission::CREATE_TOURNAMENT,
+                Permission::CREATE_LEAGUE, Permission::CREATE_SEASON, Permission::CREATE_VENUE,
                 Permission::HANDLE_SUPPORT_TICKETS,
                 Permission::OPERATOR_PRESENCE_VIEW, Permission::OPERATOR_SESSION_HISTORY_VIEW,
                 Permission::OPERATOR_CONVERSATION_HANDLE, Permission::OPERATOR_MARKETING_SEND,

@@ -9,6 +9,9 @@ enum UserOperationalPermissionEnum: string
     case CREATE_TEAM = 'team.create';
     case CREATE_EVENT = 'event.create';
     case CREATE_TOURNAMENT = 'tournament.create';
+    case CREATE_LEAGUE = 'league.create';
+    case CREATE_SEASON = 'season.create';
+    case CREATE_VENUE = 'venue.create';
     case MANAGE_SYSTEM_ROLES = 'user.system_role.manage';
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
     case EDIT_OWN_PROFILE = 'identity.profile.self_edit';
@@ -131,6 +134,9 @@ enum UserOperationalPermissionEnum: string
             self::CREATE_TEAM => 'Создание команд',
             self::CREATE_EVENT => 'Создание мероприятий',
             self::CREATE_TOURNAMENT => 'Создание турниров',
+            self::CREATE_LEAGUE => 'Создание лиг',
+            self::CREATE_SEASON => 'Создание сезонов',
+            self::CREATE_VENUE => 'Добавление площадок',
             self::MANAGE_SYSTEM_ROLES => 'Управление системными ролями',
             self::REVIEW_PROFILE_CHANGES => 'Модерировать заявки на изменение подтверждённых данных пользователей',
             self::EDIT_OWN_PROFILE => 'Изменять данные собственного профиля',
@@ -200,7 +206,8 @@ enum UserOperationalPermissionEnum: string
         }
 
         return match ($this) {
-            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES,
+            self::CREATE_EVENT, self::CREATE_TOURNAMENT,
+            self::CREATE_LEAGUE, self::CREATE_SEASON, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES,
             self::EDIT_OWN_PROFILE, self::EDIT_USER_PERSONAL_DATA, self::WALLET_USER_BALANCE_CREDIT, self::HANDLE_SUPPORT_TICKETS,
             self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
             self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND => false,

@@ -40,6 +40,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRequestContr
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
+use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -59,6 +60,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileContr
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueController;
+use App\Modules\League\Presentation\Http\Controllers\LeagueManagementController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
@@ -455,6 +457,22 @@ Route::prefix('admin')
 
 Route::prefix('leagues')->group(function () {
     Route::get('/', [LeagueController::class, 'index'])->name('leagues.index')->defaults('breadcrumb', 'Лиги');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [LeagueManagementController::class, 'createLeague'])->name('leagues.create');
+        Route::post('/', [LeagueManagementController::class, 'storeLeague'])->middleware('throttle:10,1')->name('leagues.store');
+        Route::get('/{league}/edit', [LeagueManagementController::class, 'editLeague'])
+            ->whereNumber('league')->name('leagues.manage');
+        Route::put('/{league}', [LeagueManagementController::class, 'updateLeague'])
+            ->whereNumber('league')->name('leagues.update');
+        Route::get('/{league}/seasons/create', [LeagueManagementController::class, 'createSeason'])
+            ->whereNumber('league')->name('leagues.seasons.create');
+        Route::post('/{league}/seasons', [LeagueManagementController::class, 'storeSeason'])
+            ->whereNumber('league')->middleware('throttle:10,1')->name('leagues.seasons.store');
+        Route::get('/{league}/seasons/{season}/edit', [LeagueManagementController::class, 'editSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.manage');
+        Route::put('/{league}/seasons/{season}', [LeagueManagementController::class, 'updateSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.update');
+    });
     Route::get('/{league}', [LeagueController::class, 'show'])->name('leagues.show');
     Route::get('/{league}/seasons/{season}', [LeagueController::class, 'season'])->whereNumber('season')->name('leagues.seasons.show');
 });
@@ -1026,6 +1044,16 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         // Must precede /contracts/{number}; this is the canonical venue collection.
         Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
             ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/contracts/memberships/{membership}/manage', [EntityContractController::class, 'show'])
+            ->whereNumber('membership')->name('account.contracts.manage');
+        Route::post('/contracts/memberships/{membership}/invite', [EntityContractController::class, 'invite'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.invite');
+        Route::post('/contracts/memberships/{membership}/transfer', [EntityContractController::class, 'transfer'])
+            ->whereNumber('membership')->middleware('throttle:5,1')->name('account.contracts.transfer');
+        Route::post('/contracts/memberships/{membership}/respond', [EntityContractController::class, 'respond'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.respond');
+        Route::delete('/contracts/memberships/{membership}/delegates/{target}', [EntityContractController::class, 'revoke'])
+            ->whereNumber('membership')->whereNumber('target')->name('account.contracts.revoke');
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])
             ->name('account.contracts.show');
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
