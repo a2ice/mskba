@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
+use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
@@ -88,6 +89,11 @@ class Team extends Model
     public function joinRequests(): HasMany
     {
         return $this->hasMany(TeamJoinRequest::class);
+    }
+
+    public function tournamentEntries(): HasMany
+    {
+        return $this->hasMany(TournamentEntry::class);
     }
 
     public function gameSides(): HasMany
