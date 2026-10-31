@@ -15,6 +15,10 @@
     </section>
 @endpush
 @section('account-content')
+@if(($user ?? auth()->user())?->canonical()->profile)
+    @include('components.entity-banner-editor', ['model' => ($user ?? auth()->user())->canonical()->profile, 'context' => 'account'])
+@endif
+
     @if (isset($error))
         <p class="notice" role="alert">{{ $error['message'] }}</p>
     @else
