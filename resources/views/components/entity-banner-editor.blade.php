@@ -24,7 +24,7 @@
         <p>Добавьте широкое изображение в верхнюю часть страницы.</p>
     </header>
 
-    <div class="entity-banner-editor__selection">
+    <div class="entity-banner-editor__selection" data-banner-dropzone>
         <label class="entity-banner-editor__choose" data-banner-choose>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                 stroke-linecap="round" stroke-linejoin="round" width="19" height="19" aria-hidden="true">
@@ -39,8 +39,8 @@
     </div>
 
     <div class="entity-banner-editor__preview">
-        <canvas width="1200" height="400" data-banner-canvas role="img"
-            aria-label="Предпросмотр обложки"></canvas>
+        <canvas width="1200" height="400" data-banner-canvas role="img" tabindex="0"
+            aria-label="Предпросмотр обложки. Перемещайте изображение стрелками на клавиатуре."></canvas>
         <p class="entity-banner-editor__empty" data-banner-empty>
             Здесь появится выбранное изображение
         </p>
