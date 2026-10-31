@@ -229,7 +229,9 @@ final class EntityOwnershipContractsTest extends TestCase
             'Главный ответственный');
         $this->assertSame('primary_manager', $membership->access_level);
         $this->assertFalse(app(VenueMembershipAccess::class)->hasActiveOwner($venue));
+        $this->assertFalse(app(VenueMembershipAccess::class)->allows($manager, $venue, VenuePermissionEnum::EDIT));
         $contracts->respond($membership, $manager, true);
+        $this->assertTrue(app(VenueMembershipAccess::class)->allows($manager, $venue, VenuePermissionEnum::EDIT));
         $this->assertFalse(app(VenueAccessResolver::class)->canEdit($admin, $venue));
         $this->assertTrue($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::EDIT->value));
         $this->assertFalse($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::MANAGE_FUNDS->value));

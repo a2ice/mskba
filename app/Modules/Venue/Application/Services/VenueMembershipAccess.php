@@ -2,12 +2,14 @@
 
 namespace App\Modules\Venue\Application\Services;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -224,6 +226,16 @@ final class VenueMembershipAccess
         return ContractMembership::query()
             ->where('scope_type', $scope->value)
             ->whereIn('user_id', $user->identityIds())
+            ->where(function (Builder $memberships): void {
+                // Generic entity-management invitations do not grant access
+                // before the recipient explicitly accepts. Keep legacy rental
+                // membership behavior untouched.
+                $memberships->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->orWhereHas('contract', fn (Builder $contracts) => $contracts
+                        ->where(fn (Builder $query) => $query
+                            ->where('comment', '!=', EntityContractManager::COMMENT_MARKER)
+                            ->orWhereNull('comment')));
+            })
             ->whereHas('contract', function (Builder $query) use ($now): void {
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
