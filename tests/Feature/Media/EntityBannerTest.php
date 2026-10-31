@@ -77,7 +77,7 @@ final class EntityBannerTest extends TestCase
 
         $this->get(route('entity-banners.source', [
             'context' => 'account', 'type' => 'league', 'id' => $league->id,
-        ]))->assertOk()->assertHeader('Cache-Control', 'private, no-store');
+        ]))->assertOk()->assertHeader('Cache-Control', 'no-store, private');
 
         $this->post($this->url($league), [
             'crop' => ['x' => 0.05, 'y' => 0.2, 'width' => 0.9, 'height' => 0.4],
@@ -100,7 +100,7 @@ final class EntityBannerTest extends TestCase
 
         $this->actingAs($owner);
         app(EntityBannerManager::class)->replace(
-            $league, file_get_contents(UploadedFile::fake()->image('banner.jpg', 1200, 900)->getRealPath()),
+            $league, (string) UploadedFile::fake()->image('banner.jpg', 1200, 900)->getContent(),
             $this->validCrop(),
         );
 
