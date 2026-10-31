@@ -12,6 +12,10 @@
 ])
 
 @section('section-content')
+@if($user?->canonical()->profile)
+    <div class="mb-4">@include('components.entity-banner-editor', ['model' => $user->canonical()->profile, 'context' => 'account'])</div>
+@endif
+
     @if(session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif
