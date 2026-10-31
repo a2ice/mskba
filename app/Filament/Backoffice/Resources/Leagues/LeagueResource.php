@@ -19,6 +19,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -62,6 +63,10 @@ final class LeagueResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Лига')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о лиге')->description('После создания лиги сезоны добавляются и редактируются в разделе «Сезоны» внутри карточки лиги.')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->maxLength(150)->minLength(2),
