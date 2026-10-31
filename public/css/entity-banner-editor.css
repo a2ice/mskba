@@ -132,3 +132,12 @@
     .entity-banner-editor__confirmation-actions {width:100%}
     .entity-banner-editor__confirmation-actions button {flex:1 1 120px}
 }
+
+/* Parent layout owns vertical card rhythm wherever the editor is in a stack. */
+.app-profile>.entity-banner-editor {margin:0}
+.league-banner-menu {display:flex;flex-direction:column;gap:10px;padding:0;margin:0;list-style:none}
+.league-banner-menu .nav-item {margin:0}
+.league-banner-menu .nav-link {display:flex;align-items:center;min-height:44px;padding:10px 13px;border-radius:10px;line-height:20px;text-decoration:none}
+.league-banner-menu .nav-link.active,.league-banner-menu .nav-link[aria-current="page"] {color:var(--banner-accent,var(--accent,#d96320));background:var(--banner-raised,var(--surface-raised,#f5f6f8))}
+.league-banner-links {display:grid;gap:16px}
+.league-banner-links__list {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
