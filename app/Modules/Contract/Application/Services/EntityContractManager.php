@@ -10,6 +10,9 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
@@ -104,6 +107,9 @@ final class EntityContractManager
             static fn (string $permission): array => ['permission' => $permission],
             $this->allPermissions($scope),
         ));
+        if ($owner->id !== $issuer->id) {
+            $this->notifyInvitation($owner->id, $scope->label(), $contract->name);
+        }
         return $membership->load('contract.permissions');
     }
 
@@ -177,6 +183,7 @@ final class EntityContractManager
                 static fn (string $value): array => ['permission' => $value],
                 array_values(array_unique($permissions)),
             ));
+            $this->notifyInvitation($target->id, $scope->label(), $contract->name);
             return $membership->load('contract.permissions');
         });
     }
@@ -225,6 +232,20 @@ final class EntityContractManager
             || array_diff($requested, $available) !== []) {
             throw ValidationException::withMessages(['permissions' => 'Нельзя назначить выбранные права.']);
         }
+    }
+
+    private function notifyInvitation(int $userId, string $type, string $name): void
+    {
+        DB::afterCommit(static function () use ($userId, $type, $name): void {
+            app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+                userId: $userId,
+                type: UserNotificationTypeEnum::REMINDER,
+                title: 'Приглашение к управлению',
+                body: 'Вам предложен контракт «'.$name.'» ('.$type.').',
+                actionUrl: route('account.contracts'),
+                actionText: 'Рассмотреть',
+            ));
+        });
     }
 
     private function membershipQuery(Scope $scope, int $scopeId): \Illuminate\Database\Eloquent\Builder
