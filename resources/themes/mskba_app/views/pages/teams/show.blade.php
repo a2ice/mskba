@@ -6,6 +6,7 @@
             <h1 id="team-profile-heading">{{ $team->name }}</h1>
             <p>{{ $team->description ?: 'Знакомься с составом и возможностями команды.' }}</p>
         </header>
+        @include('components.entity-public-banner', ['bannerUrl' => $team->bannerUrl()])
         <div class="app-team-actions">
             <a class="button secondary" href="{{ route('teams.index') }}">Все команды</a>
             @auth <a class="button secondary" href="{{ route('account.teams') }}">Мои команды</a> @endauth

@@ -12,6 +12,20 @@
 ])
 
 @section('section-content')
+@php($bannerOwnedLeagues = \App\Modules\League\Domain\Models\League::query()->where('owner_user_id', auth()->user()?->canonical()->id)->orderBy('name')->get())
+@if($bannerOwnedLeagues->isNotEmpty())
+    <section class="entity-banner-editor" aria-label="Оформление моих лиг">
+        <h3>Оформление моих лиг и сезонов</h3>
+        @foreach($bannerOwnedLeagues as $ownedLeague)
+            <p><a href="{{ route('account.leagues.banner', $ownedLeague->id) }}">{{ $ownedLeague->name }} — баннеры лиги и сезонов</a></p>
+        @endforeach
+    </section>
+@endif
+
+@if($user?->canonical()->profile)
+    <div class="mb-4">@include('components.entity-banner-editor', ['model' => $user->canonical()->profile, 'context' => 'account'])</div>
+@endif
+
     @if(session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif

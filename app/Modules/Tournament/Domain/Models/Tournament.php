@@ -3,6 +3,7 @@
 namespace App\Modules\Tournament\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
@@ -55,7 +56,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Tournament extends Model
 {
     /** @use HasFactory<TournamentFactory> */
-    use Auditable, HasFactory, SoftDeletes;
+    use Auditable, HasEntityBanner, HasFactory, SoftDeletes;
 
     protected static function newFactory(): TournamentFactory
     {

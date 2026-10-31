@@ -109,6 +109,17 @@ final class SeasonsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
+                Action::make('bannerSeason')
+                    ->label('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn (LeagueSeason $record): bool => SeasonResource::canEdit($record))
+                    ->modalHeading('Баннер сезона')
+                    ->modalWidth('5xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Закрыть')
+                    ->modalContent(fn (LeagueSeason $record) => view('components.entity-banner-editor', [
+                        'model' => $record,
+                        'context' => 'backoffice',
+                    ])),
                 Action::make('editSeason')
                     ->label('Редактировать')->icon('heroicon-o-pencil-square')
                     ->visible(fn (LeagueSeason $record): bool => SeasonResource::canEdit($record))

@@ -243,6 +243,10 @@ final class BackofficeUserResource extends Resource
                                 Tabs::make('Уровень разрешений')
                                     ->persistTabInQueryString('permission-scope')
                                     ->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                                         Tab::make('Системные')
                                             ->schema([
                                                 Section::make('Системная роль пользователя')

@@ -17,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
@@ -62,6 +63,10 @@ final class SeasonResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Сезон')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Основное')->icon('heroicon-o-calendar')->schema([
                     Section::make('Информация о сезоне')->columns(2)->schema([
                         Select::make('league_id')->label('Лига')->required()

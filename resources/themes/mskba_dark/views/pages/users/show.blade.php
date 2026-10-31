@@ -17,6 +17,7 @@
 @endsection
 
 @section('section-content')
+@include('components.entity-public-banner', ['bannerUrl' => $publicProfile['banner_url'] ?? null])
     <article class="public-user-profile">
         @if($publicProfile['avatar_url'])
             <img class="public-user-profile__avatar" src="{{ $publicProfile['avatar_url'] }}" alt="{{ $publicProfile['name'] }}">

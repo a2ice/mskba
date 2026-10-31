@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Application\Services;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Media\Application\Services\EntityBannerManager;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCharacteristic;
 use App\Modules\Venue\Domain\Models\VenueRevision;
@@ -170,6 +171,7 @@ final class VenueRevisionManager
         );
 
         $this->applyGallery($venue, $revision, is_array($payload['gallery'] ?? null) ? $payload['gallery'] : []);
+        $this->applyBanner($venue, $revision, $payload);
         $revision->forceFill(['applied_at' => now()])->save();
 
         return $venue->refresh();
@@ -286,6 +288,40 @@ final class VenueRevisionManager
 
         foreach ($draftMedia->whereNotIn('id', $usedDraftIds) as $media) {
             $this->deleteMediaAfterCommit($media);
+        }
+    }
+
+    /**
+     * A published venue keeps its old banner until the whole revision is approved.
+     * No banner key means this revision did not change the banner.
+     *
+     * @param array<string, mixed> $payload
+     */
+    private function applyBanner(Venue $venue, VenueRevision $revision, array $payload): void
+    {
+        if (! array_key_exists('banner', $payload)) {
+            return;
+        }
+
+        $candidate = $payload['banner'];
+        $draftBanner = null;
+        if ($candidate !== null) {
+            if (! is_array($candidate) || ($candidate['kind'] ?? null) !== 'draft') {
+                throw new InvalidArgumentException('Данные баннера ревизии повреждены.');
+            }
+            $draftBanner = $revision->banner()->whereKey((int) ($candidate['id'] ?? 0))->first();
+            if (! $draftBanner instanceof Media) {
+                throw new InvalidArgumentException('Черновик баннера ревизии недоступен.');
+            }
+        }
+
+        app(EntityBannerManager::class)->remove($venue);
+
+        if ($draftBanner instanceof Media) {
+            $draftBanner->forceFill([
+                'mediable_type' => $venue->getMorphClass(),
+                'mediable_id' => $venue->getKey(),
+            ])->save();
         }
     }
 

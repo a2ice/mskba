@@ -3,6 +3,7 @@
 namespace App\Modules\League\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['name', 'alias', 'description', 'logo_path', 'status', 'owner_user_id', 'created_by_actor_id'])]
 class League extends Model
 {
-    use Auditable, SoftDeletes;
+    use Auditable, HasEntityBanner, SoftDeletes;
 
     public function owner(): BelongsTo
     {

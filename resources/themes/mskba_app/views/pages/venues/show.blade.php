@@ -60,6 +60,7 @@
         ->values();
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
+    @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
             @if(count($venue->featuredMedia))

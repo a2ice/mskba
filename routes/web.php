@@ -1202,6 +1202,31 @@ Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])
         ->whereNumber('playIntent')->name('play-intents.slots');
 });
 
+/*
+ * Independent entity banners. Context selects the appropriate server-side
+ * permission policy: Filament edit permission or delegated owner/editor access.
+ */
+Route::middleware('auth:web')
+    ->prefix('entity-banners/{context}/{type}/{id}')
+    ->where(['context' => 'account|backoffice', 'type' => 'league|season|tournament|team|venue|user', 'id' => '[0-9]+'])
+    ->group(function (): void {
+        Route::get('/source', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'source'])
+            ->name('entity-banners.source');
+        Route::post('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'update'])
+            ->middleware('throttle:10,1')->name('entity-banners.update');
+        Route::delete('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'destroy'])
+            ->middleware('throttle:10,1')->name('entity-banners.destroy');
+    });
+
+Route::middleware('auth:web')->group(function (): void {
+    Route::get('/account/leagues/{league}/banner',
+        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'league'])
+        ->whereNumber('league')->name('account.leagues.banner');
+    Route::get('/account/leagues/{league}/seasons/{season}/banner',
+        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'season'])
+        ->whereNumber('league')->whereNumber('season')->name('account.leagues.seasons.banner');
+});
+
 // Only run after ALL explicit routes (including routes in other files).
 // Laravel prioritizes fallback routes after normal matching.
 Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
