@@ -53,6 +53,8 @@
     border:1px solid var(--line);
     font-size:26px;
 }
+.app-league-logo--empty svg { width:32px; height:32px; color:var(--muted); }
+.app-league-logo--large.app-league-logo--empty svg { width:48px; height:48px; }
 .app-league-logo--large { flex-basis:96px; width:96px; height:96px; font-size:40px; }
 .app-league-card__description {
     display:-webkit-box;
@@ -193,6 +195,7 @@
     .app-league-grid,.app-league-detail-grid,.app-league-filters { grid-template-columns:minmax(0,1fr); gap:var(--s4,16px); }
     .app-league-card,.app-league-block,.app-league-hero,.app-league-filters,.app-league-banner-nav,.app-league-account-links { padding:var(--s5,20px); }
     .app-league-hero { gap:var(--s4,16px); }
+    .app-league-logo--large.app-league-logo--empty svg { width:32px; height:32px; }
     .app-league-logo--large { flex-basis:72px; width:72px; height:72px; font-size:30px; }
     .app-league-block--wide { grid-column:auto; }
     .app-league-card>.button { align-self:stretch; }
