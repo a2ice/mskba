@@ -14,6 +14,7 @@ use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
+use App\Modules\League\Domain\Models\League;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
@@ -148,6 +149,73 @@ final class EntityContractManager
         return in_array($permission, $this->effectivePermissions($user, $scope, $scopeId), true);
     }
 
+    public function isOwner(User $user, Scope $scope, int $scopeId): bool
+    {
+        $user = $user->canonical();
+        if (! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+            return false;
+        }
+        return $this->membershipQuery($scope, $scopeId)
+            ->where('access_level', $scope === Scope::VENUE ? 'primary_manager' : 'owner')
+            ->whereIn('user_id', $user->identityIds())
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+            ->exists();
+    }
+
+    /** Ownership transfer is explicit and requires the future owner to accept. */
+    public function transferOwner(Scope $scope, int $scopeId, User $issuer, User $target): ContractMembership
+    {
+        if ($scope === Scope::VENUE || $this->allPermissions($scope) === []) {
+            throw ValidationException::withMessages(['username' => 'Для этой сущности действует отдельный порядок передачи владения.']);
+        }
+        return DB::transaction(function () use ($scope, $scopeId, $issuer, $target): ContractMembership {
+            $issuer = $issuer->canonical();
+            $target = $target->canonical();
+            if (! $target->isConfirmed() || $target->isBlocked() || $target->trashed()
+                || $target->id === $issuer->id) {
+                throw ValidationException::withMessages(['username' => 'Выберите другого подтверждённого пользователя.']);
+            }
+            $owner = $this->membershipQuery($scope, $scopeId)
+                ->where('access_level', 'owner')
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+                ->lockForUpdate()->first();
+            if ($owner === null || ! in_array((int) $owner->user_id, $issuer->identityIds(), true)) {
+                abort(403);
+            }
+            if ($this->membershipQuery($scope, $scopeId)
+                ->where('access_level', 'owner_candidate')
+                ->where('invitation_status', TeamInvitationStatusEnum::PENDING->value)
+                ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+                ->exists()) {
+                throw ValidationException::withMessages(['username' => 'Сначала завершите ранее начатую передачу владения.']);
+            }
+            $now = now();
+            $contract = Contract::query()->create([
+                'family' => ContractFamilyEnum::MEMBERSHIP,
+                'name' => 'Передача владения: '.$scope->label(),
+                'status' => ContractStatusEnum::ACTIVE,
+                'starts_at' => $now,
+                'assigned_by' => $issuer->id,
+                'assigned_at' => $now,
+                'assigner' => UserParticipationRoleAssignerEnum::USER,
+            ]);
+            $membership = $contract->membership()->create([
+                'scope_type' => $scope,
+                'scope_id' => $scopeId,
+                'user_id' => $target->id,
+                'access_level' => 'owner_candidate',
+                'invitation_status' => TeamInvitationStatusEnum::PENDING,
+            ]);
+            $contract->permissions()->createMany(array_map(
+                static fn (string $p): array => ['permission' => $p], $this->allPermissions($scope),
+            ));
+            $this->notifyInvitation($target->id, $scope->label(), $contract->name);
+            return $membership->load('contract.permissions');
+        });
+    }
+
     /** @param list<string> $permissions */
     public function invite(Scope $scope, int $scopeId, User $issuer, User $target, string $name, array $permissions): ContractMembership
     {
@@ -205,6 +273,27 @@ final class EntityContractManager
                 || $membership->invitation_status !== TeamInvitationStatusEnum::PENDING
                 || $membership->contract?->status !== ContractStatusEnum::ACTIVE) {
                 abort(403);
+            }
+            if ($accepted && $membership->access_level === 'owner_candidate') {
+                $owner = $this->membershipQuery($membership->scope_type, (int) $membership->scope_id)
+                    ->where('access_level', 'owner')
+                    ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+                    ->with('contract')->lockForUpdate()->first();
+                if ($owner === null || (int) $owner->user_id !== (int) $membership->contract->assigned_by) {
+                    throw ValidationException::withMessages(['decision' => 'Передача больше недоступна.']);
+                }
+                $owner->contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
+                $owner->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
+                $membership->update([
+                    'access_level' => 'owner',
+                    'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
+                ]);
+                if ($membership->scope_type === Scope::LEAGUE) {
+                    League::query()->whereKey($membership->scope_id)
+                        ->update(['owner_user_id' => $membership->user_id]);
+                }
+                return;
             }
             $membership->update(['invitation_status' => $accepted
                 ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);

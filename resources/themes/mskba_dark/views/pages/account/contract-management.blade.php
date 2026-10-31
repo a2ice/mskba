@@ -38,6 +38,19 @@
             <div><button type="submit" class="account-contracts-workspace__primary">Отправить приглашение</button></div>
         </form>
     </div>
+    @if($canTransfer)
+        <div class="account-contracts-workspace__card">
+            <h2 class="mb-3">Передача владения</h2>
+            <form method="POST" action="{{ route('account.contracts.transfer', $membership->id) }}" class="d-grid gap-3">
+                @csrf
+                <label class="d-grid gap-2">Логин нового владельца
+                    <input class="form-control" type="text" name="username" maxlength="150" required autocomplete="off">
+                </label>
+                <p>Текущие полномочия сохраняются до принятия приглашения новым владельцем.</p>
+                <div><button class="account-contracts-workspace__primary" type="submit">Предложить передачу</button></div>
+            </form>
+        </div>
+    @endif
     <div class="account-contracts-workspace__card">
         <h2 class="mb-3">Назначенные контракты</h2>
         <div class="d-grid gap-3">

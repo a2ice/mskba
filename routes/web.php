@@ -1031,6 +1031,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->whereNumber('membership')->name('account.contracts.manage');
         Route::post('/contracts/memberships/{membership}/invite', [EntityContractController::class, 'invite'])
             ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.invite');
+        Route::post('/contracts/memberships/{membership}/transfer', [EntityContractController::class, 'transfer'])
+            ->whereNumber('membership')->middleware('throttle:5,1')->name('account.contracts.transfer');
         Route::post('/contracts/memberships/{membership}/respond', [EntityContractController::class, 'respond'])
             ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.respond');
         Route::delete('/contracts/memberships/{membership}/delegates/{target}', [EntityContractController::class, 'revoke'])

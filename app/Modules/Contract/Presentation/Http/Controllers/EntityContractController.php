@@ -46,6 +46,8 @@ final class EntityContractController extends Controller
             'entityName' => $entity === null ? $scope->label() : $entity->{$scope->titleAttribute()},
             'permissions' => $options,
             'memberships' => $memberships,
+            'canTransfer' => $scope !== \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE
+                && $contracts->isOwner($request->user(), $scope, $scopeId),
         ]);
     }
 
@@ -65,6 +67,18 @@ final class EntityContractController extends Controller
         $contracts->invite($membership->scope_type, (int) $membership->scope_id,
             $request->user(), $target, $data['name'], $data['permissions']);
         return back()->with('status', 'Приглашение отправлено.');
+    }
+
+    public function transfer(Request $request, ContractMembership $membership, EntityContractManager $contracts): RedirectResponse
+    {
+        $this->authorizeManage($request, $membership, $contracts);
+        $data = $request->validate(['username' => ['required', 'string', 'max:150']]);
+        $target = User::query()->where('username', trim($data['username']))->first();
+        if ($target === null) {
+            return back()->withErrors(['username' => 'Пользователь не найден.']);
+        }
+        $contracts->transferOwner($membership->scope_type, (int) $membership->scope_id, $request->user(), $target);
+        return back()->with('status', 'Предложение о передаче владения отправлено.');
     }
 
     public function respond(Request $request, ContractMembership $membership, EntityContractManager $contracts): RedirectResponse

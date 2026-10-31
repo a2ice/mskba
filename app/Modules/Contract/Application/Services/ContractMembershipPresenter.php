@@ -30,6 +30,7 @@ final class ContractMembershipPresenter
             'owner' => 'Владелец',
             'responsible' => 'Ответственный',
             'primary_manager' => 'Главный ответственный',
+            'owner_candidate' => 'Новый владелец',
             default => $membership->access_level,
         };
     }
