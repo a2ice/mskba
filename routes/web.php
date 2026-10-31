@@ -1202,16 +1202,6 @@ Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])
         ->whereNumber('playIntent')->name('play-intents.slots');
 });
 
-// Only run after ALL explicit routes (including routes in other files).
-// Laravel prioritizes fallback routes after normal matching.
-Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
-    abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
-    $slug = $request->path();
-    abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
-    return app(PageBuilderController::class)->dynamic($slug, $renderer);
-})->name('page-builder.dynamic');
-
-
 /*
  * Independent entity banners. Context selects the appropriate server-side
  * permission policy: Filament edit permission or delegated owner/editor access.
@@ -1227,3 +1217,21 @@ Route::middleware('auth:web')
         Route::delete('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'destroy'])
             ->middleware('throttle:10,1')->name('entity-banners.destroy');
     });
+
+Route::middleware('auth:web')->group(function (): void {
+    Route::get('/account/leagues/{league}/banner',
+        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'league'])
+        ->whereNumber('league')->name('account.leagues.banner');
+    Route::get('/account/leagues/{league}/seasons/{season}/banner',
+        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'season'])
+        ->whereNumber('league')->whereNumber('season')->name('account.leagues.seasons.banner');
+});
+
+// Only run after ALL explicit routes (including routes in other files).
+// Laravel prioritizes fallback routes after normal matching.
+Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
+    abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
+    $slug = $request->path();
+    abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
+    return app(PageBuilderController::class)->dynamic($slug, $renderer);
+})->name('page-builder.dynamic');
