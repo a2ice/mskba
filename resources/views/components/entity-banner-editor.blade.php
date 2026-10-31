@@ -17,7 +17,7 @@
     data-upload-url="{{ $updateUrl }}"
     data-delete-url="{{ $deleteUrl }}"
     data-original-url="{{ $sourceUrl }}"
-    data-initial-crop="@json($banner?->crop_applied)"
+    data-initial-crop='@json($banner?->crop_applied)'
     aria-label="Оформление страницы">
     <header class="entity-banner-editor__heading">
         <h2>Баннер</h2>
