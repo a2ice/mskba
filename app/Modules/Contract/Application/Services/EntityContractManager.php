@@ -8,6 +8,8 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
@@ -28,6 +30,8 @@ use Illuminate\Validation\ValidationException;
  */
 final class EntityContractManager
 {
+    public const COMMENT_MARKER = 'entity-contract-management:v1';
+
     /** @return list<\BackedEnum> */
     public function permissionCatalog(Scope $scope): array
     {
@@ -97,6 +101,7 @@ final class EntityContractManager
             'assigned_by' => $issuer->id,
             'assigned_at' => now(),
             'assigner' => UserParticipationRoleAssignerEnum::USER,
+            'comment' => self::COMMENT_MARKER,
         ]);
         $membership = $contract->membership()->create([
             'scope_type' => $scope,
@@ -200,6 +205,7 @@ final class EntityContractManager
                 'assigned_by' => $issuer->id,
                 'assigned_at' => $now,
                 'assigner' => UserParticipationRoleAssignerEnum::USER,
+            'comment' => self::COMMENT_MARKER,
             ]);
             $membership = $contract->membership()->create([
                 'scope_type' => $scope,
@@ -223,7 +229,8 @@ final class EntityContractManager
             $issuer = $issuer->canonical();
             $target = $target->canonical();
             if (! $target->isConfirmed() || $target->isBlocked() || $target->trashed()
-                || $issuer->id === $target->id) {
+                || $issuer->id === $target->id
+                || ! app(UserPrivacyAccessService::class)->allows($target, $issuer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
                 throw ValidationException::withMessages(['user_id' => 'Выберите другого подтверждённого пользователя.']);
             }
             $available = $this->effectivePermissions($issuer, $scope, $scopeId);
@@ -234,10 +241,11 @@ final class EntityContractManager
             $existing = $this->membershipQuery($scope, $scopeId)
                 ->whereIn('user_id', $target->identityIds())
                 ->whereIn('invitation_status', [TeamInvitationStatusEnum::PENDING->value, TeamInvitationStatusEnum::ACCEPTED->value])
-                ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+                ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where('comment', self::COMMENT_MARKER)->where('name', trim($name)))
                 ->exists();
             if ($existing) {
-                throw ValidationException::withMessages(['user_id' => 'У пользователя уже есть действующий контракт или приглашение.']);
+                throw ValidationException::withMessages(['user_id' => 'Контракт с таким названием уже назначен пользователю.']);
             }
 
             $contract = Contract::query()->create([
@@ -248,6 +256,7 @@ final class EntityContractManager
                 'assigned_by' => $issuer->id,
                 'assigned_at' => now(),
                 'assigner' => UserParticipationRoleAssignerEnum::USER,
+            'comment' => self::COMMENT_MARKER,
             ]);
             $membership = $contract->membership()->create([
                 'scope_type' => $scope,
@@ -271,7 +280,8 @@ final class EntityContractManager
             $membership = ContractMembership::query()->with('contract')->lockForUpdate()->findOrFail($membership->id);
             if (! in_array((int) $membership->user_id, $user->canonical()->identityIds(), true)
                 || $membership->invitation_status !== TeamInvitationStatusEnum::PENDING
-                || $membership->contract?->status !== ContractStatusEnum::ACTIVE) {
+                || $membership->contract?->status !== ContractStatusEnum::ACTIVE
+                || $membership->contract?->comment !== self::COMMENT_MARKER) {
                 abort(403);
             }
             if ($accepted && $membership->access_level === 'owner_candidate') {
@@ -307,7 +317,8 @@ final class EntityContractManager
     {
         DB::transaction(function () use ($membership, $issuer): void {
             $membership = ContractMembership::query()->with('contract.permissions')->lockForUpdate()->findOrFail($membership->id);
-            if (in_array($membership->access_level, ['owner', 'primary_manager'], true)) {
+            if (in_array($membership->access_level, ['owner', 'primary_manager'], true)
+                || $membership->contract?->comment !== self::COMMENT_MARKER) {
                 abort(403);
             }
             $available = $this->effectivePermissions($issuer, $membership->scope_type, (int) $membership->scope_id);

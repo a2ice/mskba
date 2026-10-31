@@ -53,6 +53,7 @@ final readonly class AccountContractsWorkspace
                 'contract' => $contract,
                 'scopes' => $this->presenter->scopesFor($contract),
                 'access_label' => $this->presenter->accessLevelLabelFor($contract->membership),
+                'can_respond' => $contract->comment === EntityContractManager::COMMENT_MARKER,
                 'can_manage' => ($contract->membership?->scope_type !== null)
                     && (function () use ($contract, $user): bool {
                         $manager = app(EntityContractManager::class);

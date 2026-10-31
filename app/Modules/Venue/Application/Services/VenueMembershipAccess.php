@@ -76,7 +76,6 @@ final class VenueMembershipAccess
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
             ->where('access_level', 'primary_manager')
-            ->where('invitation_status', \App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn (Builder $q) => $q
                 ->where('status', ContractStatusEnum::ACTIVE->value)
                 ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))

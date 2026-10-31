@@ -62,7 +62,9 @@
                         <small>{{ match ($record->invitation_status?->value) { 'accepted' => 'Принят', 'pending' => 'Ожидает подтверждения', 'declined' => 'Отклонён', 'revoked' => 'Отозван', default => '—' } }}</small>
                         <p class="mb-0">{{ $record->contract?->permissions?->map(fn ($p) => collect($permissions)->firstWhere('value', $p->permission)?->label())->filter()->join(', ') }}</p>
                     </div>
-                    @if($record->access_level !== 'owner' && $record->contract?->status === \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE)
+                    @if(! in_array($record->access_level, ['owner', 'primary_manager'], true)
+                        && $record->contract?->comment === \App\Modules\Contract\Application\Services\EntityContractManager::COMMENT_MARKER
+                        && $record->contract?->status === \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE)
                         <form method="POST" action="{{ route('account.contracts.revoke', [$membership->id, $record->id]) }}">
                             @csrf @method('DELETE')
                             <button class="account-contracts-workspace__secondary" type="submit">Отозвать</button>

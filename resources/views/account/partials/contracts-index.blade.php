@@ -41,11 +41,11 @@
                         <p class="account-contracts-workspace__eyebrow">{{ $contract->membership?->scope_type?->label() ?? 'Контракт' }}</p>
                         <h2>{{ $record['scopes'][0]['name'] ?? ($contract->name ?? 'Контракт #'.$contract->id) }}</h2>
                     </div>
-                    <span class="account-contracts-workspace__status {{ $contract->status->value === 'active' ? 'is-active' : '' }}">{{ $contract->status->label() }}</span>
+                    <span class="account-contracts-workspace__status {{ $contract->status->value === 'active' && $contract->membership?->invitation_status?->value !== 'pending' ? 'is-active' : '' }}">{{ $contract->membership?->invitation_status?->value === 'pending' ? 'Ожидает подтверждения' : $contract->status->label() }}</span>
                 </div>
                 <p>Контракт: <strong>{{ $contract->name }}</strong></p>
                 <p>Роль: <strong>{{ $record['access_label'] ?? '—' }}</strong></p>
-                @if($contract->membership?->invitation_status === \App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum::PENDING)
+                @if(($record['can_respond'] ?? false) && $contract->membership?->invitation_status === \App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum::PENDING)
                     <p class="mb-3">Ожидает вашего ответа</p>
                     <div class="account-contracts-workspace__actions mb-3">
                         <form method="POST" action="{{ route('account.contracts.respond', $contract->membership->id) }}">
