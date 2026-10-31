@@ -123,6 +123,26 @@ final class PublicLeaguePagesTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_league_placeholders_and_banner_editor_use_accessible_shared_controls(): void
+    {
+        $league = $this->league('Лига с иконкой');
+        $season = $this->season($league, 'Осенний сезон');
+
+        $this->get(route('leagues.index'))->assertOk()
+            ->assertSee('<use href="#ball"></use>', false);
+        $this->get(route('leagues.show', $league->alias))->assertOk()
+            ->assertSee('<use href="#ball"></use>', false);
+        $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))->assertOk()
+            ->assertSee('<use href="#ball"></use>', false);
+
+        $this->actingAs(User::query()->findOrFail($league->owner_user_id))
+            ->get(route('account.leagues.banner', $league->id))
+            ->assertOk()
+            ->assertSee('data-banner-dropzone', false)
+            ->assertSee('tabindex="0"', false)
+            ->assertSee('Масштаб');
+    }
+
     public function test_draft_league_does_not_expose_active_season(): void
     {
         $league = $this->league('Черновик лиги', 'draft');
