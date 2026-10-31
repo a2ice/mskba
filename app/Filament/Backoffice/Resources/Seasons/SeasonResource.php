@@ -28,6 +28,9 @@ use Illuminate\Database\Eloquent\Model;
 final class SeasonResource extends Resource
 {
     protected static ?string $model = LeagueSeason::class;
+
+    // Seasons are managed from the related League; keep legacy routes for bookmarks.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $recordTitleAttribute = 'name';
     protected static string|\UnitEnum|null $navigationGroup = 'Контент';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';

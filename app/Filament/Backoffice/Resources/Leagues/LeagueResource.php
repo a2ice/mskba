@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\Leagues;
 use App\Filament\Backoffice\Resources\Leagues\Pages\CreateLeague;
 use App\Filament\Backoffice\Resources\Leagues\Pages\EditLeague;
 use App\Filament\Backoffice\Resources\Leagues\Pages\ListLeagues;
+use App\Filament\Backoffice\Resources\Leagues\RelationManagers\SeasonsRelationManager;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
@@ -62,7 +63,7 @@ final class LeagueResource extends Resource
         return $schema->columns(1)->components([
             Tabs::make('Лига')->persistTabInQueryString()->tabs([
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
-                    Section::make('Информация о лиге')->columns(2)->schema([
+                    Section::make('Информация о лиге')->description('После создания лиги сезоны добавляются и редактируются в разделе «Сезоны» внутри карточки лиги.')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->maxLength(150)->minLength(2),
                         Select::make('status')->label('Статус')->required()
                             ->options(['draft' => 'Черновик', 'active' => 'Активная', 'archived' => 'В архиве'])->default('draft'),
@@ -115,6 +116,11 @@ final class LeagueResource extends Resource
                 ->visible(fn (League $record): bool => self::canDelete($record))
                 ->action(fn (League $record) => app(BackofficeLeagueEditor::class)->delete($record)),
         ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [SeasonsRelationManager::class];
     }
 
     public static function getPages(): array
