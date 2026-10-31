@@ -121,6 +121,12 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
+                'label' => 'Лиги',
+                'url' => $this->routeUrl('leagues.index'),
+                'active' => $this->isActiveRoute('leagues.*'),
+                'visible' => true,
+            ],
+            [
                 'label' => 'Мероприятия',
                 'url' => $this->routeUrl('events.index'),
                 'active' => $this->isActiveRoute('events.*, tournaments.*, sports-sections.*'),
