@@ -126,7 +126,7 @@ final class PublicLeaguePagesTest extends TestCase
             ->assertSee('aria-current="page"', false)
             ->assertSee('data-initial-crop=', false)
             ->assertSee('data-banner-confirm', false)
-            ->assertSee('Сейчас на странице')
+            ->assertSee('Сохранённый баннер')
             ->assertDontSee('Оригинал сохраняется отдельно.');
     }
 
