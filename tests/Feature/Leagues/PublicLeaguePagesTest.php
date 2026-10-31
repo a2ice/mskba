@@ -85,6 +85,51 @@ final class PublicLeaguePagesTest extends TestCase
             ->assertOk()->assertSee('Сезон 2026')->assertDontSee('Неопубликованный сезон');
     }
 
+    public function test_banner_pages_reuse_guideline_navigation_and_header_controls(): void
+    {
+        $league = $this->league('Лига с оформлением');
+        $season = $this->season($league, 'Осенний сезон');
+        $owner = User::query()->findOrFail($league->owner_user_id);
+
+        $league->banner()->create([
+            'collection' => 'banner',
+            'source' => 'upload',
+            'disk' => 'public',
+            'path' => 'leagues/banner.webp',
+            'original_disk' => 'local',
+            'original_path' => 'leagues/banner.jpg',
+            'crop_applied' => ['x' => 0.1, 'y' => 0.2, 'width' => 0.8, 'height' => 0.266667],
+            'mime' => 'image/webp',
+            'is_featured' => true,
+        ]);
+
+        $this->get(route('leagues.show', $league->alias))
+            ->assertOk()
+            ->assertSee('entity-public-banner', false)
+            ->assertDontSee('Изменить баннер');
+
+        $this->actingAs($owner)
+            ->get(route('leagues.show', $league->alias))
+            ->assertOk()
+            ->assertSee('app-league-hero__action', false)
+            ->assertSee(route('account.leagues.banner', $league->id))
+            ->assertSee('Изменить баннер');
+
+        $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))
+            ->assertOk()
+            ->assertSee(route('account.leagues.seasons.banner', [$league->id, $season->id]))
+            ->assertSee('app-league-hero__action', false);
+
+        $this->get(route('account.leagues.banner', $league->id))
+            ->assertOk()
+            ->assertSee('app-league-banner-nav', false)
+            ->assertSee('aria-current="page"', false)
+            ->assertSee('data-initial-crop=', false)
+            ->assertSee('data-banner-confirm', false)
+            ->assertSee('Сейчас на странице')
+            ->assertDontSee('Оригинал сохраняется отдельно.');
+    }
+
     public function test_draft_league_does_not_expose_active_season(): void
     {
         $league = $this->league('Черновик лиги', 'draft');
