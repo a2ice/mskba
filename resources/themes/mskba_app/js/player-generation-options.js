@@ -182,7 +182,10 @@ if (workspace) {
             preview.src = image.src;
             preview.alt = image.alt;
         }
-        if (selectedText) selectedText.textContent = image.label;
+        if (selectedText) {
+            selectedText.textContent = image.label;
+            selectedText.title = image.label;
+        }
         // Keep generation payload consistent with checkbox state; missing
         // selections are rejected before the paid generation request.
         workspace.dataset.playerGenerationLogoMode = withLogo ? 'custom' : 'none';
