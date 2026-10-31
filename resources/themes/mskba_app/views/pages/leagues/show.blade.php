@@ -13,7 +13,7 @@
         @if ($league->logo_path)
             <img class="app-league-logo app-league-logo--large" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="">
         @else
-            <span class="app-league-logo app-league-logo--large app-league-logo--empty" aria-hidden="true">🏀</span>
+            <span class="app-league-logo app-league-logo--large app-league-logo--empty" aria-hidden="true"><svg><use href="#ball"></use></svg></span>
         @endif
         <div>
             <span class="badge">{{ $league->status === 'active' ? 'Действующая лига' : 'Архив лиги' }}</span>
