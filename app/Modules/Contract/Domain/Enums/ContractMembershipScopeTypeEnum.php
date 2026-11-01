@@ -67,7 +67,6 @@ enum ContractMembershipScopeTypeEnum: string
             self::SEASON => null,
             self::SPORTS_SECTION => 'sports-sections.show',
 
-            self::EVENT,
             self::COMPANY => null,
         };
     }
