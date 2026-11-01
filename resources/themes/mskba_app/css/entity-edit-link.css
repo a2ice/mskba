@@ -1,0 +1,43 @@
+.app-entity-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    min-width: 0;
+}
+
+.app-entity-heading > h1 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.app-entity-edit-link {
+    display: inline-flex;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--muted);
+    background: var(--surface-raised);
+    text-decoration: none;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+
+.app-entity-edit-link:hover,
+.app-entity-edit-link:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.app-entity-edit-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.app-entity-heading > .app-entity-edit-link {
+    margin-top: 6px;
+}
