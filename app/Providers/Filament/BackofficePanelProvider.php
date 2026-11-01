@@ -94,6 +94,9 @@ final class BackofficePanelProvider extends PanelProvider
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
+                '<link rel="stylesheet" href="'.e(asset('css/backoffice-contracts.css').'?v=20261101-1').'">'
+            ))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
                 '<link rel="stylesheet" href="'.e(asset('css/entity-banner-editor.css').'?v=20261031-2').'">'
             ))
             ->renderHook(PanelsRenderHook::BODY_END, fn (): HtmlString => new HtmlString(
