@@ -112,6 +112,33 @@ final class BackofficeContractManagementTest extends TestCase
         ]);
     }
 
+    public function test_extending_an_accepted_contract_requires_new_acceptance(): void
+    {
+        [$admin, $owner, $league] = $this->leagueFixture();
+        $recipient = $this->user();
+        $manager = app(EntityContractManager::class);
+        $membership = $manager->invite(
+            Scope::LEAGUE, $league->id, $owner, $recipient, 'Временный редактор',
+            [LeaguePermissionEnum::EDIT->value], now()->addDays(3)->toDateTimeString(),
+        );
+        $manager->respond($membership, $recipient, true);
+        $this->assertTrue($manager->allows($recipient, Scope::LEAGUE, $league->id, LeaguePermissionEnum::EDIT->value));
+
+        $this->office($admin);
+        app(BackofficeContractEditor::class)->update($membership->contract, [
+            'name' => 'Временный редактор',
+            'status' => 'active',
+            'expires_at' => now()->addDays(7)->toDateTimeString(),
+            'permissions' => [LeaguePermissionEnum::EDIT->value],
+            'change_reason' => 'Продление периода сотрудничества',
+        ]);
+
+        $this->assertSame('pending', $membership->fresh()->invitation_status->value);
+        $this->assertFalse($manager->allows($recipient, Scope::LEAGUE, $league->id, LeaguePermissionEnum::EDIT->value));
+        $manager->respond($membership->fresh(), $recipient, true);
+        $this->assertTrue($manager->allows($recipient, Scope::LEAGUE, $league->id, LeaguePermissionEnum::EDIT->value));
+    }
+
     public function test_delegation_cannot_outlive_the_permissions_of_the_issuer(): void
     {
         [, $owner, $league] = $this->leagueFixture();
