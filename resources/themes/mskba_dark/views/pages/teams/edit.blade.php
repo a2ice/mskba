@@ -13,8 +13,6 @@
 </ul></div>
 @endsection
 @section('section-content')
-@include('components.entity-banner-editor', ['model' => $team, 'context' => 'account'])
-
 @php
     $savedTeamColors = $team->colors ?? [];
     $pageHomePrimary = data_get($savedTeamColors, 'home_primary');
@@ -118,6 +116,9 @@
 @error('logo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 </form>
 @if($team->logo)<form class="team-logo-delete-form" method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm" type="submit">Удалить логотип</button></form>@endif
+<div class="mt-4">
+    @include('components.entity-banner-editor', ['model' => $team, 'context' => 'account'])
+</div>
 </section>
 
 @php
