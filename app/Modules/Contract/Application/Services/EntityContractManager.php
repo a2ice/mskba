@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
@@ -43,6 +44,7 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::cases(),
             Scope::TOURNAMENT => TournamentPermissionEnum::cases(),
             Scope::TEAM => TeamPermissionEnum::cases(),
+            Scope::EVENT => EventResponsibilityPermissionEnum::cases(),
             Scope::SPORTS_SECTION => SportsSectionPermissionEnum::cases(),
             // Ordinary public contracts may manage venue catalogue data only.
             // Commercial rental permissions are delegated through the verified
@@ -65,6 +67,7 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::MANAGE_CONTRACTS->value,
             Scope::TOURNAMENT => TournamentPermissionEnum::MANAGE_STAFF->value,
             Scope::TEAM => TeamPermissionEnum::MANAGE_PERMISSIONS->value,
+            Scope::EVENT => EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES->value,
             Scope::SPORTS_SECTION => SportsSectionPermissionEnum::MANAGE_COACHES->value,
             Scope::VENUE => VenuePermissionEnum::MANAGE_CONTRACTS->value,
             default => null,
@@ -143,7 +146,7 @@ final class EntityContractManager
     public function effectivePermissions(User $user, Scope $scope, int $scopeId): array
     {
         $user = $user->canonical();
-        if (! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+        if (($scope !== Scope::EVENT && ! $user->isConfirmed()) || $user->isBlocked() || $user->trashed()) {
             return [];
         }
         $now = now();
@@ -169,7 +172,7 @@ final class EntityContractManager
     public function isOwner(User $user, Scope $scope, int $scopeId): bool
     {
         $user = $user->canonical();
-        if (! $user->isConfirmed() || $user->isBlocked() || $user->trashed()) {
+        if (($scope !== Scope::EVENT && ! $user->isConfirmed()) || $user->isBlocked() || $user->trashed()) {
             return false;
         }
         return $this->membershipQuery($scope, $scopeId)
@@ -242,7 +245,7 @@ final class EntityContractManager
         return DB::transaction(function () use ($scope, $scopeId, $issuer, $target, $name, $permissions, $expiresAt, $notes): ContractMembership {
             $issuer = $issuer->canonical();
             $target = $target->canonical();
-            if (! $target->isConfirmed() || $target->isBlocked() || $target->trashed()
+            if (($scope !== Scope::EVENT && ! $target->isConfirmed()) || $target->isBlocked() || $target->trashed()
                 || $issuer->id === $target->id
                 || ! app(UserPrivacyAccessService::class)->allows($target, $issuer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
                 throw ValidationException::withMessages(['user_id' => 'Выберите другого подтверждённого пользователя.']);
