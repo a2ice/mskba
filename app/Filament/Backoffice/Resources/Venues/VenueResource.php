@@ -97,15 +97,6 @@ final class VenueResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Площадка')->persistTabInQueryString()->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
-                Tab::make('Контракты')->icon('heroicon-o-document-text')
-                    ->visible(fn (?Venue $record): bool => $record !== null
-                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
-                    ->schema([View::make('filament.backoffice.related-contracts')
-                        ->viewData(['contractScope' => 'venue'])]),
                 Tab::make('Основное')->schema([
                     Section::make('Карточка площадки')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(3)->maxLength(255),
@@ -154,8 +145,16 @@ final class VenueResource extends Resource
                         Textarea::make('full_description')->label('Полное описание')->maxLength(10000)->rows(6)->columnSpanFull(),
                         TextInput::make('tags_text')->label('Теги')->maxLength(1000)->columnSpanFull()
                             ->helperText('Через запятую. Связанные теги сохраняются в стандартной таблице площадки.'),
+                        View::make('filament.backoffice.entity-banner')
+                            ->visible(fn (?Venue $record): bool => $record !== null && self::canEdit($record))
+                            ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Venue $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'venue'])]),
                 Tab::make('Адрес и метро')->schema([
                     Section::make('Адрес')
                         ->description('Адрес создаётся как отдельная Location/Address. Изменение адреса не переписывает адреса других объектов.')

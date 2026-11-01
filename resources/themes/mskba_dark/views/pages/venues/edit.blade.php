@@ -31,16 +31,6 @@
 @endsection
 
 @section('section-content')
-@if($venue !== null && ! $hasPendingModeration)
-    @include('components.entity-banner-editor', [
-        'model' => $venue,
-        'context' => 'account',
-        'bannerOverride' => $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
-            ? app(\App\Modules\Media\Application\Services\VenueBannerDraftManager::class)->preview($venue)
-            : $venue->banner,
-    ])
-@endif
-
     @if(isset($error))
         <div class="alert alert-danger">
             {{ $error['message'] }}
@@ -90,6 +80,18 @@
             'photos' => $venuePhotos ?? [],
             'readOnly' => $hasPendingModeration,
         ])
+
+        @if(! $hasPendingModeration)
+            <div class="mb-4">
+                @include('components.entity-banner-editor', [
+                    'model' => $venue,
+                    'context' => 'account',
+                    'bannerOverride' => $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                        ? app(\App\Modules\Media\Application\Services\VenueBannerDraftManager::class)->preview($venue)
+                        : $venue->banner,
+                ])
+            </div>
+        @endif
 
         @include('theme::partials.venues.form', [
             'venue' => $venue,

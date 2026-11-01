@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Leagues;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
@@ -100,12 +103,12 @@ final class PublicLeaguePagesTest extends TestCase
 
         $this->actingAs($owner)->get(route('leagues.show', $league->alias))
             ->assertOk()
-            ->assertSee('Изменить баннер')
-            ->assertSee(route('account.leagues.banner', $league->id));
+            ->assertDontSee('Изменить баннер')
+            ->assertDontSee('Редактировать лигу');
         $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))
             ->assertOk()
-            ->assertSee('Изменить баннер')
-            ->assertSee(route('account.leagues.seasons.banner', [$league->id, $season->id]));
+            ->assertDontSee('Изменить баннер')
+            ->assertDontSee('Редактировать сезон');
 
         $this->get(route('account.leagues.banner', $league->id))
             ->assertOk()
@@ -121,6 +124,55 @@ final class PublicLeaguePagesTest extends TestCase
         $otherUser = User::factory()->create();
         $this->actingAs($otherUser)->get(route('account.leagues.banner', $league->id))
             ->assertForbidden();
+    }
+
+    public function test_contract_owner_uses_only_pencil_and_edits_banner_with_logo(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $league = League::query()->create([
+            'name' => 'Новая лига', 'alias' => 'new-league', 'status' => 'active',
+            'owner_user_id' => $owner->id,
+        ]);
+        $season = $this->season($league, 'Сезон 2026');
+        $contracts = app(EntityContractManager::class);
+        $contracts->grantOwner(Scope::LEAGUE, $league->id, $owner, $owner);
+        $contracts->grantOwner(Scope::SEASON, $season->id, $owner, $owner);
+
+        $this->get(route('leagues.show', $league->alias))
+            ->assertOk()->assertDontSee('app-entity-edit-link');
+        $this->actingAs($owner)->get(route('leagues.show', $league->alias))
+            ->assertOk()
+            ->assertSee('app-entity-edit-link')
+            ->assertSee(route('leagues.manage', $league->id))
+            ->assertDontSee('Изменить баннер')
+            ->assertDontSee('Редактировать лигу');
+
+        $this->get(route('leagues.seasons.show', [$league->alias, $season->id]))
+            ->assertOk()
+            ->assertSee('app-entity-edit-link')
+            ->assertSee(route('leagues.seasons.manage', [$league->id, $season->id]))
+            ->assertDontSee('Изменить баннер')
+            ->assertDontSee('Редактировать сезон');
+
+        $this->get(route('leagues.manage', $league->id))
+            ->assertOk()
+            ->assertSee('name="logo"', false)
+            ->assertSee('data-entity-banner-editor', false);
+        $this->get(route('leagues.seasons.manage', [$league->id, $season->id]))
+            ->assertOk()->assertSee('data-entity-banner-editor', false);
+
+        $this->put(route('leagues.update', $league->id), [
+            'name' => 'Новая лига',
+            'description' => 'Описание',
+            'logo' => \Illuminate\Http\UploadedFile::fake()->image('league.png', 400, 400),
+        ])->assertRedirect();
+
+        $this->assertNotNull($league->fresh()->logo_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($league->fresh()->logo_path);
+
+        $this->actingAs(User::factory()->create(['status' => UserStatusEnum::CONFIRMED]))
+            ->get(route('leagues.manage', $league->id))->assertForbidden();
     }
 
     public function test_league_placeholders_and_banner_editor_use_accessible_shared_controls(): void

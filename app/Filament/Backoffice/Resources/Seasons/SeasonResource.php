@@ -64,15 +64,6 @@ final class SeasonResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Сезон')->persistTabInQueryString()->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
-                Tab::make('Контракты')->icon('heroicon-o-document-text')
-                    ->visible(fn (?LeagueSeason $record): bool => $record !== null
-                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
-                    ->schema([View::make('filament.backoffice.related-contracts')
-                        ->viewData(['contractScope' => 'season'])]),
                 Tab::make('Основное')->icon('heroicon-o-calendar')->schema([
                     Section::make('Информация о сезоне')->columns(2)->schema([
                         Select::make('league_id')->label('Лига')->required()
@@ -92,8 +83,16 @@ final class SeasonResource extends Resource
                         DatePicker::make('starts_on')->label('Начало')->native(false),
                         DatePicker::make('ends_on')->label('Окончание')->native(false)->afterOrEqual('starts_on'),
                         Textarea::make('description')->label('Описание')->rows(4)->columnSpanFull(),
+                        View::make('filament.backoffice.entity-banner')
+                            ->visible(fn (?LeagueSeason $record): bool => $record !== null && self::canEdit($record))
+                            ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?LeagueSeason $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'season'])]),
                 Tab::make('Команды')->icon('heroicon-o-user-group')
                     ->visible(fn (?LeagueSeason $record): bool => $record !== null && self::canManageTeams())
                     ->schema([

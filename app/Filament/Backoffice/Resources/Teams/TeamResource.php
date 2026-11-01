@@ -88,15 +88,6 @@ final class TeamResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Команда')->persistTabInQueryString()->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
-                Tab::make('Контракты')->icon('heroicon-o-document-text')
-                    ->visible(fn (?Team $record): bool => $record !== null
-                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
-                    ->schema([View::make('filament.backoffice.related-contracts')
-                        ->viewData(['contractScope' => 'team'])]),
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о команде')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(2)->maxLength(140),
@@ -124,6 +115,11 @@ final class TeamResource extends Resource
                             ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Team $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'team'])]),
                 Tab::make('Логотип и цвета')->icon('heroicon-o-paint-brush')->schema([
                     Section::make('Логотип')->schema([
                         Placeholder::make('logo_preview')->label('Текущий логотип')
@@ -133,6 +129,8 @@ final class TeamResource extends Resource
                             )),
                         Placeholder::make('logo_help')->label('')
                             ->content('Добавление и удаление логотипа — через кнопки в верхней части страницы редактирования. Файлы приводятся к WebP (до 500 px).'),
+                        View::make('filament.backoffice.entity-banner')
+                            ->visible(fn (?Team $record): bool => $record !== null && self::canEdit($record)),
                     ]),
                     Section::make('Цвета команды')->description('Текущие цвета используются публичными карточками и генерацией аватара.')
                         ->columns(2)->schema([

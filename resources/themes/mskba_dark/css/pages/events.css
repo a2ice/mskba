@@ -2767,3 +2767,7 @@ body.telegram-mini-app .event-show {
 .team-join-thread__meta time { color: #999f98; font-size: 12px; }
 .team-join-thread__message p { margin: 0; white-space: pre-wrap; }
 .team-join-thread__form .form-control { max-width: 100%; }
+
+.tournament-management-section #main > .entity-banner-editor {
+    margin-top: 24px;
+}
