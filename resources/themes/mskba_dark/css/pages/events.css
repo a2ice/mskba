@@ -373,7 +373,7 @@
 .event-hero-info__title {
     --event-title-size: clamp(28px, 4vw, 42px);
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
     gap: 14px;
     margin-bottom: 10px;
@@ -2633,6 +2633,8 @@ body.telegram-mini-app .event-show {
 .game-control__back { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 34px; color: #b6b9b5; font-size: 18px; }
 .game-control__header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; margin-bottom: 28px; }
 .game-control__identity { min-width: 0; }
+.game-control__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.game-control__title-row h1 { min-width: 0; }
 .game-control__header h1 { max-width: 100%; margin: 4px 0 8px; font-size: clamp(36px, 4vw, 58px); line-height: 1.04; overflow-wrap: break-word; text-wrap: balance; }
 .game-control__header p { max-width: 760px; margin: 0; color: #b9bcb8; font-size: 18px; line-height: 1.45; }
 .game-control__chips, .game-control__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
