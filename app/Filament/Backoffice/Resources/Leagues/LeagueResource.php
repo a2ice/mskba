@@ -63,15 +63,6 @@ final class LeagueResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Лига')->persistTabInQueryString()->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
-                Tab::make('Контракты')->icon('heroicon-o-document-text')
-                    ->visible(fn (?League $record): bool => $record !== null
-                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
-                    ->schema([View::make('filament.backoffice.related-contracts')
-                        ->viewData(['contractScope' => 'league'])]),
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о лиге')->description('После создания лиги сезоны добавляются и редактируются в разделе «Сезоны» внутри карточки лиги.')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->maxLength(150)->minLength(2),
@@ -88,8 +79,16 @@ final class LeagueResource extends Resource
                         Textarea::make('description')->label('Описание')->rows(5)->columnSpanFull(),
                         FileUpload::make('logo_path')->label('Логотип лиги')
                             ->image()->disk('public')->directory('leagues/logos')->maxSize(5120)->columnSpanFull(),
+                        View::make('filament.backoffice.entity-banner')
+                            ->visible(fn (?League $record): bool => $record !== null && self::canEdit($record))
+                            ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?League $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'league'])]),
                 Tab::make('Команды')->icon('heroicon-o-user-group')
                     ->visible(fn (): bool => self::canManageTeams())->schema([
                         Section::make('Команды лиги')->description('Команда может состоять в нескольких лигах. Состав сезона настраивается отдельно.')->schema([
