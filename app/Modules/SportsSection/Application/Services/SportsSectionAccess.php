@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionAccessLevelEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use Illuminate\Database\Eloquent\Builder;
 
 final class SportsSectionAccess
@@ -35,6 +36,7 @@ final class SportsSectionAccess
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::SPORTS_SECTION->value)
             ->where('scope_id', $section->id)
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn (Builder $query) => $query
                 ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                 ->where('status', ContractStatusEnum::ACTIVE->value)
@@ -46,6 +48,9 @@ final class SportsSectionAccess
     {
         $user = $user->canonical();
 
-        return $this->activeMemberships($section)->whereIn('user_id', $user->identityIds());
+        // A pending or blocked user never receives the section's permissions.
+        $query = $this->activeMemberships($section)->whereIn('user_id', $user->identityIds());
+        return $user->isConfirmed() && ! $user->isBlocked() && ! $user->trashed()
+            ? $query : $query->whereRaw('1 = 0');
     }
 }
