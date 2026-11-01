@@ -68,6 +68,11 @@ final class SeasonResource extends Resource
                     ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
                     ->schema([View::make('filament.backoffice.entity-banner')]),
 
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?LeagueSeason $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'season'])]),
                 Tab::make('Основное')->icon('heroicon-o-calendar')->schema([
                     Section::make('Информация о сезоне')->columns(2)->schema([
                         Select::make('league_id')->label('Лига')->required()

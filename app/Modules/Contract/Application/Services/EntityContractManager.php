@@ -21,6 +21,7 @@ use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -229,9 +230,9 @@ final class EntityContractManager
     }
 
     /** @param list<string> $permissions */
-    public function invite(Scope $scope, int $scopeId, User $issuer, User $target, string $name, array $permissions): ContractMembership
+    public function invite(Scope $scope, int $scopeId, User $issuer, User $target, string $name, array $permissions, ?string $expiresAt = null, ?string $notes = null): ContractMembership
     {
-        return DB::transaction(function () use ($scope, $scopeId, $issuer, $target, $name, $permissions): ContractMembership {
+        return DB::transaction(function () use ($scope, $scopeId, $issuer, $target, $name, $permissions, $expiresAt, $notes): ContractMembership {
             $issuer = $issuer->canonical();
             $target = $target->canonical();
             if (! $target->isConfirmed() || $target->isBlocked() || $target->trashed()
@@ -241,6 +242,16 @@ final class EntityContractManager
             }
             $available = $this->effectivePermissions($issuer, $scope, $scopeId);
             $this->assertDelegation($scope, $available, $permissions);
+            $upperBound = $this->delegationDeadline($issuer, $scope, $scopeId, $permissions);
+            $deadline = $expiresAt === null || $expiresAt === ''
+                ? $upperBound : CarbonImmutable::parse($expiresAt);
+            if (($deadline !== null && $deadline->lessThanOrEqualTo(now()))
+                || ($deadline !== null && $upperBound !== null && $deadline->greaterThan($upperBound))) {
+                throw ValidationException::withMessages(['expires_at' => 'Срок контракта не может превышать срок ваших полномочий.']);
+            }
+            if ($notes !== null && mb_strlen(trim($notes)) > 2000) {
+                throw ValidationException::withMessages(['notes' => 'Комментарий не должен превышать 2000 символов.']);
+            }
             if (trim($name) === '' || mb_strlen(trim($name)) > 150) {
                 throw ValidationException::withMessages(['name' => 'Укажите название контракта до 150 символов.']);
             }
@@ -257,6 +268,8 @@ final class EntityContractManager
             $contract = Contract::query()->create([
                 'family' => ContractFamilyEnum::MEMBERSHIP,
                 'name' => trim($name),
+                'notes' => $notes === null ? null : trim($notes),
+                'expires_at' => $deadline,
                 'status' => ContractStatusEnum::ACTIVE,
                 'starts_at' => now(),
                 'assigned_by' => $issuer->id,
@@ -349,6 +362,49 @@ final class EntityContractManager
             || ($strictlyLower && array_diff($available, $requested) === [])) {
             throw ValidationException::withMessages(['permissions' => 'Нельзя назначить выбранные права.']);
         }
+    }
+
+    /**
+     * A delegated contract cannot outlive any permission it depends on,
+     * including the right to delegate. Combining multiple parent contracts
+     * never extends the lifetime of a single missing capability.
+     *
+     * @param list<string> $permissions
+     */
+    private function delegationDeadline(User $issuer, Scope $scope, int $scopeId, array $permissions): ?CarbonImmutable
+    {
+        $user = $issuer->canonical();
+        $now = now();
+        $memberships = $this->membershipQuery($scope, $scopeId)
+            ->whereIn('user_id', $user->identityIds())
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($q) => $q
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)))
+            ->with('contract.permissions')->get();
+
+        $bound = null;
+        foreach (array_unique([...$permissions, $this->managePermission($scope)]) as $permission) {
+            $grants = $memberships->filter(fn (ContractMembership $m): bool =>
+                $m->contract->permissions->contains('permission', $permission));
+            if ($grants->isEmpty()) {
+                abort(403);
+            }
+            if ($grants->contains(fn (ContractMembership $m): bool => $m->contract->expires_at === null)) {
+                continue;
+            }
+            // Preserve the contract's application timezone when copying
+            // its expiration. Reconstructing from a UTC timestamp shifts
+            // the database wall-time on non-UTC installations.
+            $latestGrant = $grants->sortByDesc(
+                fn (ContractMembership $m): int => $m->contract->expires_at->timestamp,
+            )->first();
+            $expiry = CarbonImmutable::instance($latestGrant->contract->expires_at);
+            $bound = $bound === null || $expiry->lessThan($bound) ? $expiry : $bound;
+        }
+
+        return $bound;
     }
 
     private function notifyInvitation(int $userId, string $type, string $name): void

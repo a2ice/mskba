@@ -92,6 +92,11 @@ final class TeamResource extends Resource
                     ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
                     ->schema([View::make('filament.backoffice.entity-banner')]),
 
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Team $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'team'])]),
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о команде')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(2)->maxLength(140),

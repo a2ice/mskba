@@ -101,6 +101,11 @@ final class VenueResource extends Resource
                     ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
                     ->schema([View::make('filament.backoffice.entity-banner')]),
 
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Venue $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'venue'])]),
                 Tab::make('Основное')->schema([
                     Section::make('Карточка площадки')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->minLength(3)->maxLength(255),

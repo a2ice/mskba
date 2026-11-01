@@ -21,6 +21,13 @@
             <label class="d-grid gap-2">Название контракта
                 <input class="form-control" type="text" name="name" value="{{ old('name') }}" required minlength="2" maxlength="150" placeholder="Например, менеджер сезона">
             </label>
+            <label class="d-grid gap-2">Действует до (необязательно)
+                <input class="form-control" type="datetime-local" name="expires_at" value="{{ old('expires_at') }}">
+                <small>Без даты контракт бессрочный, если ваши полномочия тоже бессрочны.</small>
+            </label>
+            <label class="d-grid gap-2">Комментарий (необязательно)
+                <textarea class="form-control" name="notes" maxlength="2000" rows="3">{{ old('notes') }}</textarea>
+            </label>
             <fieldset class="d-grid gap-3">
                 <legend class="mb-2">Полномочия</legend>
                 @foreach($permissions as $permission)

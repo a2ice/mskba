@@ -38,6 +38,7 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
@@ -233,6 +234,11 @@ final class EventResource extends Resource
                             ->disabled()->dehydrated(false),
                     ])->visible(fn (?Event $record): bool => $record !== null),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Event $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'event'])]),
                 Tab::make('Площадка и время')->schema([
                     Section::make(fn (Get $get): string => self::isFreeAccess($get)
                         ? 'Использование площадки' : 'Бронирование площадки')

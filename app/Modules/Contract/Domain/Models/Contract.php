@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'assigned_at',
     'assigner',
     'comment',
+    'notes',
 ])]
 class Contract extends Model
 {

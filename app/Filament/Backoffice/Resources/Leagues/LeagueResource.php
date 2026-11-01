@@ -67,6 +67,11 @@ final class LeagueResource extends Resource
                     ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
                     ->schema([View::make('filament.backoffice.entity-banner')]),
 
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?League $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'league'])]),
                 Tab::make('Основное')->icon('heroicon-o-information-circle')->schema([
                     Section::make('Информация о лиге')->description('После создания лиги сезоны добавляются и редактируются в разделе «Сезоны» внутри карточки лиги.')->columns(2)->schema([
                         TextInput::make('name')->label('Название')->required()->maxLength(150)->minLength(2),

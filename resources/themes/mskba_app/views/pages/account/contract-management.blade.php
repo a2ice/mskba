@@ -25,6 +25,15 @@
                     <span>Название контракта</span>
                     <input type="text" name="name" value="{{ old('name') }}" maxlength="150" minlength="2" placeholder="Например, менеджер сезона" required>
                 </label>
+                <label class="app-team-field">
+                    <span>Действует до (необязательно)</span>
+                    <input type="datetime-local" name="expires_at" value="{{ old('expires_at') }}">
+                    <small>Без даты контракт бессрочный, если ваши полномочия тоже бессрочны.</small>
+                </label>
+                <label class="app-team-field">
+                    <span>Комментарий (необязательно)</span>
+                    <textarea name="notes" maxlength="2000" rows="3">{{ old('notes') }}</textarea>
+                </label>
                 <fieldset style="display:grid;gap:12px">
                     <legend>Полномочия</legend>
                     @foreach($permissions as $permission)

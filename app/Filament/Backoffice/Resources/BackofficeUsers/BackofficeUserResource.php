@@ -237,6 +237,10 @@ final class BackofficeUserResource extends Resource
                             ->schema([
                                 View::make('filament.backoffice.user-wallet'),
                             ]),
+                        Tab::make('Контракты')->icon('heroicon-o-document-text')
+                            ->visible(fn (?User $record): bool => $record !== null
+                                && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                            ->schema([View::make('filament.backoffice.related-contracts')]),
                         Tab::make('Роли и права')
                             ->icon('heroicon-o-shield-check')
                             ->schema([
