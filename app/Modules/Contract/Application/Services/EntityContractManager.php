@@ -12,6 +12,12 @@ use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\EventParticipant;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
@@ -333,12 +339,29 @@ final class EntityContractManager
                     League::query()->whereKey($membership->scope_id)
                         ->update(['owner_user_id' => $membership->user_id]);
                 }
+                if ($membership->scope_type === Scope::EVENT) {
+                    $event = Event::query()->findOrFail($membership->scope_id);
+                    $target = User::query()->findOrFail($membership->user_id);
+                    $actor = app(CurrentActorResolver::class)->resolve($target, null);
+                    abort_unless($actor !== null, 422);
+                    $event->participants()->where('role', EventParticipantRoleEnum::ORGANIZER->value)
+                        ->update(['role' => EventParticipantRoleEnum::PARTICIPANT->value]);
+                    $event->participants()->firstOrCreate(
+                        ['user_id' => $target->id],
+                        ['role' => EventParticipantRoleEnum::ORGANIZER,
+                         'status' => EventParticipantStatusEnum::LEFT],
+                    )->update(['role' => EventParticipantRoleEnum::ORGANIZER]);
+                    $event->update(['organizer_actor_id' => $actor->id]);
+                }
                 return;
             }
             $membership->update(['invitation_status' => $accepted
                 ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);
             if (! $accepted) {
                 $membership->contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
+            }
+            if ($membership->scope_type === Scope::EVENT) {
+                app(EventContractResponsibilityService::class)->syncParticipant($membership->refresh());
             }
         });
     }
@@ -364,6 +387,9 @@ final class EntityContractManager
                 ! $this->isOwner($issuer, $membership->scope_type, (int) $membership->scope_id));
             $membership->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
             $membership->contract->update(['status' => ContractStatusEnum::INACTIVE, 'expires_at' => now()]);
+            if ($membership->scope_type === Scope::EVENT) {
+                app(EventContractResponsibilityService::class)->syncParticipant($membership->refresh());
+            }
         });
     }
 
