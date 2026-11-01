@@ -32,6 +32,14 @@
             <label class="d-grid gap-2">Название контракта
                 <input class="form-control" type="text" name="name" value="{{ old('name') }}" required minlength="2" maxlength="150" placeholder="Например, менеджер сезона">
             </label>
+            <label class="d-grid gap-2">Характер контракта
+                <select name="legal_nature" class="form-select" id="contract-legal-nature">
+                    <option value="technical">Техническое назначение</option>
+                    <option value="evidence_backed">Подтверждаемые полномочия</option>
+                    <option value="legal_agreement">Юридическое соглашение</option>
+                </select>
+                <small>Контракты, требующие подтверждения, начинают предоставлять доступ после проверки документов.</small>
+            </label>
             <label class="d-grid gap-2">Действует до (необязательно)
                 <input class="form-control" type="datetime-local" name="expires_at" value="{{ old('expires_at') }}">
                 <small>Без даты контракт бессрочный, если ваши полномочия тоже бессрочны.</small>
