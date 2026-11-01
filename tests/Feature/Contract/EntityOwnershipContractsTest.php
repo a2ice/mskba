@@ -265,4 +265,25 @@ final class EntityOwnershipContractsTest extends TestCase
         ]);
         $this->assertFalse($access->allows($team, $actor, TeamPermissionEnum::EDIT_SETTINGS));
     }
+
+    public function test_pending_primary_manager_verification_cannot_reenable_creator_fallback(): void
+    {
+        $creator = $this->user();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($creator, null)->id,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+        ]);
+        $contracts = app(EntityContractManager::class);
+        $membership = $contracts->grantOwner(Scope::VENUE, $venue->id, $creator, $creator);
+
+        $membership->contract->update([
+            'legal_nature' => 'evidence_backed',
+            'verification_requirement' => 'required',
+        ]);
+        $membership->contract->verification()->create(['status' => 'pending']);
+
+        $this->assertTrue(app(VenueMembershipAccess::class)->hasActivePrimaryManager($venue));
+        $this->assertFalse(app(VenueMembershipAccess::class)->allows($creator, $venue, VenuePermissionEnum::EDIT));
+        $this->assertFalse(app(VenueAccessResolver::class)->canManage($creator, $venue));
+    }
 }
