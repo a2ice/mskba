@@ -161,6 +161,11 @@ final class EventResource extends Resource
     {
         return $schema->components([
             Tabs::make('Мероприятие')->persistTabInQueryString()->tabs([
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Event $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'event'])]),
                 Tab::make('Основное')->schema([
                     Section::make('Мероприятие')->columns(2)->schema([
                         TextInput::make('title')->label('Название')->required()->maxLength(150)->columnSpanFull(),
