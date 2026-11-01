@@ -225,6 +225,8 @@ final class BackofficeUserResource extends Resource
                                                 fn ($gender): array => [$gender->value => $gender->label()],
                                             )->all()),
                                     ])->columns(2),
+                                View::make('filament.backoffice.entity-banner')
+                                    ->visible(fn (?User $record): bool => $record !== null && self::canEdit($record) && $record->profile !== null),
                                 View::make('filament.backoffice.user-save-profile'),
                             ]),
                         Tab::make('Роль')
@@ -247,10 +249,6 @@ final class BackofficeUserResource extends Resource
                                 Tabs::make('Уровень разрешений')
                                     ->persistTabInQueryString('permission-scope')
                                     ->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
                                         Tab::make('Системные')
                                             ->schema([
                                                 Section::make('Системная роль пользователя')
