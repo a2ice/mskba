@@ -18,6 +18,7 @@ use App\Filament\Backoffice\Resources\Teams\TeamResource;
 use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
 use App\Filament\Backoffice\Resources\Seasons\SeasonResource;
 use App\Filament\Backoffice\Resources\Tournaments\TournamentResource;
+use App\Filament\Backoffice\Resources\Contracts\ContractResource;
 use App\Filament\Backoffice\Resources\Venues\AmenityResource;
 use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
 use App\Filament\Backoffice\Resources\Geography\CityResource;
@@ -76,6 +77,7 @@ final class BackofficePanelProvider extends PanelProvider
                 LeagueResource::class,
                 SeasonResource::class,
                 TournamentResource::class,
+                ContractResource::class,
                 AmenityResource::class,
                 VenueModerationResource::class,
                 CityResource::class,
