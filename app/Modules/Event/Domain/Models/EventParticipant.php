@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Domain\Models;
 
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'responsibility_requested_by_user_id',
     'responsibility_requested_at',
     'responsibility_responded_at',
+    'responsibility_contract_membership_id',
     'status_changed_by_actor_id',
     'status_changed_at',
 ])]
@@ -67,6 +69,11 @@ class EventParticipant extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function responsibilityContractMembership(): BelongsTo
+    {
+        return $this->belongsTo(ContractMembership::class, 'responsibility_contract_membership_id');
+    }
+
     public function responsibilityPermissions(): HasMany
     {
         return $this->hasMany(EventResponsibilityPermission::class);
@@ -88,6 +95,7 @@ class EventParticipant extends Model
             'confirmation_version' => 'integer',
             'responsibility_status' => EventResponsibilityStatusEnum::class,
             'responsibility_requested_by_user_id' => 'integer',
+            'responsibility_contract_membership_id' => 'integer',
             'responsibility_requested_at' => 'immutable_datetime',
             'responsibility_responded_at' => 'immutable_datetime',
             'status_changed_by_actor_id' => 'integer',
