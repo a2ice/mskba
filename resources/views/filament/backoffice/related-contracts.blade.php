@@ -10,6 +10,17 @@
         ->whereHas('contract');
     if ($isUser) {
         $query->whereIn('user_id', $record->canonical()->identityIds());
+    } elseif ($contractScope === 'venue') {
+        // The venue card covers its own grants and the linked courts/zones.
+        $query->where(function ($q) use ($record): void {
+            $q->where(function ($m) use ($record): void {
+                $m->where('scope_type', 'venue')->where('scope_id', $record->getKey());
+            })->orWhere(function ($m) use ($record): void {
+                $m->where('scope_type', 'venue_court')->whereIn('scope_id',
+                    \App\Modules\Venue\Domain\Models\VenueCourt::query()
+                        ->where('venue_id', $record->getKey())->select('id'));
+            });
+        });
     } else {
         $query->where('scope_type', $contractScope)->where('scope_id', $record->getKey());
     }
@@ -55,7 +66,7 @@
                         </td>
                         <td class="p-3">
                             {{ $isUser ? ($membership->scope_type?->label().' #'.$membership->scope_id)
-                                : ($membership->user?->username ?? '—') }}
+                                : (($membership->user?->username ?? '—').($membership->scope_type?->value === 'venue_court' ? ' · Зал / зона #'.$membership->scope_id : '')) }}
                         </td>
                         <td class="p-3">{{ $status }}</td>
                         <td class="p-3 whitespace-nowrap">{{ $contract->expires_at?->format('d.m.Y H:i') ?? 'Бессрочно' }}</td>
