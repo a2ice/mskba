@@ -86,7 +86,7 @@
                 @endif
                 @if($section->head_coach_membership_id !== $membership->id && $membership->contract?->status?->value === 'active')
                     <div class="sports-section-editor__actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                        @if($effective)
+                        @if($effective && $membership->contract?->expires_at === null)
                             <form method="POST" action="{{ route('account.sports-sections.coaches.head-coach', [$section, $membership]) }}">
                                 @csrf @method('PATCH')
                                 <button class="btn btn--secondary btn--sm">Назначить главным</button>
