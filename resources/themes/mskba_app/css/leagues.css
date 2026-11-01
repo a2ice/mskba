@@ -81,3 +81,9 @@
 .app-league-logo--empty svg { width:32px; height:32px; color:var(--muted); }
 .app-league-logo--large.app-league-logo--empty svg { width:48px; height:48px; }
 @media(max-width:640px) { .app-league-logo--large.app-league-logo--empty svg { width:32px; height:32px; } }
+
+.app-league-logo-field{display:grid;justify-items:start;gap:10px;min-width:0}
+.app-league-logo-field input[type=file]{max-width:100%;width:100%}
+.app-league-logo-field .form-hint{margin:0}
+.app-league-banner-settings{min-width:0;margin-top:24px}
+.app-league-banner-settings .entity-banner-editor{margin:0}
