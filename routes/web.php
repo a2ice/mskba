@@ -42,6 +42,8 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
 use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
 use App\Modules\Contract\Presentation\Http\Controllers\ContractTemplateController;
+use App\Modules\Contract\Presentation\Http\Controllers\ContractEvidenceController;
+use App\Modules\Contract\Presentation\Http\Controllers\BackofficeContractVerificationController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -1040,11 +1042,17 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmContactVerification'])
             ->middleware('throttle:20,1')
             ->name('account.contacts.verification.confirm');
+        Route::post('/backoffice-contracts/{contract}/verification', [BackofficeContractVerificationController::class, 'review'])
+            ->whereNumber('contract')->middleware('throttle:10,1')->name('backoffice.contracts.verification.review');
         Route::get('/contracts', [AccountContractsWorkspaceController::class, 'index'])
             ->name('account.contracts')->defaults('breadcrumb', 'Мои контракты');
         // Must precede /contracts/{number}; this is the canonical venue collection.
         Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
             ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::post('/contracts/{contract}/evidence', [ContractEvidenceController::class, 'store'])
+            ->whereNumber('contract')->middleware('throttle:10,1')->name('account.contract-evidence.store');
+        Route::get('/contracts/{contract}/evidence/{document}', [ContractEvidenceController::class, 'download'])
+            ->whereNumber('contract')->whereNumber('document')->name('account.contract-evidence.download');
         Route::get('/contracts/memberships/{membership}/manage', [EntityContractController::class, 'show'])
             ->whereNumber('membership')->name('account.contracts.manage');
         Route::post('/contracts/memberships/{membership}/templates', [ContractTemplateController::class, 'store'])
