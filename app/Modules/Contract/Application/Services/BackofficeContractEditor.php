@@ -5,6 +5,7 @@ namespace App\Modules\Contract\Application\Services;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
@@ -89,6 +90,15 @@ final class BackofficeContractEditor
                 'expires_at' => $contract->expires_at?->toIso8601String(),
                 'permissions' => $contract->permissions->pluck('permission')->sort()->values()->all(),
             ];
+
+            if ($data['status'] === ContractStatusEnum::INACTIVE->value
+                && $contract->membership?->scope_type === Scope::SPORTS_SECTION
+                && SportsSection::query()->whereKey($contract->membership->scope_id)
+                    ->where('head_coach_membership_id', $contract->membership->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'Сначала назначьте другого главного тренера секции.',
+                ]);
+            }
 
             if ($this->isOwnerContract($contract)) {
                 // Ownership is transferred via the acceptance workflow; an
