@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\Contracts;
 use App\Filament\Backoffice\Resources\Contracts\Pages\EditContract;
 use App\Filament\Backoffice\Resources\Contracts\Pages\ListContracts;
 use App\Modules\Contract\Application\Services\BackofficeContractEditor;
+use App\Modules\Contract\Application\Services\ContractMembershipPresenter;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -75,10 +76,11 @@ final class ContractResource extends Resource
                             ->content(fn (?Contract $record): string => $record?->membership?->user?->username ?? '—'),
                         Placeholder::make('scope')->label('Объект')
                             ->content(fn (?Contract $record): string =>
-                                $record?->membership?->scope_type?->label().' #'.$record?->membership?->scope_id),
+                                $record?->membership === null ? 'Связь между объектами'
+                                    : $record->membership->scope_type->label().' #'.$record->membership->scope_id),
                         Placeholder::make('level')->label('Роль')
                             ->content(fn (?Contract $record): string =>
-                                $record?->membership?->access_level ?? '—'),
+                                app(ContractMembershipPresenter::class)->accessLevelLabelFor($record?->membership) ?? '—'),
                         Placeholder::make('invitation')->label('Подтверждение')
                             ->content(fn (?Contract $record): string => match ($record?->membership?->invitation_status?->value) {
                                 'accepted' => 'Принят', 'pending' => 'Ожидает подтверждения',
@@ -137,7 +139,9 @@ final class ContractResource extends Resource
             TextColumn::make('membership.scope_type')->label('Сущность')
                 ->state(fn (Contract $record): string => $record->membership?->scope_type?->label() ?? 'Другой тип'),
             TextColumn::make('membership.scope_id')->label('ID объекта'),
-            TextColumn::make('membership.access_level')->label('Роль'),
+            TextColumn::make('membership.access_level')->label('Роль')
+                ->state(fn (Contract $record): string =>
+                    app(ContractMembershipPresenter::class)->accessLevelLabelFor($record->membership) ?? '—'),
             TextColumn::make('status')->label('Статус')->badge()
                 ->formatStateUsing(fn (ContractStatusEnum $state): string => $state->label()),
             TextColumn::make('expires_at')->label('Действует до')->dateTime('d.m.Y H:i')->placeholder('Бессрочно'),
@@ -147,8 +151,10 @@ final class ContractResource extends Resource
                 ->options(collect(ContractStatusEnum::cases())->mapWithKeys(
                     fn ($v): array => [$v->value => $v->label()])->all()),
             SelectFilter::make('family')->label('Тип')
-                ->options(collect(ContractFamilyEnum::cases())->mapWithKeys(
-                    fn ($v): array => [$v->value => $v->label()])->all()),
+                ->options([
+                    ContractFamilyEnum::MEMBERSHIP->value => 'С пользователем',
+                    ContractFamilyEnum::RELATION->value => 'Между объектами',
+                ]),
             SelectFilter::make('scope_type')->label('Сущность')
                 ->options(collect(Scope::cases())->mapWithKeys(
                     fn (Scope $v): array => [$v->value => $v->label()])->all())
