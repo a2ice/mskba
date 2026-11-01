@@ -49,7 +49,8 @@ final readonly class ManageSectionCoachHandler
                     TeamInvitationStatusEnum::PENDING->value,
                 ])
                 ->whereHas('contract', fn ($query) => $query
-                    ->where('status', ContractStatusEnum::ACTIVE->value))
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now())))
                 ->exists();
             if ($alreadyInvited) {
                 throw new SportsSectionException('Этот тренер уже подключён к секции или получил приглашение.');
@@ -94,6 +95,9 @@ final readonly class ManageSectionCoachHandler
             }
             $previous = $membership->contract->permissions()->pluck('permission')->all();
             $isExpansion = array_diff($values, $previous) !== [];
+            if ($isExpansion && $section->head_coach_membership_id === $membership->id) {
+                throw new SportsSectionException('Сначала назначьте другого главного тренера, чтобы расширить полномочия этого тренера.');
+            }
             $this->replacePermissions($membership->contract, $permissions);
             if ($isExpansion && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED) {
                 $membership->update(['invitation_status' => TeamInvitationStatusEnum::PENDING]);
@@ -124,6 +128,9 @@ final readonly class ManageSectionCoachHandler
             $membership = $this->membership($section, $membership, false);
             if ($membership->invitation_status !== TeamInvitationStatusEnum::ACCEPTED) {
                 throw new SportsSectionException('Сначала тренер должен принять приглашение.');
+            }
+            if ($membership->contract->expires_at !== null) {
+                throw new SportsSectionException('Главным тренером можно назначить только тренера с бессрочным контрактом.');
             }
             $section->update(['head_coach_membership_id' => $membership->id]);
 
