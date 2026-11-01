@@ -213,7 +213,8 @@
     align-items: center;
     justify-content: flex-end;
     gap: 12px;
-    min-width: 260px;
+    min-width: 0;
+    flex: 0 0 auto;
 }
 
 .entity-edit-link {
