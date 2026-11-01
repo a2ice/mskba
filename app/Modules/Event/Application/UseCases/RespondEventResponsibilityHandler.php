@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -14,7 +15,8 @@ use InvalidArgumentException;
 
 final class RespondEventResponsibilityHandler
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(private readonly EventManagementAccess $access,
+        private readonly EntityContractManager $contracts) {}
 
     public function handle(
         string $identifier,
@@ -53,9 +55,11 @@ final class RespondEventResponsibilityHandler
                 'responsibility_status' => $decision,
                 'responsibility_responded_at' => now(),
             ])->save();
-            if ($decision === EventResponsibilityStatusEnum::DECLINED) {
-                $participant->responsibilityPermissions()->delete();
+            $membership = $participant->responsibilityContractMembership;
+            if ($membership === null) {
+                throw new InvalidArgumentException('Для назначения не найден контракт.');
             }
+            $this->contracts->respond($membership, $user, $decision === EventResponsibilityStatusEnum::ACCEPTED);
 
             return $event;
         });
