@@ -185,7 +185,10 @@ final class EntityContractManager
             ->where('access_level', $scope === Scope::VENUE ? 'primary_manager' : 'owner')
             ->whereIn('user_id', $user->identityIds())
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
-            ->whereHas('contract', fn ($q) => $q->where('status', ContractStatusEnum::ACTIVE->value))
+            ->whereHas('contract', fn ($q) => app(ContractAssurance::class)->constrain($q
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now()))))
             ->exists();
     }
 
@@ -424,6 +427,7 @@ final class EntityContractManager
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($q) => $q
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)))
             ->with('contract.permissions')->get();
