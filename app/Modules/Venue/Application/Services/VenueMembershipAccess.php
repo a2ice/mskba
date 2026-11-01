@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -80,6 +81,7 @@ final class VenueMembershipAccess
             ->where('access_level', 'primary_manager')
             ->whereHas('contract', fn (Builder $q) => $q
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
     }
@@ -114,6 +116,7 @@ final class VenueMembershipAccess
             ->whereHas('contract', function (Builder $query) use ($permission, $now): void {
                 $query->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                     ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                     ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $now))
                     ->whereHas('permissions', fn (Builder $query) => $query->where('permission', $permission->value));
@@ -142,6 +145,7 @@ final class VenueMembershipAccess
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                     ->where(function (Builder $query) use ($now): void {
                         $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
                     })
@@ -240,6 +244,7 @@ final class VenueMembershipAccess
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                     ->where(function (Builder $query) use ($now): void {
                         $query
                             ->whereNull('starts_at')
@@ -264,6 +269,7 @@ final class VenueMembershipAccess
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                     ->where(function (Builder $query) use ($now): void {
                         $query
                             ->whereNull('starts_at')
