@@ -18,7 +18,7 @@
             </div>
         @endif
         <form method="POST" action="{{ $league === null ? route('leagues.store') : route('leagues.update', $league->id) }}"
-              style="display:grid;gap:16px">
+              enctype="multipart/form-data" style="display:grid;gap:16px">
             @csrf
             @if($league !== null) @method('PUT') @endif
             <label class="app-team-field" style="display:grid;gap:8px">
@@ -29,6 +29,17 @@
                 <span>Описание</span>
                 <textarea name="description" rows="5" maxlength="10000">{{ old('description', $league?->description) }}</textarea>
             </label>
+            @if($league !== null)
+                <div class="app-team-field app-league-logo-field">
+                    <label for="leagueLogo">Логотип лиги</label>
+                    @if($league->logo_path)
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($league->logo_path) }}" alt="Логотип лиги" width="110" height="110" style="width:110px;height:110px;object-fit:contain;border-radius:12px">
+                    @endif
+                    <input id="leagueLogo" type="file" name="logo" accept="image/jpeg,image/png,image/webp">
+                    <p class="form-hint">JPG, PNG или WebP, до 5 МБ</p>
+                    @error('logo')<p role="alert">{{ $message }}</p>@enderror
+                </div>
+            @endif
             <div class="app-team-filter-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                 <button class="button primary" type="submit">{{ $league === null ? 'Создать лигу' : 'Сохранить' }}</button>
                 <a class="button secondary" href="{{ route('account.contracts') }}">Мои контракты</a>
@@ -37,6 +48,11 @@
                 @endif
             </div>
         </form>
+        @if($league !== null)
+            <div class="app-league-banner-settings">
+                @include('components.entity-banner-editor', ['model' => $league, 'context' => 'account'])
+            </div>
+        @endif
     </div>
 </section>
 @endsection
