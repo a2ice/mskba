@@ -2,17 +2,12 @@
 
 namespace App\Modules\SportsSection\Application\UseCases;
 
-use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
-use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
-use App\Modules\Contract\Domain\Models\Contract;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\SportsSection\Application\Services\SportsSectionRules;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
-use App\Modules\SportsSection\Domain\Enums\SportsSectionAccessLevelEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
-use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
@@ -22,7 +17,7 @@ use Illuminate\Support\Str;
 
 final readonly class CreateSportsSectionHandler
 {
-    public function __construct(private SportsSectionRules $rules) {}
+    public function __construct(private SportsSectionRules $rules, private EntityContractManager $contracts) {}
 
     /** @param array<string, mixed> $data */
     public function handle(Actor $actor, array $data): SportsSection
@@ -57,26 +52,16 @@ final readonly class CreateSportsSectionHandler
                 'single_session_price_minor' => $amount,
                 'currency' => strtoupper($data['currency'] ?? 'RUB'),
             ]);
-            $contract = Contract::query()->create([
-                'family' => ContractFamilyEnum::MEMBERSHIP,
-                'name' => "Владелец секции «{$section->name}»",
-                'status' => ContractStatusEnum::ACTIVE,
-                'starts_at' => now(),
-                'assigned_by' => $user->id,
-                'assigned_at' => now(),
-                'assigner' => UserParticipationRoleAssignerEnum::USER,
-            ]);
-            $membership = $contract->membership()->create([
-                'scope_type' => ContractMembershipScopeTypeEnum::SPORTS_SECTION,
-                'scope_id' => $section->id,
-                'user_id' => $user->id,
-                'access_level' => SportsSectionAccessLevelEnum::OWNER,
-                'sport_roles' => ['coach'],
-            ]);
-            $contract->permissions()->createMany(array_map(
-                static fn (SportsSectionPermissionEnum $permission): array => ['permission' => $permission->value],
-                SportsSectionPermissionEnum::cases(),
-            ));
+            $membership = $this->contracts->grantOwner(
+                ContractMembershipScopeTypeEnum::SPORTS_SECTION,
+                $section->id,
+                $user,
+                $user,
+                "Владелец секции «{$section->name}»",
+            );
+            // A management contract is not a sports role. Keep the coaching
+            // role explicitly for the coach roster and training snapshots.
+            $membership->update(['sport_roles' => ['coach']]);
             $section->update(['head_coach_membership_id' => $membership->id]);
 
             return $section->load(['headCoachMembership.user', 'primaryVenue', 'primaryVenueCourt']);
