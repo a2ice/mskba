@@ -32,6 +32,7 @@
     'sectionId' => 'venue',
     'sectionClass' => 'venue-section',
     'contentTitle' => isset($venue) ? $headingTitle : 'Площадка',
+    'entityEditUrl' => isset($venue) && $venue->canEdit ? route('account.venues.edit', $venue->routeIdentifier()) : null,
     'contentTitleTooltip' => isset($venue) && $headingTitleIsTruncated ? $venue->name : null,
     'contentSubtitle' => isset($venue) ? $venue->shortDescription : null,
     'sidebarLabel' => 'Навигация площадки',
