@@ -2,6 +2,7 @@
 
 namespace App\Modules\SportsSection\Application\Services;
 
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -40,6 +41,7 @@ final class SportsSectionAccess
             ->whereHas('contract', fn (Builder $query) => $query
                 ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
     }
