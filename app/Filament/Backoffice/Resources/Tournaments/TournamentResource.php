@@ -80,15 +80,6 @@ final class TournamentResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Турнир')->persistTabInQueryString()->tabs([
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
-                Tab::make('Контракты')->icon('heroicon-o-document-text')
-                    ->visible(fn (?Tournament $record): bool => $record !== null
-                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
-                    ->schema([View::make('filament.backoffice.related-contracts')
-                        ->viewData(['contractScope' => 'tournament'])]),
                 Tab::make('Основное')->schema([
                     Section::make('Параметры турнира')->columns(2)->schema([
                         TextInput::make('title')->label('Название')->required()->minLength(2)->maxLength(150)->columnSpanFull(),
@@ -113,8 +104,16 @@ final class TournamentResource extends Resource
                         Textarea::make('short_description')->label('Краткое описание')->rows(3)->columnSpanFull(),
                         Textarea::make('full_description')->label('Полное описание')->rows(6)->columnSpanFull(),
                         Textarea::make('status_comment')->label('Комментарий к статусу')->rows(2)->columnSpanFull(),
+                        View::make('filament.backoffice.entity-banner')
+                            ->visible(fn (?Tournament $record): bool => $record !== null && self::canEdit($record))
+                            ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?Tournament $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'tournament'])]),
                 Tab::make('Лига и сезон')->schema([
                     Section::make('Принадлежность')->columns(2)
                         ->description('Оба поля необязательны. Турнир может проводиться вне лиги либо относиться к лиге без сезона.')
