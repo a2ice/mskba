@@ -92,9 +92,13 @@ final class LeagueController extends Controller
 
         $user = auth('web')->user();
         $contracts = app(EntityContractManager::class);
+        $canEditLeague = $user !== null
+            && $item->status !== 'archived'
+            && $contracts->allows($user, Scope::LEAGUE, $item->id, LeaguePermissionEnum::EDIT->value);
         return ThemeResolver::page('leagues.show', [
             'league' => $item,
             'canEditLeague' => $user !== null && app(EntityBannerAccess::class)->allows(request(), 'account', $item),
+            'entityEditUrl' => $canEditLeague ? route('leagues.manage', $item->id) : null,
             'canCreateSeason' => $user?->isConfirmed()
                 && app(UserOperationalPermissionChecker::class)->allows($user, Permission::CREATE_SEASON)
                 && $contracts->allows($user, Scope::LEAGUE, $item->id, LeaguePermissionEnum::MANAGE_SEASONS->value),
@@ -121,9 +125,13 @@ final class LeagueController extends Controller
             ->firstOrFail();
 
         $user = auth('web')->user();
+        $canEditSeason = $user !== null
+            && $item->status !== 'archived'
+            && app(EntityContractManager::class)->allows($user, Scope::SEASON, $item->id, SeasonPermissionEnum::EDIT->value);
         return ThemeResolver::page('leagues.season', [
             'league' => $parent, 'season' => $item,
             'canEditSeason' => $user !== null && app(EntityBannerAccess::class)->allows(request(), 'account', $item),
+            'entityEditUrl' => $canEditSeason ? route('leagues.seasons.manage', [$parent->id, $item->id]) : null,
         ]);
     }
 }

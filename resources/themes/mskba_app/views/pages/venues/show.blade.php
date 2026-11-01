@@ -105,7 +105,10 @@
                     </details>
                 @endif
             </div>
-            <h1 id="app-venue-title">{{ $venue->name }}@if($venue->isCourtPage) <span class="app-venue-intro__court-name">· {{ $venue->selectedCourt['name'] }}</span>@endif</h1>
+            <div class="app-entity-heading">
+                <h1 id="app-venue-title">{{ $venue->name }}@if($venue->isCourtPage) <span class="app-venue-intro__court-name">· {{ $venue->selectedCourt['name'] }}</span>@endif</h1>
+                @include('theme::partials.entity-edit-link', ['url' => $venue->canEdit ? route('account.venues.edit', $venue->routeIdentifier()) : null])
+            </div>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
                     aria-label="Показать {{ $venueAddress }} на Яндекс Картах">

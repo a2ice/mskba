@@ -283,6 +283,7 @@ final class TeamController extends Controller
             'startingLineups' => $startingLineups,
             'hasCompleteRoster' => $startingLineups->every('is_complete'),
             'canManage' => $actor !== null && $access->canManage($item, $actor),
+            'canEditSettings' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS),
             'canManageMembersAndRoster' => $actor !== null && $access->canManageMembersAndRoster($item, $actor),
             'canManageVenues' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_VENUES),
             'canManageHiring' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_HIRING),

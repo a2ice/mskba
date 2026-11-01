@@ -196,6 +196,7 @@ final class TournamentController extends Controller
         return ThemeResolver::page('tournaments.show', [
             'tournament' => $item,
             'canManage' => $canManage,
+            'canEditTournament' => $actor !== null && $access->allows($item, $actor, TournamentPermissionEnum::MANAGE_DESCRIPTION),
             'canApplyAsPlayer' => $request->user() !== null
                 && $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                 && $item->acceptsAdmissions()

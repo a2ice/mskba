@@ -1,6 +1,7 @@
 @extends('theme::layouts.section-sidebar', [
     'title' => $team->name, 'sectionId' => 'teams', 'sectionClass' => 'teams-section',
     'contentTitle' => $team->name, 'contentSubtitle' => null,
+    'entityEditUrl' => !empty($canEditSettings) ? route('teams.edit', $team->routeIdentifier()) : null,
 ])
 @php
     $memberName = static fn ($membership) => trim(implode(' ', array_filter([

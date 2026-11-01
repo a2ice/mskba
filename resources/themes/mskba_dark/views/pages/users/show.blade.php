@@ -1,4 +1,4 @@
-@extends('theme::layouts.section-sidebar', ['title' => $publicProfile['name'], 'contentTitle' => $publicProfile['name'], 'sectionId' => 'user-profile', 'sidebarLabel' => 'Профиль'])
+@extends('theme::layouts.section-sidebar', ['title' => $publicProfile['name'], 'contentTitle' => $publicProfile['name'], 'sectionId' => 'user-profile', 'sidebarLabel' => 'Профиль', 'entityEditUrl' => $publicProfileEditUrl ?? null])
 
 @section('section-sidebar')
     <ul class="sidebar-nav nav flex-column">

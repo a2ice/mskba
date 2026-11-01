@@ -18,7 +18,10 @@
         @endif
         <div>
             <span class="badge">{{ $league->status === 'active' ? 'Действующая лига' : 'Архив лиги' }}</span>
-            <h1 id="league-heading">{{ $league->name }}</h1>
+            <div class="app-entity-heading">
+                <h1 id="league-heading">{{ $league->name }}</h1>
+                @include('theme::partials.entity-edit-link', ['url' => $entityEditUrl ?? null])
+            </div>
             @if ($league->description)<p class="app-league-description">{{ $league->description }}</p>@endif
         </div>
     </header>

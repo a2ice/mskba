@@ -17,6 +17,7 @@
     'sectionId' => 'tournament',
     'sectionClass' => 'tournaments-section tournament-show-section',
     'contentTitle' => $tournament->title,
+    'entityEditUrl' => !empty($canEditTournament) ? route('tournaments.manage', $tournament->routeIdentifier()) : null,
     'contentSubtitle' => $tournament->starts_on->format('d.m.Y').($tournament->ends_on ? ' — '.$tournament->ends_on->format('d.m.Y') : ($continuous ? ' — без заданной даты окончания' : '')),
     'sidebarLabel' => 'Навигация турнира',
 ])

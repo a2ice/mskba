@@ -3,7 +3,10 @@
 @section('content')
     <section class="container app-team-section app-team-public" aria-labelledby="team-profile-heading">
         <header class="app-account-overview__intro">
-            <h1 id="team-profile-heading">{{ $team->name }}</h1>
+            <div class="app-entity-heading">
+                <h1 id="team-profile-heading">{{ $team->name }}</h1>
+                @include('theme::partials.entity-edit-link', ['url' => !empty($canEditSettings) ? route('teams.edit', $team->routeIdentifier()) : null])
+            </div>
             <p>{{ $team->description ?: 'Знакомься с составом и возможностями команды.' }}</p>
         </header>
         @include('components.entity-public-banner', ['bannerUrl' => $team->bannerUrl()])
