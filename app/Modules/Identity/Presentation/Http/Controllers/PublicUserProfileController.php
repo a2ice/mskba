@@ -44,7 +44,9 @@ final class PublicUserProfileController
             'publicProfile' => $data,
             'isOwnProfile' => $isOwnProfile,
             'publicProfileEditUrl' => $isOwnProfile
-                ? route('account.profile')
+                ? ($data['role'] !== null
+                    ? route('account.participation-role', ['role' => $data['role']])
+                    : route('account.profile'))
                 : ($request->user()?->can('access-admin-panel') && $request->user()?->can('manage-users-as-superadmin')
                     ? route('admin.users.edit', $canonical->id)
                     : null),
