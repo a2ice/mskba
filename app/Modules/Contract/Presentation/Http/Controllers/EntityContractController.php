@@ -58,6 +58,8 @@ final class EntityContractController extends Controller
             'username' => ['required', 'string', 'max:150'],
             'name' => ['required', 'string', 'min:2', 'max:150'],
             'permissions' => ['required', 'array', 'min:1'],
+            'expires_at' => ['nullable', 'date', 'after:now'],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'permissions.*' => ['required', 'string', 'distinct'],
         ]);
         $target = User::query()->where('username', trim($data['username']))->first();
@@ -65,7 +67,8 @@ final class EntityContractController extends Controller
             return back()->withErrors(['username' => 'Пользователь не найден.'])->withInput();
         }
         $contracts->invite($membership->scope_type, (int) $membership->scope_id,
-            $request->user(), $target, $data['name'], $data['permissions']);
+            $request->user(), $target, $data['name'], $data['permissions'],
+            $data['expires_at'] ?? null, $data['notes'] ?? null);
         return back()->with('status', 'Приглашение отправлено.');
     }
 
