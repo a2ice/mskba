@@ -43,6 +43,11 @@ final class PublicUserProfileController
         return ThemeResolver::page('users.show', [
             'publicProfile' => $data,
             'isOwnProfile' => $isOwnProfile,
+            'publicProfileEditUrl' => $isOwnProfile
+                ? route('account.profile')
+                : ($request->user()?->can('access-admin-panel') && $request->user()?->can('manage-users-as-superadmin')
+                    ? route('admin.users.edit', $canonical->id)
+                    : null),
             'metaTitle' => $metaTitle,
             'metaDescription' => Str::limit(trim($metaDescription), 300, '…'),
             'canonicalUrl' => $profiles->url($canonical, $role),
