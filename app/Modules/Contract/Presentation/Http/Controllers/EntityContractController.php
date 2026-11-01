@@ -48,6 +48,7 @@ final class EntityContractController extends Controller
             'permissions' => $options,
             'contractPresets' => $templates->builtIn($scope),
             'contractTemplates' => $templates->available($request->user(), $scope, $scopeId),
+            'templateManager' => $request->user()->canonical(),
             'memberships' => $memberships,
             'canTransfer' => ! in_array($scope, [
                 \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE,
