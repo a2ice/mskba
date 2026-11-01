@@ -53,9 +53,6 @@
 @endsection
 
 @section('section-content')
-@if($canManageMain)
-@endif
-
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
@@ -90,6 +87,7 @@
                 <div class="mb-3"><label class="form-label">Обложка</label><input class="form-control" type="file" name="cover" accept="image/*"></div>
                 <button class="btn btn--primary">Сохранить описание</button>
             </form>
+            @include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])
         </div>
     @endif
 
