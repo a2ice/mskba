@@ -64,6 +64,11 @@ final class SeasonResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Сезон')->persistTabInQueryString()->tabs([
+                Tab::make('Контракты')->icon('heroicon-o-document-text')
+                    ->visible(fn (?LeagueSeason $record): bool => $record !== null
+                        && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
+                    ->schema([View::make('filament.backoffice.related-contracts')
+                        ->viewData(['contractScope' => 'season'])]),
                 Tab::make('Баннер')->icon('heroicon-o-photo')
                     ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
                     ->schema([View::make('filament.backoffice.entity-banner')]),
