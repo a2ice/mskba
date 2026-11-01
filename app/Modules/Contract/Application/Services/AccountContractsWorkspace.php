@@ -40,7 +40,7 @@ final readonly class AccountContractsWorkspace
                     $query->where('scope_type', $filters['type']);
                 }
             })
-            ->with(['membership', 'permissions', 'assignedByUser'])
+            ->with(['membership', 'permissions', 'assignedByUser', 'verification', 'evidenceDocuments'])
             ->orderByDesc('id');
 
         if (! empty($filters['status'])) {
@@ -186,7 +186,8 @@ final readonly class AccountContractsWorkspace
     private function isEffective(Contract $contract): bool
     {
         $now = now();
-        return $contract->status === ContractStatusEnum::ACTIVE
+        return app(ContractAssurance::class)->allows($contract)
+            && $contract->status === ContractStatusEnum::ACTIVE
             && ($contract->starts_at === null || $contract->starts_at->lessThanOrEqualTo($now))
             && ($contract->expires_at === null || $contract->expires_at->greaterThan($now));
     }

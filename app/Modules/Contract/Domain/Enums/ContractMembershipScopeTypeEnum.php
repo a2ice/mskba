@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contract\Domain\Enums;
 
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionAccessLevelEnum;
@@ -44,12 +45,12 @@ enum ContractMembershipScopeTypeEnum: string
             self::VENUE => Venue::class,
             self::VENUE_COURT => VenueCourt::class,
             self::TEAM => Team::class,
+            self::EVENT => Event::class,
             self::TOURNAMENT => Tournament::class,
             self::LEAGUE => League::class,
             self::SEASON => LeagueSeason::class,
             self::SPORTS_SECTION => SportsSection::class,
 
-            self::EVENT,
             self::COMPANY => null,
         };
     }
@@ -60,12 +61,12 @@ enum ContractMembershipScopeTypeEnum: string
             self::VENUE => 'venues.show',
             self::VENUE_COURT => null,
             self::TEAM => 'teams.show',
+            self::EVENT => 'events.show',
             self::TOURNAMENT => 'tournaments.show',
             self::LEAGUE => 'leagues.show',
             self::SEASON => null,
             self::SPORTS_SECTION => 'sports-sections.show',
 
-            self::EVENT,
             self::COMPANY => null,
         };
     }
@@ -78,10 +79,10 @@ enum ContractMembershipScopeTypeEnum: string
             self::TEAM,
             self::LEAGUE,
             self::SEASON => 'name',
-            self::TOURNAMENT => 'title',
+            self::TOURNAMENT,
+            self::EVENT => 'title',
             self::SPORTS_SECTION => 'name',
 
-            self::EVENT,
             self::COMPANY => 'id',
         };
     }

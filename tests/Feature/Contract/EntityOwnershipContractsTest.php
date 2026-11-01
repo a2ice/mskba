@@ -237,4 +237,53 @@ final class EntityOwnershipContractsTest extends TestCase
         $this->assertFalse($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::MANAGE_FUNDS->value));
         $this->assertFalse($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::MANAGE_MEMBERSHIPS->value));
     }
+
+    public function test_team_membership_permissions_require_current_contract_dates(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $owner = $this->user();
+        $this->office($admin);
+        $team = app(BackofficeTeamEditor::class)->create([
+            'name' => 'Команда со срочным договором',
+            'status' => 'active',
+            'sport_types' => ['basketball'],
+            'owner_user_id' => $owner->id,
+        ]);
+        $membership = $this->membership(Scope::TEAM, $team->id);
+        app(EntityContractManager::class)->respond($membership, $owner, true);
+
+        $access = app(TeamManagementAccess::class);
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $this->assertTrue($access->allows($team, $actor, TeamPermissionEnum::EDIT_SETTINGS));
+
+        $membership->contract->update(['expires_at' => now()->subMinute()]);
+        $this->assertFalse($access->allows($team, $actor, TeamPermissionEnum::EDIT_SETTINGS));
+
+        $membership->contract->update([
+            'starts_at' => now()->addDay(),
+            'expires_at' => null,
+        ]);
+        $this->assertFalse($access->allows($team, $actor, TeamPermissionEnum::EDIT_SETTINGS));
+    }
+
+    public function test_pending_primary_manager_verification_cannot_reenable_creator_fallback(): void
+    {
+        $creator = $this->user();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($creator, null)->id,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+        ]);
+        $contracts = app(EntityContractManager::class);
+        $membership = $contracts->grantOwner(Scope::VENUE, $venue->id, $creator, $creator);
+
+        $membership->contract->update([
+            'legal_nature' => 'evidence_backed',
+            'verification_requirement' => 'required',
+        ]);
+        $membership->contract->verification()->create(['status' => 'pending']);
+
+        $this->assertTrue(app(VenueMembershipAccess::class)->hasActivePrimaryManager($venue));
+        $this->assertFalse(app(VenueMembershipAccess::class)->allows($creator, $venue, VenuePermissionEnum::EDIT));
+        $this->assertFalse(app(VenueAccessResolver::class)->canManage($creator, $venue));
+    }
 }

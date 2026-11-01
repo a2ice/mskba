@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -60,6 +61,10 @@ class Event extends Model
 
     protected static function booted(): void
     {
+        static::created(function (self $event): void {
+            app(EventContractResponsibilityService::class)->ensureOwner($event);
+        });
+
         static::saving(function (self $event): void {
             if ($event->venue_id === null) {
                 return;

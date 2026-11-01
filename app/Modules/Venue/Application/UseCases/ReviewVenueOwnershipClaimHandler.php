@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -54,6 +55,10 @@ final readonly class ReviewVenueOwnershipClaimHandler
             }
 
             $membership = $this->createOwnerMembership($venue, $claim, $reviewer);
+            app(ContractAssurance::class)->recordVerified(
+                $membership->contract, 'venue_ownership_claim', $claim->id, $reviewer->id,
+                ['decision_reason' => $reason],
+            );
             $decidedAt = now();
 
             VenueOwnership::query()->create([
@@ -170,6 +175,8 @@ final readonly class ReviewVenueOwnershipClaimHandler
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
             'name' => "Управление площадкой: {$venue->name}",
+            'legal_nature' => 'evidence_backed',
+            'verification_requirement' => 'required',
             'status' => ContractStatusEnum::ACTIVE,
             'starts_at' => now(),
             'assigned_by' => $reviewer->id,

@@ -3,6 +3,7 @@
 namespace App\Modules\Tournament\Application\Services;
 
 use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -63,6 +64,7 @@ final class TournamentAccess
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($q) => $q
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
                 ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
             ->exists();
@@ -86,6 +88,7 @@ final class TournamentAccess
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
                 ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now()))
                 ->whereHas('permissions', fn ($permissions) => $permissions->where('permission', $permission->value)))

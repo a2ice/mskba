@@ -38,6 +38,8 @@ final class TeamManagementController extends Controller
 
         $activeMemberships = $item->memberships
             ->filter(fn ($membership) => $membership->contract?->status === ContractStatusEnum::ACTIVE
+                && ($membership->contract->starts_at === null || $membership->contract->starts_at->lessThanOrEqualTo(now()))
+                && ($membership->contract->expires_at === null || $membership->contract->expires_at->greaterThan(now()))
                 && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED)
             ->values();
         $pendingMemberships = $item->memberships

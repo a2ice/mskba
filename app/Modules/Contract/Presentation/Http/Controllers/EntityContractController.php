@@ -4,6 +4,14 @@ namespace App\Modules\Contract\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Application\Services\ContractTemplateService;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
+use Illuminate\Validation\ValidationException;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
@@ -21,7 +29,7 @@ final class EntityContractController extends Controller
         ), 403);
     }
 
-    public function show(Request $request, ContractMembership $membership, EntityContractManager $contracts): Response
+    public function show(Request $request, ContractMembership $membership, EntityContractManager $contracts, ContractTemplateService $templates): Response
     {
         $this->authorizeManage($request, $membership, $contracts);
         $scope = $membership->scope_type;
@@ -45,6 +53,9 @@ final class EntityContractController extends Controller
             'scopeLabel' => $scope->label(),
             'entityName' => $entity === null ? $scope->label() : $entity->{$scope->titleAttribute()},
             'permissions' => $options,
+            'contractPresets' => $templates->builtIn($scope),
+            'contractTemplates' => $templates->available($request->user(), $scope, $scopeId),
+            'templateManager' => $request->user()->canonical(),
             'memberships' => $memberships,
             'canTransfer' => ! in_array($scope, [
                 \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE,
@@ -62,15 +73,38 @@ final class EntityContractController extends Controller
             'permissions' => ['required', 'array', 'min:1'],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'legal_nature' => ['sometimes', 'in:technical,evidence_backed,legal_agreement'],
             'permissions.*' => ['required', 'string', 'distinct'],
         ]);
         $target = User::query()->where('username', trim($data['username']))->first();
         if ($target === null) {
             return back()->withErrors(['username' => 'Пользователь не найден.'])->withInput();
         }
-        $contracts->invite($membership->scope_type, (int) $membership->scope_id,
+        $participant = null;
+        if ($membership->scope_type === Scope::EVENT) {
+            $event = Event::query()->findOrFail($membership->scope_id);
+            $participant = $event->participants()->whereIn('user_id', $target->identityIds())
+                ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                ->where('confirmation_version', $event->participation_confirmation_version)
+                ->first();
+            if ($participant === null || $participant->role === EventParticipantRoleEnum::ORGANIZER
+                || in_array($participant->responsibility_status,
+                    [EventResponsibilityStatusEnum::PENDING, EventResponsibilityStatusEnum::ACCEPTED], true)) {
+                throw ValidationException::withMessages(['username' => 'Выберите участника мероприятия без действующего назначения.']);
+            }
+        }
+
+        $invitation = $contracts->invite($membership->scope_type, (int) $membership->scope_id,
             $request->user(), $target, $data['name'], $data['permissions'],
-            $data['expires_at'] ?? null, $data['notes'] ?? null);
+            $data['expires_at'] ?? null, $data['notes'] ?? null, $data['legal_nature'] ?? 'technical');
+        if ($participant !== null) {
+            $participant->update([
+                'responsibility_requested_by_user_id' => $request->user()->canonical()->id,
+                'responsibility_requested_at' => now(),
+                'responsibility_responded_at' => null,
+            ]);
+            app(EventContractResponsibilityService::class)->linkParticipant($participant, $invitation);
+        }
         return back()->with('status', 'Приглашение отправлено.');
     }
 

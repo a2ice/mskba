@@ -123,6 +123,9 @@ final class ContractResource extends Resource
                                 : 'Права владельца и специальные договоры изменяются в профильном порядке.'),
                     ]),
                 ]),
+                Tab::make('Подтверждение')->icon('heroicon-o-check-badge')->schema([
+                    View::make('filament.backoffice.contract-verification'),
+                ]),
                 Tab::make('История изменений')->icon('heroicon-o-clock')->schema([
                     View::make('filament.backoffice.contract-history'),
                 ]),

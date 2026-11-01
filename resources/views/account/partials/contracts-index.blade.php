@@ -58,6 +58,27 @@
                         </form>
                     </div>
                 @endif
+                @if($contract->verification_requirement === 'required')
+                    <div class="d-grid gap-2 mb-3">
+                        <p class="mb-0">Подтверждение: <strong>{{ match($contract->verification?->status) { 'verified' => 'Проверено', 'rejected' => 'Отклонено', default => 'Ожидает проверки' } }}</strong></p>
+                        @if($contract->evidenceDocuments->isNotEmpty())
+                            <div class="d-grid gap-1">
+                                @foreach($contract->evidenceDocuments as $document)
+                                    <a class="account-contracts-workspace__text-link" href="{{ route('account.contract-evidence.download', [$contract->id, $document->id]) }}">{{ $document->name }}</a>
+                                @endforeach
+                            </div>
+                        @endif
+                        @if($contract->status === \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE)
+                            <form class="d-grid gap-2" method="POST" enctype="multipart/form-data" action="{{ route('account.contract-evidence.store', $contract->id) }}">
+                                @csrf
+                                <label class="d-grid gap-2">Подтверждающий документ (PDF или изображение, до 10 МБ)
+                                    <input class="form-control" type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                                </label>
+                                <div><button class="account-contracts-workspace__secondary" type="submit">Отправить на проверку</button></div>
+                            </form>
+                        @endif
+                    </div>
+                @endif
                 <div class="account-contracts-workspace__meta">
                     <span>№ {{ $contract->number ?? $contract->id }}</span>
                     <span>С {{ $contract->starts_at?->format('d.m.Y') ?? 'даты назначения' }}</span>
