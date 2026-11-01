@@ -76,7 +76,7 @@
                 @foreach($contractTemplates as $template)
                     <details class="border rounded-3 p-3">
                         <summary>{{ $template->name }} <small>({{ $template->shared ? 'общий' : 'личный' }})</small></summary>
-                        @if(in_array((int) $template->owner_user_id, $membership->user->canonical()->identityIds(), true))
+                        @if(in_array((int) $template->owner_user_id, $templateManager->identityIds(), true))
                             <form class="d-grid gap-3 mt-3" method="POST" action="{{ route('account.contract-templates.update', [$membership->id, $template->id]) }}">
                                 @csrf @method('PUT')
                                 <label class="d-grid gap-2">Название шаблона
