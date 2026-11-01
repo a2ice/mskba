@@ -73,6 +73,7 @@ final class EntityContractController extends Controller
             'permissions' => ['required', 'array', 'min:1'],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'legal_nature' => ['sometimes', 'in:technical,evidence_backed,legal_agreement'],
             'permissions.*' => ['required', 'string', 'distinct'],
         ]);
         $target = User::query()->where('username', trim($data['username']))->first();
@@ -95,7 +96,7 @@ final class EntityContractController extends Controller
 
         $invitation = $contracts->invite($membership->scope_type, (int) $membership->scope_id,
             $request->user(), $target, $data['name'], $data['permissions'],
-            $data['expires_at'] ?? null, $data['notes'] ?? null);
+            $data['expires_at'] ?? null, $data['notes'] ?? null, $data['legal_nature'] ?? 'technical');
         if ($participant !== null) {
             $participant->update([
                 'responsibility_requested_by_user_id' => $request->user()->canonical()->id,
