@@ -11,6 +11,7 @@ use App\Modules\League\Domain\Enums\LeaguePermissionEnum;
 use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
+use App\Modules\Media\Application\Services\EntityBannerAccess;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
@@ -96,7 +97,7 @@ final class LeagueController extends Controller
             && $contracts->allows($user, Scope::LEAGUE, $item->id, LeaguePermissionEnum::EDIT->value);
         return ThemeResolver::page('leagues.show', [
             'league' => $item,
-            'canEditLeague' => $canEditLeague,
+            'canEditLeague' => $user !== null && app(EntityBannerAccess::class)->allows(request(), 'account', $item),
             'entityEditUrl' => $canEditLeague ? route('leagues.manage', $item->id) : null,
             'canCreateSeason' => $user?->isConfirmed()
                 && app(UserOperationalPermissionChecker::class)->allows($user, Permission::CREATE_SEASON)
@@ -129,7 +130,7 @@ final class LeagueController extends Controller
             && app(EntityContractManager::class)->allows($user, Scope::SEASON, $item->id, SeasonPermissionEnum::EDIT->value);
         return ThemeResolver::page('leagues.season', [
             'league' => $parent, 'season' => $item,
-            'canEditSeason' => $canEditSeason,
+            'canEditSeason' => $user !== null && app(EntityBannerAccess::class)->allows(request(), 'account', $item),
             'entityEditUrl' => $canEditSeason ? route('leagues.seasons.manage', [$parent->id, $item->id]) : null,
         ]);
     }
