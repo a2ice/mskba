@@ -9,6 +9,9 @@ use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -111,7 +114,8 @@ final class BackofficeContractEditor
                 }
             }
 
-            $expiresAt = $this->isOwnerContract($contract) ? null : ($data['expires_at'] ?? null);
+            $expiresAt = $this->isOwnerContract($contract)
+                ? $contract->expires_at : ($data['expires_at'] ?? null);
             if ($expiresAt !== null && $contract->starts_at !== null
                 && \Carbon\CarbonImmutable::parse($expiresAt)->lessThanOrEqualTo($contract->starts_at)) {
                 throw ValidationException::withMessages(['expires_at' => 'Окончание должно быть позже начала контракта.']);
@@ -132,6 +136,17 @@ final class BackofficeContractEditor
                     // Widening an accepted contract is a new invitation, never
                     // a silent grant. The recipient must consent again.
                     $contract->membership->update(['invitation_status' => TeamInvitationStatusEnum::PENDING]);
+                    $recipientId = (int) $contract->membership->user_id;
+                    DB::afterCommit(static function () use ($recipientId): void {
+                        app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+                            userId: $recipientId,
+                            type: UserNotificationTypeEnum::REMINDER,
+                            title: 'Изменены условия контракта',
+                            body: 'Для новых полномочий требуется ваше подтверждение.',
+                            actionUrl: route('account.contracts'),
+                            actionText: 'Рассмотреть',
+                        ));
+                    });
                 }
                 $contract->permissions()->delete();
                 $contract->permissions()->createMany(array_map(
