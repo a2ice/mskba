@@ -35,6 +35,8 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_VENUE_MANAGE = 'backoffice.venue.manage';
     case BACKOFFICE_VENUE_MODERATE = 'backoffice.venue.moderate';
     case BACKOFFICE_EVENT_MANAGE = 'backoffice.event.manage';
+    case BACKOFFICE_CONTRACT_VIEW = 'backoffice.contract.view';
+    case BACKOFFICE_CONTRACT_MANAGE = 'backoffice.contract.manage';
     case BACKOFFICE_TEAM_MANAGE = 'backoffice.team.manage';
     case BACKOFFICE_LEAGUE_VIEW = 'backoffice.league.view';
     case BACKOFFICE_LEAGUE_CREATE = 'backoffice.league.create';
@@ -85,6 +87,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MANAGE,
             self::BACKOFFICE_VENUE_MODERATE,
             self::BACKOFFICE_EVENT_MANAGE,
+            self::BACKOFFICE_CONTRACT_VIEW,
+            self::BACKOFFICE_CONTRACT_MANAGE,
             self::BACKOFFICE_TEAM_MANAGE,
             self::BACKOFFICE_LEAGUE_VIEW,
             self::BACKOFFICE_LEAGUE_CREATE,
@@ -159,6 +163,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_VENUE_MANAGE => 'Создание, изменение и удаление площадок и справочников в Filament',
             self::BACKOFFICE_VENUE_MODERATE => 'Рассмотрение заявок модерации площадок и разрешение дублей в Filament',
             self::BACKOFFICE_EVENT_MANAGE => 'Управление мероприятиями, участниками и их бронированиями в Filament',
+            self::BACKOFFICE_CONTRACT_VIEW => 'Просмотр контрактов в бэк-офисе',
+            self::BACKOFFICE_CONTRACT_MANAGE => 'Изменение условий и отзыв контрактов в бэк-офисе',
             self::BACKOFFICE_TEAM_MANAGE => 'Управление командами, участниками, составами и оформлением в Filament',
             self::BACKOFFICE_LEAGUE_VIEW => 'Просмотр лиг в Filament',
             self::BACKOFFICE_LEAGUE_CREATE => 'Создание лиг в Filament',
