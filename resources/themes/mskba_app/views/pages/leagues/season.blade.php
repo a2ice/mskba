@@ -22,7 +22,10 @@
         @endif
         <div>
             <span class="badge">{{ $season->status === 'active' ? 'Активный сезон' : 'Архивный сезон' }}</span>
-            <h1 id="league-season-heading">{{ $season->name }}</h1>
+            <div class="app-entity-heading">
+                <h1 id="league-season-heading">{{ $season->name }}</h1>
+                @include('theme::partials.entity-edit-link', ['url' => $entityEditUrl ?? null])
+            </div>
             <p class="app-team-card__detail">Лига: <a href="{{ route('leagues.show', $league->alias) }}">{{ $league->name }}</a></p>
             @if ($season->starts_on || $season->ends_on)
                 <p class="app-team-card__detail">
