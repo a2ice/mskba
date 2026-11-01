@@ -28,12 +28,15 @@ final readonly class ManageSectionCoachHandler
     ) {}
 
     /** @param list<SportsSectionPermissionEnum> $permissions */
-    public function add(SportsSection $section, User $target, User $issuer, array $permissions = []): ContractMembership
+    public function add(
+        SportsSection $section, User $target, User $issuer, array $permissions = [],
+        ?string $contractName = null, ?string $expiresAt = null, ?string $notes = null,
+    ): ContractMembership
     {
         $target = $this->rules->assertCoach($target);
         $issuer = $issuer->canonical();
 
-        return DB::transaction(function () use ($section, $target, $issuer, $permissions): ContractMembership {
+        return DB::transaction(function () use ($section, $target, $issuer, $permissions, $contractName, $expiresAt, $notes): ContractMembership {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($section->id);
             $this->authorize($issuer, $section);
             $alreadyInvited = ContractMembership::query()
@@ -57,7 +60,7 @@ final readonly class ManageSectionCoachHandler
             $membership = $this->contracts->invite(
                 ContractMembershipScopeTypeEnum::SPORTS_SECTION,
                 $section->id, $issuer, $target,
-                "Тренер секции «{$section->name}»", $values,
+                $contractName ?: "Тренер секции «{$section->name}»", $values, $expiresAt, $notes,
             );
             $membership->update([
                 'access_level' => SportsSectionAccessLevelEnum::MANAGER,
