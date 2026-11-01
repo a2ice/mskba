@@ -141,6 +141,22 @@ final class SportsSectionContractConsentTest extends TestCase
         app(EntityContractManager::class)->revoke($invitation, $owner);
     }
 
+    public function test_time_limited_coach_cannot_become_permanent_head_coach(): void
+    {
+        [$owner, $actor] = $this->coach();
+        [$coach] = $this->coach();
+        $section = $this->section($actor);
+        $manager = app(ManageSectionCoachHandler::class);
+        $invitation = $manager->add(
+            $section, $coach, $owner, [Right::MANAGE_SESSIONS],
+            'Тренер на неделю', now()->addWeek()->toDateTimeString(),
+        );
+        app(EntityContractManager::class)->respond($invitation, $coach, true);
+
+        $this->expectException(SportsSectionException::class);
+        $manager->transferHeadCoach($section, $invitation, $owner);
+    }
+
     public function test_owner_transfer_is_not_enabled_without_section_specific_coach_flow(): void
     {
         [$owner, $actor] = $this->coach();
