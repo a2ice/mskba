@@ -41,6 +41,11 @@ class Contract extends Model
         return $this->hasOne(ContractRelation::class);
     }
 
+    public function evidenceDocuments(): HasMany
+    {
+        return $this->hasMany(ContractEvidenceDocument::class);
+    }
+
     public function verification(): HasOne
     {
         return $this->hasOne(ContractVerification::class);
