@@ -42,7 +42,74 @@
 @if($editing)
 <section class="sports-section-editor__panel" id="section-media"><div class="sports-section-editor__panel-heading"><div><h2>Фотографии</h2><p class="text-muted">Основная фотография используется в каталоге и в шапке публичной страницы.</p></div></div><div class="sports-section-editor__gallery">@foreach($section->media as $photo)<article><img src="{{ $photo->publicUrl() }}" alt=""><div>@if(!$photo->is_featured)<form method="POST" action="{{ route('account.sports-sections.photos.feature', [$section, $photo->id]) }}">@csrf @method('PATCH')<button class="btn btn--secondary btn--sm">Сделать основной</button></form>@else<span class="text-accent">Основная</span>@endif<form method="POST" action="{{ route('account.sports-sections.photos.destroy', [$section, $photo->id]) }}">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm">Удалить</button></form></div></article>@endforeach</div><form method="POST" enctype="multipart/form-data" action="{{ route('account.sports-sections.photos.store', $section) }}" class="sports-section-editor__inline">@csrf<input class="form-control" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required><button class="btn btn--primary btn--sm">Добавить фото</button></form></section>
 
-<section class="sports-section-editor__panel" id="section-coaches"><h2>Тренеры</h2><div class="sports-section-editor__items">@foreach($section->coachMemberships as $membership)@php($name = trim(($membership->user?->profile?->first_name ?? '').' '.($membership->user?->profile?->last_name ?? '')) ?: $membership->user?->username)<article><div class="sports-section-editor__person"><strong>{{ $name }}</strong><span class="text-muted">{{ $section->head_coach_membership_id === $membership->id ? 'Главный тренер' : 'Тренер' }}</span></div>@if($membership->access_level !== 'owner')<details><summary>Права управления</summary><form method="POST" action="{{ route('account.sports-sections.coaches.permissions', [$section, $membership]) }}" class="sports-section-editor__permissions">@csrf @method('PUT')@foreach(\App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum::cases() as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked($membership->contract->permissions->contains('permission', $permission->value))> {{ $permission->label() }}</label>@endforeach<button class="btn btn--secondary btn--sm">Сохранить права</button></form></details>@endif @if($section->head_coach_membership_id !== $membership->id)<div class="sports-section-editor__actions"><form method="POST" action="{{ route('account.sports-sections.coaches.head-coach', [$section, $membership]) }}">@csrf @method('PATCH')<button class="btn btn--secondary btn--sm">Назначить главным</button></form><form method="POST" action="{{ route('account.sports-sections.coaches.destroy', [$section, $membership]) }}">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm">Отключить</button></form></div>@endif</article>@endforeach</div><form method="POST" action="{{ route('account.sports-sections.coaches.store', $section) }}" class="sports-section-editor__inline">@csrf @include('theme::partials.forms.entity-predictive-search', ['id' => 'sportsSectionCoach', 'name' => 'user_id', 'label' => 'Добавить тренера', 'placeholder' => 'Имя или логин…', 'searchUrl' => route('account.sports-sections.candidates', [$section, 'role' => 'coach'])])<button class="btn btn--primary btn--sm">Добавить тренера</button></form></section>
+<section class="sports-section-editor__panel" id="section-coaches">
+    <div class="sports-section-editor__panel-heading" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+            <h2>Тренеры</h2>
+            <p class="text-muted">Тренер получает права после принятия приглашения. Участие в занятиях настраивается отдельно.</p>
+        </div>
+        @if($section->headCoachMembership)
+            <a class="btn btn--secondary btn--sm" href="{{ route('account.contracts.manage', $section->headCoachMembership) }}">Управлять контрактами</a>
+        @endif
+    </div>
+    <div class="sports-section-editor__items" style="display:grid;gap:16px;margin-top:16px">
+        @foreach($section->coachMemberships as $membership)
+            <?php
+                $name = trim(($membership->user?->profile?->first_name ?? '').' '.($membership->user?->profile?->last_name ?? '')) ?: $membership->user?->username;
+                $accepted = $membership->invitation_status?->value === 'accepted';
+                $effective = $accepted
+                    && $membership->contract?->status?->value === 'active'
+                    && ($membership->contract?->expires_at === null || $membership->contract->expires_at->isFuture());
+                $label = ! $effective ? match($membership->invitation_status?->value) {
+                    'pending' => 'Ожидает подтверждения',
+                    'declined' => 'Отклонил приглашение',
+                    'revoked' => 'Отключён',
+                    default => 'Контракт не действует',
+                } : ($section->head_coach_membership_id === $membership->id ? 'Главный тренер' : 'Тренер');
+            ?>
+            <article>
+                <div class="sports-section-editor__person">
+                    <strong>{{ $name }}</strong>
+                    <span class="text-muted">{{ $label }}</span>
+                </div>
+                @if($membership->access_level !== 'owner' && $membership->contract?->status?->value === 'active')
+                    <details>
+                        <summary>Права управления</summary>
+                        <form method="POST" action="{{ route('account.sports-sections.coaches.permissions', [$section, $membership]) }}" class="sports-section-editor__permissions">
+                            @csrf @method('PUT')
+                            @foreach(\App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum::cases() as $permission)
+                                <label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked($membership->contract->permissions->contains('permission', $permission->value))> {{ $permission->label() }}</label>
+                            @endforeach
+                            <button class="btn btn--secondary btn--sm">Сохранить права</button>
+                        </form>
+                    </details>
+                @endif
+                @if($section->head_coach_membership_id !== $membership->id && $membership->contract?->status?->value === 'active')
+                    <div class="sports-section-editor__actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        @if($effective && $membership->contract?->expires_at === null)
+                            <form method="POST" action="{{ route('account.sports-sections.coaches.head-coach', [$section, $membership]) }}">
+                                @csrf @method('PATCH')
+                                <button class="btn btn--secondary btn--sm">Назначить главным</button>
+                            </form>
+                        @endif
+                        <form method="POST" action="{{ route('account.sports-sections.coaches.destroy', [$section, $membership]) }}">
+                            @csrf @method('DELETE')
+                            <button class="btn btn--secondary btn--sm">Отключить</button>
+                        </form>
+                    </div>
+                @endif
+            </article>
+        @endforeach
+    </div>
+    <form method="POST" action="{{ route('account.sports-sections.coaches.store', $section) }}" class="sports-section-editor__inline" style="display:grid;gap:16px;margin-top:20px">
+        @csrf
+        @include('theme::partials.forms.entity-predictive-search', ['id' => 'sportsSectionCoach', 'name' => 'user_id', 'label' => 'Пригласить тренера', 'placeholder' => 'Имя или логин…', 'searchUrl' => route('account.sports-sections.candidates', [$section, 'role' => 'coach'])])
+        <label class="form-field"><span>Название контракта (необязательно)</span><input class="form-control" name="contract_name" type="text" minlength="2" maxlength="150" placeholder="Например, тренер основной группы" value="{{ old('contract_name') }}"></label>
+        <label class="form-field"><span>Действует до (необязательно)</span><input class="form-control" name="expires_at" type="datetime-local" value="{{ old('expires_at') }}"></label>
+        <label class="form-field"><span>Комментарий (необязательно)</span><textarea class="form-control" name="notes" rows="2" maxlength="2000">{{ old('notes') }}</textarea></label>
+        <div><button class="btn btn--primary btn--sm" type="submit">Отправить приглашение</button></div>
+    </form>
+</section>
 
 <section class="sports-section-editor__panel" id="section-trainees"><h2>Занимающиеся</h2><p class="text-muted">Это постоянный состав секции. При создании занятия текущие активные участники копируются в его состав.</p><div class="sports-section-editor__items">@foreach($section->traineeMemberships as $membership)@php($traineeName = trim(($membership->user?->profile?->first_name ?? '').' '.($membership->user?->profile?->last_name ?? '')) ?: $membership->user?->username)<article><div class="sports-section-editor__person"><strong>{{ $traineeName }}</strong><span class="text-muted">{{ $membership->status->label() }}</span></div>@if($membership->status->value === 'active')<form method="POST" action="{{ route('account.sports-sections.trainees.deactivate', [$section, $membership]) }}" class="sports-section-editor__actions">@csrf @method('PATCH')<input class="form-control" name="reason" placeholder="Причина, необязательно"><button class="btn btn--secondary btn--sm">Сделать неактивным</button></form>@endif</article>@endforeach</div><form method="POST" action="{{ route('account.sports-sections.trainees.store', $section) }}" class="sports-section-editor__inline">@csrf @include('theme::partials.forms.entity-predictive-search', ['id' => 'sportsSectionPlayer', 'name' => 'user_id', 'label' => 'Добавить игрока', 'placeholder' => 'Имя или логин…', 'searchUrl' => route('account.sports-sections.candidates', [$section, 'role' => 'player'])])<button class="btn btn--primary btn--sm">Добавить</button></form></section>
 
@@ -82,7 +149,7 @@
                 <div class="sports-section-editor__snapshot"><strong>Участники</strong>@foreach($session->participants as $participant)@php($participantName = trim(($participant->user?->profile?->first_name ?? '').' '.($participant->user?->profile?->last_name ?? '')) ?: $participant->user?->username)<form method="POST" action="{{ route('account.sports-sections.sessions.participants.destroy', [$section, $session, $participant->id]) }}">@csrf @method('DELETE')<span>{{ $participantName }}</span><button class="btn btn--secondary btn--sm">Убрать</button></form>@endforeach
                     <form method="POST" action="{{ route('account.sports-sections.sessions.participants.store', [$section, $session]) }}">@csrf<select class="form-select" name="user_id">@foreach($section->traineeMemberships->filter(fn ($item) => $item->status->value === 'active') as $trainee)@php($candidateName = trim(($trainee->user?->profile?->first_name ?? '').' '.($trainee->user?->profile?->last_name ?? '')) ?: $trainee->user?->username)<option value="{{ $trainee->user_id }}">{{ $candidateName }}</option>@endforeach</select><button class="btn btn--secondary btn--sm">Добавить участника</button></form>
                     <strong>Тренеры</strong>@foreach($session->coaches as $coach)@php($coachName = trim(($coach->user?->profile?->first_name ?? '').' '.($coach->user?->profile?->last_name ?? '')) ?: $coach->user?->username)<form method="POST" action="{{ route('account.sports-sections.sessions.coaches.destroy', [$section, $session, $coach->id]) }}">@csrf @method('DELETE')<span>{{ $coachName }}</span><button class="btn btn--secondary btn--sm">Убрать</button></form>@endforeach
-                    <form method="POST" action="{{ route('account.sports-sections.sessions.coaches.store', [$section, $session]) }}">@csrf<select class="form-select" name="membership_id">@foreach($section->coachMemberships as $coachMembership)@php($candidateCoachName = trim(($coachMembership->user?->profile?->first_name ?? '').' '.($coachMembership->user?->profile?->last_name ?? '')) ?: $coachMembership->user?->username)<option value="{{ $coachMembership->id }}">{{ $candidateCoachName }}</option>@endforeach</select><button class="btn btn--secondary btn--sm">Добавить тренера</button></form>
+                    <form method="POST" action="{{ route('account.sports-sections.sessions.coaches.store', [$section, $session]) }}">@csrf<select class="form-select" name="membership_id">@foreach($section->coachMemberships->filter(fn ($m) => $m->invitation_status?->value === 'accepted' && $m->contract?->status?->value === 'active' && ($m->contract?->expires_at === null || $m->contract->expires_at->isFuture())) as $coachMembership)@php($candidateCoachName = trim(($coachMembership->user?->profile?->first_name ?? '').' '.($coachMembership->user?->profile?->last_name ?? '')) ?: $coachMembership->user?->username)<option value="{{ $coachMembership->id }}">{{ $candidateCoachName }}</option>@endforeach</select><button class="btn btn--secondary btn--sm">Добавить тренера</button></form>
                 </div>
             </details>
 

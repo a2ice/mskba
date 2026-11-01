@@ -19,10 +19,23 @@ final class SportsSectionPeopleController extends Controller
 {
     public function addCoach(Request $request, SportsSection $sportsSection, ManageSectionCoachHandler $handler): RedirectResponse
     {
-        $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'permissions' => ['array'], 'permissions.*' => [Rule::enum(SportsSectionPermissionEnum::class)]]);
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'contract_name' => ['nullable', 'string', 'min:2', 'max:150'],
+            'expires_at' => ['nullable', 'date', 'after:now'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'permissions' => ['array'],
+            'permissions.*' => [Rule::enum(SportsSectionPermissionEnum::class)],
+        ]);
         $permissions = collect($data['permissions'] ?? [])->map(fn (string $value) => SportsSectionPermissionEnum::from($value))->all();
 
-        return $this->execute(fn () => $handler->add($sportsSection, User::findOrFail($data['user_id']), $request->user(), $permissions), 'Тренер добавлен.');
+        return $this->execute(
+            fn () => $handler->add(
+                $sportsSection, User::findOrFail($data['user_id']), $request->user(), $permissions,
+                $data['contract_name'] ?? null, $data['expires_at'] ?? null, $data['notes'] ?? null,
+            ),
+            'Приглашение тренеру отправлено.',
+        );
     }
 
     public function permissions(Request $request, SportsSection $sportsSection, ContractMembership $membership, ManageSectionCoachHandler $handler): RedirectResponse

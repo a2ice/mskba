@@ -7,6 +7,7 @@ use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
@@ -36,6 +37,7 @@ final class AccountSportsSectionController extends Controller
         $membershipQuery = fn () => ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::SPORTS_SECTION->value)
             ->whereIn('user_id', $identityIds)
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query
                 ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                 ->where('status', ContractStatusEnum::ACTIVE->value)
@@ -80,7 +82,9 @@ final class AccountSportsSectionController extends Controller
     public function edit(Request $request, SportsSection $sportsSection, SportsSectionAccess $access): Response
     {
         $this->guardFeature();
-        abort_unless($access->activeMemberships($sportsSection)->whereIn('user_id', $request->user()->canonical()->identityIds())->exists(), 403);
+        abort_unless($request->user()->canonical()->isConfirmed()
+            && $access->activeMemberships($sportsSection)
+                ->whereIn('user_id', $request->user()->canonical()->identityIds())->exists(), 403);
         $sportsSection->load([
             'media' => fn ($query) => $query->where('collection', 'sports_section_gallery')->orderByDesc('is_featured'),
             'contacts', 'primaryVenue.courts', 'primaryVenueCourt', 'headCoachMembership.user.profile',

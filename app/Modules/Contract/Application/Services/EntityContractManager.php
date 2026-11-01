@@ -16,6 +16,8 @@ use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\League\Domain\Enums\SeasonPermissionEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
@@ -41,6 +43,7 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::cases(),
             Scope::TOURNAMENT => TournamentPermissionEnum::cases(),
             Scope::TEAM => TeamPermissionEnum::cases(),
+            Scope::SPORTS_SECTION => SportsSectionPermissionEnum::cases(),
             // Ordinary public contracts may manage venue catalogue data only.
             // Commercial rental permissions are delegated through the verified
             // venue ownership/commercial roles workflow, never this editor.
@@ -62,6 +65,7 @@ final class EntityContractManager
             Scope::SEASON => SeasonPermissionEnum::MANAGE_CONTRACTS->value,
             Scope::TOURNAMENT => TournamentPermissionEnum::MANAGE_STAFF->value,
             Scope::TEAM => TeamPermissionEnum::MANAGE_PERMISSIONS->value,
+            Scope::SPORTS_SECTION => SportsSectionPermissionEnum::MANAGE_COACHES->value,
             Scope::VENUE => VenuePermissionEnum::MANAGE_CONTRACTS->value,
             default => null,
         };
@@ -178,7 +182,9 @@ final class EntityContractManager
     /** Ownership transfer is explicit and requires the future owner to accept. */
     public function transferOwner(Scope $scope, int $scopeId, User $issuer, User $target): ContractMembership
     {
-        if ($scope === Scope::VENUE || $this->allPermissions($scope) === []) {
+        // A section also owns a head-coach appointment: transferring its
+        // ownership requires the section-specific coach workflow.
+        if (in_array($scope, [Scope::VENUE, Scope::SPORTS_SECTION], true) || $this->allPermissions($scope) === []) {
             throw ValidationException::withMessages(['username' => 'Для этой сущности действует отдельный порядок передачи владения.']);
         }
         return DB::transaction(function () use ($scope, $scopeId, $issuer, $target): ContractMembership {
@@ -300,7 +306,8 @@ final class EntityContractManager
             if (! in_array((int) $membership->user_id, $user->canonical()->identityIds(), true)
                 || $membership->invitation_status !== TeamInvitationStatusEnum::PENDING
                 || $membership->contract?->status !== ContractStatusEnum::ACTIVE
-                || $membership->contract?->comment !== self::COMMENT_MARKER) {
+                || ($membership->contract?->comment !== self::COMMENT_MARKER
+                    && $membership->scope_type !== Scope::SPORTS_SECTION)) {
                 abort(403);
             }
             if ($accepted && $membership->access_level === 'owner_candidate') {
@@ -339,6 +346,13 @@ final class EntityContractManager
             if (in_array($membership->access_level, ['owner', 'primary_manager'], true)
                 || $membership->contract?->comment !== self::COMMENT_MARKER) {
                 abort(403);
+            }
+            if ($membership->scope_type === Scope::SPORTS_SECTION
+                && SportsSection::query()->whereKey($membership->scope_id)
+                    ->where('head_coach_membership_id', $membership->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'contract' => 'Сначала назначьте другого главного тренера секции.',
+                ]);
             }
             $available = $this->effectivePermissions($issuer, $membership->scope_type, (int) $membership->scope_id);
             $this->assertDelegation($membership->scope_type, $available,
