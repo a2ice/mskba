@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\SportsSection;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -134,6 +135,11 @@ final class SportsSectionPublicPageTest extends TestCase
 
         $handler = app(ManageSectionCoachHandler::class);
         $membership = $handler->add($section, $coach, $owner);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertDontSee('former-section-coach');
+        app(EntityContractManager::class)->respond($membership, $coach, true);
 
         $this->get(route('sports-sections.show', $section))
             ->assertOk()
