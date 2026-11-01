@@ -156,7 +156,8 @@ final class EntityContractManager
                 ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)))
             ->with('contract.permissions')
-            ->get()->flatMap(fn (ContractMembership $m) => $m->contract->permissions->pluck('permission'))
+            ->get()->filter(fn (ContractMembership $m) => app(ContractAssurance::class)->allows($m->contract))
+            ->flatMap(fn (ContractMembership $m) => $m->contract->permissions->pluck('permission'))
             ->unique()->values()->all();
     }
 
