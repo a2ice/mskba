@@ -40,7 +40,7 @@ final readonly class AccountContractsWorkspace
                     $query->where('scope_type', $filters['type']);
                 }
             })
-            ->with(['membership', 'permissions', 'assignedByUser'])
+            ->with(['membership', 'permissions', 'assignedByUser', 'verification', 'evidenceDocuments'])
             ->orderByDesc('id');
 
         if (! empty($filters['status'])) {
