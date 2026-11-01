@@ -5,6 +5,7 @@ namespace App\Modules\Contract\Application\Services;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -189,6 +190,10 @@ final class BackofficeContractEditor
             if ($data['status'] === ContractStatusEnum::INACTIVE->value && $contract->membership !== null
                 && $contract->membership->invitation_status !== TeamInvitationStatusEnum::REVOKED) {
                 $contract->membership->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
+            }
+
+            if ($contract->membership?->scope_type === Scope::EVENT) {
+                app(EventContractResponsibilityService::class)->syncParticipant($contract->membership->refresh());
             }
 
             $after = [
