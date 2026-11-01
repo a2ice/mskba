@@ -46,8 +46,10 @@ final class EntityContractController extends Controller
             'entityName' => $entity === null ? $scope->label() : $entity->{$scope->titleAttribute()},
             'permissions' => $options,
             'memberships' => $memberships,
-            'canTransfer' => $scope !== \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE
-                && $contracts->isOwner($request->user(), $scope, $scopeId),
+            'canTransfer' => ! in_array($scope, [
+                \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE,
+                \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::SPORTS_SECTION,
+            ], true) && $contracts->isOwner($request->user(), $scope, $scopeId),
         ]);
     }
 
