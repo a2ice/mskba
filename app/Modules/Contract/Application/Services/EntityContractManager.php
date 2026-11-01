@@ -249,9 +249,9 @@ final class EntityContractManager
     }
 
     /** @param list<string> $permissions */
-    public function invite(Scope $scope, int $scopeId, User $issuer, User $target, string $name, array $permissions, ?string $expiresAt = null, ?string $notes = null): ContractMembership
+    public function invite(Scope $scope, int $scopeId, User $issuer, User $target, string $name, array $permissions, ?string $expiresAt = null, ?string $notes = null, string $legalNature = 'technical'): ContractMembership
     {
-        return DB::transaction(function () use ($scope, $scopeId, $issuer, $target, $name, $permissions, $expiresAt, $notes): ContractMembership {
+        return DB::transaction(function () use ($scope, $scopeId, $issuer, $target, $name, $permissions, $expiresAt, $notes, $legalNature): ContractMembership {
             $issuer = $issuer->canonical();
             $target = $target->canonical();
             if (($scope !== Scope::EVENT && ! $target->isConfirmed()) || $target->isBlocked() || $target->trashed()
@@ -284,7 +284,12 @@ final class EntityContractManager
                 throw ValidationException::withMessages(['user_id' => 'Контракт с таким названием уже назначен пользователю.']);
             }
 
+            if (! in_array($legalNature, ['technical', 'evidence_backed', 'legal_agreement'], true)) {
+                throw ValidationException::withMessages(['legal_nature' => 'Выберите допустимый тип контракта.']);
+            }
             $contract = Contract::query()->create([
+                'legal_nature' => $legalNature,
+                'verification_requirement' => $legalNature === 'technical' ? 'none' : 'required',
                 'family' => ContractFamilyEnum::MEMBERSHIP,
                 'name' => trim($name),
                 'notes' => $notes === null ? null : trim($notes),
@@ -296,6 +301,9 @@ final class EntityContractManager
                 'assigner' => UserParticipationRoleAssignerEnum::USER,
             'comment' => self::COMMENT_MARKER,
             ]);
+            if ($legalNature !== 'technical') {
+                $contract->verification()->create(['status' => 'pending']);
+            }
             $membership = $contract->membership()->create([
                 'scope_type' => $scope,
                 'scope_id' => $scopeId,
