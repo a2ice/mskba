@@ -81,7 +81,6 @@ final class VenueMembershipAccess
             ->where('access_level', 'primary_manager')
             ->whereHas('contract', fn (Builder $q) => $q
                 ->where('status', ContractStatusEnum::ACTIVE->value)
-                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
     }
@@ -269,7 +268,6 @@ final class VenueMembershipAccess
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
-                    ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                     ->where(function (Builder $query) use ($now): void {
                         $query
                             ->whereNull('starts_at')
