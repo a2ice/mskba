@@ -127,6 +127,17 @@ final class BackofficeContractEditor
 
             $expiresAt = $this->isOwnerContract($contract)
                 ? $contract->expires_at : ($data['expires_at'] ?? null);
+            $isSectionHeadCoach = $contract->membership?->scope_type === Scope::SPORTS_SECTION
+                && SportsSection::query()->whereKey($contract->membership->scope_id)
+                    ->where('head_coach_membership_id', $contract->membership->id)->exists();
+            if ($isSectionHeadCoach && ($expiresAt !== null
+                || ($this->mayEditRights($contract) && array_diff(
+                    $data['permissions'] ?? $before['permissions'], $before['permissions'],
+                ) !== []))) {
+                throw ValidationException::withMessages([
+                    'expires_at' => 'Сначала назначьте другого главного тренера, затем измените срок или расширьте права.',
+                ]);
+            }
             if ($expiresAt !== null && $contract->starts_at !== null
                 && \Carbon\CarbonImmutable::parse($expiresAt)->lessThanOrEqualTo($contract->starts_at)) {
                 throw ValidationException::withMessages(['expires_at' => 'Окончание должно быть позже начала контракта.']);
