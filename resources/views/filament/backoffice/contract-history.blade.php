@@ -8,24 +8,26 @@
         ->limit(30)->get();
 @endphp
 <x-filament::section heading="История изменений">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead><tr class="border-b text-left">
-                <th class="p-3">Дата</th><th class="p-3">Действие</th>
-                <th class="p-3">Кем изменено</th><th class="p-3">Основание</th>
+    <div class="mskba-contract-history">
+        <div class="mskba-contract-table-wrap">
+        <table class="mskba-contract-table">
+            <thead><tr>
+                <th scope="col">Дата</th><th scope="col">Действие</th>
+                <th scope="col">Кем изменено</th><th scope="col">Основание</th>
             </tr></thead>
             <tbody>
             @forelse($history as $entry)
-                <tr class="border-b">
-                    <td class="p-3 whitespace-nowrap">{{ \Carbon\Carbon::parse($entry->created_at)->format('d.m.Y H:i') }}</td>
-                    <td class="p-3">{{ $entry->action === 'revoked' ? 'Отозван' : 'Изменён' }}</td>
-                    <td class="p-3">{{ $entry->username ?? 'Система' }}</td>
-                    <td class="p-3">{{ $entry->reason }}</td>
+                <tr>
+                    <td data-label="Дата">{{ \Carbon\Carbon::parse($entry->created_at)->format('d.m.Y H:i') }}</td>
+                    <td data-label="Действие">{{ $entry->action === 'revoked' ? 'Отозван' : 'Изменён' }}</td>
+                    <td data-label="Кем изменено">{{ $entry->username ?? 'Система' }}</td>
+                    <td data-label="Основание">{{ $entry->reason }}</td>
                 </tr>
             @empty
-                <tr><td class="p-3" colspan="4">Изменений пока не было.</td></tr>
+                <tr><td class="mskba-contract-table__empty" colspan="4">Изменений пока не было.</td></tr>
             @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </x-filament::section>
