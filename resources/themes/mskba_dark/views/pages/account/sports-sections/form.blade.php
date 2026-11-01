@@ -54,7 +54,7 @@
     </div>
     <div class="sports-section-editor__items" style="display:grid;gap:16px;margin-top:16px">
         @foreach($section->coachMemberships as $membership)
-            @php
+            <?php
                 $name = trim(($membership->user?->profile?->first_name ?? '').' '.($membership->user?->profile?->last_name ?? '')) ?: $membership->user?->username;
                 $accepted = $membership->invitation_status?->value === 'accepted';
                 $effective = $accepted
@@ -66,7 +66,7 @@
                     'revoked' => 'Отключён',
                     default => 'Контракт не действует',
                 } : ($section->head_coach_membership_id === $membership->id ? 'Главный тренер' : 'Тренер');
-            @endphp
+            ?>
             <article>
                 <div class="sports-section-editor__person">
                     <strong>{{ $name }}</strong>
