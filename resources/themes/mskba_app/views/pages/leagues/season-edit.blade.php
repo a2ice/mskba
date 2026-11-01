@@ -48,6 +48,11 @@
                 @endif
             </div>
         </form>
+        @if($season !== null)
+            <div class="app-league-banner-settings">
+                @include('components.entity-banner-editor', ['model' => $season, 'context' => 'account'])
+            </div>
+        @endif
     </div>
 </section>
 @endsection
