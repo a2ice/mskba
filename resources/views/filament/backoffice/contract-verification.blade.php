@@ -6,7 +6,7 @@
         : null;
 @endphp
 <x-filament::section heading="Основание полномочий">
-    <div class="d-grid gap-3">
+    <div class="mskba-contract-panel mskba-contract-verification">
         <p><strong>Тип:</strong>
             {{ match($contract->legal_nature) { 'evidence_backed' => 'Подтверждаемые полномочия', 'legal_agreement' => 'Юридическое соглашение', default => 'Техническое назначение' } }}
         </p>
@@ -42,10 +42,10 @@
             </table>
         </div>
         @if($contract->verification_requirement === 'required' && app(\App\Modules\Contract\Application\Services\BackofficeContractEditor::class)->canManage())
-            <form method="POST" action="{{ route('backoffice.contracts.verification.review', $contract->id) }}" class="d-grid gap-3">
+            <form method="POST" action="{{ route('backoffice.contracts.verification.review', $contract->id) }}" class="mskba-contract-verification__form">
                 @csrf
-                <label class="d-grid gap-1">Решение
-                    <select name="decision" class="fi-input" required>
+                <label class="mskba-contract-verification__field">Решение
+                    <select name="decision" class="mskba-contract-verification__input" required>
                         <option value="verified">Подтвердить полномочия</option>
                         <option value="rejected">Отклонить подтверждение</option>
                     </select>
@@ -53,7 +53,7 @@
                 <label class="d-grid gap-1">Причина решения
                     <textarea name="reason" class="fi-input" rows="3" minlength="5" maxlength="2000" required></textarea>
                 </label>
-                <div><button class="fi-btn fi-color-primary" type="submit">Сохранить решение</button></div>
+                <div><button class="mskba-contract-verification__button" type="submit">Сохранить решение</button></div>
             </form>
         @endif
     </div>
