@@ -2,6 +2,7 @@
 
 namespace App\Filament\Backoffice\Resources\Events;
 
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
 use App\Modules\Event\Application\UseCases\CreateEventHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventHandler;
 use App\Modules\Event\Application\UseCases\CancelEventHandler;
@@ -18,6 +19,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Illuminate\Validation\ValidationException;
 use Filament\Notifications\Notification;
 use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
 
 final class EventBackofficeEditor
 {
@@ -50,6 +52,7 @@ final class EventBackofficeEditor
     public function createEvent(array $data): Event
     {
         $actor = $this->actor();
+        $issuer = $actor->user->canonical();
         $ownerId = (int) ($data['organizer_user_id'] ?? 0);
         if ($ownerId > 0 && $ownerId !== $actor->user_id) {
             abort_unless($actor->user?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
@@ -59,7 +62,7 @@ final class EventBackofficeEditor
                 ?? throw new InvalidArgumentException('Не удалось определить организатора.');
         }
 
-        return $this->validation(function () use ($actor, $data): Event {
+        return $this->validation(function () use ($actor, $issuer, $ownerId, $data): Event {
             $payload = $this->payload($data);
             // Preserve legacy behavior for direct callers that do not send
             // the checkbox. The Filament creation form always sends it.
@@ -80,7 +83,14 @@ final class EventBackofficeEditor
                 $payload['participation_roles'] = $roles;
             }
 
-            return $this->create->handle($actor, $payload);
+            return DB::transaction(function () use ($actor, $issuer, $ownerId, $payload): Event {
+                $event = $this->create->handle($actor, $payload);
+                if ($ownerId > 0 && ! $issuer->isSameIdentity($ownerId)) {
+                    app(EventContractResponsibilityService::class)->markBackofficeOwnerPending($event, $issuer);
+                }
+
+                return $event;
+            });
         });
     }
 
