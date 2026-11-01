@@ -27,7 +27,6 @@
         <ul class="sidebar-nav nav flex-column">
             @if($pendingMembership)<li class="nav-item"><a class="nav-link" href="#invitation">Приглашение</a></li>@endif
             @if($canManageMain)<li class="nav-item"><a class="nav-link" href="#main">Основное</a></li>@endif
-            @if($canManageMain)<li class="nav-item"><a class="nav-link" href="#banner">Баннер</a></li>@endif
             @if($canManageGames)
                 <li class="nav-item"><a class="nav-link" href="#participants">Участники</a></li>
                 @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT)
@@ -55,7 +54,6 @@
 
 @section('section-content')
 @if($canManageMain)
-    <div id="banner">@include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])</div>
 @endif
 
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
@@ -75,7 +73,9 @@
     @endif
 
     @if($isOwner)
-        <div class="event-card mb-4" id="main"><h2>Основные данные</h2><form method="POST" action="{{ route('tournaments.update', $tournament->routeIdentifier()) }}" enctype="multipart/form-data">@csrf @method('PUT') @include('theme::pages.tournaments.partials.form')</form></div>
+        <div class="event-card mb-4" id="main"><h2>Основные данные</h2><form method="POST" action="{{ route('tournaments.update', $tournament->routeIdentifier()) }}" enctype="multipart/form-data">@csrf @method('PUT') @include('theme::pages.tournaments.partials.form')</form>
+            @include('components.entity-banner-editor', ['model' => $tournament, 'context' => 'account'])
+        </div>
     @elseif($effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_DESCRIPTION))
         <div class="event-card mb-4" id="main"><h2>Описание и обложка</h2>
             <form method="POST" action="{{ route('tournaments.update', $tournament->routeIdentifier()) }}" enctype="multipart/form-data">@csrf @method('PUT')
