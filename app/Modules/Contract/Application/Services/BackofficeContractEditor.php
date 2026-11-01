@@ -121,6 +121,13 @@ final class BackofficeContractEditor
                 throw ValidationException::withMessages(['expires_at' => 'Окончание должно быть позже начала контракта.']);
             }
 
+            $isPublicDelegation = $contract->comment === EntityContractManager::COMMENT_MARKER
+                && $contract->membership !== null && ! $this->isOwnerContract($contract);
+            $oldExpiry = $contract->expires_at;
+            $newExpiry = $expiresAt === null ? null : \Carbon\CarbonImmutable::parse($expiresAt);
+            $renewal = $isPublicDelegation && $oldExpiry !== null
+                && ($newExpiry === null || $newExpiry->greaterThan($oldExpiry));
+
             $contract->update([
                 'name' => trim($data['name']),
                 'notes' => ($data['notes'] ?? '') === '' ? null : trim($data['notes']),
@@ -128,30 +135,33 @@ final class BackofficeContractEditor
                 'expires_at' => $expiresAt,
             ]);
 
+            $newRights = [];
             if ($this->mayEditRights($contract) && array_key_exists('permissions', $data)
                 && $data['status'] === ContractStatusEnum::ACTIVE->value) {
                 $requested = array_values(array_unique($data['permissions']));
                 $newRights = array_diff($requested, $before['permissions']);
-                if ($newRights !== [] && $contract->membership?->invitation_status === TeamInvitationStatusEnum::ACCEPTED) {
-                    // Widening an accepted contract is a new invitation, never
-                    // a silent grant. The recipient must consent again.
-                    $contract->membership->update(['invitation_status' => TeamInvitationStatusEnum::PENDING]);
-                    $recipientId = (int) $contract->membership->user_id;
-                    DB::afterCommit(static function () use ($recipientId): void {
-                        app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
-                            userId: $recipientId,
-                            type: UserNotificationTypeEnum::REMINDER,
-                            title: 'Изменены условия контракта',
-                            body: 'Для новых полномочий требуется ваше подтверждение.',
-                            actionUrl: route('account.contracts'),
-                            actionText: 'Рассмотреть',
-                        ));
-                    });
-                }
                 $contract->permissions()->delete();
                 $contract->permissions()->createMany(array_map(
                     static fn (string $p): array => ['permission' => $p], $requested,
                 ));
+            }
+
+            if ($data['status'] === ContractStatusEnum::ACTIVE->value
+                && ($newRights !== [] || $renewal)
+                && $contract->membership?->invitation_status === TeamInvitationStatusEnum::ACCEPTED) {
+                // An extended term or widened rights must be accepted again.
+                $contract->membership->update(['invitation_status' => TeamInvitationStatusEnum::PENDING]);
+                $recipientId = (int) $contract->membership->user_id;
+                DB::afterCommit(static function () use ($recipientId): void {
+                    app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+                        userId: $recipientId,
+                        type: UserNotificationTypeEnum::REMINDER,
+                        title: 'Изменены условия контракта',
+                        body: 'Для новых условий требуется ваше подтверждение.',
+                        actionUrl: route('account.contracts'),
+                        actionText: 'Рассмотреть',
+                    ));
+                });
             }
 
             if ($data['status'] === ContractStatusEnum::INACTIVE->value && $contract->membership !== null
