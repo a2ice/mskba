@@ -394,8 +394,13 @@ final class EntityContractManager
             if ($grants->contains(fn (ContractMembership $m): bool => $m->contract->expires_at === null)) {
                 continue;
             }
-            $latest = $grants->max(fn (ContractMembership $m): int => $m->contract->expires_at->timestamp);
-            $expiry = CarbonImmutable::createFromTimestamp($latest);
+            // Preserve the contract's application timezone when copying
+            // its expiration. Reconstructing from a UTC timestamp shifts
+            // the database wall-time on non-UTC installations.
+            $latestGrant = $grants->sortByDesc(
+                fn (ContractMembership $m): int => $m->contract->expires_at->timestamp,
+            )->first();
+            $expiry = CarbonImmutable::instance($latestGrant->contract->expires_at);
             $bound = $bound === null || $expiry->lessThan($bound) ? $expiry : $bound;
         }
 
