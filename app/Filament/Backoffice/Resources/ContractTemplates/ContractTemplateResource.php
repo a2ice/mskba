@@ -109,7 +109,12 @@ final class ContractTemplateResource extends Resource
                 'data.scope_id' => 'Для общего шаблона выберите объект.',
             ]);
         }
-        if (! ($data['shared'] ?? false)) {
+        if (($data['shared'] ?? false)) {
+            $class = $scope->modelClass();
+            if ($class === null || ! $class::query()->whereKey((int) $data['scope_id'])->exists()) {
+                throw ValidationException::withMessages(['data.scope_id' => 'Выберите существующий объект.']);
+            }
+        } else {
             $data['scope_id'] = null;
         }
         if (empty($data['owner_user_id'])) {
@@ -133,9 +138,25 @@ final class ContractTemplateResource extends Resource
                     ->getOptionLabelUsing(fn ($value): ?string =>
                         User::query()->whereKey($value)->value('username')),
                 Toggle::make('shared')->label('Общий для этой сущности')->default(false)->live(),
-                TextInput::make('scope_id')->label('ID объекта')
-                    ->numeric()->minValue(1)
-                    ->helperText('Укажите для общего шаблона. Личные шаблоны применяются к любому объекту выбранного типа.'),
+                Select::make('scope_id')->label('Объект')
+                    ->visible(fn (Get $get): bool => (bool) $get('shared'))
+                    ->searchable()
+                    ->getSearchResultsUsing(function (string $search, Get $get): array {
+                        $scope = Scope::tryFrom((string) $get('scope_type'));
+                        $class = $scope?->modelClass();
+                        if ($class === null) return [];
+
+                        return $class::query()->whereLike($scope->titleAttribute(), '%'.$search.'%')
+                            ->limit(25)->pluck($scope->titleAttribute(), 'id')->all();
+                    })
+                    ->getOptionLabelUsing(function ($value, Get $get): ?string {
+                        $scope = Scope::tryFrom((string) $get('scope_type'));
+                        $class = $scope?->modelClass();
+
+                        return $class === null ? null : $class::query()
+                            ->whereKey($value)->value($scope->titleAttribute());
+                    })
+                    ->helperText('Общий шаблон доступен управляющим выбранным объектом.'),
                 CheckboxList::make('permissions')->label('Полномочия')
                     ->options(fn (Get $get): array => self::rights($get('scope_type')))
                     ->columns(2)->required()->columnSpanFull(),
