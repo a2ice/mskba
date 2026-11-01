@@ -4,6 +4,7 @@ namespace App\Modules\Contract\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Application\Services\ContractTemplateService;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
@@ -21,7 +22,7 @@ final class EntityContractController extends Controller
         ), 403);
     }
 
-    public function show(Request $request, ContractMembership $membership, EntityContractManager $contracts): Response
+    public function show(Request $request, ContractMembership $membership, EntityContractManager $contracts, ContractTemplateService $templates): Response
     {
         $this->authorizeManage($request, $membership, $contracts);
         $scope = $membership->scope_type;
@@ -45,6 +46,8 @@ final class EntityContractController extends Controller
             'scopeLabel' => $scope->label(),
             'entityName' => $entity === null ? $scope->label() : $entity->{$scope->titleAttribute()},
             'permissions' => $options,
+            'contractPresets' => $templates->builtIn($scope),
+            'contractTemplates' => $templates->available($request->user(), $scope, $scopeId),
             'memberships' => $memberships,
             'canTransfer' => ! in_array($scope, [
                 \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE,
