@@ -18,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 final class LeagueManagementController extends Controller
@@ -94,8 +95,31 @@ final class LeagueManagementController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:150'],
             'description' => ['nullable', 'string', 'max:10000'],
+            'logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
         ]);
-        $model->update(['name' => trim($data['name']), 'description' => $data['description'] ?? null]);
+
+        $oldLogo = $model->logo_path;
+        $newLogo = $request->hasFile('logo')
+            ? $request->file('logo')->store('leagues/logos', 'public')
+            : null;
+
+        try {
+            $model->update([
+                'name' => trim($data['name']),
+                'description' => $data['description'] ?? null,
+                'logo_path' => $newLogo ?? $oldLogo,
+            ]);
+        } catch (\Throwable $exception) {
+            if ($newLogo) {
+                Storage::disk('public')->delete($newLogo);
+            }
+            throw $exception;
+        }
+
+        if ($newLogo && $oldLogo && $oldLogo !== $newLogo) {
+            Storage::disk('public')->delete($oldLogo);
+        }
+
         return back()->with('status', 'Изменения сохранены.');
     }
 
