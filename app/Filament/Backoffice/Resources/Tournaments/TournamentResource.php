@@ -80,15 +80,15 @@ final class TournamentResource extends Resource
     {
         return $schema->columns(1)->components([
             Tabs::make('Турнир')->persistTabInQueryString()->tabs([
+                Tab::make('Баннер')->icon('heroicon-o-photo')
+                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
+                    ->schema([View::make('filament.backoffice.entity-banner')]),
+
                 Tab::make('Контракты')->icon('heroicon-o-document-text')
                     ->visible(fn (?Tournament $record): bool => $record !== null
                         && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
                     ->schema([View::make('filament.backoffice.related-contracts')
                         ->viewData(['contractScope' => 'tournament'])]),
-                Tab::make('Баннер')->icon('heroicon-o-photo')
-                    ->visible(fn ($record): bool => $record !== null && self::canEdit($record))
-                    ->schema([View::make('filament.backoffice.entity-banner')]),
-
                 Tab::make('Основное')->schema([
                     Section::make('Параметры турнира')->columns(2)->schema([
                         TextInput::make('title')->label('Название')->required()->minLength(2)->maxLength(150)->columnSpanFull(),
