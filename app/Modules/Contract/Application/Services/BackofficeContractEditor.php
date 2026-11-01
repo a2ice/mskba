@@ -49,7 +49,8 @@ final class BackofficeContractEditor
     {
         $member = $contract->membership;
         return $member !== null
-            && $member->access_level === 'responsible'
+            && ($member->access_level === 'responsible'
+                || ($member->scope_type === Scope::SPORTS_SECTION && $member->access_level === 'manager'))
             && $contract->comment === EntityContractManager::COMMENT_MARKER
             && app(EntityContractManager::class)->allPermissions($member->scope_type) !== [];
     }
