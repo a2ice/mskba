@@ -228,6 +228,11 @@
                             aria-label="{{ $recruitment['label'] }}"
                         ></span>
                         <h1>{{ $event->title }}</h1>
+                        @if($allows(EventResponsibilityPermissionEnum::UPDATE_EVENT)
+                            && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+                            && $event->ends_at->isFuture())
+                            @include('theme::partials.entity-edit-link', ['url' => route('events.edit', $event->routeIdentifier())])
+                        @endif
                     </div>
                     <div class="event-hero__meta">
                         <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
