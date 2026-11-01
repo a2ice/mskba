@@ -30,21 +30,21 @@
 @endphp
 
 <x-filament::section heading="Контракты" description="Все назначения, в том числе ожидающие подтверждения, завершённые и отозванные.">
-    <div class="space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-gray-600 dark:text-gray-300">Всего: {{ $total }}</p>
-            <a class="text-sm font-semibold text-primary-600 dark:text-primary-400 underline"
+    <div class="mskba-contract-panel">
+        <div class="mskba-contract-panel__toolbar">
+            <p class="mskba-contract-panel__count">Всего контрактов: {{ $total }}</p>
+            <a class="mskba-contract-panel__link"
                href="{{ ContractResource::getUrl('index') }}">Все контракты и фильтры</a>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="mskba-contract-table-wrap">
+            <table class="mskba-contract-table">
                 <thead>
-                    <tr class="border-b text-left">
-                        <th class="p-3">Контракт</th>
-                        <th class="p-3">{{ $isUser ? 'Сущность' : 'Пользователь' }}</th>
-                        <th class="p-3">Статус</th>
-                        <th class="p-3">Срок</th>
-                        <th class="p-3">Действие</th>
+                    <tr>
+                        <th scope="col">Контракт</th>
+                        <th scope="col">{{ $isUser ? 'Сущность' : 'Пользователь' }}</th>
+                        <th scope="col">Статус</th>
+                        <th scope="col">Срок</th>
+                        <th scope="col">Действие</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,34 +59,34 @@
                                 default => $contract->expires_at?->isPast() ? 'Истёк' : 'Активен',
                             };
                     @endphp
-                    <tr class="border-b align-middle">
-                        <td class="p-3">
-                            <span class="font-semibold">{{ $contract->name }}</span>
-                            <span class="block text-xs text-gray-500">{{ $contract->permissions->count() }} разрешений</span>
+                    <tr>
+                        <td data-label="Контракт">
+                            <span class="mskba-contract-table__name">{{ $contract->name }}</span>
+                            <span class="mskba-contract-table__detail">{{ $contract->permissions->count() }} разрешений</span>
                         </td>
-                        <td class="p-3">
+                        <td data-label="{{ $isUser ? 'Сущность' : 'Пользователь' }}">
                             {{ $isUser ? ($membership->scope_type?->label().' #'.$membership->scope_id)
                                 : (($membership->user?->username ?? '—').($membership->scope_type?->value === 'venue_court' ? ' · Зал / зона #'.$membership->scope_id : '')) }}
                         </td>
-                        <td class="p-3">{{ $status }}</td>
-                        <td class="p-3 whitespace-nowrap">{{ $contract->expires_at?->format('d.m.Y H:i') ?? 'Бессрочно' }}</td>
-                        <td class="p-3">
+                        <td data-label="Статус"><span class="mskba-contract-table__status" data-status="{{ $status === 'Активен' ? 'active' : 'inactive' }}">{{ $status }}</span></td>
+                        <td data-label="Срок">{{ $contract->expires_at?->format('d.m.Y H:i') ?? 'Бессрочно' }}</td>
+                        <td data-label="Действие">
                             @if($mayEdit)
-                                <a class="text-primary-600 dark:text-primary-400 underline"
+                                <a class="mskba-contract-table__action"
                                    href="{{ ContractResource::getUrl('edit', ['record' => $contract]) }}">Изменить</a>
                             @else
-                                <span class="text-gray-500">Просмотр</span>
+                                <span class="mskba-contract-table__detail">Только просмотр</span>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr><td class="p-3" colspan="5">Контрактов пока нет.</td></tr>
+                    <tr><td class="mskba-contract-table__empty" colspan="5">Контрактов пока нет.</td></tr>
                 @endforelse
                 </tbody>
             </table>
         </div>
         @if($total > 40)
-            <p class="text-sm text-gray-500">Показаны последние 40. Для полного списка используйте поиск в разделе «Контракты».</p>
+            <p class="mskba-contract-panel__hint">Показаны последние 40 контрактов. Полный список доступен в общем разделе.</p>
         @endif
     </div>
 </x-filament::section>
