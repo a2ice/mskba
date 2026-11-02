@@ -1,0 +1,120 @@
+/* mskba-venues-v3-desktop-20261102
+   Staging-only, single installation. Base component CSS remains Filament-owned.
+   Desktop scene layers can overlap the Hero, without moving the Hero itself. */
+@media (min-width: 1100px) {
+  .mskba-page-builder #venues,
+  .mskba-page-builder #venues-scene,
+  .mskba-page-builder .mskba-v3-venues {
+    overflow: visible;
+    isolation: auto;
+  }
+
+  .mskba-page-builder .mskba-v3-venues {
+    z-index: auto;
+    --v3-hero-bleed: calc(clamp(210px, 25vw, 370px) + 100px);
+  }
+
+  .mskba-page-builder .mskba-v3-venues__scene {
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .mskba-page-builder .mskba-hero-scene {
+    position: relative;
+    z-index: 10;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__foreground {
+    inset: calc(-1 * var(--v3-hero-bleed)) 0 0;
+    z-index: 20;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__container {
+    position: relative;
+    z-index: 21;
+    grid-template-columns: minmax(0, 33%) minmax(0, 67%);
+  }
+
+  .mskba-page-builder .mskba-v3-venues__copy {
+    grid-column: 2;
+    width: 100%;
+    max-width: 540px;
+    min-width: 0;
+    padding-left: 0;
+    margin-left: 0;
+    isolation: isolate;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__copy-shade {
+    background: linear-gradient(90deg,
+      rgba(2,12,25,.03) 0%,
+      rgba(2,12,25,.12) 24%,
+      rgba(2,12,25,.60) 36%,
+      rgba(2,12,25,.63) 64%,
+      rgba(2,12,25,.10) 100%);
+  }
+
+  .mskba-page-builder .mskba-v3-venues__hoop {
+    top: 64px;
+    left: -18px;
+    width: clamp(225px, 16.5vw, 295px);
+    z-index: 2;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__defender {
+    top: auto;
+    left: clamp(82px, 9vw, 172px);
+    bottom: -20px;
+    width: clamp(215px, 19vw, 315px);
+    z-index: 3;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__shooter-frame {
+    position: absolute;
+    z-index: 4;
+    width: clamp(235px, 20vw, 345px);
+    right: clamp(15px, 2.8vw, 52px);
+    bottom: -105px;
+    pointer-events: none;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__shooter-frame > .mskba-v3-venues__shooter {
+    position: relative;
+    inset: auto;
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: none;
+    object-fit: contain;
+  }
+
+  .mskba-page-builder .mskba-v3-venues__ball-target {
+    position: absolute;
+    left: 16%;
+    top: 7%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
+/* Preserve the existing unsupervised tablet/mobile composition. */
+@media (max-width: 1099px) {
+  .mskba-page-builder .mskba-v3-venues__shooter-frame {
+    display: contents;
+  }
+  .mskba-page-builder .mskba-v3-venues__shooter-frame > .mskba-v3-venues__shooter {
+    position: absolute;
+    display: block;
+    height: auto;
+    max-width: none;
+    object-fit: contain;
+    object-position: left bottom;
+  }
+  .mskba-page-builder .mskba-v3-venues__ball-target {
+    display: none;
+  }
+}
