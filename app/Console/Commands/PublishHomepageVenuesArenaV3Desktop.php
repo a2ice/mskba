@@ -126,7 +126,7 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                 PageBuilderRevision::query()->create([
                     'entity_type' => 'component',
                     'entity_id' => $component->getKey(),
-                    'action' => 'venues_v3_desktop_backup',
+                    'action' => 'v3html_backup',
                     'snapshot' => [
                         'draft_html' => $component->draft_html,
                         'published_html' => $component->published_html,
@@ -140,7 +140,7 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                 PageBuilderRevision::query()->create([
                     'entity_type' => 'page',
                     'entity_id' => $page->getKey(),
-                    'action' => 'venues_v3_ball_js_backup',
+                    'action' => 'v3js_backup',
                     'snapshot' => [
                         'script_entity_type' => $script->entity_type,
                         'script_entity_id' => $script->entity_id,
