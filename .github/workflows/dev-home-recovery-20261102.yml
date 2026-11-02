@@ -28,8 +28,66 @@ jobs:
           key: ${{ secrets.DEV_SERVER_SSH_KEY }}
           command_timeout: 5m
           script: |
+            echo '=== SSH staging diagnostic start ==='
+            set -u
+            cd /var/www/mskba-dev-next || exit 1
+            echo "User: $(id -un)"
+            echo "Deployed source: $(git rev-parse --short HEAD)"
+            echo "Env mode: $(stat -c '%U:%G:%a' .env)"
+            for expected in APP_ENV=staging APP_DEBUG=false APP_THEME=mskba_app APP_URL=https://dev.mskba.ru TELEGRAM_UPDATES_TRANSPORT=disabled; do
+              if grep -qx "$expected" .env; then
+                echo "$expected: PASS"
+              else
+                echo "$expected: FAIL"
+              fi
+            done
+            if grep -Eq '^SUPERADMIN_SEED_PASSWORD=[0-9a-f]{64}            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            curl --silent --show-error --output /dev/null --write-out 'Before recovery: HTTP %{http_code}\n' --max-time 15 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ || true
+            echo 'Resetting Laravel runtime caches on staging only'
+            $COMPOSE exec -T phpfpm php artisan optimize:clear
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            $COMPOSE restart phpfpm nginx
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --output /dev/null --max-time 7 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+                echo "DEV homepage HTTP 200 restored on attempt $attempt"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo 'Staging homepage remains unhealthy after cache/restart recovery'
+            exit 1
+ .env; then echo 'Seed format: PASS'; else echo 'Seed format: FAIL'; fi
+            if grep -Eq '^MAIL_MAILER=(log|smtp)            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            curl --silent --show-error --output /dev/null --write-out 'Before recovery: HTTP %{http_code}\n' --max-time 15 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ || true
+            echo 'Resetting Laravel runtime caches on staging only'
+            $COMPOSE exec -T phpfpm php artisan optimize:clear
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            $COMPOSE restart phpfpm nginx
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --output /dev/null --max-time 7 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+                echo "DEV homepage HTTP 200 restored on attempt $attempt"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo 'Staging homepage remains unhealthy after cache/restart recovery'
+            exit 1
+ .env; then echo 'Mail mode: PASS'; else echo 'Mail mode: FAIL'; fi
+            for file in compose.dev.local.yaml .dev-bootstrap-complete public/build/manifest.json; do
+              if test -f "$file"; then echo "$file: PRESENT"; else echo "$file: MISSING"; fi
+            done
+            if git diff --quiet HEAD -- . ':(exclude)public/build/**'; then echo 'Tracked source: CLEAN'; else echo 'Tracked source: MODIFIED'; fi
+            if test -w storage && test -w bootstrap/cache; then echo 'Storage writable: PASS'; else echo 'Storage writable: FAIL'; fi
+            echo '=== SSH staging diagnostic end ==='
             set -euo pipefail
-            cd /var/www/mskba-dev-next
             grep -qx 'APP_ENV=staging' .env
             grep -qx 'APP_URL=https://dev.mskba.ru' .env
             grep -qx 'APP_THEME=mskba_app' .env
