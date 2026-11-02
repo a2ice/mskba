@@ -118,7 +118,8 @@ final class TelegramEventIntegrationTest extends TestCase
         $buttons = $request['reply_markup']['inline_keyboard'];
 
         $this->assertSame('-1002136558099', (string) $request['chat_id']);
-        $this->assertStringContainsString('<b>Играем на '.$event->venue->name.'</b>', $text);
+        // Telegram renders escaped HTML. Faker-generated venue names may contain apostrophes.
+        $this->assertStringContainsString('<b>Играем на '.e($event->venue->name).'</b>', $text);
         $this->assertStringContainsString('Тип активности: Игровая тренировка', $text);
         $this->assertStringContainsString('Описание: —', $text);
         $this->assertStringContainsString('Участники: 2/10', $text);
