@@ -259,14 +259,14 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
     private function prepareJs(string $js): string
     {
         $oldContext = <<<'JS'
-    const story = scene?.closest('.mskba-home-story') || null;
+    const story = scene?.closest?.('.mskba-home-story') || null;
     const venues = story?.querySelector?.('#venues-intro') || null;
     const ballTarget = venues?.querySelector?.('.mskba-venues-scene__ball-target') || null;
     const ballHost = venues?.querySelector?.('.mskba-venues-scene__visual-space') || null;
 JS;
         $newContext = <<<'JS'
     /* mskba-venues-v3-handoff-20261102 */
-    const story = scene?.closest('.mskba-home-story') || null;
+    const story = scene?.closest?.('.mskba-home-story') || null;
     const venuesV3 = document.querySelector('#venues-scene');
     const venues = venuesV3?.querySelector('.mskba-venues-scene__ball-target')
         ? venuesV3
