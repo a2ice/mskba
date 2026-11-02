@@ -137,8 +137,8 @@
             @elseif($this->tab === 'teams')
                 @php $teamNames = $this->teamNames(); @endphp
                 <x-filament::section heading="Команды пользователя" description="Здесь учитываются действующие и исторические договоры членства, в том числе ожидающие приглашения.">
-                    <div class="mskba-role-table-scroll">
-                        <table class="w-full text-sm">
+                    <div class="mskba-role-table-scroll mskba-bo-table mskba-bo-table--scroll" style="--bo-table-min-width: 700px">
+                        <table class="mskba-bo-table__table">
                             <thead><tr class="border-b text-left"><th class="p-3">Команда</th><th class="p-3">Статус</th><th class="p-3">Роль</th><th class="p-3">Договор</th></tr></thead>
                             <tbody>
                             @forelse($this->teamMemberships() as $membership)
@@ -177,8 +177,8 @@
                 </x-filament::section>
             @elseif($this->tab === 'events')
                 <x-filament::section heading="Участие в мероприятиях" description="Связанные записи участия показывают фактический статус, а не только мероприятия, созданные пользователем.">
-                    <div class="mskba-role-table-scroll">
-                        <table class="w-full text-sm">
+                    <div class="mskba-role-table-scroll mskba-bo-table mskba-bo-table--scroll" style="--bo-table-min-width: 840px">
+                        <table class="mskba-bo-table__table">
                             <thead><tr class="border-b text-left"><th class="p-3">Мероприятие</th><th class="p-3">Начало</th><th class="p-3">Статус</th><th class="p-3">Роль</th><th class="p-3">Площадка</th></tr></thead>
                             <tbody>
                             @forelse($this->eventParticipations() as $participation)
@@ -198,8 +198,8 @@
                 </x-filament::section>
             @elseif($this->tab === 'games')
                 <x-filament::section heading="Проведённые игры и статистика" description="Только завершённые игры из составов или статистики пользователя. Результаты и протоколы нельзя изменять через редактор профиля.">
-                    <div class="mskba-role-table-scroll">
-                        <table class="w-full text-sm">
+                    <div class="mskba-role-table-scroll mskba-bo-table mskba-bo-table--scroll" style="--bo-table-min-width: 1050px">
+                        <table class="mskba-bo-table__table">
                             <thead><tr class="border-b text-left"><th class="p-3">Игра</th><th class="p-3">Завершена</th><th class="p-3">Статистика</th><th class="p-3">Очки</th><th class="p-3">Подборы</th><th class="p-3">Передачи</th><th class="p-3">Минуты</th></tr></thead>
                             <tbody>
                             @forelse($this->completedGames() as $game)
