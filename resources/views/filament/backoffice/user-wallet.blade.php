@@ -60,8 +60,8 @@
     </x-filament::section>
 
     <x-filament::section heading="История операций" description="Последние 100 завершённых операций по кошельку пользователя; записи финансового журнала нельзя редактировать или удалять.">
-        <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;text-align:left;min-width:650px">
+        <div class="mskba-bo-table mskba-bo-table--scroll" style="--bo-table-min-width: 800px">
+            <table class="mskba-bo-table__table">
                 <thead>
                     <tr style="border-bottom:1px solid #dbe3ed">
                         <th style="padding:12px">Дата и время</th>

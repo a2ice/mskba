@@ -31,8 +31,8 @@
 </x-filament::section>
 
 <x-filament::section heading="Управление площадками · активные договоры" description="Права площадки и отдельного зала показаны разными строками. Истёкшие и отозванные договоры не включены.">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+    <div class="mskba-bo-table mskba-bo-table--cards">
+        <table class="mskba-bo-table__table">
             <thead><tr class="border-b text-left">
                 <th class="p-3">Область</th><th class="p-3">Специализация</th><th class="p-3">Базовых разрешений</th><th class="p-3">Изменить</th>
             </tr></thead>
@@ -52,16 +52,16 @@
                 @endphp
                 @if($venue)
                     <tr class="border-b">
-                        <td class="p-3">
+                        <td data-label="Область">
                             {{ $venue->name }}
-                            <span class="block text-xs text-gray-500">
+                            <span class="mskba-bo-table__secondary">
                                 {{ $isCourt ? 'Зал / зона: '.($court?->name ?? 'удалён') : 'Вся площадка' }}
                                 · договор #{{ $membership->contract_id }}
                             </span>
                         </td>
-                        <td class="p-3">{{ $role?->label() ?? $membership->access_level }}</td>
-                        <td class="p-3">{{ $permissionCount }}</td>
-                        <td class="p-3">
+                        <td data-label="Специализация">{{ $role?->label() ?? $membership->access_level }}</td>
+                        <td data-label="Базовых разрешений">{{ $permissionCount }}</td>
+                        <td data-label="Действие">
                             @if($mayManageContract)
                                 <button type="button" class="text-orange-600 underline"
                                     wire:click="mountAction('editVenueContract', { membership_id: {{ $membership->id }} })">Изменить</button>
@@ -72,7 +72,7 @@
                     </tr>
                 @endif
             @empty
-                <tr><td class="p-3" colspan="4">Активных договоров на площадки и залы нет.</td></tr>
+                <tr><td class="mskba-bo-table__empty" colspan="4">Активных договоров на площадки и залы нет.</td></tr>
             @endforelse
             </tbody>
         </table>

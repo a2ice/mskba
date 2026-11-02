@@ -151,35 +151,62 @@
     color: var(--contract-muted);
 }
 .mskba-contract-table__nowrap { white-space: nowrap; }
-.mskba-contract-panel .mskba-contract-table th:nth-child(1),
-.mskba-contract-panel .mskba-contract-table td:nth-child(1) { width: 31%; }
-.mskba-contract-panel .mskba-contract-table th:nth-child(2),
-.mskba-contract-panel .mskba-contract-table td:nth-child(2) { width: 19%; }
-.mskba-contract-panel .mskba-contract-table th:nth-child(3),
-.mskba-contract-panel .mskba-contract-table td:nth-child(3) { width: 20%; }
-.mskba-contract-panel .mskba-contract-table th:nth-child(4),
-.mskba-contract-panel .mskba-contract-table td:nth-child(4) { width: 16%; }
-.mskba-contract-panel .mskba-contract-table th:nth-child(5),
-.mskba-contract-panel .mskba-contract-table td:nth-child(5) { width: 14%; }
-.mskba-contract-history .mskba-contract-table th:nth-child(1),
-.mskba-contract-history .mskba-contract-table td:nth-child(1) { width: 19%; }
-.mskba-contract-history .mskba-contract-table th:nth-child(2),
-.mskba-contract-history .mskba-contract-table td:nth-child(2) { width: 17%; }
-.mskba-contract-history .mskba-contract-table th:nth-child(3),
-.mskba-contract-history .mskba-contract-table td:nth-child(3) { width: 20%; }
-.mskba-contract-history .mskba-contract-table th:nth-child(4),
-.mskba-contract-history .mskba-contract-table td:nth-child(4) { width: 44%; }
+
+/* Column widths belong to DESKTOP tables only.
+ * Leaving them active on grid cells was the reason a 19% width forced
+ * iPhone values into narrow vertical columns, even with a mobile layout. */
+@media (min-width: 1051px) {
+    .mskba-contract-panel .mskba-contract-table th:nth-child(1),
+    .mskba-contract-panel .mskba-contract-table td:nth-child(1) { width: 31%; }
+    .mskba-contract-panel .mskba-contract-table th:nth-child(2),
+    .mskba-contract-panel .mskba-contract-table td:nth-child(2) { width: 19%; }
+    .mskba-contract-panel .mskba-contract-table th:nth-child(3),
+    .mskba-contract-panel .mskba-contract-table td:nth-child(3) { width: 20%; }
+    .mskba-contract-panel .mskba-contract-table th:nth-child(4),
+    .mskba-contract-panel .mskba-contract-table td:nth-child(4) { width: 16%; }
+    .mskba-contract-panel .mskba-contract-table th:nth-child(5),
+    .mskba-contract-panel .mskba-contract-table td:nth-child(5) { width: 14%; }
+    .mskba-contract-history .mskba-contract-table th:nth-child(1),
+    .mskba-contract-history .mskba-contract-table td:nth-child(1) { width: 19%; }
+    .mskba-contract-history .mskba-contract-table th:nth-child(2),
+    .mskba-contract-history .mskba-contract-table td:nth-child(2) { width: 17%; }
+    .mskba-contract-history .mskba-contract-table th:nth-child(3),
+    .mskba-contract-history .mskba-contract-table td:nth-child(3) { width: 20%; }
+    .mskba-contract-history .mskba-contract-table th:nth-child(4),
+    .mskba-contract-history .mskba-contract-table td:nth-child(4) { width: 44%; }
+}
 
 @media (max-width: 1050px) {
-    .mskba-contract-table-wrap { border: none; border-radius: 0; overflow: visible; }
+    .mskba-contract-table-wrap {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        border: none;
+        border-radius: 0;
+        overflow: visible;
+    }
     .mskba-contract-table,
-    .mskba-contract-table tbody { display: block; width: 100%; background: transparent; }
+    .mskba-contract-table tbody {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        table-layout: auto;
+        background: transparent;
+    }
     .mskba-contract-table thead { display: none; }
-    .mskba-contract-table tbody { display: grid; gap: 12px; }
+    .mskba-contract-table tbody {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
     .mskba-contract-table tbody tr {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px 18px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         margin: 0;
         padding: 16px;
         border: 1px solid var(--contract-line);
@@ -195,11 +222,14 @@
         align-items: flex-start;
         justify-content: center;
         gap: 5px;
-        width: auto;
+        width: 100%;
         min-width: 0;
+        max-width: 100%;
         padding: 0;
         border: none;
         white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
         line-height: 1.45;
     }
     .mskba-contract-table tbody td::before {
@@ -211,21 +241,41 @@
         line-height: 18px;
     }
     .mskba-contract-table tbody td:first-child {
-        grid-column: 1 / -1;
         padding-bottom: 12px;
         border-bottom: 1px solid var(--contract-line);
     }
-    .mskba-contract-table tbody td:last-child { align-items: flex-start; }
-    .mskba-contract-table__empty { grid-column: 1 / -1; }
+    .mskba-contract-table__empty {
+        padding: 12px !important;
+        text-align: left !important;
+    }
     .mskba-contract-table__empty::before { display: none !important; }
-    .mskba-contract-table__name { font-size: 15px; }
-    .mskba-contract-history .mskba-contract-table tbody td:last-child { grid-column: 1 / -1; }
+    .mskba-contract-table__name { font-size: 15px; overflow-wrap: break-word; }
+    .mskba-contract-table__status {
+        max-width: 100%;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+    .mskba-contract-table__action { min-height: 40px; }
+}
+/* Only give two information columns when the viewport is genuinely wide
+ * enough. The first/title field still occupies the full card width. */
+@media (min-width: 700px) and (max-width: 1050px) {
+    .mskba-contract-table tbody tr {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px 18px;
+    }
+    .mskba-contract-table tbody td:first-child {
+        grid-column: 1 / -1;
+    }
+    .mskba-contract-history .mskba-contract-table tbody td:last-child {
+        grid-column: 1 / -1;
+    }
 }
 @media (max-width: 540px) {
     .mskba-contract-panel__toolbar { align-items: flex-start; gap: 12px; }
     .mskba-contract-panel__link { min-height: 40px; }
-    .mskba-contract-table tbody tr { padding: 14px; gap: 12px; }
-    .mskba-contract-table__action { min-height: 40px; }
+    .mskba-contract-table tbody tr { padding: 14px; }
 }
 
 /* Contract evidence review: independently styled for the Filament theme. */

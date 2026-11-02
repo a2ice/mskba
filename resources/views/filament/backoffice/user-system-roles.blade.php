@@ -7,8 +7,8 @@
 @endphp
 
 <x-filament::section heading="Системные роли" description="Роль пользователя и базовые права каждой системной роли. Изменение шаблона прав влияет на всех пользователей этой роли.">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+    <div class="mskba-bo-table mskba-bo-table--cards">
+        <table class="mskba-bo-table__table">
             <thead><tr class="border-b text-left">
                 <th class="p-3">Роль</th><th class="p-3">Базовых разрешений</th><th class="p-3">Изменить</th>
             </tr></thead>
@@ -19,12 +19,12 @@
                     $canEditProfile = $profile && SystemRoleProfileResource::canEdit($profile);
                 @endphp
                 <tr class="border-b">
-                    <td class="p-3">
+                    <td data-label="Роль">
                         {{ $role->label() }}
                         @if($editedUser?->system_role === $role) <span class="text-orange-600">(текущая)</span> @endif
                     </td>
-                    <td class="p-3">{{ count(app(StaffPermissionProfiles::class)->roleKeys($role)) }}</td>
-                    <td class="p-3">
+                    <td data-label="Базовых разрешений">{{ count(app(StaffPermissionProfiles::class)->roleKeys($role)) }}</td>
+                    <td data-label="Действие">
                         @if($canEditProfile)
                             <a class="text-orange-600 underline" href="{{ SystemRoleProfileResource::getUrl('edit', ['record' => $profile]) }}">Изменить</a>
                         @else

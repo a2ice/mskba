@@ -8,8 +8,8 @@
                 Добавить роль
             </x-filament::button>
         </div>
-        <div class="overflow-x-auto">
-            <table style="width:100%;border-collapse:collapse;text-align:left">
+        <div class="mskba-bo-table mskba-bo-table--cards">
+            <table class="mskba-bo-table__table">
                 <thead>
                 <tr style="border-bottom:1px solid #d1d5db">
                     <th style="padding:12px">Роль</th>
@@ -21,13 +21,13 @@
                 <tbody>
                 @forelse($roles as $role)
                     <tr wire:key="participation-role-row-{{ $role->id }}" style="border-bottom:1px solid #e5e7eb">
-                        <td style="padding:12px">
+                        <td data-label="Роль">
                             <a class="fi-btn fi-color-gray fi-size-sm" href="{{ \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource::getUrl('role', ['record' => $this->getRecord(), 'participationRole' => $role->id]) }}">{{ $role->role->label() }}</a>
                         </td>
-                        <td style="padding:12px">{{ $role->status->label() }}</td>
-                        <td style="padding:12px">{{ $role->assigned_at?->format('d.m.Y') ?? '—' }}</td>
-                        <td style="padding:12px">
-                            <div class="flex flex-wrap gap-2">
+                        <td data-label="Статус">{{ $role->status->label() }}</td>
+                        <td data-label="Дата назначения">{{ $role->assigned_at?->format('d.m.Y') ?? '—' }}</td>
+                        <td data-label="Действия">
+                            <div class="mskba-bo-table__actions">
                                 <a class="fi-btn fi-color-gray fi-size-sm" href="{{ \App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource::getUrl('role', ['record' => $this->getRecord(), 'participationRole' => $role->id]) }}">Редактировать</a>
                                 <x-filament::button color="{{ $role->status === \App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum::ACTIVE ? 'danger' : 'success' }}" size="sm" type="button" wire:click="mountAction('toggleParticipationRole', { role_id: {{ $role->id }} })">
                                     {{ $role->status === \App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum::ACTIVE ? 'Отключить' : 'Включить' }}
@@ -36,7 +36,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td style="padding:18px" colspan="4">Роли пока не назначены.</td></tr>
+                    <tr><td class="mskba-bo-table__empty" colspan="4">Роли пока не назначены.</td></tr>
                 @endforelse
                 </tbody>
             </table>
