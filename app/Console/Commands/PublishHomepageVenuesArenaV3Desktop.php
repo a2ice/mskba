@@ -83,8 +83,16 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                     return 'ALREADY';
                 }
 
-                if ($installedCss || $installedJs || $installedHtml) {
-                    throw new RuntimeException('Some Arena v3 changes are already present. Refusing partial overwrite.');
+                // HTML may have been prepared already via the Filament editor.
+                // If so, preserve it byte-for-byte and only publish the absent CSS/JS.
+                if ($installedCss || $installedJs) {
+                    throw new RuntimeException('CSS or JS contains an unexpected partial install marker.');
+                }
+                if ($installedHtml
+                    && (substr_count($html, 'mskba-v3-venues__shooter-frame') !== 1
+                        || substr_count($html, 'mskba-venues-scene__ball-target') !== 1
+                        || ! str_contains($html, 'mskba-venues-scene__visual-space'))) {
+                    throw new RuntimeException('Existing shooter frame lacks the verified ball target structure.');
                 }
 
                 // Never replace a user's unsaved/unpublished editorial work.
@@ -100,7 +108,7 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                 }
 
                 $this->verifyAssets();
-                $nextHtml = $this->prepareHtml($html);
+                $nextHtml = $installedHtml ? $html : $this->prepareHtml($html);
                 $nextCss = rtrim($css)."\n\n".$this->desktopCss()."\n";
                 $nextJs = $this->prepareJs($js);
 
