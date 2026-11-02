@@ -60,6 +60,35 @@ jobs:
             fi
             test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
             echo 'Staging .env ownership mode: VALID'
+            echo '=== Read-only Page Builder ball JS diagnostics ==='
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $pageId = \Illuminate\Support\Facades\DB::table("page_builder_pages")->where("published_path", "/")->value("id");
+              $js = (string) \Illuminate\Support\Facades\DB::table("page_builder_script_assets")->where("entity_type", "page")->where("entity_id", $pageId)->value("published_js");
+              echo "ball_js_len=".strlen($js)." sha12=".substr(hash("sha256", $js), 0, 12).PHP_EOL;
+              $checks = [
+                  "original_story" => "const story = scene?.closest",
+                  "original_venues" => "const venues = story?.querySelector",
+                  "v3_venues" => "const venuesV3",
+                  "old_guard" => "if (!story || !venues || !ballTarget || !ballHost)",
+                  "new_guard" => "if (!venues || !ballTarget || !ballHost)",
+                  "v3_marker" => "mskba-venues-v3-handoff-20261102",
+                  "paintVenues" => "function paintVenues(",
+                  "profiles" => "rollingBallProfiles",
+              ];
+              foreach ($checks as $label => $value) {
+                  echo $label."=".(str_contains($js, $value) ? "YES" : "NO").PHP_EOL;
+              }
+              foreach (explode("\n", $js) as $line) {
+                  if (preg_match("/venuesV3|venues-intro|ballTarget|ballHost|const story|desktop:|const venues =/", $line)) {
+                      echo "line: ".substr(trim($line), 0, 220).PHP_EOL;
+                  }
+              }
+            '
+            echo '=== End Page Builder JS diagnostics ==='
             echo '=== SSH staging diagnostic end ==='
             set -euo pipefail
             grep -qx 'APP_ENV=staging' .env
