@@ -27,6 +27,8 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
 
     protected $description = 'One-time guarded desktop Arena v3 layout and ball handoff in Filament.';
 
+    private const INSTALL_MARKER = '[mskba-venues-v3:desktop-20261102-installed]';
+
     private const CSS_MARKER = 'mskba-venues-v3-desktop-20261102';
 
     private const JS_MARKER = 'mskba-venues-v3-handoff-20261102';
@@ -61,6 +63,10 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                     || ! $script->is_enabled
                     || $script->published_js === null) {
                     throw new RuntimeException('Homepage, Arena v3, or enabled ball JS is not published as expected.');
+                }
+
+                if (str_contains((string) $component->description, self::INSTALL_MARKER)) {
+                    return 'ALREADY';
                 }
 
                 $html = (string) $component->published_html;
@@ -141,6 +147,11 @@ final class PublishHomepageVenuesArenaV3Desktop extends Command
                     'created_at' => now(),
                 ]);
 
+                $description = trim((string) $component->description.' '.self::INSTALL_MARKER);
+                if (mb_strlen($description) > 500) {
+                    throw new RuntimeException('Component description marker would exceed 500 characters.');
+                }
+                $component->description = $description;
                 $component->draft_html = $nextHtml;
                 $component->draft_css = $nextCss;
                 $component->save();
