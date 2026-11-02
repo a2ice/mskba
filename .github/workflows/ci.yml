@@ -397,6 +397,11 @@ jobs:
               if [ "$code" -ne 0 ] && [ -f "$AI_ENV_BACKUP" ]; then
                 # Restore staging-only configuration before restarting old code.
                 cp -p "$AI_ENV_BACKUP" .env || true
+                # A restored 640 file may inherit deploy:deploy; PHP-FPM needs
+                # group www-data. Correct metadata only, never print .env.
+                if [ -f .env ] && [ "$(stat -c '%U:%G:%a' .env)" = 'deploy:deploy:640' ]; then
+                  chgrp www-data .env || $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env || true
+                fi
                 rm -f "$AI_ENV_BACKUP"
               fi
               if [ "$code" -ne 0 ] && [ "$ROLLBACK_ARMED" -eq 1 ]; then
