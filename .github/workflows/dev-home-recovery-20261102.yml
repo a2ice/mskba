@@ -1,0 +1,51 @@
+name: DEV staging homepage recovery (one-time)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/dev-home-recovery-20261102.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-home-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 6
+    steps:
+      - name: Restore staging HTTP health without touching Git or DB
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            curl --silent --show-error --output /dev/null --write-out 'Before recovery: HTTP %{http_code}\n' --max-time 15 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ || true
+            echo 'Resetting Laravel runtime caches on staging only'
+            $COMPOSE exec -T phpfpm php artisan optimize:clear
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            $COMPOSE restart phpfpm nginx
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --output /dev/null --max-time 7 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+                echo "DEV homepage HTTP 200 restored on attempt $attempt"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo 'Staging homepage remains unhealthy after cache/restart recovery'
+            exit 1
