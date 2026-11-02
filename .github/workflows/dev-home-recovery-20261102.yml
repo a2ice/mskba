@@ -48,6 +48,18 @@ jobs:
             done
             if git diff --quiet HEAD -- . ':(exclude)public/build/**'; then echo 'Tracked source: CLEAN'; else echo 'Tracked source: MODIFIED'; fi
             if test -w storage && test -w bootstrap/cache; then echo 'Storage writable: PASS'; else echo 'Storage writable: FAIL'; fi
+            # The previous failed deploy restored .env with deploy:deploy:640.
+            # Repair only this exact metadata drift, without viewing/changing values.
+            CURRENT_ENV_MODE="$(stat -c '%U:%G:%a' .env)"
+            if [ "$CURRENT_ENV_MODE" = 'deploy:deploy:640' ]; then
+              echo 'Repairing staging .env group: deploy -> www-data'
+              if ! chgrp www-data .env 2>/dev/null; then
+                COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+                $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env
+              fi
+            fi
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            echo 'Staging .env ownership mode: VALID'
             echo '=== SSH staging diagnostic end ==='
             set -euo pipefail
             grep -qx 'APP_ENV=staging' .env
