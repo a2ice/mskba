@@ -24,23 +24,23 @@
 @endphp
 
 <x-filament::section heading="История изменений" description="Журнал append-only. Откат персональных данных создаёт новую запись с проверкой конфликтов. Пароли, токены и согласия сюда не выводятся.">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+    <div class="mskba-bo-table mskba-bo-table--cards">
+        <table class="mskba-bo-table__table">
             <thead><tr class="border-b text-left">
                 <th class="p-3">Дата</th><th class="p-3">Действие</th><th class="p-3">Автор</th><th class="p-3">Основание</th><th class="p-3">До / после</th>
             </tr></thead>
             <tbody>
             @forelse($logs as $log)
                 <tr class="border-b">
-                    <td class="p-3">{{ $log->created_at?->format('d.m.Y H:i') }}</td>
-                    <td class="p-3">{{ $log->event }} #{{ $log->id }}</td>
-                    <td class="p-3">{{ $log->actor_id ?? 'система' }}</td>
-                    <td class="p-3">{{ $log->metadata['reason'] ?? '—' }}</td>
-                    <td class="p-3">
+                    <td data-label="Дата">{{ $log->created_at?->format('d.m.Y H:i') }}</td>
+                    <td data-label="Действие">{{ $log->event }} #{{ $log->id }}</td>
+                    <td data-label="Автор">{{ $log->actor_id ?? 'система' }}</td>
+                    <td data-label="Основание">{{ $log->metadata['reason'] ?? '—' }}</td>
+                    <td data-label="До / после">
                         @if(in_array($log->event, $revisableEvents, true))
                             <details>
                                 <summary class="cursor-pointer text-orange-600">Сравнить значения</summary>
-                                <div class="mt-2 space-y-2 break-all text-xs">
+                                <div class="mskba-bo-table__audit-values">
                                     <div><strong>До:</strong> {{ json_encode($log->old_values ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</div>
                                     <div><strong>После:</strong> {{ json_encode($log->new_values ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</div>
                                 </div>
@@ -51,7 +51,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="p-3">Записей пока нет.</td></tr>
+                <tr><td colspan="5" class="mskba-bo-table__empty">Записей пока нет.</td></tr>
             @endforelse
             </tbody>
         </table>
