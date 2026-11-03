@@ -100,3 +100,10 @@ test('result hash may be computed on runner when exact source stays private', ()
   assert.equal(validatePlan(withoutResult).operation, 'apply');
   assert.throws(() => validatePlan(plan({ expected_result_sha256: 'not-a-sha' })));
 });
+
+
+test('pending editor changes require explicit approval', () => {
+  assert.equal(validatePlan(plan()).allow_pending_draft, undefined);
+  assert.equal(validatePlan(plan({ allow_pending_draft: true })).allow_pending_draft, true);
+  assert.throws(() => validatePlan(plan({ allow_pending_draft: 'yes' })));
+});
