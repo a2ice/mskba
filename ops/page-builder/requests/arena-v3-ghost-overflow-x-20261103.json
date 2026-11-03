@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Исключить горизонтальный скролл при въезде Ghost на desktop, сохраняя вертикальный выход игроков",
+  "publish": true,
+  "expected_draft_sha256": "fd795785fcd148424738586d3d612036c887be6ddfddaa73beb7bce858e0eed8",
+  "expected_published_sha256": "fd795785fcd148424738586d3d612036c887be6ddfddaa73beb7bce858e0eed8",
+  "expected_result_sha256": "c32d2a5fc5ec9f0241833ec8201587f82b7fc1ed6c790caba3671181e79526fb",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "position: relative; isolation: auto; z-index: auto;",
+      "to": "position: relative; isolation: auto; z-index: auto;\n    overflow-x: clip;"
+    }
+  ]
+}
