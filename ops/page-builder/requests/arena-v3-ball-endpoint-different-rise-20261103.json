@@ -26,5 +26,6 @@
       "from": "        const y = startY + (endY - startY) * p;",
       "to": "        const rawY = startY + (endY - startY) * p;\n        // Keep the entire visible ball inside the Hero even after handoff.\n        const y = venues === venuesV3\n            ? Math.min(rawY, sliderRect.bottom - visualRect.top - 66)\n            : rawY;"
     }
-  ]
+  ],
+  "expected_result_sha256": "affdbc799f8ce05e582cbca5636e74877895a0772275c849f9df1b7a0e0b1e31"
 }
