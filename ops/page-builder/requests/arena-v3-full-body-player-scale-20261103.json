@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Вернуть визуальный размер игроков после замены на полные изображения, оставить ноги у пола и смягчить нижний fade",
+  "publish": true,
+  "expected_draft_sha256": "ced943fd9366c83e97f56190f33e5dc0754000fa771864d5dbb0d3376c0b1ef4",
+  "expected_published_sha256": "ced943fd9366c83e97f56190f33e5dc0754000fa771864d5dbb0d3376c0b1ef4",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "    bottom: -6px; width: clamp(222px, 18vw, 306px); z-index: 3;",
+      "to": "    /* Full-body artwork: increase scale without guessing/cropping the feet. */\n    bottom: -6px; width: clamp(275px, 22vw, 380px); z-index: 3;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    width: clamp(246px, 19.2vw, 331px); height: auto; z-index: 4;",
+      "to": "    width: clamp(300px, 23.5vw, 410px); height: auto; z-index: 4;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 185px), transparent calc(100% - 22px));\n    mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 185px), transparent calc(100% - 22px));",
+      "to": "    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 120px), rgba(0,0,0,.9) calc(100% - 70px), transparent 100%);\n    mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 120px), rgba(0,0,0,.9) calc(100% - 70px), transparent 100%);"
+    }
+  ]
+}
