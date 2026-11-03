@@ -193,7 +193,7 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertSame(2, substr_count($result, 'data-mskba-lqip-venue-player="1"'));
         $this->assertStringContainsString('src="'.$hidden->publicUrl().'"', $result);
         $this->assertStringContainsString('data-mskba-lqip-preview-src="'.$hidden->lqipUrl().'"', $result);
-        $this->assertStringContainsString('<noscript>', $result);
+        $this->assertStringNotContainsString('<noscript>', $result);
     }
 
     public function test_inline_editor_background_is_not_overwritten_or_removed_by_lqip(): void
