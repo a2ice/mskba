@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Close outer desktop CSS @media before header and mobile arena styles; prevent mobile rules from being incorrectly scoped to desktop",
+  "publish": true,
+  "expected_draft_sha256": "90d372d2f9059c96a8a59df95f4edcd0d743acd026431d6d19f5de9cb0ba2a4e",
+  "expected_published_sha256": "90d372d2f9059c96a8a59df95f4edcd0d743acd026431d6d19f5de9cb0ba2a4e",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "  }\n}\n\n/* Hero/arena composition: CSS-first peak",
+      "to": "  }\n}\n}\n\n/* Hero/arena composition: CSS-first peak"
+    }
+  ]
+}
