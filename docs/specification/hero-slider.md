@@ -269,3 +269,39 @@ deletes CSS edited through the admin interface.
 Existing `@container`, responsive, animation and mobile-flow declarations
 remain editor-managed. CSS is still validated and scoped by PageBuilderMarkup.
 Do not put the component stylesheet back into `resources/css/page-builder.css`.
+
+## Inline HTML overlay slot for Hero Slider (2026-11-04)
+
+Page Builder pages can place sanitized, ordinary HTML directly inside a
+`<mskba-component name="hero-slider">` tag. The renderer inserts it once,
+as a page-owned overlay child of `.mskba-hero-slider__stage`; it does not
+replace the slides or edit the Hero component. This is useful for decorative
+elements that should persist when the current slide changes.
+
+```html
+<mskba-component name="hero-slider">
+  <div class="mskba-rolling-ball">
+    <img class="mskba-rolling-ball__sprite" src="/images/ball-rolling.png" alt="">
+  </div>
+</mskba-component>
+```
+
+The editor-owned Hero CSS gives `.mskba-hero-slider__overlay` a fixed
+stacking level 3 with pointer events off. The default legacy slide copy has
+z-index 4; JSON image/text/button layers have their editable z-index (default 4).
+Set foreground layer z-indices above 3 in the component editor when needed.
+The overlay shares the stage's dimensions, so it follows the Hero responsive
+breakpoints. The empty component syntax remains valid.
+
+To blur what lies **behind the entire slider**, use `backdrop-filter` on
+`.mskba-hero-slider`, not `filter`: descendant overlay artwork stays sharp.
+To blur the slide's **own background image**, target that background element
+instead of the slider container; `backdrop-filter` on the container does
+not blur its own children.
+
+The page publishes only after the Hero component dependency is published.
+The overlay is processed through the existing strict PageBuilderMarkup HTML
+sanitizer; JavaScript, event handlers, and unsafe HTML remain forbidden.
+Non-Hero component tags must stay empty, and nested/unclosed component tags
+are rejected with a validation error. Editor CSS is still independently
+published and rolled back; none of this requires a new CMS scripting API.
