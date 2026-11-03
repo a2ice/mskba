@@ -3,7 +3,7 @@
   "info": {
     "title": "MSKBA REST API v1",
     "version": "1.0.0",
-    "description": "Versioned REST contract for implemented MSKBA endpoints only. Opened in DEV Swagger UI; GraphQL remains separate. This spec includes public feeds and first-party Sanctum authentication."
+    "description": "Versioned REST contract for implemented MSKBA endpoints only. Opened in DEV Swagger UI; GraphQL remains separate. This spec includes public feeds and first-party Sanctum authentication. Internal Page Builder operations are available ONLY on dev.mskba.ru and require dedicated short-lived superadmin tokens; they are not part of the mobile-client contract."
   },
   "servers": [
     {
@@ -23,6 +23,10 @@
     },
     {
       "name": "Главная страница"
+    },
+    {
+      "name": "Внутренний API · Page Builder (DEV)",
+      "description": "Только DEV/staging; отдельный временный токен superadmin, права Filament, контроль SHA-256, аудит. Не использовать обычный мобильный токен."
     }
   ],
   "paths": {
@@ -488,6 +492,492 @@
           }
         }
       }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}": {
+      "get": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "getPageBuilderAgentDocument",
+        "summary": "Прочитать HTML/CSS/JS Page Builder",
+        "description": "Только https://dev.mskba.ru, действующий короткоживущий токен superadmin со способностью page-builder:read и разрешениями Page Builder. Ответ содержит полный draft/published текст и SHA-256; не кэшировать и не копировать в публичные логи.",
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/draft": {
+      "patch": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "stagePageBuilderAgentDraft",
+        "summary": "Сохранить только черновик HTML/CSS/JS",
+        "description": "Только DEV. Способность page-builder:write и соответствующие permissions. Сверяет expected_draft_sha256 под блокировкой БД, валидирует HTML/CSS и сохраняет только выбранный черновик, не публикуя его. JS и CSS используют штатный store; reason фиксируется в аудите.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentStageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/publish": {
+      "post": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "publishPageBuilderAgentField",
+        "summary": "Опубликовать выбранное поле HTML/CSS/JS",
+        "description": "Только DEV. Способность page-builder:publish и соответствующие permissions. Оба контрольных SHA-256 должны совпасть. Публикация HTML отклоняется, если штатный publisher затронул бы другие неопубликованные поля. JS публикуется и активируется; для CSS/JS сохраняется версия отката.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/rollback": {
+      "post": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "rollbackPageBuilderAgentField",
+        "summary": "Откатить опубликованный CSS/JS",
+        "description": "Только DEV. Способность page-builder:publish, соответствующие permissions, действующий previous slot. Откат HTML через API не поддерживается (используется история Filament). Перед откатом проверяется SHA-256 опубликованной версии.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentRollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -496,6 +986,12 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "Sanctum"
+      },
+      "pageBuilderAgentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum (24-hour Page Builder agent PAT)",
+        "description": "Только временный персональный Sanctum-токен superadmin с префиксом имени mskba-pagebuilder-agent: и abilities page-builder:read/write/publish. Выдаётся в Filament DEV; не является мобильным токеном и не передаётся в чат/репозиторий."
       }
     },
     "schemas": {
@@ -1032,6 +1528,260 @@
           "data"
         ],
         "description": "Single published venue in the same field format as a list item."
+      },
+      "PageBuilderAgentSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "draft": {
+            "type": "string",
+            "description": "Текущий черновик (только авторизованный ответ)"
+          },
+          "published": {
+            "type": "string",
+            "description": "Опубликованная версия (только авторизованный ответ)"
+          },
+          "draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "pending": {
+            "type": "boolean",
+            "description": "Черновик отличается от публикации"
+          }
+        },
+        "required": [
+          "draft",
+          "published",
+          "draft_sha256",
+          "published_sha256",
+          "pending"
+        ]
+      },
+      "PageBuilderAgentRevision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action"
+        ]
+      },
+      "PageBuilderAgentDocument": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "component",
+              "template",
+              "page"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "js_enabled": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "object",
+            "properties": {
+              "html": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              },
+              "css": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              },
+              "js": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              }
+            },
+            "required": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "recent_revisions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/PageBuilderAgentRevision"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "published_at",
+          "js_enabled",
+          "sources",
+          "recent_revisions"
+        ]
+      },
+      "PageBuilderAgentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageBuilderAgentDocument"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "PageBuilderAgentStageRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 100000,
+            "description": "Полное новое содержимое одного черновика, не частичный patch"
+          },
+          "expected_draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "expected_draft_sha256",
+          "reason"
+        ]
+      },
+      "PageBuilderAgentPublishRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "expected_draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "expected_published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "expected_draft_sha256",
+          "expected_published_sha256",
+          "reason"
+        ]
+      },
+      "PageBuilderAgentRollbackRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "css",
+              "js"
+            ]
+          },
+          "expected_published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "expected_published_sha256",
+          "reason"
+        ]
       }
     }
   }
