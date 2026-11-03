@@ -1,4 +1,16 @@
+@php
+    $appearance = $options['appearance'];
+    $shadows = [
+        'none' => 'none',
+        'soft' => '0 8px 28px rgba(14,19,27,.10)',
+        'default' => '0 18px 54px rgba(14,19,27,.14)',
+        'strong' => '0 24px 80px rgba(14,19,27,.28)',
+    ];
+    $marginStart = $appearance['alignment'] === 'left' ? '0' : 'auto';
+    $marginEnd = $appearance['alignment'] === 'right' ? '0' : 'auto';
+@endphp
 <section class="mskba-hero-slider"
+    style="--hero-width:{{ $appearance['width_percent'] }}%;--hero-margin-start:{{ $marginStart }};--hero-margin-end:{{ $marginEnd }};--hero-radius:{{ $appearance['border_radius_px'] }}px;--hero-background:{{ $appearance['background_color'] }};--hero-text:{{ $appearance['text_color'] }};--hero-shadow:{{ $shadows[$appearance['shadow']] }};--hero-overflow:{{ $appearance['clip_content'] ? 'hidden' : 'visible' }};@if ($appearance['height_desktop_px'] !== null) --hero-stage-desktop-height:{{ $appearance['height_desktop_px'] }}px;@endif @if ($appearance['height_tablet_px'] !== null) --hero-stage-tablet-height:{{ $appearance['height_tablet_px'] }}px;@endif @if ($appearance['height_mobile_px'] !== null) --hero-stage-mobile-height:{{ $appearance['height_mobile_px'] }}px;@endif"
     data-mskba-hero-slider
     data-autoplay="{{ $options['autoplay'] ? '1' : '0' }}"
     data-interval="{{ $options['interval_ms'] }}"

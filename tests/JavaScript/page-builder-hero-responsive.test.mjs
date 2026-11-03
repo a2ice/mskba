@@ -8,8 +8,19 @@ const linksView = readFileSync(new URL('../../resources/views/page-builder/compo
 const sliderView = readFileSync(new URL('../../resources/views/page-builder/components/hero-slider.blade.php', import.meta.url), 'utf8');
 const sliderRuntime = readFileSync(new URL('../../resources/js/page-builder-hero-slider.js', import.meta.url), 'utf8');
 
-test('tablet stage responds to the container width with a compact height', () => {
-    assert.match(stylesheet, /@container mskba-hero \(max-width:1050px\)[\s\S]*?\.mskba-hero-slider__stage \{height:clamp\(400px,45cqw,500px\);\}/);
+test('tablet stage responds to container width and allows an editor-configured height', () => {
+    assert.match(stylesheet, /@container mskba-hero \(max-width:1050px\)[\s\S]*?\.mskba-hero-slider__stage \{height:var\(--hero-stage-tablet-height,clamp\(400px,45cqw,500px\)\);\}/);
+});
+
+test('hero container appearance keeps existing defaults and exposes editor CSS properties', () => {
+    assert.match(stylesheet, /width:var\(--hero-width,100%\)/);
+    assert.match(stylesheet, /overflow:var\(--hero-overflow,hidden\)/);
+    assert.match(stylesheet, /border-radius:var\(--hero-radius,24px\)/);
+    assert.match(stylesheet, /background:var\(--hero-background,#08090a\)/);
+    assert.match(stylesheet, /height:var\(--hero-stage-desktop-height,clamp\(450px,35cqw,530px\)\)/);
+    assert.match(stylesheet, /height:var\(--hero-stage-mobile-height,clamp\(560px,165cqw,740px\)\)/);
+    assert.match(sliderView, /--hero-width:/);
+    assert.match(sliderView, /--hero-stage-tablet-height:/);
 });
 
 test('mobile uses the same accessible, continuous highlight marquee as tablet', () => {
