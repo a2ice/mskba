@@ -32,8 +32,7 @@ if (canvas && manifestNode) {
         const finish = () => {
             if (!image.isConnected || image.naturalWidth <= 0) return;
             // Remove only the preview CSS installed by Page Builder.
-            if (image.hasAttribute('data-mskba-lqip-preview-src')
-                || image.hasAttribute('data-mskba-lqip-added-background')) {
+            if (image.hasAttribute('data-mskba-lqip-added-background')) {
                 image.style.removeProperty('background-image');
                 image.style.removeProperty('background-size');
                 image.style.removeProperty('background-position');
