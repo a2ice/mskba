@@ -39,11 +39,10 @@ final class PageBuilderRenderer
         // Always process components BEFORE the HTML sanitizer. Inject only
         // server-controlled, separately sanitized HTML after the sanitizer.
         $raw = str_replace('[[page_content]]', $pageHtml, $templateHtml);
-        $matches = [];
-        preg_match_all('~<mskba-component\b[^>]*>\s*</mskba-component>~i', $raw, $matches);
+        $matches = PageBuilderComponentTags::find($raw);
         $slugs = [];
-        foreach ($matches[0] ?? [] as $tag) {
-            if (preg_match('/\bname="([a-z][a-z0-9_-]{1,79})"/', $tag, $m)) {
+        foreach ($matches as $match) {
+            if (preg_match('/\bname="([a-z][a-z0-9_-]{1,79})"/', $match['attrs'], $m)) {
                 $slugs[] = $m[1];
             }
         }
@@ -53,7 +52,7 @@ final class PageBuilderRenderer
 
         $replacements = [];
         $htmlWithTokens = preg_replace_callback(
-            '~<mskba-component\b(?P<attrs>[^>]*)>\s*</mskba-component>~i',
+            PageBuilderComponentTags::PATTERN,
             function (array $match) use (&$replacements, $components, $preview): string {
                 $attributes = [];
                 preg_match_all('/\b([a-z-]+)="([^"]*)"/', $match['attrs'], $found, PREG_SET_ORDER);
@@ -75,7 +74,7 @@ final class PageBuilderRenderer
                     $component = $components->get($name);
                     if ($name === 'hero-slider') {
                         $replacements[$token] = $component && ($preview || $component->published_at !== null)
-                            ? $this->heroSlider->render($component, $preview)
+                            ? $this->heroSlider->render($component, $preview, $this->markup->html(trim($match['slot'])))
                             : ($preview ? '<p class="mskba-builder-unavailable">Hero Slider пока не создан или не опубликован.</p>' : '');
                     } else {
                         $body = $component

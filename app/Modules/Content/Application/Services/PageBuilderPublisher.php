@@ -261,20 +261,7 @@ final class PageBuilderPublisher
             ? (string) PageBuilderTemplate::query()->whereKey($page->template_id)->value('published_html')
             : '[[page_content]]';
         $effectiveHtml = str_replace('[[page_content]]', (string) $page->draft_html, $templateHtml);
-        $matches = [];
-        preg_match_all(
-            '~<mskba-component\b(?P<attrs>[^>]*)>\s*</mskba-component>~i',
-            $effectiveHtml,
-            $matches,
-            PREG_SET_ORDER,
-        );
-
-        // Match the renderer's supported placeholder grammar exactly.
-        if (preg_match_all('~<mskba-component\b~i', $effectiveHtml) !== count($matches)) {
-            throw ValidationException::withMessages([
-                'draft_html' => 'Неверный синтаксис компонента. Используй <mskba-component name="..."></mskba-component>.',
-            ]);
-        }
+        $matches = PageBuilderComponentTags::find($effectiveHtml);
 
         $required = [];
         foreach ($matches as $match) {

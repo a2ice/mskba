@@ -12,7 +12,7 @@ final class HeroSliderComponent
     public function __construct(private readonly HeroSliderAudience $audience) {}
 
     /** Render only the application's trusted Blade view, never editor HTML/JS. */
-    public function render(PageBuilderComponent $component, bool $preview = false): string
+    public function render(PageBuilderComponent $component, bool $preview = false, string $overlayHtml = ''): string
     {
         $slides = $preview ? $component->draft_slides : $component->published_slides;
         $options = $preview ? $component->draft_options : $component->published_options;
@@ -115,6 +115,7 @@ final class HeroSliderComponent
         return view('page-builder.components.hero-slider', [
             'slides' => $prepared,
             'options' => HeroSliderSettings::options($options),
+            'overlayHtml' => $overlayHtml,
         ])->render();
     }
 
