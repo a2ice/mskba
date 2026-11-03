@@ -1,0 +1,84 @@
+name: DEV Page Builder API Bridge
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'ops/page-builder/requests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-page-builder-api-bridge
+  cancel-in-progress: false
+
+jobs:
+  page_builder:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout reviewed DEV commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Choose one reviewed operation
+        id: request
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          before="$BEFORE_SHA"
+          if [[ "$before" =~ ^0+$ ]]; then
+            before="$(git rev-parse "$AFTER_SHA^")"
+          fi
+
+          mapfile -t changed < <(
+            git diff --name-only "$before" "$AFTER_SHA" -- ops/page-builder/requests/ \
+              | grep -E '^ops/page-builder/requests/[a-z0-9][a-z0-9._-]*\.json$' || true
+          )
+
+          if [ ${#changed[@]} -ne 1 ]; then
+            echo "::error::Exactly one reviewed Page Builder request JSON must change per DEV commit."
+            exit 1
+          fi
+          file="${changed[0]}"
+          if [ ! -f "$file" ] || [ -L "$file" ]; then
+            echo "::error::Request file is missing or is a symlink."
+            exit 1
+          fi
+          echo "path=$file" >> "$GITHUB_OUTPUT"
+          echo "Using approved request: $file"
+
+      - name: Install supported Node.js runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate bridge and request safely
+        env:
+          REQUEST_PATH: ${{ steps.request.outputs.path }}
+        run: |
+          set -euo pipefail
+          node --check scripts/page-builder-agent-bridge.mjs
+          node --test tests/JavaScript/page-builder-agent-bridge.test.mjs
+          node -e 'import("./scripts/page-builder-agent-bridge.mjs").then(({validatePlan}) => {const fs=require("node:fs"); validatePlan(JSON.parse(fs.readFileSync(process.env.REQUEST_PATH, "utf8")));})'
+
+      - name: Perform guarded change through DEV API
+        env:
+          MSKBA_PAGE_BUILDER_AGENT_TOKEN: ${{ secrets.MSKBA_PAGE_BUILDER_AGENT_TOKEN }}
+          REQUEST_PATH: ${{ steps.request.outputs.path }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MSKBA_PAGE_BUILDER_AGENT_TOKEN:-}" ]; then
+            echo "::error::Set MSKBA_PAGE_BUILDER_AGENT_TOKEN in the development environment secrets."
+            exit 1
+          fi
+          node scripts/page-builder-agent-bridge.mjs "$REQUEST_PATH"
