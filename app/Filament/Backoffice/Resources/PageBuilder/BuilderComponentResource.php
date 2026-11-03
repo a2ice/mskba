@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -63,6 +64,41 @@ final class BuilderComponentResource extends Resource
                         ->numeric()->minValue(4000)->maxValue(30000)->default(7000),
                     Toggle::make('draft_options.show_arrows')->label('Стрелки')->default(true),
                     Toggle::make('draft_options.show_dots')->label('Индикаторы')->default(true),
+                ]),
+            Section::make('Hero Slider · оформление')
+                ->description('Настройки контейнера. Без заданной высоты слайдер автоматически адаптируется под экран.')
+                ->visible(fn (?PageBuilderComponent $record): bool => $record?->slug === 'hero-slider')
+                ->collapsible()->columns(4)
+                ->schema([
+                    TextInput::make('draft_options.appearance.width_percent')->label('Ширина, %')
+                        ->numeric()->minValue(20)->maxValue(100)->default(100),
+                    Select::make('draft_options.appearance.alignment')->label('Расположение')
+                        ->native(false)->options([
+                            'left' => 'Слева', 'center' => 'По центру', 'right' => 'Справа',
+                        ])->default('center'),
+                    TextInput::make('draft_options.appearance.border_radius_px')->label('Скругление, px')
+                        ->numeric()->minValue(0)->maxValue(80)->default(24),
+                    Select::make('draft_options.appearance.shadow')->label('Тень')
+                        ->native(false)->options([
+                            'none' => 'Без тени', 'soft' => 'Лёгкая',
+                            'default' => 'Стандартная', 'strong' => 'Выраженная',
+                        ])->default('default'),
+                    ColorPicker::make('draft_options.appearance.background_color')->label('Цвет фона')
+                        ->hexColor()->default('#08090a'),
+                    ColorPicker::make('draft_options.appearance.text_color')->label('Базовый цвет текста')
+                        ->hexColor()->default('#ffffff'),
+                    Toggle::make('draft_options.appearance.clip_content')->label('Обрезать выступающее содержимое')
+                        ->default(true),
+                    Section::make('Высота слайдера')->description('Оставь поле пустым для стандартной адаптивной высоты.')
+                        ->columns(3)->columnSpanFull()->schema([
+                            TextInput::make('draft_options.appearance.height_desktop_px')->label('Desktop, px')
+                                ->numeric()->minValue(240)->maxValue(1200),
+                            TextInput::make('draft_options.appearance.height_tablet_px')->label('Tablet, px')
+                                ->numeric()->minValue(240)->maxValue(1200),
+                            TextInput::make('draft_options.appearance.height_mobile_px')->label('Mobile, px')
+                                ->numeric()->minValue(240)->maxValue(1200)
+                                ->helperText('В последовательной компоновке высота определяется содержимым.'),
+                        ]),
                 ]),
             Section::make('Слайды · порядок и содержимое')
                 ->description('Слайды состоят из независимых элементов: заголовки, тексты, изображения, кнопки и группы ссылок. Положение отдельно на desktop/tablet/mobile.')
