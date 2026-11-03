@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Content\Presentation\Http\Controllers\Api\V1\PageBuilderAgentApiController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationCallbackController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationManifestController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationReferenceController;
@@ -73,3 +74,26 @@ Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(fun
         ->middleware('throttle:20,1')
         ->name('api.v1.auth.logout');
 });
+
+
+/*
+ * Staging-only Page Builder agent bridge.
+ * Every request requires a dedicated, short-lived, capability-scoped
+ * Sanctum Personal Access Token AND the superadmin's Filament permissions.
+ * The controller also fails closed on anything other than dev.mskba.ru.
+ */
+Route::middleware(['auth:sanctum', 'throttle:30,1'])
+    ->prefix('v1/internal/page-builder')
+    ->group(function (): void {
+        Route::get('/{kind}/{key}', [PageBuilderAgentApiController::class, 'show'])
+            ->name('api.internal.page-builder.show');
+        Route::patch('/{kind}/{key}/draft', [PageBuilderAgentApiController::class, 'stage'])
+            ->middleware('throttle:10,1')
+            ->name('api.internal.page-builder.draft');
+        Route::post('/{kind}/{key}/publish', [PageBuilderAgentApiController::class, 'publish'])
+            ->middleware('throttle:6,1')
+            ->name('api.internal.page-builder.publish');
+        Route::post('/{kind}/{key}/rollback', [PageBuilderAgentApiController::class, 'rollback'])
+            ->middleware('throttle:6,1')
+            ->name('api.internal.page-builder.rollback');
+    });
