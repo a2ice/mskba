@@ -92,3 +92,11 @@ test('pages accept only home or numeric IDs', () => {
   assert.throws(() => validatePlan(plan({ kind: 'pages', key: 'venues' })));
   assert.equal(validatePlan(plan({ kind: 'pages', key: 'home' })).key, 'home');
 });
+
+
+test('result hash may be computed on runner when exact source stays private', () => {
+  const { expected_result_sha256, ...withoutResult } = plan();
+  assert.ok(expected_result_sha256);
+  assert.equal(validatePlan(withoutResult).operation, 'apply');
+  assert.throws(() => validatePlan(plan({ expected_result_sha256: 'not-a-sha' })));
+});
