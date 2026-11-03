@@ -3,10 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const stylesheet = readFileSync(new URL('../../database/seeders/page-builder/hero-slider.css', import.meta.url), 'utf8');
+const builderStyles = readFileSync(new URL('../../resources/css/page-builder.css', import.meta.url), 'utf8');
 const slideView = readFileSync(new URL('../../resources/views/page-builder/components/hero-slider-slide-layers.blade.php', import.meta.url), 'utf8');
 const linksView = readFileSync(new URL('../../resources/views/page-builder/components/hero-slider-links.blade.php', import.meta.url), 'utf8');
 const sliderView = readFileSync(new URL('../../resources/views/page-builder/components/hero-slider.blade.php', import.meta.url), 'utf8');
 const sliderRuntime = readFileSync(new URL('../../resources/js/page-builder-hero-slider.js', import.meta.url), 'utf8');
+
+test('Hero stylesheet is owned by Page Builder, not imported into the Vite bundle', () => {
+    assert.doesNotMatch(builderStyles, /page-builder-hero-slider\\.css/);
+    assert.match(stylesheet, /\\.mskba-page-builder \\.mskba-hero-slider/);
+});
 
 test('tablet stage responds to the container width with a compact height', () => {
     assert.match(stylesheet, /@container mskba-hero \(max-width:1050px\)[\s\S]*?\.mskba-hero-slider__stage \{height:clamp\(400px,45cqw,500px\);\}/);
