@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Мяч остаётся в координатах слайдера после достижения конечной точки, вращаясь при прокрутке; удалить viewport-fixed режим",
+  "publish": true,
+  "expected_draft_sha256": "87b5292f48f5baded77a0b5f1ee76a01ad25d2de94cd6a63d2645f20930f8596",
+  "expected_published_sha256": "87b5292f48f5baded77a0b5f1ee76a01ad25d2de94cd6a63d2645f20930f8596",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "        if (desktopScene.matches && venues === venuesV3) {\n            if (scrollPosition <= transitionStart) {\n                assignOwner(false);\n                return false;\n            }\n            // The basketball docks to a stable viewport coordinate just below\n            // the header, instead of continuing upwards over it while the arena\n            // scrolls. Coordinates stay relative to the existing foreground,\n            // so its clipping/fade and the single sprite ownership are intact.\n            const sliderRect = slider.getBoundingClientRect();\n            const hostRect = ballHost.getBoundingClientRect();\n            const dockX = sliderRect.left + sliderRect.width * activeProfile.to[0] / 1000;\n            // Root coordinates are the ball centre. The visible sprite diameter\n            // includes the atlas-cell visual-size correction from the CSS.\n            // 13% of that diameter remains above the Hero's bottom edge at dock.\n            const renderedDiameter = activeProfile.tileSize * activeProfile.endScale * 1.1327434;\n            const dockY = sliderRect.bottom + renderedDiameter * (.5 - .13)\n                + (scrollPosition - transitionStart);\n            // Keep the single sprite visible beyond the clipped foreground:\n            // a fixed child of the Page Builder is independent of section scroll.\n            const fixedHost = scene.closest('.mskba-page-builder');\n            if (fixedHost) {\n                if (root.parentElement !== fixedHost) fixedHost.append(root);\n                root.style.position = 'fixed';\n                root.style.zIndex = '7';\n                root.style.left = dockX.toFixed(2) + 'px';\n                root.style.top = dockY.toFixed(2) + 'px';\n            } else {\n                assignOwner(true, ballHost);\n                root.style.left = (dockX - hostRect.left).toFixed(2) + 'px';\n                root.style.top = (dockY - hostRect.top).toFixed(2) + 'px';\n            }\n            root.style.setProperty('--ball-scale', activeProfile.endScale.toFixed(4));\n            root.style.setProperty('--ball-brightness', '0.92');\n            root.style.setProperty('--ball-saturation', '1');\n            const elapsedTurns = rollingBallReducedMotion.matches ? 0\n                : rollingBallTurns + Math.max(0, scrollPosition - transitionStart) / 320;\n            const frame = Math.floor(elapsedTurns * rollingBallSpriteFrames) % rollingBallSpriteFrames;\n            root.style.setProperty('--ball-frame-x', `${(frame % 4) * 100 / 3}%`);\n            root.style.setProperty('--ball-frame-y', `${Math.floor(frame / 4) * 100 / 3}%`);\n            return true;\n        }",
+      "to": "        // Desktop: ball stays in the Hero's document coordinate system.\n        // Once at the terminal slider position, only atlas rotation changes\n        // with scroll. Never move the sprite to a viewport-fixed overlay.\n        if (desktopScene.matches && venues === venuesV3) {\n            assignOwner(false);\n            return false;\n        }"
+    }
+  ]
+}
