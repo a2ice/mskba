@@ -6,7 +6,7 @@
   "kind": "pages",
   "key": "home",
   "field": "js",
-  "reason": "Raise desktop ball endpoint within Hero while keeping scroll-rotation; restore small natural sprite size on mobile and narrow tablets",
+  "reason": "Use real profile target to dock desktop ball fully inside Hero, with scroll rotation; mobile/tablet render at natural small size.",
   "publish": true,
   "expected_draft_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
   "expected_published_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
@@ -24,7 +24,12 @@
     {
       "type": "replace_once",
       "from": "        from: [255, 440], to: [650, 1030],",
-      "to": "        from: [255, 440], to: [650, 870],"
+      "to": "        from: [255, 440], to: [650, 850],"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const endY = desktopDock\n            ? (heroHeight + renderedDiameter * (.5 - .13)) * 1000 / heroHeight\n            : activeProfile.to[1];",
+      "to": "        // Stop fully inside Hero: profile is the preferred dock, and\n        // a measured sprite-radius limit prevents any bottom overflow.\n        const endY = desktopDock\n            ? Math.min(activeProfile.to[1], (heroHeight - renderedDiameter * .5 - 8) * 1000 / heroHeight)\n            : activeProfile.to[1];"
     }
   ]
 }
