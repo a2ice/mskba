@@ -41,7 +41,10 @@ final class SiteMediaController
         abort_unless(Storage::disk('public')->exists($path), 404);
         $etag = '"site-media-'.$media->id.($lqip ? '-lqip-'.Storage::disk('public')->lastModified($path).'-'.Storage::disk('public')->size($path) : '').'"';
         $headers = [
-            'Cache-Control' => 'public, no-cache, must-revalidate',
+            // These URLs follow the mutable current-media pointer. Keep freshness
+            // bounded while allowing warm browser caches to render immediately.
+            // ETag keeps conditional revalidation cheap after the freshness window.
+            'Cache-Control' => 'public, max-age=300, stale-while-revalidate=3600',
             'ETag' => $etag,
             'Content-Type' => $lqip ? 'image/webp' : $media->mime,
             'X-Content-Type-Options' => 'nosniff',
