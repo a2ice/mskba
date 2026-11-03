@@ -7,7 +7,7 @@
     tabindex="0">
     <div class="mskba-hero-slider__stage">
         @foreach ($slides as $slide)
-            <article class="mskba-hero-slide {{ ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--layers' : '' }} {{ ($slide['mobile_layout'] ?? 'absolute') === 'flow' && ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--mobile-flow' : '' }} {{ $loop->first ? 'is-active' : '' }}"
+            <article class="mskba-hero-slide {{ ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--layers' : '' }} {{ ($slide['mobile_layout'] ?? 'absolute') === 'flow' && ($slide['layout'] ?? 'legacy') === 'layers' ? 'mskba-hero-slide--mobile-flow' : '' }} {{ $loop->first ? 'is-active is-animating' : '' }}"
                 data-hero-slide data-slide-index="{{ $loop->index }}"
                 aria-label="{{ $slide['name'] ?? ('Слайд '.$loop->iteration) }} · {{ $loop->iteration }} из {{ count($slides) }}"
                 aria-roledescription="слайд"
