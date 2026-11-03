@@ -249,19 +249,22 @@ small explicit gaps to its existing JSON layers. It archives draft and
 published snapshots and leaves desktop/tablet, other slides and production
 untouched.
 
-## Appearance controls on the Page Builder component (2026-11-03)
+## CSS ownership in Page Builder (2026-11-03)
 
-Edit **Сайт → Компоненты → Hero Slider → Hero Slider · оформление** to set
-the outer slider width/alignment, radius, background and base text colors,
-shadow, overflow clipping, and optional pixel heights for desktop, tablet,
-and mobile. Empty height fields preserve the existing responsive `clamp()`
-rules; mobile sequential-flow slides still grow to fit their content.
-The builder stores these values in `draft_options.appearance` and publishes
-them only into `published_options.appearance` on explicit component publish.
-Legacy stored options retain their exact existing appearance by default.
+The Hero Slider's complete stylesheet is now stored in the **CSS** editor
+of `Сайт → Компоненты → Hero Slider` (`draft_css` and `published_css`).
+Its former Vite import is removed, so editing this CSS and using
+**Сохранить и опубликовать** applies changes without a source-code deployment.
 
-The server validates bounded numeric values, fixed shadow/alignment options,
-and six-digit hexadecimal colors before rendering trusted CSS custom properties.
-Structural CSS such as positioning, isolation and the named container remains
-first-party source code. Changing appearance does not modify the home page or
-publish its drafts automatically.
+The one-time data migration loads a bootstrap snapshot from
+`database/seeders/page-builder/hero-slider.css` into existing records.
+That seed file is **not** bundled or served as a runtime stylesheet; the live
+source of truth is the Page Builder component's published CSS. Any previous
+component CSS is preserved after the migrated baseline so its overrides win.
+Published components receive published CSS; unpublished components keep a draft
+until explicitly published. On rollback, the migration intentionally never
+deletes CSS edited through the admin interface.
+
+Existing `@container`, responsive, animation and mobile-flow declarations
+remain editor-managed. CSS is still validated and scoped by PageBuilderMarkup.
+Do not put the component stylesheet back into `resources/css/page-builder.css`.
