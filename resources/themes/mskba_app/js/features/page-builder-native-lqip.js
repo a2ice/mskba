@@ -1,8 +1,8 @@
 /*
- * Progressive Page Builder Site Media. On first paint, PHP has already set
- * <img src> and authored CSS background URLs to the tiny WebP derivative.
- * Both use their ORIGINAL CSS geometry. Never clone or move scene layers.
- * Client-side hydration decodes the original off-DOM, then swaps its URL.
+ * Cache-first progressive media for Page Builder.
+ * The server renders original URLs in <img src>, <picture><source> and
+ * CSS backgrounds. Lightweight LQIP thumbnails are background fallbacks,
+ * never a substitute src that flashes again on every reload.
  */
 const canvas = document.querySelector('.mskba-page-builder');
 const manifestNode = document.querySelector('[data-page-builder-lqip-manifest]');
@@ -25,107 +25,56 @@ if (canvas && manifestNode) {
         } catch { return null; }
     };
 
-    const loaded = (src, done, priority = 'auto') => {
-        const full = new Image();
-        full.decoding = 'async';
-        full.fetchPriority = priority;
-        full.onload = () => {
-            const show = () => {
-                if (full.naturalWidth > 0) done(full);
-            };
-            if (typeof full.decode === 'function') full.decode().then(show, show);
-            else show();
-        };
-        // An invalid full image never displaces a working preview.
-        full.src = src;
-        if (full.complete && full.naturalWidth > 0) full.onload();
-    };
-
     const hydrated = new WeakSet();
-    const hydratedSources = new WeakSet();
     const dynamicBackgrounds = new WeakMap();
 
-    function hydrateSource(source) {
-        if (hydratedSources.has(source)) return;
-        const full = source.getAttribute('data-mskba-lqip-full-srcset');
-        if (!full) return;
-        hydratedSources.add(source);
-        const begin = () => loaded(full, () => {
-            if (source.isConnected === false) return;
-            source.srcset = full;
-            // Even when the desktop fallback lacks a preview, restore the
-            // matched mobile source. If the fallback also has a preview,
-            // restore its src without downloading an unused desktop file.
-            const image = source.closest?.('picture')
-                ?.querySelector('img[data-mskba-lqip-full-src]');
-            if (image) {
-                image.src = image.getAttribute('data-mskba-lqip-full-src');
-                image.setAttribute('data-mskba-lqip-ready', '1');
+    function finishImage(image) {
+        const finish = () => {
+            if (!image.isConnected || image.naturalWidth <= 0) return;
+            // Remove only the preview CSS installed by Page Builder.
+            if (image.hasAttribute('data-mskba-lqip-added-background')) {
+                image.style.removeProperty('background-image');
+                image.style.removeProperty('background-size');
+                image.style.removeProperty('background-position');
+                image.style.removeProperty('background-repeat');
+                image.removeAttribute('data-mskba-lqip-added-background');
             }
-        });
-        const media = source.media && window.matchMedia(source.media);
-        if (!media || media.matches) begin();
-        else if (typeof media.addEventListener === 'function') {
-            media.addEventListener('change', event => {
-                if (event.matches) begin();
-            }, { once: true });
-        } else {
-            // Old browsers without MediaQueryList change events still recover
-            // full-resolution images on viewport changes.
-            begin();
-        }
+            image.setAttribute('data-mskba-lqip-ready', '1');
+        };
+        const decode = () => {
+            if (typeof image.decode === 'function') image.decode().then(finish, finish);
+            else finish();
+        };
+        if (image.complete && image.naturalWidth > 0) decode();
+        else image.addEventListener('load', decode, { once: true });
     }
 
     function hydrateImage(image) {
-        if (hydrated.has(image)) return;
-        if (image.closest('[data-site-media-progressive]')) return;
-        const fullFallback = image.getAttribute('data-mskba-lqip-full-src');
-        if (!fullFallback) {
-            // Images inserted by published component JS after initial HTML
-            // render (not server-rendered) still use the same native approach.
-            const entry = imageVersion(image.getAttribute('src'));
-            if (!entry || (image.complete && image.naturalWidth > 0)) return;
-            image.setAttribute('data-mskba-lqip-full-src', entry.original);
-            image.src = entry.preview;
-        }
+        if (hydrated.has(image) || image.closest('[data-site-media-progressive]')) return;
+        const authoredOriginal = image.getAttribute('data-mskba-lqip-full-src');
+        const entry = authoredOriginal ? imageVersion(authoredOriginal)
+            : imageVersion(image.getAttribute('src'));
+        if (!entry) return;
         hydrated.add(image);
-        const fullSrc = image.getAttribute('data-mskba-lqip-full-src');
-        const picture = image.closest('picture');
-        // Source and fallback are independently hydrated. This also supports
-        // a mobile LQIP next to a static/no-preview desktop fallback.
-        const activeSource = picture && [...picture.querySelectorAll('source[data-mskba-lqip-full-srcset]')]
-            .find(node => !node.media || window.matchMedia(node.media).matches);
-        if (activeSource) return; // hydrateSource() restores both after decode.
-        const begin = () => {
-            loaded(fullSrc, () => {
-                if (!image.isConnected) return;
-                image.src = fullSrc;
-                image.setAttribute('data-mskba-lqip-ready', '1');
-            }, image.hasAttribute('data-mskba-lqip-venue-player') ? 'high' : 'auto');
-        };
-        if (image.loading === 'lazy' && 'IntersectionObserver' in window
-            && !image.hasAttribute('data-mskba-lqip-venue-player')) {
-            const observer = new IntersectionObserver(entries => {
-                if (entries.some(entry => entry.isIntersecting)) {
-                    observer.disconnect();
-                    begin();
-                }
-            }, { rootMargin: '300px' });
-            observer.observe(image);
-        } else begin();
+
+        // Dynamic API images that were not processed on the server still get
+        // a fallback if loading is cold. A warm image is never changed.
+        if (!authoredOriginal && !(image.complete && image.naturalWidth > 0)
+            && image.style && !image.style.backgroundImage) {
+            image.style.backgroundImage = 'url("' + entry.preview + '")';
+            image.style.backgroundSize = 'contain';
+            image.style.backgroundPosition = 'center';
+            image.style.backgroundRepeat = 'no-repeat';
+            image.setAttribute('data-mskba-lqip-added-background', '1');
+        }
+        finishImage(image);
     }
 
-    function hydrateCssBackgrounds() {
-        const styles = document.querySelector('style[data-mskba-lqip-css]');
-        if (!styles) return;
-        for (const { original, preview } of imageUrls) {
-            if (!styles.textContent.includes(preview)) continue;
-            loaded(original, () => {
-                if (styles.isConnected) {
-                    styles.textContent = styles.textContent.replaceAll(preview, original);
-                }
-            }, 'low');
-        }
+    function hydrateSource(source) {
+        // Backward compatibility with older server markup only. New markup
+        // keeps responsive source URLs pointed at original assets from HTML.
+        const full = source.getAttribute('data-mskba-lqip-full-srcset');
+        if (full && source.srcset !== full) source.srcset = full;
     }
 
     function hydrateDynamicBackground(element) {
@@ -138,13 +87,24 @@ if (canvas && manifestNode) {
         const entry = imageVersion(matches[0][1]);
         if (!entry || dynamicBackgrounds.get(element) === entry.original) return;
         dynamicBackgrounds.set(element, entry.original);
-        // The original CSS background-size, position, transforms, opacity and
-        // z-index stay intact. No absolutely positioned overlay or cloned node.
-        element.style.backgroundImage = background.replace(matches[0][1], entry.preview);
-        loaded(entry.original, () => {
+
+        // Original on top of the preview, with no replacement of a painted
+        // background during a warm-cache navigation.
+        const both = background.replace(matches[0][0],
+            'url("' + matches[0][1] + '"),url("' + entry.preview + '")');
+        element.style.backgroundImage = both;
+        const full = new Image();
+        full.decoding = 'async';
+        const reveal = () => {
             if (!element.isConnected || dynamicBackgrounds.get(element) !== entry.original) return;
-            element.style.backgroundImage = background;
-        }, 'low');
+            if (full.naturalWidth > 0) element.style.backgroundImage = background;
+        };
+        full.onload = () => {
+            if (typeof full.decode === 'function') full.decode().then(reveal, reveal);
+            else reveal();
+        };
+        full.src = entry.original;
+        if (full.complete && full.naturalWidth > 0) full.onload();
     }
 
     function scan(node) {
@@ -154,16 +114,13 @@ if (canvas && manifestNode) {
         else hydrateDynamicBackground(node);
         node.querySelectorAll?.('img[data-mskba-lqip-full-src], img[src^="/media/site/"]')
             .forEach(hydrateImage);
-        if (node.tagName === 'SOURCE' && node.hasAttribute?.('data-mskba-lqip-full-srcset')) {
-            hydrateSource(node);
-        }
+        if (node.tagName === 'SOURCE') hydrateSource(node);
         node.querySelectorAll?.('source[data-mskba-lqip-full-srcset]').forEach(hydrateSource);
         node.querySelectorAll?.('[style*="background-image"]').forEach(hydrateDynamicBackground);
     }
 
     function start() {
         scan(canvas);
-        hydrateCssBackgrounds();
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver(records => {
                 for (const record of records) {

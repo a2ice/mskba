@@ -10,41 +10,59 @@ const uuid = '60d4d65b-308c-40aa-8466-158466632107';
 const full = '/media/site/' + uuid;
 const mini = full + '/lqip';
 
-function scene({ known = true, player = true, css = false, dynamic = false, picture = false, staticFallback = false } = {}) {
+function scene({ known = true, cached = false, dynamic = false, picture = false, legacySource = false } = {}) {
     const downloads = [];
     let notify = null;
     const attrs = new Map([
-        ['src', staticFallback ? '/images/bg-indoor.png' : known ? mini : full],
-        ...(known && !staticFallback ? [['data-mskba-lqip-full-src', full]] : []),
-        ...(player ? [['data-mskba-lqip-venue-player', '1']] : []),
+        ['src', full],
+        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini],
+            ['data-mskba-lqip-added-background', '1']] : []),
     ]);
-    const sourceAttrs = new Map([
-        ['data-mskba-lqip-full-srcset', full],
-    ]);
-    const source = {
-        media: '(max-width: 640px)', isConnected: true, tagName: 'SOURCE',
-        nodeType: 1, hasAttribute: name => sourceAttrs.has(name),
-        closest: selector => selector === 'picture' ? wrapper : null,
-        getAttribute: name => sourceAttrs.get(name) || null,
-        set srcset(value) { this.restored = value; },
-    };
-    const wrapper = {
-        querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
-        querySelector: selector => selector.startsWith('img') && img.hasAttribute('data-mskba-lqip-full-src') ? img : null,
+    let onLoad = null;
+    const style = {
+        backgroundImage: known ? 'url(' + mini + ')' : '',
+        backgroundSize: known ? 'contain' : '',
+        backgroundPosition: known ? 'center' : '',
+        backgroundRepeat: known ? 'no-repeat' : '',
+        removeProperty(name) {
+            const key = name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+            this[key] = '';
+        },
     };
     const img = {
         tagName: 'IMG', nodeType: 1, loading: 'eager', isConnected: true,
-        complete: false, naturalWidth: 0,
+        complete: cached, naturalWidth: cached ? 320 : 0, style,
         getAttribute: name => attrs.get(name) || null,
         setAttribute(name, value) { attrs.set(name, value); },
+        removeAttribute(name) { attrs.delete(name); },
         hasAttribute: name => attrs.has(name),
         closest: selector => selector === 'picture' && picture ? wrapper : null,
         set src(value) { attrs.set('src', value); },
         get src() { return attrs.get('src'); },
+        decode: () => Promise.resolve(),
+        addEventListener(type, cb) { if (type === 'load') onLoad = cb; },
+        loaded() {
+            this.complete = true;
+            this.naturalWidth = 320;
+            onLoad?.();
+        },
+    };
+    const sourceAttrs = new Map(legacySource ? [['data-mskba-lqip-full-srcset', full]] : []);
+    const source = {
+        tagName: 'SOURCE', nodeType: 1, isConnected: true,
+        media: '(max-width: 640px)', srcset: legacySource ? mini : full,
+        hasAttribute: name => sourceAttrs.has(name),
+        getAttribute: name => sourceAttrs.get(name) || null,
+        closest: () => null,
+    };
+    const wrapper = {
+        querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
+        querySelector: selector => selector.startsWith('img') ? img : null,
     };
     const bg = {
         nodeType: 1, tagName: 'DIV', id: 'tournaments-background',
-        isConnected: true, style: { backgroundImage: dynamic ? 'url("' + full + '")' : '' },
+        isConnected: true,
+        style: { backgroundImage: dynamic ? 'linear-gradient(#000,#fff), url("' + full + '")' : '' },
         closest: () => null, querySelectorAll: () => [],
     };
     const canvas = {
@@ -57,14 +75,16 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
             return [];
         },
     };
-    const style = { textContent: css ? '.court{background-image:url("' + mini + '");background-size:cover}' : '', isConnected: true };
+    const css = {
+        textContent: '.court { background-image: url("' + full + '"), url("' + mini + '"); }',
+    };
     const manifest = { textContent: JSON.stringify(known ? { [uuid]: mini } : {}) };
     const document = {
         readyState: 'complete',
         querySelector(selector) {
             if (selector === '.mskba-page-builder') return canvas;
             if (selector === '[data-page-builder-lqip-manifest]') return manifest;
-            if (selector === 'style[data-mskba-lqip-css]') return css ? style : null;
+            if (selector === 'style[data-mskba-lqip-css]') return css;
             return null;
         },
     };
@@ -74,7 +94,7 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
         set src(value) { this.url = value; downloads.push(this); }
         get src() { return this.url; }
         decode() { return Promise.resolve(); }
-        succeed() { this.naturalWidth = 320; this.onload?.(); }
+        succeed() { this.naturalWidth = 320; this.complete = true; this.onload?.(); }
         fail() { this.onerror?.(); }
     }
     class MutationObserverMock {
@@ -89,9 +109,8 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
     };
     runInNewContext(script, { document, window, URL, Image: ImageMock,
         MutationObserver: MutationObserverMock, console });
-
     return {
-        img, bg, style, source, downloads,
+        img, bg, css, source, downloads,
         setLateBackground(value) {
             bg.style.backgroundImage = value;
             notify([{ type: 'attributes', target: bg }]);
@@ -99,72 +118,67 @@ function scene({ known = true, player = true, css = false, dynamic = false, pict
     };
 }
 
-test('player starts with a real LQIP src in CSS position, then swaps the SAME image', async () => {
+test('server-native image starts with full src and a CSS-only LQIP underneath', async () => {
     const s = scene();
-    assert.equal(s.img.src, mini);
-    assert.equal(s.downloads.length, 1);
-    assert.equal(s.downloads[0].src, full);
-    s.downloads[0].succeed();
-    await Promise.resolve();
+    assert.equal(s.img.src, full);
+    assert.match(s.img.style.backgroundImage, /\/lqip/);
+    assert.equal(s.downloads.length, 0, 'do not make a second Image() request for the same image');
+    s.img.loaded();
     await Promise.resolve();
     assert.equal(s.img.src, full);
+    assert.equal(s.img.style.backgroundImage, '');
     assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
 });
 
-test('full image failure keeps valid miniature visible without DOM cloning', async () => {
-    const s = scene();
-    s.downloads[0].fail();
+test('cached full image wins immediately instead of reverting to an LQIP on refresh', async () => {
+    const s = scene({ cached: true });
     await Promise.resolve();
-    assert.equal(s.img.src, mini);
-});
-
-test('missing LQIP does not add placeholders or image requests', () => {
-    const s = scene({ known: false });
+    assert.equal(s.img.src, full);
+    assert.equal(s.img.style.backgroundImage, '');
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
     assert.equal(s.downloads.length, 0);
+});
+
+test('failed full image does not prematurely remove a working preview', async () => {
+    const s = scene();
+    await Promise.resolve();
+    assert.match(s.img.style.backgroundImage, /\/lqip/);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), null);
+});
+
+test('without a known preview the browser loads original without extra requests', () => {
+    const s = scene({ known: false });
     assert.equal(s.img.src, full);
+    assert.equal(s.img.style.backgroundImage, '');
+    assert.equal(s.downloads.length, 0);
 });
 
-test('CSS-authored background starts with lightweight URL, full replaces it after decode', async () => {
-    const s = scene({ css: true });
-    assert.match(s.style.textContent, /\/lqip/);
-    assert.equal(s.downloads.length, 2); // player and stylesheet original
-    const background = s.downloads.filter(x => x.src === full).at(-1);
-    background.succeed();
-    await Promise.resolve();
-    await Promise.resolve();
-    assert.doesNotMatch(s.style.textContent, /\/lqip/);
-    assert.match(s.style.textContent, /background-size:cover/);
+test('authored CSS background is never replaced by JS during page refresh', () => {
+    const s = scene({ cached: true });
+    assert.match(s.css.textContent, /url\("[^"]+"\), url\("[^"]+\/lqip"\)/);
+    assert.equal(s.downloads.length, 0);
 });
 
-test('late API-provided tournament background uses same CSS box, no overlay element', async () => {
-    const s = scene({ dynamic: false });
-    s.setLateBackground('linear-gradient(#000,#fff), url("' + full + '")');
-    assert.match(s.bg.style.backgroundImage, /\/lqip/);
-    assert.equal(s.downloads.length, 2);
-    s.downloads[1].succeed();
-    await Promise.resolve();
-    await Promise.resolve();
-    assert.doesNotMatch(s.bg.style.backgroundImage, /\/lqip/);
-    assert.match(s.bg.style.backgroundImage, /linear-gradient/);
-});
-
-test('picture source switches mobile srcset with the same image without coordinates changes', async () => {
-    const s = scene({ picture: true });
-    assert.equal(s.img.src, mini);
-    s.downloads[0].succeed();
-    await Promise.resolve();
-    await Promise.resolve();
-    assert.equal(s.source.restored, full);
-    assert.equal(s.img.src, full);
-});
-
-test('mobile source gets full quality even when fallback is static and has no LQIP', async () => {
-    const s = scene({ picture: true, staticFallback: true });
-    assert.equal(s.img.src, '/images/bg-indoor.png');
+test('late API-provided background keeps full URL first and miniature behind', async () => {
+    const s = scene({ dynamic: true });
+    const original = 'linear-gradient(#000,#fff), url("' + full + '")';
+    assert.match(s.bg.style.backgroundImage, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
     assert.equal(s.downloads.length, 1);
     s.downloads[0].succeed();
     await Promise.resolve();
     await Promise.resolve();
-    assert.equal(s.source.restored, full);
-    assert.equal(s.img.src, '/images/bg-indoor.png');
+    assert.equal(s.bg.style.backgroundImage, original);
+});
+
+test('native picture source stays on original srcset without extra downloads', async () => {
+    const s = scene({ picture: true, cached: true });
+    await Promise.resolve();
+    assert.equal(s.img.src, full);
+    assert.equal(s.source.srcset, full);
+    assert.equal(s.downloads.length, 0);
+});
+
+test('legacy mobile source placeholder upgrades to original URL', () => {
+    const s = scene({ picture: true, legacySource: true });
+    assert.equal(s.source.srcset, full);
 });

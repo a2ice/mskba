@@ -53,10 +53,11 @@ final class PageBuilderAutoLqipTest extends TestCase
             $player->uuid => $player->lqipUrl(),
             $background->uuid => $background->lqipUrl(),
         ], $result['lqip']);
-        $this->assertStringContainsString('src="'.$player->lqipUrl().'"', $result['html']);
+        $this->assertStringContainsString('src="'.$player->publicUrl().'"', $result['html']);
+        $this->assertStringContainsString('data-mskba-lqip-preview-src="'.$player->lqipUrl().'"', $result['html']);
         $this->assertStringContainsString('data-mskba-lqip-full-src="'.$player->publicUrl().'"', $result['html']);
         $this->assertStringContainsString($background->lqipUrl(), $result['css']);
-        $this->assertStringNotContainsString('url("'.$background->publicUrl().'")', $result['css']);
+        $this->assertStringContainsString('url("'.$background->publicUrl().'"),url("'.$background->lqipUrl().'")', $result['css']);
         $this->assertStringContainsString($background->publicUrl(), $result['originalCss']);
         $this->assertStringNotContainsString('data-site-media-lqip', $result['html']);
         $this->assertSame($htmlBefore, $page->fresh()->published_html);
@@ -140,23 +141,24 @@ final class PageBuilderAutoLqipTest extends TestCase
         $generator = app(PageBuilderFirstPaintLqip::class);
         $rendered = $generator->apply($markup, $mini);
 
-        $this->assertStringContainsString('src="'.$one.'/lqip"', $rendered);
-        $this->assertStringContainsString('src="'.$two.'/lqip"', $rendered);
-        $this->assertStringContainsString('srcset="'.$two.'/lqip"', $rendered);
+        $this->assertStringContainsString('src="'.$one.'"', $rendered);
+        $this->assertStringContainsString('data-mskba-lqip-preview-src="'.$one.'/lqip"', $rendered);
+        $this->assertStringContainsString('src="'.$two.'"', $rendered);
+        $this->assertStringContainsString('srcset="'.$two.'"', $rendered);
         $this->assertStringContainsString('data-mskba-lqip-full-src="'.$one.'"', $rendered);
-        $this->assertStringContainsString('data-mskba-lqip-full-srcset="'.$two.'"', $rendered);
+        $this->assertStringNotContainsString('data-mskba-lqip-full-srcset=', $rendered);
         $this->assertStringContainsString('data-mskba-lqip-venue-player="1" loading="eager"', $rendered);
         $this->assertStringNotContainsString('data-site-media-lqip=', $rendered);
         $this->assertStringContainsString('src="/images/ball-rolling.png"', $rendered);
-        $this->assertStringContainsString('<noscript>', $rendered);
+        $this->assertStringNotContainsString('<noscript>', $rendered);
 
         $css = '.player {background-size:contain;background-position:center;'
             .'background-image:linear-gradient(#000,#fff),url("'.$one.'");'
             .'transform:translate3d(1px,2px,0)}'
             .'.bg{background-image:url(\''.$two.'\')}';
         $lqCss = $generator->css($css, $mini);
-        $this->assertStringContainsString('url("'.$one.'/lqip")', $lqCss);
-        $this->assertStringContainsString('url("'.$two.'/lqip")', $lqCss);
+        $this->assertStringContainsString('url("'.$one.'"),url("'.$one.'/lqip")', $lqCss);
+        $this->assertStringContainsString('url("'.$two.'"),url("'.$two.'/lqip")', $lqCss);
         $this->assertStringContainsString('background-size:contain', $lqCss);
         $this->assertStringContainsString('transform:translate3d(1px,2px,0)', $lqCss);
         $this->assertSame($css, $generator->css($css, []));
@@ -183,13 +185,28 @@ final class PageBuilderAutoLqipTest extends TestCase
         $result = app(PageBuilderFirstPaintLqip::class)->apply($markup, $previews);
         foreach ([$arena, $player] as $asset) {
             $bytes = Storage::disk('public')->get(SiteMediaLqip::path($asset->currentMedia));
-            $this->assertStringContainsString('src="data:image/webp;base64,'.base64_encode($bytes).'"', $result);
+            $this->assertStringContainsString('background-image:url(data:image/webp;base64,'.base64_encode($bytes).')', $result);
+            $this->assertStringContainsString('src="'.$asset->publicUrl().'"', $result);
             $this->assertStringContainsString('data-mskba-lqip-full-src="'.$asset->publicUrl().'"', $result);
         }
         $this->assertSame(2, substr_count($result, 'loading="eager" fetchpriority="high"'));
         $this->assertSame(2, substr_count($result, 'data-mskba-lqip-venue-player="1"'));
-        $this->assertStringContainsString('src="'.$hidden->lqipUrl().'"', $result);
-        $this->assertStringContainsString('<noscript>', $result);
+        $this->assertStringContainsString('src="'.$hidden->publicUrl().'"', $result);
+        $this->assertStringContainsString('data-mskba-lqip-preview-src="'.$hidden->lqipUrl().'"', $result);
+        $this->assertStringNotContainsString('<noscript>', $result);
+    }
+
+    public function test_inline_editor_background_is_not_overwritten_or_removed_by_lqip(): void
+    {
+        $uuid = '12345678-1234-1234-1234-123456789abc';
+        $url = '/media/site/'.$uuid;
+        $html = '<img class="custom-art" style="background-image:url(/images/pattern.png);background-size:cover" src="'.$url.'">';
+        $result = app(PageBuilderFirstPaintLqip::class)->apply($html, [
+            $uuid => $url.'/lqip',
+        ]);
+        $this->assertStringContainsString('src="'.$url.'"', $result);
+        $this->assertStringContainsString('background-image:url(/images/pattern.png);background-size:cover', $result);
+        $this->assertStringNotContainsString('data-mskba-lqip-added-background', $result);
     }
 
     public function test_unsupported_or_missing_preview_preserves_original_src(): void
