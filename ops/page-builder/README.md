@@ -129,3 +129,32 @@ Unit tests:
 node --test tests/JavaScript/page-builder-agent-bridge.test.mjs
 
 Полный API-контракт: docs/specification/page-builder-agent-api.md.
+
+## Publication of a staged draft (publish-only)
+
+If `PATCH /draft` has succeeded but publication stopped, do **not** run
+another replace operation over the pending draft. Inspect current
+`draft_sha256` and `published_sha256`, then create a new reviewed request:
+
+    {
+      "version": 1,
+      "environment": "development",
+      "confirm": "DEV_ONLY_PAGE_BUILDER",
+      "operation": "publish",
+      "kind": "components",
+      "key": "venues-scene-v3",
+      "field": "css",
+      "reason": "Публикация уже проверенного черновика",
+      "expected_draft_sha256": "<SHA-256 from read-only inspection>",
+      "expected_published_sha256": "<published SHA-256 from inspection>"
+    }
+
+This operation does not upload or edit text: it publishes the existing draft
+only after both SHA-256 values match. For HTML it additionally requires
+`confirm_html_publish=PUBLISH_HTML_EXPLICITLY`.
+
+Laravel's `TrimStrings` middleware strips outer whitespace from incoming
+JSON source fields. The bridge now normalizes the outer whitespace **before**
+calculating the proposed SHA and before PATCH; internal formatting stays intact.
+The `expected_result_sha256` for future `apply` requests must match that
+normalized value (or be omitted so the runner computes it).
