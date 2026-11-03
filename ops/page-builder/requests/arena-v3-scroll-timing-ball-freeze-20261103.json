@@ -19,7 +19,7 @@
     {
       "type": "replace_once",
       "from": "        const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);\n        // Reverse the photographic frame sequence when mirroring the horizontal\n        // direction. Both endpoints remain on frontal frame zero.\n        const frame = p >= 1\n    ? 0\n    : framesTravelled % rollingBallSpriteFrames;",
-      "to": "        // Translation clamps at p=1; the sprite keeps rotating with native scroll.\n        // Absolute scroll is the clock, so reverse scrolling reverses the rotation.\n        const elapsedTurns = Math.max(0, (window.scrollY - start) / distance) * rollingBallTurns;\n        const framesTravelled = Math.floor(elapsedTurns * rollingBallSpriteFrames);\n        const frame = framesTravelled % rollingBallSpriteFrames;"
+      "to": "        // Translation clamps at p=1; the sprite rotates more slowly thereafter.\n        // Scroll position, not elapsed wall-clock time, drives the single atlas.\n        const elapsedTurns = p * rollingBallTurns\n            + Math.max(0, window.scrollY - (start + distance)) / 320;\n        const framesTravelled = Math.floor(elapsedTurns * rollingBallSpriteFrames);\n        const frame = rollingBallReducedMotion.matches ? 0\n            : framesTravelled % rollingBallSpriteFrames;"
     },
     {
       "type": "replace_once",
