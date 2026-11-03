@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 final class OpenApiContractTest extends TestCase
 {
-    public function test_openapi_version_and_all_public_mobile_api_routes_are_documented(): void
+    public function test_openapi_version_and_all_public_and_internal_page_builder_routes_are_documented(): void
     {
         $source = file_get_contents(base_path('docs/api/openapi-v1.json'));
         $spec = json_decode($source, true, 512, JSON_THROW_ON_ERROR);
@@ -25,7 +25,8 @@ final class OpenApiContractTest extends TestCase
 
         $actual = [];
         foreach (Route::getRoutes() as $route) {
-            if (str_starts_with((string) $route->getName(), 'api.v1.')) {
+            if (str_starts_with((string) $route->getName(), 'api.v1.')
+                || str_starts_with((string) $route->getName(), 'api.internal.page-builder.')) {
                 foreach (array_filter($route->methods(), fn (string $method): bool => $method !== 'HEAD') as $method) {
                     $actual[] = $method.' '.$route->uri();
                 }
@@ -37,6 +38,52 @@ final class OpenApiContractTest extends TestCase
 
         $this->assertSame($actual, $documented,
             'Keep docs/api/openapi-v1.json in sync with published REST API routes.');
+    }
+
+
+    public function test_internal_page_builder_api_has_separate_dev_only_bearer_security_and_schemas(): void
+    {
+        $spec = json_decode(file_get_contents(base_path('docs/api/openapi-v1.json')), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame('bearer', $spec['components']['securitySchemes']['pageBuilderAgentBearer']['scheme']);
+        $paths = [
+            '/api/v1/internal/page-builder/{kind}/{key}' => 'get',
+            '/api/v1/internal/page-builder/{kind}/{key}/draft' => 'patch',
+            '/api/v1/internal/page-builder/{kind}/{key}/publish' => 'post',
+            '/api/v1/internal/page-builder/{kind}/{key}/rollback' => 'post',
+        ];
+
+        foreach ($paths as $path => $method) {
+            $operation = $spec['paths'][$path][$method] ?? null;
+            $this->assertNotNull($operation, "Missing {$method} {$path}");
+            $this->assertSame([['pageBuilderAgentBearer' => []]], $operation['security']);
+            $this->assertTrue($operation['x-internal']);
+            $this->assertSame(['staging'], $operation['x-environments']);
+            $this->assertSame(['components', 'templates', 'pages'], $operation['parameters'][0]['schema']['enum']);
+            $this->assertArrayHasKey('401', $operation['responses']);
+            $this->assertArrayHasKey('403', $operation['responses']);
+            $this->assertArrayHasKey('404', $operation['responses']);
+            $this->assertArrayHasKey('429', $operation['responses']);
+            $this->assertSame(
+                '#/components/schemas/PageBuilderAgentResponse',
+                $operation['responses']['200']['content']['application/json']['schema']['$ref'],
+            );
+        }
+
+        foreach (['draft', 'publish', 'rollback'] as $operation) {
+            $path = '/api/v1/internal/page-builder/{kind}/{key}/'.$operation;
+            $method = $operation === 'draft' ? 'patch' : 'post';
+            $this->assertArrayHasKey('409', $spec['paths'][$path][$method]['responses']);
+            $this->assertArrayHasKey('422', $spec['paths'][$path][$method]['responses']);
+        }
+
+        $this->assertSame(['css', 'js'], $spec['components']['schemas']['PageBuilderAgentRollbackRequest']['properties']['field']['enum']);
+        $this->assertContains('expected_draft_sha256', $spec['components']['schemas']['PageBuilderAgentStageRequest']['required']);
+        $this->assertContains('expected_published_sha256', $spec['components']['schemas']['PageBuilderAgentPublishRequest']['required']);
+
+        // The public/mobile operations must never inherit the internal agent token.
+        $this->assertSame([['sanctumBearer' => []]], $spec['paths']['/api/v1/me']['get']['security']);
+        $this->assertSame([], $spec['paths']['/api/v1/auth/login']['post']['security']);
     }
 
     public function test_public_venue_filters_and_access_flags_are_documented(): void
