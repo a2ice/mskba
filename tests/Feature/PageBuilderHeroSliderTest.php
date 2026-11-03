@@ -47,70 +47,37 @@ final class PageBuilderHeroSliderTest extends TestCase
         ]))->assertOk()->assertSee('Hero Slider');
     }
 
-    public function test_appearance_is_configurable_and_uses_published_snapshot(): void
+    public function test_hero_slider_css_is_migrated_into_component_editor_and_preview(): void
     {
         $slider = $this->slider();
+        $this->assertStringContainsString(
+            'MSKBA_HERO_SLIDER_BASE_CSS_TRANSFER_20261103',
+            (string) $slider->draft_css,
+        );
+        $this->assertStringContainsString('.mskba-hero-slider__stage', (string) $slider->draft_css);
+        $this->assertNull($slider->published_css);
+
         $home = $this->home();
         $home->update(['draft_html' => '<mskba-component name="hero-slider"></mskba-component>']);
+        $preview = app(PageBuilderRenderer::class)->render($home, true);
+        $this->assertStringContainsString('@scope (.mskba-page-builder)', $preview['css']);
+        $this->assertStringContainsString('.mskba-hero-slider__stage', $preview['css']);
 
-        $appearance = [
-            'width_percent' => 85,
-            'alignment' => 'right',
-            'border_radius_px' => 0,
-            'background_color' => '#112233',
-            'text_color' => '#AABBCC',
-            'shadow' => 'none',
-            'clip_content' => false,
-            'height_desktop_px' => 620,
-            'height_tablet_px' => 490,
-            'height_mobile_px' => 670,
-        ];
-        $slider->update(['draft_options' => array_merge($slider->draft_options ?? [], ['appearance' => $appearance])]);
+        app(PageBuilderPublisher::class)->publish($slider);
+        app(PageBuilderPublisher::class)->publish($home);
+        $published = app(PageBuilderRenderer::class)->render($home->refresh());
+        $this->assertStringContainsString('.mskba-hero-slider__stage', $published['css']);
 
-        $renderer = app(PageBuilderRenderer::class);
-        $preview = $renderer->render($home, true)['html'];
-        $this->assertStringContainsString('--hero-width:85%', $preview);
-        $this->assertStringContainsString('--hero-margin-start:auto;--hero-margin-end:0', $preview);
-        $this->assertStringContainsString('--hero-radius:0px', $preview);
-        $this->assertStringContainsString('--hero-background:#112233', $preview);
-        $this->assertStringContainsString('--hero-text:#AABBCC', $preview);
-        $this->assertStringContainsString('--hero-shadow:none', $preview);
-        $this->assertStringContainsString('--hero-overflow:visible', $preview);
-        $this->assertStringContainsString('--hero-stage-desktop-height:620px', $preview);
-        $this->assertStringContainsString('--hero-stage-tablet-height:490px', $preview);
-        $this->assertStringContainsString('--hero-stage-mobile-height:670px', $preview);
-
-        $publisher = app(PageBuilderPublisher::class);
-        $publisher->publish($slider);
-        $publisher->publish($home);
-
-        $slider->update(['draft_options' => array_merge($slider->draft_options ?? [], [
-            'appearance' => array_merge($appearance, ['border_radius_px' => 40, 'background_color' => '#654321']),
-        ])]);
-        $this->assertStringContainsString('--hero-radius:40px', $renderer->render($home, true)['html']);
-        $public = $renderer->render($home->refresh())['html'];
-        $this->assertStringContainsString('--hero-radius:0px', $public);
-        $this->assertStringContainsString('--hero-background:#112233', $public);
-        $this->assertStringNotContainsString('--hero-background:#654321', $public);
-    }
-
-    public function test_invalid_appearance_css_tokens_are_rejected(): void
-    {
-        $slides = $this->slider()->draft_slides;
-        $options = $this->slider()->draft_options ?? [];
-        foreach ([
-            ['background_color' => '#ffffff;url(https://invalid.example)'],
-            ['shadow' => 'url(https://invalid.example)'],
-            ['width_percent' => 101],
-            ['height_desktop_px' => 1500],
-        ] as $invalid) {
-            try {
-                HeroSliderSettings::validate($slides, array_merge($options, ['appearance' => $invalid]));
-                $this->fail('Unsafe appearance option was accepted.');
-            } catch (ValidationException) {
-                // Only fixed, validated values can be rendered into CSS tokens.
-            }
-        }
+        // Separate CSS publication must not publish in-progress slide edits.
+        $slider = $slider->fresh();
+        $slides = $slider->draft_slides;
+        $slides[0]['name'] = 'Unpublished draft slide';
+        $slider->update(['draft_slides' => $slides]);
+        $css = (string) $slider->draft_css."\n/* User CSS override */\n.mskba-hero-slider { outline: 1px solid red; }";
+        app(PageBuilderPublisher::class)->saveAndPublishCss($slider, $css);
+        $this->assertSame($slides, $slider->fresh()->draft_slides);
+        $this->assertNotSame($slides, $slider->fresh()->published_slides);
+        $this->assertStringContainsString('User CSS override', app(PageBuilderRenderer::class)->render($home->refresh())['css']);
     }
 
     public function test_migration_creates_unpublished_editable_hero_component(): void
