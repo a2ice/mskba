@@ -196,6 +196,19 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertStringContainsString('<noscript>', $result);
     }
 
+    public function test_inline_editor_background_is_not_overwritten_or_removed_by_lqip(): void
+    {
+        $uuid = '12345678-1234-1234-1234-123456789abc';
+        $url = '/media/site/'.$uuid;
+        $html = '<img class="custom-art" style="background-image:url(/images/pattern.png);background-size:cover" src="'.$url.'">';
+        $result = app(PageBuilderFirstPaintLqip::class)->apply($html, [
+            $uuid => $url.'/lqip',
+        ]);
+        $this->assertStringContainsString('src="'.$url.'"', $result);
+        $this->assertStringContainsString('background-image:url(/images/pattern.png);background-size:cover', $result);
+        $this->assertStringNotContainsString('data-mskba-lqip-added-background', $result);
+    }
+
     public function test_unsupported_or_missing_preview_preserves_original_src(): void
     {
         $generator = app(PageBuilderFirstPaintLqip::class);
