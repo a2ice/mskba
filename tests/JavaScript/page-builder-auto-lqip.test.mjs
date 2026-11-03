@@ -15,7 +15,8 @@ function scene({ known = true, cached = false, dynamic = false, picture = false,
     let notify = null;
     const attrs = new Map([
         ['src', full],
-        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
+        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini],
+            ['data-mskba-lqip-added-background', '1']] : []),
     ]);
     let onLoad = null;
     const style = {
