@@ -70,8 +70,9 @@ No main/production publication is part of this task.
   to \`page-builder/hero\` with safe extensions and filenames; no remote URL.
 - \`PageBuilderRenderer\` resolves the trusted \`hero-slider\` branch before
   sanitizing page HTML and substitutes sanitized only where applicable.
-- The hero JS and CSS are first-party Vite assets imported by existing
-  \`resources/js/page-builder.js\` / \`resources/css/page-builder.css\`.
+- Hero JavaScript remains a first-party Vite asset imported by
+  resources/js/page-builder.js. Hero CSS is stored and published through the
+  Page Builder component's own CSS editor (not bundled by Vite).
 - The main \`PageBuilderMarkup\` sanitization is **unchanged**.
 - Generic HTML components and \`games-list\` remain separate and functional.
 
