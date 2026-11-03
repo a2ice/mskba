@@ -160,7 +160,7 @@ test('authored CSS background is never replaced by JS during page refresh', () =
 
 test('late API-provided background keeps full URL first and miniature behind', async () => {
     const s = scene({ dynamic: true });
-    const original = s.bg.style.backgroundImage;
+    const original = 'linear-gradient(#000,#fff), url("' + full + '")';
     assert.match(s.bg.style.backgroundImage, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
     assert.equal(s.downloads.length, 1);
     s.downloads[0].succeed();
