@@ -10,7 +10,7 @@ const REQUEST_PATH_PATTERN = /^ops\/page-builder\/requests\/[a-z0-9][a-z0-9._-]*
 const SHA_PATTERN = /^[0-9a-f]{64}$/;
 const TARGETS = new Set(['components', 'pages', 'templates']);
 const FIELDS = new Set(['html', 'css', 'js']);
-const OPERATIONS = new Set(['inspect', 'apply', 'rollback']);
+const OPERATIONS = new Set(['inspect', 'apply', 'publish', 'rollback']);
 
 export const sha256 = (source) => createHash('sha256').update(source, 'utf8').digest('hex');
 
@@ -25,7 +25,7 @@ function isObject(value) {
 export function validatePlan(input) {
   assert(isObject(input), 'Plan must be a JSON object.');
   assert(input.version === 1, 'Plan version must be 1.');
-  assert(OPERATIONS.has(input.operation), 'Only inspect, apply and rollback are supported.');
+  assert(OPERATIONS.has(input.operation), 'Only inspect, apply, publish and rollback are supported.');
   assert(input.environment === 'development', 'Only the development environment is supported.');
   assert(TARGETS.has(input.kind), 'Invalid Page Builder target kind.');
   assert(typeof input.key === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(input.key),
@@ -52,6 +52,16 @@ export function validatePlan(input) {
     return input;
   }
 
+  if (input.operation === 'publish') {
+    assert(SHA_PATTERN.test(input.expected_draft_sha256 ?? ''), 'Publish requires an exact draft SHA-256.');
+    assert(SHA_PATTERN.test(input.expected_published_sha256 ?? ''), 'Publish requires an exact published SHA-256.');
+    assert(!('edits' in input) && !('value' in input), 'Publish must not replace or upload content.');
+    if (input.field === 'html') {
+      assert(input.confirm_html_publish === 'PUBLISH_HTML_EXPLICITLY', 'HTML publication requires explicit confirmation.');
+    }
+    return input;
+  }
+
   assert(input.operation === 'apply', 'Unknown operation.');
   assert(SHA_PATTERN.test(input.expected_draft_sha256 ?? ''), 'Expected draft SHA-256 is missing.');
   assert(SHA_PATTERN.test(input.expected_published_sha256 ?? ''), 'Expected published SHA-256 is missing.');
@@ -73,6 +83,11 @@ export function validatePlan(input) {
       'HTML publication requires additional explicit confirmation.');
   }
   return input;
+}
+
+/** Laravel TrimStrings normalizes outer whitespace on JSON request fields. */
+export function normalizeEditorValue(value) {
+  return value.trim();
 }
 
 export function applyExactEdits(source, edits) {
@@ -169,6 +184,31 @@ async function runPlan(plan, token) {
     return;
   }
 
+  if (plan.operation === 'publish') {
+    assert(current.draft_sha256 === plan.expected_draft_sha256,
+      'Draft changed since the publish-only plan was approved. No writes made.');
+    assert(current.published_sha256 === plan.expected_published_sha256,
+      'Published version changed since the publish-only plan was approved. No writes made.');
+    if (!current.pending) {
+      console.log('Draft already published; no changes performed.');
+      return;
+    }
+    const published = await request('POST', '/publish', {
+      field: plan.field,
+      expected_draft_sha256: current.draft_sha256,
+      expected_published_sha256: current.published_sha256,
+      reason: plan.reason,
+    });
+    assert(published.sources[plan.field].published_sha256 === current.draft_sha256,
+      'Publish-only verification failed. Inspect Filament.');
+    const verified = await request('GET');
+    assert(verified.sources[plan.field].published_sha256 === current.draft_sha256,
+      'Read-back mismatch after publish-only request.');
+    console.log('Existing draft published and re-verified: ' + target + ' ' + plan.field
+      + ' ' + current.draft_sha256);
+    return;
+  }
+
   // Re-running a successfully applied request must not create another revision.
   if (plan.expected_result_sha256
     && current.draft_sha256 === plan.expected_result_sha256
@@ -183,7 +223,7 @@ async function runPlan(plan, token) {
     'Published source changed since the plan was approved. No writes made.');
   assert(!current.pending || plan.allow_pending_draft === true,
     'Filament already contains unpublished editor changes. Explicit allow_pending_draft is required.');
-  const next = applyExactEdits(current.draft, plan.edits);
+  const next = normalizeEditorValue(applyExactEdits(current.draft, plan.edits));
   const resultHash = sha256(next);
   if (plan.expected_result_sha256 !== undefined) {
     assert(resultHash === plan.expected_result_sha256,
