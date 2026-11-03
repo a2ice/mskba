@@ -59,6 +59,9 @@ export function validatePlan(input) {
     assert(SHA_PATTERN.test(input.expected_result_sha256), 'Expected final SHA-256 is invalid.');
   }
   assert(typeof input.publish === 'boolean', 'publish must be explicitly true or false.');
+  if (input.allow_pending_draft !== undefined) {
+    assert(typeof input.allow_pending_draft === 'boolean', 'allow_pending_draft must be boolean.');
+  }
   assert(Array.isArray(input.edits) && input.edits.length > 0 && input.edits.length <= 20,
     'Plan requires 1-20 exact edits.');
   assert(input.edits.every((edit) => isObject(edit) && edit.type === 'replace_once'
@@ -178,6 +181,8 @@ async function runPlan(plan, token) {
     'Draft changed since the plan was approved. No writes made.');
   assert(current.published_sha256 === plan.expected_published_sha256,
     'Published source changed since the plan was approved. No writes made.');
+  assert(!current.pending || plan.allow_pending_draft === true,
+    'Filament already contains unpublished editor changes. Explicit allow_pending_draft is required.');
   const next = applyExactEdits(current.draft, plan.edits);
   const resultHash = sha256(next);
   if (plan.expected_result_sha256 !== undefined) {
