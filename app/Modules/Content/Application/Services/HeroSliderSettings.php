@@ -21,11 +21,28 @@ final class HeroSliderSettings
 
     public static function options(?array $options): array
     {
+        $appearance = is_array($options['appearance'] ?? null) ? $options['appearance'] : [];
+
         return [
             'autoplay' => (bool) ($options['autoplay'] ?? false),
             'interval_ms' => max(4000, min(30000, (int) ($options['interval_ms'] ?? 7000))),
             'show_arrows' => (bool) ($options['show_arrows'] ?? true),
             'show_dots' => (bool) ($options['show_dots'] ?? true),
+            'appearance' => [
+                'width_percent' => (int) ($appearance['width_percent'] ?? 100),
+                'alignment' => (string) ($appearance['alignment'] ?? 'center'),
+                'border_radius_px' => (int) ($appearance['border_radius_px'] ?? 24),
+                'background_color' => (string) ($appearance['background_color'] ?? '#08090a'),
+                'text_color' => (string) ($appearance['text_color'] ?? '#ffffff'),
+                'shadow' => (string) ($appearance['shadow'] ?? 'default'),
+                'clip_content' => (bool) ($appearance['clip_content'] ?? true),
+                'height_desktop_px' => isset($appearance['height_desktop_px']) && $appearance['height_desktop_px'] !== ''
+                    ? (int) $appearance['height_desktop_px'] : null,
+                'height_tablet_px' => isset($appearance['height_tablet_px']) && $appearance['height_tablet_px'] !== ''
+                    ? (int) $appearance['height_tablet_px'] : null,
+                'height_mobile_px' => isset($appearance['height_mobile_px']) && $appearance['height_mobile_px'] !== ''
+                    ? (int) $appearance['height_mobile_px'] : null,
+            ],
         ];
     }
 
@@ -140,6 +157,17 @@ final class HeroSliderSettings
             'options.interval_ms' => ['nullable', 'integer', 'between:4000,30000'],
             'options.show_arrows' => ['nullable', 'boolean'],
             'options.show_dots' => ['nullable', 'boolean'],
+            'options.appearance' => ['nullable', 'array'],
+            'options.appearance.width_percent' => ['nullable', 'integer', 'between:20,100'],
+            'options.appearance.alignment' => ['nullable', Rule::in(['left', 'center', 'right'])],
+            'options.appearance.border_radius_px' => ['nullable', 'integer', 'between:0,80'],
+            'options.appearance.background_color' => ['nullable', 'string', 'regex:/\A#[0-9a-fA-F]{6}\z/D'],
+            'options.appearance.text_color' => ['nullable', 'string', 'regex:/\A#[0-9a-fA-F]{6}\z/D'],
+            'options.appearance.shadow' => ['nullable', Rule::in(['none', 'soft', 'default', 'strong'])],
+            'options.appearance.clip_content' => ['nullable', 'boolean'],
+            'options.appearance.height_desktop_px' => ['nullable', 'integer', 'between:240,1200'],
+            'options.appearance.height_tablet_px' => ['nullable', 'integer', 'between:240,1200'],
+            'options.appearance.height_mobile_px' => ['nullable', 'integer', 'between:240,1200'],
         ], [
             'slides.required' => 'Добавь хотя бы один слайд.',
             'slides.max' => 'Для производительности разрешено не более шести слайдов.',
