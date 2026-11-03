@@ -248,3 +248,20 @@ MSKBA slide containing the five `slider-*` text/button presets, adding
 small explicit gaps to its existing JSON layers. It archives draft and
 published snapshots and leaves desktop/tablet, other slides and production
 untouched.
+
+## Appearance controls on the Page Builder component (2026-11-03)
+
+Edit **Сайт → Компоненты → Hero Slider → Hero Slider · оформление** to set
+the outer slider width/alignment, radius, background and base text colors,
+shadow, overflow clipping, and optional pixel heights for desktop, tablet,
+and mobile. Empty height fields preserve the existing responsive `clamp()`
+rules; mobile sequential-flow slides still grow to fit their content.
+The builder stores these values in `draft_options.appearance` and publishes
+them only into `published_options.appearance` on explicit component publish.
+Legacy stored options retain their exact existing appearance by default.
+
+The server validates bounded numeric values, fixed shadow/alignment options,
+and six-digit hexadecimal colors before rendering trusted CSS custom properties.
+Structural CSS such as positioning, isolation and the named container remains
+first-party source code. Changing appearance does not modify the home page or
+publish its drafts automatically.
