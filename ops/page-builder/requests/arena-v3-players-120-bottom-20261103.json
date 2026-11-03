@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Увеличить шутера и защитника на 20% от текущих размеров, опустить нижние края под секцию с мягким fade",
+  "publish": true,
+  "expected_draft_sha256": "458ff159c9a4bb9806d20bb5783799ea82b30df020ac19a25b32c17cbfa53b48",
+  "expected_published_sha256": "458ff159c9a4bb9806d20bb5783799ea82b30df020ac19a25b32c17cbfa53b48",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "    bottom: -6px; width: clamp(275px, 22vw, 380px); z-index: 3;",
+      "to": "    bottom: -38px; width: clamp(330px, 26.4vw, 456px); z-index: 3;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    right: calc(clamp(12px, 2vw, 36px) + clamp(60px, 8vw, 138px)); bottom: calc(-4px + clamp(67px, 5.27vw, 91px));\n    width: clamp(300px, 23.5vw, 410px); height: auto; z-index: 4;",
+      "to": "    right: calc(clamp(12px, 2vw, 36px) + clamp(60px, 8vw, 138px)); bottom: -38px;\n    width: clamp(360px, 28.2vw, 492px); height: auto; z-index: 4;"
+    }
+  ]
+}
