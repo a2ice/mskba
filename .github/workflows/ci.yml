@@ -523,10 +523,8 @@ jobs:
             # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.
             # Any absent Git/old-user asset is reported explicitly without blocking initial rollout.
             $COMPOSE run --rm -T --no-deps --user www-data phpfpm php artisan site-media:import-hero --apply --skip-missing
-            # DEV only. One-time, guarded Filament publication of Arena v3 desktop.
-            # A matching installation marker makes later deploys read-only for these editor resources.
-            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-arena-v3:desktop --check
-            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-arena-v3:desktop --apply
+            # Filament's HTML/CSS/JS remains editor-owned. Never silently
+            # republish Arena v3 on every code deployment.
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             # Staging FAQ defaults: idempotent, never overwrite editorial content.
