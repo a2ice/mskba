@@ -91,8 +91,19 @@ final class PageBuilderRenderer
             $raw,
         );
         $html = strtr($this->markup->html((string) $htmlWithTokens), $replacements);
-        $css = $this->markup->css($templateCss)."\n".$this->markup->css($pageCss);
+        // Hero Slider's editor-owned baseline replaces the old Vite import.
+        // Keep its cascade position BEFORE template/page CSS so page-specific
+        // layout overrides continue to win, just as they did with static CSS.
+        $hero = $components->get('hero-slider');
+        $css = '';
+        if ($hero !== null && ($preview || $hero->published_at !== null)) {
+            $css = $this->markup->css($preview ? $hero->draft_css : $hero->published_css);
+        }
+        $css .= "\n".$this->markup->css($templateCss)."\n".$this->markup->css($pageCss);
         foreach ($components as $component) {
+            if ($component->slug === 'hero-slider') {
+                continue;
+            }
             $body = $preview ? $component->draft_html : $component->published_html;
             if ($body !== null) {
                 $css .= "\n".$this->markup->css($preview ? $component->draft_css : $component->published_css);
