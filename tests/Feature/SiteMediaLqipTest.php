@@ -31,9 +31,20 @@ final class SiteMediaLqipTest extends TestCase
 
         $response = $this->get($asset->lqipUrl())->assertOk()
             ->assertHeader('Content-Type', 'image/webp');
+        $response->assertHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
         $etag = $response->headers->get('ETag');
         $this->assertNotEmpty($etag);
-        $this->withHeaders(['If-None-Match' => $etag])->get($asset->lqipUrl())->assertStatus(304);
+        $this->withHeaders(['If-None-Match' => $etag])->get($asset->lqipUrl())->assertStatus(304)
+            ->assertHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+    }
+
+    public function test_nginx_caches_public_static_images_without_immutable_cache_for_mutable_paths(): void
+    {
+        $config = file_get_contents(base_path('docker/nginx/default.conf'));
+        $this->assertStringContainsString('expires 7d;', $config);
+        $this->assertStringContainsString('expires 1y;', $config);
+        $this->assertStringContainsString('location ^~ /build/assets/', $config);
+        $this->assertStringContainsString('try_files $uri =404;', $config);
     }
 
     public function test_no_preview_uses_original_and_missing_lqip_route_returns_404(): void
@@ -43,7 +54,9 @@ final class SiteMediaLqipTest extends TestCase
         Storage::disk('public')->delete(SiteMediaLqip::path($asset->currentMedia));
 
         $this->assertNull($asset->fresh()->lqipUrl());
-        $this->get($asset->publicUrl())->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->get($asset->publicUrl())->assertOk()
+            ->assertHeader('Content-Type', 'image/jpeg')
+            ->assertHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
         $this->get('/media/site/'.$asset->uuid.'/lqip')->assertNotFound();
 
         $this->artisan('site-media:lqip')->assertExitCode(0);
