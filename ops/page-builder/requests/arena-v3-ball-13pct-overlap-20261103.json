@@ -6,7 +6,7 @@
   "kind": "pages",
   "key": "home",
   "field": "js",
-  "reason": "Финальное положение мяча с наложением ровно около 13% на Hero; после остановки вращается без сдвига",
+  "reason": "Фиксация единственного вращающегося мяча после Hero с наложением 13% и без обрезки при дальнейшей прокрутке",
   "publish": true,
   "expected_draft_sha256": "60ea852b37a7b2b494af7424cf9f2d517394723aac1944e2aa62d8094dc810e3",
   "expected_published_sha256": "60ea852b37a7b2b494af7424cf9f2d517394723aac1944e2aa62d8094dc810e3",
@@ -20,6 +20,16 @@
       "type": "replace_once",
       "from": "        const y = activeProfile.from[1] + (activeProfile.to[1] - activeProfile.from[1]) * travel;",
       "to": "        // First-phase destination must equal the fixed viewport dock position;\n        // calculate it from the actual Hero height to avoid an endpoint jump.\n        const desktopDock = desktopScene.matches && venuesV3;\n        const heroHeight = Math.max(1, slider.getBoundingClientRect().height);\n        const renderedDiameter = activeProfile.tileSize * activeProfile.endScale * 1.1327434;\n        const endY = desktopDock\n            ? (heroHeight + renderedDiameter * (.5 - .13)) * 1000 / heroHeight\n            : activeProfile.to[1];\n        const y = activeProfile.from[1] + (endY - activeProfile.from[1]) * travel;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    function assignOwner(toVisual, targetHost = null) {\n        const destination = toVisual ? targetHost : slider;\n        if (destination && root.parentElement !== destination) destination.append(root);\n    }",
+      "to": "    function assignOwner(toVisual, targetHost = null) {\n        const destination = toVisual ? targetHost : slider;\n        if (destination && root.parentElement !== destination) destination.append(root);\n        // Restore ordinary document positioning when returning from fixed\n        // desktop docking (including reverse scroll and responsive changes).\n        root.style.removeProperty('position');\n        root.style.removeProperty('z-index');\n    }"
+    },
+    {
+      "type": "replace_once",
+      "from": "            assignOwner(true, ballHost);\n            root.style.left = (dockX - hostRect.left).toFixed(2) + 'px';\n            root.style.top = (dockY - hostRect.top).toFixed(2) + 'px';\n            root.style.setProperty('--ball-scale', activeProfile.endScale.toFixed(4));",
+      "to": "            // Keep the single sprite visible beyond the clipped foreground:\n            // a fixed child of the Page Builder is independent of section scroll.\n            const fixedHost = scene.closest('.mskba-page-builder');\n            if (fixedHost) {\n                if (root.parentElement !== fixedHost) fixedHost.append(root);\n                root.style.position = 'fixed';\n                root.style.zIndex = '7';\n                root.style.left = dockX.toFixed(2) + 'px';\n                root.style.top = dockY.toFixed(2) + 'px';\n            } else {\n                assignOwner(true, ballHost);\n                root.style.left = (dockX - hostRect.left).toFixed(2) + 'px';\n                root.style.top = (dockY - hostRect.top).toFixed(2) + 'px';\n            }\n            root.style.setProperty('--ball-scale', activeProfile.endScale.toFixed(4));"
     }
   ]
 }
