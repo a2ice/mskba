@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Плавный спад шутера из верхней точки и чуть запаздывающий подъём дефендера, остановка мяча под Hero с продолжением вращения",
+  "publish": true,
+  "expected_draft_sha256": "cde48fd63cadfef3f618188d717252ed638f0ccdaf0f1d6a86f5b0d87cb658e8",
+  "expected_published_sha256": "cde48fd63cadfef3f618188d717252ed638f0ccdaf0f1d6a86f5b0d87cb658e8",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "        const transitionStart = start + distance;\n        if (scrollPosition <= transitionStart) {",
+      "to": "        // Desktop Arena v3: stop at the Hero endpoint; no second travel path.\n        // The ball can rotate further but its document-relative position is fixed.\n        if (desktopScene.matches && venues === venuesV3) {\n            assignOwner(false);\n            return false;\n        }\n        const transitionStart = start + distance;\n        if (scrollPosition <= transitionStart) {"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);\n        // Reverse the photographic frame sequence when mirroring the horizontal\n        // direction. Both endpoints remain on frontal frame zero.\n        const frame = p >= 1\n    ? 0\n    : framesTravelled % rollingBallSpriteFrames;",
+      "to": "        // Translation clamps at p=1; the sprite keeps rotating with native scroll.\n        // Absolute scroll is the clock, so reverse scrolling reverses the rotation.\n        const elapsedTurns = Math.max(0, (window.scrollY - start) / distance) * rollingBallTurns;\n        const framesTravelled = Math.floor(elapsedTurns * rollingBallSpriteFrames);\n        const frame = framesTravelled % rollingBallSpriteFrames;"
+    },
+    {
+      "type": "replace_once",
+      "from": "      for (const property of ['--v3-ghost-entry-x', '--v3-defender-entry-y', '--v3-shooter-entry-y']) {",
+      "to": "      for (const property of ['--v3-ghost-entry-x', '--v3-defender-rise-y', '--v3-shooter-drop-y']) {"
+    },
+    {
+      "type": "replace_once",
+      "from": "    const p = reduced.matches ? 1 : clamp((window.scrollY - start) / (finish - start));\n    const remaining = 1 - p;\n    const defenderRemaining = 1 - Math.pow(p, .78);\n    const shooterRemaining = 1 - Math.pow(p, 1.22);\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * remaining).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-entry-y', (30 * defenderRemaining).toFixed(3) + '%');\n    scene.style.setProperty('--v3-shooter-entry-y', (20 * shooterRemaining).toFixed(3) + '%');",
+      "to": "    const p = reduced.matches ? 0 : clamp((window.scrollY - start) / (finish - start));\n    // CSS renders the correct initial poses without JS: shooter at the top,\n    // defender below. Scroll applies only deltas, using a gentler landing speed.\n    const easeInOut = value => value * value * (3 - 2 * value);\n    const shooterProgress = easeInOut(p);\n    const defenderProgress = easeInOut(clamp((p - .065) / .935));\n    const defenderRise = Math.min(185, Math.max(134, window.innerWidth * .1085));\n    const shooterDrop = Math.min(91, Math.max(67, window.innerWidth * .0527));\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * (1 - p)).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-rise-y', (defenderRise * defenderProgress).toFixed(2) + 'px');\n    scene.style.setProperty('--v3-shooter-drop-y', (shooterDrop * shooterProgress).toFixed(2) + 'px');"
+    }
+  ]
+}
