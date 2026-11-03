@@ -4,6 +4,8 @@
             <strong>REST API v1</strong> · <code>/api/v1/</code> · OpenAPI 3.1
             <p class="mt-1">Выберите метод, откройте параметры и нажмите <strong>Try it out</strong> → <strong>Execute</strong>.
                 Для защищённых методов используйте <strong>Authorize</strong> и собственный DEV Bearer-токен.
+                Внутренние методы Page Builder помечены как <strong>DEV-only</strong> и требуют отдельный временный токен агента;
+                токен мобильного API к ним не подходит. GitHub Actions Secret сюда не передаётся.
                 Не вводите здесь production-пароли и токены. Доступ к этому интерфейсу не даёт дополнительных API-прав.</p>
             <a href="{{ route('backoffice.rest-api.openapi') }}" class="mt-2 inline-block text-sm font-semibold text-primary-600 underline dark:text-primary-400"
                 download="mskba-openapi-v1.json">Скачать OpenAPI 3.1 JSON для iOS/Android</a>
