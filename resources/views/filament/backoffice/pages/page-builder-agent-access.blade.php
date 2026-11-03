@@ -1,5 +1,46 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
+    {{-- Local scoped layout: explicit gaps must not depend on Tailwind's scanned utility list. --}}
+    <style>
+        .mskba-agent-access {
+            display: grid;
+            gap: 24px;
+            min-width: 0;
+        }
+        .mskba-agent-access__body,
+        .mskba-agent-access__form {
+            display: grid;
+            gap: 20px;
+            min-width: 0;
+        }
+        .mskba-agent-access__field {
+            display: grid;
+            gap: 8px;
+            width: 100%;
+            max-width: 32rem;
+            min-width: 0;
+        }
+        .mskba-agent-access__field--wide {
+            max-width: 48rem;
+        }
+        .mskba-agent-access__actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding-top: 4px;
+        }
+        .mskba-agent-access__api {
+            display: grid;
+            gap: 12px;
+        }
+        @media (max-width: 640px) {
+            .mskba-agent-access { gap: 16px; }
+            .mskba-agent-access__body,
+            .mskba-agent-access__form { gap: 16px; }
+            .mskba-agent-access__actions { padding-top: 0; }
+        }
+    </style>
+    <div class="mskba-agent-access">
         {{-- Use the panel's own layout primitives. Arbitrary Tailwind utilities
              are not guaranteed to be present in the compiled Filament theme. --}}
         <x-filament::section
@@ -7,14 +48,14 @@
             description="Доступ для работы с HTML, CSS и JS через API Page Builder на DEV."
             icon="heroicon-o-key"
         >
-            <div class="space-y-5">
+            <div class="mskba-agent-access__body">
                 <p class="text-sm text-gray-600 dark:text-gray-400">
                     Токен действует 24 часа. Для его создания подтверди пароль своей учётной записи.
                     Доступ к production он не предоставляет.
                 </p>
 
-                <form wire:submit="issue" class="space-y-5">
-                    <div class="max-w-lg space-y-2">
+                <form wire:submit="issue" class="mskba-agent-access__form">
+                    <div class="mskba-agent-access__field">
                         <label
                             for="agent-api-password"
                             class="text-sm font-medium text-gray-950 dark:text-white"
@@ -37,7 +78,7 @@
                         @enderror
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-3">
+                    <div class="mskba-agent-access__actions">
                         <x-filament::button
                             type="submit"
                             icon="heroicon-o-key"
@@ -57,12 +98,12 @@
                 description="Скопируй его сейчас — после обновления страницы повторно посмотреть токен будет невозможно."
                 icon="heroicon-o-check-circle"
             >
-                <div class="space-y-4">
+                <div class="mskba-agent-access__body">
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         Действует до <strong>{{ $expiresAt }}</strong>.
                     </p>
 
-                    <div class="max-w-3xl space-y-2">
+                    <div class="mskba-agent-access__field mskba-agent-access__field--wide">
                         <label for="agent-api-token" class="text-sm font-medium text-gray-950 dark:text-white">
                             Токен для подключения
                         </label>
@@ -115,7 +156,7 @@
             collapsible
             collapsed
         >
-            <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+            <div class="mskba-agent-access__api text-sm text-gray-600 dark:text-gray-400">
                 <p><strong>Адрес API:</strong> <code>/api/v1/internal/page-builder/</code></p>
                 <p>
                     Перед изменением клиент получает текущую версию и SHA-256.
