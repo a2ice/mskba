@@ -51,15 +51,19 @@ final class PageBuilderFirstPaintLqip
             $backgroundSize = preg_match('~\bclass\s*=\s*(["\'])[^"\']*\b(?:mskba-v3-venues__arena|mskba-hero-slide__background)\b[^"\']*\1~i', $tag)
                 ? 'cover' : 'contain';
             $style = 'background-image:url('.$firstPaintPreview.');background-size:'.$backgroundSize.';background-position:center;background-repeat:no-repeat;';
-            if (preg_match('~\bstyle\s*=\s*(["\'])(.*?)\1~is', $initial)) {
-                $initial = preg_replace_callback('~\bstyle\s*=\s*(["\'])(.*?)\1~is', static function (array $existing) use ($style): string {
-                    return 'style='.$existing[1].rtrim($existing[2], ';').';'.$style.$existing[1];
-                }, $initial, 1);
-            } else {
-                $initial = preg_replace('~\s*/?>$~', ' style="'.e($style).'">', $initial, 1);
-            }
-
+            $hasStyle = preg_match('~\bstyle\s*=\s*(["\'])(.*?)\1~is', $initial, $existingStyle);
+            $hasAuthoredBackground = $hasStyle && preg_match('/\bbackground(?:-[a-z-]+)?\s*:/i', $existingStyle[2]);
             $extra = ' data-mskba-lqip-full-src="'.e($url).'" data-mskba-lqip-preview-src="'.e($preview).'"';
+            if (! $hasAuthoredBackground) {
+                if ($hasStyle) {
+                    $initial = preg_replace_callback('~\bstyle\s*=\s*(["\'])(.*?)\1~is', static function (array $existing) use ($style): string {
+                        return 'style='.$existing[1].rtrim($existing[2], ';').';'.$style.$existing[1];
+                    }, $initial, 1);
+                } else {
+                    $initial = preg_replace('~\s*/?>$~', ' style="'.e($style).'">', $initial, 1);
+                }
+                $extra .= ' data-mskba-lqip-added-background="1"';
+            }
             if ($isCritical || preg_match('~\bclass\s*=\s*(["\'])[^"\']*\bmskba-v2-venues__player\b[^"\']*\1~i', $tag)) {
                 $initial = preg_replace('~\s(?:loading|fetchpriority)\s*=\s*(["\']).*?\1~i', '', $initial);
                 $extra .= ' data-mskba-lqip-venue-player="1" loading="eager" fetchpriority="high"';
