@@ -26,5 +26,6 @@
       "from": "@media (prefers-reduced-motion: reduce) {\n  #venues-scene .mskba-v3-venues__ghost,\n  #venues-scene .mskba-v3-venues__defender,\n  #venues-scene .mskba-v3-venues__shooter-frame { will-change: auto; }\n}",
       "to": "@media (prefers-reduced-motion: reduce) {\n  #venues-scene .mskba-v3-venues__ghost,\n  #venues-scene .mskba-v3-venues__defender,\n  #venues-scene .mskba-v3-venues__shooter-frame { will-change: auto; }\n}\n/* Temporary translucent Hero: keep the arena visible, blur it instead of the parquet. */\n@media (min-width: 1100px) {\n  .mskba-hero-scene .mskba-hero-slider {\n    background: transparent !important;\n    -webkit-backdrop-filter: blur(5px);\n    backdrop-filter: blur(5px);\n    border-radius: 24px;\n  }\n  .mskba-hero-scene .mskba-hero-slider__stage,\n  .mskba-hero-scene .mskba-hero-slide {\n    background: transparent !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__background {\n    display: none !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__layer-scrim--dark {\n    background: linear-gradient(90deg, rgba(5, 7, 10, .56), rgba(5, 7, 10, .22) 70%, rgba(5, 7, 10, .12)) !important;\n  }\n}"
     }
-  ]
+  ],
+  "expected_result_sha256": "fd795785fcd148424738586d3d612036c887be6ddfddaa73beb7bce858e0eed8"
 }
