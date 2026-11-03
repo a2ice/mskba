@@ -113,11 +113,13 @@ HTML;
     {
         $slider = $this->hero();
         app(PageBuilderPublisher::class)->publish($slider);
-        $slider->update([
+        // Published and previous CSS are guarded: test fixture must use
+        // forceFill rather than Eloquent's public mass-assignment API.
+        $slider->forceFill([
             'draft_css' => '.authored-draft { color: red; }',
             'published_css' => '.authored-published { color: blue; }',
             'previous_css' => '.authored-previous { color: green; }',
-        ]);
+        ])->save();
 
         $migration = require database_path('migrations/2026_11_04_001500_add_page_builder_hero_overlay_slot_css.php');
         $migration->up();
