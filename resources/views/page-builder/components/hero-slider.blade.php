@@ -139,6 +139,10 @@
                 @endif
             </article>
         @endforeach
+        @if ($overlayHtml !== '')
+            {{-- Authored HTML is sanitized before it reaches this trusted slot. --}}
+            <div class="mskba-hero-slider__overlay" data-hero-overlay>{!! $overlayHtml !!}</div>
+        @endif
     </div>
 
     @if (count($slides) > 1)
