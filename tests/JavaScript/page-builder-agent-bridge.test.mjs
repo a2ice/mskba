@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   applyExactEdits,
+  normalizeEditorValue,
   sha256,
   validatePlan,
 } from '../../scripts/page-builder-agent-bridge.mjs';
@@ -106,4 +107,27 @@ test('pending editor changes require explicit approval', () => {
   assert.equal(validatePlan(plan()).allow_pending_draft, undefined);
   assert.equal(validatePlan(plan({ allow_pending_draft: true })).allow_pending_draft, true);
   assert.throws(() => validatePlan(plan({ allow_pending_draft: 'yes' })));
+});
+
+
+test('publish-only requires both fresh hashes and cannot carry an edit', () => {
+  const payload = {
+    version: 1, environment: 'development', confirm: 'DEV_ONLY_PAGE_BUILDER',
+    operation: 'publish', kind: 'components', key: 'venues-scene-v3',
+    field: 'css', reason: 'Опубликовать проверенный черновик',
+    expected_draft_sha256: sha256('draft'),
+    expected_published_sha256: sha256('published'),
+  };
+  assert.equal(validatePlan(payload).operation, 'publish');
+  assert.throws(() => validatePlan({ ...payload, edits: [{ type: 'replace_once', from: 'a', to: 'b' }] }));
+  assert.throws(() => validatePlan({ ...payload, expected_draft_sha256: 'wrong' }));
+  assert.throws(() => validatePlan({ ...payload, field: 'html' }));
+  assert.equal(validatePlan({ ...payload, field: 'html', confirm_html_publish: 'PUBLISH_HTML_EXPLICITLY' }).field, 'html');
+});
+
+test('API-bound value normalizes only surrounding whitespace before its SHA', () => {
+  assert.equal(normalizeEditorValue('  .scene { color: red; }\n'), '.scene { color: red; }');
+  assert.equal(normalizeEditorValue('\nconst x = 1;\n'), 'const x = 1;');
+  assert.equal(normalizeEditorValue('.a {\n  padding: 10px;\n}'), '.a {\n  padding: 10px;\n}');
+  assert.equal(sha256(normalizeEditorValue('CSS\n')), sha256('CSS'));
 });
