@@ -13,7 +13,7 @@
   "edits": [
     {
       "type": "replace_once",
-      "from": "        from: [255, 440], to: [760, 1100],\n        startScale: .22, endScale: 1, tileSize: 195,",
+      "from": "        from: [255, 440], to: [760, 1100],\n        startScale: .22, endScale: .60, tileSize: 195,",
       "to": "        from: [255, 440], to: [650, 1030],\n        startScale: .22, endScale: .48, tileSize: 195,"
     },
     {
