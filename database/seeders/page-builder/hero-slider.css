@@ -1,0 +1,418 @@
+/* Hero Slider baseline, installed into Page Builder component CSS on migration. Not bundled by Vite. */
+.mskba-page-builder .mskba-hero-slider {
+    position:relative; isolation:isolate; width:100%; overflow:hidden; border-radius:24px;
+    color:#fff; background:#08090a; box-shadow:0 18px 54px rgba(14,19,27,.14);
+    container:mskba-hero / inline-size;
+}
+/* Keep a predictable graphic canvas while matching the compact action-row layout. */
+.mskba-hero-slider__stage { position:relative; height:clamp(450px,35cqw,530px); }
+.mskba-hero-slide { position:absolute; inset:0; overflow:hidden; background:#090a0c; }
+.mskba-hero-slide[hidden] { display:none!important; }
+.mskba-hero-slide__background,
+.mskba-hero-slide__scrim { position:absolute; inset:0; pointer-events:none; }
+.mskba-hero-slide__background img { display:block; width:100%;height:100%;object-fit:cover;object-position:center 56%; }
+.mskba-hero-slide__background--placeholder {
+    background:radial-gradient(ellipse at 72% 76%,rgba(246,103,14,.5),transparent 40%),
+               radial-gradient(ellipse at 60% 4%,rgba(255,255,255,.23),transparent 20%),#101013;
+}
+.mskba-hero-slide__scrim {
+    z-index:1;
+    background:linear-gradient(90deg,rgba(0,0,0,.88),rgba(1,1,2,.58) 37%,rgba(0,0,0,.03) 77%),
+               linear-gradient(0deg,rgba(0,0,0,.68),transparent 36%,rgba(0,0,0,.14));
+}
+.mskba-hero-slide__player {
+    position:absolute; z-index:2; bottom:-3%; height:auto; max-height:103%; pointer-events:none;
+    translate:-50% 0;
+    display:block; object-fit:contain; object-position:bottom; filter:drop-shadow(1px 8px 15px rgba(0,0,0,.35));
+}
+.mskba-hero-slide__player--far { left:var(--far-x,45%);width:var(--far-width,18%); }
+.mskba-hero-slide__player--near { left:var(--near-x,72%);width:var(--near-width,34%); }
+.mskba-hero-slide__copy {
+    position:absolute;z-index:4;top:15%;left:6%;right:6%;width:auto;
+    text-shadow:0 3px 18px rgba(0,0,0,.42);
+}
+.mskba-hero-slide__eyebrow { color:#ff8b24; font-size:clamp(11px,1.05cqw,15px);letter-spacing:.13em;font-weight:850;margin:0 0 15px; }
+.mskba-hero-slide__title {
+    margin:0; max-width:640px;font-size:clamp(37px,4.1cqw,72px);font-weight:900;line-height:1.02;letter-spacing:-.025em;
+    color:#fff; text-transform:uppercase; overflow-wrap:normal;
+}
+.mskba-hero-slide__title span {display:block;color:#ff7412;}
+.mskba-hero-slide__description {
+    max-width:430px; margin:18px 0 0;color:rgba(255,255,255,.9);
+    font-size:clamp(14px,1.2cqw,18px);line-height:1.45;
+}
+/* CTA and highlights share the same vertical row, never overlap. */
+.mskba-hero-slide__actions {
+    display:flex;align-items:center;gap:clamp(18px,3cqw,44px);
+    width:100%;margin-top:35px;min-width:0;
+}
+.mskba-hero-slide__cta {
+    flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:20px;
+    min-height:49px;margin-top:0;padding:12px 24px;
+    border-radius:100px;color:#fff!important;font-weight:800;font-size:15px;
+    text-decoration:none!important;background:linear-gradient(145deg,#ff8b0b,#f15a05);
+    box-shadow:0 10px 28px rgba(255,105,0,.25);transition:filter .2s ease,transform .2s ease;
+    text-shadow:none;
+}
+.mskba-hero-slide__cta:hover { filter:brightness(1.12);transform:translateY(-2px); }
+.mskba-hero-slide__cta:focus-visible,
+.mskba-hero-slider__arrow:focus-visible,
+.mskba-hero-slider__pagination button:focus-visible,
+.mskba-hero-slide__highlights a:focus-visible {outline:3px solid #fff;outline-offset:3px;}
+.mskba-hero-slide__highlights {
+    flex:0 1 660px;max-width:660px;min-width:0;margin-left:auto;
+    padding:0;border:0;border-radius:0;background:none;
+    backdrop-filter:none;box-shadow:none;text-shadow:0 1px 8px #000;
+}
+.mskba-hero-slide__highlights-viewport {width:100%;overflow:visible;}
+.mskba-hero-slide__highlights-track {display:flex;width:100%;align-items:center;}
+.mskba-hero-slide__highlights-group {
+    display:flex;justify-content:space-between;align-items:center;
+    gap:12px;flex:1 0 100%;min-width:0;
+}
+.mskba-hero-slide__highlights-group--duplicate {display:none;}
+.mskba-hero-slide__highlights a {
+    display:flex; flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    flex:1 1 0;min-width:0;min-height:55px;color:#fff!important;font-size:12px;font-weight:700;
+    text-decoration:none!important;text-align:center;
+}
+.mskba-hero-slide__highlights a:hover {color:#ff9a39!important;}
+.mskba-hero-slide__icon {display:grid;place-items:center;height:30px;}
+.mskba-hero-slide__icon svg {width:26px;height:26px;filter:drop-shadow(0 1px 4px #0006);}
+.mskba-hero-slider__arrow {
+    position:absolute;z-index:8;top:49%;translate:0 -50%;
+    width:40px;height:40px;border:0;border-radius:50%;background:rgba(14,16,20,.65);
+    color:#fff;cursor:pointer;display:grid;place-items:center;padding:0;line-height:1;
+}
+.mskba-hero-slider__arrow svg {display:block;width:22px;height:22px;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
+.mskba-hero-slider__arrow--prev {left:14px;}
+.mskba-hero-slider__arrow--next {right:14px;}
+.mskba-hero-slider__arrow:hover {background:rgba(255,113,8,.88);}
+.mskba-hero-slider__pagination {
+    position:absolute;z-index:9;bottom:17px;left:50%;translate:-50% 0;
+    display:flex;align-items:center;gap:9px;justify-content:center;
+}
+.mskba-hero-slider__pagination button {
+    appearance:none;display:block;width:11px;height:11px;min-width:11px; padding:0;
+    border:0;border-radius:50%;background:rgba(255,255,255,.76);cursor:pointer;
+    transition:background .2s ease,transform .2s ease;
+}
+.mskba-hero-slider__pagination button[aria-current="true"] {
+    background:#ff7300;transform:scale(1.18);
+}
+/* Resting slides display all content, including when JavaScript is disabled. */
+.mskba-hero-slide.is-animating .mskba-hero-slide__background {animation:mskba-hero-fade .7s var(--background-delay,0ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-up"] {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__background[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far {animation:mskba-hero-up .85s var(--far-delay,240ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near {animation:mskba-hero-up .9s var(--near-delay,460ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="fade"],
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="fade"] {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="zoom"],
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--far[data-motion="slide-left"],
+.mskba-hero-slide.is-animating .mskba-hero-slide__player--near[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy > :not(.mskba-hero-slide__actions) {animation:mskba-hero-up .7s both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="fade"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="zoom"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__copy[data-motion="slide-left"] > :not(.mskba-hero-slide__actions) {animation-name:mskba-hero-left;}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__eyebrow {animation-delay:var(--copy-delay,440ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__title {animation-delay:calc(var(--copy-delay,440ms) + 140ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__description {animation-delay:calc(var(--copy-delay,440ms) + 280ms);}
+ .mskba-hero-slide.is-animating .mskba-hero-slide__cta {animation:mskba-hero-up .7s var(--cta-delay,1450ms) both;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="fade"] {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-up"] {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__cta[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights a .mskba-hero-slide__icon {
+    animation:mskba-hero-fade .45s calc(var(--highlights-delay,1050ms) + var(--highlight-index) * 130ms) both;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights a span:last-child {
+    animation:mskba-hero-fade .45s calc(var(--highlights-delay,1050ms) + 110ms + var(--highlight-index) * 130ms) both;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-up"] a span {animation-name:mskba-hero-up;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="slide-left"] a span {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__highlights[data-motion="zoom"] a span {animation-name:mskba-hero-zoom;}
+@keyframes mskba-hero-fade {from{opacity:0}to{opacity:1}}
+@keyframes mskba-hero-up {from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+@keyframes mskba-hero-left {from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes mskba-hero-zoom {from{opacity:0;scale:.94}to{opacity:1;scale:1}}
+/* Short desktop keeps the same action-row layout and reduces hero height. */
+@media (max-height:790px) and (min-width:1100px) {
+    .mskba-hero-slider__stage {height:clamp(410px,32cqw,480px);}
+    .mskba-hero-slide__copy {top:12%;}
+    .mskba-hero-slide__title {font-size:clamp(36px,3.7cqw,58px);}
+    .mskba-hero-slide__description {margin-top:13px;}
+    .mskba-hero-slide__actions {margin-top:14px;}
+    .mskba-hero-slide__highlights a {font-size:11px;}
+}
+/* Tablet and compact containers: CTA remains pinned left of a clipped,
+   seamless highlight rail. The repeated group is inert/hidden from accessibility. */
+@container mskba-hero (max-width:1050px) {
+    /* More compact tablet composition, scaled to the actual slider width. */
+    .mskba-hero-slider__stage {height:clamp(400px,45cqw,500px);}
+    .mskba-hero-slide__copy {top:14%;left:6%;right:6%;width:auto;}
+    .mskba-hero-slide__title {font-size:clamp(35px,5cqw,56px);max-width:80%;}
+    .mskba-hero-slide__description {max-width:68%;}
+    .mskba-hero-slide__actions {gap:18px;}
+    .mskba-hero-slide__highlights {
+        flex:1 1 auto;max-width:none;min-width:0;margin-left:0;
+        background:none;border:0;padding:0;backdrop-filter:none;
+    }
+    .mskba-hero-slide__highlights-viewport {
+        width:100%;overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 6%,#000 94%,transparent);
+    }
+    .mskba-hero-slide__highlights-track {
+        width:max-content;gap:24px;
+        animation:mskba-hero-highlight-scroll 23s linear infinite;
+    }
+    .mskba-hero-slide__highlights-group {flex:0 0 auto;width:max-content;gap:24px;}
+    .mskba-hero-slide__highlights-group--duplicate {display:flex;}
+    .mskba-hero-slide__highlights a {flex:0 0 auto;min-width:86px;font-size:11px;}
+    .mskba-hero-slide__highlights-viewport:hover .mskba-hero-slide__highlights-track,
+    .mskba-hero-slide__highlights-viewport:focus-within .mskba-hero-slide__highlights-track {
+        animation-play-state:paused;
+    }
+}
+@keyframes mskba-hero-highlight-scroll {
+    to {transform:translateX(calc(-50% - 12px));}
+}
+@container mskba-hero (max-width:640px) {
+    .mskba-hero-slider__stage {height:clamp(560px,165cqw,740px);}
+    .mskba-hero-slide__background img {object-position:64% center;}
+    .mskba-hero-slide__scrim {
+        background:linear-gradient(to bottom,rgba(0,0,0,.78) 0%,rgba(0,0,0,.63) 46%,
+                    rgba(0,0,0,.16) 69%,rgba(0,0,0,.7) 100%);
+    }
+    .mskba-hero-slide__copy {top:11%;left:6%;right:6%;width:auto;}
+    .mskba-hero-slide__eyebrow {font-size:10px;margin-bottom:12px;}
+    .mskba-hero-slide__title {font-size:clamp(34px,9cqw,52px);max-width:95%;}
+    .mskba-hero-slide__description {max-width:94%;font-size:13px;line-height:1.42;margin-top:13px;}
+    .mskba-hero-slide__actions {
+        margin-top:16px;
+        flex-direction:column;
+        align-items:stretch;
+        gap:14px;
+    }
+    .mskba-hero-slide__cta {
+        align-self:flex-start;
+        min-height:43px;padding:10px 19px;font-size:14px;
+    }
+    /* Mobile reuses the tablet's seamless rail directly beneath the CTA.
+       Keep each link tappable; the repeated group is aria-hidden and inert. */
+    .mskba-hero-slide__highlights {
+        display:block;
+        width:100%;
+        flex:0 0 auto;
+        max-width:none;
+        margin:0;
+    }
+    .mskba-hero-slide__highlights-viewport {
+        width:100%;
+        overflow:hidden;
+    }
+    .mskba-hero-slide__highlights a {
+        min-width:78px;
+        min-height:55px;
+        font-size:11px;
+    }
+    .mskba-hero-slide__highlights-group,
+    .mskba-hero-slide__highlights-track {gap:18px;}
+    .mskba-hero-slide__highlights-track {
+        animation-duration:21s;
+    }
+    .mskba-hero-slide__player--near {left:var(--near-mobile-x,75%);width:65%;bottom:10%;}
+    .mskba-hero-slide__player--far {left:var(--far-mobile-x,22%);width:35%;bottom:16%;}
+    .mskba-hero-slider__arrow {display:none;}
+    /* The production fixed bottom navigation occupies the bottom viewport.
+       Keep bullets above it when the hero occupies the first mobile screen. */
+    .mskba-hero-slider__pagination {bottom:clamp(116px,23cqw,146px);}
+}
+@media(prefers-reduced-transparency:reduce) {
+    /* Transparent highlight rail does not use backdrop effects. */
+    .mskba-hero-slider__arrow {background:#111219;}
+}
+@media (prefers-reduced-motion:reduce) {
+    .mskba-hero-slide__highlights-viewport {overflow-x:auto;mask-image:none;}
+    .mskba-hero-slide__highlights-track {animation:none!important;width:max-content;}
+    .mskba-hero-slide__highlights-group--duplicate {display:none;}
+
+    .mskba-hero-slide *,
+    .mskba-hero-slide__background,
+    .mskba-hero-slider__pagination button {animation:none!important;transition:none!important;}
+}
+
+
+/* Generic JSON-based slide layers. Legacy basketball artwork is unchanged. */
+.mskba-hero-slide--layers {background:var(--bg,#090a0c);color:var(--text,#fff);}
+.mskba-hero-slide__layer-scrim {position:absolute;inset:0;z-index:1;pointer-events:none;}
+.mskba-hero-slide__layer-scrim--dark {background:linear-gradient(90deg,#05070ae8,#08090a22 90%);}
+.mskba-hero-slide__layer-scrim--light {background:linear-gradient(90deg,#ffffff99,#ffffff11 90%);}
+.mskba-hero-slide__layer {
+    position:absolute;left:var(--layer-x);top:var(--layer-y);width:var(--layer-width);
+    z-index:var(--layer-z);max-height:100%;overflow-wrap:anywhere;
+}
+.mskba-hero-slide__layer-heading {margin:0;font-size:clamp(30px,4cqw,70px);font-weight:900;line-height:1.03;}
+.mskba-hero-slide__layer-text {margin:0;font-size:clamp(14px,1.6cqw,21px);line-height:1.45;}
+.mskba-hero-slide__layer-image {display:block;width:100%;height:auto;max-height:480px;object-fit:contain;}
+.mskba-hero-slide__layer-button {
+    display:inline-flex;justify-content:center;align-items:center;max-width:100%;
+    min-height:44px;padding:12px 22px;border-radius:999px;
+    font-weight:700;background:var(--accent,#ff7900);color:var(--on-accent,#fff)!important;
+    text-decoration:none!important;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer {
+    animation:mskba-hero-up var(--layer-duration,700ms) var(--layer-delay,0ms) both;
+}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="fade"] {animation-name:mskba-hero-fade;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="slide-left"] {animation-name:mskba-hero-left;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="zoom"] {animation-name:mskba-hero-zoom;}
+.mskba-hero-slide.is-animating .mskba-hero-slide__layer[data-motion="none"] {animation:none;}
+.mskba-hero-slide__layer-button:focus-visible {outline:3px solid var(--accent,#ff7900);outline-offset:3px;}
+/* Generic layers have independent tablet positions (641–1050px canvas).
+   Legacy artwork and its layout remain unchanged. */
+@container mskba-hero (min-width:641px) and (max-width:1050px) {
+    .mskba-hero-slide--layers .mskba-hero-slide__layer {
+        left:var(--layer-tablet-x,var(--layer-x));
+        top:var(--layer-tablet-y,var(--layer-y));
+        width:var(--layer-tablet-width,var(--layer-width));
+    }
+}
+@container mskba-hero (max-width:640px) {
+    .mskba-hero-slide__layer {
+        left:var(--layer-mobile-x);top:var(--layer-mobile-y);width:var(--layer-mobile-width);
+    }
+    .mskba-hero-slide__layer-heading {font-size:clamp(28px,8cqw,48px);}
+    .mskba-hero-slide__layer-text {font-size:clamp(14px,3.4cqw,18px);}
+    .mskba-hero-slide__layer-image {max-height:360px;}
+}
+@media (prefers-reduced-motion:reduce) {
+    .mskba-hero-slide.is-animating .mskba-hero-slide__layer {animation:none!important;}
+}
+
+
+/* Opt-in MSKBA composition presets for generic layers. Unlike viewport-based
+   page-local font sizes, these scale with the actual slider canvas (cqw).
+   Generic elements without these classes keep their universal styling. */
+.mskba-page-builder .mskba-hero-slide--layers .slider-eyebrow .mskba-hero-slide__layer-text {
+    color:#ff8b24;font-size:clamp(11px,1.05cqw,15px);font-weight:850;letter-spacing:.13em;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading {
+    color:#fff;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
+    letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+    color:#ff7412;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
+    letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+    color:rgba(255,255,255,.9);font-size:clamp(14px,1.2cqw,18px);line-height:1.45;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-cta .mskba-hero-slide__layer-button {
+    min-height:49px;padding:12px 24px;font-size:15px;gap:20px;
+    background:linear-gradient(145deg,#ff8b0b,#f15a05);color:#fff!important;
+    box-shadow:0 10px 28px rgba(255,105,0,.25);
+}
+.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {
+    max-height:none;overflow:visible;
+}
+.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__highlights--layers {
+    width:100%;max-width:none;margin:0;
+}
+.mskba-hero-slide__custom-icon {display:block;width:26px;height:26px;object-fit:contain;}
+.mskba-hero-slide--layers .mskba-hero-slide__layer-button {gap:14px;}
+.mskba-hero-slide--layers .mskba-hero-slide__layer-button span[aria-hidden] {font-size:18px;line-height:1;}
+@container mskba-hero (max-width:640px) {
+    .mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading,
+    .mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+        font-size:clamp(32px,8cqw,48px);
+    }
+    .mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+        font-size:13px;
+    }
+    .mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {display:none;}
+}
+
+/* Migrated historic player images, rendered as generic image layers. */
+.mskba-page-builder .mskba-hero-slide--layers .slider-player {
+    top:auto;bottom:-3%;max-height:103%;pointer-events:none;
+}
+.mskba-page-builder .mskba-hero-slide--layers .slider-player .mskba-hero-slide__layer-image {
+    max-height:450px;object-position:bottom;filter:drop-shadow(1px 8px 15px rgba(0,0,0,.35));
+}
+@container mskba-hero (max-width:640px) {
+    .mskba-page-builder .mskba-hero-slide--layers .slider-player {bottom:10%;top:auto;}
+}
+
+/* Universal responsive composition: opt-in mobile flow.
+   Normal HTML flow keeps vertical spacing stable regardless of slide height,
+   font wrapping, or browser zoom. No absolute Y coordinates for flow items. */
+@container mskba-hero (max-width:640px) {
+    .mskba-hero-slider__stage:has(> .mskba-hero-slide--mobile-flow.is-active) {
+        height:auto;
+        min-height:0;
+    }
+    .mskba-hero-slide--mobile-flow.is-active {
+        position:relative;
+        inset:auto;
+        display:flex;
+        flex-direction:column;
+        align-items:flex-start;
+        box-sizing:border-box;
+        min-height:var(--mobile-min-height,470px);
+        padding:var(--mobile-padding-top,38px) 6% var(--mobile-padding-bottom,76px);
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="flow"] {
+        position:relative;
+        inset:auto;
+        flex:0 0 auto;
+        max-height:none;
+        margin:var(--layer-mobile-gap,12px) 0 0;
+        width:min(100%,var(--layer-mobile-width,100%));
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="overlay"] {
+        position:absolute;
+        left:var(--layer-mobile-x,6%);
+        top:var(--layer-mobile-y,20%);
+        width:var(--layer-mobile-width,88%);
+        margin:0;
+    }
+    .mskba-hero-slide--mobile-flow .mskba-hero-slide__layer[data-mobile-placement="hidden"] {
+        display:none!important;
+    }
+    /* Links are part of the Hero's mobile content sequence, even when the
+       initial Filament layer used the old 'hidden' placement. Put the rail
+       after the CTA instead of relying on fragile absolute Y coordinates.
+       Scope this override to the opted-in homepage Hero scene. */
+    .mskba-page-builder .mskba-hero-scene .mskba-hero-slide--mobile-flow
+        .mskba-hero-slide__layer--links {
+        display:block!important;
+        position:relative;
+        inset:auto;
+        order:20;
+        align-self:stretch;
+        flex:0 0 auto;
+        width:100%;
+        max-width:100%;
+        margin:clamp(10px,3cqw,16px) 0 0;
+    }
+    .mskba-page-builder .mskba-hero-scene .mskba-hero-slide--mobile-flow {
+        /* Use the space previously reserved below the CTA for the rail. */
+        padding-bottom:clamp(18px,5cqw,28px);
+    }
+    /* For non-flow slide compositions keep the rail visible within the
+       bottom safe area; new mobile slides should prefer flow placement. */
+    .mskba-page-builder .mskba-hero-scene
+        .mskba-hero-slide--layers:not(.mskba-hero-slide--mobile-flow)
+        .mskba-hero-slide__layer--links {
+        display:block!important;
+        position:absolute;
+        inset:auto 6% 20px;
+        width:88%;
+        max-height:none;
+    }
+    .mskba-hero-slider__stage:has(> .mskba-hero-slide--mobile-flow.is-active) ~ .mskba-hero-slider__pagination {
+        bottom:22px;
+    }
+}
