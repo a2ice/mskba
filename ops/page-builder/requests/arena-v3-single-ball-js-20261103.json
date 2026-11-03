@@ -10,7 +10,7 @@
   "publish": true,
   "expected_draft_sha256": "ab42c0e249d457af80da4c64bceb81a8d300dacc085657df938843c5f5631bab",
   "expected_published_sha256": "ab42c0e249d457af80da4c64bceb81a8d300dacc085657df938843c5f5631bab",
-  "expected_result_sha256": "293b46ec5b766d1d35bf00a682b5352282a48b1023e073de2561e86be4a2a40f",
+  "expected_result_sha256": "de97f1e401484f070b4b546919d2e0d2a4ab047c201aabcd12339cad61d0910b",
   "edits": [
     {
       "type": "replace_once",
