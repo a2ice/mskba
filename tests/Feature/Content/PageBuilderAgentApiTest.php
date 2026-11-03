@@ -34,7 +34,7 @@ final class PageBuilderAgentApiTest extends TestCase
         return $user->createToken($name, $abilities, now()->addDays(3))->plainTextToken;
     }
 
-    private function component(): PageBuilderComponent
+    private function sceneComponent(): PageBuilderComponent
     {
         $record = PageBuilderComponent::query()->create([
             'slug' => 'agent-test',
@@ -53,7 +53,7 @@ final class PageBuilderAgentApiTest extends TestCase
 
     public function test_endpoint_requires_short_lived_dedicated_superadmin_token_and_staging(): void
     {
-        $component = $this->component();
+        $component = $this->sceneComponent();
         $uri = '/api/v1/internal/page-builder/components/'.$component->slug;
 
         $this->getJson($uri)->assertUnauthorized();
@@ -69,7 +69,7 @@ final class PageBuilderAgentApiTest extends TestCase
 
     public function test_draft_css_does_not_publish_and_conflicts_prevent_overwrite(): void
     {
-        $component = $this->component();
+        $component = $this->sceneComponent();
         $uri = '/api/v1/internal/page-builder/components/'.$component->slug;
         $this->withToken($this->token());
 
@@ -118,7 +118,7 @@ final class PageBuilderAgentApiTest extends TestCase
 
     public function test_html_validation_blocks_executable_content_and_isolated_publish_keeps_css_draft(): void
     {
-        $component = $this->component();
+        $component = $this->sceneComponent();
         $uri = '/api/v1/internal/page-builder/components/'.$component->slug;
         $this->withToken($this->token());
 
@@ -150,7 +150,7 @@ final class PageBuilderAgentApiTest extends TestCase
 
     public function test_js_staging_publishing_and_restoring_uses_existing_store_and_audit(): void
     {
-        $component = $this->component();
+        $component = $this->sceneComponent();
         $uri = '/api/v1/internal/page-builder/components/'.$component->slug;
         $this->withToken($this->token());
 
