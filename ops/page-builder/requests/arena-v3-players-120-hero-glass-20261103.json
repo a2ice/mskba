@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Увеличить двух игроков на 20 процентов, поднять их и заменить паркет Hero на прозрачный blur 5px (desktop)",
+  "publish": true,
+  "expected_draft_sha256": "a7141b68ccee5bae355f4ca1b5756ccae443a9f31e4e25354f5bc494c9e16dce",
+  "expected_published_sha256": "a7141b68ccee5bae355f4ca1b5756ccae443a9f31e4e25354f5bc494c9e16dce",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "bottom: -48px; width: clamp(185px, 15vw, 255px); z-index: 3;",
+      "to": "bottom: -6px; width: clamp(222px, 18vw, 306px); z-index: 3;"
+    },
+    {
+      "type": "replace_once",
+      "from": "right: clamp(12px, 2vw, 36px); bottom: -46px;\n    width: clamp(205px, 16vw, 276px); height: auto; z-index: 4;",
+      "to": "right: clamp(12px, 2vw, 36px); bottom: -4px;\n    width: clamp(246px, 19.2vw, 331px); height: auto; z-index: 4;"
+    },
+    {
+      "type": "replace_once",
+      "from": "@media (prefers-reduced-motion: reduce) {\n  #venues-scene .mskba-v3-venues__ghost,\n  #venues-scene .mskba-v3-venues__defender,\n  #venues-scene .mskba-v3-venues__shooter-frame { will-change: auto; }\n}",
+      "to": "@media (prefers-reduced-motion: reduce) {\n  #venues-scene .mskba-v3-venues__ghost,\n  #venues-scene .mskba-v3-venues__defender,\n  #venues-scene .mskba-v3-venues__shooter-frame { will-change: auto; }\n}\n/* Temporary translucent Hero: keep the arena visible, blur it instead of the parquet. */\n@media (min-width: 1100px) {\n  .mskba-hero-scene .mskba-hero-slider {\n    background: transparent !important;\n    -webkit-backdrop-filter: blur(5px);\n    backdrop-filter: blur(5px);\n    border-radius: 24px;\n  }\n  .mskba-hero-scene .mskba-hero-slider__stage,\n  .mskba-hero-scene .mskba-hero-slide {\n    background: transparent !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__background {\n    display: none !important;\n  }\n  .mskba-hero-scene .mskba-hero-slide__layer-scrim--dark {\n    background: linear-gradient(90deg, rgba(5, 7, 10, .56), rgba(5, 7, 10, .22) 70%, rgba(5, 7, 10, .12)) !important;\n  }\n}"
+    }
+  ],
+  "expected_result_sha256": "fd795785fcd148424738586d3d612036c887be6ddfddaa73beb7bce858e0eed8"
+}
