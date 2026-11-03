@@ -9,8 +9,9 @@ const linksView = readFileSync(new URL('../../resources/views/page-builder/compo
 const sliderView = readFileSync(new URL('../../resources/views/page-builder/components/hero-slider.blade.php', import.meta.url), 'utf8');
 const sliderRuntime = readFileSync(new URL('../../resources/js/page-builder-hero-slider.js', import.meta.url), 'utf8');
 
-test('Hero stylesheet is owned by Page Builder, not imported into the Vite bundle', () => {
-    assert.doesNotMatch(builderStyles, /page-builder-hero-slider\\.css/);
+    assert.doesNotMatch(builderStyles, /page-builder-hero-slider\.css/);
+    assert.match(stylesheet, /\.mskba-hero-slider \{/);
+    assert.doesNotMatch(stylesheet, /\.mskba-page-builder \.mskba-hero-slider/);
     assert.match(stylesheet, /\\.mskba-page-builder \\.mskba-hero-slider/);
 });
 
