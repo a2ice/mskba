@@ -28,7 +28,7 @@ function initHeroSlider(root) {
         timer = window.setTimeout(() => show(active + 1), interval);
     };
 
-    function show(requested, moveFocus = false) {
+    function show(requested, moveFocus = false, firstPaint = false) {
         const next = (requested + slides.length) % slides.length;
         if (next === active && root.dataset.ready === '1') {
             schedule();
@@ -36,7 +36,11 @@ function initHeroSlider(root) {
         }
         slides.forEach((slide, index) => {
             const selected = index === next;
-            slide.classList.remove('is-active', 'is-animating');
+            // The first slide already animates from the server-rendered HTML.
+            // Do not remove/reapply its class after JS hydration: that visibly
+            // flashes already-painted text and restarts the entire sequence.
+            if (firstPaint && selected) slide.classList.remove('is-active');
+            else slide.classList.remove('is-active', 'is-animating');
             slide.hidden = !selected;
             slide.inert = !selected;
             slide.setAttribute('aria-hidden', String(!selected));
@@ -49,10 +53,12 @@ function initHeroSlider(root) {
         });
 
         const current = slides[active];
-        if (!reducedMotion.matches) {
-            // Animation restarts when a slide is selected, including when looped.
+        if (!reducedMotion.matches && (!firstPaint || !current.classList.contains('is-animating'))) {
+            // An explicit slide change still restarts the sequence.
             void current.offsetWidth;
             current.classList.add('is-animating');
+        } else if (reducedMotion.matches) {
+            current.classList.remove('is-animating');
         }
         root.dataset.ready = '1';
         if (moveFocus && dots[active]) dots[active].focus({ preventScroll: true });
@@ -103,7 +109,7 @@ function initHeroSlider(root) {
         }, { threshold: .2 });
         observer.observe(root);
     }
-    show(0);
+    show(0, false, true);
 }
 
 document.querySelectorAll('[data-mskba-hero-slider]').forEach(initHeroSlider);
