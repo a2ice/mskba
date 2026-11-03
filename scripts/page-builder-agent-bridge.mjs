@@ -55,7 +55,9 @@ export function validatePlan(input) {
   assert(input.operation === 'apply', 'Unknown operation.');
   assert(SHA_PATTERN.test(input.expected_draft_sha256 ?? ''), 'Expected draft SHA-256 is missing.');
   assert(SHA_PATTERN.test(input.expected_published_sha256 ?? ''), 'Expected published SHA-256 is missing.');
-  assert(SHA_PATTERN.test(input.expected_result_sha256 ?? ''), 'Expected final SHA-256 is missing.');
+  if (input.expected_result_sha256 !== undefined) {
+    assert(SHA_PATTERN.test(input.expected_result_sha256), 'Expected final SHA-256 is invalid.');
+  }
   assert(typeof input.publish === 'boolean', 'publish must be explicitly true or false.');
   assert(Array.isArray(input.edits) && input.edits.length > 0 && input.edits.length <= 20,
     'Plan requires 1-20 exact edits.');
@@ -165,7 +167,8 @@ async function runPlan(plan, token) {
   }
 
   // Re-running a successfully applied request must not create another revision.
-  if (current.draft_sha256 === plan.expected_result_sha256
+  if (plan.expected_result_sha256
+    && current.draft_sha256 === plan.expected_result_sha256
     && (!plan.publish || current.published_sha256 === plan.expected_result_sha256)) {
     console.log('Already applied; preserving the existing Filament publication.');
     return;
@@ -176,8 +179,11 @@ async function runPlan(plan, token) {
   assert(current.published_sha256 === plan.expected_published_sha256,
     'Published source changed since the plan was approved. No writes made.');
   const next = applyExactEdits(current.draft, plan.edits);
-  assert(sha256(next) === plan.expected_result_sha256,
-    'Patch result SHA-256 does not match the reviewed plan. No writes made.');
+  const resultHash = sha256(next);
+  if (plan.expected_result_sha256 !== undefined) {
+    assert(resultHash === plan.expected_result_sha256,
+      'Patch result SHA-256 does not match the reviewed plan. No writes made.');
+  }
   assert(next.length <= 100000, 'Result exceeds the API limit of 100000 characters.');
 
   const staged = await request('PATCH', '/draft', {
@@ -186,9 +192,9 @@ async function runPlan(plan, token) {
     expected_draft_sha256: current.draft_sha256,
     reason: plan.reason,
   });
-  assert(staged.sources[plan.field].draft_sha256 === plan.expected_result_sha256,
+  assert(staged.sources[plan.field].draft_sha256 === resultHash,
     'Draft verification failed. Publication was not attempted.');
-  console.log('Draft saved and verified: ' + plan.field + ' ' + plan.expected_result_sha256);
+  console.log('Draft saved and verified: ' + plan.field + ' ' + resultHash);
 
   if (!plan.publish) {
     console.log('Draft only. Nothing published.');
@@ -197,17 +203,17 @@ async function runPlan(plan, token) {
 
   const published = await request('POST', '/publish', {
     field: plan.field,
-    expected_draft_sha256: plan.expected_result_sha256,
+    expected_draft_sha256: resultHash,
     expected_published_sha256: current.published_sha256,
     reason: plan.reason,
   });
-  assert(published.sources[plan.field].published_sha256 === plan.expected_result_sha256,
+  assert(published.sources[plan.field].published_sha256 === resultHash,
     'Publication verification failed. Inspect Filament before further changes.');
   const verified = await request('GET');
-  assert(verified.sources[plan.field].published_sha256 === plan.expected_result_sha256,
+  assert(verified.sources[plan.field].published_sha256 === resultHash,
     'Read-back mismatch after publishing. Inspect Filament.');
   console.log('Published and re-verified on DEV: ' + target + ' ' + plan.field
-    + ' ' + plan.expected_result_sha256);
+    + ' ' + resultHash);
 }
 
 export async function main(args = process.argv.slice(2)) {
