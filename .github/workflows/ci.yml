@@ -102,6 +102,13 @@ jobs:
             echo 'Unknown baseline: full suite required.'
           fi
           echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
+      # Catch syntax errors before deploying a changed Nginx configuration.
+      - name: Validate application Nginx configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.27-alpine nginx -t
+
       - name: Setup PHP
         if: steps.change_scope.outputs.full_suite == 'true'
         uses: shivammathur/setup-php@v2
