@@ -162,6 +162,36 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertSame($css, $generator->css($css, []));
     }
 
+    public function test_first_viewport_arena_uses_inline_webp_previews_and_stable_intrinsic_dimensions(): void
+    {
+        Storage::fake('public');
+        $manager = app(SiteMediaManager::class);
+        $arena = $manager->upload(UploadedFile::fake()->image('arena.jpg', 1900, 800));
+        $player = $manager->upload(UploadedFile::fake()->image('shooter.png', 258, 471));
+        $hidden = $manager->upload(UploadedFile::fake()->image('hidden.png', 100, 100));
+        $markup = '<section id="venues-scene">'
+            .'<img class="mskba-v3-venues__arena" loading="lazy" src="'.$arena->publicUrl().'">'
+            .'<img class="mskba-v3-venues__shooter" loading="lazy" src="'.$player->publicUrl().'">'
+            .'<img class="mskba-v3-venues__bench d-none" loading="lazy" src="'.$hidden->publicUrl().'">'
+            .'</section>';
+        $previews = [
+            $arena->uuid => $arena->lqipUrl(),
+            $player->uuid => $player->lqipUrl(),
+            $hidden->uuid => $hidden->lqipUrl(),
+        ];
+
+        $result = app(PageBuilderFirstPaintLqip::class)->apply($markup, $previews);
+        foreach ([$arena, $player] as $asset) {
+            $bytes = Storage::disk('public')->get(SiteMediaLqip::path($asset->currentMedia));
+            $this->assertStringContainsString('src="data:image/webp;base64,'.base64_encode($bytes).'"', $result);
+            $this->assertStringContainsString('data-mskba-lqip-full-src="'.$asset->publicUrl().'"', $result);
+        }
+        $this->assertSame(2, substr_count($result, 'loading="eager" fetchpriority="high"'));
+        $this->assertSame(2, substr_count($result, 'data-mskba-lqip-venue-player="1"'));
+        $this->assertStringContainsString('src="'.$hidden->lqipUrl().'"', $result);
+        $this->assertStringContainsString('<noscript>', $result);
+    }
+
     public function test_unsupported_or_missing_preview_preserves_original_src(): void
     {
         $generator = app(PageBuilderFirstPaintLqip::class);
