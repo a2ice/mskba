@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Keep ball in Hero with sprite rotation, raise desktop flight endpoint and restore natural small mobile basketball size",
+  "publish": true,
+  "expected_draft_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
+  "expected_published_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "        startScale: .525, endScale: .60, tileSize: 122,",
+      "to": "        startScale: .34, endScale: .36, tileSize: 122,"
+    },
+    {
+      "type": "replace_once",
+      "from": "        from: [255, 440], to: [650, 1030],",
+      "to": "        from: [255, 440], to: [650, 870],"
+    }
+  ]
+}
