@@ -302,3 +302,13 @@ The `mskba_app` venue detail Blade view explicitly passes the canonical
 `/venues/search` search endpoint. The same value reaches both the visible
 breadcrumb trail and the compact path menu via `BreadcrumbsResolver`. The
 common resolver's route-derived behavior is unchanged.
+
+## DEV Agent API (2026-11-03)
+
+Безопасное программное чтение/правка HTML, CSS и JS через API доступно только на staging.
+Нужен отдельный короткоживущий токен superadmin, контроль SHA-256 перед записью,
+явная публикация и журнал изменений. Подробнее: [DEV Agent API](page-builder-agent-api.md).
+При деплое `deploy_dev` больше не запускается прежний автоматический
+установщик Arena v3: Filament остаётся единственным владельцем опубликованных
+HTML/CSS/JS. Для использования API непосредственно из ChatGPT требуется
+подключить HTTP/MCP-инструмент; API сам по себе такое подключение не создаёт.

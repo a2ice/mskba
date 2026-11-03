@@ -1254,6 +1254,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Location](specification/location.md)
 - [Notification](specification/notification.md)
 - [Contracts](specification/contracts.md)
+- [Page Builder: DEV Agent API](specification/page-builder-agent-api.md) — чтение и редакторские изменения HTML/CSS/JS с контролем версий, только staging.
 - [Audit logging](architecture/audit.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)
 - [Процесс работы с задачами](specification/task-workflow.md)
