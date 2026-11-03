@@ -1,5 +1,5 @@
 /* Hero Slider baseline, installed into Page Builder component CSS on migration. Not bundled by Vite. */
-.mskba-page-builder .mskba-hero-slider {
+.mskba-hero-slider {
     position:relative; isolation:isolate; width:100%; overflow:hidden; border-radius:24px;
     color:#fff; background:#08090a; box-shadow:0 18px 54px rgba(14,19,27,.14);
     container:mskba-hero / inline-size;
@@ -295,54 +295,54 @@
 /* Opt-in MSKBA composition presets for generic layers. Unlike viewport-based
    page-local font sizes, these scale with the actual slider canvas (cqw).
    Generic elements without these classes keep their universal styling. */
-.mskba-page-builder .mskba-hero-slide--layers .slider-eyebrow .mskba-hero-slide__layer-text {
+.mskba-hero-slide--layers .slider-eyebrow .mskba-hero-slide__layer-text {
     color:#ff8b24;font-size:clamp(11px,1.05cqw,15px);font-weight:850;letter-spacing:.13em;
 }
-.mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading {
+.mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading {
     color:#fff;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
     letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
 }
-.mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+.mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
     color:#ff7412;font-size:clamp(37px,4.1cqw,60px);font-weight:900;line-height:1.02;
     letter-spacing:-.025em;text-transform:uppercase;overflow-wrap:normal;
 }
-.mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+.mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
     color:rgba(255,255,255,.9);font-size:clamp(14px,1.2cqw,18px);line-height:1.45;
 }
-.mskba-page-builder .mskba-hero-slide--layers .slider-cta .mskba-hero-slide__layer-button {
+.mskba-hero-slide--layers .slider-cta .mskba-hero-slide__layer-button {
     min-height:49px;padding:12px 24px;font-size:15px;gap:20px;
     background:linear-gradient(145deg,#ff8b0b,#f15a05);color:#fff!important;
     box-shadow:0 10px 28px rgba(255,105,0,.25);
 }
-.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {
+.mskba-hero-slide--layers .mskba-hero-slide__layer--links {
     max-height:none;overflow:visible;
 }
-.mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__highlights--layers {
+.mskba-hero-slide--layers .mskba-hero-slide__highlights--layers {
     width:100%;max-width:none;margin:0;
 }
 .mskba-hero-slide__custom-icon {display:block;width:26px;height:26px;object-fit:contain;}
 .mskba-hero-slide--layers .mskba-hero-slide__layer-button {gap:14px;}
 .mskba-hero-slide--layers .mskba-hero-slide__layer-button span[aria-hidden] {font-size:18px;line-height:1;}
 @container mskba-hero (max-width:640px) {
-    .mskba-page-builder .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading,
-    .mskba-page-builder .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
+    .mskba-hero-slide--layers .slider-heading .mskba-hero-slide__layer-heading,
+    .mskba-hero-slide--layers .slider-accent .mskba-hero-slide__layer-text {
         font-size:clamp(32px,8cqw,48px);
     }
-    .mskba-page-builder .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
+    .mskba-hero-slide--layers .slider-description .mskba-hero-slide__layer-text {
         font-size:13px;
     }
-    .mskba-page-builder .mskba-hero-slide--layers .mskba-hero-slide__layer--links {display:none;}
+    .mskba-hero-slide--layers .mskba-hero-slide__layer--links {display:none;}
 }
 
 /* Migrated historic player images, rendered as generic image layers. */
-.mskba-page-builder .mskba-hero-slide--layers .slider-player {
+.mskba-hero-slide--layers .slider-player {
     top:auto;bottom:-3%;max-height:103%;pointer-events:none;
 }
-.mskba-page-builder .mskba-hero-slide--layers .slider-player .mskba-hero-slide__layer-image {
+.mskba-hero-slide--layers .slider-player .mskba-hero-slide__layer-image {
     max-height:450px;object-position:bottom;filter:drop-shadow(1px 8px 15px rgba(0,0,0,.35));
 }
 @container mskba-hero (max-width:640px) {
-    .mskba-page-builder .mskba-hero-slide--layers .slider-player {bottom:10%;top:auto;}
+    .mskba-hero-slide--layers .slider-player {bottom:10%;top:auto;}
 }
 
 /* Universal responsive composition: opt-in mobile flow.
@@ -385,7 +385,7 @@
        initial Filament layer used the old 'hidden' placement. Put the rail
        after the CTA instead of relying on fragile absolute Y coordinates.
        Scope this override to the opted-in homepage Hero scene. */
-    .mskba-page-builder .mskba-hero-scene .mskba-hero-slide--mobile-flow
+    .mskba-hero-scene .mskba-hero-slide--mobile-flow
         .mskba-hero-slide__layer--links {
         display:block!important;
         position:relative;
@@ -397,13 +397,13 @@
         max-width:100%;
         margin:clamp(10px,3cqw,16px) 0 0;
     }
-    .mskba-page-builder .mskba-hero-scene .mskba-hero-slide--mobile-flow {
+    .mskba-hero-scene .mskba-hero-slide--mobile-flow {
         /* Use the space previously reserved below the CTA for the rail. */
         padding-bottom:clamp(18px,5cqw,28px);
     }
     /* For non-flow slide compositions keep the rail visible within the
        bottom safe area; new mobile slides should prefer flow placement. */
-    .mskba-page-builder .mskba-hero-scene
+    .mskba-hero-scene
         .mskba-hero-slide--layers:not(.mskba-hero-slide--mobile-flow)
         .mskba-hero-slide__layer--links {
         display:block!important;
