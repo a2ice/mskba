@@ -4,10 +4,6 @@
     color:#fff; background:#08090a; box-shadow:0 18px 54px rgba(14,19,27,.14);
     container:mskba-hero / inline-size;
 }
-/* Editor-owned HTML overlay slot. Foreground copy/layers use z-index 4+. */
-.mskba-hero-slider__overlay {
-    position:absolute;inset:0;z-index:3;pointer-events:none;
-}
 /* Keep a predictable graphic canvas while matching the compact action-row layout. */
 .mskba-hero-slider__stage { position:relative; height:clamp(450px,35cqw,530px); }
 .mskba-hero-slide { position:absolute; inset:0; overflow:hidden; background:#090a0c; }
