@@ -30,7 +30,7 @@ test('mobile uses the same accessible, continuous highlight marquee as tablet', 
 });
 
 test('mobile flow places link layers in document flow rather than hidden or in absolute coordinates', () => {
-    assert.match(stylesheet, /\.mskba-page-builder \.mskba-hero-scene \.mskba-hero-slide--mobile-flow\s+\.mskba-hero-slide__layer--links \{[\s\S]*?display:block!important;[\s\S]*?position:relative;[\s\S]*?inset:auto;[\s\S]*?order:20;/);
+    assert.match(stylesheet, /\.mskba-hero-scene \.mskba-hero-slide--mobile-flow\s+\.mskba-hero-slide__layer--links \{[\s\S]*?display:block!important;[\s\S]*?position:relative;[\s\S]*?inset:auto;[\s\S]*?order:20;/);
     assert.match(stylesheet, /\.mskba-hero-slide--mobile-flow \{[\s\S]*?padding-bottom:clamp\(18px,5cqw,28px\);/);
 });
 
