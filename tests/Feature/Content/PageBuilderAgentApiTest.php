@@ -57,13 +57,19 @@ final class PageBuilderAgentApiTest extends TestCase
         $uri = '/api/v1/internal/page-builder/components/'.$component->slug;
 
         $this->getJson($uri)->assertUnauthorized();
+        // Sanctum's guard caches a resolved user for the current Laravel test
+        // process: reset it whenever the Authorization bearer changes.
+        app('auth')->forgetGuards();
         $this->withToken($this->token(UserSystemRoleEnum::USER))->getJson($uri)->assertForbidden();
+        app('auth')->forgetGuards();
         $this->withToken($this->token(name: 'mskba-client:mobile'))->getJson($uri)->assertForbidden();
+        app('auth')->forgetGuards();
 
         $this->withToken($this->token())->getJson($uri)->assertOk()
             ->assertJsonPath('data.sources.css.published', '.scene { color: #fff; }');
 
         config(['app.url' => 'https://mskba.ru']);
+        app('auth')->forgetGuards();
         $this->getJson($uri)->assertNotFound();
     }
 
