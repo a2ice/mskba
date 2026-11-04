@@ -3,7 +3,7 @@
   "environment": "development",
   "confirm": "DEV_ONLY_PAGE_BUILDER",
   "operation": "inspect",
-  "kind": "pages",
-  "key": "home",
+  "kind": "components",
+  "key": "venues-scene-v3",
   "reason": "Read current DEV homepage CSS/JS hashes before fixing scene release and first paint."
 }
