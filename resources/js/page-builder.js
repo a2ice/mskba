@@ -4,11 +4,6 @@ import './page-builder-today-event-map.js';
 import './page-builder-hero-slider.js';
 import '../themes/mskba_app/js/features/page-builder-native-lqip.js';
 
-// Mount the reusable uniforms story only on pages containing the Filament-owned section.
-if (document.querySelector('#venues-story-uniforms.mskba-v3-story__section--uniforms')) {
-    void import('../themes/mskba_app/js/uniforms/uniform-entry.js');
-}
-
 // No dynamic HTML injection: server returns only bounded, authorized DTO fields.
 const roots = document.querySelectorAll('[data-mskba-builder-source]');
 
