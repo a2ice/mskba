@@ -34,9 +34,14 @@ async function openStudio(context = 'home', projectId=null) {
   module.openUniformStudio({context,projectId});
 }
 document.addEventListener('click', event => {
-  // Page Builder component #7 currently has a stable button but no trigger attribute.
-  // The selector is a compatibility bridge; use data-mskba-open-workshop on new components.
-  const el=event.target instanceof Element ? event.target.closest('[data-mskba-open-workshop], .mskba-uniform-story__panel--custom .mskba-uniform-story__actions > button:first-child') : null;
+  // Page Builder component #7 remains Filament-owned and has been restructured:
+  // the active workshop CTA is now in .tab-footer-actions. Keep support for
+  // both published markup versions, but prefer an explicit data attribute.
+  const el = event.target instanceof Element ? event.target.closest(
+    '[data-mskba-open-workshop], ' +
+    '#venues-story-uniforms .tab-content[data-tab-name="workshop"] .tab-footer-actions > button.section-cta, ' +
+    '.mskba-uniform-story__panel--custom .mskba-uniform-story__actions > button:first-child'
+  ) : null;
   if(!el) return;
   event.preventDefault();
   void openStudio(el.dataset.mskbaWorkshopContext||'home',el.dataset.mskbaWorkshopProject||null);
