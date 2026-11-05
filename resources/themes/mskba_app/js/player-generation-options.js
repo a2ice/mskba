@@ -147,15 +147,13 @@ if (workspace) {
     });
 
     const uniform = workspace.querySelector('[data-player-generation-team]');
-    const uniformDialog = workspace.querySelector('[data-player-uniform-dialog]');
     const firstTeam = Array.from(uniform?.options || []).find(option => option.value !== '__custom__')?.value || '';
     uniform?.addEventListener('change', () => {
         if (uniform.value !== '__custom__') return;
-        // "Create custom uniform" must never be submitted as a team ID.
+        // Workshop designs are never submitted as a team ID.
         uniform.value = firstTeam;
-        uniformDialog?.showModal();
+        window.dispatchEvent(new CustomEvent('mskba:uniform:open', {detail:{context:'player-avatar'}}));
     });
-    uniformDialog?.querySelector('[data-player-uniform-close]')?.addEventListener('click', () => uniformDialog.close());
 
     const logoDialog = workspace.querySelector('[data-player-logo-dialog]');
     const logoCheckbox = workspace.querySelector('[data-player-logo-enabled]');

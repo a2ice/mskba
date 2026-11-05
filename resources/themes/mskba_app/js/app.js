@@ -43,6 +43,8 @@ import './features/site-media-lqip.js';
 
 import './player-profile-workspace.js';
 import './player-generation-options.js';
+// Reusable Git-owned studio: lazy interactive modal + resume after auth/onboarding.
+import './uniforms/bootstrap.js';
 import '../css/player-generation-options.css';
 import './balance-topup.js';
 // Reuse the production location suggestion and reverse-geolocation adapter.

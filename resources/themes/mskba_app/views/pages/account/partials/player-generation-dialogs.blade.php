@@ -1,7 +1,3 @@
-<dialog id="app-player-uniform-dialog" class="app-player-workspace__topup-dialog" data-player-uniform-dialog aria-labelledby="app-player-uniform-title">
-    <div class="app-player-workspace__topup-head"><h3 id="app-player-uniform-title">Создать свою форму</h3><button type="button" class="app-player-workspace__secondary" data-player-uniform-close>Закрыть</button></div>
-    <div class="app-player-workspace__topup-body"><p>Функционал пока в разработке. Скоро можно будет создать, примерить и заказать собственную форму для команды.</p></div>
-</dialog>
 <dialog id="app-player-logo-dialog" class="mskba-modal app-player-workspace__logo-dialog" data-player-logo-dialog
     data-list-url="{{ route('account.player-character.logos.index') }}"
     data-upload-url="{{ route('account.player-character.logos.store') }}"
