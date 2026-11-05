@@ -19,9 +19,10 @@ soft-delete and remove private media.
 resources/themes/mskba_app/js/uniforms/UniformWorkshop.vue is shared by
 the standalone public page, modal on homepage, and player avatar generator.
 bootstrap.js uses dynamic import to avoid adding heavy UI during homepage scroll.
-Main homepage remains Filament Page Builder owned. Legacy markup's custom panel
-first button is supported as a compatibility bridge; preferred explicit
-button attribute is data-mskba-open-workshop=1 (optional
+Main homepage remains Filament Page Builder owned. The published Filament component #7 wraps its workshop CTA in
+.tab-content[data-tab-name=workshop] .tab-footer-actions > button.section-cta;
+this is supported as a compatibility bridge (as is the previous markup).
+Preferred explicit button attribute is data-mskba-open-workshop=1 (optional
 data-mskba-workshop-context=home).
 
 ## Auth
