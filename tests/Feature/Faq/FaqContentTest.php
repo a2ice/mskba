@@ -232,7 +232,7 @@ final class FaqContentTest extends TestCase
             'Отредактированная инструкция',
             $content->fresh()->title,
         );
-        $this->assertSame(11, ContentItem::query()->where('type', ContentTypeEnum::FAQ)->count());
+        $this->assertSame(7, ContentItem::query()->where('type', ContentTypeEnum::FAQ)->count());
 
         $this->actingAs(User::query()->where('system_role', UserSystemRoleEnum::SUPERADMIN)->first());
         $this->put(route('admin.content.update', $content->alias), [
@@ -244,7 +244,7 @@ final class FaqContentTest extends TestCase
 
         $content->delete();
         $this->seed(FaqContentSeeder::class);
-        $this->assertSame(11, ContentItem::withTrashed()->where('type', ContentTypeEnum::FAQ)->count());
+        $this->assertSame(7, ContentItem::withTrashed()->where('type', ContentTypeEnum::FAQ)->count());
         $this->get(route('faq.creation', ['topic' => 'venues']))->assertOk();
     }
 
