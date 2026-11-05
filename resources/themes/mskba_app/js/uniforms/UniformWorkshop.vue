@@ -48,7 +48,7 @@ function hydrate(design) {
   form.sizes = [...design.sizes];
   form.logo_source = design.logo_source;
   form.logo_team_id = design.logo_team_id || '';
-  storedLogoUrl.value = design.logo_url || '';
+  storedLogoUrl.value = design.logo_source === 'custom' ? (design.logo_url || '') : '';
 }
 onMounted(async () => {
   loading.value = true;

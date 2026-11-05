@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 final class UniformStudioFeatureTest extends TestCase
@@ -95,6 +97,33 @@ final class UniformStudioFeatureTest extends TestCase
             ...$this->input(),
             'logo_source' => 'custom',
         ])->assertUnprocessable()->assertJsonValidationErrors('logo');
+    }
+
+    public function test_custom_logo_is_private_and_deleted_with_the_design(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $this->actingAs($owner);
+
+        $result = $this->post('/uniforms/projects', [
+            ...$this->input(),
+            'logo_source' => 'custom',
+            'logo' => UploadedFile::fake()->image('crest.png', 240, 240),
+        ], ['Accept' => 'application/json'])->assertCreated();
+        $id = $result->json('design.id');
+        $design = UniformDesign::query()->findOrFail($id);
+        $logo = $design->customLogo()->firstOrFail();
+        $this->assertSame('uniform_design', $logo->mediable_type);
+        $this->assertSame('image/webp', $logo->mime);
+        Storage::disk('local')->assertExists($logo->path);
+        $this->get('/uniforms/projects/'.$id.'/logo')->assertOk()->assertHeader('Content-Type', 'image/webp');
+
+        $this->actingAs($stranger);
+        $this->get('/uniforms/projects/'.$id.'/logo')->assertNotFound();
+        $this->actingAs($owner);
+        $this->deleteJson('/uniforms/projects/'.$id)->assertOk();
+        Storage::disk('local')->assertMissing($logo->path);
     }
 
     public function test_invalid_sizes_colors_and_logo_source_are_rejected(): void

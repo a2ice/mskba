@@ -22,7 +22,7 @@ final class UniformLogoService
         try {
             $old = $design->customLogo()->first();
             $new = Media::query()->create([
-                'mediable_type' => UniformDesign::class,
+                'mediable_type' => $design->getMorphClass(),
                 'mediable_id' => $design->id,
                 'collection' => UniformDesign::LOGO_COLLECTION,
                 'disk' => 'local',
