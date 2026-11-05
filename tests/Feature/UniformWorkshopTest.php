@@ -23,7 +23,7 @@ final class UniformWorkshopTest extends TestCase
             ->assertOk()
             ->assertSee('Мастерская формы')
             ->assertSee('data-mskba-uniform-workshop-page', false)
-            ->assertSee('Демонстрационная версия');
+            ->assertSee('Мастерская работает в демонстрационном режиме.');
     }
 
     public function test_uniform_faq_articles_are_published_in_their_sections_and_preserve_editor_changes(): void
