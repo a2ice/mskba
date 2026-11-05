@@ -22,10 +22,15 @@ final class PageBuilderMarkup
         foreach (['section', 'article', 'aside', 'header', 'footer', 'main', 'div', 'span',
             'h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'ul', 'ol', 'li',
             'figure', 'figcaption', 'blockquote', 'small', 'nav'] as $tag) {
-            $config = $config->allowElement($tag, ['class', 'id']);
+            $config = $config->allowElement($tag, ['class', 'id', 'role', 'aria-label', 'aria-hidden', 'aria-expanded', 'data-tab-name']);
         }
         $config = $config->allowElement('a', ['href', 'title', 'class'])
             ->allowElement('img', ['src', 'alt', 'width', 'height', 'class', 'loading'])
+            ->allowElement('button', [
+                'class', 'id', 'title', 'type', 'aria-label', 'aria-pressed',
+                'aria-expanded', 'aria-selected', 'aria-controls', 'data-tab-name',
+            ])
+            ->forceAttribute('button', 'type', 'button')
             ->allowElement('br')
             ->allowElement('hr')
             ->forceAttribute('a', 'rel', 'noopener noreferrer')
