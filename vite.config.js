@@ -21,6 +21,7 @@ export default defineConfig({
                 'resources/themes/mskba_streetball/js/app.js',
                 'resources/themes/mskba_app/css/app.css',
                 'resources/themes/mskba_app/js/app.js',
+                'resources/themes/mskba_app/js/uniforms/uniform-entry.js',
                 'resources/themes/mskba_app/js/inertia.js',
                 'resources/themes/blank/css/app.css',
                 'resources/themes/blank/js/app.js',

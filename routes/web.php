@@ -152,6 +152,9 @@ Route::get('/page-builder/data/{source}', [PageBuilderController::class, 'data']
     ->middleware('throttle:60,1')->name('page-builder.data')
     ->where('source', '[a-z_]+');
 
+Route::get('/uniforms/workshop', fn () => response()->view('uniforms.workshop'))
+    ->name('uniforms.workshop')->defaults('breadcrumb', 'Мастерская формы');
+
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 
 Route::get('/assets/design-themes/{theme}/{revision}.css', \App\Presentation\Theming\DesignThemeStylesheetController::class)

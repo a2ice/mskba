@@ -14,6 +14,8 @@ return [
         'coordination' => ['label' => 'Координация', 'keys' => ['faq.creation.coordination']],
         'account' => ['label' => 'Аккаунт и профиль', 'keys' => []],
         'payments' => ['label' => 'Оплата и бонусы', 'keys' => []],
+        'uniforms' => ['label' => 'Форма и экипировка', 'keys' => ['faq.uniforms.selection', 'faq.uniforms.workshop', 'faq.uniforms.production']],
+        'partnership' => ['label' => 'Сотрудничество', 'keys' => ['faq.uniforms.partnership']],
         'other' => ['label' => 'Другие вопросы', 'keys' => []],
     ],
     'question_topics' => [
