@@ -23,6 +23,8 @@
         @include('theme::partials.icons')
         @include('theme::partials.header')
         @include('theme::partials.context-bar')
+        {{-- Unified FAQ dialog is available on every page, including the clean homepage. --}}
+        @include('theme::partials.context-action-dialogs')
         <main id="mskba-app" class="app-shell">
             @yield('content')
         </main>

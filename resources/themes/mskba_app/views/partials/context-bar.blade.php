@@ -105,7 +105,6 @@
             <span class="app-context-bar__status" role="status" aria-live="polite" data-app-context-status></span>
         </div>
     </div>
-    @include('theme::partials.context-action-dialogs')
     @if ($showOverviewConfirmationGuide)
         @include('theme::partials.account.confirmation-guide-dialog', [
             'accountConfirmationGuideHtml' => app(\App\Modules\Content\Application\Services\WelcomeAccountConfirmationGuide::class)->html(),
