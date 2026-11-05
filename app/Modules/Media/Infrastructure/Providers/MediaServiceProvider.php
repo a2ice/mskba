@@ -14,6 +14,7 @@ use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -33,6 +34,7 @@ class MediaServiceProvider extends ServiceProvider
             'venue_revision' => VenueRevision::class,
             'content_item' => ContentItem::class,
             'team' => Team::class,
+            'uniform_design' => UniformDesign::class,
             'league' => League::class,
             'league_season' => LeagueSeason::class,
             'tournament' => Tournament::class,

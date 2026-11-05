@@ -80,6 +80,7 @@ use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionResourc
 use App\Modules\SportsSection\Presentation\Http\Controllers\TrainingSessionController;
 use App\Modules\Team\Presentation\Http\Controllers\AccountTeamsController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamController;
+use App\Modules\Uniform\Presentation\Http\Controllers\UniformDesignController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamHiringController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamInvitationController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamPermissionController;
@@ -151,6 +152,23 @@ Route::get('/page-builder/scripts/{type}/{id}/{hash}.js', [PageBuilderScriptCont
 Route::get('/page-builder/data/{source}', [PageBuilderController::class, 'data'])
     ->middleware('throttle:60,1')->name('page-builder.data')
     ->where('source', '[a-z_]+');
+
+// Uniform workshop is a Git-owned reusable editor; Page Builder only supplies a trigger.
+Route::get('/uniforms/workshop', [UniformDesignController::class, 'workshop'])->name('uniforms.workshop');
+Route::get('/uniforms/options', [UniformDesignController::class, 'options'])->middleware('throttle:60,1')->name('uniforms.options');
+Route::middleware('auth')->group(function (): void {
+    Route::get('/account/uniforms', [UniformDesignController::class, 'my'])->name('account.uniforms');
+    Route::get('/uniforms/projects', [UniformDesignController::class, 'index'])->name('uniforms.projects.index');
+    Route::post('/uniforms/projects', [UniformDesignController::class, 'store'])
+        ->middleware('throttle:12,1')->name('uniforms.projects.store');
+    Route::get('/uniforms/projects/{design}', [UniformDesignController::class, 'show'])->name('uniforms.projects.show');
+    Route::put('/uniforms/projects/{design}', [UniformDesignController::class, 'update'])
+        ->middleware('throttle:24,1')->name('uniforms.projects.update');
+    Route::delete('/uniforms/projects/{design}', [UniformDesignController::class, 'destroy'])
+        ->middleware('throttle:12,1')->name('uniforms.projects.destroy');
+    Route::get('/uniforms/projects/{design}/logo', [UniformDesignController::class, 'logo'])
+        ->name('uniforms.projects.logo');
+});
 
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 

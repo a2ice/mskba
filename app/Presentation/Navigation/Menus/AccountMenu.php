@@ -22,6 +22,7 @@ final class AccountMenu implements MenuHandler
         'account.roles' => 'people',
         'account.teams' => 'people',
         'account.my-games' => 'ball',
+        'account.uniforms' => 'save',
         'play-intents.mine' => 'bell',
         'favorites.mine' => 'heart',
         'account.my-trainings' => 'clock',
@@ -201,6 +202,7 @@ final class AccountMenu implements MenuHandler
 
         // A subscription is available to any signed-in user, regardless of participation role.
         $items[] = $this->link('Мои подписки', 'play-intents.mine');
+        $items[] = $this->link('Мои формы', 'account.uniforms');
         $items[] = $this->link('Избранное', 'favorites.mine');
 
         $items[] = [
