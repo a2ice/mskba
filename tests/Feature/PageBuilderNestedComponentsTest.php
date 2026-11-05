@@ -17,7 +17,7 @@ final class PageBuilderNestedComponentsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function component(string $slug, string $html, string $css = ''): PageBuilderComponent
+    private function createBuilderComponent(string $slug, string $html, string $css = ''): PageBuilderComponent
     {
         $component = PageBuilderComponent::query()->create([
             'slug' => $slug,
@@ -30,7 +30,7 @@ final class PageBuilderNestedComponentsTest extends TestCase
         return $component->refresh();
     }
 
-    private function page(string $html): PageBuilderPage
+    private function publishHomePage(string $html): PageBuilderPage
     {
         $page = PageBuilderPage::query()->where('path', '/')->firstOrFail();
         $page->update(['draft_html' => $html]);
@@ -41,27 +41,27 @@ final class PageBuilderNestedComponentsTest extends TestCase
 
     public function test_nested_components_render_markup_css_and_published_scripts_through_three_levels(): void
     {
-        $kit = $this->component(
+        $kit = $this->createBuilderComponent(
             'home-venues-section-form-workshop',
             '<div class="mskba-kit-preview" role="img" aria-label="Макет">'
                 .'<button type="button" class="kit-switch" data-tab-name="front" aria-pressed="true">Лицевая</button>'
                 .'</div>',
             '.mskba-kit-preview { color: orange; }',
         );
-        $form = $this->component(
+        $form = $this->createBuilderComponent(
             'home-venues-section-form',
             '<div class="tabs-wrapper"><button type="button" class="tab-switcher" data-tab-name="store" aria-pressed="true">Готовая форма</button>'
                 .'<mskba-component name="home-venues-section-form-workshop"></mskba-component></div>',
             '.tabs-wrapper { display: grid; }',
         );
-        $arena = $this->component(
+        $arena = $this->createBuilderComponent(
             'home-venues-arena',
             '<section class="mskba-v3-story__section--uniforms"><div class="mskba-v3-story__body-content">'
                 .'<mskba-component name="home-venues-section-form"></mskba-component>'
                 .'</div></section>',
             '.mskba-v3-story__body-content { max-width: 500px; }',
         );
-        $page = $this->page('<mskba-component name="home-venues-arena"></mskba-component>');
+        $page = $this->publishHomePage('<mskba-component name="home-venues-arena"></mskba-component>');
         $admin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
         $store = app(PageBuilderScriptVersionStore::class);
         foreach ([$arena, $form, $kit] as $component) {
@@ -91,11 +91,11 @@ final class PageBuilderNestedComponentsTest extends TestCase
             'name' => 'Черновик',
             'draft_html' => '<div class="secret-draft">Не опубликовано</div>',
         ]);
-        $parent = $this->component(
+        $parent = $this->createBuilderComponent(
             'published-parent',
             '<p>Публичная секция</p><mskba-component name="private-draft"></mskba-component>',
         );
-        $page = $this->page('<mskba-component name="'.$parent->slug.'"></mskba-component>');
+        $page = $this->publishHomePage('<mskba-component name="'.$parent->slug.'"></mskba-component>');
 
         $public = app(PageBuilderRenderer::class)->render($page);
         $this->assertStringContainsString('Публичная секция', $public['html']);
@@ -108,9 +108,9 @@ final class PageBuilderNestedComponentsTest extends TestCase
 
     public function test_recursive_component_cycles_fail_closed_without_breaking_the_arena(): void
     {
-        $this->component('section-alpha', '<div>Alpha<mskba-component name="section-beta"></mskba-component></div>');
-        $this->component('section-beta', '<div>Beta<mskba-component name="section-alpha"></mskba-component></div>');
-        $page = $this->page('<mskba-component name="section-alpha"></mskba-component>');
+        $this->createBuilderComponent('section-alpha', '<div>Alpha<mskba-component name="section-beta"></mskba-component></div>');
+        $this->createBuilderComponent('section-beta', '<div>Beta<mskba-component name="section-alpha"></mskba-component></div>');
+        $page = $this->publishHomePage('<mskba-component name="section-alpha"></mskba-component>');
 
         $html = app(PageBuilderRenderer::class)->render($page)['html'];
         $this->assertStringContainsString('Alpha', $html);
