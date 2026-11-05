@@ -66,7 +66,7 @@ final class PageBuilderRenderer
         if ($template instanceof PageBuilderTemplate) {
             $owners[] = $template;
         }
-        foreach ($components as $component) {
+        foreach ($usedComponents as $component) {
             if (! $preview && $component->published_at === null) {
                 continue;
             }
