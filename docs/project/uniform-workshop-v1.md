@@ -23,7 +23,7 @@
 3. faq.uniforms.production → /faq/faq-uniform-production
 4. faq.uniforms.partnership → /faq/faq-uniform-partnership
 
-Разделы FAQ: uniforms («Форма и экипировка»), partnership («Сотрудничество»). Сценарии обращаются к существующему GET /faq/help-content с section и article, сервер санитизирует SAFE_HTML. После выкладки выполнить на DEV:
+Разделы FAQ: uniforms («Форма и экипировка»), partnership («Сотрудничество»). Сценарии обращаются к существующему GET /faq/help-content с section и article, сервер санитизирует SAFE_HTML. Штатный workflow `deploy_dev` уже запускает сидер автоматически. Для ручной публикации без CI (только если её действительно проводили) выполнить на DEV:
     php artisan db:seed --class=FaqContentSeeder --force
 Команда не затрагивает тексты существующих статей. Созданные материалы не публикуются в новости/Telegram. Для предложения сотрудничества — support@mskba.ru. Маркетплейсы показываются как возможные каналы продаж, не как партнёры MSKBA.
 

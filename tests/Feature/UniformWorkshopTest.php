@@ -16,6 +16,9 @@ final class UniformWorkshopTest extends TestCase
 
     public function test_workshop_page_is_public_and_shows_the_shared_mount(): void
     {
+        // CI executes PHP tests before Vite builds newly introduced entrypoints.
+        $this->withoutVite();
+
         $this->get('/uniforms/workshop')
             ->assertOk()
             ->assertSee('Мастерская формы')
