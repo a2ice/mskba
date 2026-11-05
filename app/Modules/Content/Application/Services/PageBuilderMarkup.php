@@ -29,6 +29,7 @@ final class PageBuilderMarkup
             ->allowElement('button', [
                 'class', 'id', 'title', 'type', 'aria-label', 'aria-pressed',
                 'aria-expanded', 'aria-selected', 'aria-controls', 'data-tab-name',
+                'data-mskba-faq-section', 'data-mskba-faq-article', 'data-mskba-faq-context',
             ])
             ->forceAttribute('button', 'type', 'button')
             ->allowElement('br')

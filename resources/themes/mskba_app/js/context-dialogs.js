@@ -37,7 +37,7 @@ if (actions && placeholder) {
     bindBackdrop(placeholder);
 }
 
-if (actions && help) {
+if (help) {
     const articleList = help.querySelector('[data-help-articles]');
     const lookup = help.querySelector('[data-help-search]');
     const options = help.querySelector('[data-help-options]');
@@ -246,12 +246,42 @@ if (actions && help) {
     document.addEventListener('pointerdown', event => {
         if (!options.hidden && !event.target.closest('[data-help-combobox]')) closeOptions();
     });
-    actions.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
+    actions?.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
         helpContext = event.currentTarget.dataset.helpContext || '';
         waitingForAuth = false;
         showDialog(help, event.currentTarget);
         load(null, null, true);
     });
+    // Shared declarative API for Page Builder and other server-rendered content.
+    // The Page Builder sanitizer explicitly allows only these safe data attributes.
+    function openFaq({ section = null, article = null, context = '' } = {}, trigger = null) {
+        helpContext = context;
+        waitingForAuth = false;
+        showDialog(help, trigger);
+        void load(section, article);
+    }
+    document.addEventListener('click', (event) => {
+        const trigger = event.target instanceof Element
+            ? event.target.closest('[data-mskba-faq-section], [data-mskba-faq-article]')
+            : null;
+        if (!trigger || !help) return;
+        event.preventDefault();
+        openFaq({
+            section: trigger.dataset.mskbaFaqSection || null,
+            article: trigger.dataset.mskbaFaqArticle || null,
+            context: trigger.dataset.mskbaFaqContext || '',
+        }, trigger);
+    });
+    // Optional integration for an editor-owned JS component (no duplicate modal).
+    window.addEventListener('mskba:faq:open', (event) => {
+        const detail = event.detail || {};
+        openFaq({
+            section: detail.section || null,
+            article: detail.article || null,
+            context: detail.context || '',
+        }, detail.trigger instanceof Element ? detail.trigger : null);
+    });
+
     help.querySelector('[data-context-help-close]')?.addEventListener('click', () => closeDialog(help));
     bindBackdrop(help);
     help.querySelector('[data-help-auth]')?.addEventListener('click', () => {
