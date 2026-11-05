@@ -6,7 +6,9 @@ use App\Modules\Content\Application\Services\PageBuilderMarkup;
 use App\Modules\Content\Application\Services\PageBuilderPublisher;
 use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class PageBuilderFaqDialogTest extends TestCase
@@ -15,6 +17,11 @@ final class PageBuilderFaqDialogTest extends TestCase
 
     public function test_home_page_can_render_declarative_faq_button_with_the_unified_dialog(): void
     {
+        // CI defaults to the legacy dark theme; the shared dialog belongs to mskba_app.
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
         $widget = PageBuilderComponent::query()->create([
             'slug' => 'faq-example',
             'name' => 'FAQ example',
