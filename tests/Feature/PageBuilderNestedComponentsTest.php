@@ -9,6 +9,7 @@ use App\Modules\Content\Application\Services\PageBuilderScriptVersionStore;
 use App\Modules\Content\Domain\Models\PageBuilderComponent;
 use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,7 +63,10 @@ final class PageBuilderNestedComponentsTest extends TestCase
             '.mskba-v3-story__body-content { max-width: 500px; }',
         );
         $page = $this->publishHomePage('<mskba-component name="home-venues-arena"></mskba-component>');
-        $admin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        $admin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
         $store = app(PageBuilderScriptVersionStore::class);
         foreach ([$arena, $form, $kit] as $component) {
             $store->saveDraft($admin, $component, 'console.log("'.$component->slug.'");');
