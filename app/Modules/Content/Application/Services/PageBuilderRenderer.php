@@ -39,67 +39,19 @@ final class PageBuilderRenderer
         // Always process components BEFORE the HTML sanitizer. Inject only
         // server-controlled, separately sanitized HTML after the sanitizer.
         $raw = str_replace('[[page_content]]', $pageHtml, $templateHtml);
-        $matches = PageBuilderComponentTags::find($raw);
-        $slugs = [];
-        foreach ($matches as $match) {
-            if (preg_match('/\bname="([a-z][a-z0-9_-]{1,79})"/', $match['attrs'], $m)) {
-                $slugs[] = $m[1];
-            }
-        }
-        /** @var Collection<string,PageBuilderComponent> $components */
-        $components = PageBuilderComponent::query()->whereIn('slug', array_unique($slugs))
-            ->get()->keyBy('slug');
-
-        $replacements = [];
-        $htmlWithTokens = preg_replace_callback(
-            PageBuilderComponentTags::PATTERN,
-            function (array $match) use (&$replacements, $components, $preview): string {
-                $attributes = [];
-                preg_match_all('/\b([a-z-]+)="([^"]*)"/', $match['attrs'], $found, PREG_SET_ORDER);
-                foreach ($found as $attr) {
-                    $attributes[$attr[1]] = $attr[2];
-                }
-                $token = 'MSKBACOMPONENTTOKEN'.count($replacements).'END';
-                $name = (string) ($attributes['name'] ?? '');
-                $source = (string) ($attributes['source'] ?? '');
-                $limit = is_numeric($attributes['limit'] ?? null) ? max(1, min(12, (int) $attributes['limit'])) : 5;
-                if ($name === 'games-list' && $this->sources->isRegistered($source)) {
-                    $url = route('page-builder.data', ['source' => $source, 'limit' => $limit]);
-                    $replacements[$token] = '<div class="mskba-builder-dynamic" data-mskba-builder-source="'
-                        .e($source).'" data-source-url="'.e($url).'">'
-                        .'<div class="mskba-builder-shimmer" aria-label="Загружаем список">'
-                        .'<span></span><span></span><span></span></div></div>';
-                } else {
-                    /** @var PageBuilderComponent|null $component */
-                    $component = $components->get($name);
-                    if ($name === 'hero-slider') {
-                        $replacements[$token] = $component && ($preview || $component->published_at !== null)
-                            ? $this->heroSlider->render($component, $preview, $this->markup->html(trim($match['slot'])))
-                            : ($preview ? '<p class="mskba-builder-unavailable">Hero Slider пока не создан или не опубликован.</p>' : '');
-                    } else {
-                        $body = $component
-                            ? ($preview ? $component->draft_html : $component->published_html)
-                            : null;
-                        $replacements[$token] = is_string($body)
-                            ? $this->markup->html($body)
-                            : ($preview ? '<p class="mskba-builder-unavailable">Неизвестный или неопубликованный компонент: '.e($name).'</p>' : '');
-                    }
-                }
-                return $token;
-            },
-            $raw,
-        );
-        $html = strtr($this->markup->html((string) $htmlWithTokens), $replacements);
+        // Expand placeholders in both root markup and reusable components.
+        $usedComponents = [];
+        $html = $this->renderComponents($raw, $preview, $usedComponents);
         // Hero Slider's editor-owned baseline replaces the old Vite import.
         // Keep its cascade position BEFORE template/page CSS so page-specific
         // layout overrides continue to win, just as they did with static CSS.
-        $hero = $components->get('hero-slider');
+        $hero = $usedComponents['hero-slider'] ?? null;
         $css = '';
         if ($hero !== null && ($preview || $hero->published_at !== null)) {
             $css = $this->markup->css($preview ? $hero->draft_css : $hero->published_css);
         }
         $css .= "\n".$this->markup->css($templateCss)."\n".$this->markup->css($pageCss);
-        foreach ($components as $component) {
+        foreach ($usedComponents as $component) {
             if ($component->slug === 'hero-slider') {
                 continue;
             }
@@ -114,7 +66,7 @@ final class PageBuilderRenderer
         if ($template instanceof PageBuilderTemplate) {
             $owners[] = $template;
         }
-        foreach ($components as $component) {
+        foreach ($usedComponents as $component) {
             if (! $preview && $component->published_at === null) {
                 continue;
             }
@@ -138,4 +90,91 @@ final class PageBuilderRenderer
             'lqip' => $previews,
         ];
     }
+    /**
+     * Sanitize each authored fragment independently, replacing nested component
+     * placeholders only with already-sanitized server-owned HTML.
+     *
+     * @param array<string,PageBuilderComponent> $usedComponents
+     * @param list<string> $ancestors
+     */
+    private function renderComponents(
+        string $source,
+        bool $preview,
+        array &$usedComponents,
+        array $ancestors = [],
+        int $depth = 0,
+    ): string {
+        $matches = PageBuilderComponentTags::find($source);
+        $slugs = [];
+        foreach ($matches as $match) {
+            if (preg_match('/\bname="([a-z][a-z0-9_-]{1,79})"/', $match['attrs'], $found)) {
+                $slugs[] = $found[1];
+            }
+        }
+        $components = $slugs === []
+            ? collect()
+            : PageBuilderComponent::query()->whereIn('slug', array_unique($slugs))->get()->keyBy('slug');
+
+        $replacements = [];
+        $withTokens = preg_replace_callback(
+            PageBuilderComponentTags::PATTERN,
+            function (array $match) use (&$replacements, &$usedComponents, $components, $preview, $ancestors, $depth): string {
+                $attributes = [];
+                preg_match_all('/\b([a-z-]+)="([^"]*)"/', $match['attrs'], $found, PREG_SET_ORDER);
+                foreach ($found as $attr) {
+                    $attributes[$attr[1]] = $attr[2];
+                }
+
+                $token = 'MSKBACOMPONENTTOKEN'.count($replacements).'END';
+                $name = (string) ($attributes['name'] ?? '');
+                $source = (string) ($attributes['source'] ?? '');
+                $limit = is_numeric($attributes['limit'] ?? null)
+                    ? max(1, min(12, (int) $attributes['limit'])) : 5;
+
+                if ($name === 'games-list' && $this->sources->isRegistered($source)) {
+                    $url = route('page-builder.data', ['source' => $source, 'limit' => $limit]);
+                    $replacements[$token] = '<div class="mskba-builder-dynamic" data-mskba-builder-source="'
+                        .e($source).'" data-source-url="'.e($url).'">'
+                        .'<div class="mskba-builder-shimmer" aria-label="Загружаем список">'
+                        .'<span></span><span></span><span></span></div></div>';
+                    return $token;
+                }
+
+                /** @var PageBuilderComponent|null $component */
+                $component = $components->get($name);
+                if ($component === null || (! $preview && $component->published_at === null)) {
+                    $replacements[$token] = $preview
+                        ? '<p class="mskba-builder-unavailable">Неизвестный или неопубликованный компонент: '.e($name).'</p>'
+                        : '';
+                    return $token;
+                }
+
+                // Prevent user-authored A → B → A and self-reference cycles.
+                if ($depth >= 8 || in_array($name, $ancestors, true)) {
+                    $replacements[$token] = $preview
+                        ? '<p class="mskba-builder-unavailable">Циклическая или слишком глубокая вложенность: '.e($name).'</p>'
+                        : '';
+                    return $token;
+                }
+
+                $usedComponents[$name] = $component;
+                if ($name === 'hero-slider') {
+                    $replacements[$token] = $this->heroSlider->render(
+                        $component, $preview, $this->markup->html(trim($match['slot'])),
+                    );
+                    return $token;
+                }
+
+                $body = (string) ($preview ? $component->draft_html : $component->published_html);
+                $replacements[$token] = $this->renderComponents(
+                    $body, $preview, $usedComponents, [...$ancestors, $name], $depth + 1,
+                );
+                return $token;
+            },
+            $source,
+        );
+
+        return strtr($this->markup->html((string) $withTokens), $replacements);
+    }
+
 }
