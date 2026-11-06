@@ -18,6 +18,7 @@
     ))->map(fn ($id) => (int) $id)->all();
     $amenities = \App\Modules\Venue\Domain\Models\Amenity::query()
         ->where('is_active', true)
+        ->where('scope', 'venue')
         ->orderBy('sort_order')
         ->orderBy('name')
         ->get();
@@ -77,14 +78,14 @@
 
     <div class="venue-facilities-editor__heading venue-facilities-editor__heading--amenities">
         <div>
-            <h2>Оснащение и удобства</h2>
-            <p>Набор автоматически меняется в зависимости от выбранного типа площадки.</p>
+            <h2>Общие удобства площадки</h2>
+            <p>Эти удобства общие для всех залов и кортов. Индивидуальное оснащение настраивается у каждой зоны.</p>
         </div>
     </div>
 
     <div class="venue-facilities-editor__amenities">
         @foreach($amenities as $amenity)
-            <label class="venue-facilities-editor__amenity" data-amenity-scope="{{ $amenity->applies_to }}">
+            <label class="venue-facilities-editor__amenity">
                 <input type="checkbox" name="amenity_ids[]" value="{{ $amenity->id }}" @checked(in_array((int) $amenity->id, $selectedAmenityIds, true))>
                 <span class="venue-facilities-editor__amenity-icon" aria-hidden="true"><i class="ti {{ $amenity->icon ?: 'ti-check' }}"></i></span>
                 <span>{{ $amenity->name }}</span>
@@ -123,24 +124,12 @@
 </style>
 
 <script>
-    (() => {
-        const editor = document.querySelector('[data-venue-facilities-editor]');
-        const typeSelect = document.getElementById('venueType');
-        const facilitiesForm = editor?.closest('form');
-        const hiddenType = facilitiesForm?.querySelector('input[name="type"]');
-        if (!editor || !typeSelect) return;
-
-        const refresh = () => {
-            const group = typeSelect.value === 'street_court' ? 'outdoor' : 'indoor';
-            if (hiddenType) hiddenType.value = typeSelect.value;
-            editor.querySelectorAll('[data-amenity-scope]').forEach((item) => {
-                const visible = ['all', group].includes(item.dataset.amenityScope);
-                item.hidden = !visible;
-                if (!visible) item.querySelector('input').checked = false;
-            });
-        };
-
-        typeSelect.addEventListener('change', refresh);
-        refresh();
-    })();
+(() => {
+    const editor = document.querySelector('[data-venue-facilities-editor]');
+    const selector = document.getElementById('venueType');
+    const hiddenType = editor?.closest('form')?.querySelector('input[name="type"]');
+    if (selector && hiddenType) {
+        selector.addEventListener('change', () => { hiddenType.value = selector.value; });
+    }
+})();
 </script>

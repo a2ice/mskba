@@ -21,6 +21,7 @@
             </select>
         </label>
     </div>
+    @include('venues.partials.initial-courts')
     <fieldset class="app-venue-create__address" data-address-suggest data-address-proximity-url="{{ route('venues.proximity-check') }}">
         <legend>Адрес площадки *</legend>
         <div class="app-venue-create__address-actions">
@@ -55,19 +56,6 @@
         @endforeach
     </select>
     <div class="app-venue-create__grid">
-        <label class="app-venue-create__field">Залов / зон (по умолчанию 1)
-            <input name="court_count" type="number" min="1" max="10" value="{{ old('court_count', 1) }}">
-        </label>
-        <label class="app-venue-create__field">Колец в каждой зоне (по умолчанию 2)
-            <input name="hoops_count" type="number" min="0" max="20" value="{{ old('hoops_count', 2) }}">
-        </label>
-        <label class="app-venue-create__field">Покрытие (необязательно)
-            <select name="surface_type"><option value="">Не указано</option>
-                @foreach(\App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum::cases() as $surface)
-                    <option value="{{ $surface->value }}" @selected(old('surface_type') === $surface->value)>{{ $surface->label() }}</option>
-                @endforeach
-            </select>
-        </label>
         <label class="app-venue-create__field">Условия посещения
             <select name="access_type">
                 <option value="unknown">Не знаю</option>

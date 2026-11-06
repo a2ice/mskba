@@ -107,6 +107,9 @@
         @enderror
     </div>
 
+    @if($venue === null)
+        @include('venues.partials.initial-courts')
+    @endif
     <div class="mb-3 @if($compactCreate) d-none @endif">
         @unless($compactCreate)
         <label for="metro_station" class="form-label">Ближайшее метро</label>
