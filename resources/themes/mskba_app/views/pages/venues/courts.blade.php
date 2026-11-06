@@ -86,6 +86,16 @@
                                 </select>
                             </label>
                         </div>
+                        <div class="app-rental-pricing__grid">
+                            <label class="field-group" for="court-{{ $court->id }}-short-description">
+                                <span>Краткое описание</span>
+                                <textarea id="court-{{ $court->id }}-short-description" name="short_description" rows="3" maxlength="500" placeholder="Наследовать описание площадки">{{ $court->short_description }}</textarea>
+                            </label>
+                            <label class="field-group" for="court-{{ $court->id }}-full-description">
+                                <span>Полное описание</span>
+                                <textarea id="court-{{ $court->id }}-full-description" name="full_description" rows="6" maxlength="10000" placeholder="Наследовать описание площадки">{{ $court->full_description }}</textarea>
+                            </label>
+                        </div>
                         @include('venues.partials.court-amenities', ['court' => $court, 'courtAmenities' => $courtAmenities])
                         <label class="check-label">
                             <input type="hidden" name="allows_whole" value="0">
@@ -271,6 +281,16 @@
                         <option value="outdoor">Уличный корт</option>
                     </select>
                 </label>
+                <div class="app-rental-pricing__grid">
+                    <label class="field-group" for="new-court-short-description">
+                        <span>Краткое описание</span>
+                        <textarea id="new-court-short-description" name="short_description" rows="3" maxlength="500" placeholder="Наследовать описание площадки">{{ old('short_description') }}</textarea>
+                    </label>
+                    <label class="field-group" for="new-court-full-description">
+                        <span>Полное описание</span>
+                        <textarea id="new-court-full-description" name="full_description" rows="6" maxlength="10000" placeholder="Наследовать описание площадки">{{ old('full_description') }}</textarea>
+                    </label>
+                </div>
                 @include('venues.partials.court-amenities', ['court' => null, 'courtAmenities' => $courtAmenities])
                 <label class="check-label"><input type="checkbox" name="allows_whole" value="1" checked>Разрешать аренду целиком</label>
                 <label class="check-label"><input type="checkbox" name="allows_halves" value="1">Разрешать аренду половин</label>

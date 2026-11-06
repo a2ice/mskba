@@ -43,6 +43,8 @@ final class VenueCourtManagementTest extends TestCase
             ->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
                 'environment' => 'indoor',
                 'name' => 'Малый зал',
+                'short_description' => 'Кратко о малом зале',
+                'full_description' => 'Подробное описание малого зала.',
                 'hoops_count' => 2,
                 'surface_type' => VenueSurfaceTypeEnum::PARQUET->value,
                 'allows_whole' => '1',
@@ -58,11 +60,15 @@ final class VenueCourtManagementTest extends TestCase
         $this->assertTrue($secondCourt->allows_whole);
         $this->assertTrue($secondCourt->allows_halves);
         $this->assertFalse($secondCourt->is_primary);
+        $this->assertSame('Кратко о малом зале', $secondCourt->short_description);
+        $this->assertSame('Подробное описание малого зала.', $secondCourt->full_description);
 
         $this->actingAs($owner)
             ->put(route('account.venues.courts.update', [$venue->routeIdentifier(), $secondCourt->routeIdentifier()]), [
                 'environment' => 'indoor',
                 'name' => 'Зал Молния',
+                'short_description' => 'Зал после ремонта',
+                'full_description' => 'Новый паркет и освещение.',
                 'alias' => 'molniya',
                 'sort_order' => 20,
                 'hoops_count' => 1,
@@ -75,6 +81,8 @@ final class VenueCourtManagementTest extends TestCase
         $this->assertDatabaseHas('venue_courts', [
             'id' => $secondCourt->id,
             'name' => 'Зал Молния',
+            'short_description' => 'Зал после ремонта',
+            'full_description' => 'Новый паркет и освещение.',
             'alias' => 'molniya',
             'hoops_count' => 1,
             'surface_type' => VenueSurfaceTypeEnum::ASPHALT->value,

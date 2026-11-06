@@ -27,6 +27,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Grid;
@@ -111,6 +112,18 @@ final class CourtsRelationManager extends RelationManager
                                                 ->pluck('name', 'id')->all();
                                         })
                                         ->columnSpanFull(),
+                                ]),
+                            Section::make('Описание игровой зоны')
+                                ->description('Если описание не заполнено, используется описание площадки.')
+                                ->schema([
+                                    Textarea::make('short_description')
+                                        ->label('Краткое описание')
+                                        ->rows(3)
+                                        ->maxLength(500),
+                                    Textarea::make('full_description')
+                                        ->label('Полное описание')
+                                        ->rows(6)
+                                        ->maxLength(10000),
                                 ]),
                             Section::make('Конфигурация аренды')
                                 ->columns(['default' => 1, 'md' => 3])

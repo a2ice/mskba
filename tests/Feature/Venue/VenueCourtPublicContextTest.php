@@ -19,6 +19,46 @@ final class VenueCourtPublicContextTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_court_short_and_full_descriptions_override_parent_and_can_inherit(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'short_description' => 'Общая информация о школе',
+            'full_description' => 'Школьный комплекс с несколькими игровыми зонами.',
+        ]);
+        $outdoor = $venue->primaryCourt()->firstOrFail();
+        $outdoor->update([
+            'name' => 'Уличная площадка',
+            'short_description' => 'Уличная площадка уровня американского колледжа',
+            'full_description' => 'Открытый баскетбольный корт с двумя кольцами.',
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Общая информация о школе')
+            ->assertSee('Школьный комплекс с несколькими игровыми зонами.')
+            ->assertDontSee('Уличная площадка уровня американского колледжа');
+
+        $courtUrl = route('venues.courts.show', [$venue->routeIdentifier(), $outdoor->routeIdentifier()]);
+        $this->get($courtUrl)
+            ->assertOk()
+            ->assertSee('Уличная площадка уровня американского колледжа')
+            ->assertSee('Открытый баскетбольный корт с двумя кольцами.')
+            ->assertDontSee('Общая информация о школе')
+            ->assertDontSee('Школьный комплекс с несколькими игровыми зонами.');
+
+        $outdoor->update(['short_description' => null, 'full_description' => null]);
+        $this->get($courtUrl)
+            ->assertOk()
+            ->assertSee('Общая информация о школе')
+            ->assertSee('Школьный комплекс с несколькими игровыми зонами.');
+    }
+
     public function test_non_primary_court_has_compact_picker_and_own_characteristics(): void
     {
         $venue = Venue::factory()->create([
