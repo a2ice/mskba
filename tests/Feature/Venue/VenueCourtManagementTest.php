@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
