@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
+use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
@@ -25,6 +26,7 @@ final readonly class QuoteVenueBookingHandler
         private VenueEventAvailability $availability,
         private FeatureFlags $features,
         private VenueSlotPricing $pricing,
+        private VenuePricingRuleEvaluator $rules,
         private EffectiveCourtPolicy $effectivePolicies,
     ) {}
 
@@ -125,12 +127,19 @@ final readonly class QuoteVenueBookingHandler
             ? ((int) ($policy->payment_window_minutes ?: 15))
             : null;
         $steps = count($price['prices_per_step_minor']);
-        $amountMinor = $price['amount_minor'];
+        $rulePricing = $this->rules->evaluate(
+            $venue, $court, $localStart, $durationMinutes, $courtStep, $scope,
+            $price['amount_minor'],
+        );
+        $amountMinor = $rulePricing['total_minor'];
+        if ($effective['requires_payment'] && $amountMinor <= 0) {
+            throw new VenueBookingPolicyException('Тарифное условие не может обнулить обязательную оплату.');
+        }
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
         $publicId = (string) Str::uuid();
         $snapshot = [
-            'schema_version' => 2,
+            'schema_version' => $rulePricing['adjustments'] === [] ? 2 : 3,
             'policy' => [
                 'id' => $policy->id,
                 'version' => $policy->version,
@@ -167,12 +176,16 @@ final readonly class QuoteVenueBookingHandler
                 'timezone' => $timezone,
             ],
             'pricing' => [
-                'formula' => $price['uses_custom_prices'] ? 'sum(prices_per_step_minor)' : 'steps * price_per_step_minor',
+                'formula' => $rulePricing['adjustments'] !== []
+                    ? 'apply_published_rules(sum(prices_per_step_minor))'
+                    : ($price['uses_custom_prices'] ? 'sum(prices_per_step_minor)' : 'steps * price_per_step_minor'),
                 'steps' => $steps,
                 'price_per_step_minor' => (int) $fallbackPricePerStep,
                 'prices_per_step_minor' => $price['prices_per_step_minor'],
                 'uses_custom_prices' => $price['uses_custom_prices'],
                 'amount_minor' => $amountMinor,
+                'base_amount_minor' => $price['amount_minor'],
+                'rule_adjustments' => $rulePricing['adjustments'],
                 'currency' => $policy->currency,
                 'court_id' => $court->id,
                 'venue_step_minutes' => $venueStep,

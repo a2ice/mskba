@@ -115,6 +115,7 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventCont
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
@@ -1157,6 +1158,18 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::delete('/venues/{venue}/calendar-prices/{price}', [VenueBookingPolicyController::class, 'destroyCalendarPrice'])
                 ->whereNumber('venue')->whereNumber('price')
                 ->name('account.venues.calendar-prices.destroy');
+            Route::get('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'index'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.index');
+            Route::post('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'save'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.save');
+            Route::post('/venues/{venue}/pricing-rules/preview', [VenuePricingRuleController::class, 'preview'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.preview');
+            Route::post('/venues/{venue}/pricing-rules/exclude', [VenuePricingRuleController::class, 'exclude'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.exclude');
+            Route::post('/venues/{venue}/pricing-rules/{rule}/publish', [VenuePricingRuleController::class, 'publish'])
+                ->whereNumber('venue')->whereNumber('rule')->name('account.venues.pricing-rules.publish');
+            Route::delete('/venues/{venue}/pricing-rules/{rule}', [VenuePricingRuleController::class, 'destroy'])
+                ->whereNumber('venue')->whereNumber('rule')->name('account.venues.pricing-rules.destroy');
         });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');

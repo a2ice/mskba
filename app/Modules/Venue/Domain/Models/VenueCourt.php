@@ -79,6 +79,16 @@ final class VenueCourt extends Model
         return $this->hasMany(VenueCourtSlotPrice::class);
     }
 
+    public function pricingRules(): HasMany
+    {
+        return $this->hasMany(VenuePricingRule::class);
+    }
+
+    public function pricingRuleOverrides(): HasMany
+    {
+        return $this->hasMany(VenueCourtPricingRuleOverride::class);
+    }
+
     public function calendarSlotPrices(): HasMany
     {
         return $this->hasMany(VenueCourtCalendarSlotPrice::class);
