@@ -65,6 +65,8 @@ return [
         Venue::class,
         VenueCalendarSlotPrice::class,
         VenueCourtCalendarSlotPrice::class,
+        VenuePricingRule::class,
+        VenueCourtPricingRuleOverride::class,
         VenueDuplicate::class,
         VenueSchedule::class,
         VenueScheduleInterval::class,
