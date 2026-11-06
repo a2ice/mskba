@@ -149,6 +149,9 @@ final class VenuePricingRuleController extends Controller
         return redirect()->route('account.venues.pricing-rules.index', $venue->id)
             ->with('rule_preview', [
                 ...$result,
+                'subtotal_after_rules_minor' => $result['total_minor'],
+                'total_minor' => $commission['total_minor'],
+                'commissions' => $commission,
                 'currency' => $policy->currency,
                 'court_name' => $court->name,
                 'starts_at' => $localStart->format('d.m.Y H:i'),
