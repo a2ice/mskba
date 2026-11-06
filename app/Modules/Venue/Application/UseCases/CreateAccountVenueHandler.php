@@ -13,11 +13,12 @@ use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Application\Services\VenueOwnershipClaimDraftManager;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
+use App\Modules\Venue\Application\Services\VenueCourtConfigurator;
+use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
-use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Infrastructure\Jobs\FindVenueDuplicatesJob;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,8 @@ final class CreateAccountVenueHandler
         private readonly VenueUniquenessChecker $uniqueness,
         private readonly VenueProximityService $proximity,
         private readonly VenueTagSynchronizer $tagSynchronizer,
+        private readonly VenueCourtConfigurator $courtConfigurator,
+        private readonly VenueFacilitiesSynchronizer $facilities,
         private readonly VenueOwnershipClaimDraftManager $drafts,
     ) {}
 
@@ -108,27 +111,8 @@ final class CreateAccountVenueHandler
                 );
                 $this->tagSynchronizer->sync($venue, $tagNames);
 
-                // Only the new shared create form requests initial zones. Legacy
-                // callers without court_count keep the previous creation contract.
-                if (isset($data['court_count'])) {
-                    $count = (int) $data['court_count'];
-                    $hoops = (int) ($data['hoops_count'] ?? 2);
-                    $outdoor = $type === VenueTypeEnum::STREET_COURT;
-                    foreach (range(1, $count) as $index) {
-                        $venue->courts()->create([
-                            'name' => ($outdoor ? 'Зона ' : 'Зал ').$index,
-                            'alias' => ($outdoor ? 'zona-' : 'zal-').$index,
-                            'sort_order' => $index * 10,
-                            'is_primary' => $index === 1,
-                            'supports_halves' => false,
-                            'hoops_count' => $hoops,
-                            'surface_type' => $data['surface_type'] ?? null,
-                            'environment' => $outdoor
-                                ? VenueCourtEnvironmentEnum::OUTDOOR->value
-                                : VenueCourtEnvironmentEnum::INDOOR->value,
-                        ]);
-                    }
-                }
+                $this->courtConfigurator->configure($venue, (array) ($data['initial_courts'] ?? []));
+                $this->facilities->sync($venue, [], (array) ($data['amenity_ids'] ?? []));
 
                 if (($data['creation_role'] ?? null) === VenueCreationRoleEnum::REPRESENTATIVE->value) {
                     $draft = $this->drafts->create($venue, User::query()->findOrFail($actor->user_id),

@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
+use App\Modules\Venue\Application\Services\VenueCourtConfigurator;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Application\Services\VenueProximityService;
@@ -30,6 +31,7 @@ final class VenueBackofficeEditor
     public function __construct(
         private readonly CreateLocationHandler $locations,
         private readonly VenueFacilitiesSynchronizer $facilities,
+        private readonly VenueCourtConfigurator $courtConfigurator,
         private readonly VenueTagSynchronizer $tags,
         private readonly VenueUniquenessChecker $uniqueness,
         private readonly VenueProximityService $proximity,
@@ -180,6 +182,7 @@ final class VenueBackofficeEditor
                 $attributes['status'] = VenueStatusEnum::UNCONFIRMED->value;
                 $attributes['created_by_actor_id'] = $this->actorResolver->resolve($actor, null)?->id;
                 $venue = Venue::query()->create($attributes);
+                $this->courtConfigurator->configure($venue, (array) ($data['initial_courts'] ?? []));
                 $ownerId = $data['owner_user_id'] ?? $actor->canonical()->id;
                 $owner = User::query()->findOrFail($ownerId);
                 app(EntityContractManager::class)->grantOwner(

@@ -37,7 +37,8 @@ final class AmenityResource extends Resource
     public static function canEdit(Model $record): bool { return self::canView($record); }
     public static function canDelete(Model $record): bool
     {
-        return $record instanceof Amenity && self::canViewAny() && ! $record->venues()->exists();
+        return $record instanceof Amenity && self::canViewAny()
+            && ! $record->venues()->exists() && ! $record->courts()->exists();
     }
     public static function canDeleteAny(): bool { return false; }
 
@@ -50,8 +51,10 @@ final class AmenityResource extends Resource
                     ->regex('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D')->unique(ignoreRecord: true),
                 Textarea::make('description')->label('Описание')->columnSpanFull(),
                 TextInput::make('icon')->label('Код иконки')->maxLength(255),
-                Select::make('applies_to')->label('Для типа площадки')->required()->default('all')
-                    ->options(['all' => 'Для всех', 'indoor' => 'В помещении', 'outdoor' => 'На улице']),
+                Select::make('scope')->label('Уровень')->required()->default('venue')
+                    ->options(['venue' => 'Общие удобства площадки', 'court' => 'Оснащение зала / корта']),
+                Select::make('applies_to')->label('Для каких зон')->required()->default('all')
+                    ->options(['all' => 'Любые', 'indoor' => 'Крытые', 'outdoor' => 'Уличные']),
                 TextInput::make('sort_order')->label('Порядок')->numeric()->minValue(0)->default(0),
                 Toggle::make('is_active')->label('Активно')->default(true),
             ]),
@@ -63,6 +66,8 @@ final class AmenityResource extends Resource
         return $table->columns([
             TextColumn::make('name')->label('Удобство')->searchable()->sortable(),
             TextColumn::make('alias')->label('Код')->searchable(),
+            TextColumn::make('scope')->label('Уровень')
+                ->formatStateUsing(fn (string $state): string => $state === 'court' ? 'Зал / корт' : 'Площадка'),
             TextColumn::make('applies_to')->label('Применимость')
                 ->formatStateUsing(fn (string $state): string => match ($state) {
                     'indoor' => 'В помещении', 'outdoor' => 'На улице', default => 'Все',

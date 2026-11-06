@@ -4,7 +4,6 @@ namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCharacteristic;
@@ -34,13 +33,10 @@ final class VenueFacilitiesSynchronizer
             throw new InvalidArgumentException('Одна из выбранных опций площадки недоступна.');
         }
 
-        $group = $venue->type === VenueTypeEnum::STREET_COURT ? 'outdoor' : 'indoor';
-        $hasInapplicableAmenity = $amenities->contains(
-            fn (Amenity $amenity): bool => ! in_array((string) $amenity->applies_to, ['all', $group], true),
-        );
-
-        if ($hasInapplicableAmenity) {
-            throw new InvalidArgumentException('Выбранная опция не подходит для этого типа площадки.');
+        // A venue is a container and can have both indoor and outdoor courts.
+        // Shared amenities do not depend on its category (school / arena / ...).
+        if ($amenities->contains(fn (Amenity $amenity): bool => $amenity->scope !== 'venue')) {
+            throw new InvalidArgumentException('Оснащение зала или корта необходимо выбрать в его настройках.');
         }
 
         $hoopsCount = isset($characteristics['hoops_count'])

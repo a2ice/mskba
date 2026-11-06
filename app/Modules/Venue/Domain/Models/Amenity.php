@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'description',
     'icon',
     'applies_to',
+    'scope',
     'is_active',
     'sort_order',
 ])]
@@ -24,6 +25,12 @@ class Amenity extends Model
     use HasFactory;
 
     use SoftDeletes;
+
+    public function courts(): BelongsToMany
+    {
+        return $this->belongsToMany(VenueCourt::class, 'venue_court_amenities')
+            ->withTimestamps();
+    }
 
     public function venues(): BelongsToMany
     {

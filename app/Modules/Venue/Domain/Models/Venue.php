@@ -15,6 +15,7 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -73,8 +74,11 @@ class Venue extends Model
     {
         static::created(function (self $venue): void {
             $venue->courts()->create([
-                'name' => 'Зал 1',
-                'alias' => 'zal-1',
+                'name' => $venue->type === VenueTypeEnum::STREET_COURT ? 'Корт 1' : 'Зал 1',
+                'alias' => $venue->type === VenueTypeEnum::STREET_COURT ? 'kort-1' : 'zal-1',
+                'environment' => $venue->type === VenueTypeEnum::STREET_COURT
+                    ? VenueCourtEnvironmentEnum::OUTDOOR->value
+                    : VenueCourtEnvironmentEnum::INDOOR->value,
                 'sort_order' => 10,
                 'is_primary' => true,
                 'supports_halves' => false,
@@ -203,6 +207,7 @@ class Venue extends Model
     {
         return $this
             ->belongsToMany(Amenity::class, 'venue_amenities')
+            ->where('amenities.scope', 'venue')
             ->withPivot(['note', 'deleted_at'])
             ->wherePivotNull('deleted_at')
             ->withTimestamps();
@@ -231,6 +236,22 @@ class Venue extends Model
     public function courts(): HasMany
     {
         return $this->hasMany(VenueCourt::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * Public discovery reads actual shared and court-specific facilities.
+     *
+     * @return array<int, int>
+     */
+    public function effectiveAmenityIds(): array
+    {
+        $shared = $this->amenities()->where('is_active', true)->pluck('amenities.id');
+        $specific = $this->courts()->with('amenities')->get()->flatMap(
+            fn (VenueCourt $court) => $court->amenities->where('is_active', true)->pluck('id'),
+        );
+
+        return $shared->merge($specific)->map(fn ($id): int => (int) $id)
+            ->unique()->values()->all();
     }
 
     public function primaryCourt(): HasOne

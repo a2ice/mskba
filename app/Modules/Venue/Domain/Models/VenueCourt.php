@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -49,6 +50,23 @@ final class VenueCourt extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function amenities(): BelongsToMany
+    {
+        return $this->belongsToMany(Amenity::class, 'venue_court_amenities')
+            ->where('amenities.scope', 'court')
+            ->withTimestamps();
+    }
+
+    public function publicName(): string
+    {
+        if ($this->environment === \App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum::OUTDOOR
+            && preg_match('/^Зал\s+(\d+)$/ui', $this->name, $matches) === 1) {
+            return 'Корт '.$matches[1];
+        }
+
+        return $this->name;
     }
 
     public function schedule(): HasOne

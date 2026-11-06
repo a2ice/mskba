@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -33,9 +34,15 @@ class CreateVenueRequest extends FormRequest
             'creation_role' => ['sometimes', Rule::enum(VenueCreationRoleEnum::class)],
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
-            'court_count' => ['sometimes', 'integer', 'between:1,10'],
-            'hoops_count' => ['sometimes', 'integer', 'between:0,20'],
-            'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
+            'initial_courts' => ['required', 'array', 'min:1', 'max:10'],
+            'initial_courts.*.name' => ['required', 'string', 'min:2', 'max:120'],
+            'initial_courts.*.environment' => ['required', Rule::enum(VenueCourtEnvironmentEnum::class)],
+            'initial_courts.*.hoops_count' => ['nullable', 'integer', 'between:1,2'],
+            'initial_courts.*.surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
+            'initial_courts.*.amenity_ids' => ['nullable', 'array'],
+            'initial_courts.*.amenity_ids.*' => ['integer', 'distinct', 'exists:amenities,id'],
+            'amenity_ids' => ['nullable', 'array'],
+            'amenity_ids.*' => ['integer', 'distinct', 'exists:amenities,id'],
             'photo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'dimensions:max_width=6000,max_height=6000'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'access_type' => ['sometimes', Rule::in(['unknown', 'free', 'paid'])],
@@ -129,6 +136,9 @@ class CreateVenueRequest extends FormRequest
             'name' => 'название',
             'type' => 'тип площадки',
             'access_type' => 'условия оплаты',
+            'initial_courts' => 'залы и корты',
+            'initial_courts.*.name' => 'название зала или корта',
+            'initial_courts.*.environment' => 'тип зала или корта',
             'short_description' => 'краткое описание',
             'full_description' => 'полное описание',
             'tags' => 'теги',
