@@ -67,7 +67,7 @@ class VenueFacilitiesManagementTest extends TestCase
                     'surface_condition' => 3,
                     'marking_condition' => VenueMarkingConditionEnum::GOOD->value,
                 ],
-                'amenity_ids' => [$lighting->id, $parking->id],
+                'amenity_ids' => [$parking->id],
             ])
             ->assertSessionHasNoErrors();
 
@@ -80,8 +80,11 @@ class VenueFacilitiesManagementTest extends TestCase
             'first_hoop_marking' => 'good',
             'second_hoop_marking' => null,
         ]);
-        $this->assertDatabaseHas('venue_amenities', [
-            'venue_id' => $venue->id,
+        app(\App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer::class)->sync(
+            $venue->primaryCourt()->firstOrFail(), [$lighting->id],
+        );
+        $this->assertDatabaseHas('venue_court_amenities', [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
             'amenity_id' => $lighting->id,
         ]);
         $this->assertDatabaseHas('venue_amenities', [
@@ -118,7 +121,7 @@ class VenueFacilitiesManagementTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('venue_characteristics', ['venue_id' => $venue->id]);
-        $this->assertDatabaseMissing('venue_amenities', [
+        $this->assertDatabaseHas('venue_amenities', [
             'venue_id' => $venue->id,
             'amenity_id' => $shower->id,
         ]);
@@ -176,7 +179,7 @@ class VenueFacilitiesManagementTest extends TestCase
         $this->assertSame(['before' => $parking->name, 'after' => $shower->name], collect($fields->get('Удобства'))->only(['before', 'after'])->all());
     }
 
-    public function test_outdoor_venue_rejects_indoor_amenity(): void
+    public function test_outdoor_court_can_share_venue_shower_facility(): void
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
@@ -194,7 +197,7 @@ class VenueFacilitiesManagementTest extends TestCase
                 'amenity_ids' => [$shower->id],
             ])
             ->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
-            ->assertSessionHas('error', 'Выбранная опция не подходит для этого типа площадки.');
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('venue_amenities', [
             'venue_id' => $venue->id,

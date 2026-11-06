@@ -103,7 +103,7 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         $this->actingAs($this->user(Role::SUPERADMIN));
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
         $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
-        $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
+        $ids = Amenity::query()->whereIn('alias', ['parking', 'shower', 'locker-room'])->pluck('id')->all();
 
         Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
             ->set('data.amenity_ids', $ids)
@@ -117,7 +117,7 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
     {
         $this->actingAs($this->user(Role::SUPERADMIN));
         $venue = Venue::factory()->create(['type' => VenueTypeEnum::STREET_COURT]);
-        $shower = Amenity::query()->where('alias', 'shower')->firstOrFail();
+        $lighting = Amenity::query()->where('alias', 'lighting')->firstOrFail();
 
         try {
             app(VenueBackofficeEditor::class)->save([
@@ -125,9 +125,9 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'status' => $venue->status->value,
                 'access_type' => 'unknown',
-                'amenity_ids' => [$shower->id],
+                'amenity_ids' => [$lighting->id],
                 ...app(VenueBackofficeEditor::class)->fields($venue),
-                'amenity_ids' => [$shower->id],
+                'amenity_ids' => [$lighting->id],
             ], $venue);
             $this->fail('Expected inline validation error');
         } catch (ValidationException $error) {
@@ -135,27 +135,21 @@ final class BackofficeVenueGeographyModerationTest extends TestCase
         }
     }
 
-    public function test_lighting_fence_and_hoop_nets_are_valid_for_indoor_and_outdoor_venues(): void
+    public function test_lighting_fence_and_hoop_nets_belong_to_individual_courts_of_both_environments(): void
     {
-        $this->actingAs($this->user(Role::SUPERADMIN));
         $ids = Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])->pluck('id')->all();
         $this->assertCount(3, $ids);
-        $this->assertSame(3, Amenity::query()
-            ->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])
-            ->where('applies_to', 'all')->count());
+        $this->assertSame(3, Amenity::query()->whereIn('alias', ['lighting', 'fence', 'hoop-nets'])
+            ->where('scope', 'court')->where('applies_to', 'all')->count());
 
-        $editor = app(VenueBackofficeEditor::class);
-        foreach ([VenueTypeEnum::SPORTS_HALL, VenueTypeEnum::STREET_COURT] as $type) {
-            $venue = Venue::factory()->create(['type' => $type]);
-            $editor->save(array_replace([
-                'name' => $venue->name,
-                'type' => $type->value,
-                'status' => $venue->status->value,
-                'access_type' => 'unknown',
-                'amenity_ids' => $ids,
-            ], $editor->fields($venue), ['amenity_ids' => $ids]), $venue);
+        foreach (['indoor', 'outdoor'] as $environment) {
+            $venue = Venue::factory()->create(['type' => VenueTypeEnum::SCHOOL]);
+            $court = $venue->primaryCourt()->firstOrFail();
+            $court->update(['environment' => $environment]);
 
-            $this->assertCount(3, $venue->fresh()->amenities);
+            app(\App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer::class)->sync($court, $ids);
+            $this->assertCount(3, $court->fresh()->amenities);
+            $this->assertCount(0, $venue->fresh()->amenities);
         }
     }
 
