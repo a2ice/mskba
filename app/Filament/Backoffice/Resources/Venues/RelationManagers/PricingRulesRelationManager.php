@@ -367,7 +367,10 @@ final class PricingRulesRelationManager extends RelationManager
             $venue, $court, $result['total_minor'], $currency,
         );
         $base = $money->format($result['base_minor'], $currency).' '.$currency;
-        $total = $money->format($result['total_minor'], $currency).' '.$currency;
+        $total = $money->format($commission['total_minor'], $currency).' '.$currency;
+        $portalFee = $money->format($commission['portal_fee_minor'], $currency);
+        $agentFee = $money->format($commission['agent_fee_minor'], $currency);
+        $afterRules = $money->format($result['total_minor'], $currency);
         $adjustments = collect($result['adjustments'])->map(
             fn (array $row): string => $row['name'].' (v'.$row['version'].')',
         )->implode(', ');
