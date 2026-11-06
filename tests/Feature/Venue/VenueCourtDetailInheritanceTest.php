@@ -62,6 +62,67 @@ final class VenueCourtDetailInheritanceTest extends TestCase
             ->assertDontSee($primaryPhoto, false);
     }
 
+    public function test_overview_shows_only_shared_amenities_and_court_page_adds_only_its_equipment(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $indoor = $venue->primaryCourt()->firstOrFail();
+        $outdoor = $venue->courts()->create([
+            'name' => 'Уличный корт',
+            'alias' => 'outdoor',
+            'sort_order' => 20,
+            'environment' => 'outdoor',
+        ]);
+
+        $shared = collect(range(1, 8))->map(fn (int $number) =>
+            \App\Modules\Venue\Domain\Models\Amenity::factory()->create([
+                'name' => 'Общее удобство '.$number,
+                'scope' => 'venue',
+                'applies_to' => 'all',
+                'sort_order' => $number,
+            ])
+        );
+        $venue->amenities()->sync($shared->pluck('id')->all());
+
+        $indoorFeature = \App\Modules\Venue\Domain\Models\Amenity::factory()->create([
+            'name' => 'Только крытый зал',
+            'scope' => 'court',
+            'applies_to' => 'indoor',
+            'sort_order' => 20,
+        ]);
+        $outdoorFeature = \App\Modules\Venue\Domain\Models\Amenity::factory()->create([
+            'name' => 'Только уличный корт',
+            'scope' => 'court',
+            'applies_to' => 'outdoor',
+            'sort_order' => 21,
+        ]);
+        $indoor->amenities()->sync([$indoorFeature->id]);
+        $outdoor->amenities()->sync([$outdoorFeature->id]);
+
+        $overview = $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk()
+            ->assertSee('Общее удобство 8')
+            ->assertDontSee('Только крытый зал')
+            ->assertDontSee('Только уличный корт')
+            ->assertSee('крытый зал и уличный корт');
+
+        $this->assertSame(1, preg_match(
+            '/<div class="app-venue-intro__badges">(.+?)<\/div>/s',
+            $overview->getContent(),
+            $matches,
+        ));
+        $this->assertSame(7, substr_count($matches[1], 'class="badge"'));
+        $this->assertStringContainsString('href="#app-venue-about"', $matches[1]);
+        $this->assertStringContainsString('и другие', $matches[1]);
+
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $indoor->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee('Только крытый зал')
+            ->assertDontSee('Только уличный корт');
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $outdoor->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee('Только уличный корт')
+            ->assertDontSee('Только крытый зал');
+    }
+
     public function test_individual_schedule_inherits_until_overridden_and_parent_closed_exception_always_wins(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
