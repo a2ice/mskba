@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -39,6 +40,11 @@ final class VenueCourtSettingsController extends Controller
             'rental_enabled' => ['sometimes', Rule::in(['inherit', 'yes', 'no'])],
             'whole_price_per_step' => ['sometimes', 'nullable', 'string', 'max:32'],
             'half_price_per_step' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'minimum_duration_minutes' => ['sometimes', 'nullable', 'integer', 'between:15,1440'],
+            'maximum_duration_minutes' => ['sometimes', 'nullable', 'integer', 'between:15,1440'],
+            'time_step_minutes' => ['sometimes', 'nullable', 'integer', 'between:5,240'],
+            'minimum_lead_time_minutes' => ['sometimes', 'nullable', 'integer', 'between:0,525600'],
+            'maximum_advance_days' => ['sometimes', 'nullable', 'integer', 'between:1,730'],
         ]);
         if (array_key_exists('operational_status', $validated)) {
             abort_unless($venueAccess->canEditCourtSchedule(
@@ -70,6 +76,29 @@ final class VenueCourtSettingsController extends Controller
                 throw ValidationException::withMessages([$key => $exception->getMessage()]);
             }
         }
+        foreach ([
+            'minimum_duration_minutes', 'maximum_duration_minutes', 'time_step_minutes',
+            'minimum_lead_time_minutes', 'maximum_advance_days',
+        ] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $values[$field] = $validated[$field] === null ? null : (int) $validated[$field];
+            }
+        }
+
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venueModel->id)
+            ->where('active_marker', true)->first();
+        if ($policy !== null) {
+            // Use the NEW input when an override is cleared (NULL means inherit).
+            $step = (int) ((array_key_exists('time_step_minutes', $values) ? $values['time_step_minutes'] : $courtModel->time_step_minutes) ?? $policy->time_step_minutes);
+            $minimum = (int) ((array_key_exists('minimum_duration_minutes', $values) ? $values['minimum_duration_minutes'] : $courtModel->minimum_duration_minutes) ?? $policy->minimum_duration_minutes);
+            $maximum = (int) ((array_key_exists('maximum_duration_minutes', $values) ? $values['maximum_duration_minutes'] : $courtModel->maximum_duration_minutes) ?? $policy->maximum_duration_minutes);
+            if ($step % (int) $policy->time_step_minutes !== 0) {
+                throw ValidationException::withMessages(['time_step_minutes' => 'Шаг зала должен быть кратен шагу площадки.']);
+            }
+            if ($minimum > $maximum || $minimum % $step !== 0) {
+                throw ValidationException::withMessages(['minimum_duration_minutes' => 'Минимальная длительность должна быть кратна шагу и не больше максимальной.']);
+            }
+        }
         $courtModel->update($values);
 
         return back()->with('status', 'Индивидуальные условия зала сохранены.');
@@ -89,6 +118,13 @@ final class VenueCourtSettingsController extends Controller
             'whole_price_per_step' => ['nullable', 'string', 'max:32'],
             'half_price_per_step' => ['nullable', 'string', 'max:32'],
         ]);
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venueModel->id)
+            ->where('active_marker', true)->first();
+        $step = (int) ($courtModel->time_step_minutes ?? $policy?->time_step_minutes ?? 0);
+        $minutes = (int) substr($data['starts_at'], 0, 2) * 60 + (int) substr($data['starts_at'], 3, 2);
+        if ($step > 0 && $minutes % $step !== 0) {
+            throw ValidationException::withMessages(['starts_at' => 'Начало должно соответствовать шагу зала.']);
+        }
         $currency = $venueModel->bookingPolicyCurrency();
         $values = [];
         foreach (['whole', 'half'] as $scope) {
@@ -109,6 +145,67 @@ final class VenueCourtSettingsController extends Controller
         ], $values);
 
         return back()->with('status', 'Тарифный интервал зала сохранён.');
+    }
+
+    public function storeCalendarPrice(
+        Request $request, string $venue, string $court,
+        VenueCommercialAccess $access, MinorAmountParser $amounts,
+    ): RedirectResponse {
+        [$venueModel, $courtModel] = $this->target($venue, $court);
+        abort_unless($request->user() !== null && $access->allowsForCourt(
+            $request->user(), $courtModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY
+        ), 403);
+
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'whole_price_per_step' => ['nullable', 'string', 'max:32'],
+            'half_price_per_step' => ['nullable', 'string', 'max:32'],
+        ]);
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venueModel->id)
+            ->where('active_marker', true)->first();
+        if ($policy === null) {
+            throw ValidationException::withMessages(['date' => 'Сначала настройте условия аренды площадки.']);
+        }
+        $step = (int) ($courtModel->time_step_minutes ?? $policy->time_step_minutes);
+        $minutes = (int) substr($data['starts_at'], 0, 2) * 60 + (int) substr($data['starts_at'], 3, 2);
+        if ($step < 1 || $minutes % $step !== 0) {
+            throw ValidationException::withMessages(['starts_at' => 'Начало должно соответствовать шагу зала.']);
+        }
+
+        $values = [];
+        foreach (['whole', 'half'] as $scope) {
+            $key = $scope.'_price_per_step';
+            $raw = trim((string) ($data[$key] ?? ''));
+            try {
+                $values[$key.'_minor'] = $raw === ''
+                    ? null : $amounts->parse($raw, $policy->currency);
+            } catch (VenueBookingTransitionException $exception) {
+                throw ValidationException::withMessages([$key => $exception->getMessage()]);
+            }
+        }
+        if ($values['whole_price_per_step_minor'] === null && $values['half_price_per_step_minor'] === null) {
+            throw ValidationException::withMessages(['whole_price_per_step' => 'Укажите хотя бы одну цену.']);
+        }
+        $courtModel->calendarSlotPrices()->updateOrCreate([
+            'date' => $data['date'],
+            'starts_at' => $data['starts_at'].':00',
+        ], $values);
+
+        return back()->with('status', 'Цена на выбранную дату сохранена.');
+    }
+
+    public function destroyCalendarPrice(
+        Request $request, string $venue, string $court, int $price,
+        VenueCommercialAccess $access,
+    ): RedirectResponse {
+        [, $courtModel] = $this->target($venue, $court);
+        abort_unless($request->user() !== null && $access->allowsForCourt(
+            $request->user(), $courtModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY
+        ), 403);
+        $courtModel->calendarSlotPrices()->findOrFail($price)->delete();
+
+        return back()->with('status', 'Календарная цена удалена.');
     }
 
     public function destroyPrice(

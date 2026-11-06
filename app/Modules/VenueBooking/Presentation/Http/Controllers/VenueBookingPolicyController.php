@@ -15,6 +15,7 @@ use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
 
 final class VenueBookingPolicyController extends Controller
 {
@@ -29,6 +30,65 @@ final class VenueBookingPolicyController extends Controller
                 ->where('active_marker', true)
                 ->first(),
         ]);
+    }
+
+    public function storeCalendarPrice(
+        Request $request,
+        Venue $venue,
+        VenueCommercialAccess $access,
+        MinorAmountParser $amounts,
+    ): RedirectResponse {
+        abort_unless($request->user() !== null
+            && $access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_BOOKING_POLICY), 403);
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'starts_at' => ['required', 'date_format:H:i'],
+            'whole_price_per_step' => ['nullable', 'string', 'max:32'],
+            'half_price_per_step' => ['nullable', 'string', 'max:32'],
+        ]);
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venue->id)
+            ->where('active_marker', true)->first();
+        if ($policy === null) {
+            throw ValidationException::withMessages(['date' => 'Сначала опубликуйте условия аренды.']);
+        }
+        $minutes = (int) substr($data['starts_at'], 0, 2) * 60 + (int) substr($data['starts_at'], 3, 2);
+        if ($minutes % (int) $policy->time_step_minutes !== 0) {
+            throw ValidationException::withMessages(['starts_at' => 'Начало должно соответствовать шагу площадки.']);
+        }
+
+        $values = [];
+        foreach (['whole', 'half'] as $scope) {
+            $key = $scope.'_price_per_step';
+            $raw = trim((string) ($data[$key] ?? ''));
+            try {
+                $values[$key.'_minor'] = $raw === ''
+                    ? null : $amounts->parse($raw, $policy->currency);
+            } catch (VenueBookingTransitionException $exception) {
+                throw ValidationException::withMessages([$key => $exception->getMessage()]);
+            }
+        }
+        if ($values['whole_price_per_step_minor'] === null && $values['half_price_per_step_minor'] === null) {
+            throw ValidationException::withMessages(['whole_price_per_step' => 'Укажите хотя бы одну цену.']);
+        }
+        $venue->calendarSlotPrices()->updateOrCreate([
+            'date' => $data['date'],
+            'starts_at' => $data['starts_at'].':00',
+        ], $values);
+
+        return back()->with('status', 'Календарная цена площадки сохранена.');
+    }
+
+    public function destroyCalendarPrice(
+        Request $request,
+        Venue $venue,
+        int $price,
+        VenueCommercialAccess $access,
+    ): RedirectResponse {
+        abort_unless($request->user() !== null
+            && $access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_BOOKING_POLICY), 403);
+        $venue->calendarSlotPrices()->findOrFail($price)->delete();
+
+        return back()->with('status', 'Календарная цена площадки удалена.');
     }
 
     public function update(

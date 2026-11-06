@@ -77,4 +77,15 @@
             @include('theme::partials.forms.toggle', ['name' => 'allows_hold_extension', 'title' => 'Разрешить согласование продления hold', 'checked' => $fieldValue('allows_hold_extension', false), 'wrapperClass' => 'form-group field my-3'])
             <button class="btn btn--primary btn--sm" type="submit">Опубликовать новую версию</button>
         </div></form>
+        @if($policy)
+            @include('theme::partials.venues.calendar-price-editor', [
+                'calendarPrices' => $venue->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
+                'calendarStoreUrl' => route('account.venues.calendar-prices.store', $venue->id),
+                'calendarDeleteUrl' => route('account.venues.calendar-prices.destroy', [$venue->id, '__PRICE__']),
+                'calendarStep' => $policy->time_step_minutes,
+                'calendarCurrency' => $policy->currency,
+                'calendarId' => 'venue-calendar',
+                'amounts' => $amounts,
+            ])
+        @endif
 @endsection

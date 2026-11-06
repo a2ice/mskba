@@ -248,9 +248,9 @@ final class ShowVenueHandler
                 'requestUrl' => route('account.venue-bookings.store'),
                 'authenticated' => $user !== null,
                 'confirmedAccount' => (bool) $user?->canonical()->isConfirmed(),
-                'minimumDurationMinutes' => (int) $rentalPolicy->minimum_duration_minutes,
-                'maximumDurationMinutes' => (int) $rentalPolicy->maximum_duration_minutes,
-                'timeStepMinutes' => (int) $rentalPolicy->time_step_minutes,
+                'minimumDurationMinutes' => (int) $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['minimum_duration_minutes'],
+                'maximumDurationMinutes' => (int) $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['maximum_duration_minutes'],
+                'timeStepMinutes' => (int) $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['time_step_minutes'],
                 'currency' => $rentalPolicy->currency,
                 'wholePricePerStepMinor' => $rentalPolicy->whole_price_per_step_minor,
                 'halfPricePerStepMinor' => $rentalPolicy->half_price_per_step_minor,
@@ -567,7 +567,10 @@ final class ShowVenueHandler
             ])->all();
         }
 
-        $step = max(1, (int) ($policy?->time_step_minutes ?? 30));
+        $effective = $court !== null && $policy !== null
+            ? $this->courtPolicies->resolve($venue, $court, $policy)
+            : null;
+        $step = max(1, (int) ($effective['time_step_minutes'] ?? $policy?->time_step_minutes ?? 30));
         $now = CarbonImmutable::now($timezone);
         $timeline = [];
 
@@ -600,7 +603,7 @@ final class ShowVenueHandler
             foreach ($groups as $group) {
                 $occupiedStart = max($openMinute, $group['start']);
                 $occupiedEnd = min($closeMinute, $group['end']);
-                $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $occupiedStart, $closeMinute, $step, $policy, $now);
+                $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $occupiedStart, $closeMinute, $step, $policy, $effective, $now);
                 $timeline[] = [
                     'kind' => 'occupied',
                     'startsAt' => $this->minutesToTime($occupiedStart),
@@ -611,7 +614,7 @@ final class ShowVenueHandler
                 ];
                 $cursor = max($cursor, $occupiedEnd);
             }
-            $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $closeMinute, $closeMinute, $step, $policy, $now);
+            $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $closeMinute, $closeMinute, $step, $policy, $effective, $now);
         }
 
         return $timeline;
@@ -626,15 +629,16 @@ final class ShowVenueHandler
         int $intervalEndMinute,
         int $step,
         ?VenueBookingPolicy $policy,
+        ?array $effective,
         CarbonImmutable $now,
     ): void {
         for ($minute = $fromMinute; $minute + $step <= $untilMinute; $minute += $step) {
             $startsAt = $dayStart->addMinutes($minute);
             $availableMinutes = max(0, min($untilMinute, $intervalEndMinute) - $minute);
             $bookable = $policy !== null
-                && $availableMinutes >= $policy->minimum_duration_minutes
-                && ! $startsAt->lessThan($now->addMinutes($policy->minimum_lead_time_minutes))
-                && ! $startsAt->greaterThan($now->addDays($policy->maximum_advance_days));
+                && $availableMinutes >= (int) ($effective['minimum_duration_minutes'] ?? $policy->minimum_duration_minutes)
+                && ! $startsAt->lessThan($now->addMinutes((int) ($effective['minimum_lead_time_minutes'] ?? $policy->minimum_lead_time_minutes)))
+                && ! $startsAt->greaterThan($now->addDays((int) ($effective['maximum_advance_days'] ?? $policy->maximum_advance_days)));
             $timeline[] = [
                 'kind' => 'free',
                 'startsAt' => $startsAt->format('H:i'),

@@ -33,6 +33,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'rental_enabled',
     'whole_price_per_step_minor',
     'half_price_per_step_minor',
+    'minimum_duration_minutes',
+    'maximum_duration_minutes',
+    'time_step_minutes',
+    'minimum_lead_time_minutes',
+    'maximum_advance_days',
 ])]
 final class VenueCourt extends Model
 {
@@ -51,6 +56,11 @@ final class VenueCourt extends Model
     public function slotPrices(): HasMany
     {
         return $this->hasMany(VenueCourtSlotPrice::class);
+    }
+
+    public function calendarSlotPrices(): HasMany
+    {
+        return $this->hasMany(VenueCourtCalendarSlotPrice::class);
     }
 
     public function media(): MorphMany
@@ -103,6 +113,11 @@ final class VenueCourt extends Model
             'rental_enabled' => 'boolean',
             'whole_price_per_step_minor' => 'integer',
             'half_price_per_step_minor' => 'integer',
+            'minimum_duration_minutes' => 'integer',
+            'maximum_duration_minutes' => 'integer',
+            'time_step_minutes' => 'integer',
+            'minimum_lead_time_minutes' => 'integer',
+            'maximum_advance_days' => 'integer',
         ];
     }
 }

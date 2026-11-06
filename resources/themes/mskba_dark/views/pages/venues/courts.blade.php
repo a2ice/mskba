@@ -154,7 +154,23 @@
                                     </select>
                                 </label>
                             @endforeach
-                            <p class="small text-muted">Цены за один шаг аренды в {{ $policy?->currency ?? 'RUB' }}. Пустое поле означает наследование.</p>
+                            <div class="row g-3 mt-2">
+                                @foreach([
+                                    'minimum_duration_minutes' => ['Минимальная аренда, мин', $policy?->minimum_duration_minutes, 15, 1440],
+                                    'maximum_duration_minutes' => ['Максимальная аренда, мин', $policy?->maximum_duration_minutes, 15, 1440],
+                                    'time_step_minutes' => ['Шаг времени, мин', $policy?->time_step_minutes, 5, 240],
+                                    'minimum_lead_time_minutes' => ['Минимум до начала, мин', $policy?->minimum_lead_time_minutes, 0, 525600],
+                                    'maximum_advance_days' => ['Бронирование вперёд, дней', $policy?->maximum_advance_days, 1, 730],
+                                ] as $field => [$label, $inherited, $min, $max])
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="court-{{ $court->id }}-{{ $field }}">{{ $label }}</label>
+                                        <input class="form-control" type="number" id="court-{{ $court->id }}-{{ $field }}" name="{{ $field }}"
+                                            min="{{ $min }}" max="{{ $max }}" value="{{ $court->{$field} ?? '' }}"
+                                            placeholder="От площадки: {{ $inherited ?? '—' }}">
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="small text-muted mt-3">Цена за шаг {{ $court->time_step_minutes ?? $policy?->time_step_minutes ?? '—' }} мин в {{ $policy?->currency ?? 'RUB' }}. Пустое поле наследуется от площадки.</p>
                             <label class="form-label mt-2">Весь зал
                                 <input class="form-control" name="whole_price_per_step" value="{{ $court->whole_price_per_step_minor === null ? '' : number_format($court->whole_price_per_step_minor / 100, 2, '.', '') }}" placeholder="Наследовать">
                             </label>
@@ -191,6 +207,17 @@
                             <button type="submit" class="btn btn--secondary btn--sm mt-2">Добавить / обновить тариф</button>
                         </form>
                     </details>
+                    @if($policy)
+                        @include('theme::partials.venues.calendar-price-editor', [
+                            'calendarPrices' => $court->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
+                            'calendarStoreUrl' => route('account.venues.courts.calendar-prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+                            'calendarDeleteUrl' => route('account.venues.courts.calendar-prices.destroy', [$venue->routeIdentifier(), $court->routeIdentifier(), '__PRICE__']),
+                            'calendarStep' => $court->time_step_minutes ?? $policy->time_step_minutes,
+                            'calendarCurrency' => $policy->currency,
+                            'calendarId' => 'court-calendar-'.$court->id,
+                            'amounts' => app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class),
+                        ])
+                    @endif
                 @endif
 
                 @if($canManageVenue && $courts->count() > 1)

@@ -26,6 +26,8 @@ use App\Modules\Pricing\Domain\Models\PricingVariant;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCalendarSlotPrice;
+use App\Modules\Venue\Domain\Models\VenueCourtCalendarSlotPrice;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
@@ -59,6 +61,8 @@ return [
         Contact::class,
         ContactVerification::class,
         Venue::class,
+        VenueCalendarSlotPrice::class,
+        VenueCourtCalendarSlotPrice::class,
         VenueDuplicate::class,
         VenueSchedule::class,
         VenueScheduleInterval::class,

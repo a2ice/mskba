@@ -213,6 +213,11 @@ class Venue extends Model
         return $this->hasOne(VenueSchedule::class);
     }
 
+    public function calendarSlotPrices(): HasMany
+    {
+        return $this->hasMany(VenueCalendarSlotPrice::class);
+    }
+
     public function scheduleSlotPrices(): HasMany
     {
         return $this->hasMany(VenueScheduleSlotPrice::class);
