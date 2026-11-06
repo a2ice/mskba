@@ -107,8 +107,15 @@ final class VenueResource extends Resource
                             ->visible(fn (?Venue $record): bool => $record === null)
                             ->searchable()->getSearchResultsUsing(fn (string $search): array => User::query()
                                 ->whereNull('canonical_user_id')->whereLike('username', '%'.$search.'%')
-                                ->limit(30)->pluck('username', 'id')->all())
-                            ->getOptionLabelUsing(fn ($value): ?string => User::query()->whereKey($value)->value('username')),
+                                ->limit(30)->get(['id', 'username'])
+                                ->mapWithKeys(fn (User $user): array => [
+                                    $user->id => $user->username ?: 'Пользователь #'.$user->id,
+                                ])->all())
+                            ->getOptionLabelUsing(function ($value): ?string {
+                                $user = User::query()->whereKey($value)->first(['id', 'username']);
+
+                                return $user?->username ?: ($user ? 'Пользователь #'.$user->id : null);
+                            }),
 
                         TextInput::make('alias')->label('URL-алиас')->maxLength(255)
                             ->regex('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D')

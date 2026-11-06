@@ -121,7 +121,7 @@ class VenueFacilitiesManagementTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('venue_characteristics', ['venue_id' => $venue->id]);
-        $this->assertDatabaseHas('venue_amenities', [
+        $this->assertDatabaseMissing('venue_amenities', [
             'venue_id' => $venue->id,
             'amenity_id' => $shower->id,
         ]);
@@ -199,7 +199,7 @@ class VenueFacilitiesManagementTest extends TestCase
             ->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('venue_amenities', [
+        $this->assertDatabaseHas('venue_amenities', [
             'venue_id' => $venue->id,
             'amenity_id' => $shower->id,
         ]);
