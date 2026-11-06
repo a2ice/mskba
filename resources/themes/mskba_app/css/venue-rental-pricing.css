@@ -1,5 +1,7 @@
 /* Task 302: layout composition only. Colors, fields, buttons and panels
  * inherit the existing MSKBA App UI Kit primitives. */
+.app-rental-pricing__public{padding-block:40px 48px}
+.app-rental-pricing__total{font-size:32px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
 .app-rental-pricing{display:flex;flex-direction:column;gap:20px;min-width:0}
 .app-rental-pricing__panel{padding:24px;display:flex;flex-direction:column;gap:20px}
 .app-rental-pricing__panel h2{font-size:20px;line-height:26px}
