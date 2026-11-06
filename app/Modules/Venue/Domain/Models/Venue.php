@@ -297,6 +297,13 @@ class Venue extends Model
         return $this->hasMany(VenueCourt::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function activeBookingPolicy(): HasOne
+    {
+        return $this->hasOne(\App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::class)
+            ->where('active_marker', true)
+            ->where('is_enabled', true);
+    }
+
     /**
      * Public discovery reads actual shared and court-specific facilities.
      *
