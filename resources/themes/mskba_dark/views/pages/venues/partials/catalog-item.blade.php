@@ -1,7 +1,11 @@
 @php
     $mode = $mode ?? 'card';
     $showDescription = $mode === 'list';
-    $venueUrl = route('venues.show', $venue->routeIdentifier());
+    $venueUrl = $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier());
+    $freeCourts = $venue->courtAccessSummary['free'] ?? [];
+    $paidCourts = $venue->courtAccessSummary['paid'] ?? [];
+    $approvalCourts = $venue->courtAccessSummary['approval'] ?? [];
+    $unknownCourts = $venue->courtAccessSummary['unknown'] ?? [];
 @endphp
 
 <article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}" data-venue-id="{{ $venue->id }}">
@@ -30,12 +34,26 @@
         @endif
 
         <div class="venue-catalog-item__access">
-            <span>
-                <i class="ti {{ $venue->requiresPayment === true ? 'ti-currency-ruble' : ($venue->requiresPayment === false ? 'ti-gift' : 'ti-help-circle') }}" aria-hidden="true"></i>
-                {{ $venue->requiresPayment === true ? 'Платно' : ($venue->requiresPayment === false ? 'Бесплатно' : 'Условия уточняются') }}
-            </span>
-            @if($venue->requiresBookingApproval)
-                <span><i class="ti ti-shield-check" aria-hidden="true"></i>По подтверждению</span>
+            @if($freeCourts !== [])
+                <span><i class="ti ti-gift" aria-hidden="true"></i>{{ $paidCourts !== [] ? 'Есть бесплатный доступ' : 'Бесплатно' }}</span>
+            @endif
+            @if($paidCourts !== [])
+                <span><i class="ti ti-currency-ruble" aria-hidden="true"></i>{{ $freeCourts !== [] ? 'Есть платные залы' : 'Платно' }}</span>
+            @endif
+            @if($approvalCourts !== [])
+                <span><i class="ti ti-shield-check" aria-hidden="true"></i>Есть залы с подтверждением</span>
+            @endif
+            @if($freeCourts === [] && $paidCourts === [])
+                <span><i class="ti ti-help-circle" aria-hidden="true"></i>{{ $unknownCourts !== [] ? 'Условия уточняются' : 'Нет доступных залов' }}</span>
+            @endif
+            @if($venue->matchedCourtName !== null)
+                <span><i class="ti ti-layout-grid" aria-hidden="true"></i>Подходящий зал: {{ $venue->matchedCourtName }}</span>
+                @if($venue->matchedRequiresBooking)
+                    <span><i class="ti ti-calendar" aria-hidden="true"></i>По предварительной записи</span>
+                @endif
+                @if($venue->matchedRequiresApproval)
+                    <span><i class="ti ti-shield-check" aria-hidden="true"></i>Требуется подтверждение</span>
+                @endif
             @endif
         </div>
     </div>
