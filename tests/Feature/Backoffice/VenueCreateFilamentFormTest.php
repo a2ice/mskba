@@ -61,4 +61,50 @@ final class VenueCreateFilamentFormTest extends TestCase
         $this->assertTrue($venue->primaryCourt()->exists());
         $this->assertSame(6, $venue->schedule()->firstOrFail()->intervals()->count());
     }
+
+    public function test_school_can_create_indoor_hall_and_outdoor_court_with_independent_amenities(): void
+    {
+        $admin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin);
+
+        $parking = \App\Modules\Venue\Domain\Models\Amenity::query()->where('alias', 'parking')->firstOrFail();
+        $heating = \App\Modules\Venue\Domain\Models\Amenity::query()->where('alias', 'heating')->firstOrFail();
+        $snowRemoval = \App\Modules\Venue\Domain\Models\Amenity::query()->where('alias', 'snow-removal')->firstOrFail();
+
+        $venue = app(\App\Filament\Backoffice\Resources\Venues\VenueBackofficeEditor::class)->save([
+            'name' => 'Школьная площадка с двумя зонами',
+            'type' => VenueTypeEnum::SCHOOL->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'owner_user_id' => $admin->id,
+            'amenity_ids' => [$parking->id],
+            'initial_courts' => [
+                ['name' => 'Школьный зал', 'environment' => 'indoor', 'hoops_count' => 2,
+                    'amenity_ids' => [$heating->id]],
+                ['name' => 'Школьный корт', 'environment' => 'outdoor', 'hoops_count' => 2,
+                    'amenity_ids' => [$snowRemoval->id]],
+            ],
+        ]);
+
+        $this->assertSame(2, $venue->courts()->count());
+        $this->assertEqualsCanonicalizing([$parking->id], $venue->amenities()->pluck('amenities.id')->all());
+        $indoor = $venue->courts()->where('environment', 'indoor')->firstOrFail();
+        $outdoor = $venue->courts()->where('environment', 'outdoor')->firstOrFail();
+        $this->assertSame('Школьный зал', $indoor->name);
+        $this->assertSame('Школьный корт', $outdoor->name);
+        $this->assertTrue($indoor->is_primary);
+        $this->assertFalse($outdoor->is_primary);
+        $this->assertEqualsCanonicalizing([$heating->id], $indoor->amenities()->pluck('amenities.id')->all());
+        $this->assertEqualsCanonicalizing([$snowRemoval->id], $outdoor->amenities()->pluck('amenities.id')->all());
+        $this->assertDatabaseMissing('venue_amenities', [
+            'venue_id' => $venue->id, 'amenity_id' => $heating->id,
+        ]);
+        $this->assertDatabaseMissing('venue_amenities', [
+            'venue_id' => $venue->id, 'amenity_id' => $snowRemoval->id,
+        ]);
+    }
+
 }
