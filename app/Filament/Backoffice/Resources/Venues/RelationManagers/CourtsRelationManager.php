@@ -3,6 +3,7 @@
 namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
+use App\Filament\Backoffice\Resources\Venues\Support\VenueCourtConditionFormState;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
@@ -150,11 +151,6 @@ final class CourtsRelationManager extends RelationManager
                                             'temporarily_closed' => 'Временно закрыт',
                                         ])
                                         ->default('inherit')
-                                        ->afterStateHydrated(fn (Select $component, $state) => $component->state(
-                                            $state instanceof VenueOperationalStatusEnum
-                                                ? $state->value : ($state ?: 'inherit')
-                                        ))
-                                        ->dehydrateStateUsing(fn ($state) => $state === 'inherit' ? null : $state)
                                         ->required(),
                                     $this->inheritedBoolean('requires_payment', 'Оплата', 'Платно', 'Бесплатно'),
                                     $this->inheritedBoolean(
@@ -283,7 +279,9 @@ final class CourtsRelationManager extends RelationManager
                     unset($data['amenity_ids']);
 
                     return DB::transaction(function () use ($data, $amenityIds): VenueCourt {
-                        $court = $this->getOwnerRecord()->courts()->create($data);
+                        $court = $this->getOwnerRecord()->courts()->create(
+                            VenueCourtConditionFormState::forDatabase($data)
+                        );
                         app(VenueCourtFacilitiesSynchronizer::class)->sync($court, $amenityIds);
 
                         return $court;
@@ -316,15 +314,15 @@ final class CourtsRelationManager extends RelationManager
                 ->modalHeading(fn (VenueCourt $record): string => 'Редактировать: '.$record->name)
                 ->modalWidth(Width::SixExtraLarge)
                 ->stickyModalHeader()->stickyModalFooter()
-                ->mutateRecordDataUsing(fn (array $data, VenueCourt $record): array => [
+                ->mutateRecordDataUsing(fn (array $data, VenueCourt $record): array => VenueCourtConditionFormState::forForm([
                     ...$data, 'amenity_ids' => $record->amenities()->pluck('amenities.id')->all(),
-                ])
+                ]))
                 ->using(function (VenueCourt $record, array $data): VenueCourt {
                     $amenityIds = (array) ($data['amenity_ids'] ?? []);
                     unset($data['amenity_ids']);
 
                     return DB::transaction(function () use ($record, $data, $amenityIds): VenueCourt {
-                        $record->update($data);
+                        $record->update(VenueCourtConditionFormState::forDatabase($data));
                         app(VenueCourtFacilitiesSynchronizer::class)->sync($record, $amenityIds);
 
                         return $record;
@@ -611,13 +609,7 @@ final class CourtsRelationManager extends RelationManager
             'inherit' => 'Наследовать от площадки',
             'yes' => $yes,
             'no' => $no,
-        ])->default('inherit')
-            ->afterStateHydrated(fn (Select $component, $state) => $component->state(
-                $state === null || $state === 'inherit' ? 'inherit' : ($state ? 'yes' : 'no')
-            ))
-            ->dehydrateStateUsing(fn ($state) => match ($state) {
-                'yes' => true, 'no' => false, default => null,
-            });
+        ])->default('inherit');
     }
 
     private function courtPhotoPreview(?VenueCourt $court): HtmlString
