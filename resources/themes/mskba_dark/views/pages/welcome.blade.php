@@ -175,7 +175,9 @@
             </div>
             <p class="home-venue-popular-label">Популярные</p>
             <div class="home-venue-stack">
-                @php($venueSearchDocuments = collect(app(\App\Modules\Venue\Application\Services\VenueSearchCache::class)->documents())->keyBy('id'))
+                @php
+                    $venueSearchDocuments = collect(app(\App\Modules\Venue\Application\Services\VenueSearchCache::class)->documents())->keyBy('id');
+                @endphp
                 @forelse($homeVenues as $venue)
                     @php
                         $venueAddress = $venue->location?->address?->full_address ?: $venue->raw_address;
