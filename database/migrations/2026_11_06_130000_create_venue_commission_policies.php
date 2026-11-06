@@ -11,7 +11,8 @@ return new class extends Migration
         Schema::create('portal_commission_policies', static function (Blueprint $table): void {
             $table->id();
             $table->string('mode', 16)->default('none'); // none | percent | fixed
-            $table->unsignedBigInteger('value')->default(0); // basis points or currency minor units
+            $table->unsignedBigInteger('value')->default(0);
+            $table->string('currency', 3)->default('RUB'); // basis points or currency minor units
             $table->unsignedInteger('version')->default(1);
             $table->foreignId('updated_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
@@ -24,6 +25,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->string('mode', 16)->default('none');
             $table->unsignedBigInteger('value')->default(0);
+            $table->string('currency', 3)->default('RUB');
             $table->unsignedInteger('version')->default(1);
             $table->foreignId('updated_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
@@ -36,6 +38,7 @@ return new class extends Migration
             // NULL => inherit portal commission; explicit "none" => 0 for this venue.
             $table->string('mode_override', 16)->nullable();
             $table->unsignedBigInteger('value_override')->nullable();
+            $table->string('currency', 3)->default('RUB');
             // Multiple agents may exist, but exactly one may contribute to a quote.
             $table->foreignId('selected_agent_id')->nullable()
                 ->constrained('venue_commission_agents')->nullOnDelete();
@@ -50,6 +53,7 @@ return new class extends Migration
             $table->foreignId('venue_court_id')->unique()->constrained('venue_courts')->cascadeOnDelete();
             $table->string('mode_override', 16)->nullable(); // inherit venue, or global if unset
             $table->unsignedBigInteger('value_override')->nullable();
+            $table->string('currency', 3)->default('RUB');
             $table->unsignedInteger('version')->default(1);
             $table->foreignId('updated_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
