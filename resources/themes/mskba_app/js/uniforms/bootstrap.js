@@ -13,7 +13,7 @@ async function resumePending() {
   try {
     const data = JSON.parse(raw);
     const payload = new FormData();
-    for (const field of ['name','primary_color','secondary_color','logo_source']) payload.append(field,data[field]||'');
+    for (const field of ['name','primary_color','secondary_color','sleeve_style','logo_source']) payload.append(field,data[field]||'');
     (data.sizes || []).forEach((s,i)=>payload.append('sizes['+i+']',s));
     if(data.logo_source==='team'&&data.logo_team_id) payload.append('logo_team_id',data.logo_team_id);
     if(data.logo_source==='custom'&&data.logo_data) {

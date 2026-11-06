@@ -30,6 +30,7 @@ final class UniformStudioFeatureTest extends TestCase
             'primary_color' => '#112233',
             'secondary_color' => '#FF8721',
             'sizes' => ['M', 'L', 'XL'],
+            'sleeve_style' => 'sleeveless',
             'logo_source' => 'none',
         ];
     }
@@ -52,7 +53,8 @@ final class UniformStudioFeatureTest extends TestCase
 
         $response = $this->postJson('/uniforms/projects', $this->input())->assertCreated()
             ->assertJsonPath('design.name', 'Форма чемпионов')
-            ->assertJsonPath('design.primary_color', '#112233');
+            ->assertJsonPath('design.primary_color', '#112233')
+            ->assertJsonPath('design.sleeve_style', 'sleeveless');
         $id = $response->json('design.id');
         $this->assertDatabaseHas('uniform_designs', ['id' => $id, 'user_id' => $user->id]);
 
@@ -62,7 +64,9 @@ final class UniformStudioFeatureTest extends TestCase
             ...$this->input(),
             'name' => 'Новая форма',
             'sizes' => ['S','M'],
-        ])->assertOk()->assertJsonPath('design.name', 'Новая форма');
+            'sleeve_style' => 'sleeved',
+        ])->assertOk()->assertJsonPath('design.name', 'Новая форма')
+            ->assertJsonPath('design.sleeve_style', 'sleeved');
 
         $this->deleteJson('/uniforms/projects/'.$id)->assertOk();
         $this->assertSoftDeleted('uniform_designs', ['id' => $id]);
@@ -134,8 +138,9 @@ final class UniformStudioFeatureTest extends TestCase
             'primary_color' => 'javascript:alert(1)',
             'sizes' => ['M', 'FAKE'],
             'logo_source' => 'remote',
+            'sleeve_style' => 'invalid',
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['primary_color', 'sizes.1', 'logo_source']);
+            ->assertJsonValidationErrors(['primary_color', 'sizes.1', 'logo_source', 'sleeve_style']);
     }
 
     public function test_page_builder_preserves_the_public_workshop_trigger_without_inline_js(): void

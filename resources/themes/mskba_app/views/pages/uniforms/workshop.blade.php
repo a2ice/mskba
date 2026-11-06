@@ -2,15 +2,12 @@
 
 @section('content')
 <section class="mskba-uniform-page" aria-label="Мастерская формы">
-    <div class="mskba-uniform-page__container">
-        <a href="{{ route('account.uniforms') }}" class="mskba-uniform-page__back">← Мои формы</a>
-        <div class="mskba-uniform-page__heading">
-            <span class="mskba-uniform-eyebrow">MSKBA / ЭКИПИРОВКА</span>
+    <div class="container">
+        <header class="mskba-uniform-page__heading">
             <h1>Мастерская формы</h1>
-            <p>Разработай свой комплект: цвет, размеры и логотип. Сохраняй варианты, возвращайся к ним и развивай дизайн вместе с MSKBA.</p>
-        </div>
-        <div data-mskba-uniform-page class="mskba-uniform-page__editor" aria-live="polite">
-            <p>Загружаем мастерскую…</p>
+        </header>
+        <div data-mskba-uniform-page aria-live="polite">
+            <p>Загружаем…</p>
         </div>
     </div>
 </section>
