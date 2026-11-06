@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['venue_id', 'venue_court_id', 'mode_override', 'value_override', 'currency', 'version', 'updated_by_user_id'])]
+#[Fillable(['venue_id', 'venue_court_id', 'mode_override', 'value_override', 'currency', 'disable_all_commissions_override', 'version', 'updated_by_user_id'])]
 final class VenueCourtCommissionPolicy extends Model
 {
     use Auditable;
@@ -24,6 +24,6 @@ final class VenueCourtCommissionPolicy extends Model
 
     protected function casts(): array
     {
-        return ['value_override' => 'integer', 'version' => 'integer'];
+        return ['value_override' => 'integer', 'disable_all_commissions_override' => 'boolean', 'version' => 'integer'];
     }
 }

@@ -43,13 +43,18 @@ final class CourtCommissionsRelationManager extends RelationManager
             Select::make('mode')->label('Комиссия MSKBA')
                 ->options([
                     'inherit' => 'Наследовать от площадки',
-                    'none' => 'Не начислять (0%)',
-                    'percent' => 'Процент',
+                    'percent' => 'Процент (включая 0%)',
                     'fixed' => 'Фиксированная сумма',
                 ])
                 ->default('inherit')->required(),
             TextInput::make('value_text')->label('Значение (% или руб.)')
                 ->required()->default('0')->maxLength(32),
+            Select::make('all_fees_mode')->label('Начисление комиссий MSKBA и агента')
+                ->options([
+                    'inherit' => 'Наследовать от площадки',
+                    'disabled' => 'Не начислять комиссии',
+                    'enabled' => 'Начислять комиссии (переопределить площадку)',
+                ])->default('inherit')->required(),
         ];
     }
 
@@ -64,9 +69,12 @@ final class CourtCommissionsRelationManager extends RelationManager
     /** @return array<string,mixed> */
     private function state(VenueCourtCommissionPolicy $policy): array
     {
-        $mode = $policy->mode_override ?? 'inherit';
+        $mode = $policy->mode_override === 'none' ? 'percent' : ($policy->mode_override ?? 'inherit');
         return [
             'mode' => $mode,
+            'all_fees_mode' => match ($policy->disable_all_commissions_override) {
+                null => 'inherit', true => 'disabled', false => 'enabled',
+            },
             'value_text' => match ($mode) {
                 'percent' => number_format((int) $policy->value_override / 100, 2, '.', ''),
                 'fixed' => app(MinorAmountParser::class)->format((int) $policy->value_override, $policy->currency),
@@ -93,6 +101,10 @@ final class CourtCommissionsRelationManager extends RelationManager
                         'fixed' => 'Фиксированная',
                         default => (string) $state,
                     }),
+                TextColumn::make('disable_all_commissions_override')->label('Все комиссии')
+                    ->formatStateUsing(fn ($state): string => match ($state) {
+                        null => 'Наследовать', true => 'Не начислять', false => 'Начислять',
+                    }),
                 TextColumn::make('value_override')->label('Значение')
                     ->formatStateUsing(fn (VenueCourtCommissionPolicy $record): string =>
                         $this->state($record)['value_text']),
@@ -110,7 +122,7 @@ final class CourtCommissionsRelationManager extends RelationManager
                         $venue = $this->getOwnerRecord();
                         app(VenueCommissionManager::class)->setCourt(
                             $venue, $venue->courts()->findOrFail((int) $data['venue_court_id']),
-                            $this->actor(), $data['mode'], $data['value_text'],
+                            $this->actor(), $data['mode'], $data['value_text'], $data['all_fees_mode'],
                         );
                         Notification::make()->success()->title('Комиссия зала сохранена')->send();
                     }),
@@ -126,7 +138,7 @@ final class CourtCommissionsRelationManager extends RelationManager
                         $venue = $this->getOwnerRecord();
                         app(VenueCommissionManager::class)->setCourt(
                             $venue, $venue->courts()->findOrFail($record->venue_court_id),
-                            $this->actor(), $data['mode'], $data['value_text'],
+                            $this->actor(), $data['mode'], $data['value_text'], $data['all_fees_mode'],
                         );
                         Notification::make()->success()->title('Комиссия зала обновлена')->send();
                     }),

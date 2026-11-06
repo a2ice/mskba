@@ -29,8 +29,10 @@ final readonly class VenueCommissionManager
         [$mode, $value] = $this->parse($mode, $input, $currency, false);
 
         return DB::transaction(static function () use ($actor, $mode, $value, $currency): PortalCommissionPolicy {
-            $policy = PortalCommissionPolicy::query()->lockForUpdate()->find(1)
-                ?? new PortalCommissionPolicy(['id' => 1]);
+            $policy = PortalCommissionPolicy::query()
+                ->where('entity_type', 'venue')->where('action_key', 'rental')
+                ->lockForUpdate()->first()
+                ?? new PortalCommissionPolicy(['entity_type' => 'venue', 'action_key' => 'rental']);
 
             $policy->fill([
                 'mode' => $mode,
@@ -47,13 +49,14 @@ final readonly class VenueCommissionManager
     public function setVenue(
         Venue $venue, User $actor, string $mode,
         string $input = '0', ?int $selectedAgentId = null,
+        ?bool $disableAllCommissions = null,
     ): VenueCommissionPolicy {
         $actor = $this->superadmin($actor);
         $currency = $venue->bookingPolicyCurrency();
         [$mode, $value] = $this->parse($mode, $input, $currency, true);
 
         return DB::transaction(function () use (
-            $venue, $actor, $currency, $mode, $value, $selectedAgentId,
+            $venue, $actor, $currency, $mode, $value, $selectedAgentId, $disableAllCommissions,
         ): VenueCommissionPolicy {
             Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
             if ($selectedAgentId !== null) {
@@ -71,6 +74,7 @@ final readonly class VenueCommissionManager
                 'value_override' => $value,
                 'currency' => $currency,
                 'selected_agent_id' => $selectedAgentId,
+                'disable_all_commissions' => $disableAllCommissions ?? ($policy->disable_all_commissions ?? false),
                 'version' => $policy->exists ? $policy->version + 1 : 1,
                 'updated_by_user_id' => $actor->id,
             ])->save();
@@ -81,14 +85,18 @@ final readonly class VenueCommissionManager
 
     public function setCourt(
         Venue $venue, VenueCourt $court, User $actor, string $mode, string $input = '0',
+        ?string $allFeesMode = null,
     ): VenueCourtCommissionPolicy {
         $actor = $this->superadmin($actor);
         abort_unless((int) $court->venue_id === (int) $venue->id && ! $court->trashed(), 404);
         $currency = $venue->bookingPolicyCurrency();
         [$mode, $value] = $this->parse($mode, $input, $currency, true);
+        if ($allFeesMode !== null && ! in_array($allFeesMode, ['inherit', 'disabled', 'enabled'], true)) {
+            throw ValidationException::withMessages(['all_fees_mode' => 'Выберите режим начисления комиссий.']);
+        }
 
         return DB::transaction(function () use (
-            $venue, $court, $actor, $currency, $mode, $value,
+            $venue, $court, $actor, $currency, $mode, $value, $allFeesMode,
         ): VenueCourtCommissionPolicy {
             Venue::query()->whereKey($venue->id)->lockForUpdate()->firstOrFail();
             $policy = VenueCourtCommissionPolicy::query()
@@ -101,6 +109,12 @@ final readonly class VenueCommissionManager
                 'mode_override' => $mode,
                 'value_override' => $value,
                 'currency' => $currency,
+                'disable_all_commissions_override' => match ($allFeesMode) {
+                    'disabled' => true,
+                    'enabled' => false,
+                    'inherit' => null,
+                    default => $policy->disable_all_commissions_override,
+                },
                 'version' => $policy->exists ? $policy->version + 1 : 1,
                 'updated_by_user_id' => $actor->id,
             ])->save();

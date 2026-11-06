@@ -29,7 +29,8 @@ final class VenueCommissionCalculator
             throw new VenueBookingPolicyException('Некорректная исходная стоимость аренды.');
         }
 
-        $global = PortalCommissionPolicy::query()->find(1);
+        $global = PortalCommissionPolicy::query()
+            ->where('entity_type', 'venue')->where('action_key', 'rental')->first();
         $venuePolicy = VenueCommissionPolicy::query()->where('venue_id', $venue->id)->first();
         $courtPolicy = VenueCourtCommissionPolicy::query()
             ->where('venue_id', $venue->id)->where('venue_court_id', $court->id)->first();
@@ -64,11 +65,18 @@ final class VenueCommissionCalculator
             ];
         }
 
-        $portalFee = $this->fee($subtotalMinor, $currency, $portal);
+        $allFeesDisabled = (bool) ($venuePolicy?->disable_all_commissions ?? false);
+        $allFeesSource = $allFeesDisabled ? 'venue' : 'default';
+        if ($courtPolicy?->disable_all_commissions_override !== null) {
+            $allFeesDisabled = (bool) $courtPolicy->disable_all_commissions_override;
+            $allFeesSource = 'court';
+        }
+
+        $portalFee = $allFeesDisabled ? 0 : $this->fee($subtotalMinor, $currency, $portal);
         $agent = null;
         $agentFee = 0;
 
-        if ($venuePolicy?->selected_agent_id !== null) {
+        if (! $allFeesDisabled && $venuePolicy?->selected_agent_id !== null) {
             $assignment = $venuePolicy->selectedAgent()->with('user')->first();
             if ($assignment !== null && (int) $assignment->venue_id === (int) $venue->id
                 && $assignment->is_active && $assignment->user !== null
@@ -99,6 +107,12 @@ final class VenueCommissionCalculator
             'basis' => 'price_after_tariff_rules',
             'portal' => $portal,
             'agent' => $agent,
+            'all_fees' => [
+                'disabled' => $allFeesDisabled,
+                'source' => $allFeesSource,
+                'venue_policy_version' => $venuePolicy?->version,
+                'court_policy_version' => $courtPolicy?->version,
+            ],
         ];
     }
 
