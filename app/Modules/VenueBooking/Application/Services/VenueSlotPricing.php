@@ -8,10 +8,14 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Carbon\CarbonImmutable;
+use InvalidArgumentException;
 
 final class VenueSlotPricing
 {
     /**
+     * Individual court prices apply to one effective court step. Inherited venue prices
+     * always apply to one policy step, so a larger court step sums its venue substeps.
+     *
      * @return array{amount_minor: int, prices_per_step_minor: array<int, int>, uses_custom_prices: bool}
      */
     public function calculate(
@@ -23,33 +27,62 @@ final class VenueSlotPricing
         ?VenueCourt $court = null,
         ?array $effective = null,
     ): array {
-        $fallback = (int) ($scope === VenueBookingScopeEnum::WHOLE
-            ? $policy->whole_price_per_step_minor
-            : $policy->half_price_per_step_minor);
-        $priceColumn = $scope === VenueBookingScopeEnum::WHOLE
+        $venueStep = (int) $policy->time_step_minutes;
+        $courtStep = (int) ($effective['time_step_minutes'] ?? $venueStep);
+        if ($venueStep < 1 || $courtStep < 1 || $courtStep % $venueStep !== 0) {
+            throw new InvalidArgumentException('Шаг аренды зала должен быть кратен шагу площадки.');
+        }
+
+        $column = $scope === VenueBookingScopeEnum::WHOLE
             ? 'whole_price_per_step_minor'
             : 'half_price_per_step_minor';
-        $venueOverrides = VenueScheduleSlotPrice::query()
-            ->where('venue_id', $venue->id)
-            ->get()
+        $venueWeekly = VenueScheduleSlotPrice::query()->where('venue_id', $venue->id)->get()
             ->keyBy(fn (VenueScheduleSlotPrice $price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5));
-        $courtOverrides = $court?->slotPrices()->get()->keyBy(
+        $venueCalendar = $venue->calendarSlotPrices()->get()
+            ->keyBy(fn ($price): string => $price->date->format('Y-m-d').'|'.substr((string) $price->starts_at, 0, 5));
+        $courtWeekly = $court?->slotPrices()->get()->keyBy(
             fn ($price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5)
         ) ?? collect();
-        $baseOverride = $court?->{$priceColumn};
+        $courtCalendar = $court?->calendarSlotPrices()->get()->keyBy(
+            fn ($price): string => $price->date->format('Y-m-d').'|'.substr((string) $price->starts_at, 0, 5)
+        ) ?? collect();
+
+        $courtBase = $court?->{$column};
+        $venueBase = (int) $policy->{$column};
         $paid = (bool) ($effective['requires_payment'] ?? $policy->requires_payment);
         $prices = [];
         $usesCustomPrices = false;
 
-        for ($offset = 0; $offset < $durationMinutes; $offset += $policy->time_step_minutes) {
-            $step = $localStart->addMinutes($offset);
-            $key = $step->dayOfWeekIso.'|'.$step->format('H:i');
-            $courtCustom = $courtOverrides->get($key)?->{$priceColumn};
-            $venueCustom = $venueOverrides->get($key)?->{$priceColumn};
-            // Court slot > court base > venue slot > venue base.
-            $custom = $courtCustom ?? $baseOverride ?? $venueCustom;
-            $prices[] = ! $paid ? 0 : ($custom === null ? $fallback : (int) $custom);
-            $usesCustomPrices = $usesCustomPrices || ($paid && $custom !== null);
+        for ($offset = 0; $offset < $durationMinutes; $offset += $courtStep) {
+            $start = $localStart->addMinutes($offset);
+            $dateKey = $start->format('Y-m-d|H:i');
+            $weekdayKey = $start->dayOfWeekIso.'|'.$start->format('H:i');
+
+            // An explicit court-level value overrides inherited venue prices.
+            // NULL (not zero) means "inherit" for either rental scope.
+            $courtCustom = $courtCalendar->get($dateKey)?->{$column}
+                ?? $courtWeekly->get($weekdayKey)?->{$column}
+                ?? $courtBase;
+
+            if ($courtCustom !== null) {
+                $prices[] = $paid ? (int) $courtCustom : 0;
+                $usesCustomPrices = $usesCustomPrices || $paid;
+                continue;
+            }
+
+            $amount = 0;
+            for ($substep = 0; $substep < $courtStep; $substep += $venueStep) {
+                $time = $start->addMinutes($substep);
+                $key = $time->format('Y-m-d|H:i');
+                $weeklyKey = $time->dayOfWeekIso.'|'.$time->format('H:i');
+                $override = $venueCalendar->get($key)?->{$column}
+                    ?? $venueWeekly->get($weeklyKey)?->{$column};
+                if ($override !== null) {
+                    $usesCustomPrices = $usesCustomPrices || $paid;
+                }
+                $amount += $override === null ? $venueBase : (int) $override;
+            }
+            $prices[] = $paid ? $amount : 0;
         }
 
         return [
