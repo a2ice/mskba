@@ -9,8 +9,6 @@
 .app-rental-pricing__grid--two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .app-rental-pricing__form{display:flex;flex-direction:column;gap:20px}
 .app-rental-pricing__actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
-.app-rental-pricing__check{display:flex;align-items:center;gap:12px;min-height:44px;font-size:14px;line-height:20px;font-weight:600}
-.app-rental-pricing__check input{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent)}
 .app-rental-pricing__entry{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:12px;border-bottom:1px solid var(--line)}
 .app-rental-pricing__entry:last-child{border-bottom:0}
 .app-rental-pricing__entry p{color:var(--muted);font-size:14px}
