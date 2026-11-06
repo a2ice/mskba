@@ -42,7 +42,7 @@ test('the header count reuses the private Reverb channel and reconciles other ta
     assert.match(js, /cache: 'no-store'/);
     assert.match(blade, /data-header-favorites/);
     assert.doesNotMatch(blade, /data-auth-redirect/);
-    assert.match(blade, /@auth\\s*<a class="app-header-favorites"/);
+    assert.match(blade, /@auth\s*<a class="app-header-favorites"/);
     assert.match(auth, /redirectAfterAuth/);
     for (const consumer of [favorites, account, vue]) {
         assert.match(consumer, /mskba:favorites:changed/);
