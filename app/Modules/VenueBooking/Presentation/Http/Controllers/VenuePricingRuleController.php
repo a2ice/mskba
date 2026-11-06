@@ -144,6 +144,7 @@ final class VenuePricingRuleController extends Controller
         }
         $slots = $pricing->calculate($venue, $policy, $localStart, $duration, $scope, $court, $effective);
         $result = $rules->evaluate($venue, $court, $localStart, $duration, $step, $scope, $slots['amount_minor']);
+        $commission = $commissions->calculate($venue, $court, $result['total_minor'], $policy->currency);
 
         return redirect()->route('account.venues.pricing-rules.index', $venue->id)
             ->with('rule_preview', [
