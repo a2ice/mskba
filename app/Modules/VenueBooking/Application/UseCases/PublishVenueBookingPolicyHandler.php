@@ -34,6 +34,19 @@ final readonly class PublishVenueBookingPolicyHandler
             }
 
             $normalized = $this->validate($venue, $data);
+            foreach ($venue->courts()->get() as $court) {
+                $step = (int) ($court->time_step_minutes ?? $normalized['time_step_minutes']);
+                $minimum = (int) ($court->minimum_duration_minutes ?? $normalized['minimum_duration_minutes']);
+                $maximum = (int) ($court->maximum_duration_minutes ?? $normalized['maximum_duration_minutes']);
+                if ($step < 5 || $step > 240 || $step % $normalized['time_step_minutes'] !== 0
+                    || $minimum < 15 || $maximum > 1440 || $minimum > $maximum
+                    || $minimum % $step !== 0) {
+                    throw new VenueBookingPolicyException(
+                        'Новые условия несовместимы с индивидуальными ограничениями зала «'.$court->name.'».'
+                    );
+                }
+            }
+
             $latestVersion = (int) VenueBookingPolicy::query()
                 ->where('venue_id', $venue->id)
                 ->max('version');
