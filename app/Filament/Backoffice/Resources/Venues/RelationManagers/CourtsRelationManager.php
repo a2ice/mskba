@@ -181,15 +181,11 @@ final class CourtsRelationManager extends RelationManager
                                         ->numeric()->integer()->minValue(1)->maxValue(730),
                                 ]),
                             Section::make('Базовые цены')
-                                ->description('Цена за шаг аренды, в копейках. Пусто — наследовать; 0 — бесплатно.')
+                                ->description('Цена в рублях за шаг аренды. Пусто — наследовать; 0 — бесплатно.')
                                 ->columns(['default' => 1, 'md' => 2])
                                 ->schema([
-                                    TextInput::make('whole_price_per_step_minor')
-                                        ->label('Весь зал, коп. за шаг')
-                                        ->numeric()->integer()->minValue(0)->maxValue(999999999),
-                                    TextInput::make('half_price_per_step_minor')
-                                        ->label('Половина, коп. за шаг')
-                                        ->numeric()->integer()->minValue(0)->maxValue(999999999),
+                                    $this->rublePriceInput('whole_price_per_step_minor', 'Весь зал, ₽ за шаг'),
+                                    $this->rublePriceInput('half_price_per_step_minor', 'Половина, ₽ за шаг'),
                                 ]),
                         ]),
                     Tab::make('Синхронизация')
@@ -249,7 +245,8 @@ final class CourtsRelationManager extends RelationManager
             TextColumn::make('operational_status')->label('Состояние')
                 ->formatStateUsing(fn ($state): string => $state instanceof VenueOperationalStatusEnum
                     ? $state->label() : 'Наследуется'),
-            TextColumn::make('whole_price_per_step_minor')->label('Цена/шаг, коп.')
+            TextColumn::make('whole_price_per_step_minor')->label('Цена/шаг, ₽')
+                ->formatStateUsing(fn ($state): string => number_format((int) $state / 100, 2, ',', ' ').' ₽')
                 ->placeholder('Наследуется'),
             TextColumn::make('environment')->label('Тип зала / зоны')
                 ->formatStateUsing(fn ($state): string => $state instanceof VenueCourtEnvironmentEnum
@@ -362,10 +359,8 @@ final class CourtsRelationManager extends RelationManager
                                     4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье',
                                 ]),
                             TimePicker::make('starts_at')->label('Начало шага')->required()->seconds(false),
-                            TextInput::make('whole_price_per_step_minor')->label('Весь зал, коп.')
-                                ->numeric()->minValue(0),
-                            TextInput::make('half_price_per_step_minor')->label('Половина, коп.')
-                                ->numeric()->minValue(0),
+                            $this->rublePriceInput('whole_price_per_step_minor', 'Весь зал, ₽'),
+                            $this->rublePriceInput('half_price_per_step_minor', 'Половина, ₽'),
                         ])->columns(4),
                 ])
                 ->fillForm(fn (VenueCourt $record): array => [
@@ -572,6 +567,27 @@ final class CourtsRelationManager extends RelationManager
         Notification::make()->success()->title('Синхронизация завершена')
             ->body('Залов: '.$result['courts'].'. Ценовых интервалов: '.$result['prices'].'.')
             ->send();
+    }
+
+    /**
+     * Prices are edited in rubles, but always dehydrated as integer kopecks.
+     * Empty means inherit; an explicit zero must not turn into null.
+     */
+    private function rublePriceInput(string $field, string $label): TextInput
+    {
+        return TextInput::make($field)
+            ->label($label)
+            ->numeric()
+            ->step(0.01)
+            ->minValue(0)
+            ->maxValue(9_999_999.99)
+            ->suffix('₽')
+            ->formatStateUsing(fn ($state): ?string => $state === null || $state === ''
+                ? null
+                : number_format((int) $state / 100, 2, '.', ''))
+            ->dehydrateStateUsing(fn ($state): ?int => $state === null || $state === ''
+                ? null
+                : (int) round((float) $state * 100));
     }
 
     private function inheritedBoolean(
