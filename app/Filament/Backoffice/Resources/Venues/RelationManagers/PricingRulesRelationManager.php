@@ -363,6 +363,9 @@ final class PricingRulesRelationManager extends RelationManager
         );
         $money = app(MinorAmountParser::class);
         $currency = $policy->currency;
+        $commission = app(VenueCommissionCalculator::class)->calculate(
+            $venue, $court, $result['total_minor'], $currency,
+        );
         $base = $money->format($result['base_minor'], $currency).' '.$currency;
         $total = $money->format($result['total_minor'], $currency).' '.$currency;
         $adjustments = collect($result['adjustments'])->map(
