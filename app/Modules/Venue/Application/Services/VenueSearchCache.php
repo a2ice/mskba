@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Closure;
 use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
@@ -19,15 +20,29 @@ final class VenueSearchCache
         return $this->repository()->remember(
             "venue-search:index:v{$version}",
             (int) config('venue_search.index_ttl_seconds', 3600),
-            fn (): array => Venue::query()
-                ->with([
-                    'tags:id,venue_id,name,slug',
-                    'location.address.cityDirectory',
-                    'location.metroStations:id,name',
-                ])
-                ->orderBy('id')
-                ->get()
-                ->map(function (Venue $venue): array {
+            fn (): array => $this->buildDocuments(),
+        );
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function buildDocuments(): array
+    {
+        $venues = Venue::query()->with([
+            'tags:id,venue_id,name,slug',
+            'location.address.cityDirectory',
+            'location.metroStations:id,name',
+            'courts',
+        ])->orderBy('id')->get();
+
+        $policies = VenueBookingPolicy::query()
+            ->whereIn('venue_id', $venues->pluck('id')->all())
+            ->where('active_marker', true)
+            ->where('is_enabled', true)
+            ->get()->keyBy('venue_id');
+
+        $discovery = app(VenueCourtDiscoveryAccess::class);
+
+        return $venues->map(function (Venue $venue) use ($policies, $discovery): array {
                     $address = $venue->location?->address;
                     $metroModels = $venue->location?->metroStations ?? collect();
                     $metros = $metroModels->pluck('name')->values()->all();
@@ -35,7 +50,10 @@ final class VenueSearchCache
                     $tags = $venue->tags->pluck('name')->values()->all();
                     $tagSlugs = $venue->tags->pluck('slug')->values()->all();
 
+                    $courtAccess = $discovery->classify($venue, $policies->get($venue->id));
+
                     return [
+                        'court_access' => $courtAccess,
                         'id' => $venue->id,
                         'name' => $venue->name,
                         'alias' => $venue->alias,
@@ -59,14 +77,13 @@ final class VenueSearchCache
                             $venue->name,
                             $venue->raw_address,
                             $venue->short_description,
+                            $venue->courts->pluck('name')->implode(' '),
                             implode(' ', $metros),
                             implode(' ', $tags),
                             implode(' ', $tagSlugs),
                         ]))),
                     ];
-                })
-                ->all(),
-        );
+        })->all();
     }
 
     /** @return array<int, array<string, mixed>> */
