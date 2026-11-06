@@ -53,7 +53,14 @@
             <div class="card"><div class="card-body">
                 <h2 class="h4">Итог предложения</h2>
                 <p><strong>{{ $court->name }}</strong></p>
-                <p><strong>{{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($quote->currency) }}</strong></p>
+                @if($quote->commissionBreakdown)
+                    <p>Аренда после скидок: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['provider_amount_minor'], $quote->currency) }} {{ $quote->currency }}</p>
+                    <p>Комиссия MSKBA: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['portal_fee_minor'], $quote->currency) }} {{ $quote->currency }}</p>
+                    @if($quote->commissionBreakdown['agent_fee_minor'] > 0)
+                        <p>Комиссия агента: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['agent_fee_minor'], $quote->currency) }} {{ $quote->currency }}</p>
+                    @endif
+                @endif
+                <p><strong>Итого: {{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($quote->currency) }}</strong></p>
                 <p>{{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('d.m.Y H:i') }}–{{ $quote->endsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('H:i') }}</p>
                 <p>Hold: {{ $quote->holdDurationMinutes }} мин. Quote действует до {{ $quote->validUntil->format('d.m.Y H:i') }} UTC.</p>
                 <p class="text-muted">Идентификатор: {{ $quote->publicId }}. При отправке заявки сервер повторно проверит этот snapshot.</p>
