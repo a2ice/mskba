@@ -9,6 +9,7 @@ use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
