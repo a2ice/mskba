@@ -37,6 +37,12 @@ final class VenueCreateFilamentFormTest extends TestCase
                 'operational_status' => 'active',
                 'access_type' => 'free',
                 'schedule_timezone' => 'Europe/Moscow',
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'weekly_default_intervals' => [
                     ['starts_at' => '10:00', 'ends_at' => '22:00'],
                 ],
@@ -50,6 +56,8 @@ final class VenueCreateFilamentFormTest extends TestCase
 
         $venue = Venue::query()->where('name', 'Тестовая площадка Livewire')->firstOrFail();
         $this->assertSame(1, $venue->courts()->count());
+        $this->assertSame('Корт 1', $venue->primaryCourt()->firstOrFail()->name);
+        $this->assertSame('outdoor', $venue->primaryCourt()->firstOrFail()->environment->value);
         $this->assertTrue($venue->primaryCourt()->exists());
         $this->assertSame(6, $venue->schedule()->firstOrFail()->intervals()->count());
     }
