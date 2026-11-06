@@ -97,6 +97,8 @@ final readonly class SearchVenuesHandler
                 longitude: $venue['longitude'],
                 metroStations: $venue['metro_stations'],
                 tags: $venue['tags'],
+                courtAccess: $venue['court_access'] ?? [],
+                matchedCourt: $venue['matched_court'] ?? null,
             ),
             $documents,
         );
@@ -124,14 +126,38 @@ final readonly class SearchVenuesHandler
             ->when($parameters['metro_station_id'], fn (Collection $items, int $value) => $items->filter(
                 fn (array $venue): bool => in_array($value, $venue['metro_station_ids'], true),
             ))
-            ->when($parameters['requires_payment'] !== null, fn (Collection $items) => $items->where(
-                'requires_payment',
-                $parameters['requires_payment'],
-            ))
-            ->when($parameters['requires_booking_approval'] !== null, fn (Collection $items) => $items->where(
-                'requires_booking_approval',
-                $parameters['requires_booking_approval'],
-            ))
+            // Both conditions must match the *same* available hall, not two
+            // unrelated courts of one venue.
+            ->when(
+                $parameters['requires_payment'] !== null || $parameters['requires_booking_approval'] !== null,
+                fn (Collection $items): Collection => $items
+                    ->map(function (array $venue) use ($parameters): array {
+                        $courtAccess = $venue['court_access'] ?? [];
+                        $courts = collect(array_merge(
+                            $courtAccess['free'] ?? [],
+                            $courtAccess['paid'] ?? [],
+                            $courtAccess['unknown'] ?? [],
+                        ))->unique('court_id');
+
+                        $matched = $courts->first(function (array $court) use ($courtAccess, $parameters): bool {
+                            $payment = $parameters['requires_payment'];
+                            $approval = $parameters['requires_booking_approval'];
+                            $paidCourtIds = array_column($courtAccess['paid'] ?? [], 'court_id');
+                            $freeCourtIds = array_column($courtAccess['free'] ?? [], 'court_id');
+
+                            return ($payment === null || in_array(
+                                $court['court_id'],
+                                $payment ? $paidCourtIds : $freeCourtIds,
+                                true,
+                            )) && ($approval === null || $court['requires_booking_approval'] === $approval);
+                        });
+
+                        $venue['matched_court'] = $matched;
+
+                        return $venue;
+                    })
+                    ->filter(fn (array $venue): bool => $venue['matched_court'] !== null),
+            )
             ->when($parameters['query'] !== '', fn (Collection $items) => $items->filter(
                 fn (array $venue): bool => str_contains($venue['search_text'], $parameters['query']),
             ));
