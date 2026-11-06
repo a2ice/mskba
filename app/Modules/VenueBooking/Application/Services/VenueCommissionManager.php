@@ -142,11 +142,16 @@ final readonly class VenueCommissionManager
             ])->save();
 
             if (! $active) {
-                VenueCommissionPolicy::query()->where('venue_id', $venue->id)
-                    ->where('selected_agent_id', $agent->id)->update([
-                        'selected_agent_id' => null, 'updated_by_user_id' => $actor->id,
-                        'updated_at' => now(),
-                    ]);
+                $policy = VenueCommissionPolicy::query()->where('venue_id', $venue->id)
+                    ->where('selected_agent_id', $agent->id)->lockForUpdate()->first();
+                if ($policy !== null) {
+                    // Model save is intentional: it preserves the audit trail.
+                    $policy->fill([
+                        'selected_agent_id' => null,
+                        'updated_by_user_id' => $actor->id,
+                        'version' => $policy->version + 1,
+                    ])->save();
+                }
             }
 
             return $agent;
