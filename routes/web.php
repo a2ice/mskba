@@ -115,6 +115,7 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventCont
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
