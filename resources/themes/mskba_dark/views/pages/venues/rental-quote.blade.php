@@ -21,6 +21,9 @@
                                         value="{{ $courtOption->id }}"
                                         data-allows-whole="{{ $courtOption->allows_whole ? '1' : '0' }}"
                                         data-allows-halves="{{ ($courtOption->supports_halves && $courtOption->allows_halves) ? '1' : '0' }}"
+                                        data-min-duration="{{ $courtOption->minimum_duration_minutes ?? $policy->minimum_duration_minutes }}"
+                                        data-max-duration="{{ $courtOption->maximum_duration_minutes ?? $policy->maximum_duration_minutes }}"
+                                        data-time-step="{{ $courtOption->time_step_minutes ?? $policy->time_step_minutes }}"
                                         @selected((int) old('venue_court_id', $court->id) === (int) $courtOption->id)
                                     >{{ $courtOption->name }}</option>
                                 @endforeach
@@ -30,8 +33,8 @@
                             <div class="form-control" aria-readonly="true">{{ $court->name }}</div>
                         @endif
                     </div>
-                    <div class="col-md-4"><label class="form-label">Начало</label><input class="form-control" type="datetime-local" name="starts_at" required value="{{ old('starts_at') }}"></div>
-                    <div class="col-md-2"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" required min="{{ $policy->minimum_duration_minutes }}" max="{{ $policy->maximum_duration_minutes }}" step="{{ $policy->time_step_minutes }}" value="{{ old('duration_minutes', $policy->minimum_duration_minutes) }}"></div>
+                    <div class="col-md-4"><label class="form-label">Начало</label><input class="form-control" type="datetime-local" name="starts_at" required data-venue-rental-start step="{{ ($court->time_step_minutes ?? $policy->time_step_minutes) * 60 }}" value="{{ old('starts_at') }}"></div>
+                    <div class="col-md-2"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" data-venue-rental-duration required min="{{ $court->minimum_duration_minutes ?? $policy->minimum_duration_minutes }}" max="{{ $court->maximum_duration_minutes ?? $policy->maximum_duration_minutes }}" step="{{ $court->time_step_minutes ?? $policy->time_step_minutes }}" value="{{ old('duration_minutes', $court->minimum_duration_minutes ?? $policy->minimum_duration_minutes) }}"></div>
                     <div class="col-md-2">
                         <label class="form-label" for="venue-rental-scope">Область</label>
                         <select id="venue-rental-scope" class="form-select" name="scope" data-venue-rental-scope>
@@ -93,6 +96,21 @@
 
         const syncScopes = () => {
             const selected = courtSelect?.selectedOptions?.[0];
+            const minDuration = Number(selected?.dataset.minDuration ?? {{ (int) ($court->minimum_duration_minutes ?? $policy->minimum_duration_minutes) }});
+            const maxDuration = Number(selected?.dataset.maxDuration ?? {{ (int) ($court->maximum_duration_minutes ?? $policy->maximum_duration_minutes) }});
+            const timeStep = Number(selected?.dataset.timeStep ?? {{ (int) ($court->time_step_minutes ?? $policy->time_step_minutes) }});
+            const duration = form.querySelector('[data-venue-rental-duration]');
+            const start = form.querySelector('[data-venue-rental-start]');
+            if (duration) {
+                duration.min = String(minDuration);
+                duration.max = String(maxDuration);
+                duration.step = String(timeStep);
+                const value = Number(duration.value);
+                if (!value || value < minDuration || value > maxDuration || value % timeStep !== 0) {
+                    duration.value = String(minDuration);
+                }
+            }
+            if (start) start.step = String(timeStep * 60);
             const allowsWhole = selected ? selected.dataset.allowsWhole === '1' : {{ ($court->allows_whole ? 'true' : 'false') }};
             const allowsHalves = selected ? selected.dataset.allowsHalves === '1' : {{ (($court->supports_halves && $court->allows_halves) ? 'true' : 'false') }};
             const whole = allowsWhole;
