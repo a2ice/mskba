@@ -118,6 +118,13 @@ final class VenueCourtSettingsController extends Controller
             'whole_price_per_step' => ['nullable', 'string', 'max:32'],
             'half_price_per_step' => ['nullable', 'string', 'max:32'],
         ]);
+        $policy = VenueBookingPolicy::query()->where('venue_id', $venueModel->id)
+            ->where('active_marker', true)->first();
+        $step = (int) ($courtModel->time_step_minutes ?? $policy?->time_step_minutes ?? 0);
+        $minutes = (int) substr($data['starts_at'], 0, 2) * 60 + (int) substr($data['starts_at'], 3, 2);
+        if ($step > 0 && $minutes % $step !== 0) {
+            throw ValidationException::withMessages(['starts_at' => 'Начало должно соответствовать шагу зала.']);
+        }
         $currency = $venueModel->bookingPolicyCurrency();
         $values = [];
         foreach (['whole', 'half'] as $scope) {
