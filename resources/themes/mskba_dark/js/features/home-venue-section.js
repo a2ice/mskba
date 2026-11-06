@@ -209,15 +209,20 @@ function normalizeUrlPath(value) {
 
 function buildBalloonBody(venue) {
     const address = displayAddress(venue.address);
-    const access = venue.requires_payment === true
-        ? 'Платно'
-        : (venue.requires_payment === false ? 'Бесплатно' : 'Условия уточняются');
+    const access = [
+        venue.has_free_court ? (venue.has_paid_court ? 'Есть бесплатные залы' : 'Бесплатно') : null,
+        venue.has_paid_court ? (venue.has_free_court ? 'Есть платные залы' : 'Платно') : null,
+        venue.has_approval_court ? 'Есть залы с подтверждением' : null,
+    ].filter(Boolean);
+    if (access.length === 0) access.push('Условия уточняются');
     const url = venue.url ? escapeHtml(venue.url) : '';
+    const court = venue.matched_court?.name ? escapeHtml(venue.matched_court.name) : '';
 
     return [
         address ? `<div>${escapeHtml(address)}</div>` : '',
-        `<div>${escapeHtml(access)}</div>`,
-        url ? `<div><a href="${url}">Открыть площадку</a></div>` : '',
+        ...access.map((label) => `<div>${escapeHtml(label)}</div>`),
+        court ? `<div>Подходящий зал: ${court}</div>` : '',
+        url ? `<div><a href="${url}">${court ? 'Открыть зал' : 'Открыть площадку'}</a></div>` : '',
         Number.isInteger(Number(venue.id)) && Number(venue.id) > 0
             ? `<button type="button" class="mskba-favorite-heart" data-favorite-venue="${Number(venue.id)}" title="Добавить в избранное" aria-pressed="false" aria-label="Добавить в избранное">♡</button>`
             : '',
