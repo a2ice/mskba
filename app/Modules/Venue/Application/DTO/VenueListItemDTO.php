@@ -28,6 +28,12 @@ final readonly class VenueListItemDTO
         public bool $canRemove,
         public bool $canDecideBookingRequests = false,
         public int $actionableBookingRequestsCount = 0,
+        /** @var array<string, array<int, array<string, mixed>>> */
+        public array $courtAccessSummary = [],
+        public ?string $matchedCourtUrl = null,
+        public ?string $matchedCourtName = null,
+        public ?bool $matchedRequiresBooking = null,
+        public ?bool $matchedRequiresApproval = null,
     ) {}
 
     public function hasFreeAccess(): bool
