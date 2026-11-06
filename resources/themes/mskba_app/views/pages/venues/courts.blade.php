@@ -19,6 +19,7 @@
     <div class="app-rental-pricing__actions">
         @if($policy)
             <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Условия площадки</a>
+            <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
         @endif
         <a class="button secondary" href="{{ route('account.venues') }}">Мои площадки</a>
     </div>
