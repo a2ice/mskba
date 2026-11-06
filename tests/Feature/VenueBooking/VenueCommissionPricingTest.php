@@ -117,6 +117,43 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertSame(230000, $calc->calculate($venue, $court, 200000, 'RUB')['total_minor']);
     }
 
+    public function test_disabling_both_fees_is_distinct_from_zero_portal_rate_and_court_can_override(): void
+    {
+        [$admin, $venue, $court] = $this->scenario();
+        $manager = app(VenueCommissionManager::class);
+        $manager->setPortal($admin, 'percent', '10');
+        $agent = $manager->saveAgent($venue, $admin, $this->activeUser(), 'percent', '5');
+
+        $manager->setVenue($venue, $admin, 'percent', '0', $agent->id);
+        $zeroPortal = $this->quote($venue, $court);
+        $this->assertSame(210000, $zeroPortal->amountMinor);
+        $this->assertSame(0, $zeroPortal->commissionBreakdown['portal_fee_minor']);
+        $this->assertSame(10000, $zeroPortal->commissionBreakdown['agent_fee_minor']);
+
+        $manager->setVenue($venue, $admin, 'inherit', selectedAgentId: $agent->id, disableAllCommissions: true);
+        $disabled = $this->quote($venue, $court);
+        $this->assertSame(200000, $disabled->amountMinor);
+        $this->assertTrue($disabled->commissionBreakdown['all_fees']['disabled']);
+        $this->assertSame('venue', $disabled->commissionBreakdown['all_fees']['source']);
+        $this->assertSame(0, $disabled->commissionBreakdown['agent_fee_minor']);
+
+        $manager->setCourt($venue, $court, $admin, 'inherit', allFeesMode: 'enabled');
+        $this->assertSame(230000, $this->quote($venue, $court)->amountMinor);
+
+        $manager->setCourt($venue, $court, $admin, 'inherit', allFeesMode: 'inherit');
+        $this->assertSame(200000, $this->quote($venue, $court)->amountMinor);
+
+        $manager->setVenue($venue, $admin, 'inherit', selectedAgentId: $agent->id, disableAllCommissions: false);
+        $manager->setCourt($venue, $court, $admin, 'inherit', allFeesMode: 'disabled');
+        $courtDisabled = $this->quote($venue, $court);
+        $this->assertSame(200000, $courtDisabled->amountMinor);
+        $this->assertSame('court', $courtDisabled->commissionBreakdown['all_fees']['source']);
+
+        $row = VenueBookingQuote::query()->where('public_id', $disabled->publicId)->firstOrFail();
+        $this->assertSame(200000, $row->snapshot['pricing']['amount_minor']);
+        $this->assertSame('venue', $row->snapshot['pricing']['commissions']['all_fees']['source']);
+    }
+
     public function test_discount_is_applied_before_both_commissions_and_old_quotes_do_not_change(): void
     {
         [$admin, $venue, $court] = $this->scenario();

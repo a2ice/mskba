@@ -6,8 +6,8 @@ use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
-use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
@@ -63,7 +63,7 @@ final class CommissionAgentsRelationManager extends RelationManager
     private function commissionModes(bool $inherit): array
     {
         return ($inherit ? ['inherit' => 'Наследовать'] : [])
-            + ['none' => 'Без комиссии (0%)', 'percent' => 'Процент', 'fixed' => 'Фиксированная сумма'];
+            + ['percent' => 'Процент (включая 0%)', 'fixed' => 'Фиксированная сумма'];
     }
 
     /** @return array<int,mixed> */
@@ -72,7 +72,7 @@ final class CommissionAgentsRelationManager extends RelationManager
         return [
             Select::make('mode')->label('Способ расчёта')
                 ->options($this->commissionModes($inherit))
-                ->default($inherit ? 'inherit' : 'none')->required(),
+                ->default($inherit ? 'inherit' : 'percent')->required(),
             TextInput::make('value_text')->label('Значение, % или руб.')
                 ->default('0')->required()->maxLength(32)
                 ->helperText('Процент указывается как 10 или 5,50. Для суммы используйте рубли. Ноль допускается.'),
@@ -82,7 +82,7 @@ final class CommissionAgentsRelationManager extends RelationManager
     /** @return array{mode:string,value_text:string} */
     private function rateState(?string $mode, ?int $value, string $currency, bool $inherit): array
     {
-        $mode ??= $inherit ? 'inherit' : 'none';
+        $mode = $mode === 'none' ? 'percent' : ($mode ?? ($inherit ? 'inherit' : 'percent'));
         $value ??= 0;
 
         return [
@@ -123,30 +123,33 @@ final class CommissionAgentsRelationManager extends RelationManager
             ->emptyStateHeading('Коммерческие агенты ещё не назначены')
             ->emptyStateDescription('Агент не получает комиссию автоматически при выдаче прав сотрудника.')
             ->headerActions([
-                Action::make('portalCommission')->label('Комиссия MSKBA · глобально')
-                    ->icon('heroicon-o-globe-alt')
-                    ->modalHeading('Глобальная комиссия MSKBA')
-                    ->modalDescription('Изменение влияет на новые расчёты всех площадок без переопределения. Существующие бронирования не пересчитываются.')
-                    ->requiresConfirmation()
-                    ->modalWidth(Width::Large)
-                    ->schema($this->rateFields())
-                    ->fillForm(fn (): array => $this->rateState(
-                        PortalCommissionPolicy::query()->find(1)?->mode,
-                        PortalCommissionPolicy::query()->find(1)?->value,
-                        'RUB', false,
-                    ))
-                    ->action(function (array $data): void {
-                        $this->manager()->setPortal($this->actor(), $data['mode'], $data['value_text']);
-                        $this->toast('Глобальная комиссия сохранена');
-                    }),
                 Action::make('venueCommission')->label('Комиссия площадки')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->modalHeading('Комиссия площадки')
-                    ->modalDescription('Пустое наследование — глобальная комиссия. Выбранный агент один; остальные не участвуют в расчёте.')
+                    ->modalDescription(function (): string {
+                        $policy = $this->getOwnerRecord()->commissionPolicy;
+                        $global = PortalCommissionPolicy::query()->where('entity_type', 'venue')
+                            ->where('action_key', 'rental')->first();
+                        $mode = $policy?->mode_override ?? $global?->mode ?? 'none';
+                        $value = $policy?->mode_override !== null
+                            ? $policy->value_override : ($global?->value ?? 0);
+                        $label = match ($mode) {
+                            'percent' => number_format($value / 100, 2, ',', ' ').'%',
+                            'fixed' => app(MinorAmountParser::class)->format($value, 'RUB').' ₽',
+                            default => '0%',
+                        };
+                        $source = $policy?->mode_override !== null ? 'площадка' : 'глобальная ставка';
+                        return 'Текущая комиссия MSKBA: '.$label.' ('.$source.'). Комиссия агента считается отдельно.';
+                    })
                     ->modalWidth(Width::Large)
                     ->schema([
                         Section::make('Комиссия MSKBA')->columns(2)
+                            ->description('Глобальная ставка задаётся в разделе «Контент → Комиссии».')
                             ->schema($this->rateFields(true)),
+                        Toggle::make('disable_all_commissions')
+                            ->label('Не начислять комиссии')
+                            ->helperText('Отключает комиссию MSKBA и комиссию выбранного агента; залы наследуют эту настройку.')
+                            ->default(false),
                         Select::make('selected_agent_id')->label('Агент, получающий комиссию')
                             ->placeholder('Не добавлять комиссию агента')
                             ->options(fn (): array => $this->getOwnerRecord()->commissionAgents()
@@ -162,12 +165,14 @@ final class CommissionAgentsRelationManager extends RelationManager
                             ...$this->rateState($policy?->mode_override, $policy?->value_override,
                                 $this->getOwnerRecord()->bookingPolicyCurrency(), true),
                             'selected_agent_id' => $policy?->selected_agent_id,
+                            'disable_all_commissions' => (bool) ($policy?->disable_all_commissions ?? false),
                         ];
                     })
                     ->action(function (array $data): void {
                         $this->manager()->setVenue(
                             $this->getOwnerRecord(), $this->actor(), $data['mode'], $data['value_text'],
                             filled($data['selected_agent_id'] ?? null) ? (int) $data['selected_agent_id'] : null,
+                            (bool) ($data['disable_all_commissions'] ?? false),
                         );
                         $this->getOwnerRecord()->unsetRelation('commissionPolicy');
                         $this->toast('Комиссия площадки сохранена');

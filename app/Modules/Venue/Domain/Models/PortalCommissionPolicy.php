@@ -6,7 +6,7 @@ use App\Modules\Audit\Domain\Traits\Auditable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['mode', 'value', 'currency', 'version', 'updated_by_user_id'])]
+#[Fillable(['entity_type', 'action_key', 'mode', 'value', 'currency', 'version', 'updated_by_user_id'])]
 final class PortalCommissionPolicy extends Model
 {
     use Auditable;

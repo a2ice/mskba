@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Backoffice\Pages\PageBuilderAgentAccess;
+use App\Filament\Backoffice\Pages\Commissions;
 use App\Filament\Backoffice\Pages\GraphQLExplorer;
 use App\Filament\Backoffice\Pages\RestApiExplorer;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
@@ -135,7 +136,7 @@ final class BackofficePanelProvider extends PanelProvider
 })();
 </script>
 HTML))
-            ->pages([Dashboard::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class])
+            ->pages([Dashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class,
