@@ -55,24 +55,35 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException('Аренда выбранного зала сейчас недоступна.');
         }
 
+        $venueStep = (int) $policy->time_step_minutes;
+        $courtStep = (int) $effective['time_step_minutes'];
+        $minimumDuration = (int) $effective['minimum_duration_minutes'];
+        $maximumDuration = (int) $effective['maximum_duration_minutes'];
+        if ($courtStep < 5 || $courtStep > 240 || $venueStep < 1 || $courtStep % $venueStep !== 0
+            || $minimumDuration < 15 || $maximumDuration < $minimumDuration
+            || $maximumDuration > 1440 || $minimumDuration % $courtStep !== 0) {
+            throw new VenueBookingPolicyException('Ограничения аренды зала несовместимы с условиями площадки.');
+        }
+
         $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
         $localStart = $startsAt->setTimezone($timezone)->startOfMinute();
         $now = CarbonImmutable::now($timezone);
 
-        if ($localStart->lessThan($now->addMinutes($policy->minimum_lead_time_minutes))) {
+        if ($localStart->lessThan($now->addMinutes((int) $effective['minimum_lead_time_minutes']))) {
             throw new VenueBookingPolicyException('Не соблюдён минимальный срок до начала аренды.');
         }
 
-        if ($localStart->greaterThan($now->addDays($policy->maximum_advance_days))) {
+        if ($localStart->greaterThan($now->addDays((int) $effective['maximum_advance_days']))) {
             throw new VenueBookingPolicyException('Дата выходит за допустимый горизонт бронирования.');
         }
 
         $minutesFromDayStart = $localStart->hour * 60 + $localStart->minute;
-        if ($minutesFromDayStart % $policy->time_step_minutes !== 0) {
+        if ($minutesFromDayStart % $courtStep !== 0) {
             throw new VenueBookingPolicyException('Начало аренды должно соответствовать шагу времени политики.');
         }
 
-        if (! $policy->acceptsDuration($durationMinutes)) {
+        if ($durationMinutes < $minimumDuration || $durationMinutes > $maximumDuration
+            || $durationMinutes % $courtStep !== 0) {
             throw new VenueBookingPolicyException('Длительность не соответствует ограничениям политики.');
         }
 
@@ -100,10 +111,12 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
         }
 
+        $priceColumn = $scope === VenueBookingScopeEnum::WHOLE
+            ? 'whole_price_per_step_minor'
+            : 'half_price_per_step_minor';
+        $courtBase = $court->{$priceColumn};
         $fallbackPricePerStep = ! $effective['requires_payment'] ? 0
-            : ($scope === VenueBookingScopeEnum::WHOLE
-                ? $effective['whole_price_per_step_minor']
-                : $effective['half_price_per_step_minor']);
+            : (int) ($courtBase ?? ((int) $policy->{$priceColumn} * intdiv($courtStep, $venueStep)));
         $price = $this->pricing->calculate($venue, $policy, $localStart, $durationMinutes, $scope, $court, $effective);
         if ($effective['requires_payment'] && in_array(0, $price['prices_per_step_minor'], true)) {
             throw new VenueBookingPolicyException('Для каждого платного интервала аренды должна быть задана положительная цена.');
@@ -123,11 +136,12 @@ final readonly class QuoteVenueBookingHandler
                 'version' => $policy->version,
                 'allows_whole' => $policy->allows_whole,
                 'allows_halves' => $policy->allows_halves,
-                'time_step_minutes' => $policy->time_step_minutes,
-                'minimum_duration_minutes' => $policy->minimum_duration_minutes,
-                'maximum_duration_minutes' => $policy->maximum_duration_minutes,
-                'minimum_lead_time_minutes' => $policy->minimum_lead_time_minutes,
-                'maximum_advance_days' => $policy->maximum_advance_days,
+                'time_step_minutes' => $courtStep,
+                'venue_time_step_minutes' => $venueStep,
+                'minimum_duration_minutes' => $minimumDuration,
+                'maximum_duration_minutes' => $maximumDuration,
+                'minimum_lead_time_minutes' => (int) $effective['minimum_lead_time_minutes'],
+                'maximum_advance_days' => (int) $effective['maximum_advance_days'],
                 'requires_payment' => $effective['requires_payment'],
                 'requires_booking' => $effective['requires_booking'],
                 'requires_booking_approval' => $effective['requires_booking_approval'],
@@ -161,6 +175,8 @@ final readonly class QuoteVenueBookingHandler
                 'amount_minor' => $amountMinor,
                 'currency' => $policy->currency,
                 'court_id' => $court->id,
+                'venue_step_minutes' => $venueStep,
+                'court_step_minutes' => $courtStep,
             ],
             'generated_at' => $generatedAt->toIso8601String(),
             'valid_until' => $validUntil->toIso8601String(),
