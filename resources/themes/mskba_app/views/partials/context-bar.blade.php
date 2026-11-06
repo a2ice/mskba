@@ -9,6 +9,42 @@
     @php
         $trail = $isHomePage ? [] : app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
         $contextItems = $isHomePage ? [] : app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve();
+        // Public venue and court pages keep owner-only actions in this menu,
+        // never in the page hero. The DTO contains the resolved venue permission.
+        if (request()->routeIs('venues.show', 'venues.courts.show')
+            && isset($venue)
+            && $venue instanceof \App\Modules\Venue\Application\DTO\VenueDetailsDTO) {
+            $editUrl = $venue->canEdit ? route('account.venues.edit', $venue->routeIdentifier()) : null;
+            $promoUrl = filled($groupOffersManagementUrl ?? null) ? $groupOffersManagementUrl : null;
+
+            if ($editUrl !== null && $promoUrl !== null) {
+                array_unshift($contextItems, [
+                    'label' => 'Редактировать',
+                    'url' => null,
+                    'visible' => true,
+                    'active' => false,
+                    'children' => [
+                        ['label' => 'Площадку', 'url' => $editUrl, 'visible' => true, 'active' => false],
+                        ['label' => 'Промокоды', 'url' => $promoUrl, 'visible' => true, 'active' => false],
+                    ],
+                ]);
+            } elseif ($editUrl !== null) {
+                array_unshift($contextItems, [
+                    'label' => 'Редактировать',
+                    'url' => $editUrl,
+                    'visible' => true,
+                    'active' => false,
+                ]);
+            } elseif ($promoUrl !== null) {
+                // A promo manager can have separate permissions from venue editing.
+                array_unshift($contextItems, [
+                    'label' => 'Управление промокодами',
+                    'url' => $promoUrl,
+                    'visible' => true,
+                    'active' => false,
+                ]);
+            }
+        }
         $parentUrl = collect(array_slice($trail, 0, -1))->reverse()->first(fn (array $crumb): bool => ! empty($crumb['url']))['url'] ?? route('welcome');
         $showAccountConfirmation = $accountIsUnconfirmed && ! request()->routeIs('account.confirmation');
         $showOverviewConfirmationGuide = $accountIsUnconfirmed && request()->routeIs('account');
