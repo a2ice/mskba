@@ -56,6 +56,19 @@ final class VenueRepresentativePhotoTest extends TestCase
         $this->assertSame(url($own->publicUrl()), $data['image_url']);
     }
 
+    public function test_non_gallery_venue_media_does_not_hide_court_gallery_fallback(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $venue->media()->create([
+            'collection' => 'banner', 'source' => 'upload', 'disk' => 'public',
+            'path' => 'banner/venue.webp', 'mime' => 'image/webp', 'size' => 100,
+            'is_featured' => true, 'sort_order' => 0,
+        ]);
+        $fallback = $this->makePhoto($court, 'gallery/real-court.webp');
+        $this->assertSame($fallback->id, $venue->fresh()->representativePhoto()?->id);
+    }
+
     private function makePhoto(Venue|VenueCourt $owner, string $path, bool $featured = false): Media
     {
         return $owner->media()->create([
