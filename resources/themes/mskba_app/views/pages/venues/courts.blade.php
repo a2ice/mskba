@@ -85,12 +85,12 @@
                                 </select>
                             </label>
                         </div>
-                        <label class="app-rental-pricing__check">
+                        <label class="check-label">
                             <input type="hidden" name="allows_whole" value="0">
                             <input type="checkbox" name="allows_whole" value="1" @checked($court->allows_whole)>
                             <span>Разрешать аренду всего зала</span>
                         </label>
-                        <label class="app-rental-pricing__check">
+                        <label class="check-label">
                             <input type="hidden" name="allows_halves" value="0">
                             <input type="checkbox" name="allows_halves" value="1" @checked($court->allows_halves)>
                             <span>Разрешать аренду половин</span>
@@ -262,8 +262,8 @@
                         </select>
                     </label>
                 </div>
-                <label class="app-rental-pricing__check"><input type="checkbox" name="allows_whole" value="1" checked>Разрешать аренду целиком</label>
-                <label class="app-rental-pricing__check"><input type="checkbox" name="allows_halves" value="1">Разрешать аренду половин</label>
+                <label class="check-label"><input type="checkbox" name="allows_whole" value="1" checked>Разрешать аренду целиком</label>
+                <label class="check-label"><input type="checkbox" name="allows_halves" value="1">Разрешать аренду половин</label>
                 <button class="button primary" type="submit">Добавить зал</button>
             </form>
         </section>
