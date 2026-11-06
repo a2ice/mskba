@@ -246,7 +246,8 @@ final class CourtsRelationManager extends RelationManager
                 ->formatStateUsing(fn ($state): string => $state instanceof VenueOperationalStatusEnum
                     ? $state->label() : 'Наследуется'),
             TextColumn::make('whole_price_per_step_minor')->label('Цена/шаг, ₽')
-                ->formatStateUsing(fn ($state): string => number_format((int) $state / 100, 2, ',', ' ').' ₽')
+                ->formatStateUsing(fn ($state): ?string => $state === null
+                    ? null : number_format((int) $state / 100, 2, ',', ' ').' ₽')
                 ->placeholder('Наследуется'),
             TextColumn::make('environment')->label('Тип зала / зоны')
                 ->formatStateUsing(fn ($state): string => $state instanceof VenueCourtEnvironmentEnum
