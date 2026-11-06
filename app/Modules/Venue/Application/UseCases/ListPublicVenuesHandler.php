@@ -39,8 +39,8 @@ final class ListPublicVenuesHandler
                         'COALESCE(venue_courts.requires_payment, '
                         .'(SELECT p.requires_payment FROM venue_booking_policies p '
                         .'WHERE p.venue_id = venues.id AND p.active_marker = TRUE AND p.is_enabled = TRUE '
-                        .'ORDER BY p.id DESC LIMIT 1), venues.requires_payment) = ?',
-                        [$access === 'paid'],
+                        .'ORDER BY p.id DESC LIMIT 1), venues.requires_payment) '
+                        .($access === 'paid' ? 'IS TRUE' : 'IS FALSE'),
                     );
                 }));
 
