@@ -9,6 +9,9 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
+use App\Modules\Venue\Application\Services\SyncVenueCourtSchedule;
+use Carbon\CarbonImmutable;
+use Filament\Notifications\Notification;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -130,6 +133,17 @@ final class CourtsRelationManager extends RelationManager
                         ->label('Цена половины за шаг, коп.')->numeric()->minValue(0)
                         ->helperText('Пусто — наследовать цену площадки.'),
                 ]),
+            Section::make('Синхронизация с площадкой')
+                ->description('Автоматическая синхронизация пока отключена. Расписание и цены копируются только по команде в таблице залов.')
+                ->columns(2)->schema([
+                    Toggle::make('auto_sync_enabled')->label('Автоматическая синхронизация')
+                        ->helperText('Зарезервировано для будущего включения. Сейчас не выполняется.')
+                        ->default(false)->disabled()->dehydrated(false),
+                    Toggle::make('sync_include_prices_default')->label('Включать цены по умолчанию')
+                        ->default(true),
+                    TextInput::make('sync_period_days')->label('Период по умолчанию, дней')
+                        ->numeric()->integer()->required()->minValue(1)->maxValue(90)->default(7),
+                ]),
             Section::make('Медиатека')->description('Фотографии именно этого зала / зоны')
                 ->schema([
                     TextEntry::make('court_photo_preview')->label('Фотографии')
@@ -178,8 +192,60 @@ final class CourtsRelationManager extends RelationManager
         ])->headerActions([
             CreateAction::make()->label('Добавить зал')
                 ->visible(fn (): bool => VenueResource::authorized()),
+            Action::make('syncAllCourts')->label('Синхронизировать все залы')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn (): bool => VenueResource::authorized())
+                ->modalHeading('Синхронизация всех залов')
+                ->modalDescription('Данные выбранных дат будут заменены у всех залов площадки. Существующие бронирования и мероприятия не изменяются.')
+                ->modalSubmitActionLabel('Синхронизировать')
+                ->requiresConfirmation()
+                ->schema($this->syncFormSchema())
+                ->action(function (array $data): void {
+                    abort_unless(VenueResource::authorized(), 403);
+                    $venue = $this->getOwnerRecord();
+                    $result = app(SyncVenueCourtSchedule::class)->handle(
+                        $venue,
+                        $venue->courts()->pluck('id')->all(),
+                        (string) $data['mode'],
+                        $this->syncStart($data),
+                        $this->syncEnd($data),
+                        (bool) ($data['include_prices'] ?? false),
+                    );
+                    $this->syncNotification($result);
+                }),
         ])->recordActions([
             EditAction::make(),
+            Action::make('syncCourtSchedule')->label('Синхронизировать')
+                ->icon('heroicon-o-arrow-path')
+                ->visible(fn (): bool => VenueResource::authorized())
+                ->modalHeading('Синхронизация зала с площадкой')
+                ->modalDescription('Индивидуальные данные выбранных дат будут заменены. Бронирования и мероприятия сохраняются.')
+                ->modalSubmitActionLabel('Синхронизировать')
+                ->requiresConfirmation()
+                ->schema($this->syncFormSchema())
+                ->fillForm(function (VenueCourt $record): array {
+                    $zone = $this->getOwnerRecord()->schedule?->timezone ?: 'Europe/Moscow';
+                    $today = CarbonImmutable::now($zone)->startOfDay();
+                    $period = max(1, min(90, (int) ($record->sync_period_days ?: 7)));
+                    return [
+                        'mode' => 'period',
+                        'date' => $today->toDateString(),
+                        'from_date' => $today->toDateString(),
+                        'to_date' => $today->addDays($period - 1)->toDateString(),
+                        'include_prices' => (bool) $record->sync_include_prices_default,
+                    ];
+                })
+                ->action(function (VenueCourt $record, array $data): void {
+                    abort_unless(VenueResource::authorized()
+                        && (int) $record->venue_id === (int) $this->getOwnerRecord()->id, 403);
+                    $result = app(SyncVenueCourtSchedule::class)->handle(
+                        $this->getOwnerRecord(), [$record->id], (string) $data['mode'],
+                        $this->syncStart($data),
+                        $this->syncEnd($data),
+                        (bool) ($data['include_prices'] ?? false),
+                    );
+                    $this->syncNotification($result);
+                }),
             Action::make('courtPricePeriods')->label('Тарифные интервалы')
                 ->icon('heroicon-o-currency-dollar')
                 ->schema([
@@ -347,6 +413,61 @@ final class CourtsRelationManager extends RelationManager
                         'Основной зал или зал с будущими бронированиями/мероприятиями нельзя удалить.');
                 }),
         ])->defaultSort('sort_order');
+    }
+
+    /** @return array<int, mixed> */
+    private function syncFormSchema(): array
+    {
+        $zone = $this->getOwnerRecord()->schedule?->timezone ?: 'Europe/Moscow';
+        $today = CarbonImmutable::now($zone)->startOfDay();
+
+        return [
+            Select::make('mode')->label('Режим')->required()->live()
+                ->options([
+                    'day' => 'На один день',
+                    'period' => 'На период',
+                    'full' => 'Полная синхронизация',
+                ])->default('period'),
+            DatePicker::make('date')->label('Дата')->native(false)
+                ->default($today->toDateString())
+                ->visible(fn (Get $get): bool => $get('mode') === 'day')
+                ->required(fn (Get $get): bool => $get('mode') === 'day'),
+            DatePicker::make('from_date')->label('Начало периода')->native(false)
+                ->default($today->toDateString())
+                ->visible(fn (Get $get): bool => $get('mode') === 'period')
+                ->required(fn (Get $get): bool => $get('mode') === 'period'),
+            DatePicker::make('to_date')->label('Конец периода')->native(false)
+                ->default($today->addDays(6)->toDateString())
+                ->visible(fn (Get $get): bool => $get('mode') === 'period')
+                ->required(fn (Get $get): bool => $get('mode') === 'period'),
+            Toggle::make('include_prices')->label('Включить цены')
+                ->helperText('По умолчанию включено. При выключении цены залов не изменяются.')
+                ->default(true),
+        ];
+    }
+
+    /** @param array<string, mixed> $data */
+    private function syncStart(array $data): ?string
+    {
+        return match ($data['mode'] ?? null) {
+            'day' => $data['date'] ?? null,
+            'period' => $data['from_date'] ?? null,
+            default => null,
+        };
+    }
+
+    /** @param array<string, mixed> $data */
+    private function syncEnd(array $data): ?string
+    {
+        return ($data['mode'] ?? null) === 'period' ? ($data['to_date'] ?? null) : null;
+    }
+
+    /** @param array{courts: int, days: int, prices: int} $result */
+    private function syncNotification(array $result): void
+    {
+        Notification::make()->success()->title('Синхронизация завершена')
+            ->body('Залов: '.$result['courts'].'. Ценовых интервалов: '.$result['prices'].'.')
+            ->send();
     }
 
     private function inheritedBoolean(
