@@ -5,7 +5,7 @@
 
 ## Эталон UI Kit до кода
 - `docs/specification/ui-design-system.md` и Filament → Дизайн → Темы оформления → UI Kit.
-- Готовые общие компоненты `.panel`, `.button.primary/.secondary`, `.field-group`, `.badge`, `.app-rental-pricing__check` (размер input 20×20 и зона клика >=44px как установленный `.check-label`), `app-account-overview__intro` и `theme::layouts.account`.
+- Готовые общие компоненты `.panel`, `.button.primary/.secondary`, `.field-group`, `.badge`, `.check-label` (инпут 20×20, зона клика >=44px), `app-account-overview__intro` и `theme::layouts.account`.
 - Никаких собственных цветов/шрифтов, локальных inline-стилей, eyebrow и несогласованных модальных окон. Страничный CSS `venue-rental-pricing.css` задаёт только сетки, расстояния и адаптивную компоновку, использует существующие CSS-токены.
 - Основные формы завернуты в обычные панели. Цены по датам — одна общая partial для Venue и VenueCourt. Действия на маленьких экранах не перекрываются, таблицы скроллятся внутри своей области.
 
