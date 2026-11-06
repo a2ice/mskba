@@ -25,6 +25,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'hoops_count',
     'surface_type',
     'environment',
+    'short_description',
+    'full_description',
     'allows_whole',
     'allows_halves',
     'operational_status',
