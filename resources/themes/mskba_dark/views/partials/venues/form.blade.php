@@ -108,7 +108,9 @@
     </div>
 
     @if($venue === null)
-        @include('venues.partials.initial-courts')
+        @if($venue === null)
+            @include('venues.partials.initial-courts')
+        @endif
     @endif
     <div class="mb-3 @if($compactCreate) d-none @endif">
         @unless($compactCreate)
