@@ -108,7 +108,7 @@
                 @endif
             </div>
             <div class="app-entity-heading">
-                <h1 id="app-venue-title">{{ $venue->name }}@if($venue->isCourtPage) <span class="app-venue-intro__court-name">· {{ $venue->selectedCourt['name'] }}</span>@endif</h1>
+                <h1 id="app-venue-title">{{ $venue->name }}</h1>
             </div>
             @if($venueAddress)
                 <button type="button" class="app-venue-intro__address" data-venue-map-open
