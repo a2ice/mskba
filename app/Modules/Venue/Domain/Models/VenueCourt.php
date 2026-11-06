@@ -38,6 +38,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'time_step_minutes',
     'minimum_lead_time_minutes',
     'maximum_advance_days',
+    'auto_sync_enabled',
+    'sync_include_prices_default',
+    'sync_period_days',
 ])]
 final class VenueCourt extends Model
 {
@@ -118,6 +121,9 @@ final class VenueCourt extends Model
             'time_step_minutes' => 'integer',
             'minimum_lead_time_minutes' => 'integer',
             'maximum_advance_days' => 'integer',
+            'auto_sync_enabled' => 'boolean',
+            'sync_include_prices_default' => 'boolean',
+            'sync_period_days' => 'integer',
         ];
     }
 }
