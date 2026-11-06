@@ -7,6 +7,8 @@ use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
 use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\CommissionAgentsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtCommissionsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PhotosRelationManager;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -414,6 +416,8 @@ final class VenueResource extends Resource
         return [
             CourtsRelationManager::class,
             PricingRulesRelationManager::class,
+            CommissionAgentsRelationManager::class,
+            CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
         ];
     }
