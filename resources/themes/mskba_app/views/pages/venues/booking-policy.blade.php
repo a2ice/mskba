@@ -23,6 +23,7 @@
 <div class="app-rental-pricing">
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
+        <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
         <a class="button secondary" href="{{ route('account.venues') }}">Мои площадки</a>
     </div>
     @if(session('status'))<p class="app-rental-pricing__success" role="status">{{ session('status') }}</p>@endif
