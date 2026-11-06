@@ -39,7 +39,7 @@ final class VenuePricingRule extends Model
         static::updating(function (self $rule): void {
             if ($rule->getOriginal('status') !== 'draft') {
                 $changes = array_keys($rule->getDirty());
-                if ($changes !== ['status'] || $rule->status !== 'archived') {
+                if (array_diff($changes, ['status', 'updated_at']) !== [] || $rule->status !== 'archived') {
                     throw new LogicException('Опубликованное тарифное правило нельзя изменять. Создайте новую редакцию.');
                 }
             }
