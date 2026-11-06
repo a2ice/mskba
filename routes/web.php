@@ -1151,6 +1151,12 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::put('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'update'])
                 ->whereNumber('venue')
                 ->name('account.venues.booking-policy.update');
+            Route::post('/venues/{venue}/calendar-prices', [VenueBookingPolicyController::class, 'storeCalendarPrice'])
+                ->whereNumber('venue')
+                ->name('account.venues.calendar-prices.store');
+            Route::delete('/venues/{venue}/calendar-prices/{price}', [VenueBookingPolicyController::class, 'destroyCalendarPrice'])
+                ->whereNumber('venue')->whereNumber('price')
+                ->name('account.venues.calendar-prices.destroy');
         });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
