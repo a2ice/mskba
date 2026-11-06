@@ -4,6 +4,8 @@ namespace App\Filament\Backoffice\Resources\Venues\RelationManagers;
 
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Venue\Domain\Models\VenuePricingRule;
+use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -28,6 +30,17 @@ final class PricingRulesRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema->components([]);
+    }
+
+    private function canManagePricingRules(): bool
+    {
+        $user = auth('web')->user();
+
+        return VenueResource::authorized()
+            && $user !== null
+            && app(VenueCommercialAccess::class)->allows(
+                $user, $this->getOwnerRecord(), VenuePermissionEnum::MANAGE_BOOKING_POLICY,
+            );
     }
 
     public function table(Table $table): Table
@@ -56,23 +69,23 @@ final class PricingRulesRelationManager extends RelationManager
             ->headerActions([
                 Action::make('managePricingRules')->label('Настроить тарифы')
                     ->icon('heroicon-o-calculator')
-                    ->visible(fn (): bool => VenueResource::authorized())
+                    ->visible(fn (): bool => $this->canManagePricingRules())
                     ->url(fn (): string => route('account.venues.pricing-rules.index', $this->getOwnerRecord()->id))
                     ->openUrlInNewTab(),
             ])
             ->recordActions([
                 Action::make('editPricingRule')->label('Редактировать')
-                    ->visible(fn (): bool => VenueResource::authorized())
+                    ->visible(fn (): bool => $this->canManagePricingRules())
                     ->url(fn (VenuePricingRule $record): string => route('account.venues.pricing-rules.index', [
                         $record->venue_id, 'edit' => $record->id,
                     ]))
                     ->openUrlInNewTab(),
                 Action::make('publishPricingRule')->label('Опубликовать')
                     ->icon('heroicon-o-check-circle')
-                    ->visible(fn (VenuePricingRule $record): bool => VenueResource::authorized() && $record->status === 'draft')
+                    ->visible(fn (VenuePricingRule $record): bool => $this->canManagePricingRules() && $record->status === 'draft')
                     ->requiresConfirmation()
                     ->action(function (VenuePricingRule $record): void {
-                        abort_unless(VenueResource::authorized(), 403);
+                        abort_unless($this->canManagePricingRules(), 403);
                         app(VenuePricingRuleManager::class)->publish(
                             $this->getOwnerRecord(), auth('web')->user(), $record,
                         );
