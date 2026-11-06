@@ -377,7 +377,9 @@ final class PricingRulesRelationManager extends RelationManager
 
         Notification::make()->success()
             ->title('Стоимость: '.$total)
-            ->body('Базовая: '.$base.($adjustments !== '' ? '. Условия: '.$adjustments : '. Условия не применены.'))
+            ->body('Базовая: '.$base . ($adjustments !== '' ? '. Условия: '.$adjustments : '. Условия не применены.')
+                .'. После скидок: '.$afterRules.'. Комиссия MSKBA: '.$portalFee
+                .'. Комиссия агента: '.$agentFee.' '.$currency)
             ->persistent()->send();
     }
 }
