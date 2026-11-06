@@ -88,9 +88,6 @@ final class VenueCourtSettingsController extends Controller
         $policy = VenueBookingPolicy::query()->where('venue_id', $venueModel->id)
             ->where('active_marker', true)->first();
         if ($policy !== null) {
-            $step = (int) ($values['time_step_minutes'] ?? $courtModel->time_step_minutes ?? $policy->time_step_minutes);
-            $minimum = (int) ($values['minimum_duration_minutes'] ?? $courtModel->minimum_duration_minutes ?? $policy->minimum_duration_minutes);
-            $maximum = (int) ($values['maximum_duration_minutes'] ?? $courtModel->maximum_duration_minutes ?? $policy->maximum_duration_minutes);
             // Use the NEW input when an override is cleared (NULL means inherit).
             $step = (int) ((array_key_exists('time_step_minutes', $values) ? $values['time_step_minutes'] : $courtModel->time_step_minutes) ?? $policy->time_step_minutes);
             $minimum = (int) ((array_key_exists('minimum_duration_minutes', $values) ? $values['minimum_duration_minutes'] : $courtModel->minimum_duration_minutes) ?? $policy->minimum_duration_minutes);
