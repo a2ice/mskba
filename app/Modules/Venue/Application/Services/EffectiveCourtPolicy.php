@@ -39,7 +39,11 @@ final class EffectiveCourtPolicy
             'half_price_per_step_minor' => $court->half_price_per_step_minor
                 ?? $policy?->half_price_per_step_minor,
             'currency' => $policy?->currency,
-            'time_step_minutes' => $policy?->time_step_minutes,
+            'time_step_minutes' => $court->time_step_minutes ?? $policy?->time_step_minutes,
+            'minimum_duration_minutes' => $court->minimum_duration_minutes ?? $policy?->minimum_duration_minutes,
+            'maximum_duration_minutes' => $court->maximum_duration_minutes ?? $policy?->maximum_duration_minutes,
+            'minimum_lead_time_minutes' => $court->minimum_lead_time_minutes ?? $policy?->minimum_lead_time_minutes,
+            'maximum_advance_days' => $court->maximum_advance_days ?? $policy?->maximum_advance_days,
         ];
     }
 }
