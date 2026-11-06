@@ -3,6 +3,14 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
+use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -54,6 +62,57 @@ final class VenuePublicContextManagementActionsTest extends TestCase
                 ->assertSee('href="'.$editUrl.'"', false)
                 ->assertDontSee('app-entity-edit-link', false)
                 ->assertDontSee('button secondary large" href="'.$editUrl.'"', false);
+        }
+    }
+
+    public function test_create_and_edit_actions_are_visible_to_contracted_editor_and_superadmin_on_venue_and_court(): void
+    {
+        $creator = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $editor = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $stranger = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($creator, null)->id,
+        ]);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $editUrl = route('account.venues.edit', $venue->routeIdentifier());
+
+        // A current venue-scoped contract with EDIT, not global admin role,
+        // grants the menu action. No completed editor view is required.
+        $contract = Contract::query()->create([
+            'family' => ContractFamilyEnum::MEMBERSHIP->value,
+            'number' => fake()->unique()->bothify('MENU-####-????'),
+            'name' => 'Venue edit permission',
+            'status' => ContractStatusEnum::ACTIVE->value,
+            'starts_at' => now()->subDay(),
+            'expires_at' => now()->addDay(),
+            'assigner' => UserParticipationRoleAssignerEnum::OTHER->value,
+        ]);
+        $contract->membership()->create([
+            'scope_type' => ContractMembershipScopeTypeEnum::VENUE->value,
+            'scope_id' => $venue->id,
+            'user_id' => $editor->id,
+            'access_level' => VenueMembershipAccessLevelEnum::ADMIN->value,
+        ]);
+        $contract->permissions()->create(['permission' => VenuePermissionEnum::EDIT->value]);
+
+        foreach ([
+            route('venues.show', $venue->routeIdentifier()),
+            route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+        ] as $url) {
+            foreach ([$editor, $superadmin] as $authorized) {
+                $this->actingAs($authorized)->get($url)->assertOk()
+                    ->assertSee('data-context-placeholder="Создание площадки"', false)
+                    ->assertSee('href="'.$editUrl.'">Редактировать</a>', false);
+            }
+
+            $this->actingAs($stranger)->get($url)->assertOk()
+                ->assertSee('data-context-placeholder="Создание площадки"', false)
+                ->assertDontSee('href="'.$editUrl.'">Редактировать</a>', false);
         }
     }
 
