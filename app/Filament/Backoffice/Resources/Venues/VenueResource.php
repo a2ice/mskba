@@ -220,20 +220,34 @@ final class VenueResource extends Resource
                     ]),
                 ]),
                 Tab::make('Расписание')->schema([
-                    Section::make('Регулярная неделя')
-                        ->description('Интервалы редактируются вместе с площадкой; время указывается по её часовому поясу.')
-                        ->schema([
-                            TextInput::make('schedule_timezone')->label('Часовой пояс')->default('Europe/Moscow')->maxLength(64),
-                            Repeater::make('weekly_intervals')->label('Интервалы работы')
-                                ->defaultItems(0)->columns(3)->schema([
-                                    Select::make('day_of_week')->label('День')->required()
-                                        ->options([1=>'Пн',2=>'Вт',3=>'Ср',4=>'Чт',5=>'Пт',6=>'Сб',7=>'Вс']),
-                                    TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
-                                    TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
-                                ])->columnSpanFull(),
-                        ]),
+                    Section::make('На всю неделю')->schema([
+                        TextInput::make('schedule_timezone')->label('Часовой пояс')
+                            ->default('Europe/Moscow')->maxLength(64),
+                        Repeater::make('weekly_default_intervals')->label('Интервалы работы')
+                            ->defaultItems(0)->addActionLabel('Добавить интервал')
+                            ->columns(2)->schema([
+                                TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
+                                TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
+                            ])->columnSpanFull(),
+                    ]),
+                    Section::make('Исключения по дням недели')->schema([
+                        Repeater::make('weekday_overrides')->label('Исключения')
+                            ->defaultItems(0)->addActionLabel('Добавить день')
+                            ->columns(2)->schema([
+                                Select::make('day_of_week')->label('День недели')->required()
+                                    ->options([1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс']),
+                                Toggle::make('is_closed')->label('Выходной')->default(false)->live(),
+                                Repeater::make('intervals')->label('Часы работы в этот день')
+                                    ->defaultItems(0)->addActionLabel('Добавить интервал')
+                                    ->visible(fn (Get $get): bool => ! (bool) $get('is_closed'))
+                                    ->columns(2)->schema([
+                                        TimePicker::make('starts_at')->label('С')->seconds(false)->required(),
+                                        TimePicker::make('ends_at')->label('До')->seconds(false)->required(),
+                                    ])->columnSpanFull(),
+                            ])->columnSpanFull(),
+                    ]),
                     Section::make('Исключения по датам')->schema([
-                        Repeater::make('schedule_exceptions')->label('Исключения')->defaultItems(0)
+                        Repeater::make('schedule_exceptions')->label('Исключения')->defaultItems(0)->addActionLabel('Добавить дату')
                             ->schema([
                                 DatePicker::make('date')->label('Дата')->required(),
                                 Toggle::make('is_closed')->label('Закрыта весь день')->default(false),

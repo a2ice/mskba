@@ -72,11 +72,7 @@ final class VenueBackofficeEditor
             'location_longitude' => $address?->longitude,
             'location_metro_ids' => $venue->location?->metroStations->pluck('id')->all() ?? [],
             'schedule_timezone' => $schedule?->timezone ?? 'Europe/Moscow',
-            'weekly_intervals' => $schedule?->intervals->map(fn ($row): array => [
-                'day_of_week' => $row->day_of_week,
-                'starts_at' => substr((string) $row->starts_at, 0, 5),
-                'ends_at' => substr((string) $row->ends_at, 0, 5),
-            ])->values()->all() ?? [],
+            ...VenueWeeklyScheduleForm::fromStored($schedule?->intervals ?? []),
             'schedule_exceptions' => $schedule?->exceptions->map(fn ($row): array => [
                 'date' => $row->date->format('Y-m-d'),
                 'is_closed' => $row->is_closed,
@@ -282,7 +278,15 @@ final class VenueBackofficeEditor
     /** @param array<string, mixed> $data */
     private function saveSchedule(Venue $venue, array $data): void
     {
-        $weekly = array_values((array) ($data['weekly_intervals'] ?? []));
+        // Expand the compact weekly form into the existing per-day schedule
+        // representation. Legacy callers sending weekly_intervals still work.
+        $weekly = array_key_exists('weekly_default_intervals', $data)
+            || array_key_exists('weekday_overrides', $data)
+            ? VenueWeeklyScheduleForm::toStored(
+                (array) ($data['weekly_default_intervals'] ?? []),
+                (array) ($data['weekday_overrides'] ?? []),
+            )
+            : array_values((array) ($data['weekly_intervals'] ?? []));
         $exceptions = array_values((array) ($data['schedule_exceptions'] ?? []));
         $timezone = trim((string) ($data['schedule_timezone'] ?? 'Europe/Moscow'));
 
@@ -330,16 +334,52 @@ final class VenueBackofficeEditor
         } catch (\Throwable) {
             throw ValidationException::withMessages(['data.schedule_timezone' => 'Укажи корректный часовой пояс.']);
         }
-        $days = [];
-        foreach ((array) ($data['weekly_intervals'] ?? []) as $row) {
-            $day = (int) ($row['day_of_week'] ?? 0);
-            if ($day < 1 || $day > 7) {
-                throw ValidationException::withMessages(['data.weekly_intervals' => 'День недели должен быть от 1 до 7.']);
+        if (array_key_exists('weekly_default_intervals', $data) || array_key_exists('weekday_overrides', $data)) {
+            $this->assertNonOverlapping(
+                array_map(
+                    fn (array $row): array => $this->range($row, 'data.weekly_default_intervals'),
+                    (array) ($data['weekly_default_intervals'] ?? []),
+                ),
+                'data.weekly_default_intervals',
+            );
+            $seenDays = [];
+            foreach ((array) ($data['weekday_overrides'] ?? []) as $override) {
+                $day = (int) ($override['day_of_week'] ?? 0);
+                if ($day < 1 || $day > 7 || isset($seenDays[$day])) {
+                    throw ValidationException::withMessages([
+                        'data.weekday_overrides' => 'Выберите неповторяющиеся дни недели.',
+                    ]);
+                }
+                $seenDays[$day] = true;
+                if ((bool) ($override['is_closed'] ?? false)) {
+                    continue;
+                }
+                $intervals = (array) ($override['intervals'] ?? []);
+                if ($intervals === []) {
+                    throw ValidationException::withMessages([
+                        'data.weekday_overrides' => 'Укажите часы работы или отметьте день выходным.',
+                    ]);
+                }
+                $this->assertNonOverlapping(
+                    array_map(
+                        fn (array $row): array => $this->range($row, 'data.weekday_overrides'),
+                        $intervals,
+                    ),
+                    'data.weekday_overrides',
+                );
             }
-            $days[$day][] = $this->range($row);
-        }
-        foreach ($days as $ranges) {
-            $this->assertNonOverlapping($ranges, 'data.weekly_intervals');
+        } else {
+            $days = [];
+            foreach ((array) ($data['weekly_intervals'] ?? []) as $row) {
+                $day = (int) ($row['day_of_week'] ?? 0);
+                if ($day < 1 || $day > 7) {
+                    throw ValidationException::withMessages(['data.weekly_intervals' => 'День недели должен быть от 1 до 7.']);
+                }
+                $days[$day][] = $this->range($row);
+            }
+            foreach ($days as $ranges) {
+                $this->assertNonOverlapping($ranges, 'data.weekly_intervals');
+            }
         }
         $dates = [];
         foreach ((array) ($data['schedule_exceptions'] ?? []) as $exception) {
@@ -356,23 +396,23 @@ final class VenueBackofficeEditor
         }
     }
 
-    private function time(mixed $value): string
+    private function time(mixed $value, string $field = 'data.weekly_intervals'): string
     {
         $time = substr((string) $value, 0, 5);
         if (! preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time)) {
-            throw ValidationException::withMessages(['data.weekly_intervals' => 'Неверный формат времени (ЧЧ:ММ).']);
+            throw ValidationException::withMessages([$field => 'Неверный формат времени (ЧЧ:ММ).']);
         }
 
         return $time;
     }
 
     /** @param array<string, mixed> $row @return array{0:string,1:string} */
-    private function range(array $row): array
+    private function range(array $row, string $field = 'data.weekly_intervals'): array
     {
-        $start = $this->time($row['starts_at'] ?? '');
-        $end = $this->time($row['ends_at'] ?? '');
+        $start = $this->time($row['starts_at'] ?? '', $field);
+        $end = $this->time($row['ends_at'] ?? '', $field);
         if ($start >= $end) {
-            throw ValidationException::withMessages(['data.weekly_intervals' => 'Конец интервала должен быть позже начала.']);
+            throw ValidationException::withMessages([$field => 'Конец интервала должен быть позже начала.']);
         }
 
         return [$start, $end];
