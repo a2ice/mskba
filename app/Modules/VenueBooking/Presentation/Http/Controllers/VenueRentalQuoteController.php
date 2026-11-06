@@ -93,6 +93,12 @@ final class VenueRentalQuoteController extends Controller
                 'starts_at' => $quote->startsAt->toIso8601String(),
                 'ends_at' => $quote->endsAt->toIso8601String(),
                 'amount_minor' => $quote->amountMinor,
+                'pricing_breakdown' => [
+                    'provider_amount_minor' => $quote->commissionBreakdown['provider_amount_minor'] ?? $quote->amountMinor,
+                    'portal_fee_minor' => $quote->commissionBreakdown['portal_fee_minor'] ?? 0,
+                    'agent_fee_minor' => $quote->commissionBreakdown['agent_fee_minor'] ?? 0,
+                    'total_minor' => $quote->amountMinor,
+                ],
                 'currency' => $quote->currency,
                 'requires_payment' => $quote->requiresPayment,
                 'hold_duration_minutes' => $quote->holdDurationMinutes,

@@ -79,6 +79,11 @@ final class VenueCourt extends Model
         return $this->hasMany(VenueCourtSlotPrice::class);
     }
 
+    public function commissionPolicy(): HasOne
+    {
+        return $this->hasOne(VenueCourtCommissionPolicy::class);
+    }
+
     public function pricingRules(): HasMany
     {
         return $this->hasMany(VenuePricingRule::class);

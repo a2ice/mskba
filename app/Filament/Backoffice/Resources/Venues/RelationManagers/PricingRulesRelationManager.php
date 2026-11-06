@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenuePricingRule;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
@@ -362,15 +363,23 @@ final class PricingRulesRelationManager extends RelationManager
         );
         $money = app(MinorAmountParser::class);
         $currency = $policy->currency;
+        $commission = app(VenueCommissionCalculator::class)->calculate(
+            $venue, $court, $result['total_minor'], $currency,
+        );
         $base = $money->format($result['base_minor'], $currency).' '.$currency;
-        $total = $money->format($result['total_minor'], $currency).' '.$currency;
+        $total = $money->format($commission['total_minor'], $currency).' '.$currency;
+        $portalFee = $money->format($commission['portal_fee_minor'], $currency);
+        $agentFee = $money->format($commission['agent_fee_minor'], $currency);
+        $afterRules = $money->format($result['total_minor'], $currency);
         $adjustments = collect($result['adjustments'])->map(
             fn (array $row): string => $row['name'].' (v'.$row['version'].')',
         )->implode(', ');
 
         Notification::make()->success()
             ->title('Стоимость: '.$total)
-            ->body('Базовая: '.$base.($adjustments !== '' ? '. Условия: '.$adjustments : '. Условия не применены.'))
+            ->body('Базовая: '.$base . ($adjustments !== '' ? '. Условия: '.$adjustments : '. Условия не применены.')
+                .'. После скидок: '.$afterRules.'. Комиссия MSKBA: '.$portalFee
+                .'. Комиссия агента: '.$agentFee.' '.$currency)
             ->persistent()->send();
     }
 }

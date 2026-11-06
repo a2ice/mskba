@@ -234,7 +234,12 @@
                         → {{ $money->format($adjustment['after_minor'], $preview['currency']) }} {{ $preview['currency'] }}
                     </p>
                 @endforeach
-                <p class="app-rental-pricing__total">{{ $money->format($preview['total_minor'], $preview['currency']) }} {{ $preview['currency'] }}</p>
+                @if(isset($preview['commissions']))
+                    <p>Аренда после скидок: {{ $money->format($preview['commissions']['provider_amount_minor'], $preview['currency']) }} {{ $preview['currency'] }}</p>
+                    <p>Комиссия MSKBA: {{ $money->format($preview['commissions']['portal_fee_minor'], $preview['currency']) }} {{ $preview['currency'] }}</p>
+                    <p>Комиссия агента: {{ $money->format($preview['commissions']['agent_fee_minor'], $preview['currency']) }} {{ $preview['currency'] }}</p>
+                @endif
+                <p class="app-rental-pricing__total">Итого: {{ $money->format($preview['total_minor'], $preview['currency']) }} {{ $preview['currency'] }}</p>
             </div>
         @endif
         <form class="app-rental-pricing__form" method="POST" action="{{ route('account.venues.pricing-rules.preview', $venue->id) }}">

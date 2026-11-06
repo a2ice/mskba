@@ -11,6 +11,7 @@ use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
@@ -27,6 +28,7 @@ final readonly class QuoteVenueBookingHandler
         private FeatureFlags $features,
         private VenueSlotPricing $pricing,
         private VenuePricingRuleEvaluator $rules,
+        private VenueCommissionCalculator $commissions,
         private EffectiveCourtPolicy $effectivePolicies,
     ) {}
 
@@ -131,7 +133,10 @@ final readonly class QuoteVenueBookingHandler
             $venue, $court, $localStart, $durationMinutes, $courtStep, $scope,
             $price['amount_minor'],
         );
-        $amountMinor = $rulePricing['total_minor'];
+        $commissionBreakdown = $this->commissions->calculate(
+            $venue, $court, $rulePricing['total_minor'], $policy->currency,
+        );
+        $amountMinor = $commissionBreakdown['total_minor'];
         if ($effective['requires_payment'] && $amountMinor <= 0) {
             throw new VenueBookingPolicyException('Тарифное условие не может обнулить обязательную оплату.');
         }
@@ -139,7 +144,7 @@ final readonly class QuoteVenueBookingHandler
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
         $publicId = (string) Str::uuid();
         $snapshot = [
-            'schema_version' => $rulePricing['adjustments'] === [] ? 2 : 3,
+            'schema_version' => 4,
             'policy' => [
                 'id' => $policy->id,
                 'version' => $policy->version,
@@ -185,6 +190,8 @@ final readonly class QuoteVenueBookingHandler
                 'uses_custom_prices' => $price['uses_custom_prices'],
                 'amount_minor' => $amountMinor,
                 'base_amount_minor' => $price['amount_minor'],
+                'subtotal_after_rules_minor' => $rulePricing['total_minor'],
+                'commissions' => $commissionBreakdown,
                 'rule_adjustments' => $rulePricing['adjustments'],
                 'currency' => $policy->currency,
                 'court_id' => $court->id,
@@ -226,6 +233,7 @@ final readonly class QuoteVenueBookingHandler
             holdDurationMinutes: $policy->hold_duration_minutes,
             paymentWindowMinutes: $paymentWindow,
             validUntil: $validUntil,
+            commissionBreakdown: $commissionBreakdown,
         );
     }
 }

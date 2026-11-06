@@ -9,6 +9,7 @@ use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -102,7 +103,7 @@ final class VenuePricingRuleController extends Controller
     public function preview(
         Request $request, Venue $venue, VenueCommercialAccess $access,
         VenueSlotPricing $pricing, VenuePricingRuleEvaluator $rules,
-        EffectiveCourtPolicy $effectivePolicies,
+        EffectiveCourtPolicy $effectivePolicies, VenueCommissionCalculator $commissions,
     ): RedirectResponse {
         $this->authorizeVenue($request, $venue, $access);
         $data = $request->validate([
@@ -143,10 +144,14 @@ final class VenuePricingRuleController extends Controller
         }
         $slots = $pricing->calculate($venue, $policy, $localStart, $duration, $scope, $court, $effective);
         $result = $rules->evaluate($venue, $court, $localStart, $duration, $step, $scope, $slots['amount_minor']);
+        $commission = $commissions->calculate($venue, $court, $result['total_minor'], $policy->currency);
 
         return redirect()->route('account.venues.pricing-rules.index', $venue->id)
             ->with('rule_preview', [
                 ...$result,
+                'subtotal_after_rules_minor' => $result['total_minor'],
+                'total_minor' => $commission['total_minor'],
+                'commissions' => $commission,
                 'currency' => $policy->currency,
                 'court_name' => $court->name,
                 'starts_at' => $localStart->format('d.m.Y H:i'),
