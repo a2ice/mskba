@@ -1,5 +1,5 @@
 @php
-    $title = 'Залы площадки';
+    $title = 'Залы и корты площадки';
     $policy = \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
         ->where('venue_id', $venue->id)->where('active_marker', true)->first();
     $money = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
@@ -37,8 +37,8 @@
         <article class="app-rental-pricing__court" aria-labelledby="court-{{ $court->id }}-title">
             <section class="panel app-rental-pricing__panel">
                 <div class="app-rental-pricing__court-heading">
-                    <h2 id="court-{{ $court->id }}-title">{{ $court->name }}</h2>
-                    @if($court->is_primary)<span class="badge">Основной зал</span>@endif
+                    <h2 id="court-{{ $court->id }}-title">{{ $court->publicName() }}</h2>
+                    @if($court->is_primary)<span class="badge">Основной {{ $court->environment?->value === 'outdoor' ? 'корт' : 'зал' }}</span>@endif
                 </div>
 
                 @if($canEditCourt)
@@ -85,6 +85,7 @@
                                 </select>
                             </label>
                         </div>
+                        @include('venues.partials.court-amenities', ['court' => $court, 'courtAmenities' => $courtAmenities])
                         <label class="check-label">
                             <input type="hidden" name="allows_whole" value="0">
                             <input type="checkbox" name="allows_whole" value="1" @checked($court->allows_whole)>
@@ -96,7 +97,7 @@
                             <span>Разрешать аренду половин</span>
                         </label>
                         <div class="app-rental-pricing__actions">
-                            <button class="button primary" type="submit">Сохранить зал</button>
+                            <button class="button primary" type="submit">Сохранить зал / корт</button>
                         </div>
                     </form>
                 @endif
@@ -246,7 +247,7 @@
 
     @if($canManageVenue)
         <section class="panel app-rental-pricing__panel" aria-labelledby="create-court-heading">
-            <h2 id="create-court-heading">Добавить зал</h2>
+            <h2 id="create-court-heading">Добавить зал / корт</h2>
             <form class="app-rental-pricing__form" method="POST" action="{{ route('account.venues.courts.store', $venue->routeIdentifier()) }}">
                 @csrf
                 <div class="app-rental-pricing__grid">
@@ -262,9 +263,17 @@
                         </select>
                     </label>
                 </div>
+                <label class="field-group">Тип игровой зоны *
+                    <select name="environment" required>
+                        <option value="">Выберите тип</option>
+                        <option value="indoor">Крытый зал</option>
+                        <option value="outdoor">Уличный корт</option>
+                    </select>
+                </label>
+                @include('venues.partials.court-amenities', ['court' => null, 'courtAmenities' => $courtAmenities])
                 <label class="check-label"><input type="checkbox" name="allows_whole" value="1" checked>Разрешать аренду целиком</label>
                 <label class="check-label"><input type="checkbox" name="allows_halves" value="1">Разрешать аренду половин</label>
-                <button class="button primary" type="submit">Добавить зал</button>
+                <button class="button primary" type="submit">Добавить зал / корт</button>
             </form>
         </section>
     @endif

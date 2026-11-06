@@ -127,7 +127,8 @@
                         </label>
                         <small class="text-muted" data-court-halves-hint>Аренда половин доступна только для зала с двумя кольцами.</small>
                     </div>
-                    <button type="submit" class="btn btn--primary btn--sm mt-3">Сохранить зал</button>
+                    @include('venues.partials.court-amenities', ['court' => $court, 'courtAmenities' => $courtAmenities])
+                    <button type="submit" class="btn btn--primary btn--sm mt-3">Сохранить зал / корт</button>
                 </form>
 
                 @include('theme::partials.venues.court-gallery-editor', [
@@ -288,7 +289,8 @@
                     </label>
                     <small class="text-muted" data-court-halves-hint>Аренда половин доступна только для зала с двумя кольцами.</small>
                 </div>
-                <button type="submit" class="btn btn--primary btn--sm mt-3">Добавить зал</button>
+                @include('venues.partials.court-amenities', ['court' => null, 'courtAmenities' => $courtAmenities])
+                <button type="submit" class="btn btn--primary btn--sm mt-3">Добавить зал / корт</button>
             </form>
         </div>
     </div>
