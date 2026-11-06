@@ -1,0 +1,32 @@
+/* Task 302: layout composition only. Colors, fields, buttons and panels
+ * inherit the existing MSKBA App UI Kit primitives. */
+.app-rental-pricing__public{padding-block:40px 48px}
+.app-rental-pricing__total{font-size:32px;line-height:40px;font-weight:800;font-variant-numeric:tabular-nums}
+.app-rental-pricing{display:flex;flex-direction:column;gap:20px;min-width:0}
+.app-rental-pricing__panel{padding:24px;display:flex;flex-direction:column;gap:20px}
+.app-rental-pricing__panel h2{font-size:20px;line-height:26px}
+.app-rental-pricing__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start}
+.app-rental-pricing__grid--two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.app-rental-pricing__form{display:flex;flex-direction:column;gap:20px}
+.app-rental-pricing__actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.app-rental-pricing__entry{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:12px;border-bottom:1px solid var(--line)}
+.app-rental-pricing__entry:last-child{border-bottom:0}
+.app-rental-pricing__entry p{color:var(--muted);font-size:14px}
+.app-rental-pricing__entry strong{font-variant-numeric:tabular-nums}
+.app-rental-pricing__subtle{font-size:14px;line-height:20px;color:var(--muted)}
+.app-rental-pricing__section{display:flex;flex-direction:column;gap:16px}
+.app-rental-pricing__section + .app-rental-pricing__section{padding-top:20px;border-top:1px solid var(--line)}
+.app-rental-pricing__court{display:flex;flex-direction:column;gap:20px}
+.app-rental-pricing__court-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.app-rental-pricing__error{color:var(--danger)}
+.app-rental-pricing__success{color:var(--success)}
+.app-rental-pricing__table-wrap{max-width:100%;overflow-x:auto}
+.app-rental-pricing__table{width:100%;border-collapse:collapse;font-size:14px}
+.app-rental-pricing__table th,.app-rental-pricing__table td{padding:12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.app-rental-pricing__table th{color:var(--muted);font-weight:600}
+.app-rental-pricing__table form{display:inline-flex;width:auto}
+.app-rental-pricing__table td:last-child{text-align:right}
+.app-rental-pricing__table .button{min-height:44px}
+.app-rental-pricing__form :is(input,select,textarea){font-size:16px}
+@media(max-width:1023px){.app-rental-pricing__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:679px){.app-rental-pricing__panel{padding:20px}.app-rental-pricing__grid,.app-rental-pricing__grid--two{grid-template-columns:minmax(0,1fr)}.app-rental-pricing__entry{align-items:flex-start}.app-rental-pricing__actions>.button{width:100%}}

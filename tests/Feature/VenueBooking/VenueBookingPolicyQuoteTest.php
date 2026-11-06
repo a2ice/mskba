@@ -487,6 +487,25 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         $publish->handle($venue, $owner, $this->policyData(['time_step_minutes' => 20]));
     }
 
+    public function test_active_mskba_app_theme_has_working_venue_and_court_rental_editors(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+
+        $this->actingAs($owner)->get(route('account.venues.booking-policy.edit', $venue->id))
+            ->assertOk()->assertSeeText('Базовые условия площадки')->assertSeeText('Цены по датам');
+
+        $this->actingAs($owner)->get(route('account.venues.courts.index', $venue->routeIdentifier()))
+            ->assertOk()->assertSeeText('Условия аренды')->assertSeeText('Цены по датам');
+
+        $this->get(route('venues.rental.show', $venue->id))
+            ->assertOk()->assertSeeText('Аренда зала')->assertSeeText('Параметры аренды');
+    }
+
     /** @return array{User, Venue} */
     private function ownedVenue(int $hoopsCount): array
     {
