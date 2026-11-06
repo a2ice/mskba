@@ -210,6 +210,11 @@ final class VenueCourtPublicContextTest extends TestCase
             ->assertOk()
             ->assertSee('Школа: крытый зал и уличный корт');
 
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee('<h1 id="app-venue-title">Школа тестовая</h1>', false)
+            ->assertDontSee('app-venue-intro__court-name');
+
         $second->delete();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
