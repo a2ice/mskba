@@ -36,6 +36,10 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
                     ->name('account.venues.courts.prices.store');
                 Route::delete('/account/venues/{venue}/courts/{court}/prices/{price}', [VenueCourtSettingsController::class, 'destroyPrice'])
                     ->whereNumber('price')->name('account.venues.courts.prices.destroy');
+                Route::post('/account/venues/{venue}/courts/{court}/calendar-prices', [VenueCourtSettingsController::class, 'storeCalendarPrice'])
+                    ->name('account.venues.courts.calendar-prices.store');
+                Route::delete('/account/venues/{venue}/courts/{court}/calendar-prices/{price}', [VenueCourtSettingsController::class, 'destroyCalendarPrice'])
+                    ->whereNumber('price')->name('account.venues.courts.calendar-prices.destroy');
                 Route::post('/account/venues/{venue}/courts/{court}/primary', [VenueCourtController::class, 'makePrimary'])
                     ->name('account.venues.courts.primary');
                 Route::delete('/account/venues/{venue}/courts/{court}', [VenueCourtController::class, 'destroy'])
