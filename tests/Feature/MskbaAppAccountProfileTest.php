@@ -577,6 +577,12 @@ final class MskbaAppAccountProfileTest extends TestCase
         $this->get(route('account.profile'))->assertOk()
             ->assertSee($avatar->publicUrl(), false)
             ->assertSee(route('account.avatar.destroy', $avatar->id), false)
+            ->assertSee('class="app-profile__avatar-thumbnail"', false)
+            ->assertSee('class="app-profile__avatar-delete"', false)
+            ->assertSee('aria-label="Удалить аватар 1"', false)
+            ->assertSee('width="112" height="112"', false)
+            ->assertSee('width="38" height="38"', false)
+            ->assertDontSee('class="app-profile__text-action app-profile__text-action--muted"', false)
             ->assertSee('Основной');
 
         $this->post(route('account.avatar.store'), [

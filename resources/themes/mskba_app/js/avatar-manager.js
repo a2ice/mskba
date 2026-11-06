@@ -44,7 +44,7 @@ function hiddenField(name, value) {
     return input;
 }
 
-function actionForm(url, method, csrf, label, className, ariaLabel = '') {
+function actionForm(url, method, csrf, label, className, ariaLabel = '', icon = '') {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = url;
@@ -53,7 +53,17 @@ function actionForm(url, method, csrf, label, className, ariaLabel = '') {
     const button = document.createElement('button');
     button.type = 'submit';
     button.className = className;
-    button.textContent = label;
+    if (icon) {
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('aria-hidden', 'true');
+        const use = document.createElementNS(SVG_NS, 'use');
+        use.setAttribute('href', '#' + icon);
+        svg.append(use);
+        button.append(svg);
+        button.title = label;
+    } else {
+        button.textContent = label;
+    }
     if (ariaLabel) button.setAttribute('aria-label', ariaLabel);
     form.append(button);
     return form;
@@ -88,7 +98,7 @@ export function initAvatarManager(profileRoot) {
             throw new Error('Сервер вернул некорректные данные аватаров.');
         }
         const url = data.avatar_url || null;
-        preview?.replaceChildren(imageOrPlaceholder(url, '', 'app-profile__avatar-placeholder', 56));
+        preview?.replaceChildren(imageOrPlaceholder(url, '', 'app-profile__avatar-placeholder', 112));
         // Synchronize the signed-in user's avatar in the site header.
         document.querySelectorAll('[data-app-header] .app-user-avatar__visual')
             .forEach(visual => visual.replaceChildren(
@@ -104,7 +114,16 @@ export function initAvatarManager(profileRoot) {
             img.alt = 'Аватар ' + (i + 1);
             img.width = 38;
             img.height = 38;
-            card.append(img);
+            const thumbnail = document.createElement('div');
+            thumbnail.className = 'app-profile__avatar-thumbnail';
+            thumbnail.append(img);
+            const deleteForm = actionForm(
+                avatar.delete_url, 'DELETE', csrf, 'Удалить аватар', 'app-profile__avatar-delete',
+                'Удалить аватар ' + (i + 1), 'close',
+            );
+            deleteForm.className = 'app-profile__avatar-delete-form';
+            thumbnail.append(deleteForm);
+            card.append(thumbnail);
 
             if (avatar.is_featured) {
                 const marker = document.createElement('span');
@@ -116,11 +135,6 @@ export function initAvatarManager(profileRoot) {
                     avatar.activate_url, 'PATCH', csrf, 'Сделать основным', 'app-profile__text-action',
                 ));
             }
-            card.append(actionForm(
-                avatar.delete_url, 'DELETE', csrf, 'Удалить',
-                'app-profile__text-action app-profile__text-action--muted',
-                'Удалить аватар ' + (i + 1),
-            ));
             return card;
         });
         library.replaceChildren(...items);

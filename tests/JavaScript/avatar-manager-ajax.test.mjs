@@ -86,8 +86,18 @@ test('upload sends original 2.6MB PNG with AJAX and updates page/header', async 
     assert.equal(f.calls[0].options.headers.Accept, 'application/json');
     assert.equal(f.calls[0].options.body.file, f.file);
     assert.equal(f.preview.children[0].src, '/storage/avatars/1.webp');
+    assert.equal(f.preview.children[0].width, 112);
     assert.equal(f.header.children[0].src, '/storage/avatars/1.webp');
     assert.equal(f.library.children.length, 1);
+    const thumbnail = f.library.children[0].children[0];
+    assert.equal(thumbnail.className, 'app-profile__avatar-thumbnail');
+    assert.equal(thumbnail.children[0].width, 38);
+    const deleteForm = thumbnail.children[1];
+    assert.equal(deleteForm.className, 'app-profile__avatar-delete-form');
+    const deleteButton = deleteForm.children.at(-1);
+    assert.equal(deleteButton.className, 'app-profile__avatar-delete');
+    assert.equal(deleteButton['aria-label'], 'Удалить аватар 1');
+    assert.equal(deleteButton.children[0].children[0].href, '#close');
     assert.equal(f.library.hidden, false);
     assert.equal(f.state.textContent, 'Аватар обновлён.');
 });
