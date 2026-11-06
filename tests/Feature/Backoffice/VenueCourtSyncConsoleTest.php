@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Facades\Filament;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -46,4 +47,38 @@ final class VenueCourtSyncConsoleTest extends TestCase
             'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
         ]);
     }
+    public function test_court_editor_modal_is_readable_and_groups_fields_without_repeated_panels(): void
+    {
+        $admin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $venue = Venue::factory()->create();
+        $court = $venue->primaryCourt()->firstOrFail();
+
+        Livewire::test(CourtsRelationManager::class, [
+            'ownerRecord' => $venue,
+            'pageClass' => EditVenue::class,
+        ])
+            ->mountAction(TestAction::make('edit')->table($court))
+            ->assertMountedActionModalSee('Редактировать: '.$court->name)
+            ->assertMountedActionModalSee('Игровая зона')
+            ->assertMountedActionModalSee('Доступ и бронирование')
+            ->assertMountedActionModalSee('Цены и ограничения')
+            ->assertMountedActionModalSee('Синхронизация')
+            ->assertMountedActionModalSee('Фотографии');
+
+        Livewire::test(CourtsRelationManager::class, [
+            'ownerRecord' => $venue,
+            'pageClass' => EditVenue::class,
+        ])
+            ->mountAction(TestAction::make('create')->table())
+            ->assertMountedActionModalSee('Добавить зал / корт')
+            ->assertMountedActionModalSee('Цены и ограничения');
+    }
+
 }
