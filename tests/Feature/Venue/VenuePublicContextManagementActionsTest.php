@@ -36,6 +36,8 @@ final class VenuePublicContextManagementActionsTest extends TestCase
 
         $guest = $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk();
         $guest->assertDontSee('href="'.$editUrl.'"', false);
+        $guest->assertDontSee('Управление промокодами')
+            ->assertDontSee('>Найти</button>', false);
 
         foreach ([
             route('venues.show', $venue->routeIdentifier()),
@@ -44,6 +46,11 @@ final class VenuePublicContextManagementActionsTest extends TestCase
             $response = $this->actingAs($owner)->get($url)->assertOk();
             $response->assertSee('aria-label="Контекстные действия"', false)
                 ->assertSee('>Редактировать</a>', false)
+                ->assertDontSee('>Промокоды</a>', false)
+                ->assertDontSee('Управление промокодами')
+                ->assertDontSee('>Найти</button>', false)
+                ->assertDontSee('>Найти</a>', false)
+                ->assertDontSee('app-context-actions__nested', false)
                 ->assertSee('href="'.$editUrl.'"', false)
                 ->assertDontSee('app-entity-edit-link', false)
                 ->assertDontSee('button secondary large" href="'.$editUrl.'"', false);

@@ -74,7 +74,7 @@ final class ContextSubmenuResolverTest extends TestCase
     public function test_actual_venue_handlers_expose_expected_placeholder_actions(): void
     {
         $this->app->instance('request', Request::create('/venues'));
-        self::assertSame(['Создать', 'Найти'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+        self::assertSame(['Создать'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
 
         // The child route constraint is important: /venues/create must not be
         // interpreted as a venue details page, despite matching the URL regex.
