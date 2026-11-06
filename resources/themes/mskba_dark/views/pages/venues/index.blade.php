@@ -12,7 +12,11 @@
             'longitude' => $venue->longitude,
             'name' => $venue->name,
             'address' => $venue->displayAddress,
-            'url' => route('venues.show', $venue->routeIdentifier()),
+            'url' => $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()),
+            'matched_court' => $venue->matchedCourtName,
+            'free_courts' => count($venue->courtAccessSummary['free'] ?? []),
+            'paid_courts' => count($venue->courtAccessSummary['paid'] ?? []),
+            'approval_courts' => count($venue->courtAccessSummary['approval'] ?? []),
         ])->values();
 @endphp
 

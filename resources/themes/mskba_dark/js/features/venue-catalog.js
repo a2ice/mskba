@@ -58,7 +58,11 @@ function initCatalogMap(catalog, getPromise, setPromise) {
                 return venuePlacemark(coordinates, {
                     hintContent: point.name,
                     balloonContentHeader: point.name,
-                    balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>` +
+                    balloonContentBody: `${escapeHtml(point.address || '')}`
+                        + (point.matched_court ? `<br>Подходящий зал: ${escapeHtml(point.matched_court)}` : '')
+                        + (point.free_courts ? '<br>Есть бесплатный доступ' : '')
+                        + (point.paid_courts ? '<br>Есть платные залы' : '')
+                        + `<br><a href="${escapeHtml(point.url)}">${point.matched_court ? 'Открыть зал' : 'Открыть площадку'}</a>` +
                         `<button type="button" class="mskba-favorite-heart" data-favorite-venue="${Number(point.id)}" title="Добавить в избранное" aria-pressed="false" aria-label="Добавить в избранное">♡</button>`, 
                 });
             });

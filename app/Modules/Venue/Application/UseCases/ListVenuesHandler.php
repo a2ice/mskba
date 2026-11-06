@@ -8,8 +8,10 @@ use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
 final class ListVenuesHandler
 {
@@ -17,6 +19,7 @@ final class ListVenuesHandler
         private readonly VenueAccessResolver $accessResolver,
         private readonly ListVenuesBuilder $listVenuesBuilder,
         private readonly AddressDisplayFormatter $addressFormatter,
+        private readonly VenueCourtDiscoveryAccess $courtDiscovery,
     ) {}
 
     /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null} $filters */
@@ -28,7 +31,7 @@ final class ListVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
-        return $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
+        $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
             $query->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
                 $visible->where('status', VenueStatusEnum::CONFIRMED->value)
                     ->orWhereIn('id', $contractViewableVenueIds)
@@ -49,14 +52,37 @@ final class ListVenuesHandler
                     }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))
-                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
-                ->when(($filters['access'] ?? null) === 'free', fn ($filtered) => $filtered->where('requires_payment', false)->where('requires_booking_approval', false))
-                ->when(($filters['access'] ?? null) === 'paid', fn ($filtered) => $filtered->where('requires_payment', true))
-                ->when(($filters['access'] ?? null) === 'approval', fn ($filtered) => $filtered->where('requires_booking_approval', true));
+                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status));
         })
+            ->with('courts.media')
             ->orderBy('name')
+            ->get();
+
+        $policies = VenueBookingPolicy::query()
+            ->whereIn('venue_id', $venues->pluck('id')->all())
+            ->where('active_marker', true)
+            ->where('is_enabled', true)
             ->get()
-            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds) {
+            ->keyBy('venue_id');
+
+        $accessFilter = $filters['access'] ?? null;
+
+        return $venues
+            ->map(fn (Venue $venue): array => [
+                'venue' => $venue,
+                'access' => $this->courtDiscovery->classify($venue, $policies->get($venue->id)),
+            ])
+            ->filter(fn (array $row): bool => $accessFilter === null
+                || $accessFilter === ''
+                || ! empty($row['access'][$accessFilter]))
+            ->map(function (array $row) use (
+                $accessFilter, $contractViewableVenueIds, $contractEditableVenueIds,
+                $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds,
+            ) {
+                /** @var Venue $venue */
+                $venue = $row['venue'];
+                $access = $row['access'];
+                $matched = $accessFilter ? ($access[$accessFilter][0] ?? null) : null;
                 $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
                 $isActorOwned = in_array($venue->id, $actorOwnedVenueIds, true);
 
@@ -89,6 +115,11 @@ final class ListVenuesHandler
                     canEdit: $venue->allowsDetailsEditing() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true)),
                     canEditSchedule: $venue->allowsOperationalChanges() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true)),
                     canRemove: $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true),
+                    courtAccessSummary: $access,
+                    matchedCourtUrl: $matched['url'] ?? null,
+                    matchedCourtName: $matched['name'] ?? null,
+                    matchedRequiresBooking: $matched['requires_booking'] ?? null,
+                    matchedRequiresApproval: $matched['requires_booking_approval'] ?? null,
                 );
             })
             ->all();
