@@ -37,8 +37,9 @@ final class SyncVenueCourtSchedule
         }
 
         $schedule = $venue->schedule()->with(['intervals', 'exceptions.intervals'])->first();
-        if (! $schedule instanceof VenueSchedule) {
-            throw ValidationException::withMessages(['mode' => 'У площадки ещё не задано расписание.']);
+        if (! $schedule instanceof VenueSchedule
+            || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+            throw ValidationException::withMessages(['mode' => 'Сначала задайте расписание площадки.']);
         }
 
         $zone = (string) ($schedule->timezone ?: 'Europe/Moscow');
