@@ -65,7 +65,7 @@ final class PlayIntentController extends Controller
         return response()->json([
             'data' => Amenity::query()->where('is_active', true)
                 ->orderBy('sort_order')->orderBy('name')
-                ->get(['id', 'name', 'alias', 'description', 'icon', 'applies_to'])
+                ->get(['id', 'name', 'alias', 'description', 'icon', 'scope', 'applies_to'])
                 ->toArray(),
         ]);
     }

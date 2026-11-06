@@ -58,6 +58,8 @@ final class ShowVenueHandler
                 'creatorActor',
                 'courts',
                 'courts.schedule',
+                'courts.amenities' => fn ($query) => $query
+                    ->where('is_active', true)->orderBy('sort_order'),
                 'courts.media' => fn ($query) => $query
                     ->where('collection', 'gallery')
                     ->orderByDesc('is_featured')
@@ -155,7 +157,12 @@ final class ShowVenueHandler
             ])
             ->values()
             ->all();
-        $amenities = $venue->amenities
+        // Venue overview = shared amenities plus available equipment across
+        // the entire facility. Court page = shared amenities + selected court.
+        $amenitySource = $courtIdentifier === null
+            ? $venue->amenities->concat($courts->flatMap(fn (VenueCourt $court) => $court->amenities))
+            : $venue->amenities->concat($selectedCourt->amenities);
+        $amenities = $amenitySource->unique('id')->sortBy('sort_order')->values()
             ->map(fn ($amenity) => new VenueAmenityDTO(
                 id: (int) $amenity->id,
                 name: $amenity->name,
@@ -265,7 +272,9 @@ final class ShowVenueHandler
                 'courtId' => (int) $selectedCourt->id,
                 'effective' => $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy),
                 'scopes' => array_values(array_filter([
-                    $selectedCourt->allows_whole ? ['value' => 'whole', 'label' => 'Весь зал'] : null,
+                    $selectedCourt->allows_whole
+                        ? ['value' => 'whole', 'label' => $selectedCourt->environment?->value === 'outdoor'
+                            ? 'Весь корт' : 'Весь зал'] : null,
                     $selectedCourt->supports_halves && $selectedCourt->allows_halves ? ['value' => 'half_a', 'label' => 'Половина A'] : null,
                     $selectedCourt->supports_halves && $selectedCourt->allows_halves ? ['value' => 'half_b', 'label' => 'Половина B'] : null,
                 ])),
@@ -360,7 +369,7 @@ final class ShowVenueHandler
 
         return [
             'id' => (int) $court->id,
-            'name' => $court->name,
+            'name' => $court->publicName(),
             'alias' => $court->alias,
             'routeIdentifier' => $court->routeIdentifier(),
             'isPrimary' => (bool) $court->is_primary,

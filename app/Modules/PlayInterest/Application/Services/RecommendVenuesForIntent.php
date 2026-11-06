@@ -5,7 +5,6 @@ namespace App\Modules\PlayInterest\Application\Services;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -37,7 +36,8 @@ final class RecommendVenuesForIntent
         $query = Venue::query()
             ->where('status', VenueStatusEnum::CONFIRMED)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE)
-            ->with(['location.address', 'amenities:id,name,alias,is_active', 'primaryCourt'])
+            ->with(['location.address', 'amenities:id,name,alias,is_active',
+                'courts.amenities:id,name,alias,is_active', 'primaryCourt'])
             ->when($excludedIds !== [], fn (Builder $q) => $q->whereNotIn('id', $excludedIds))
             ->orderBy('id');
 
@@ -47,11 +47,9 @@ final class RecommendVenuesForIntent
         if ($searchCatalog && in_array($intent->venue_kind, ['outdoor', 'indoor'], true)) {
             $outdoor = $intent->venue_kind === 'outdoor';
             $query->where(function (Builder $q) use ($outdoor, $intent): void {
-                if ($outdoor) {
-                    $q->where('type', VenueTypeEnum::STREET_COURT);
-                } else {
-                    $q->where('type', '!=', VenueTypeEnum::STREET_COURT);
-                }
+                $environment = $outdoor ? 'outdoor' : 'indoor';
+                $q->whereHas('courts', fn (Builder $court) =>
+                    $court->where('environment', $environment));
                 if ($intent->venue_id !== null) {
                     $q->orWhereKey($intent->venue_id);
                 }
@@ -72,7 +70,12 @@ final class RecommendVenuesForIntent
 
         $query->when($requiredIds !== [], function (Builder $q) use ($requiredIds): void {
             foreach ($requiredIds as $id) {
-                $q->whereHas('amenities', fn (Builder $a) => $a->where('amenities.id', $id)->where('is_active', true));
+                $q->where(function (Builder $any) use ($id): void {
+                    $any->whereHas('amenities', fn (Builder $a) =>
+                        $a->where('amenities.id', $id)->where('is_active', true))
+                        ->orWhereHas('courts.amenities', fn (Builder $a) =>
+                            $a->where('amenities.id', $id)->where('is_active', true));
+                });
             }
         });
 
@@ -111,8 +114,10 @@ final class RecommendVenuesForIntent
                 continue;
             }
 
-            $amenityIds = $venue->amenities->where('is_active', true)->pluck('id')->map(fn ($n): int => (int) $n)->all();
-            $preferredHits = count(array_intersect($preferredIds, $amenityIds));
+            if (! $this->hasRequiredAmenitiesInOneCourt($venue, $requiredIds, $intent->venue_kind)) {
+                continue;
+            }
+            $preferredHits = $this->bestCourtAmenityHits($venue, $preferredIds, $intent->venue_kind);
             $softScore = $preferredIds === [] ? 100 : 100 * $preferredHits / count($preferredIds);
             $distanceScore = $distance === null ? 100 : max(0, 100 * (1 - $distance / max(1, $radius * 1000)));
             $score = (int) round($distanceScore * .7 + $softScore * .3);
@@ -154,8 +159,8 @@ final class RecommendVenuesForIntent
             return false;
         }
         if (! $direct && in_array($intent->venue_kind, ['indoor', 'outdoor'], true)) {
-            $outdoor = $venue->type === VenueTypeEnum::STREET_COURT;
-            if ($outdoor !== ($intent->venue_kind === 'outdoor')) {
+            $hasMatchingCourt = $venue->courts()->where('environment', $intent->venue_kind)->exists();
+            if (! $hasMatchingCourt) {
                 return false;
             }
         }
@@ -182,13 +187,52 @@ final class RecommendVenuesForIntent
         $required = collect($intent->amenity_preferences ?? [])
             ->where('priority', 'required')->pluck('amenity_id')->map(fn ($id): int => (int) $id)->all();
         if ($required !== []) {
-            $venue->loadMissing('amenities');
-            $available = $venue->amenities->where('is_active', true)->pluck('id')->map(fn ($id): int => (int) $id)->all();
-            if (array_diff($required, $available) !== []) {
+            if (! $this->hasRequiredAmenitiesInOneCourt($venue, $required, $intent->venue_kind)) {
                 return false;
             }
         }
         return true;
+    }
+
+
+    /**
+     * All required options must be present on one usable court (together
+     * with the shared amenities), not scattered across unrelated courts.
+     */
+    private function hasRequiredAmenitiesInOneCourt(Venue $venue, array $required, ?string $environment): bool
+    {
+        if ($required === []) {
+            return true;
+        }
+        $venue->loadMissing('amenities', 'courts.amenities');
+        $shared = $venue->amenities->where('is_active', true)->pluck('id')->map('intval')->all();
+
+        return $venue->courts->contains(function ($court) use ($required, $shared, $environment): bool {
+            if (in_array($environment, ['indoor', 'outdoor'], true)
+                && $court->environment?->value !== $environment) {
+                return false;
+            }
+            $available = array_unique(array_merge($shared,
+                $court->amenities->where('is_active', true)->pluck('id')->map('intval')->all()));
+
+            return array_diff($required, $available) === [];
+        });
+    }
+
+    private function bestCourtAmenityHits(Venue $venue, array $preferred, ?string $environment): int
+    {
+        if ($preferred === []) {
+            return 0;
+        }
+        $venue->loadMissing('amenities', 'courts.amenities');
+        $shared = $venue->amenities->where('is_active', true)->pluck('id')->map('intval')->all();
+
+        return (int) $venue->courts
+            ->filter(fn ($court): bool => ! in_array($environment, ['indoor', 'outdoor'], true)
+                || $court->environment?->value === $environment)
+            ->map(fn ($court): int => count(array_intersect($preferred, array_unique(array_merge(
+                $shared, $court->amenities->where('is_active', true)->pluck('id')->map('intval')->all()
+            )))))->max();
     }
 
     private function haversineMeters(float $la, float $lo, float $lb, float $lob): int

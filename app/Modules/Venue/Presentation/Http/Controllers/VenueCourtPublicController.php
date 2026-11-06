@@ -42,7 +42,8 @@ final class VenueCourtPublicController extends Controller
         ]);
 
         $venueAddress = $details->address?->display ?: $details->rawAddress;
-        $generatedDescription = 'Зал «'.$details->selectedCourt['name'].'» площадки «'.$details->name.'»'
+        $areaNoun = ($details->selectedCourt['environment'] ?? null) === 'outdoor' ? 'Корт' : 'Зал';
+        $generatedDescription = $areaNoun.' «'.$details->selectedCourt['name'].'» площадки «'.$details->name.'»'
             .($venueAddress ? ' по адресу '.$venueAddress : '')
             .'. Характеристики, расписание и условия доступа на MSKBA.';
         $seoDescription = $details->shortDescription ?: $generatedDescription;

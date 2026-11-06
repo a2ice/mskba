@@ -50,6 +50,8 @@
         ? 'крытая площадка'
         : ($venue->selectedCourt['environment'] === 'outdoor' ? 'уличная площадка' : null);
     $displayAreaLabel = $venue->isCourtPage ? $selectedAreaLabel : $areaLabel;
+    $isOutdoorCourt = $venue->isCourtPage && $venue->selectedCourt['environment'] === 'outdoor';
+    $unitNoun = $isOutdoorCourt ? 'корт' : 'зал';
     $createEventUrl = route('events.wizard', array_filter([
         'venue_id' => $venue->id,
         'venue_court_id' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null,
@@ -92,11 +94,11 @@
                 <p class="eyebrow accent">{{ $venue->type }}@if($displayAreaLabel): {{ $displayAreaLabel }}@endif</p>
                 @if(count($venue->courts) > 1)
                     <details class="app-venue-court-picker" data-venue-court-dropdown>
-                        <summary aria-label="Выбрать зал">{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : 'Все залы' }}
+                        <summary aria-label="Выбрать зал или корт">{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : 'Все залы и корты' }}
                             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
                         </summary>
-                        <nav aria-label="Залы площадки">
-                            <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" @if(!$venue->isCourtPage) aria-current="page" @endif>Все залы · общая страница</a>
+                        <nav aria-label="Залы и корты площадки">
+                            <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" @if(!$venue->isCourtPage) aria-current="page" @endif>Все залы и корты · общая страница</a>
                             @foreach($venue->courts as $court)
                                 <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]) }}"
                                     @if($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) aria-current="page" @endif>{{ $court['name'] }}</a>
@@ -261,7 +263,7 @@
                 @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
-                <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? 'О зале / зоне' : 'О площадке' }}</h2></header>
+                <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</h2></header>
                 @if($venue->isCourtPage)
                     @php
                         $policy = $venue->effectiveCourtPolicy;
@@ -272,21 +274,21 @@
                         <div><dt>Запись</dt><dd>{{ $policy['requires_booking'] ? 'Необходимо бронирование' : 'Свободный доступ' }}</dd></div>
                         <div><dt>Подтверждение</dt><dd>{{ $policy['requires_booking_approval'] ? 'Администратором' : 'Автоматическое' }}</dd></div>
                         @if($policy['currency'] !== null && $policy['whole_price_per_step_minor'] !== null)
-                            <div><dt>Базовая цена всего зала за {{ $policy['time_step_minutes'] }} мин.</dt>
+                            <div><dt>Базовая цена всего {{ $unitNoun }}а за {{ $policy['time_step_minutes'] }} мин.</dt>
                                 <dd>{{ number_format($policy['whole_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
                         @endif
                         @if($policy['currency'] !== null && $policy['half_price_per_step_minor'] !== null)
                             <div><dt>Базовая цена половины за {{ $policy['time_step_minutes'] }} мин.</dt>
                                 <dd>{{ number_format($policy['half_price_per_step_minor'] / 100, 2, ',', ' ') }} {{ $policy['currency'] }}</dd></div>
                         @endif
-                        <div><dt>Зал / зона</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
+                        <div><dt>{{ $isOutdoorCourt ? 'Корт' : 'Зал' }}</dt><dd>{{ $venue->selectedCourt['name'] }}</dd></div>
                         <div><dt>Количество колец</dt><dd>{{ $venue->selectedCourt['hoopsCount'] }}</dd></div>
                         <div><dt>Покрытие</dt><dd>{{ $venue->selectedCourt['surfaceLabel'] ?: 'Не указано' }}</dd></div>
                         <div><dt>Бронирование целиком</dt><dd>{{ $venue->selectedCourt['allowsWhole'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
                         <div><dt>Бронирование половинами</dt><dd>{{ $venue->selectedCourt['supportsHalves'] && $venue->selectedCourt['allowsHalves'] ? 'Разрешено' : 'Недоступно' }}</dd></div>
                     </dl>
                 @else
-                    <p class="app-venue-court-overview"><strong>Количество залов:</strong> {{ count($venue->courts) }}</p>
+                    <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
                 @endif
                 @if($venue->fullDescription)<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
                 @if(count($venue->amenities))
