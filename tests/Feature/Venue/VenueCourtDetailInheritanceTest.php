@@ -5,6 +5,7 @@ namespace Tests\Feature\Venue;
 use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Carbon\CarbonImmutable;
@@ -64,7 +65,10 @@ final class VenueCourtDetailInheritanceTest extends TestCase
 
     public function test_overview_shows_only_shared_amenities_and_court_page_adds_only_its_equipment(): void
     {
-        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'type' => VenueTypeEnum::SPORTS_HALL,
+        ]);
         $indoor = $venue->primaryCourt()->firstOrFail();
         $outdoor = $venue->courts()->create([
             'name' => 'Уличный корт',
