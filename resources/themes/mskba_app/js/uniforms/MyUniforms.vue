@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import UniformKitPreview from './UniformKitPreview.vue';
+
 const projects = ref([]);
 const busy = ref(false);
 const loading = ref(true);
@@ -9,70 +10,99 @@ const dialog = ref(null);
 const action = ref('');
 const selected = ref(null);
 const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
 async function load() {
   try {
-    const res = await fetch('/uniforms/projects', {credentials:'same-origin',headers:{Accept:'application/json'}});
-    if (!res.ok) throw new Error('Не удалось загрузить сохранённые формы.');
+    const res = await fetch('/uniforms/projects', {
+      credentials: 'same-origin', headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error('Не удалось загрузить формы.');
     projects.value = (await res.json()).designs || [];
-  } catch(e){ error.value=e.message; } finally{ loading.value=false; }
+  } catch (e) { error.value = e.message; }
+  finally { loading.value = false; }
 }
 onMounted(load);
-function open(actionType, project) { selected.value=project;action.value=actionType;dialog.value?.showModal(); }
+function open(kind, design) {
+  selected.value = design;
+  action.value = kind;
+  dialog.value?.showModal();
+}
 function close() { dialog.value?.close(); }
-function backdrop(e) {
-  if (e.target !== dialog.value) return;
-  const r=dialog.value.getBoundingClientRect();
-  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
+function backdrop(event) {
+  if (event.target !== dialog.value) return;
+  const rect = dialog.value.getBoundingClientRect();
+  if (event.clientX < rect.left || event.clientX > rect.right ||
+    event.clientY < rect.top || event.clientY > rect.bottom) close();
 }
 async function remove() {
   if (!selected.value || busy.value) return;
-  busy.value=true;error.value='';
-  try{
-    const res=await fetch('/uniforms/projects/'+selected.value.id,{
-      method:'DELETE',credentials:'same-origin',
-      headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf()},
+  busy.value = true;
+  error.value = '';
+  try {
+    const res = await fetch('/uniforms/projects/' + selected.value.id, {
+      method: 'DELETE', credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrf(),
+      },
     });
-    if(!res.ok)throw new Error('Не удалось удалить форму.');
-    projects.value=projects.value.filter(x=>x.id!==selected.value.id);
+    if (!res.ok) throw new Error('Не удалось удалить форму.');
+    projects.value = projects.value.filter(item => item.id !== selected.value.id);
     close();
-  }catch(e){error.value=e.message;}
-  finally{busy.value=false;}
+  } catch (e) { error.value = e.message; }
+  finally { busy.value = false; }
 }
 </script>
+
 <template>
   <div class="mskba-uniform-library">
-    <div class="mskba-uniform-library__toolbar"><span>{{ projects.length }} {{ projects.length===1?'проект':'проектов' }}</span><a href="/uniforms/workshop" class="mskba-uniform-editor__save">+ Создать форму</a></div>
-    <p v-if="loading" role="status">Загружаем проекты…</p>
+    <div class="mskba-uniform-library__toolbar">
+      <span>{{ projects.length }} {{ projects.length === 1 ? 'форма' : 'форм' }}</span>
+      <a href="/uniforms/workshop" class="button primary">Создать форму</a>
+    </div>
+    <p v-if="loading" role="status">Загружаем…</p>
     <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
     <div v-if="!loading && !projects.length" class="mskba-uniform-library__empty">
-      <span class="mskba-uniform-eyebrow">ТВОЯ ПЕРВАЯ ФОРМА</span><h2>Начни со своего стиля</h2>
-      <p>Сохрани эскиз в мастерской, чтобы возвращаться к нему и развивать дизайн.</p>
-      <a href="/uniforms/workshop" class="mskba-uniform-editor__save">Создать первую форму ↗</a>
+      <h2>Моих форм пока нет</h2>
+      <a href="/uniforms/workshop" class="button primary">Создать форму</a>
     </div>
     <div v-if="projects.length" class="mskba-uniform-library__grid">
       <article v-for="item in projects" :key="item.id" class="mskba-uniform-library__card">
-        <UniformKitPreview :name="item.name" :primary="item.primary_color" :secondary="item.secondary_color" :logo="item.logo_url || ''"/>
+        <div class="mskba-uniform-library__preview">
+          <UniformKitPreview :name="item.name" :primary="item.primary_color"
+            :secondary="item.secondary_color" :sleeve-style="item.sleeve_style || 'sleeved'"
+            :logo="item.logo_url || ''"/>
+        </div>
         <div class="mskba-uniform-library__card-info">
-          <h2>{{ item.name }}</h2><p>Размеры: {{ item.sizes.join(' · ') }}</p>
+          <h2>{{ item.name }}</h2>
+          <p>{{ item.sleeve_style === 'sleeveless' ? 'Без рукавов' : 'С рукавами' }} · {{ item.sizes.join(' · ') }}</p>
           <div class="mskba-uniform-library__actions">
-            <a :href="'/uniforms/workshop?project='+item.id" class="mskba-uniform-library__edit">Редактировать ↗</a>
-            <button type="button" @click="open('production',item)">В производство</button>
-            <button type="button" @click="open('delete',item)" class="mskba-uniform-library__delete">Удалить</button>
+            <a :href="'/uniforms/workshop?project=' + item.id" class="button secondary">Редактировать</a>
+            <button type="button" class="button secondary" @click="open('production', item)">В производство</button>
+            <button type="button" class="button danger" @click="open('delete', item)">Удалить</button>
           </div>
         </div>
       </article>
     </div>
-    <dialog ref="dialog" class="mskba-modal mskba-uniform-action-dialog" aria-labelledby="mskba-uniform-action-title" @click="backdrop">
-      <header class="mskba-modal__header mskba-uniform-dialog__head">
-        <h2 id="mskba-uniform-action-title" tabindex="-1">{{ action==='delete'?'Удалить форму?':'Изготовление формы' }}</h2>
-        <button type="button" class="mskba-uniform-dialog__close" aria-label="Закрыть" @click="close">×</button>
+    <dialog ref="dialog" class="mskba-modal mskba-uniform-action-dialog"
+      aria-labelledby="mskba-uniform-action-title" @click="backdrop">
+      <header class="mskba-modal__header app-profile__request-header">
+        <h2 id="mskba-uniform-action-title" tabindex="-1">
+          {{ action === 'delete' ? 'Удалить форму?' : 'Изготовление формы' }}
+        </h2>
+        <button type="button" class="app-profile__dialog-close" aria-label="Закрыть" @click="close">×</button>
       </header>
-      <div class="mskba-modal__body mskba-uniform-action-dialog__body">
-        <template v-if="action==='delete'"><p>Форма «{{ selected?.name }}» будет удалена из «Моих форм». Это действие нельзя отменить.</p>
-          <button type="button" class="mskba-uniform-library__danger" :disabled="busy" @click="remove">{{ busy?'Удаляем…':'Удалить форму' }}</button></template>
-        <template v-else><span class="mskba-uniform-eyebrow">СКОРО</span><h3>От дизайна — к игре</h3>
-          <p>Возможность отправить форму производителю появится позже. Пока ваш эскиз сохранён и доступен для редактирования.</p>
-          <button type="button" class="mskba-uniform-editor__save" @click="close">Понятно</button></template>
+      <div class="mskba-modal__body app-profile__request-body mskba-uniform-action-dialog__body">
+        <template v-if="action === 'delete'">
+          <p>Удалить форму «{{ selected?.name }}»?</p>
+          <button type="button" class="button danger" :disabled="busy" :aria-busy="busy" @click="remove">
+            {{ busy ? 'Удаляем…' : 'Удалить' }}
+          </button>
+        </template>
+        <template v-else>
+          <p>Отправка формы на производство пока недоступна.</p>
+          <button type="button" class="button primary" @click="close">Понятно</button>
+        </template>
       </div>
     </dialog>
   </div>

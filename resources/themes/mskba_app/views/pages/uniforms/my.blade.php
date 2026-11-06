@@ -3,7 +3,6 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Мои формы',
-        'intro' => 'Сохранённые эскизы баскетбольной формы — редактирование, новые варианты и подготовка к производству.',
     ])
 @endsection
 

@@ -14,6 +14,8 @@ async function resumePending() {
     const data = JSON.parse(raw);
     const payload = new FormData();
     for (const field of ['name','primary_color','secondary_color','logo_source']) payload.append(field,data[field]||'');
+    // Drafts created before the sleeve selector existed must still be saveable.
+    if (data.sleeve_style) payload.append('sleeve_style', data.sleeve_style);
     (data.sizes || []).forEach((s,i)=>payload.append('sizes['+i+']',s));
     if(data.logo_source==='team'&&data.logo_team_id) payload.append('logo_team_id',data.logo_team_id);
     if(data.logo_source==='custom'&&data.logo_data) {

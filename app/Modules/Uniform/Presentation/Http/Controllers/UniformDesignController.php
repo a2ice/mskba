@@ -88,7 +88,7 @@ final class UniformDesignController extends Controller
         } elseif (($data['logo_source'] ?? 'none') !== 'custom') {
             $logos->remove($design);
         }
-        $design->update($this->attributes($data));
+        $design->update($this->attributes($data, $design));
 
         return $this->json(['design' => $this->present($design->fresh()->load(['customLogo', 'logoTeam.logo']))]);
     }
@@ -147,6 +147,7 @@ final class UniformDesignController extends Controller
             'secondary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/D'],
             'sizes' => ['required', 'array', 'min:1', 'max:6'],
             'sizes.*' => ['required', 'string', 'distinct', Rule::in(['XS','S','M','L','XL','XXL'])],
+            'sleeve_style' => ['sometimes', 'required', Rule::in(['sleeved', 'sleeveless'])],
             'logo_source' => ['required', Rule::in(['none', 'team', 'custom'])],
             'logo_team_id' => ['nullable', 'integer', 'min:1'],
             'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -167,13 +168,14 @@ final class UniformDesignController extends Controller
         }
     }
 
-    private function attributes(array $data): array
+    private function attributes(array $data, ?UniformDesign $design = null): array
     {
         return [
             'name' => trim($data['name']),
             'primary_color' => strtoupper($data['primary_color']),
             'secondary_color' => strtoupper($data['secondary_color']),
             'sizes' => array_values($data['sizes']),
+            'sleeve_style' => $data['sleeve_style'] ?? ($design?->sleeve_style ?? 'sleeved'),
             'logo_source' => $data['logo_source'],
             'logo_team_id' => $data['logo_source'] === 'team' ? (int) $data['logo_team_id'] : null,
             'editor_version' => 1,
@@ -193,6 +195,7 @@ final class UniformDesignController extends Controller
             'primary_color' => $design->primary_color,
             'secondary_color' => $design->secondary_color,
             'sizes' => $design->sizes,
+            'sleeve_style' => $design->sleeve_style,
             'logo_source' => $design->logo_source,
             'logo_team_id' => $design->logo_team_id,
             'logo_url' => $logoUrl,

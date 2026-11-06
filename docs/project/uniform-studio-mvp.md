@@ -7,7 +7,8 @@ GET+PUT+DELETE /uniforms/projects/{design};
 GET /uniforms/projects/{design}/logo.
 
 Fields: name (2–100), primary_color and secondary_color (#RRGGBB),
-sizes[] (XS S M L XL XXL), logo_source (none/team/custom),
+sizes[] (XS S M L XL XXL), sleeve_style (sleeveless/sleeved),
+logo_source (none/team/custom),
 logo_team_id for team, logo upload PNG/JPEG/WebP max 2MB for custom.
 
 Private media is attached via morph relation to UniformDesign.
