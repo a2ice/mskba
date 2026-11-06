@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenuePricingRule;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
