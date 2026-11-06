@@ -252,6 +252,21 @@ class Venue extends Model
         return $this->hasOne(VenueSchedule::class);
     }
 
+    public function commissionPolicy(): HasOne
+    {
+        return $this->hasOne(VenueCommissionPolicy::class);
+    }
+
+    public function commissionAgents(): HasMany
+    {
+        return $this->hasMany(VenueCommissionAgent::class);
+    }
+
+    public function courtCommissionPolicies(): HasMany
+    {
+        return $this->hasMany(VenueCourtCommissionPolicy::class);
+    }
+
     public function pricingRules(): HasMany
     {
         return $this->hasMany(VenuePricingRule::class);
