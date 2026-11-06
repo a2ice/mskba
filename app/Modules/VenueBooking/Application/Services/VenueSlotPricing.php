@@ -38,12 +38,14 @@ final class VenueSlotPricing
             : 'half_price_per_step_minor';
         $venueWeekly = VenueScheduleSlotPrice::query()->where('venue_id', $venue->id)->get()
             ->keyBy(fn (VenueScheduleSlotPrice $price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5));
-        $venueCalendar = $venue->calendarSlotPrices()->get()
+        $dateFrom = $localStart->toDateString();
+        $dateTo = $localStart->addMinutes($durationMinutes)->toDateString();
+        $venueCalendar = $venue->calendarSlotPrices()->whereBetween('date', [$dateFrom, $dateTo])->get()
             ->keyBy(fn ($price): string => $price->date->format('Y-m-d').'|'.substr((string) $price->starts_at, 0, 5));
         $courtWeekly = $court?->slotPrices()->get()->keyBy(
             fn ($price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5)
         ) ?? collect();
-        $courtCalendar = $court?->calendarSlotPrices()->get()->keyBy(
+        $courtCalendar = $court?->calendarSlotPrices()->whereBetween('date', [$dateFrom, $dateTo])->get()->keyBy(
             fn ($price): string => $price->date->format('Y-m-d').'|'.substr((string) $price->starts_at, 0, 5)
         ) ?? collect();
 
