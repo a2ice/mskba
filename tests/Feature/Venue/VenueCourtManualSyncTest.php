@@ -180,8 +180,10 @@ final class VenueCourtManualSyncTest extends TestCase
         $venue->schedule->intervals()->where('day_of_week', 1)->update(['starts_at' => '10:00']);
         $venue->scheduleSlotPrices()->where('day_of_week', 2)->update(['whole_price_per_step_minor' => 9999]);
         $this->assertSame('09:00', $court->schedule()->firstOrFail()->weekly_intervals[0]['starts_at']);
-        $this->assertSame(1200, $court->slotPrices()->where('day_of_week', 2)
-            ->where('starts_at', '11:00')->firstOrFail()->whole_price_per_step_minor);
+        $syncedWeekPrice = $court->slotPrices()->where('day_of_week', 2)->get()
+            ->first(fn ($row): bool => substr((string) $row->starts_at, 0, 5) === '11:00');
+        $this->assertNotNull($syncedWeekPrice);
+        $this->assertSame(1200, $syncedWeekPrice->whole_price_per_step_minor);
     }
 
     public function test_bulk_sync_is_atomic_if_one_court_has_incompatible_price_step(): void
