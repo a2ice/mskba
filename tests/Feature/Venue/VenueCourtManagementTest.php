@@ -40,6 +40,7 @@ final class VenueCourtManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
+                'environment' => 'indoor',
                 'name' => 'Малый зал',
                 'hoops_count' => 2,
                 'surface_type' => VenueSurfaceTypeEnum::PARQUET->value,
@@ -59,6 +60,7 @@ final class VenueCourtManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->put(route('account.venues.courts.update', [$venue->routeIdentifier(), $secondCourt->routeIdentifier()]), [
+                'environment' => 'indoor',
                 'name' => 'Зал Молния',
                 'alias' => 'molniya',
                 'sort_order' => 20,
@@ -97,6 +99,7 @@ final class VenueCourtManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
+                'environment' => 'indoor',
                 'name' => 'Наследуемый зал',
             ])
             ->assertSessionHasNoErrors();
@@ -136,6 +139,7 @@ final class VenueCourtManagementTest extends TestCase
 
         $this->actingAs($owner)
             ->put(route('account.venues.courts.update', [$venue->routeIdentifier(), $court->routeIdentifier()]), [
+                'environment' => 'indoor',
                 'name' => $court->name,
                 'alias' => $court->alias,
                 'sort_order' => $court->sort_order,
@@ -158,16 +162,19 @@ final class VenueCourtManagementTest extends TestCase
         $otherVenue = $this->venueFor($owner);
 
         $this->actingAs($owner)->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
+                'environment' => 'indoor',
             'name' => 'Малый зал',
             'alias' => 'small',
         ])->assertSessionHasNoErrors();
 
         $this->actingAs($owner)->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
+                'environment' => 'indoor',
             'name' => 'Ещё один',
             'alias' => 'small',
         ])->assertSessionHasNoErrors();
 
         $this->actingAs($owner)->post(route('account.venues.courts.store', $otherVenue->routeIdentifier()), [
+                'environment' => 'indoor',
             'name' => 'Малый зал',
             'alias' => 'small',
         ])->assertSessionHasNoErrors();
@@ -244,7 +251,8 @@ final class VenueCourtManagementTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($intruder)
-            ->post(route('account.venues.courts.store', $venue->routeIdentifier()), ['name' => 'Чужой зал'])
+            ->post(route('account.venues.courts.store', $venue->routeIdentifier()), [
+                'environment' => 'indoor','name' => 'Чужой зал'])
             ->assertForbidden();
     }
 

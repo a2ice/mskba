@@ -137,7 +137,7 @@ final class VenueCourtPublicContextTest extends TestCase
         ]);
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
-            ->assertOk()->assertSee('Все залы · общая страница')
+            ->assertOk()->assertSee('Все залы и корты · общая страница')
             ->assertSee('data-venue-court-dropdown', false);
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $primary->routeIdentifier()]))

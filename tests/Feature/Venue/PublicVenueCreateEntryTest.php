@@ -254,6 +254,12 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Публичная площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание публичной площадки',
                 'location' => $this->locationPayload('Москва, Тестовая улица, 1'),
             ]);
@@ -277,6 +283,12 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Гостевая площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание гостевой площадки',
                 'location' => $this->locationPayload('Москва, Тестовая улица, 2'),
             ])
@@ -297,6 +309,12 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Черновик площадки',
                 'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание',
                 'location' => $this->locationPayload('Москва, Тестовая улица, 2'),
             ])
@@ -354,6 +372,12 @@ class PublicVenueCreateEntryTest extends TestCase
         $createVenue->handle($actor, [
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Первая заявка',
         ], $this->locationDto('Москва, Тестовая улица, 91', 55.7000000, 37.6000000));
 
@@ -363,6 +387,12 @@ class PublicVenueCreateEntryTest extends TestCase
         $createVenue->handle($actor, [
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Вторая заявка',
         ], $this->locationDto('Москва, Тестовая улица, 92', 55.7001000, 37.6001000));
     }
@@ -380,11 +410,23 @@ class PublicVenueCreateEntryTest extends TestCase
         $firstVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($firstUser, null), [
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Первая заявка',
         ], $this->locationDto('Москва, Тестовая улица, 93', 55.7000000, 37.6000000));
         $secondVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($secondUser, null), [
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Вторая заявка',
         ], $this->locationDto('Москва, Тестовая улица, 93', 55.7000000, 37.6000000));
 
@@ -399,6 +441,12 @@ class PublicVenueCreateEntryTest extends TestCase
         $response = $this->actingAs($user)->post(route('venues.store'), [
             'name' => 'Площадка представителя',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'creation_role' => 'representative',
             'location' => $this->locationPayload('Москва, Улица представителя, 1'),
         ]);
@@ -420,6 +468,12 @@ class PublicVenueCreateEntryTest extends TestCase
         $this->actingAs($user)->post(route('venues.store'), [
             'name' => 'Площадка с неверным сценарием',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'creation_role' => 'owner',
             'location' => $this->locationPayload('Москва, Улица представителя, 1'),
         ])->assertSessionHasErrors('creation_role');

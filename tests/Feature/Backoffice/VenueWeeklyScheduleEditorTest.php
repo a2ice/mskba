@@ -34,6 +34,12 @@ final class VenueWeeklyScheduleEditorTest extends TestCase
         $venue = $editor->save([
             'name' => 'Новая уличная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'schedule_timezone' => 'Europe/Moscow',
             'weekly_default_intervals' => [
@@ -51,7 +57,7 @@ final class VenueWeeklyScheduleEditorTest extends TestCase
         ]);
 
         $this->assertSame(1, $venue->courts()->count());
-        $this->assertSame('Зал 1', $venue->primaryCourt()->firstOrFail()->name);
+        $this->assertSame('Корт 1', $venue->primaryCourt()->firstOrFail()->name);
         $schedule = $venue->schedule()->firstOrFail();
         $this->assertSame(6, $schedule->intervals()->count());
         $this->assertDatabaseHas('venue_schedule_intervals', [
@@ -84,6 +90,12 @@ final class VenueWeeklyScheduleEditorTest extends TestCase
         $base = [
             'name' => 'Тест расписания',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'weekly_default_intervals' => [['starts_at' => '10:00', 'ends_at' => '22:00']],
         ];
@@ -106,12 +118,18 @@ final class VenueWeeklyScheduleEditorTest extends TestCase
         }
     }
 
-    public function test_backoffice_create_without_manual_court_or_schedule_has_one_primary_court(): void
+    public function test_backoffice_create_with_one_configured_court_and_no_schedule(): void
     {
         $this->signIn();
         $venue = app(VenueBackofficeEditor::class)->save([
             'name' => 'Уличная площадка без расписания',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'weekly_default_intervals' => [],
             'weekday_overrides' => [],

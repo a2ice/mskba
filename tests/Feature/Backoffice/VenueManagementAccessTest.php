@@ -73,6 +73,12 @@ final class VenueManagementAccessTest extends TestCase
         app(VenueBackofficeEditor::class)->save([
             'name' => 'Недоступная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
         ]);
     }
@@ -86,6 +92,12 @@ final class VenueManagementAccessTest extends TestCase
         $venue = app(VenueBackofficeEditor::class)->save([
             'name' => 'Подтверждаемая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::CONFIRMED->value,
             'raw_address' => 'Москва, другая улица, 1',
             'location_city' => 'Москва',
@@ -146,6 +158,12 @@ final class VenueManagementAccessTest extends TestCase
         app(VenueBackofficeEditor::class)->save([
             'name' => 'Площадка менеджера',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::CONFIRMED->value,
         ]);
     }
@@ -229,6 +247,12 @@ final class VenueManagementAccessTest extends TestCase
         $venue = app(VenueBackofficeEditor::class)->save([
             'name' => 'Тестовая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'operational_status' => 'active',
             'access_type' => 'free',

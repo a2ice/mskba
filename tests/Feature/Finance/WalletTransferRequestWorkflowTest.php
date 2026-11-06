@@ -100,8 +100,8 @@ final class WalletTransferRequestWorkflowTest extends TestCase
                 ->assertOk()->assertSee('data-mskba-venue-create', false)
                 ->assertSee('data-address-current-location', false)
                 ->assertSee('data-address-suggest-input', false)
-                ->assertSee('name="court_count"', false)
-                ->assertSee('name="hoops_count"', false);
+                ->assertSee('name="initial_courts[0][name]"', false)
+                ->assertSee('name="initial_courts[0][hoops_count]"', false);
         } finally {
             config()->set('themes.active', $before);
             View::replaceNamespace('theme', resource_path('themes/'.$before.'/views'));

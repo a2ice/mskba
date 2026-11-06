@@ -110,6 +110,12 @@ final class VenueAddressAutocompleteTest extends TestCase
         $venue = $editor->save([
             'name' => 'Площадка Тушинская',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'location_full_address' => '125362, Россия, Москва, Тушинская улица, 16А',
             'raw_address' => 'Тушинская улица, 16А',

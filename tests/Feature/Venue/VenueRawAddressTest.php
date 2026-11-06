@@ -34,6 +34,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Тестовая площадка',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'requires_payment' => '1',
                 'requires_booking_approval' => '1',
                 'short_description' => 'Описание тестовой площадки',
@@ -67,6 +73,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'test',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Первая площадка',
                 'location' => $this->locationPayload('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000),
             ])
@@ -82,6 +94,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'TeSt',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Дубль названия',
                 'location' => $this->locationPayload('Москва, ул. Летниковская, 14', 55.7380000, 37.6540000),
             ])
@@ -107,6 +125,12 @@ class VenueRawAddressTest extends TestCase
         $indoorVenue = $createVenue->handle($actor, [
             'name' => 'Школьная площадка',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Спортивный зал',
         ], $this->locationDto('Москва, Школьная улица, 1', 55.7000000, 37.6000000));
         $indoorVenue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
@@ -114,6 +138,12 @@ class VenueRawAddressTest extends TestCase
         $outdoorVenue = $createVenue->handle($actor, [
             'name' => 'Школьная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Уличная площадка',
         ], $this->locationDto('Москва, Школьная улица, 1', 55.7000000, 37.6000000));
 
@@ -130,6 +160,12 @@ class VenueRawAddressTest extends TestCase
         $venue = $createVenue->handle($actor, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Первая площадка',
         ], $this->locationDto('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000));
         $venue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
@@ -137,6 +173,12 @@ class VenueRawAddressTest extends TestCase
         $secondVenue = $createVenue->handle($actor, [
             'name' => 'TEST',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Одноименная площадка',
         ], $this->locationDto('Москва, ул. Летниковская, 14', 55.7380000, 37.6540000));
 
@@ -153,12 +195,24 @@ class VenueRawAddressTest extends TestCase
         $firstVenue = $createVenue->handle($actor, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Первая площадка',
         ], $this->locationDto('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000));
 
         $secondVenue = $createVenue->handle($actor, [
             'name' => 'TEST',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'short_description' => 'Дубль названия',
         ], $this->locationDto('Москва, ул. Летниковская, 14', 55.7380000, 37.6540000));
 
@@ -181,6 +235,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Первая площадка по адресу',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание',
                 'location' => $this->locationPayload('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000),
             ])
@@ -196,6 +256,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Вторая площадка по адресу',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание',
                 'location' => $this->locationPayload('Москва, ул. Летниковская, 12', 55.7281000, 37.6441000),
             ])
@@ -225,6 +291,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка с метро',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание площадки с метро',
                 'location' => [
                     'raw_address' => 'Москва, ул. Летниковская, 12',
@@ -274,6 +346,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка с адресными полями',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание',
                 'location' => $this->locationPayload('Москва, Летниковская, 12', 55.7280000, 37.6440000),
             ])
@@ -289,6 +367,12 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Дубль адресных полей',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'initial_courts' => [[
+                    'name' => 'Зал 1',
+                    'environment' => 'indoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'short_description' => 'Описание',
                 'location' => $this->locationPayload('Москва, Другое название адреса, 99', 55.7281000, 37.6441000),
             ])

@@ -30,6 +30,12 @@ class AuditLogTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Аудируемая площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
                 'description' => 'Площадка для проверки аудита',
                 'raw_address' => 'Москва, Тестовая, 10',
                 'location' => [

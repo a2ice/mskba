@@ -344,6 +344,12 @@ class TelegramMiniAppAuthTest extends TestCase
             'telegram_flow' => '1',
             'name' => 'Площадка Telegram',
             'type' => 'street_court',
+            'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'requires_payment' => '1',
             'requires_booking_approval' => '1',
             'location' => [

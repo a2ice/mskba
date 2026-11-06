@@ -156,6 +156,12 @@ final class VenueOwnershipClaimDraftTest extends TestCase
     private function payload(): array
     {
         return ['name' => 'Новая площадка', 'type' => VenueTypeEnum::STREET_COURT->value,
+                'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'creation_role' => 'representative', 'location' => [
                 'raw_address' => 'Москва, Тестовая улица, 99', 'address_selected' => '1',
                 'city' => 'Москва', 'street' => 'Тестовая улица', 'building' => '99',
