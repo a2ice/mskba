@@ -88,7 +88,7 @@ export function initAvatarManager(profileRoot) {
             throw new Error('Сервер вернул некорректные данные аватаров.');
         }
         const url = data.avatar_url || null;
-        preview?.replaceChildren(imageOrPlaceholder(url, '', 'app-profile__avatar-placeholder', 112));
+        preview?.replaceChildren(imageOrPlaceholder(url, '', 'app-profile__avatar-placeholder', 56));
         // Synchronize the signed-in user's avatar in the site header.
         document.querySelectorAll('[data-app-header] .app-user-avatar__visual')
             .forEach(visual => visual.replaceChildren(
@@ -102,8 +102,8 @@ export function initAvatarManager(profileRoot) {
             const img = document.createElement('img');
             img.src = avatar.url;
             img.alt = 'Аватар ' + (i + 1);
-            img.width = 76;
-            img.height = 76;
+            img.width = 38;
+            img.height = 38;
             card.append(img);
 
             if (avatar.is_featured) {

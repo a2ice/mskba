@@ -7,7 +7,6 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
-use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuHandler;
 use App\Presentation\Theming\ThemeResolver;
 
@@ -22,7 +21,7 @@ final class AccountMenu implements MenuHandler
         'account.roles' => 'people',
         'account.teams' => 'people',
         'account.my-games' => 'ball',
-        'account.uniforms' => 'save',
+        'account.uniforms' => 'shirt',
         'play-intents.mine' => 'bell',
         'favorites.mine' => 'heart',
         'account.my-trainings' => 'clock',
@@ -159,7 +158,7 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        $items[] = count($roleChildren) === 1
+        $roleItem = count($roleChildren) === 1
             ? $this->link('Роли в проекте', 'account.roles')
             : [
                 'label' => 'Роли в проекте',
@@ -194,15 +193,23 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        // The common functional destinations stay grouped and deduplicated.
-        foreach (AdaptiveMenuGroup::wrap('Участие', $children) as $groupItem) {
-            $groupItem['icon'] ??= 'ball';
-            $items[] = $groupItem;
-        }
+        // Keep role management nested inside Participation, including the
+        // role-specific links. This group exists even before the first role.
+        $participationChildren = [$roleItem, ...$children];
+        $items[] = [
+            'label' => 'Участие',
+            'icon' => 'ball',
+            'url' => null,
+            'active' => collect($participationChildren)->contains(
+                fn (array $child): bool => $child['active']
+            ),
+            'visible' => true,
+            'children' => $participationChildren,
+        ];
 
+        $items[] = $this->link('Мои формы', 'account.uniforms');
         // A subscription is available to any signed-in user, regardless of participation role.
         $items[] = $this->link('Мои подписки', 'play-intents.mine');
-        $items[] = $this->link('Мои формы', 'account.uniforms');
         $items[] = $this->link('Избранное', 'favorites.mine');
 
         $items[] = [
@@ -210,16 +217,28 @@ final class AccountMenu implements MenuHandler
             'active' => $this->isActiveRoute('account.notifications, account.notifications.*'),
             'notificationCounter' => true,
         ];
-        $items[] = [
-            'label' => 'Контакты',
-            'icon' => 'contact-mail',
-            'url' => $this->routeUrl('account.contacts'),
-            'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
-            'visible' => true,
-        ];
-        $items[] = $this->link('Кошелёк', 'account.wallet');
         $items[] = $this->contractsGroup();
-        $items[] = $this->link('Настройки', 'account.settings');
+        $settingsChildren = [
+            $this->link('Общие настройки', 'account.settings'),
+            [
+                'label' => 'Контакты',
+                'icon' => self::APP_ICONS['account.contacts'],
+                'url' => $this->routeUrl('account.contacts'),
+                'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
+                'visible' => true,
+            ],
+            $this->link('Кошелёк', 'account.wallet'),
+        ];
+        $items[] = [
+            'label' => 'Настройки',
+            'icon' => self::APP_ICONS['account.settings'],
+            'url' => null,
+            'active' => collect($settingsChildren)->contains(
+                fn (array $child): bool => $child['active']
+            ),
+            'visible' => true,
+            'children' => $settingsChildren,
+        ];
         $items[] = $this->link('Выйти', 'auth.logout', 0, true);
 
         return $items;

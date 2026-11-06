@@ -90,14 +90,15 @@ final class FavoriteHeaderCountTest extends TestCase
         $this->getJson(route('favorites.count'))->assertUnauthorized();
     }
 
-    public function test_header_template_renders_the_favorites_shortcut_for_both_auth_states(): void
+    public function test_header_favorites_shortcut_is_auth_only(): void
     {
         // The default PHP test theme is mskba_dark; the modern app header is
         // exercised as a source contract here and by the Node UI regression.
         $template = file_get_contents(resource_path('themes/mskba_app/views/partials/header.blade.php'));
         $this->assertIsString($template);
         $this->assertStringContainsString('data-header-favorites', $template);
-        $this->assertStringContainsString('data-auth-redirect', $template);
+        $this->assertStringNotContainsString('data-auth-redirect', $template);
+        $this->assertMatchesRegularExpression('/@auth\\s*<a class="app-header-favorites"/', $template);
         $this->assertStringContainsString('data-favorites-sync-url', $template);
         $this->assertStringContainsString('route(\'favorites.mine\')', $template);
     }

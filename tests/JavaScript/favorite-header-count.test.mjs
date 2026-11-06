@@ -41,14 +41,15 @@ test('the header count reuses the private Reverb channel and reconciles other ta
     assert.match(js, /realtime-state/);
     assert.match(js, /cache: 'no-store'/);
     assert.match(blade, /data-header-favorites/);
-    assert.match(blade, /data-auth-redirect/);
+    assert.doesNotMatch(blade, /data-auth-redirect/);
+    assert.match(blade, /@auth\\s*<a class="app-header-favorites"/);
     assert.match(auth, /redirectAfterAuth/);
     for (const consumer of [favorites, account, vue]) {
         assert.match(consumer, /mskba:favorites:changed/);
     }
 });
 
-test('header favorites display an inline heart and plain counter before login/avatar', () => {
+test('authenticated header favorites display an inline heart and plain counter before the avatar', () => {
     const css = source('../../resources/themes/mskba_app/css/header.css');
     const blade = source('../../resources/themes/mskba_app/views/partials/header.blade.php');
     const extract = selector => css.match(new RegExp('\\.' + selector + '\\s*\\{([^}]*)\\}'))?.[1] || '';

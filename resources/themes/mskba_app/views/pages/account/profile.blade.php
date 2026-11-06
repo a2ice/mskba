@@ -32,9 +32,9 @@
                                    class="app-profile__avatar-preview app-profile__avatar-upload-target"
                                    title="Загрузить аватар" data-profile-avatar-preview>
                                 @if ($profile->avatarUrl())
-                                    <img src="{{ $profile->avatarUrl() }}" alt="Твой текущий аватар" width="112" height="112">
+                                    <img src="{{ $profile->avatarUrl() }}" alt="Твой текущий аватар" width="56" height="56">
                                 @else
-                                    <svg class="app-profile__avatar-placeholder" width="48" height="48"
+                                    <svg class="app-profile__avatar-placeholder" width="24" height="24"
                                          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                                          fill="none" stroke-linecap="round" stroke-linejoin="round"
                                          aria-hidden="true" focusable="false"><use href="#user"/></svg>
@@ -46,7 +46,7 @@
                         </form>
                     @else
                         <div class="app-profile__avatar-preview" aria-label="Аватар не загружен">
-                            <svg class="app-profile__avatar-placeholder" width="48" height="48"
+                            <svg class="app-profile__avatar-placeholder" width="24" height="24"
                                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
                                  fill="none" stroke-linecap="round" stroke-linejoin="round"
                                  aria-hidden="true" focusable="false"><use href="#user"/></svg>
@@ -69,7 +69,7 @@
                 <div class="app-profile__avatar-library" data-profile-avatar-library aria-label="Сохранённые аватары" @if ($avatars->isEmpty()) hidden @endif>
                         @foreach ($avatars as $avatar)
                             <div class="app-profile__avatar-item">
-                                <img src="{{ $avatar->publicUrl() }}" alt="Аватар {{ $loop->iteration }}" width="76" height="76">
+                                <img src="{{ $avatar->publicUrl() }}" alt="Аватар {{ $loop->iteration }}" width="38" height="38">
                                 @if ($avatar->is_featured)
                                     <span class="app-profile__avatar-current">Основной</span>
                                 @else
