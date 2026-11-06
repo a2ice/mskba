@@ -39,7 +39,7 @@
                 'allows_whole' => ['Разрешать аренду всего зала при создании', true],
                 'allows_halves' => ['Разрешать аренду половин при создании', $canHalves],
             ] as $name => [$label, $default])
-                <label class="app-rental-pricing__check">
+                <label class="check-label">
                     <input type="hidden" name="{{ $name }}" value="0">
                     <input type="checkbox" name="{{ $name }}" value="1" @checked((bool) $field($name, $default)) @disabled($name === 'allows_halves' && ! $canHalves)>
                     <span>{{ $label }}</span>
@@ -84,7 +84,7 @@
                 'requires_payment' => ['Требуется оплата', true],
                 'allows_hold_extension' => ['Разрешить продление удержания', false],
             ] as $name => [$label, $default])
-                <label class="app-rental-pricing__check">
+                <label class="check-label">
                     <input type="hidden" name="{{ $name }}" value="0">
                     <input type="checkbox" name="{{ $name }}" value="1" @checked((bool) $field($name, $default))>
                     <span>{{ $label }}</span>
