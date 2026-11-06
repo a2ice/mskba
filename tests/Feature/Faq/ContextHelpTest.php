@@ -94,7 +94,7 @@ final class ContextHelpTest extends TestCase
     {
         $this->get(route('venues'))->assertOk()
             ->assertSee('data-context-placeholder="Создание площадки"', false)
-            ->assertSee('data-context-placeholder="Поиск площадки"', false)
+            ->assertDontSee('data-context-placeholder="Поиск площадки"', false)
             ->assertSee('data-app-context-back', false)
             ->assertSee('class="app-context-quick app-context-back"', false)
             ->assertSee('aria-label="Назад"', false)
