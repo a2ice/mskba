@@ -83,7 +83,7 @@ final class ContextSubmenuResolverTest extends TestCase
         $route->name('venues.show');
         $request->setRouteResolver(static fn () => $route);
         $this->app->instance('request', $request);
-        self::assertSame(['Забронировать', 'Найти похожие'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+        self::assertSame(['Забронировать', 'Найти похожие', 'Создать'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
     }
 
 }

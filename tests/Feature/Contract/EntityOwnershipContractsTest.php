@@ -220,6 +220,7 @@ final class EntityOwnershipContractsTest extends TestCase
     {
         $admin = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $manager = $this->user();
+        $outsider = $this->user();
         $venue = Venue::factory()->create([
             'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($admin, null)->id,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
@@ -232,7 +233,8 @@ final class EntityOwnershipContractsTest extends TestCase
         $this->assertFalse(app(VenueMembershipAccess::class)->allows($manager, $venue, VenuePermissionEnum::EDIT));
         $contracts->respond($membership, $manager, true);
         $this->assertTrue(app(VenueMembershipAccess::class)->allows($manager, $venue, VenuePermissionEnum::EDIT));
-        $this->assertFalse(app(VenueAccessResolver::class)->canEdit($admin, $venue));
+        $this->assertTrue(app(VenueAccessResolver::class)->canEdit($admin, $venue));
+        $this->assertFalse(app(VenueAccessResolver::class)->canEdit($outsider, $venue));
         $this->assertTrue($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::EDIT->value));
         $this->assertFalse($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::MANAGE_FUNDS->value));
         $this->assertFalse($contracts->allows($manager, Scope::VENUE, $venue->id, VenuePermissionEnum::MANAGE_MEMBERSHIPS->value));

@@ -19,7 +19,7 @@ return [
             'pattern' => '#^/venues/[^/]+$#',
             'routes' => ['venues.show'],
             'parent' => 'venues',
-            'include_parent' => false, // Override by default; true appends parent options.
+            'include_parent' => true, // Keep the shared «Создать» action on venue details.
             'handler' => VenueShowSubmenu::class,
         ],
         'venues' => [

@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -17,7 +18,7 @@ final class VenueAccessResolver
 
     public function canView(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
-        if ($venue->status->isPubliclyVisible()) {
+        if ($venue->status->isPubliclyVisible() || $this->isSuperadmin($user)) {
             return true;
         }
 
@@ -42,6 +43,10 @@ final class VenueAccessResolver
     {
         if ($venue->trashed()) {
             return false;
+        }
+
+        if ($this->isSuperadmin($user)) {
+            return true;
         }
 
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT)) {
@@ -139,6 +144,14 @@ final class VenueAccessResolver
     public function contractScheduleEditableVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
+    }
+
+    private function isSuperadmin(?User $user): bool
+    {
+        $user = $user?->canonical();
+
+        return $user !== null && $user->isConfirmed()
+            && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN);
     }
 
     private function isBootstrapCreator(?User $user, Venue $venue): bool
