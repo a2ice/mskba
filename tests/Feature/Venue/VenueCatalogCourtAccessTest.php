@@ -63,7 +63,7 @@ final class VenueCatalogCourtAccessTest extends TestCase
 
         $this->get(route('venues', ['access' => 'free', 'view' => 'map']))
             ->assertOk()
-            ->assertSee(str_replace('/', '\\\\/', $free->matchedCourtUrl), false);
+            ->assertSee(str_replace('/', '\\/', $free->matchedCourtUrl), false);
     }
 
     public function test_inherited_conditions_closed_courts_and_unknown_payment_do_not_match_free(): void
