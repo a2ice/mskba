@@ -116,11 +116,6 @@
                         @csrf @method('PUT')
                         <div class="app-rental-pricing__grid">
                             @foreach([
-                                'operational_status' => ['Доступность', [
-                                    'inherit' => 'Наследовать',
-                                    'active' => 'Активен',
-                                    'temporarily_closed' => 'Временно закрыт',
-                                ]],
                                 'requires_payment' => ['Требуется оплата', [
                                     'inherit' => 'Наследовать',
                                     'yes' => 'Да',
