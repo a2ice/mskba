@@ -19,9 +19,9 @@ final class VenueCourtManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_new_venue_has_one_primary_default_court(): void
+    public function test_new_indoor_venue_has_one_primary_default_hall(): void
     {
-        $venue = Venue::factory()->create();
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
 
         $this->assertDatabaseHas('venue_courts', [
             'venue_id' => $venue->id,
