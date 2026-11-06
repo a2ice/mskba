@@ -74,7 +74,25 @@
         <section class="panel app-rental-pricing__panel" aria-labelledby="rental-quote-result-heading">
             <h2 id="rental-quote-result-heading">Стоимость аренды</h2>
             <p><strong>{{ $court->name }}</strong> · {{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') }}–{{ $quote->endsAt->setTimezone($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'))->format('H:i') }}</p>
-            <p class="app-rental-pricing__total">{{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ $formatter->currencyLabel($quote->currency) }}</p>
+            @if($quote->commissionBreakdown)
+                <div class="app-rental-pricing__section" aria-label="Расшифровка стоимости">
+                    <div class="app-rental-pricing__entry">
+                        <span>Аренда после скидок</span>
+                        <strong>{{ $formatter->format($quote->commissionBreakdown['provider_amount_minor'], $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</strong>
+                    </div>
+                    <div class="app-rental-pricing__entry">
+                        <span>Комиссия MSKBA</span>
+                        <strong>{{ $formatter->format($quote->commissionBreakdown['portal_fee_minor'], $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</strong>
+                    </div>
+                    @if($quote->commissionBreakdown['agent_fee_minor'] > 0)
+                        <div class="app-rental-pricing__entry">
+                            <span>Комиссия агента</span>
+                            <strong>{{ $formatter->format($quote->commissionBreakdown['agent_fee_minor'], $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</strong>
+                        </div>
+                    @endif
+                </div>
+            @endif
+            <p class="app-rental-pricing__total">Итого: {{ $formatter->format($quote->amountMinor, $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</p>
             @auth
                 <form class="app-rental-pricing__form" method="POST" action="{{ route('account.venue-bookings.store') }}">
                     @csrf
