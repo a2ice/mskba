@@ -216,8 +216,12 @@ final class ShowVenueHandler
             isOpen: $openingState['isOpen'] && ($courtIdentifier === null
                 || $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy)['is_open']),
             todayHours: $openingState['todayHours'],
-            shortDescription: $venue->short_description,
-            fullDescription: $venue->full_description,
+            shortDescription: $courtIdentifier === null
+                ? $venue->short_description
+                : ($selectedCourt->short_description ?? $venue->short_description),
+            fullDescription: $courtIdentifier === null
+                ? $venue->full_description
+                : ($selectedCourt->full_description ?? $venue->full_description),
             rawAddress: $venue->raw_address,
             address: $address === null ? null : new VenueAddressDTO(
                 city: $address->city,
