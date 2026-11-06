@@ -103,7 +103,7 @@ final class VenuePricingRuleController extends Controller
     public function preview(
         Request $request, Venue $venue, VenueCommercialAccess $access,
         VenueSlotPricing $pricing, VenuePricingRuleEvaluator $rules,
-        EffectiveCourtPolicy $effectivePolicies,
+        EffectiveCourtPolicy $effectivePolicies, VenueCommissionCalculator $commissions,
     ): RedirectResponse {
         $this->authorizeVenue($request, $venue, $access);
         $data = $request->validate([
