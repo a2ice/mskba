@@ -67,6 +67,11 @@ final class HomepageVenueMapController extends Controller
                 'amenities' => $venue->amenities
                     ->filter(fn ($amenity): bool => (bool) $amenity->is_active)
                     ->pluck('name')->values()->all(),
+                'has_free_court' => $public['has_free_court'],
+                'has_paid_court' => $public['has_paid_court'],
+                'has_approval_court' => $public['has_approval_court'],
+                'has_free_access' => $public['has_free_access'],
+                'court_access' => $public['court_access'],
             ];
         })->values()->all();
 

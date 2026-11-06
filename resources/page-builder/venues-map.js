@@ -99,7 +99,8 @@
     const specs = [
       { key:'district', label:'Все районы', icon:'pin', options:venues.map(v => v.district) },
       { key:'surface', label:'Все типы покрытий', icon:'layers', options:venues.flatMap(v => (v.surfaces || []).map(s => s.label)) },
-      { key:'amenity', label:'Все удобства', icon:'star', options:venues.flatMap(v => v.amenities || []) }
+      { key:'amenity', label:'Все удобства', icon:'star', options:venues.flatMap(v => v.amenities || []) },
+      { key:'access', label:'Любые условия', icon:'calendar', options:['Бесплатно','Платно','По подтверждению'] }
     ];
     const controls = {};
     for (const spec of specs) {
@@ -131,7 +132,11 @@
     return controls;
   }
 
-  function makeCard(venue,close) {
+  function makeCard(venue,close,accessFilter) {
+    const matches = accessFilter === 'Бесплатно' ? venue.court_access?.free
+      : accessFilter === 'Платно' ? venue.court_access?.paid
+      : accessFilter === 'По подтверждению' ? venue.court_access?.approval : null;
+    const matchedCourt = Array.isArray(matches) ? matches[0] : null;
     const article = document.createElement('article');
     article.className = 'mskba-venues-map__venue-card';
     article.setAttribute('aria-label','Карточка площадки '+(venue.name || ''));
@@ -172,6 +177,11 @@
     body.append(name,address);
 
     const tags = [...new Set([
+      venue.has_free_court ? (venue.has_paid_court ? 'Есть бесплатные залы' : 'Бесплатно') : '',
+      venue.has_paid_court ? (venue.has_free_court ? 'Есть платные залы' : 'Платно') : '',
+      venue.has_approval_court ? 'Есть залы с подтверждением' : '',
+      !venue.has_free_court && !venue.has_paid_court ? 'Условия уточняются' : '',
+      matchedCourt?.name ? 'Подходящий зал: '+matchedCourt.name : '',
       ...(venue.surfaces || []).slice(0,1).map(x => x.label),
       ...(venue.amenities || []).slice(0,3)
     ].filter(Boolean))];
@@ -190,8 +200,8 @@
     actions.className = 'mskba-venues-map__card-actions';
     const link = document.createElement('a');
     link.className = 'mskba-venues-map__card-link';
-    link.href = safeUrl(venue.url,'/venues');
-    link.append(document.createTextNode('Подробнее'),icon('arrow'));
+    link.href = safeUrl(matchedCourt?.url || venue.url,'/venues');
+    link.append(document.createTextNode(matchedCourt ? 'Открыть зал' : 'Подробнее'),icon('arrow'));
     actions.append(link);
     body.append(actions);
     article.append(closeButton,media,body);
@@ -252,7 +262,7 @@
       if (selectedMarker) selectedMarker.options.set('iconLayout',regularLayout);
       selected = venue.id; selectedMarker = marker;
       marker.options.set('iconLayout',activeLayout);
-      cardMount.replaceChildren(makeCard(venue,closeCard));
+      cardMount.replaceChildren(makeCard(venue,closeCard,controls.access.value));
       cardMount.hidden = false;
       root.classList.add('has-open-card');
     }
@@ -272,12 +282,17 @@
       const district = controls.district.value;
       const surface = controls.surface.value;
       const amenity = controls.amenity.value;
+      const access = controls.access.value;
       const visible = items.filter(({venue}) =>
         (!district || venue.district === district) &&
         (!surface || (venue.surfaces || []).some(s => s.label === surface)) &&
-        (!amenity || (venue.amenities || []).includes(amenity))
+        (!amenity || (venue.amenities || []).includes(amenity)) &&
+        (!access ||
+          (access === 'Бесплатно' && venue.has_free_court) ||
+          (access === 'Платно' && venue.has_paid_court) ||
+          (access === 'По подтверждению' && venue.has_approval_court))
       );
-      if (selected !== null && !visible.some(x => x.venue.id === selected)) closeCard();
+      if (selected !== null) closeCard();
       clusterer.removeAll();
       clusterer.add(visible.map(x => x.marker));
       say(visible.length ? 'Площадок на карте: '+visible.length : 'По выбранным фильтрам площадок не найдено');

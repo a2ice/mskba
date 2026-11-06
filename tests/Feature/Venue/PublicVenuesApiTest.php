@@ -170,8 +170,11 @@ class PublicVenuesApiTest extends TestCase
         $checks = [
             [['type' => 'school'], [$free->id, $paid->id]],
             [['operational_status' => 'temporarily_closed'], [$paid->id]],
-            [['access' => 'free'], [$free->id]],
-            [['access' => 'paid'], [$paid->id]],
+            // Free pricing and request approval are separate dimensions; a
+            // free hall with manual confirmation still matches free access.
+            [['access' => 'free'], [$free->id, $approval->id]],
+            // A closed venue must never advertise a bookable paid court.
+            [['access' => 'paid'], []],
             [['access' => 'approval'], [$approval->id]],
             [['type' => 'school', 'operational_status' => 'active', 'access' => 'free'], [$free->id]],
             [['search' => 'school free'], [$free->id]],

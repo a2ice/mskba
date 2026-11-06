@@ -18,9 +18,31 @@ final class ListPublicVenuesHandler
         $query = $this->publicQuery()
             ->when($filters['type'] ?? null, fn (Builder $q, string $type): Builder => $q->where('type', $type))
             ->when($filters['operational_status'] ?? null, fn (Builder $q, string $status): Builder => $q->where('operational_status', $status))
-            ->when(($filters['access'] ?? null) === 'free', fn (Builder $q): Builder => $q->where('requires_payment', false)->where('requires_booking_approval', false))
-            ->when(($filters['access'] ?? null) === 'paid', fn (Builder $q): Builder => $q->where('requires_payment', true))
-            ->when(($filters['access'] ?? null) === 'approval', fn (Builder $q): Builder => $q->where('requires_booking_approval', true));
+            // Resolve inherited policies in SQL *before* cursor pagination;
+            // a venue can qualify through a single matching open court.
+            ->when($filters['access'] ?? null, fn (Builder $q, string $access): Builder => $q
+                ->where('venues.operational_status', 'active')
+                ->whereHas('courts', function (Builder $courts) use ($access): void {
+                    $courts->where(function (Builder $state): void {
+                        $state->whereNull('operational_status')->orWhere('operational_status', 'active');
+                    });
+
+                    if ($access === 'approval') {
+                        $courts->whereRaw(
+                            'COALESCE(venue_courts.requires_booking_approval, venues.requires_booking_approval, FALSE) = TRUE'
+                        );
+
+                        return;
+                    }
+
+                    $courts->whereRaw(
+                        'COALESCE(venue_courts.requires_payment, '
+                        .'(SELECT p.requires_payment FROM venue_booking_policies p '
+                        .'WHERE p.venue_id = venues.id AND p.active_marker = TRUE AND p.is_enabled = TRUE '
+                        .'ORDER BY p.id DESC LIMIT 1), venues.requires_payment) '
+                        .($access === 'paid' ? 'IS TRUE' : 'IS FALSE'),
+                    );
+                }));
 
         // Match the web catalog: all whitespace-separated search terms must match.
         // Escape LIKE wildcards so user-supplied % and _ are treated literally.
@@ -49,6 +71,8 @@ final class ListPublicVenuesHandler
             ->where('status', VenueStatusEnum::CONFIRMED->value)
             ->with([
                 'location.address',
+                'courts',
+                'activeBookingPolicy',
                 'media' => fn ($query) => $query
                     ->where('collection', 'gallery')
                     ->orderByDesc('is_featured')

@@ -175,11 +175,20 @@
             </div>
             <p class="home-venue-popular-label">Популярные</p>
             <div class="home-venue-stack">
+                @php
+                    $venueSearchDocuments = collect(app(\App\Modules\Venue\Application\Services\VenueSearchCache::class)->documents())->keyBy('id');
+                @endphp
                 @forelse($homeVenues as $venue)
                     @php
                         $venueAddress = $venue->location?->address?->full_address ?: $venue->raw_address;
+                        $courtAccess = $venueSearchDocuments->get($venue->id)['court_access'] ?? [];
+                        $hasFreeCourt = !empty($courtAccess['free']);
+                        $hasPaidCourt = !empty($courtAccess['paid']);
+                        $courtAccessLabel = $hasFreeCourt && $hasPaidCourt
+                            ? 'есть бесплатные и платные залы'
+                            : ($hasFreeCourt ? 'бесплатно' : ($hasPaidCourt ? 'аренда' : 'условия уточняются'));
                     @endphp
-                    <a class="home-venue-card" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->media->sortByDesc('is_featured')->first()?->publicUrl() ?? asset('images/venue-placeholder.png') }}" alt="{{ $venue->name }}"><span class="home-venue-card__shade"></span><span class="home-venue-card__body"><small>{{ $venue->type->label() }} · {{ $venue->requires_payment === true ? 'аренда' : ($venue->requires_payment === false ? 'бесплатно' : 'условия уточняются') }}</small><strong>{{ $venue->name }}</strong>@if($venueAddress)<em><i class="ti ti-map-pin"></i>{{ \Illuminate\Support\Str::limit($venueAddress, 64) }}</em>@endif</span><i class="ti ti-arrow-up-right home-card-arrow"></i></a>
+                    <a class="home-venue-card" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->media->sortByDesc('is_featured')->first()?->publicUrl() ?? asset('images/venue-placeholder.png') }}" alt="{{ $venue->name }}"><span class="home-venue-card__shade"></span><span class="home-venue-card__body"><small>{{ $venue->type->label() }} · {{ $courtAccessLabel }}</small><strong>{{ $venue->name }}</strong>@if($venueAddress)<em><i class="ti ti-map-pin"></i>{{ \Illuminate\Support\Str::limit($venueAddress, 64) }}</em>@endif</span><i class="ti ti-arrow-up-right home-card-arrow"></i></a>
                 @empty
                     <div class="home-empty-card"><i class="ti ti-map-pin"></i><strong>Каталог площадок растёт</strong><p>Добавляй знакомые залы и корты.</p></div>
                 @endforelse
