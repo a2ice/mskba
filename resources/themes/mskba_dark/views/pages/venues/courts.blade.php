@@ -127,6 +127,16 @@
                         </label>
                         <small class="text-muted" data-court-halves-hint>Аренда половин доступна только для зала с двумя кольцами.</small>
                     </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label" for="court-short-description-{{ $court->id }}">Краткое описание</label>
+                            <textarea id="court-short-description-{{ $court->id }}" class="form-control" name="short_description" rows="3" maxlength="500" placeholder="Наследовать описание площадки">{{ $court->short_description }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="court-full-description-{{ $court->id }}">Полное описание</label>
+                            <textarea id="court-full-description-{{ $court->id }}" class="form-control" name="full_description" rows="6" maxlength="10000" placeholder="Наследовать описание площадки">{{ $court->full_description }}</textarea>
+                        </div>
+                    </div>
                     @include('venues.partials.court-amenities', ['court' => $court, 'courtAmenities' => $courtAmenities])
                     <button type="submit" class="btn btn--primary btn--sm mt-3">Сохранить зал / корт</button>
                 </form>
@@ -288,6 +298,16 @@
                         Разрешать аренду половин
                     </label>
                     <small class="text-muted" data-court-halves-hint>Аренда половин доступна только для зала с двумя кольцами.</small>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <label class="form-label" for="court-new-short-description">Краткое описание</label>
+                        <textarea id="court-new-short-description" class="form-control" name="short_description" rows="3" maxlength="500" placeholder="Наследовать описание площадки">{{ old('short_description') }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="court-new-full-description">Полное описание</label>
+                        <textarea id="court-new-full-description" class="form-control" name="full_description" rows="6" maxlength="10000" placeholder="Наследовать описание площадки">{{ old('full_description') }}</textarea>
+                    </div>
                 </div>
                 @include('venues.partials.court-amenities', ['court' => null, 'courtAmenities' => $courtAmenities])
                 <button type="submit" class="btn btn--primary btn--sm mt-3">Добавить зал / корт</button>
