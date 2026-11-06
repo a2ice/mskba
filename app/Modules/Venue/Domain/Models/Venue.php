@@ -193,6 +193,40 @@ class Venue extends Model
         return $this->morphMany(Media::class, 'mediable');
     }
 
+    /**
+     * One representative gallery photo for venue lists and map popups.
+     * A venue photo always wins; otherwise use the first available court
+     * photo in the stable court display order. No photo is copied or saved.
+     */
+    public function representativePhoto(): ?Media
+    {
+        $this->loadMissing('media');
+        $venuePhoto = $this->firstOrderedGalleryPhoto($this->media);
+        if ($venuePhoto !== null) {
+            return $venuePhoto;
+        }
+
+        $this->loadMissing('courts.media');
+        foreach ($this->courts as $court) {
+            $courtPhoto = $this->firstOrderedGalleryPhoto($court->media);
+            if ($courtPhoto !== null) {
+                return $courtPhoto;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstOrderedGalleryPhoto(\Illuminate\Support\Collection $media): ?Media
+    {
+        return $media->filter(fn (Media $item): bool => $item->collection === 'gallery')
+            ->sort(fn (Media $a, Media $b): int =>
+                ((int) $b->is_featured <=> (int) $a->is_featured)
+                ?: ((int) $a->sort_order <=> (int) $b->sort_order)
+                ?: ((int) $a->id <=> (int) $b->id))
+            ->first();
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(VenueRevision::class);

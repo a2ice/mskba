@@ -43,12 +43,12 @@
         : 0;
     $environments = collect($venue->courts)->pluck('environment')->filter()->unique()->values();
     $areaLabel = $environments->contains('indoor') && $environments->contains('outdoor')
-        ? 'уличная и крытая площадки'
-        : ($environments->contains('indoor') ? 'крытая площадка'
-            : ($environments->contains('outdoor') ? 'уличная площадка' : null));
+        ? 'крытый зал и уличный корт'
+        : ($environments->contains('indoor') ? 'крытый зал'
+            : ($environments->contains('outdoor') ? 'уличный корт' : null));
     $selectedAreaLabel = $venue->selectedCourt['environment'] === 'indoor'
-        ? 'крытая площадка'
-        : ($venue->selectedCourt['environment'] === 'outdoor' ? 'уличная площадка' : null);
+        ? 'крытый зал'
+        : ($venue->selectedCourt['environment'] === 'outdoor' ? 'уличный корт' : null);
     $displayAreaLabel = $venue->isCourtPage ? $selectedAreaLabel : $areaLabel;
     $isOutdoorCourt = $venue->isCourtPage && $venue->selectedCourt['environment'] === 'outdoor';
     $unitNoun = $isOutdoorCourt ? 'корт' : 'зал';
@@ -128,9 +128,16 @@
                     @endforeach
                 </div>
             @endif
-            <div class="app-venue-intro__badges">
-                @foreach(array_slice($venue->amenities, 0, 3) as $amenity)<span class="badge">{{ $amenity->name }}</span>@endforeach
-            </div>
+            @if(count($venue->amenities))
+                <div class="app-venue-intro__badges">
+                    @foreach(array_slice($venue->amenities, 0, 7) as $amenity)
+                        <span class="badge">{{ $amenity->name }}</span>
+                    @endforeach
+                    @if(count($venue->amenities) > 7)
+                        <a href="#app-venue-about" class="app-venue-intro__amenities-more">и другие</a>
+                    @endif
+                </div>
+            @endif
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
                 @if($viewerHasVenueInterest)

@@ -82,7 +82,7 @@ final class ListVenuesHandler
                             $venue->location?->address?->street,
                             $venue->location?->address?->building,
                         ),
-                    imageUrl: $venue->media->first()?->publicUrl(),
+                    imageUrl: $venue->representativePhoto()?->publicUrl(),
                     latitude: $venue->location?->address?->latitude !== null ? (float) $venue->location->address->latitude : null,
                     longitude: $venue->location?->address?->longitude !== null ? (float) $venue->location->address->longitude : null,
                     canView: $venue->status === VenueStatusEnum::CONFIRMED || $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractViewableVenueIds, true),

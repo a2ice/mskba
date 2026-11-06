@@ -157,10 +157,10 @@ final class ShowVenueHandler
             ])
             ->values()
             ->all();
-        // Venue overview = shared amenities plus available equipment across
-        // the entire facility. Court page = shared amenities + selected court.
+        // Venue overview displays only shared amenities. The selected court
+        // adds only its own equipment, never equipment of other courts.
         $amenitySource = $courtIdentifier === null
-            ? $venue->amenities->concat($courts->flatMap(fn (VenueCourt $court) => $court->amenities))
+            ? $venue->amenities
             : $venue->amenities->concat($selectedCourt->amenities);
         $amenities = $amenitySource->unique('id')->sortBy('sort_order')->values()
             ->map(fn ($amenity) => new VenueAmenityDTO(

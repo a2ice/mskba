@@ -208,17 +208,17 @@ final class VenueCourtPublicContextTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Школа: уличная и крытая площадки');
+            ->assertSee('Школа: крытый зал и уличный корт');
 
         $second->delete();
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Школа: уличная площадка');
+            ->assertSee('Школа: уличный корт');
 
         $primary->update(['environment' => VenueCourtEnvironmentEnum::INDOOR]);
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Школа: крытая площадка');
+            ->assertSee('Школа: крытый зал');
     }
 
     public function test_legacy_court_aliases_are_backfilled_without_overwriting_explicit_or_unknown_types(): void
@@ -264,7 +264,7 @@ final class VenueCourtPublicContextTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Школа: уличная и крытая площадки');
+            ->assertSee('Школа: крытый зал и уличный корт');
     }
 
     public function test_nearby_map_requires_bounded_radius_and_returns_only_close_confirmed_venues(): void

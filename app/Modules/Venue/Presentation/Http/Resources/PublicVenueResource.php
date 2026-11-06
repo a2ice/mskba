@@ -23,7 +23,7 @@ final class PublicVenueResource extends JsonResource
         /** @var Venue $venue */
         $venue = $this->resource;
         $address = $venue->location?->address;
-        $photo = $venue->media->first();
+        $photo = $venue->representativePhoto();
 
         return [
             'id' => (int) $venue->id,
