@@ -480,10 +480,11 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         $publish = app(PublishVenueBookingPolicyHandler::class);
         $publish->handle($venue, $owner, $this->policyData());
         $court = $venue->primaryCourt()->firstOrFail();
-        $court->update(['time_step_minutes' => 60]);
+        $court->update(['time_step_minutes' => 90, 'minimum_duration_minutes' => 90]);
 
         $this->expectException(VenueBookingPolicyException::class);
-        $publish->handle($venue, $owner, $this->policyData(['time_step_minutes' => 45]));
+        // Venue min 60 is divisible by 20; only the court's 90-minute step conflicts.
+        $publish->handle($venue, $owner, $this->policyData(['time_step_minutes' => 20]));
     }
 
     /** @return array{User, Venue} */
