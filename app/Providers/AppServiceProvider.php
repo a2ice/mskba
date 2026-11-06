@@ -17,6 +17,8 @@ use App\Modules\Portal\Infrastructure\Observers\UserSiteSummaryObserver;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Tournament\Infrastructure\Observers\TournamentEntryObserver;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
 use App\Modules\Venue\Domain\Models\VenueScheduleExceptionInterval;
@@ -88,6 +90,8 @@ class AppServiceProvider extends ServiceProvider
 
         foreach ([
             Venue::class,
+            VenueCourt::class,
+            VenueBookingPolicy::class,
             VenueTag::class,
             VenueSchedule::class,
             VenueScheduleInterval::class,
