@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['venue_id', 'user_id', 'is_active', 'mode', 'value', 'version', 'updated_by_user_id'])]
+#[Fillable(['venue_id', 'user_id', 'is_active', 'mode', 'value', 'currency', 'version', 'updated_by_user_id'])]
 final class VenueCommissionAgent extends Model
 {
     use Auditable;
