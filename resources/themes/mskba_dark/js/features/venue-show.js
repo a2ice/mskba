@@ -630,9 +630,9 @@ function initVenueInlineRental() {
         return `<form class="venue-rental-cell__form" data-venue-rental-form>
             <header class="venue-rental-cell__form-top">
                 <div class="venue-rental-cell__price">
-                    <span>Стоимость</span>
+                    <span>Базовая цена</span>
                     <strong data-venue-rental-price>Рассчитываем…</strong>
-                    <button type="button" class="ui-tooltip-trigger" aria-label="Подсказка: цена может быть скорректирована в процессе отправки заявки" data-tooltip="Цена может быть скорректирована в процессе отправки заявки.">?</button>
+                    <button type="button" class="ui-tooltip-trigger" aria-label="Пояснение базовой цены без скидок и комиссий" data-tooltip="Базовая цена без скидок и комиссий MSKBA и агента. Точную итоговую стоимость показывает серверный расчёт при отправке заявки.">?</button>
                 </div>
                 <button type="button" class="venue-rental-cell__close" data-venue-rental-close aria-label="Закрыть форму"><i class="ti ti-x" aria-hidden="true"></i></button>
             </header>

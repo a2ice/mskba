@@ -14,6 +14,7 @@ use App\Modules\Event\Domain\Models\VenueBooking as LegacyVenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
@@ -21,6 +22,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
+use App\Modules\VenueBooking\Application\Services\VenueCommissionManager;
 use App\Modules\VenueBooking\Application\Services\VenueBookingEventConsumer;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -86,6 +88,33 @@ final class VenueBookingLifecycleTest extends TestCase
             'user_id' => $applicant->id,
             'role' => 'applicant',
         ]);
+    }
+
+    public function test_booking_details_uses_same_immutable_commission_amount_as_quote(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $super = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $agentUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $manager = app(VenueCommissionManager::class);
+        $manager->setPortal($super, 'percent', '10');
+        $agent = $manager->saveAgent($venue, $super, $agentUser, 'percent', '5');
+        $manager->setVenue($venue, $super, 'inherit', selectedAgentId: $agent->id);
+
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, true);
+        $details = app(GetBookingDetails::class)->handle($booking->fresh(), $applicantActor);
+
+        $this->assertSame(1150, $details['payment']['amount_minor']);
+        $this->assertSame([
+            'provider_amount_minor' => 1000,
+            'portal_fee_minor' => 100,
+            'agent_fee_minor' => 50,
+            'total_minor' => 1150,
+        ], $details['pricing_breakdown']);
+        $this->assertSame(1150, data_get($booking->fresh()->quote_snapshot, 'pricing.amount_minor'));
     }
 
     public function test_free_booking_follows_requested_held_confirmed_history(): void
