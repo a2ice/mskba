@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -202,6 +204,44 @@ final class VenueResource extends Resource
                         ]),
                 ]),
                 Tab::make('Удобства')->schema([
+                    Section::make('Игровые зоны / залы / корты')
+                        ->description('Для каждой зоны выберите крытый зал или уличный корт и его оснащение.')
+                        ->visible(fn (?Venue $record): bool => $record === null)
+                        ->schema([
+                            Repeater::make('initial_courts')->label('Залы и корты')
+                                ->default([[
+                                    'name' => 'Игровая зона 1',
+                                    'environment' => null,
+                                    'hoops_count' => 2,
+                                    'amenity_ids' => [],
+                                ]])->minItems(1)->maxItems(10)
+                                ->addActionLabel('Добавить зал / корт')
+                                ->schema([
+                                    TextInput::make('name')->label('Название')->required()->minLength(2)->maxLength(120),
+                                    Select::make('environment')->label('Тип игровой зоны')->required()
+                                        ->options([
+                                            VenueCourtEnvironmentEnum::INDOOR->value => 'Крытый зал',
+                                            VenueCourtEnvironmentEnum::OUTDOOR->value => 'Уличный корт',
+                                        ])->live()
+                                        ->afterStateUpdated(fn (Set $set) => $set('amenity_ids', [])),
+                                    Select::make('hoops_count')->label('Количество колец')->required()
+                                        ->options([1 => '1', 2 => '2'])->default(2),
+                                    Select::make('surface_type')->label('Покрытие')
+                                        ->options(self::options(VenueSurfaceTypeEnum::class)),
+                                    CheckboxList::make('amenity_ids')->label('Оснащение зоны')->columns(2)
+                                        ->options(function (Get $get): array {
+                                            $environment = $get('environment');
+                                            if (! in_array($environment, ['indoor', 'outdoor'], true)) {
+                                                return [];
+                                            }
+
+                                            return Amenity::query()->where('is_active', true)
+                                                ->where('scope', 'court')
+                                                ->whereIn('applies_to', ['all', $environment])
+                                                ->orderBy('sort_order')->pluck('name', 'id')->all();
+                                        })->columnSpanFull(),
+                                ])->columns(2)->columnSpanFull(),
+                        ]),
                     Section::make('Характеристики')->columns(2)->schema([
                         Select::make('characteristics.hoops_count')->label('Количество колец')
                             ->options([1 => '1', 2 => '2']),
@@ -212,11 +252,11 @@ final class VenueResource extends Resource
                         Select::make('characteristics.marking_condition')->label('Разметка')
                             ->options(self::options(VenueMarkingConditionEnum::class)),
                     ]),
-                    Section::make('Доступные удобства')->schema([
-                        CheckboxList::make('amenity_ids')->label('Удобства')->columns(2)
+                    Section::make('Общие удобства площадки')->schema([
+                        CheckboxList::make('amenity_ids')->label('Общие удобства')->columns(2)
                             ->options(fn (): array => Amenity::query()->where('is_active', true)
-                                ->orderBy('sort_order')->pluck('name', 'id')->all())
-                            ->helperText('Тип площадки должен соответствовать назначению удобства (зал или улица).'),
+                                ->where('scope', 'venue')
+                                ->orderBy('sort_order')->pluck('name', 'id')->all()),
                     ]),
                 ]),
                 Tab::make('Расписание')->schema([

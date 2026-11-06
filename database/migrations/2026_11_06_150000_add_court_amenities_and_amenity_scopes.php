@@ -22,9 +22,13 @@ return new class extends Migration
         });
 
         // Backfill physical court type only for previously unclassified zones.
-        DB::table('venue_courts as c')->join('venues as v', 'v.id', '=', 'c.venue_id')
-            ->whereNull('c.environment')
-            ->update(['environment' => DB::raw("CASE WHEN v.type = 'street_court' THEN 'outdoor' ELSE 'indoor' END")]);
+        $unclassifiedCourts = DB::table('venue_courts as c')
+            ->join('venues as v', 'v.id', '=', 'c.venue_id')
+            ->whereNull('c.environment')->get(['c.id', 'v.type']);
+        foreach ($unclassifiedCourts as $court) {
+            DB::table('venue_courts')->where('id', $court->id)
+                ->update(['environment' => $court->type === 'street_court' ? 'outdoor' : 'indoor']);
+        }
 
         $courtAliases = [
             'stands', 'scoreboard', 'equipment', 'team-benches', 'ventilation',

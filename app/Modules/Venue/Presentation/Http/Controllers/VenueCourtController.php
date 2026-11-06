@@ -10,6 +10,7 @@ use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
+use App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -38,7 +39,7 @@ final class VenueCourtController extends Controller
             ->whereRouteIdentifier($venue)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         $canManageVenue = $access->canManage($request->user(), $venueModel, $actor);
-        $venueModel->load(['courts', 'characteristics']);
+        $venueModel->load(['courts', 'courts.amenities', 'characteristics']);
         $courts = $canManageVenue ? $venueModel->courts
             : $venueModel->courts->filter(
                 fn (VenueCourt $court) => $access->canManageCourt($request->user(), $court, $actor)
@@ -74,6 +75,9 @@ final class VenueCourtController extends Controller
             ])->all(),
             'surfaceTypes' => VenueSurfaceTypeEnum::cases(),
             'courtEnvironments' => VenueCourtEnvironmentEnum::cases(),
+            'courtAmenities' => \App\Modules\Venue\Domain\Models\Amenity::query()
+                ->where('scope', 'court')->where('is_active', true)
+                ->orderBy('sort_order')->get(),
             'courtPhotos' => $courtPhotos,
             'courtDefaults' => [
                 'hoops_count' => $parentHoops,
@@ -109,7 +113,7 @@ final class VenueCourtController extends Controller
             $hasCourt = VenueCourt::query()->where('venue_id', $venueModel->id)->lockForUpdate()->exists();
             $nextOrder = (int) VenueCourt::query()->where('venue_id', $venueModel->id)->max('sort_order') + 10;
 
-            VenueCourt::query()->create([
+            $createdCourt = VenueCourt::query()->create([
                 'venue_id' => $venueModel->id,
                 'name' => trim($validated['name']),
                 'alias' => $this->uniqueAlias(
@@ -126,11 +130,14 @@ final class VenueCourtController extends Controller
                 'allows_whole' => $allowsWhole,
                 'allows_halves' => $allowsHalves,
             ]);
+            app(VenueCourtFacilitiesSynchronizer::class)->sync(
+                $createdCourt, (array) ($validated['amenity_ids'] ?? []),
+            );
         });
 
         return redirect()
             ->route('account.venues.courts.index', $venueModel->routeIdentifier())
-            ->with('status', 'Зал добавлен.');
+            ->with('status', 'Зал / корт добавлен.');
     }
 
     public function update(
@@ -177,11 +184,14 @@ final class VenueCourtController extends Controller
                 'allows_whole' => $request->boolean('allows_whole'),
                 'allows_halves' => $supportsHalves && $request->boolean('allows_halves'),
             ]);
+            app(VenueCourtFacilitiesSynchronizer::class)->sync(
+                $lockedCourt, (array) ($validated['amenity_ids'] ?? []),
+            );
         });
 
         return redirect()
             ->route('account.venues.courts.index', $venueModel->routeIdentifier())
-            ->with('status', 'Зал обновлён.');
+            ->with('status', 'Зал / корт обновлён.');
     }
 
     public function makePrimary(
@@ -272,7 +282,9 @@ final class VenueCourtController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
             'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
-            'environment' => ['nullable', Rule::enum(VenueCourtEnvironmentEnum::class)],
+            'environment' => ['required', Rule::enum(VenueCourtEnvironmentEnum::class)],
+            'amenity_ids' => ['nullable', 'array'],
+            'amenity_ids.*' => ['integer', 'distinct', 'exists:amenities,id'],
             'allows_whole' => ['nullable', 'boolean'],
             'allows_halves' => ['nullable', 'boolean'],
         ];

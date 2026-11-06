@@ -10,6 +10,10 @@ use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\Venue\Application\Services\SyncVenueCourtSchedule;
+use App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer;
+use App\Modules\Venue\Domain\Models\Amenity;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Schemas\Components\Utilities\Set;
 use Carbon\CarbonImmutable;
 use Filament\Notifications\Notification;
 use Filament\Actions\Action;
@@ -63,12 +67,26 @@ final class CourtsRelationManager extends RelationManager
                 Select::make('environment')->label('Тип зала / зоны')->options(
                     collect(VenueCourtEnvironmentEnum::cases())->mapWithKeys(fn ($case): array =>
                         [$case->value => $case->label()])->all()
-                )->required(),
+                )->required()->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('amenity_ids', [])),
                 Select::make('hoops_count')->label('Колец')->options([1 => '1', 2 => '2']),
                 Select::make('surface_type')->label('Покрытие')->options(
                     collect(VenueSurfaceTypeEnum::cases())->mapWithKeys(fn ($case): array =>
                         [$case->value => $case->label()])->all()
                 ),
+                CheckboxList::make('amenity_ids')->label('Оснащение зала / корта')->columns(2)
+                    ->options(function (Get $get): array {
+                        $env = $get('environment');
+                        $environment = $env instanceof VenueCourtEnvironmentEnum
+                            ? $env->value : (string) $env;
+                        if (! in_array($environment, ['indoor', 'outdoor'], true)) {
+                            return [];
+                        }
+
+                        return Amenity::query()->where('scope', 'court')
+                            ->where('is_active', true)->whereIn('applies_to', ['all', $environment])
+                            ->orderBy('sort_order')->pluck('name', 'id')->all();
+                    })->columnSpanFull(),
                 Toggle::make('supports_halves')->label('Разделяется на половины')->default(false),
                 Toggle::make('allows_whole')->label('Бронирование целиком')->default(true),
                 Toggle::make('allows_halves')->label('Бронирование половин')->default(false)
@@ -190,8 +208,19 @@ final class CourtsRelationManager extends RelationManager
             IconColumn::make('allows_whole')->label('Целиком')->boolean(),
             IconColumn::make('allows_halves')->label('Половины')->boolean(),
         ])->headerActions([
-            CreateAction::make()->label('Добавить зал')
-                ->visible(fn (): bool => VenueResource::authorized()),
+            CreateAction::make()->label('Добавить зал / корт')
+                ->visible(fn (): bool => VenueResource::authorized())
+                ->using(function (array $data): VenueCourt {
+                    $amenityIds = (array) ($data['amenity_ids'] ?? []);
+                    unset($data['amenity_ids']);
+
+                    return DB::transaction(function () use ($data, $amenityIds): VenueCourt {
+                        $court = $this->getOwnerRecord()->courts()->create($data);
+                        app(VenueCourtFacilitiesSynchronizer::class)->sync($court, $amenityIds);
+
+                        return $court;
+                    });
+                }),
             Action::make('syncAllCourts')->label('Синхронизировать все залы')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn (): bool => VenueResource::authorized())
@@ -214,7 +243,21 @@ final class CourtsRelationManager extends RelationManager
                     $this->syncNotification($result);
                 }),
         ])->recordActions([
-            EditAction::make(),
+            EditAction::make()
+                ->mutateRecordDataUsing(fn (array $data, VenueCourt $record): array => [
+                    ...$data, 'amenity_ids' => $record->amenities()->pluck('amenities.id')->all(),
+                ])
+                ->using(function (VenueCourt $record, array $data): VenueCourt {
+                    $amenityIds = (array) ($data['amenity_ids'] ?? []);
+                    unset($data['amenity_ids']);
+
+                    return DB::transaction(function () use ($record, $data, $amenityIds): VenueCourt {
+                        $record->update($data);
+                        app(VenueCourtFacilitiesSynchronizer::class)->sync($record, $amenityIds);
+
+                        return $record;
+                    });
+                }),
             Action::make('syncCourtSchedule')->label('Синхронизировать')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn (): bool => VenueResource::authorized())
