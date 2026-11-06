@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['venue_id', 'venue_court_id', 'mode_override', 'value_override', 'version', 'updated_by_user_id'])]
+#[Fillable(['venue_id', 'venue_court_id', 'mode_override', 'value_override', 'currency', 'version', 'updated_by_user_id'])]
 final class VenueCourtCommissionPolicy extends Model
 {
     use Auditable;
