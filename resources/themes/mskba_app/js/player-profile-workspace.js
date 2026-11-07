@@ -340,10 +340,9 @@ if (workspace) {
             return null;
         }
     };
-    // Scroll the document to the start of the physical section, not the
-    // sticky preview itself (scrollIntoView on a sticky preview is a no-op).
-    const scrollToGeneratedAvatar = () => {
-        const target = workspace.querySelector('.app-player-workspace__physical') || preview;
+    // Sticky avatar previews cannot be scrolled into view reliably. Scroll to
+    // a non-sticky section for success, or to the actual error for failure.
+    const scrollToPlayerTarget = target => {
         if (!target) return;
         const nav = workspace.querySelector('[data-player-section-nav]');
         const navTop = nav ? (parseFloat(getComputedStyle(nav).top) || 0) : 0;
@@ -355,6 +354,9 @@ if (workspace) {
             behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         });
     };
+    const scrollToGeneratedAvatar = () =>
+        scrollToPlayerTarget(workspace.querySelector('.app-player-workspace__physical') || preview);
+    const scrollToGenerationError = () => scrollToPlayerTarget(feedback);
     const avatarStatus = (status, error = false) => {
         if (!avatarFeedback) return;
         avatarFeedback.textContent = status;
@@ -371,7 +373,8 @@ if (workspace) {
         if (avatarActions) avatarActions.hidden = availableAvatars.length === 0;
         if (makePrimary) {
             makePrimary.hidden = !selectedAvatarId || selectedAvatarId === primaryAvatarId;
-            makePrimary.disabled = selectingPrimary;
+            makePrimary.setAttribute('aria-disabled', String(selectingPrimary));
+            makePrimary.tabIndex = selectingPrimary ? -1 : 0;
         }
         if (primaryLabel) primaryLabel.hidden = !selectedAvatarId || selectedAvatarId !== primaryAvatarId;
         availableAvatars.forEach((item, index) => {
@@ -404,7 +407,7 @@ if (workspace) {
             avatarRail.append(button);
         });
     };
-    const showExisting = async () => {
+    const showExisting = async (preferredAvatar = null) => {
         if (!form) return;
         try {
             const history = await jsonMutation({mutation:'generation_history'});
@@ -413,9 +416,21 @@ if (workspace) {
                 .filter(item => item.status === 'completed' && item.generation_id && ownImageUrl(item.image_url))
                 .map(item => ({generation_id:item.generation_id, image_url:ownImageUrl(item.image_url)}));
             const availableIds = new Set(availableAvatars.map(item => item.generation_id));
+            // The status endpoint has already confirmed the newly generated image.
+            // Include it if the history endpoint is briefly behind the callback.
+            const preferredId = preferredAvatar?.generation_id;
+            const preferredUrl = ownImageUrl(preferredAvatar?.image_url);
+            if (preferredId && preferredUrl && !availableIds.has(preferredId)) {
+                availableAvatars.unshift({generation_id:preferredId, image_url:preferredUrl});
+                availableIds.add(preferredId);
+            }
             primaryAvatarId = availableIds.has(history.primary_generation_id)
                 ? history.primary_generation_id : (availableAvatars[0]?.generation_id || null);
-            if (!availableIds.has(selectedAvatarId)) selectedAvatarId = primaryAvatarId;
+            if (preferredId && availableIds.has(preferredId)) {
+                selectedAvatarId = preferredId;
+            } else if (!availableIds.has(selectedAvatarId)) {
+                selectedAvatarId = primaryAvatarId;
+            }
             const selected = availableAvatars.find(item => item.generation_id === selectedAvatarId);
             if (selected) setImage(selected.image_url);
             renderAvatars();
@@ -425,7 +440,8 @@ if (workspace) {
             avatarStatus('Не удалось загрузить библиотеку аватаров.', true);
         }
     };
-    makePrimary?.addEventListener('click', async () => {
+    makePrimary?.addEventListener('click', async event => {
+        event.preventDefault();
         if (selectingPrimary || !selectedAvatarId || selectedAvatarId === primaryAvatarId) return;
         selectingPrimary = true;
         avatarStatus('Сохраняем основной аватар…');
@@ -468,7 +484,10 @@ if (workspace) {
                     await jsonMutation({mutation:'generation_primary',generation_id:id});
                     selectedAsPrimary = true;
                 } catch { /* Avatar is ready even if making it primary failed. */ }
-                await showExisting();
+                selectedAvatarId = id;
+                await showExisting({generation_id:id, image_url:data.image_url});
+                // A history-request error must not overwrite the verified result.
+                setImage(data.image_url);
                 workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
                 message(selectedAsPrimary
                     ? 'Готово! Аватар создан и установлен как основной.'
@@ -601,6 +620,14 @@ if (workspace) {
             } else if (result.image_data_url?.startsWith('data:image/')) {
                 figure.src = result.image_data_url;
                 figure.classList.add('is-generated');
+                if (result.generation_id) {
+                    selectedAvatarId = result.generation_id;
+                    await showExisting({generation_id:result.generation_id});
+                    figure.src = result.image_data_url;
+                } else {
+                    await showExisting();
+                    figure.src = result.image_data_url;
+                }
                 message('Готово! Аватар создан.');
                 workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
                 requestAnimationFrame(scrollToGeneratedAvatar);
@@ -609,6 +636,7 @@ if (workspace) {
             }
         } catch (error) {
             message('Ошибка генерации: ' + (error.message || 'Не удалось создать аватар.'), true);
+            requestAnimationFrame(scrollToGenerationError);
         } finally {
             isGenerating = false;
             await refreshOffer().catch(() => {});
