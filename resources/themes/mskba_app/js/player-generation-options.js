@@ -1,4 +1,5 @@
 import { resolvePlayerLogoPreview, resolvePlayerTeamLogoPreview } from './player-generation-logo-state.js';
+import { setupPlayerUniformSelection } from './player-generation-uniform-selection.js';
 
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
@@ -147,16 +148,8 @@ if (workspace) {
     });
 
     const uniform = workspace.querySelector('[data-player-generation-team]');
-    const firstTeam = Array.from(uniform?.options || []).find(option => option.value !== '__custom__')?.value || '';
-    uniform?.addEventListener('change', () => {
-        if (uniform.value === '__custom__') {
-            // Workshop designs are never submitted as a team ID.
-            uniform.value = firstTeam;
-            window.dispatchEvent(new CustomEvent('mskba:uniform:open', {detail:{context:'player-avatar'}}));
-        }
-        refreshMode();
-        renderGallery();
-    });
+    const uniformSource = workspace.querySelector('[data-player-uniform-source]');
+    const logoControl = workspace.querySelector('[data-player-logo-control]');
 
     const logoDialog = workspace.querySelector('[data-player-logo-dialog]');
     const logoCheckbox = workspace.querySelector('[data-player-logo-enabled]');
@@ -179,7 +172,7 @@ if (workspace) {
     const setStatus = text => { if (status) status.textContent = text; };
     const placeholder = preview?.dataset.logoPlaceholder || '';
     const selectedTeamLogo = () => {
-        const option = uniform?.selectedOptions?.[0];
+        const option = uniformSource?.value === 'team' ? uniform?.selectedOptions?.[0] : null;
         return resolvePlayerTeamLogoPreview({
             id: Number(option?.value || 0),
             name: option?.dataset.teamName || option?.textContent?.trim() || '',
@@ -190,7 +183,9 @@ if (workspace) {
         ? resolvePlayerLogoPreview(logos, selectedLogoId, window.location.origin, placeholder)
         : selectedTeamLogo();
     const refreshMode = () => {
-        const withLogo = enabled();
+        const isSavedUniform = uniformSource?.value === 'mine';
+        const withLogo = enabled() && !isSavedUniform;
+        if (logoControl) logoControl.hidden = isSavedUniform;
         if (logoOptions) logoOptions.hidden = !withLogo;
         const image = currentLogo();
         if (preview) {
@@ -202,7 +197,11 @@ if (workspace) {
             selectedText.textContent = image.label;
             selectedText.title = image.label;
         }
-        workspace.dataset.playerGenerationLogoMode = withLogo ? logoMode : 'none';
+        // A team crest only exists with a selected team. Saved uniforms own
+        // their own logo and bypass this independent override control.
+        workspace.dataset.playerGenerationLogoMode = withLogo && (
+            logoMode === 'custom' || (logoMode === 'team' && image.src !== placeholder)
+        ) ? logoMode : 'none';
         workspace.dataset.playerGenerationCustomLogoId = withLogo && logoMode === 'custom' && selectedLogoId
             ? String(selectedLogoId) : '';
     };
@@ -357,6 +356,10 @@ if (workspace) {
     dropzone?.addEventListener('keydown', event => {
         if (event.target !== dropzone) return;
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); upload?.click(); }
+    });
+    setupPlayerUniformSelection(workspace, () => {
+        refreshMode();
+        renderGallery();
     });
     refreshMode();
     // Restore the last selected private logo; the team logo is available
