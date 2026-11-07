@@ -34,6 +34,7 @@ import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
+import './venue-editor.js';
 import './group-offer-copy.js';
 import './contracts-workspace.js';
 import '../css/contracts-workspace.css';

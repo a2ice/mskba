@@ -10,6 +10,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
+use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler;
@@ -27,6 +28,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueRevision;
+use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueRequest;
@@ -357,22 +359,48 @@ class VenueController extends Controller
         CurrentActorResolver $actors,
         VenueGalleryManager $gallery,
     ): Response {
-        try {
-            $venue = $showEditableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
-        } catch (\Exception $e) {
-            return ThemeResolver::page('venues.edit', ['venue' => null, 'error' => [
-                'message' => $e->getMessage(),
-                'code' => $e->getCode() ?: 500,
-            ]]);
+        $isApp = app(ThemeResolver::class)->active() === 'mskba_app';
+        $editor = [];
+        $tab = 'general';
+        if ($isApp) {
+            $venue = Venue::query()->whereRouteIdentifier($alias)->firstOrFail();
+            $editor = app(AccountVenueEditorAccess::class)->capabilities($request->user(), $venue);
+            abort_unless(in_array(true, $editor, true), 403);
+            $tab = (string) $request->query('tab', 'general');
+            abort_unless(in_array($tab, [
+                'general', 'address', 'facilities', 'courts', 'schedule',
+                'photos', 'contracts', 'rental',
+            ], true), 404);
+            $tabPermission = $tab === 'rental' ? ($editor['rental'] || $editor['offers'] || $editor['memberships'])
+                : $editor[$tab];
+            abort_unless($tabPermission, 403);
+        } else {
+            try {
+                $venue = $showEditableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
+            } catch (\Exception $e) {
+                return ThemeResolver::page('venues.edit', ['venue' => null, 'error' => [
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode() ?: 500,
+                ]]);
+            }
         }
+
+        $venue->loadMissing(
+            'location.address', 'location.metroStations', 'tags', 'amenities',
+            'characteristics', 'schedule.intervals', 'schedule.exceptions.intervals',
+            'courts', 'draftRevision', 'media',
+        );
 
         return ThemeResolver::page('venues.edit', [
             'venue' => $venue,
+            'editor' => $editor,
+            'tab' => $tab,
+            'amenities' => $isApp ? Amenity::query()->where('scope', 'venue')->where('is_active', true)->orderBy('sort_order')->get() : collect(),
             'ownershipDraft' => VenueOwnershipClaim::query()->where('venue_id', $venue->id)
                 ->whereIn('applicant_user_id', $request->user()->canonical()->identityIds())
                 ->where('status', VenueOwnershipClaimStatusEnum::DRAFT)->withCount('documents')->first(),
             'venueRevision' => $venue->draftRevision,
-            'venuePhotos' => $gallery->editableGallery($venue),
+            'venuePhotos' => ! $isApp || $editor['photos'] ? $gallery->editableGallery($venue) : [],
             'types' => VenueTypeEnum::cases(),
             'metros' => $listMetrostations->handle(),
         ]);
@@ -384,6 +412,13 @@ class VenueController extends Controller
         UpdateVenueHandler $updateVenue,
         CurrentActorResolver $actors,
     ): RedirectResponse|JsonResponse {
+        // App editor is contract-owned; being a superadmin alone is not a public editing grant.
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            $record = Venue::query()->whereRouteIdentifier($alias)->firstOrFail();
+            abort_unless(app(AccountVenueEditorAccess::class)->capabilities($request->user(), $record)['general'], 403);
+        }
+        $editorTab = in_array($request->input('editor_tab'), ['general', 'address', 'facilities'], true)
+            ? (string) $request->input('editor_tab') : 'general';
         try {
             $venue = $updateVenue->handle(
                 alias: $alias,
@@ -399,7 +434,7 @@ class VenueController extends Controller
             }
 
             return redirect()
-                ->route('account.venues.edit', $alias)
+                ->route('account.venues.edit', ['alias' => $alias, 'tab' => $editorTab])
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
@@ -422,7 +457,7 @@ class VenueController extends Controller
             : 'Площадка сохранена.';
 
         return redirect()
-            ->route('account.venues.edit', $venue->routeIdentifier())
+            ->route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => $editorTab])
             ->with('status', $message);
     }
 

@@ -1,4 +1,4 @@
-@extends('theme::layouts.app', ['title' => $title ?? 'Аккаунт'])
+@extends('theme::layouts.app', ['title' => $title ?? 'Аккаунт', 'breadcrumbs' => $breadcrumbs ?? null])
 
 @section('content')
     <section class="app-account-section" aria-label="Личный кабинет">
