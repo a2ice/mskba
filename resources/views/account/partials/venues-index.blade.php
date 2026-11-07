@@ -38,6 +38,7 @@
         @forelse($venues as $card)
             @php($venue = $card['venue'])
             @php($legacy = $card['legacy'])
+            @php($editUrl = app(\App\Presentation\Navigation\VenueEditLinkResolver::class)->url(auth()->user(), $venue))
             <article class="account-contracts-workspace__card">
                 <div class="account-contracts-workspace__card-head">
                     <div>
