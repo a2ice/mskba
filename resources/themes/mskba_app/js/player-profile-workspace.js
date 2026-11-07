@@ -340,6 +340,21 @@ if (workspace) {
             return null;
         }
     };
+    // Scroll the document to the start of the physical section, not the
+    // sticky preview itself (scrollIntoView on a sticky preview is a no-op).
+    const scrollToGeneratedAvatar = () => {
+        const target = workspace.querySelector('.app-player-workspace__physical') || preview;
+        if (!target) return;
+        const nav = workspace.querySelector('[data-player-section-nav]');
+        const navTop = nav ? (parseFloat(getComputedStyle(nav).top) || 0) : 0;
+        const navHeight = nav?.getBoundingClientRect().height || 0;
+        const offset = navTop + navHeight + 16;
+        const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - offset);
+        window.scrollTo({
+            top,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        });
+    };
     const avatarStatus = (status, error = false) => {
         if (!avatarFeedback) return;
         avatarFeedback.textContent = status;
@@ -458,6 +473,7 @@ if (workspace) {
                 message(selectedAsPrimary
                     ? 'Готово! Аватар создан и установлен как основной.'
                     : 'Готово! Аватар создан. При необходимости выберите его основным.');
+                requestAnimationFrame(scrollToGeneratedAvatar);
                 return;
             }
             if (data.status === 'completed') {
@@ -574,6 +590,7 @@ if (workspace) {
                 figure.classList.add('is-generated');
                 message('Готово! Аватар создан.');
                 workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
+                requestAnimationFrame(scrollToGeneratedAvatar);
             } else {
                 throw new Error('Сервер не подтвердил запуск генерации. Проверьте библиотеку аватаров перед повторной попыткой.');
             }
