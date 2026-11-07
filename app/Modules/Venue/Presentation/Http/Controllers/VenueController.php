@@ -418,7 +418,7 @@ class VenueController extends Controller
             abort_unless(app(AccountVenueEditorAccess::class)->capabilities($request->user(), $record)['general'], 403);
         }
         $editorTab = in_array($request->input('editor_tab'), ['general', 'address', 'facilities'], true)
-            ? (string) $request->input('editor_tab') : 'general';
+            ? (string) $request->input('editor_tab') : null;
         try {
             $venue = $updateVenue->handle(
                 alias: $alias,
@@ -434,7 +434,7 @@ class VenueController extends Controller
             }
 
             return redirect()
-                ->route('account.venues.edit', ['alias' => $alias, 'tab' => $editorTab])
+                ->route('account.venues.edit', ($editorTab !== null ? ['alias' => $alias, 'tab' => $editorTab] : $alias))
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
@@ -457,7 +457,7 @@ class VenueController extends Controller
             : 'Площадка сохранена.';
 
         return redirect()
-            ->route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => $editorTab])
+            ->route('account.venues.edit', ($editorTab !== null ? ['alias' => $venue->routeIdentifier(), 'tab' => $editorTab] : $venue->routeIdentifier()))
             ->with('status', $message);
     }
 
