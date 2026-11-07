@@ -115,6 +115,8 @@ final class PlayerCharacterGenerationUxTest extends TestCase
                     'attributes' => ['headband'],
                     'generation_team_id' => 321,
                     'with_team_logo' => true,
+                    'generation_logo_mode' => 'custom',
+                    'generation_custom_logo_id' => 49,
                 ],
             ],
         ])->save();
@@ -129,6 +131,8 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ->assertJsonPath('body_type', 'athletic')
             ->assertJsonPath('generation_team_id', 321)
             ->assertJsonPath('with_team_logo', true)
+            ->assertJsonPath('generation_logo_mode', 'custom')
+            ->assertJsonPath('generation_custom_logo_id', 49)
             ->assertJsonPath('character.shoes', 'white')
             ->assertJsonPath('character.attributes.0', 'headband');
     }
