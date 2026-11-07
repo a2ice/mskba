@@ -21,11 +21,6 @@ final class BackofficePermissionManager
             return false;
         }
 
-        if ($permission === Permission::BACKOFFICE_ACCESS
-            && $user->canonical()->system_role === UserSystemRoleEnum::SYSTEM) {
-            $permission = Permission::BACKOFFICE_SYSTEM_ACCESS;
-        }
-
         return $this->checker->allows($user, $permission);
     }
 

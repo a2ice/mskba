@@ -24,8 +24,8 @@ final class AdminRevertUserSystemRoleHandler
                 ->where('auditable_id', $target->id)
                 ->where('event', 'admin_system_role_changed')
                 ->lockForUpdate()->firstOrFail();
-            $before = (array) $revision->old_values;
-            $after = (array) $revision->new_values;
+            $before = $this->normalizeSnapshot((array) $revision->old_values);
+            $after = $this->normalizeSnapshot((array) $revision->new_values);
             $editor = app(AdminChangeUserSystemRoleWithAuditHandler::class);
             if ($editor->snapshot($target) !== $after) {
                 throw ValidationException::withMessages([
@@ -51,5 +51,20 @@ final class AdminRevertUserSystemRoleHandler
 
             return $result;
         });
+    }
+
+    private function normalizeSnapshot(array $snapshot): array
+    {
+        $grants = $snapshot['explicit_grants'] ?? null;
+        if (is_array($grants) && array_key_exists('backoffice.system_access', $grants)) {
+            if (($snapshot['role'] ?? null) === 'system') {
+                $grants['backoffice.access'] = $grants['backoffice.system_access'];
+            }
+            unset($grants['backoffice.system_access']);
+            ksort($grants);
+            $snapshot['explicit_grants'] = $grants;
+        }
+
+        return $snapshot;
     }
 }
