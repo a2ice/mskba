@@ -31,7 +31,7 @@
                 <span class="select-control">
                     <select data-player-generation-team>
                         @forelse($playerTeams as $team)
-                            <option value="{{ $team->id }}" data-team-logo-url="{{ $team->logo?->publicUrl() }}" data-team-name="{{ $team->name }}">{{ $team->name }}</option>
+                            <option value="{{ $team->id }}" @selected((int) ($character['generation_team_id'] ?? 0) === (int) $team->id) data-team-logo-url="{{ $team->logo?->publicUrl() }}" data-team-name="{{ $team->name }}">{{ $team->name }}</option>
                         @empty
                             <option value="">Нейтральная форма</option>
                         @endforelse
