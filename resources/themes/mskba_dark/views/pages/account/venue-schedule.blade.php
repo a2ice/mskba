@@ -47,7 +47,7 @@
     @if($venue !== null)
         @include('theme::partials.venues.schedule-editor', [
             'action' => route('account.venues.schedule.update', $venue->routeIdentifier()),
-            'cancelUrl' => route('account.venues.show', $venue->routeIdentifier()),
+            'cancelUrl' => route('account.contracts.venues'),
         ])
     @endif
 @endsection
