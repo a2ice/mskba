@@ -314,11 +314,14 @@ final class UpdatePlayerProfileController extends Controller
             'character' => $character,
             'generation_team_id' => data_get($character, 'generation_team_id'),
             'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
+            'generation_logo_mode' => (string) data_get($character, 'generation_logo_mode', 'none'),
+            'generation_custom_logo_id' => data_get($character, 'generation_custom_logo_id'),
             'face_references' => $this->faceReferenceState($request->user()),
             'teams' => $teams->map(fn (Team $team): array => [
                 'id' => (int) $team->id,
                 'name' => (string) $team->name,
                 'has_logo' => $team->logo !== null,
+                'logo_url' => $team->logo?->publicUrl(),
             ])->values(),
         ], 200, ['Cache-Control' => 'private, no-store']);
     }
