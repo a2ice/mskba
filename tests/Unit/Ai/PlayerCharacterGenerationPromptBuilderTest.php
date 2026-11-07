@@ -98,6 +98,39 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('"chest_volume": null', $male);
     }
 
+    public function test_uniform_selection_uses_own_palette_and_sleeves_without_inventing_team_branding(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+        $saved = $builder->build([
+            'gender' => 'female',
+            'uniform' => [
+                'source' => 'mine',
+                'name' => 'Black and yellow',
+                'primary_color' => '#111924',
+                'secondary_color' => '#FFD100',
+                'sleeve_style' => 'sleeved',
+                'logo_source' => 'none',
+            ],
+        ]);
+        $neutral = $builder->build([
+            'uniform' => [
+                'source' => 'neutral',
+                'primary_color' => null,
+                'secondary_color' => null,
+                'sleeve_style' => 'sleeveless',
+            ],
+        ]);
+
+        $this->assertStringContainsString('"source": "mine"', $saved);
+        $this->assertStringContainsString('"primary_color": "#111924"', $saved);
+        $this->assertStringContainsString('"secondary_color": "#FFD100"', $saved);
+        $this->assertStringContainsString('"sleeve_style": "sleeved"', $saved);
+        $this->assertStringContainsString('short athletic sleeves', $saved);
+        $this->assertStringContainsString('saved design name is descriptive metadata only', $saved);
+        $this->assertStringContainsString('"source": "neutral"', $neutral);
+        $this->assertStringContainsString('neutral light slate/gray jersey', $neutral);
+    }
+
     public function test_new_normal_body_type_is_described_in_ai_prompt(): void
     {
         $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([
