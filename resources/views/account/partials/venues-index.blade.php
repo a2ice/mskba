@@ -43,7 +43,7 @@
                 <div class="account-contracts-workspace__card-head">
                     <div>
                         <p class="account-contracts-workspace__eyebrow">{{ $venue->type->label() }}</p>
-                        <h2><a href="{{ route('account.venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
+                        <h2><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
                     </div>
                     <span class="account-contracts-workspace__status {{ $card['effective'] ? 'is-active' : '' }}">
                         {{ $card['effective'] ? 'Контракт действует' : ($card['contracts'] !== [] ? 'Контракт не действует' : 'Без контракта') }}
