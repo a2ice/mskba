@@ -10,6 +10,18 @@ final class PlayerCharacterGenerationPromptBuilder
         $appearance = (array) ($payload['appearance'] ?? []);
         $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
         $withTeamLogo = (bool) ($team['with_logo'] ?? false);
+        $requestedUniform = is_array($payload['uniform'] ?? null) ? $payload['uniform'] : null;
+        $uniformSource = (string) ($requestedUniform['source'] ?? (
+            $team && ! empty($team['colors']) ? 'team' : 'neutral'
+        ));
+        $uniform = [
+            'source' => $uniformSource,
+            'name' => $uniformSource === 'mine' ? ($requestedUniform['name'] ?? null) : null,
+            'primary_color' => $requestedUniform['primary_color'] ?? null,
+            'secondary_color' => $requestedUniform['secondary_color'] ?? null,
+            'sleeve_style' => $requestedUniform['sleeve_style'] ?? 'sleeveless',
+            'logo_source' => $requestedUniform['logo_source'] ?? 'none',
+        ];
         $female = ($payload['gender'] ?? null) === 'female';
         $chestVolume = $female ? ($appearance['chest_volume'] ?? 'medium') : null;
         $chestDescription = $female ? match ($chestVolume) {
@@ -38,6 +50,7 @@ final class PlayerCharacterGenerationPromptBuilder
             'attributes' => array_values((array) ($appearance['attributes'] ?? [])),
             'chest_volume' => $chestVolume,
             'chest_volume_description' => $chestDescription,
+            'uniform' => $uniform,
             'team' => $team ? [
                 'name' => $team['name'] ?? null,
                 'colors' => $team['colors'] ?? null,
@@ -92,10 +105,13 @@ Composition - STRICT:
 - For a female player, chest_volume_description is an explicit body-proportion requirement, not an optional styling hint. Make small, medium, large and full visibly distinguishable in the front-view upper-torso silhouette while keeping the player fully clothed, natural and athletic.
 - A full chest must have visibly more volume and jersey contour than medium, even when wearing a loose basketball jersey. Let the uniform drape naturally over the specified body shape; do not flatten or ignore the selected chest size. Preserve the same face, height, weight and overall body type when only chest_volume changes.
 
-Clothing:
-- Modern basketball jersey and matching shorts.
-- If team colors are supplied, use those colors as the uniform palette.
-- If no team colors are supplied, use a neutral light slate/gray jersey and matching shorts; do not invent team colors or branding.
+Clothing - SELECTED UNIFORM IS AUTHORITATIVE:
+- Modern basketball jersey and matching shorts. Respect the supplied uniform.source and sleeve_style.
+- uniform.source = "neutral": use a neutral light slate/gray jersey and matching shorts. Do not reuse old team colors or invent branding.
+- uniform.source = "team": use the selected team's configured primary_color as the main jersey AND shorts color and secondary_color as trim. Do not invent additional team markings.
+- uniform.source = "mine": reproduce the saved design's specified primary_color on jersey and shorts, secondary_color for borders, piping and trim. The saved design name is descriptive metadata only; do not print it on clothing.
+- sleeve_style = "sleeved": use a basketball jersey with short athletic sleeves, visibly covering the upper arms. sleeve_style = "sleeveless": use a sleeveless tank jersey.
+- For every source, keep shirt and shorts coordinated. A source with no configured team kit has already been normalized to neutral by the server; never guess a palette from the team name.
 {$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
 - Apply requested shoes and ONLY the explicitly requested sports attributes.
 
