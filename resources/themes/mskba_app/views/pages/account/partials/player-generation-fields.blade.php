@@ -27,15 +27,47 @@
     <fieldset class="app-player-workspace__equipment">
         <legend>Форма и кроссовки</legend>
         <div class="app-player-workspace__fields">
-            <label class="app-player-workspace__field">Форма команды
+            @php
+                $uniformSource = $character['generation_uniform_source'] ?? (!empty($character['generation_team_id']) ? 'team' : 'neutral');
+                $uniformDesigns = $playerUniformDesigns ?? collect();
+                $savedDesignId = (int) ($character['generation_uniform_design_id'] ?? 0);
+                if ($uniformSource === 'team' && $playerTeams->isEmpty()) $uniformSource = 'neutral';
+                if ($uniformSource === 'mine' && ! $uniformDesigns->contains('id', $savedDesignId)) $uniformSource = 'neutral';
+            @endphp
+            <label class="app-player-workspace__field">Форма
                 <span class="select-control">
-                    <select data-player-generation-team>
-                        @forelse($playerTeams as $team)
-                            <option value="{{ $team->id }}" @selected((int) ($character['generation_team_id'] ?? 0) === (int) $team->id) data-team-logo-url="{{ $team->logo?->publicUrl() }}" data-team-name="{{ $team->name }}">{{ $team->name }}</option>
-                        @empty
-                            <option value="">Нейтральная форма</option>
-                        @endforelse
-                        <option value="__custom__">Создать свою форму</option>
+                    <select data-player-uniform-source>
+                        <option value="neutral" @selected($uniformSource === 'neutral')>Нейтральная форма</option>
+                        <option value="team" @selected($uniformSource === 'team') @disabled($playerTeams->isEmpty()) @if($playerTeams->isEmpty()) hidden @endif>Форма команды</option>
+                        <option value="mine" @selected($uniformSource === 'mine') @disabled($uniformDesigns->isEmpty()) @if($uniformDesigns->isEmpty()) hidden @endif>Моя форма</option>
+                        <option value="__create__">Создать свою форму</option>
+                    </select>
+                    @include('account.partials.native-select-chevron')
+                </span>
+            </label>
+            <label class="app-player-workspace__field" data-player-uniform-team-field
+                @if($uniformSource !== 'team') hidden @endif>Команда
+                <span class="select-control">
+                    <select data-player-generation-team @if($uniformSource !== 'team') disabled @endif required>
+                        <option value="">Выберите команду</option>
+                        @foreach($playerTeams as $team)
+                            <option value="{{ $team->id }}"
+                                @selected((int) ($character['generation_team_id'] ?? 0) === (int) $team->id)
+                                data-team-logo-url="{{ $team->logo?->publicUrl() }}"
+                                data-team-name="{{ $team->name }}">{{ $team->name }}</option>
+                        @endforeach
+                    </select>
+                    @include('account.partials.native-select-chevron')
+                </span>
+            </label>
+            <label class="app-player-workspace__field" data-player-uniform-design-field
+                @if($uniformSource !== 'mine') hidden @endif>Мои формы
+                <span class="select-control">
+                    <select data-player-generation-uniform-design @if($uniformSource !== 'mine') disabled @endif required>
+                        <option value="">Выберите форму</option>
+                        @foreach($uniformDesigns as $design)
+                            <option value="{{ $design->id }}" @selected($savedDesignId === (int) $design->id)>{{ $design->name }}</option>
+                        @endforeach
                     </select>
                     @include('account.partials.native-select-chevron')
                 </span>
@@ -51,7 +83,8 @@
                 </span>
             </label>
         </div>
-        <div class="app-player-workspace__logo-control">
+        <div class="app-player-workspace__logo-control" data-player-logo-control
+            @if($uniformSource === 'mine') hidden @endif>
             <label class="check-label app-player-workspace__logo-toggle">
                 <input type="checkbox" data-player-logo-enabled
                     @checked(in_array(($character['generation_logo_mode'] ?? ''), ['team', 'custom'], true))>
