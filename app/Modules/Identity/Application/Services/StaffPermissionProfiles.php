@@ -92,24 +92,17 @@ final class StaffPermissionProfiles
     /** Explicit upper bound: a functional manager cannot become a system admin. */
     public function allowedForRole(Role $role, Permission $permission): bool
     {
-        if ($permission === Permission::WALLET_USER_BALANCE_CREDIT) {
-            return in_array($role, [Role::SUPERADMIN, Role::ADMIN], true);
-        }
         if ($permission === Permission::BACKOFFICE_SYSTEM_ACCESS) {
             return $role === Role::SYSTEM || $role === Role::SUPERADMIN;
         }
         if ($role === Role::SYSTEM) {
-            return in_array($permission, [
-                Permission::BACKOFFICE_BUILDER_VIEW,
-                Permission::BACKOFFICE_BUILDER_EDIT,
-                Permission::BACKOFFICE_BUILDER_PUBLISH,
-                Permission::BACKOFFICE_BUILDER_CSS_VIEW,
-                Permission::BACKOFFICE_BUILDER_CSS_EDIT,
-                Permission::BACKOFFICE_BUILDER_CSS_PUBLISH,
-                Permission::BACKOFFICE_BUILDER_JS_VIEW,
-                Permission::BACKOFFICE_BUILDER_JS_EDIT,
-                Permission::BACKOFFICE_BUILDER_JS_PUBLISH,
-            ], true);
+            // The service account has the admin grant ceiling, with its own
+            // explicit panel-entry permission and no inherited grants.
+            return $permission !== Permission::BACKOFFICE_ACCESS
+                && $this->allowedForRole(Role::ADMIN, $permission);
+        }
+        if ($permission === Permission::WALLET_USER_BALANCE_CREDIT) {
+            return in_array($role, [Role::SUPERADMIN, Role::ADMIN], true);
         }
         if ($role === Role::SUPERADMIN || $role === Role::ADMIN) {
             return true;

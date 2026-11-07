@@ -118,12 +118,11 @@ final class GlobalOperationalPermissionManager
             }
             $this->validateSet($privileged, $this->privilegedPermissions(), 'data.privileged_permissions');
 
-            // A reviewer must be an admin. UI must not allow a silently
-            // ineffective reviewer grant to a regular user.
+            // Keep the role ceiling consistent with the permission selector.
             if (in_array(Permission::REVIEW_PROFILE_CHANGES->value, $privileged, true)
-                && ! $target->canonical()->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
+                && ! $target->canonical()->system_role->canReceiveProfileReviewPermission()) {
                 throw ValidationException::withMessages([
-                    'data.privileged_permissions' => 'Рассмотрение изменений данных разрешено только пользователю с ролью admin.',
+                    'data.privileged_permissions' => 'Рассмотрение изменений данных доступно администраторам и системным пользователям.',
                 ]);
             }
         }
