@@ -55,9 +55,9 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringContainsString("payload.set('generation_uniform_source', source)", $client);
         self::assertStringContainsString("payload.set('generation_uniform_design_id', design.value)", $client);
         self::assertStringContainsString("payload.set('generation_team_id', team.value)", $client);
-        self::assertStringContainsString("->whereIn('user_id', $user->identityIds())", $handler);
+        self::assertStringContainsString('->whereIn(\'user_id\', $user->identityIds())', $handler);
         self::assertStringContainsString("'uniform_design_unavailable'", $handler);
         self::assertStringContainsString("'uniform_team_required'", $handler);
-        self::assertStringContainsString("'source' => $hasTeamKit ? 'team' : 'neutral'", $handler);
+        self::assertStringContainsString("'source' => \$hasTeamKit ? 'team' : 'neutral'", $handler);
     }
 }
