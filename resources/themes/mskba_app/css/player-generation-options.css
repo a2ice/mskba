@@ -1,4 +1,11 @@
 /* MSKBA 064 — compact credits and reusable avatar-generation controls */
+/* Compact version of the existing image-upload spinner for the submit button. */
+.app-player-workspace__generate-button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.app-player-workspace__generate-spinner{display:inline-block;box-sizing:border-box;flex:none;width:16px;height:16px;border:2px solid currentColor;border-right-color:var(--accent,#c9520b);border-radius:50%;animation:app-player-generate-spin .7s linear infinite}
+.app-player-workspace__generate-spinner[hidden]{display:none!important}
+.app-player-workspace__generate-button[aria-busy="true"]{cursor:wait}
+@keyframes app-player-generate-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.app-player-workspace__generate-spinner{animation-duration:1.4s}}
 .app-player-workspace__generation-summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .app-player-workspace__generation-summary .app-player-workspace__generation-stat{padding:12px;min-width:0}
 .app-player-workspace__stat-heading{display:flex;align-items:center;justify-content:space-between;gap:5px}
