@@ -8,7 +8,6 @@
     ];
     $route = $venue->routeIdentifier();
     $pending = $venue->hasPendingModerationRequest();
-    $passportLocked = $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED;
     $revision = $venueRevision?->payload ?? [];
     $details = array_replace([
         'name' => $venue->name, 'type' => $venue->type->value,
@@ -32,6 +31,11 @@
     $amenityIds = (array) ($facilities['amenity_ids'] ?? $venue->amenities->pluck('id')->all());
     $mutateUrl = route('account.venues.update', $route);
     $saveDisabled = $pending;
+    $canSubmitModeration = ($editor['general'] ?? false)
+        && ! $pending
+        && ($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::UNCONFIRMED
+            || ($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                && $venueRevision !== null && $venueRevision->applied_at === null));
     $contractManager = null;
     if ($editor['contracts'] ?? false) {
         $contractManager = $venue->memberships()
@@ -60,19 +64,38 @@
             {{ session('error') ?: session('photo_error') ?: $errors->first() }}
         </div>
     @endif
-    @if($pending && in_array($tab, ['general', 'address', 'facilities'], true))
-        <div class="app-venue-editor__notice app-venue-editor__notice--muted">Площадка на модерации. Изменения временно недоступны.</div>
+    @if(($editor['general'] ?? false) && $pending)
+        <section class="app-venue-editor__moderation" role="status" aria-label="Статус модерации площадки">
+            <div class="app-venue-editor__moderation-copy">
+                <strong>Изменения на модерации</strong>
+                <span>Заявка отправлена. После решения модератора редактирование снова станет доступно.</span>
+            </div>
+        </section>
+    @elseif($canSubmitModeration)
+        <section class="app-venue-editor__moderation" aria-label="Модерация площадки">
+            <div class="app-venue-editor__moderation-copy">
+                <strong>{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                    ? 'Есть несогласованные изменения' : 'Площадка готова к проверке' }}</strong>
+                <span>{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                    ? 'До одобрения опубликованная версия площадки не изменится.'
+                    : 'Отправьте площадку на проверку перед публикацией.' }}</span>
+            </div>
+            <form method="POST" action="{{ route('account.venues.moderation.submit', $route) }}" class="app-venue-editor__moderation-action">
+                @csrf
+                <input type="hidden" name="editor_tab" value="{{ $tab }}">
+                <button type="submit" class="button primary">{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                    ? 'Отправить изменения на модерацию' : 'Отправить на модерацию' }}</button>
+            </form>
+        </section>
     @endif
 
-    @if($tab === 'address' && $passportLocked)
-        @include('theme::pages.venues.partials.editor-confirmed-address')
-    @elseif(in_array($tab, ['general','address','facilities'], true))
+    @if(in_array($tab, ['general','address','facilities'], true))
         <form method="POST" action="{{ $mutateUrl }}" class="app-venue-editor__form">
             @csrf @method('PUT')
             <input type="hidden" name="editor_tab" value="{{ $tab }}">
             @if($tab !== 'general')
-                <input type="hidden" name="name" value="{{ $passportLocked ? $venue->name : $details['name'] }}">
-                <input type="hidden" name="type" value="{{ $passportLocked ? $venue->type->value : $details['type'] }}">
+                <input type="hidden" name="name" value="{{ $details['name'] }}">
+                <input type="hidden" name="type" value="{{ $details['type'] }}">
                 <input type="hidden" name="short_description" value="{{ $details['short_description'] }}">
                 <input type="hidden" name="full_description" value="{{ $details['full_description'] }}">
                 <input type="hidden" name="tags" value="{{ implode(', ', $tags) }}">
@@ -83,27 +106,18 @@
                         <h2>Основные данные</h2>
                         <div class="app-venue-editor__grid">
                             <label class="app-venue-editor__field">Название площадки
-                                @if($passportLocked)
-                                    <input type="text" value="{{ $venue->name }}" disabled>
-                                    <input type="hidden" name="name" value="{{ $venue->name }}">
-                                @else
-                                    <input type="text" name="name" minlength="3" maxlength="255" required value="{{ old('name', $details['name']) }}">
-                                @endif
+                                <input type="text" name="name" minlength="3" maxlength="255" required value="{{ old('name', $details['name']) }}">
                             </label>
                             <label class="app-venue-editor__field">Тип площадки
-                                @if($passportLocked)
-                                    <input type="text" value="{{ $venue->type->label() }}" disabled>
-                                    <input type="hidden" name="type" value="{{ $venue->type->value }}">
-                                @else
-                                    <span class="select-control">
-                                        <select name="type" required>
+                                <span class="select-control">
+                                    <select name="type" required>
                                         @foreach($types as $item)
                                             <option value="{{ $item->value }}" @selected(old('type', $details['type']) === $item->value)>{{ $item->label() }}</option>
                                         @endforeach
                                     </select>
-                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-                                    </span>
-                                @endif
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                                        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                             <label class="app-venue-editor__field">URL-алиас
                                 <input type="text" value="{{ $venue->alias }}" disabled>

@@ -418,17 +418,6 @@ class VenueController extends Controller
             abort_unless(app(AccountVenueEditorAccess::class)->capabilities($request->user(), $record)['general'], 403);
             // Conditions are edited through their own handler, not this passport editor.
             abort_if($request->hasAny(['access_type', 'requires_booking_approval', 'requires_booking']), 403);
-            // Confirmed passport/coordinates are read-only outside Filament. Only
-            // descriptions, tags, facilities and the separate metro action stay editable.
-            if ($record->status === VenueStatusEnum::CONFIRMED) {
-                abort_if(
-                    $request->input('name') !== $record->name
-                    || $request->input('type') !== $record->type->value
-                    || $request->has('location') || $request->has('raw_address')
-                    || $request->input('editor_tab') === 'address',
-                    403,
-                );
-            }
         }
         $editorTab = in_array($request->input('editor_tab'), ['general', 'address', 'facilities'], true)
             ? (string) $request->input('editor_tab') : null;
@@ -548,6 +537,19 @@ class VenueController extends Controller
         SubmitModerationRequestHandler $submitModeration,
         CurrentActorResolver $actors,
     ): RedirectResponse|JsonResponse {
+        $isAccountEditor = app(ThemeResolver::class)->active() === 'mskba_app';
+        if ($isAccountEditor) {
+            $record = Venue::query()->whereRouteIdentifier($alias)->firstOrFail();
+            abort_unless(app(AccountVenueEditorAccess::class)->capabilities($request->user(), $record)['general'], 403);
+        }
+
+        // The photos tab is inaccessible during pending moderation.
+        $returnTab = in_array($request->input('editor_tab'), ['general', 'address', 'facilities'], true)
+            ? (string) $request->input('editor_tab') : 'general';
+        $returnRoute = $isAccountEditor
+            ? ['alias' => $alias, 'tab' => $returnTab]
+            : $alias;
+
         try {
             $submitModeration->handle(
                 alias: $alias,
@@ -561,7 +563,7 @@ class VenueController extends Controller
             }
 
             return redirect()
-                ->route('account.venues.status', $alias)
+                ->route($isAccountEditor ? 'account.venues.edit' : 'account.venues.status', $returnRoute)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
@@ -571,7 +573,7 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('account.venues.status', $alias)
+            ->route($isAccountEditor ? 'account.venues.edit' : 'account.venues.status', $returnRoute)
             ->with('status', 'Площадка отправлена на модерацию.');
     }
 

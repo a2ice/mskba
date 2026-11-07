@@ -123,3 +123,20 @@
 .app-venue-metro__remove:hover:not(:disabled){background:#e5ebf1;color:#ac4c10}
 .app-venue-metro__remove:disabled{opacity:.35;cursor:default}
 .app-venue-metro__remove:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Moderation workflow lives above the editor form but below sticky tabs. */
+.app-venue-editor__moderation{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    gap:16px;padding:18px 20px;border:1px solid #dce3ea;
+    background:#fff;border-radius:14px;box-shadow:0 3px 12px rgba(25,41,57,.035);
+}
+.app-venue-editor__moderation-copy{display:grid;gap:5px;min-width:0;flex:1 1 260px}
+.app-venue-editor__moderation-copy strong{font-size:15px;line-height:22px;font-weight:750;color:#293b50}
+.app-venue-editor__moderation-copy span{font-size:13px;line-height:20px;color:#627489}
+.app-venue-editor__moderation-action{width:auto;margin:0;flex:0 1 auto}
+.app-venue-editor__moderation-action .button{min-height:44px}
+@media(max-width:600px){
+    .app-venue-editor__moderation{padding:16px}
+    .app-venue-editor__moderation-action{width:100%}
+    .app-venue-editor__moderation-action .button{width:100%}
+}
