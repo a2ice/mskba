@@ -7,6 +7,7 @@ use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
 use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Ai\Application\Services\PlayerCharacterGenerationPromptBuilder;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Infrastructure\Support\OpenAiPlayerCharacterImageModel;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -506,7 +507,7 @@ PROMPT;
 
     private function imageModel(): string
     {
-        return (string) config('services.openai.image_model', 'gpt-image-2');
+        return OpenAiPlayerCharacterImageModel::configured();
     }
 
     private function validationTimeout(): int
