@@ -87,7 +87,8 @@ final class GlobalOperationalPermissionManager
         $target = $target->canonical();
 
         return $actor->id !== $target->id
-            && $target->system_role !== UserSystemRoleEnum::SYSTEM
+            && ($target->system_role !== UserSystemRoleEnum::SYSTEM
+                || $actor->system_role === UserSystemRoleEnum::SUPERADMIN)
             && $actor->system_role->numericValue() > $target->system_role->numericValue();
     }
 

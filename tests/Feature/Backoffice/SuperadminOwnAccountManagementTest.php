@@ -34,7 +34,7 @@ final class SuperadminOwnAccountManagementTest extends TestCase
         return $user;
     }
 
-    public function test_superadmin_sees_own_record_in_the_user_directory_but_not_other_superadmins_or_system_accounts(): void
+    public function test_superadmin_sees_own_record_in_the_user_directory_and_system_accounts_but_not_other_superadmins(): void
     {
         $super = $this->person(UserSystemRoleEnum::SUPERADMIN);
         $otherSuper = $this->person(UserSystemRoleEnum::SUPERADMIN);
@@ -47,7 +47,7 @@ final class SuperadminOwnAccountManagementTest extends TestCase
         $this->assertContains($super->id, $ids);
         $this->assertContains($admin->id, $ids);
         $this->assertNotContains($otherSuper->id, $ids);
-        $this->assertNotContains($system->id, $ids);
+        $this->assertContains($system->id, $ids);
 
         $this->assertTrue(BackofficeUserResource::canEdit($super));
         $this->assertFalse(BackofficeUserResource::canEdit($otherSuper));

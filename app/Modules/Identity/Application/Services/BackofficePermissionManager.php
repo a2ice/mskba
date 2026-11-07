@@ -21,6 +21,11 @@ final class BackofficePermissionManager
             return false;
         }
 
+        if ($permission === Permission::BACKOFFICE_ACCESS
+            && $user->canonical()->system_role === UserSystemRoleEnum::SYSTEM) {
+            $permission = Permission::BACKOFFICE_SYSTEM_ACCESS;
+        }
+
         return $this->checker->allows($user, $permission);
     }
 
@@ -51,7 +56,8 @@ final class BackofficePermissionManager
         $target = $target->canonical();
 
         return $actor->id !== $target->id
-            && $target->system_role !== UserSystemRoleEnum::SYSTEM
+            && ($target->system_role !== UserSystemRoleEnum::SYSTEM
+                || $actor->system_role === UserSystemRoleEnum::SUPERADMIN)
             && $actor->system_role->numericValue() > $target->system_role->numericValue();
     }
 

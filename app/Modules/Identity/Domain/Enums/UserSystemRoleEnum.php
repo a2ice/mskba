@@ -51,6 +51,16 @@ enum UserSystemRoleEnum: string
         };
     }
 
+    public function canAssign(self $role): bool
+    {
+        return $role->numericValue() < $this->numericValue()
+            && match ($role) {
+                self::ADMIN, self::MANAGER, self::USER => true,
+                self::SYSTEM => $this === self::SUPERADMIN,
+                default => false,
+            };
+    }
+
     public function atLeast(UserSystemRoleEnum $atLeastRole): bool
     {
         return $this->numericValue() >= $atLeastRole->numericValue();

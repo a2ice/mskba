@@ -31,6 +31,7 @@ use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateStaffSpecializationsWithAuditHandler;
 use App\Modules\Identity\Application\UseCases\AdminChangeUserSystemRoleWithAuditHandler;
@@ -211,18 +212,28 @@ final class EditBackofficeUser extends EditRecord
                     if ($before === $status) {
                         throw ValidationException::withMessages(['account_status' => 'Статус не изменён.']);
                     }
-                    DB::transaction(function () use ($actor, $status, $before, $data): void {
-                        app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
-                        AuditLog::query()->create([
-                            'actor_id' => $actor->id,
-                            'auditable_type' => User::class,
-                            'auditable_id' => $this->getRecord()->id,
-                            'event' => 'admin_user_status_changed',
-                            'old_values' => ['status' => $before->value],
-                            'new_values' => ['status' => $status->value],
-                            'metadata' => ['reason' => (string) $data['reason']],
-                        ]);
-                    });
+                    try {
+                        DB::transaction(function () use ($actor, $status, $before, $data): void {
+                            app(AdminUpdateUserStatusHandler::class)->handle($actor, $this->getRecord()->id, $status);
+                            AuditLog::query()->create([
+                                'actor_id' => $actor->id,
+                                'auditable_type' => User::class,
+                                'auditable_id' => $this->getRecord()->id,
+                                'event' => 'admin_user_status_changed',
+                                'old_values' => ['status' => $before->value],
+                                'new_values' => ['status' => $status->value],
+                                'metadata' => ['reason' => (string) $data['reason']],
+                            ]);
+                        });
+                    } catch (UserCannotBeChangedException $exception) {
+                        $this->data['account_status'] = $before->value;
+                        Notification::make()->danger()
+                            ->title('Не удалось изменить статус')
+                            ->body($exception->getMessage())
+                            ->send();
+
+                        return;
+                    }
                     $this->getRecord()->refresh();
                 }),
             Action::make('savePersonalInline')
@@ -261,10 +272,7 @@ final class EditBackofficeUser extends EditRecord
                     abort_unless($actor !== null && $actor->can('manage-user-system-role', $target), 403);
                     $state = $this->form->getState();
                     $role = UserSystemRoleEnum::tryFrom((string) ($state['requested_system_role'] ?? ''));
-                    if ($role === null || in_array($role, [
-                        UserSystemRoleEnum::SUPERADMIN, UserSystemRoleEnum::SYSTEM,
-                        UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR,
-                    ], true) || $role->numericValue() >= $actor->system_role->numericValue()) {
+                    if ($role === null || ! $actor->system_role->canAssign($role)) {
                         throw ValidationException::withMessages(['requested_system_role' => 'Недопустимая системная роль.']);
                     }
                     if ($role === $target->system_role) {
@@ -710,13 +718,7 @@ final class EditBackofficeUser extends EditRecord
 
                             $roles = [];
                             foreach (UserSystemRoleEnum::cases() as $role) {
-                                // A service/system account must never be assigned
-                                // accidentally through the human user editor.
-                                if ($role !== UserSystemRoleEnum::SUPERADMIN
-                                    && $role !== UserSystemRoleEnum::SYSTEM
-                                    && $role !== UserSystemRoleEnum::MODERATOR
-                                    && $role !== UserSystemRoleEnum::EDITOR
-                                    && $role->numericValue() < $actorRole->numericValue()) {
+                                if ($actorRole->canAssign($role)) {
                                     $roles[$role->value] = $role->label();
                                 }
                             }
@@ -734,14 +736,7 @@ final class EditBackofficeUser extends EditRecord
                     abort_unless($actor !== null && $actor->can('manage-user-system-role', $target), 403);
 
                     $role = UserSystemRoleEnum::tryFrom((string) ($data['new_system_role'] ?? ''));
-                    if ($role === null
-                        || in_array($role, [
-                            UserSystemRoleEnum::SUPERADMIN,
-                            UserSystemRoleEnum::SYSTEM,
-                            UserSystemRoleEnum::MODERATOR,
-                            UserSystemRoleEnum::EDITOR,
-                        ], true)
-                        || $role->numericValue() >= $actor->system_role->numericValue()) {
+                    if ($role === null || ! $actor->system_role->canAssign($role)) {
                         throw ValidationException::withMessages([
                             'new_system_role' => 'Недопустимая системная роль.',
                         ]);

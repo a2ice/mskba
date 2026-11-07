@@ -109,17 +109,13 @@ final class BackofficeUserResource extends Resource
         $query = parent::getEloquentQuery()
             ->whereNull('canonical_user_id');
 
-        // Superadmins may edit their own profile, but neither other
-        // superadmins nor system accounts are delegation targets.
+        // Only a superadmin can manage service accounts and their role.
         $actor = auth('web')->user()?->canonical();
         $role = $actor?->system_role;
         if ($role === UserSystemRoleEnum::SUPERADMIN) {
             return $query->where(function (Builder $query) use ($actor): void {
                 $query->whereKey($actor->id)
-                    ->orWhereNotIn('system_role', [
-                        UserSystemRoleEnum::SUPERADMIN->value,
-                        UserSystemRoleEnum::SYSTEM->value,
-                    ]);
+                    ->orWhere('system_role', '!=', UserSystemRoleEnum::SUPERADMIN->value);
             });
         }
         if ($role === UserSystemRoleEnum::ADMIN) {
@@ -252,21 +248,14 @@ final class BackofficeUserResource extends Resource
                                         Tab::make('Системные')
                                             ->schema([
                                                 Section::make('Системная роль пользователя')
-                                                    ->description('Смена роли подтверждается отдельно и может изменить доступные права. Служебные и старшие роли не назначаются.')
+                                                    ->description('Смена роли подтверждается отдельно. Назначить или снять роль системного пользователя может только суперадминистратор.')
                                                     ->schema([
                                                         Select::make('requested_system_role')->label('Системная роль')
                                                             ->options(function (?User $record): array {
                                                                 $actorRole = auth('web')->user()?->canonical()->system_role;
                                                                 $options = [];
                                                                 foreach (UserSystemRoleEnum::cases() as $role) {
-                                                                    if ($actorRole !== null
-                                                                        && ! in_array($role, [
-                                                                            UserSystemRoleEnum::SUPERADMIN,
-                                                                            UserSystemRoleEnum::SYSTEM,
-                                                                            UserSystemRoleEnum::MODERATOR,
-                                                                            UserSystemRoleEnum::EDITOR,
-                                                                        ], true)
-                                                                        && $role->numericValue() < $actorRole->numericValue()) {
+                                                                    if ($actorRole?->canAssign($role)) {
                                                                         $options[$role->value] = $role->label();
                                                                     }
                                                                 }
