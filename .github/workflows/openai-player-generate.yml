@@ -59,7 +59,7 @@ jobs:
 
             model_value=""
             if [[ -n "${image_path}" && -f "${image_path}" ]]; then
-              model_value="${model:-gpt-image-2}"
+              model_value="${model:-gpt-image-2.5-sunburst}"
             fi
 
             metadata_sha="$(printf '%s\n%s\n%s\n%s' \
@@ -183,7 +183,7 @@ jobs:
 
             echo "${error_message}" >&2
             trap - ERR
-            notify_failure generation_failed "${error_message}"
+            notify_failure generation_failed "Сервис AI не смог создать аватар. Попробуйте позже."
             exit 1
           fi
 
