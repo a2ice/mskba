@@ -21,16 +21,21 @@ final class MskbaAppPlayerLogoDialogContractTest extends TestCase
         self::assertStringNotContainsString('name="generation_logo_source"', $fields);
 
         self::assertStringContainsString('data-player-logo-preview', $fields);
+        self::assertStringContainsString('data-player-logo-preview-open', $fields);
+        self::assertStringContainsString('data-team-logo-url=', $fields);
+        self::assertStringContainsString('data-saved-logo-mode=', $fields);
         self::assertStringContainsString('data-logo-placeholder=', $fields);
         self::assertStringContainsString('width="35" height="35"', $fields);
         self::assertStringContainsString('data-saved-logo-id=', $fields);
         self::assertStringContainsString('data-player-logo-picker-open', $fields);
         self::assertStringContainsString('aria-controls="app-player-logo-dialog"', $fields);
         self::assertStringContainsString('flex:0 0 35px;width:35px;height:35px', $css);
-        self::assertStringContainsString('width:100%;height:100%;max-width:100%;max-height:100%;object-fit:cover', $css);
+        self::assertStringContainsString('width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain', $css);
         self::assertStringContainsString('.check-label input{width:20px;height:20px;margin:0;accent-color:var(--accent)', $design);
-        self::assertStringContainsString("withLogo ? 'custom' : 'none'", $js);
+        self::assertStringContainsString("withLogo ? logoMode : 'none'", $js);
         self::assertStringContainsString('logoCheckbox?.addEventListener(\'change\', refreshMode)', $js);
+        self::assertStringContainsString('resolvePlayerTeamLogoPreview', $js);
+        self::assertStringContainsString("logoMode = 'team'", $js);
         self::assertStringNotContainsString('data-player-logo-source', $js);
     }
 
@@ -50,5 +55,10 @@ final class MskbaAppPlayerLogoDialogContractTest extends TestCase
         self::assertStringContainsString('logoDialog.showModal()', $js);
         self::assertStringContainsString('logoDialog.close()', $js);
         self::assertStringContainsString("logoDialog?.addEventListener('close'", $js);
+        self::assertStringContainsString('id="app-player-logo-view-dialog"', $dialog);
+        self::assertStringContainsString('aria-labelledby="app-player-logo-view-title"', $dialog);
+        self::assertStringContainsString('data-player-logo-view-image', $dialog);
+        self::assertStringContainsString('>Логотип команды</h2>', $dialog);
+        self::assertStringContainsString('viewDialog.showModal()', $js);
     }
 }
