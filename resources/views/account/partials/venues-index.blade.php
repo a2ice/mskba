@@ -63,10 +63,10 @@
                     @endif
                 </div>
                 <div class="account-contracts-workspace__actions">
-                    <a class="account-contracts-workspace__primary" href="{{ route('account.venues.show', $venue->routeIdentifier()) }}">Открыть</a>
+                    <a class="account-contracts-workspace__primary" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Открыть</a>
                     <button type="button" class="account-contracts-workspace__secondary" data-contract-dialog-open="venue-contract-{{ $venue->id }}">Контракт</button>
-                    @if($legacy?->canEdit)
-                        <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}">Редактировать</a>
+                    @if($editUrl !== null)
+                        <a class="account-contracts-workspace__secondary" href="{{ $editUrl }}">Редактировать</a>
                     @endif
                     @if($legacy?->canEditSchedule)
                         <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}">Расписание</a>
