@@ -31,6 +31,27 @@ final class PlayerCharacterGenerationPromptBuilder
             default => 'medium bust with a natural, moderately rounded upper-torso contour',
         } : null;
 
+        // The image model sees opaque enum identifiers otherwise. Translate
+        // only actually selected accessories into precise visible placements.
+        $accessoryDescriptions = [
+            'elbow_left' => 'A distinct athletic elbow pad on the PLAYER\'S LEFT elbow (viewer\'s right), centered on the elbow joint, not on the wrist.',
+            'elbow_right' => 'A distinct athletic elbow pad on the PLAYER\'S RIGHT elbow (viewer\'s left), centered on the elbow joint, not on the wrist.',
+            'wristband_left' => 'A fabric wrist sweatband on the PLAYER\'S LEFT wrist (viewer\'s right), below the forearm.',
+            'wristband_right' => 'A fabric wrist sweatband on the PLAYER\'S RIGHT wrist (viewer\'s left), below the forearm.',
+            'knee_left' => 'An athletic kneepad around the PLAYER\'S LEFT knee (viewer\'s right), not above the thigh.',
+            'knee_right' => 'An athletic kneepad around the PLAYER\'S RIGHT knee (viewer\'s left), not above the thigh.',
+            'headband' => 'MANDATORY: a clearly visible athletic fabric sweatband wrapped horizontally around the forehead at the hairline, immediately above the eyebrows. Show its front band against the forehead, in front of the hair, with sufficient contrast to be identifiable in the front view. It must be on the HEAD, never on an elbow, upper arm or wrist.',
+        ];
+        $selectedAccessories = [];
+        foreach ((array) ($appearance['attributes'] ?? []) as $attribute) {
+            if (is_string($attribute) && isset($accessoryDescriptions[$attribute])) {
+                $selectedAccessories[$attribute] = '- '.$accessoryDescriptions[$attribute];
+            }
+        }
+        $accessoryInstructions = $selectedAccessories
+            ? implode("\n", array_values($selectedAccessories))
+            : '- No sports accessories are selected.';
+
         $description = [
             'gender' => $payload['gender'] ?? null,
             'height_cm' => $payload['height_cm'] ?? null,
@@ -113,7 +134,9 @@ Clothing - SELECTED UNIFORM IS AUTHORITATIVE:
 - sleeve_style = "sleeved": use a basketball jersey with short athletic sleeves, visibly covering the upper arms. sleeve_style = "sleeveless": use a sleeveless tank jersey.
 - For every source, keep shirt and shorts coordinated. A source with no configured team kit has already been normalized to neutral by the server; never guess a palette from the team name.
 {$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
-- Apply requested shoes and ONLY the explicitly requested sports attributes.
+- Apply the requested shoes and the following SELECTED accessories exactly at their specified locations. Selected accessories are mandatory clothing items, not optional decorative suggestions. Do not confuse wrist, elbow, knee or head placement.
+{$accessoryInstructions}
+- Never add unselected accessories or silently omit selected ones.
 
 OUTPUT REQUIREMENTS - STRICT:
 - Background MUST be fully transparent alpha, not white, black, gray, checkerboard, studio, floor, gradient, or scenery.

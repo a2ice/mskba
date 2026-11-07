@@ -134,7 +134,9 @@
 
 /* Task 056: one calibrated 0–225 cm scale for labels, marker, and rendered height. */
 .app-player-workspace__stage::before{display:none}
-.app-player-workspace__scale{inset:8% 0 10% 0;width:auto;pointer-events:none;z-index:2;font-size:11px}
+.app-player-workspace__scale{inset:8% 0 10% 0;width:auto;pointer-events:none;z-index:1;font-size:11px}
+/* Height lines stay behind the transparent player sprite, labels remain readable at left. */
+.app-player-workspace__figure{z-index:2;pointer-events:none}
 .app-player-workspace__scale-tick{position:absolute;left:0;right:0;display:flex;align-items:center;gap:4px;transform:translateY(50%)}
 .app-player-workspace__scale-tick span{display:block;width:41px;padding-left:6px;flex:none;white-space:nowrap;color:#64768b}
 .app-player-workspace__scale-tick::after{content:"";border-top:1px solid #bfcddb80;flex:1;min-width:0}
@@ -243,3 +245,8 @@
 .app-player-workspace__topup-payment button[disabled]{opacity:.6;cursor:not-allowed;justify-self:start}
 @media(max-width:1180px){.app-player-workspace__generation-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:570px){.app-player-workspace__generation-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.app-player-workspace__topup-head,.app-player-workspace__topup-body{padding:16px}.app-player-workspace__topup-head h3{font-size:17px}}
+
+/* Compact view/edit control beside a saved player uniform. */
+.app-player-workspace__uniform-design-controls{display:flex;align-items:center;gap:8px;min-width:0}
+.app-player-workspace__uniform-design-controls>.select-control{flex:1 1 auto;min-width:0}
+.app-player-workspace__uniform-design-controls>[data-player-uniform-view]{flex:0 0 auto;min-height:42px;padding:9px 11px;white-space:nowrap}

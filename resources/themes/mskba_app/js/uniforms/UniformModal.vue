@@ -37,7 +37,7 @@ function backdrop(event) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="mskba-modal mskba-uniform-dialog" aria-labelledby="mskba-uniform-modal-title"
+  <dialog id="mskba-uniform-dialog" ref="dialog" class="mskba-modal mskba-uniform-dialog" aria-labelledby="mskba-uniform-modal-title"
     @click="backdrop" @close="close(false)">
     <header class="mskba-modal__header app-profile__request-header">
       <h2 id="mskba-uniform-modal-title" tabindex="-1">Мастерская формы</h2>

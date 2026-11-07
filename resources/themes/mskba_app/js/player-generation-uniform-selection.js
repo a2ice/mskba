@@ -4,6 +4,7 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
     const source = workspace.querySelector('[data-player-uniform-source]');
     const team = workspace.querySelector('[data-player-generation-team]');
     const design = workspace.querySelector('[data-player-generation-uniform-design]');
+    const view = workspace.querySelector('[data-player-uniform-view]');
     const teamField = workspace.querySelector('[data-player-uniform-team-field]');
     const designField = workspace.querySelector('[data-player-uniform-design-field]');
     if (!source || !team || !design) return;
@@ -18,6 +19,7 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
         if (designField) designField.hidden = !mineVisible;
         team.disabled = !teamVisible;
         design.disabled = !mineVisible;
+        if (view) view.disabled = !mineVisible || !design.value;
         if (mode === 'neutral') {
             team.value = '';
             design.value = '';
@@ -44,7 +46,19 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
         setMode();
     });
     team.addEventListener('change', onChanged);
-    design.addEventListener('change', onChanged);
+    design.addEventListener('change', () => {
+        if (view) view.disabled = source.value !== 'mine' || !design.value;
+        onChanged();
+    });
+    view?.addEventListener('click', () => {
+        const projectId = Number(design.value);
+        if (source.value !== 'mine' || !Number.isSafeInteger(projectId) || projectId < 1) return;
+        // The editor loads the selected owned project through its existing
+        // authorization endpoint, then saves via PUT without navigation.
+        window.dispatchEvent(new CustomEvent('mskba:uniform:open', {
+            detail: { context: 'player-avatar', projectId },
+        }));
+    });
 
     const replaceDesigns = (designs, targetId) => {
         const records = (Array.isArray(designs) ? designs : [])
@@ -85,6 +99,9 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
             }
             if (mineOption) { mineOption.disabled = false; mineOption.hidden = false; }
         }
+        // Update the visible name even when a secondary refresh fails.
+        const selectedOption = Array.from(design.options).find(option => option.value === String(saved.id));
+        if (selectedOption) selectedOption.textContent = String(saved.name || selectedOption.textContent);
         source.value = 'mine';
         design.value = String(saved.id);
         setMode();
