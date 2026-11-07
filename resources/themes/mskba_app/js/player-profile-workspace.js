@@ -352,7 +352,7 @@ if (workspace) {
         const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - offset);
         window.scrollTo({
             top,
-            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         });
     };
     const avatarStatus = (status, error = false) => {
