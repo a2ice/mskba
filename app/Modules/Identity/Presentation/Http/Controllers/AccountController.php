@@ -55,6 +55,7 @@ use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
@@ -711,8 +712,12 @@ class AccountController extends Controller
         abort_if($participationRole === null, 404);
 
         $playerTeams = collect();
+        $playerUniformDesigns = collect();
         if ($roleEnum === UserParticipationRoleEnum::PLAYER) {
             $identityIds = $user->identityIds();
+            $playerUniformDesigns = UniformDesign::query()
+                ->whereIn('user_id', $identityIds)
+                ->orderBy('name')->get(['id', 'name']);
             $playerTeams = Team::query()
                 ->with('logo')
                 ->whereNull('temporary_for_event_id')
@@ -754,6 +759,7 @@ class AccountController extends Controller
             'playerSkills' => PlayerSelfAssessment::SKILLS,
             'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
             'playerTeams' => $playerTeams,
+            'playerUniformDesigns' => $playerUniformDesigns,
             'generationOffer' => $roleEnum === UserParticipationRoleEnum::PLAYER
                 ? app(GetPlayerAvatarGenerationOffer::class)->handle($user)
                 : null,
