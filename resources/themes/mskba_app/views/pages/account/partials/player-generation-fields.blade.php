@@ -45,6 +45,16 @@
                     @include('account.partials.native-select-chevron')
                 </span>
             </label>
+            <label class="app-player-workspace__field">Кроссовки
+                <span class="select-control">
+                    <select name="character[shoes]" form="player-physical-form">
+                        @foreach($shoesOptions as $value => $label)
+                            <option value="{{ $value }}" @selected(old('character.shoes',$character['shoes'] ?? 'white') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @include('account.partials.native-select-chevron')
+                </span>
+            </label>
             <label class="app-player-workspace__field" data-player-uniform-team-field
                 @if($uniformSource !== 'team') hidden @endif>Команда
                 <span class="select-control">
@@ -67,16 +77,6 @@
                         <option value="">Выберите форму</option>
                         @foreach($uniformDesigns as $design)
                             <option value="{{ $design->id }}" @selected($savedDesignId === (int) $design->id)>{{ $design->name }}</option>
-                        @endforeach
-                    </select>
-                    @include('account.partials.native-select-chevron')
-                </span>
-            </label>
-            <label class="app-player-workspace__field">Кроссовки
-                <span class="select-control">
-                    <select name="character[shoes]" form="player-physical-form">
-                        @foreach($shoesOptions as $value => $label)
-                            <option value="{{ $value }}" @selected(old('character.shoes',$character['shoes'] ?? 'white') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @include('account.partials.native-select-chevron')
