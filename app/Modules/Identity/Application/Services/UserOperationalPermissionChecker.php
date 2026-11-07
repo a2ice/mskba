@@ -13,6 +13,17 @@ final class UserOperationalPermissionChecker
         $user = $user->canonical();
 
         $profiles = app(StaffPermissionProfiles::class);
+        if ($user->system_role === UserSystemRoleEnum::SYSTEM) {
+            if ($user->isBlocked() || $user->trashed()) {
+                return false;
+            }
+
+            return $profiles->allowedForRole($user->system_role, $permission)
+                && (bool) $user->operationalPermissions()
+                    ->where('permission', $permission->value)
+                    ->value('is_allowed');
+        }
+
         if (! $profiles->allowedForRole($user->system_role, $permission)) {
             return false;
         }
@@ -56,7 +67,7 @@ final class UserOperationalPermissionChecker
         }
 
         if ($permission->isBackoffice()) {
-            if (! $user->isConfirmed() || $user->system_role === UserSystemRoleEnum::SYSTEM) {
+            if (! $user->isConfirmed()) {
                 return false;
             }
             // Recovery invariant: a superadmin cannot revoke their own

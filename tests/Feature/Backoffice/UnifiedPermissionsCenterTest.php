@@ -221,22 +221,20 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
     }
 
-    public function test_filament_role_action_rejects_service_and_superadmin_roles(): void
+    public function test_filament_role_action_rejects_superadmin_role(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->user();
         $this->actingAs($super);
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
 
-        foreach ([UserSystemRoleEnum::SYSTEM, UserSystemRoleEnum::SUPERADMIN] as $forbidden) {
-            Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
-                ->callAction('changeSystemRole', data: [
-                    'new_system_role' => $forbidden->value,
-                    'reason' => 'Проверка запрета назначения служебной роли',
-                ])
-                ->assertHasFormErrors(['new_system_role']);
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->callAction('changeSystemRole', data: [
+                'new_system_role' => UserSystemRoleEnum::SUPERADMIN->value,
+                'reason' => 'Проверка запрета назначения роли суперадминистратора',
+            ])
+            ->assertHasFormErrors(['new_system_role']);
 
-            $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
-        }
+        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
     }
 }

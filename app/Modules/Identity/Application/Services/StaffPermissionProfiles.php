@@ -18,6 +18,10 @@ final class StaffPermissionProfiles
     /** @return list<string> */
     public function roleKeys(Role $role): array
     {
+        if ($role === Role::SYSTEM) {
+            return [];
+        }
+
         if ($role === Role::SUPERADMIN) {
             return array_map(static fn (Permission $p): string => $p->value, Permission::cases());
         }
@@ -80,7 +84,7 @@ final class StaffPermissionProfiles
 
         return $this->allowedForRole($role, $permission)
             && ! in_array($permission, [
-                Permission::WALLET_USER_BALANCE_CREDIT,
+                Permission::WALLET_USER_BALANCE_CREDIT, Permission::BACKOFFICE_SYSTEM_ACCESS,
                 Permission::HANDLE_SUPPORT_TICKETS, Permission::REVIEW_PROFILE_CHANGES,
             ], true);
     }
@@ -90,6 +94,22 @@ final class StaffPermissionProfiles
     {
         if ($permission === Permission::WALLET_USER_BALANCE_CREDIT) {
             return in_array($role, [Role::SUPERADMIN, Role::ADMIN], true);
+        }
+        if ($permission === Permission::BACKOFFICE_SYSTEM_ACCESS) {
+            return $role === Role::SYSTEM || $role === Role::SUPERADMIN;
+        }
+        if ($role === Role::SYSTEM) {
+            return in_array($permission, [
+                Permission::BACKOFFICE_BUILDER_VIEW,
+                Permission::BACKOFFICE_BUILDER_EDIT,
+                Permission::BACKOFFICE_BUILDER_PUBLISH,
+                Permission::BACKOFFICE_BUILDER_CSS_VIEW,
+                Permission::BACKOFFICE_BUILDER_CSS_EDIT,
+                Permission::BACKOFFICE_BUILDER_CSS_PUBLISH,
+                Permission::BACKOFFICE_BUILDER_JS_VIEW,
+                Permission::BACKOFFICE_BUILDER_JS_EDIT,
+                Permission::BACKOFFICE_BUILDER_JS_PUBLISH,
+            ], true);
         }
         if ($role === Role::SUPERADMIN || $role === Role::ADMIN) {
             return true;

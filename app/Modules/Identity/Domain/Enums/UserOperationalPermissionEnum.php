@@ -24,6 +24,7 @@ enum UserOperationalPermissionEnum: string
     case OPERATOR_MARKETING_SEND = 'operator.marketing.send';
 
     case BACKOFFICE_ACCESS = 'backoffice.access';
+    case BACKOFFICE_SYSTEM_ACCESS = 'backoffice.system_access';
     case BACKOFFICE_WIDGET_VIEW = 'backoffice.widget.view';
     case BACKOFFICE_WIDGET_CREATE = 'backoffice.widget.create';
     case BACKOFFICE_WIDGET_EDIT = 'backoffice.widget.edit';
@@ -76,6 +77,7 @@ enum UserOperationalPermissionEnum: string
     {
         return [
             self::BACKOFFICE_ACCESS,
+            self::BACKOFFICE_SYSTEM_ACCESS,
             self::BACKOFFICE_WIDGET_VIEW,
             self::BACKOFFICE_WIDGET_CREATE,
             self::BACKOFFICE_WIDGET_EDIT,
@@ -152,6 +154,7 @@ enum UserOperationalPermissionEnum: string
             self::OPERATOR_CONVERSATION_HANDLE => 'Инициировать и вести операторские диалоги',
             self::OPERATOR_MARKETING_SEND => 'Отправлять разрешённые рекламные обращения',
             self::BACKOFFICE_ACCESS => 'Вход в Filament /backoffice',
+            self::BACKOFFICE_SYSTEM_ACCESS => 'Вход системного пользователя в Filament',
             self::BACKOFFICE_WIDGET_VIEW => 'Просмотр виджетов дашборда',
             self::BACKOFFICE_WIDGET_CREATE => 'Создание виджетов дашборда',
             self::BACKOFFICE_WIDGET_EDIT => 'Изменение виджетов дашборда',

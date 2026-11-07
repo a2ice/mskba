@@ -3,6 +3,7 @@
 namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
+use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
@@ -13,6 +14,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -148,6 +150,84 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         $this->assertSame(UserSystemRoleEnum::MANAGER, $target->fresh()->system_role);
         $this->assertDatabaseHas('audit_logs', [
             'auditable_id' => $target->id, 'event' => 'admin_system_role_changed',
+        ]);
+    }
+
+    public function test_superadmin_can_assign_system_role_and_grant_page_builder_access_to_unconfirmed_account(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $target->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($super);
+        $panel = Filament::getPanel('backoffice');
+        Filament::setCurrentPanel($panel);
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm(['requested_system_role' => UserSystemRoleEnum::SYSTEM->value])
+            ->callAction('saveSystemRoleInline', data: ['reason' => 'Назначение роли для работы в конструкторе'])
+            ->assertHasNoFormErrors();
+
+        $target->refresh();
+        $this->assertSame(UserSystemRoleEnum::SYSTEM, $target->system_role);
+        $this->assertFalse($target->canAccessPanel($panel));
+        $this->assertDatabaseHas('audit_logs', [
+            'auditable_id' => $target->id, 'event' => 'admin_system_role_changed',
+        ]);
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm(['backoffice_permissions' => [
+                Permission::BACKOFFICE_SYSTEM_ACCESS->value,
+                Permission::BACKOFFICE_BUILDER_VIEW->value,
+            ]])
+            ->callAction('savePermissionsInline', data: ['reason' => 'Доступ только к конструктору страниц'])
+            ->assertHasNoFormErrors();
+
+        $target->refresh();
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $target->status);
+        $this->assertTrue($target->canAccessPanel($panel));
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_BUILDER_VIEW));
+        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_BUILDER_EDIT));
+        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_VENUE_MANAGE));
+        $this->withoutVite();
+        $this->actingAs($target)->get(BuilderComponentResource::getUrl('index'))->assertOk();
+
+        $target->update(['status' => UserStatusEnum::BLOCKED]);
+        $this->assertFalse($target->fresh()->canAccessPanel($panel));
+    }
+
+    public function test_delegated_admin_cannot_assign_system_role(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        app(GlobalOperationalPermissionManager::class)->sync($super, $admin, [], [
+            Permission::MANAGE_SYSTEM_ROLES->value,
+        ]);
+        $this->assertTrue($admin->can('manage-user-system-role', $target));
+
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        app(\App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler::class)
+            ->handle($admin, $target->id, UserSystemRoleEnum::SYSTEM);
+    }
+
+    public function test_confirmation_rejection_explains_missing_verified_primary_contact(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::ADMIN);
+        $target->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm(['account_status' => UserStatusEnum::CONFIRMED->value])
+            ->callAction('saveGeneralInline', data: ['reason' => 'Проверка подтверждения нового аккаунта'])
+            ->assertHasNoFormErrors();
+
+        Notification::assertNotified('Не удалось изменить статус');
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $target->fresh()->status);
+        $this->assertDatabaseMissing('audit_logs', [
+            'auditable_id' => $target->id, 'event' => 'admin_user_status_changed',
         ]);
     }
 

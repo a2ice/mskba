@@ -47,6 +47,8 @@ class AccessServiceProvider extends ServiceProvider
         Gate::define(
             'manage-user-system-role',
             fn (User $actor, User $target): bool => $actor->isConfirmed()
+                && ($target->system_role !== UserSystemRoleEnum::SYSTEM
+                    || $actor->system_role === UserSystemRoleEnum::SUPERADMIN)
                 && $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)
                 && ! $actor->is($target)
                 && $actor->system_role->numericValue() > $target->system_role->numericValue()

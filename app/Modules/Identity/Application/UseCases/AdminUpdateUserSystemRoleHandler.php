@@ -45,6 +45,7 @@ final class AdminUpdateUserSystemRoleHandler
             $hadOperator = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE);
             $hadSupport = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS);
             $hadProfileReview = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
+            $wasSystem = $target->system_role === UserSystemRoleEnum::SYSTEM;
             $wasBelowReviewRole = ! $target->system_role->atLeast(UserSystemRoleEnum::ADMIN);
             if ($target->system_role === UserSystemRoleEnum::MANAGER && $role !== UserSystemRoleEnum::MANAGER) {
                 // Stale specialist grants must not reactivate upon a later promotion.
@@ -64,7 +65,8 @@ final class AdminUpdateUserSystemRoleHandler
             // is demoted and later promoted back into the staff hierarchy.
             $profiles = app(StaffPermissionProfiles::class);
             foreach ($target->operationalPermissions()->where('is_allowed', true)->get() as $snapshot) {
-                if (! $profiles->allowedForRole($role, $snapshot->permission)) {
+                if ($wasSystem || $role === UserSystemRoleEnum::SYSTEM
+                    || ! $profiles->allowedForRole($role, $snapshot->permission)) {
                     $snapshot->update(['is_allowed' => false]);
                 }
             }
@@ -107,9 +109,8 @@ final class AdminUpdateUserSystemRoleHandler
             || ! $actorRole->atLeast(UserSystemRoleEnum::ADMIN)
             || $actor->id === $target->id
             || $actorRole->numericValue() <= $target->system_role->numericValue()
-            || in_array($role, [UserSystemRoleEnum::SYSTEM, UserSystemRoleEnum::SUPERADMIN,
-                UserSystemRoleEnum::MODERATOR, UserSystemRoleEnum::EDITOR], true)
-            || $role->numericValue() >= $actorRole->numericValue()
+            || ($target->system_role === UserSystemRoleEnum::SYSTEM && $actorRole !== UserSystemRoleEnum::SUPERADMIN)
+            || ! $actorRole->canAssign($role)
             || ! $this->permissionChecker->allows($actor, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES)
         ) {
             throw new AuthorizationException('Недостаточно прав для изменения системной роли пользователя.');
