@@ -31,7 +31,7 @@
                 <span class="select-control">
                     <select data-player-generation-team>
                         @forelse($playerTeams as $team)
-                            <option value="{{ $team->id }}">{{ $team->name }}</option>
+                            <option value="{{ $team->id }}" data-team-logo-url="{{ $team->logo?->publicUrl() }}" data-team-name="{{ $team->name }}">{{ $team->name }}</option>
                         @empty
                             <option value="">Нейтральная форма</option>
                         @endforelse
@@ -54,17 +54,20 @@
         <div class="app-player-workspace__logo-control">
             <label class="check-label app-player-workspace__logo-toggle">
                 <input type="checkbox" data-player-logo-enabled
-                    @checked(($character['generation_logo_mode'] ?? '') === 'custom')>
+                    @checked(in_array(($character['generation_logo_mode'] ?? ''), ['team', 'custom'], true))>
                 <span>С логотипом</span>
             </label>
             <div class="app-player-workspace__logo-options" data-player-logo-options
                 data-saved-logo-id="{{ (int) ($character['generation_custom_logo_id'] ?? 0) }}"
-                @if(($character['generation_logo_mode'] ?? '') !== 'custom') hidden @endif>
-                <span class="app-player-workspace__logo-preview">
+                data-saved-logo-mode="{{ $character['generation_logo_mode'] ?? 'none' }}"
+                @if(!in_array(($character['generation_logo_mode'] ?? ''), ['team', 'custom'], true)) hidden @endif>
+                <button type="button" class="app-player-workspace__logo-preview" data-player-logo-preview-open
+                    aria-label="Увеличить логотип команды" aria-haspopup="dialog"
+                    aria-controls="app-player-logo-view-dialog">
                     <img src="{{ asset('images/team-placeholder.webp') }}" data-player-logo-preview
                         data-logo-placeholder="{{ asset('images/team-placeholder.webp') }}"
                         alt="Логотип не выбран" width="35" height="35" decoding="async">
-                </span>
+                </button>
                 <button type="button" class="app-player-workspace__secondary" data-player-logo-picker-open
                     aria-haspopup="dialog" aria-controls="app-player-logo-dialog">Выбрать логотип</button>
                 <span class="app-player-workspace__logo-selected" data-player-logo-selected aria-live="polite">Логотип не выбран</span>
