@@ -66,3 +66,8 @@ button.app-player-workspace__logo-preview:focus-visible{outline:2px solid var(--
 .app-player-workspace__logo-view-body{display:grid;place-items:center;min-height:160px;padding:22px}
 .app-player-workspace__logo-view-body img{display:block;width:auto;height:auto;max-width:100%;max-height:min(65vh,600px);object-fit:contain}
 .app-player-workspace__logo-item--team .app-player-workspace__logo-choice{border-style:solid}
+
+/* Keep the native conditional controls out of layout and keyboard navigation. */
+[data-player-uniform-team-field][hidden],
+[data-player-uniform-design-field][hidden],
+.app-player-workspace__logo-control[hidden]{display:none!important}

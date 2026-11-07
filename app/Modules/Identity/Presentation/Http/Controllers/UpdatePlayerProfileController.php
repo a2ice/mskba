@@ -313,6 +313,8 @@ final class UpdatePlayerProfileController extends Controller
             'body_type' => $playerProfile?->body_type?->value,
             'character' => $character,
             'generation_team_id' => data_get($character, 'generation_team_id'),
+            'generation_uniform_source' => data_get($character, 'generation_uniform_source'),
+            'generation_uniform_design_id' => data_get($character, 'generation_uniform_design_id'),
             'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
             'generation_logo_mode' => (string) data_get($character, 'generation_logo_mode', 'none'),
             'generation_custom_logo_id' => data_get($character, 'generation_custom_logo_id'),
