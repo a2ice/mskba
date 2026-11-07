@@ -38,11 +38,12 @@
         @forelse($venues as $card)
             @php($venue = $card['venue'])
             @php($legacy = $card['legacy'])
+            @php($editUrl = app(\App\Presentation\Navigation\VenueEditLinkResolver::class)->url(auth()->user(), $venue))
             <article class="account-contracts-workspace__card">
                 <div class="account-contracts-workspace__card-head">
                     <div>
                         <p class="account-contracts-workspace__eyebrow">{{ $venue->type->label() }}</p>
-                        <h2><a href="{{ route('account.venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
+                        <h2><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
                     </div>
                     <span class="account-contracts-workspace__status {{ $card['effective'] ? 'is-active' : '' }}">
                         {{ $card['effective'] ? 'Контракт действует' : ($card['contracts'] !== [] ? 'Контракт не действует' : 'Без контракта') }}
@@ -62,10 +63,10 @@
                     @endif
                 </div>
                 <div class="account-contracts-workspace__actions">
-                    <a class="account-contracts-workspace__primary" href="{{ route('account.venues.show', $venue->routeIdentifier()) }}">Открыть</a>
+                    <a class="account-contracts-workspace__primary" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Открыть</a>
                     <button type="button" class="account-contracts-workspace__secondary" data-contract-dialog-open="venue-contract-{{ $venue->id }}">Контракт</button>
-                    @if($legacy?->canEdit)
-                        <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}">Редактировать</a>
+                    @if($editUrl !== null)
+                        <a class="account-contracts-workspace__secondary" href="{{ $editUrl }}">Редактировать</a>
                     @endif
                     @if($legacy?->canEditSchedule)
                         <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}">Расписание</a>

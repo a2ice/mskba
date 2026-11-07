@@ -6,8 +6,9 @@
     $hasDraftRevision = $venue?->draftRevision !== null;
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Аккаунт', 'url' => route('account')],
-        ['label' => 'Мои площадки', 'url' => route('account.venues')],
-        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
         ['label' => 'Модерация'],
     ];
     $venueSidebarActive = 'status';

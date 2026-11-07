@@ -9,17 +9,24 @@
     @php
         $trail = $isHomePage ? [] : app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
         $contextItems = $isHomePage ? [] : app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve();
-        // Editors get one direct entry point; promo codes live inside venue editing.
+        // Contract editors use the account; backoffice-only superadmins use Filament.
+        // Do not treat a combined canEdit flag as proof of a venue contract.
         if (request()->routeIs('venues.show', 'venues.courts.show')
             && isset($venue)
             && $venue instanceof \App\Modules\Venue\Application\DTO\VenueDetailsDTO
             && $venue->canEdit) {
-            array_unshift($contextItems, [
-                'label' => 'Редактировать',
-                'url' => route('account.venues.edit', $venue->routeIdentifier()),
-                'visible' => true,
-                'active' => false,
-            ]);
+            $venueRecord = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+            $editUrl = $venueRecord
+                ? app(\App\Presentation\Navigation\VenueEditLinkResolver::class)->url(auth()->user(), $venueRecord)
+                : null;
+            if ($editUrl !== null) {
+                array_unshift($contextItems, [
+                    'label' => 'Редактировать',
+                    'url' => $editUrl,
+                    'visible' => true,
+                    'active' => false,
+                ]);
+            }
         }
         $parentUrl = collect(array_slice($trail, 0, -1))->reverse()->first(fn (array $crumb): bool => ! empty($crumb['url']))['url'] ?? route('welcome');
         $showAccountConfirmation = $accountIsUnconfirmed && ! request()->routeIs('account.confirmation');

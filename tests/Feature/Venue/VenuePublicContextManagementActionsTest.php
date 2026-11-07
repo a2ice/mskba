@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
@@ -31,7 +32,7 @@ final class VenuePublicContextManagementActionsTest extends TestCase
         View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
     }
 
-    public function test_public_venue_and_court_pages_keep_edit_in_context_menu_only_for_editor(): void
+    public function test_bootstrap_creator_without_contract_has_no_account_edit_shortcut(): void
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = Venue::factory()->create([
@@ -53,13 +54,13 @@ final class VenuePublicContextManagementActionsTest extends TestCase
         ] as $url) {
             $response = $this->actingAs($owner)->get($url)->assertOk();
             $response->assertSee('aria-label="Контекстные действия"', false)
-                ->assertSee('>Редактировать</a>', false)
+                ->assertDontSee('>Редактировать</a>', false)
                 ->assertDontSee('>Промокоды</a>', false)
                 ->assertDontSee('Управление промокодами')
                 ->assertDontSee('>Найти</button>', false)
                 ->assertDontSee('>Найти</a>', false)
                 ->assertDontSee('app-context-actions__nested', false)
-                ->assertSee('href="'.$editUrl.'"', false)
+                ->assertDontSee('href="'.$editUrl.'"', false)
                 ->assertDontSee('app-entity-edit-link', false)
                 ->assertDontSee('button secondary large" href="'.$editUrl.'"', false);
         }
@@ -80,6 +81,7 @@ final class VenuePublicContextManagementActionsTest extends TestCase
         ]);
         $court = $venue->primaryCourt()->firstOrFail();
         $editUrl = route('account.venues.edit', $venue->routeIdentifier());
+        $backofficeEditUrl = VenueResource::getUrl('edit', ['record' => $venue], panel: 'backoffice');
 
         // A current venue-scoped contract with EDIT, not global admin role,
         // grants the menu action. No completed editor view is required.
@@ -104,15 +106,19 @@ final class VenuePublicContextManagementActionsTest extends TestCase
             route('venues.show', $venue->routeIdentifier()),
             route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]),
         ] as $url) {
-            foreach ([$editor, $superadmin] as $authorized) {
-                $this->actingAs($authorized)->get($url)->assertOk()
-                    ->assertSee('data-context-placeholder="Создание площадки"', false)
-                    ->assertSee('href="'.$editUrl.'">Редактировать</a>', false);
-            }
+            $this->actingAs($editor)->get($url)->assertOk()
+                ->assertSee('data-context-placeholder="Создание площадки"', false)
+                ->assertSee('href="'.$editUrl.'">Редактировать</a>', false)
+                ->assertDontSee('href="'.$backofficeEditUrl.'"', false);
+
+            $this->actingAs($superadmin)->get($url)->assertOk()
+                ->assertSee('href="'.$backofficeEditUrl.'">Редактировать</a>', false)
+                ->assertDontSee('href="'.$editUrl.'"', false);
 
             $this->actingAs($stranger)->get($url)->assertOk()
                 ->assertSee('data-context-placeholder="Создание площадки"', false)
-                ->assertDontSee('href="'.$editUrl.'">Редактировать</a>', false);
+                ->assertDontSee('href="'.$editUrl.'">Редактировать</a>', false)
+                ->assertDontSee('href="'.$backofficeEditUrl.'"', false);
         }
     }
 
@@ -130,6 +136,8 @@ final class VenuePublicContextManagementActionsTest extends TestCase
             ->assertOk()
             ->assertSee('Школа №1794')
             ->assertSee('Редактирование')
+            ->assertSeeInOrder(['Главная', 'Аккаунт', 'Мои контракты', 'Мои площадки', 'Школа №1794'])
+            ->assertSee('href="'.route('account.contracts.venues').'"', false)
             ->assertDontSee('aria-current="page">Страница</span>', false);
     }
 }

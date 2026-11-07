@@ -91,11 +91,29 @@ final class AccountContractsWorkspaceTest extends TestCase
             ->assertSee('venue.group-offers.manage')
             ->assertSee('is-granted', false)
             ->assertSee('is-disabled', false)
-            ->assertSee(route('account.venues.group-offers.index', ['venue' => $hall->id]), false);
+            ->assertSee(route('account.venues.group-offers.index', ['venue' => $hall->id]), false)
+            ->assertSee('href="'.route('venues.show', $hall->routeIdentifier()).'"', false)
+            ->assertDontSee('href="'.route('account.venues.show', $hall->routeIdentifier()).'"', false);
 
         $this->get(route('account.contracts.venues', ['specialization' => 'school']))
             ->assertOk()->assertDontSee('Зал Сокол');
         $this->get(route('account.venues'))->assertRedirect(route('account.contracts.venues'));
+        $this->get(route('account.venues.show', $hall->routeIdentifier()))
+            ->assertRedirect(route('account.contracts.venues'));
+    }
+
+    public function test_active_edit_contract_links_to_account_editor_but_view_only_contract_does_not(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $editable = Venue::factory()->create(['name' => 'Зал редактирования', 'status' => VenueStatusEnum::CONFIRMED]);
+        $viewOnly = Venue::factory()->create(['name' => 'Зал просмотра', 'status' => VenueStatusEnum::CONFIRMED]);
+        $this->membership($user, $editable, ContractStatusEnum::ACTIVE, [VenuePermissionEnum::EDIT]);
+        $this->membership($user, $viewOnly, ContractStatusEnum::ACTIVE, [VenuePermissionEnum::VIEW]);
+
+        $this->actingAs($user)->get(route('account.contracts.venues'))->assertOk()
+            ->assertSee('href="'.route('account.venues.edit', $editable->routeIdentifier()).'"', false)
+            ->assertDontSee('href="'.route('account.venues.edit', $viewOnly->routeIdentifier()).'"', false)
+            ->assertDontSee('href="'.route('account.venues.show', $editable->routeIdentifier()).'"', false);
     }
 
     public function test_inactive_contract_is_listed_but_never_grants_green_permissions(): void

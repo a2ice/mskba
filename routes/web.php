@@ -1171,7 +1171,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::delete('/venues/{venue}/pricing-rules/{rule}', [VenuePricingRuleController::class, 'destroy'])
                 ->whereNumber('venue')->whereNumber('rule')->name('account.venues.pricing-rules.destroy');
         });
-        Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
+        // Old account venue overview is no longer a separate workspace.
+        // Keep its named URL for existing bookmarks, but redirect to the canonical contract list.
+        Route::get('/venues/{alias}', fn () => redirect()->route('account.contracts.venues'))
+            ->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::get('/venues/{alias}/conditions', [VenueConditionsController::class, 'edit'])->name('account.venues.conditions.edit')->defaults('breadcrumb', 'Условия');
         Route::put('/venues/{alias}/conditions', [VenueConditionsController::class, 'update'])->name('account.venues.conditions.update');

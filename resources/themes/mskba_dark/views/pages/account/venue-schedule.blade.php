@@ -4,8 +4,9 @@
     $venueSidebarActive = 'schedule';
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Аккаунт', 'url' => route('account')],
-        ['label' => 'Мои площадки', 'url' => route('account.venues')],
-        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
         ['label' => 'Расписание'],
     ];
 @endphp
@@ -46,7 +47,7 @@
     @if($venue !== null)
         @include('theme::partials.venues.schedule-editor', [
             'action' => route('account.venues.schedule.update', $venue->routeIdentifier()),
-            'cancelUrl' => route('account.venues.show', $venue->routeIdentifier()),
+            'cancelUrl' => route('account.contracts.venues'),
         ])
     @endif
 @endsection
