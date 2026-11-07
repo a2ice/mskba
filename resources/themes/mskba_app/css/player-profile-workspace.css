@@ -153,8 +153,11 @@
 .app-player-workspace__avatar-feedback:empty{display:none}
 .app-player-workspace__avatar-feedback.is-error{color:#ac3131}
 .app-player-workspace__avatar-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
-.app-player-workspace__avatar-actions .app-player-workspace__secondary{min-height:36px;padding:6px 10px;font-size:12px}
-.app-player-workspace__avatar-primary-label{font-size:12px;font-weight:700;color:var(--accent,#d45b06)}
+.app-player-workspace__avatar-primary-label,.app-player-workspace__avatar-primary-link{font-size:12px;font-weight:700;color:var(--accent,#d45b06)}
+.app-player-workspace__avatar-primary-link,.app-player-workspace__avatar-primary-link:hover,.app-player-workspace__avatar-primary-link:focus{text-decoration:none}
+.app-player-workspace__avatar-primary-link{cursor:pointer}
+.app-player-workspace__avatar-primary-link:focus-visible{outline:2px solid var(--accent,#d45b06);outline-offset:3px;border-radius:2px}
+.app-player-workspace__avatar-primary-link[aria-disabled="true"]{opacity:.6;cursor:wait}
 .app-player-workspace__avatar-actions[hidden],.app-player-workspace__avatar-actions [hidden]{display:none!important}
 @media(max-width:540px){.app-player-workspace__avatar-item{min-width:0}}
 
