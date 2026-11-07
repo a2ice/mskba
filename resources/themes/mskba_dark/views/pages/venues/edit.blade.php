@@ -99,7 +99,7 @@
             'metros' => $metros,
             'action' => route('account.venues.update', $venue->routeIdentifier()),
             'method' => 'PUT',
-            'cancelUrl' => route('account.venues.show', $venue->routeIdentifier()),
+            'cancelUrl' => route('account.contracts.venues'),
             'submitLabel' => 'Сохранить',
             'venueRevision' => $venueRevision ?? null,
             'readOnly' => $hasPendingModeration,
