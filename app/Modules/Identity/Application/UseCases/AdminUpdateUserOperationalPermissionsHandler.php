@@ -35,9 +35,9 @@ final class AdminUpdateUserOperationalPermissionsHandler
             $profiles = app(StaffPermissionProfiles::class);
             $checker = app(UserOperationalPermissionChecker::class);
 
-            if (! $target->system_role->atLeast(UserSystemRoleEnum::ADMIN)
+            if (! $target->system_role->canReceiveProfileReviewPermission()
                 && in_array(UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES, $allowedPermissions, true)) {
-                throw new AuthorizationException('Это право доступно только администраторам.');
+                throw new AuthorizationException('Это право доступно администраторам и системным пользователям.');
             }
 
             // The historical bulk form covers all non-Filament permissions.

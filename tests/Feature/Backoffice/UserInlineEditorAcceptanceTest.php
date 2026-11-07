@@ -5,6 +5,7 @@ namespace Tests\Feature\Backoffice;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
@@ -194,6 +195,76 @@ final class UserInlineEditorAcceptanceTest extends TestCase
 
         $target->update(['status' => UserStatusEnum::BLOCKED]);
         $this->assertFalse($target->fresh()->canAccessPanel($panel));
+    }
+
+    public function test_superadmin_can_assign_admin_permissions_to_system_account(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::SYSTEM);
+        $target->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        $profiles = app(StaffPermissionProfiles::class);
+        foreach (Permission::cases() as $permission) {
+            if (in_array($permission, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_SYSTEM_ACCESS], true)) {
+                continue;
+            }
+
+            $this->assertSame(
+                $profiles->allowedForRole(UserSystemRoleEnum::ADMIN, $permission),
+                $profiles->allowedForRole(UserSystemRoleEnum::SYSTEM, $permission),
+                $permission->value,
+            );
+        }
+        $this->assertSame([], $profiles->roleKeys(UserSystemRoleEnum::SYSTEM));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm([
+                'creation_permissions' => [Permission::CREATE_VENUE->value],
+                'privileged_permissions' => [
+                    Permission::REVIEW_PROFILE_CHANGES->value,
+                    Permission::WALLET_USER_BALANCE_CREDIT->value,
+                ],
+                'backoffice_permissions' => [
+                    Permission::BACKOFFICE_SYSTEM_ACCESS->value,
+                    Permission::BACKOFFICE_VENUE_MANAGE->value,
+                ],
+            ])
+            ->callAction('savePermissionsInline', data: ['reason' => 'Назначение прав системному пользователю'])
+            ->assertHasNoFormErrors();
+
+        $checker = app(UserOperationalPermissionChecker::class);
+        foreach ([Permission::CREATE_VENUE, Permission::REVIEW_PROFILE_CHANGES,
+            Permission::WALLET_USER_BALANCE_CREDIT, Permission::BACKOFFICE_VENUE_MANAGE] as $permission) {
+            $this->assertTrue($checker->allows($target->fresh(), $permission));
+        }
+        $this->assertDatabaseHas('review_permission_cursors', [
+            'user_id' => $target->id, 'permission' => Permission::REVIEW_PROFILE_CHANGES->value,
+        ]);
+        $this->assertFalse($checker->allows($target->fresh(), Permission::CREATE_TEAM));
+    }
+
+    public function test_permission_expansion_preserves_existing_builder_grants_without_activating_dormant_grants(): void
+    {
+        $system = $this->user(UserSystemRoleEnum::SYSTEM);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $system->operationalPermissions()->createMany([
+            ['permission' => Permission::BACKOFFICE_SYSTEM_ACCESS, 'is_allowed' => true],
+            ['permission' => Permission::BACKOFFICE_BUILDER_VIEW, 'is_allowed' => true],
+            ['permission' => Permission::WALLET_USER_BALANCE_CREDIT, 'is_allowed' => true],
+        ]);
+        $admin->operationalPermissions()->create([
+            'permission' => Permission::WALLET_USER_BALANCE_CREDIT, 'is_allowed' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_11_07_160000_disable_dormant_system_permission_grants.php');
+        $migration->up();
+
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($system, Permission::BACKOFFICE_SYSTEM_ACCESS));
+        $this->assertTrue($checker->allows($system, Permission::BACKOFFICE_BUILDER_VIEW));
+        $this->assertFalse($checker->allows($system, Permission::WALLET_USER_BALANCE_CREDIT));
+        $this->assertTrue($checker->allows($admin, Permission::WALLET_USER_BALANCE_CREDIT));
     }
 
     public function test_delegated_admin_cannot_assign_system_role(): void

@@ -51,6 +51,11 @@ enum UserSystemRoleEnum: string
         };
     }
 
+    public function canReceiveProfileReviewPermission(): bool
+    {
+        return $this === self::SYSTEM || $this->atLeast(self::ADMIN);
+    }
+
     public function canAssign(self $role): bool
     {
         return $role->numericValue() < $this->numericValue()
