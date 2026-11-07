@@ -32,7 +32,7 @@ final class MskbaAppPlayerLogoDialogContractTest extends TestCase
         self::assertStringContainsString('flex:0 0 35px;width:35px;height:35px', $css);
         self::assertStringContainsString('width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain', $css);
         self::assertStringContainsString('.check-label input{width:20px;height:20px;margin:0;accent-color:var(--accent)', $design);
-        self::assertStringContainsString("withLogo ? logoMode : 'none'", $js);
+        self::assertStringContainsString("logoMode === 'custom' || (logoMode === 'team' && image.src !== placeholder)", $js);
         self::assertStringContainsString('logoCheckbox?.addEventListener(\'change\', refreshMode)', $js);
         self::assertStringContainsString('resolvePlayerTeamLogoPreview', $js);
         self::assertStringContainsString("logoMode = 'team'", $js);
