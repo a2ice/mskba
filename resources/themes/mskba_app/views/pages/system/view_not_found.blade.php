@@ -3,9 +3,10 @@
     $fallbackTitle = $isVenueEditor ? 'Редактирование: '.$venue->name : 'Раздел в разработке';
     $fallbackBreadcrumbs = $isVenueEditor
         ? [
-            ['label' => 'Площадки', 'url' => route('venues')],
-            ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
-            ['label' => 'Редактирование'],
+            ['label' => 'Аккаунт', 'url' => route('account')],
+            ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+            ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+            ['label' => $venue->name],
         ]
         : null;
 @endphp
