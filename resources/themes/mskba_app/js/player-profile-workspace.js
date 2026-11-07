@@ -476,7 +476,11 @@ if (workspace) {
                 throw new Error('Нет соединения с сервером при проверке генерации. Результат можно проверить позднее.');
             }
             const data = await readJson(response);
-            if (data.status === 'failed') throw new Error(data.message || 'Не удалось сгенерировать аватар.');
+            if (data.status === 'failed') {
+                const failure = new Error(data.message || 'Не удалось сгенерировать аватар.');
+                failure.generationTerminal = true;
+                throw failure;
+            }
             if (data.status === 'completed' && data.image_url) {
                 setImage(data.image_url);
                 let selectedAsPrimary = false;
@@ -493,10 +497,12 @@ if (workspace) {
                     ? 'Готово! Аватар создан и установлен как основной.'
                     : 'Готово! Аватар создан. При необходимости выберите его основным.');
                 requestAnimationFrame(scrollToGeneratedAvatar);
-                return;
+                return true;
             }
             if (data.status === 'completed') {
-                throw new Error('Генерация завершилась, но изображение недоступно. Проверьте библиотеку аватаров.');
+                const failure = new Error('Генерация завершилась, но изображение недоступно. Проверьте библиотеку аватаров.');
+                failure.generationTerminal = true;
+                throw failure;
             }
             if (data.status !== lastStatus) {
                 message(data.status === 'processing'
@@ -506,6 +512,7 @@ if (workspace) {
             }
         }
         message('Генерация ещё выполняется. Результат появится в библиотеке аватаров после обновления страницы.');
+        return false;
     }
 
     const generate = workspace.querySelector('[data-player-generate]');
@@ -521,6 +528,13 @@ if (workspace) {
     });
     let canGenerate = generate ? !generate.disabled : false;
     let isGenerating = false;
+    const loadingIcon = generate?.querySelector('[data-player-generate-spinner]');
+    const setGenerationBusy = busy => {
+        if (!generate) return;
+        if (loadingIcon) loadingIcon.hidden = !busy;
+        generate.setAttribute('aria-busy', String(busy));
+        generate.disabled = busy || !canGenerate;
+    };
     const displayOffer = quote => {
         const available = !!quote.can_generate;
         canGenerate = available;
@@ -566,7 +580,9 @@ if (workspace) {
     generate?.addEventListener('click', async () => {
         if (isGenerating) return;
         isGenerating = true;
-        generate.disabled = true;
+        setGenerationBusy(true);
+        let reservationPending = false;
+        let terminalResultReceived = false;
         try {
             message('Проверяем стоимость и баланс…');
             const quote = await refreshOffer();
@@ -614,9 +630,11 @@ if (workspace) {
             message('Генерация аватара… Отправляем фотографии и параметры.');
             const result = await request(payload);
             if (result.status === 'pending' && result.status_url) {
+                reservationPending = true;
                 message('Генерация аватара… Ожидаем начала обработки.');
-                await refreshOffer().catch(() => {});
-                await pollGeneration(result.status_url,result.generation_id);
+                // Billing reserves the full cost immediately. Do not display a
+                // zero-balance warning until the generation has actually settled.
+                terminalResultReceived = await pollGeneration(result.status_url,result.generation_id);
             } else if (result.image_data_url?.startsWith('data:image/')) {
                 figure.src = result.image_data_url;
                 figure.classList.add('is-generated');
@@ -635,12 +653,20 @@ if (workspace) {
                 throw new Error('Сервер не подтвердил запуск генерации. Проверьте библиотеку аватаров перед повторной попыткой.');
             }
         } catch (error) {
+            if (error.generationTerminal === true) terminalResultReceived = true;
             message('Ошибка генерации: ' + (error.message || 'Не удалось создать аватар.'), true);
             requestAnimationFrame(scrollToGenerationError);
         } finally {
             isGenerating = false;
-            await refreshOffer().catch(() => {});
-            generate.disabled = !canGenerate;
+            // A pending job with a lost connection or polling timeout is still
+            // unresolved. Do not turn its reserved balance into a premature
+            // "insufficient funds" warning or enable a duplicate paid attempt.
+            if (!reservationPending || terminalResultReceived) {
+                await refreshOffer().catch(() => {});
+            } else {
+                canGenerate = false;
+            }
+            setGenerationBusy(false);
         }
     });
     void showExisting();
