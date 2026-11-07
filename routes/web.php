@@ -1179,6 +1179,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/venues/{alias}/conditions', [VenueConditionsController::class, 'edit'])->name('account.venues.conditions.edit')->defaults('breadcrumb', 'Условия');
         Route::put('/venues/{alias}/conditions', [VenueConditionsController::class, 'update'])->name('account.venues.conditions.update');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
+        Route::put('/venues/{alias}/metro', [\App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController::class, 'update'])
+            ->name('account.venues.metro.update');
         Route::get('/venues/{alias}/status', [VenueController::class, 'status'])
             ->name('account.venues.status')
             ->defaults('breadcrumb', 'Модерация площадки');

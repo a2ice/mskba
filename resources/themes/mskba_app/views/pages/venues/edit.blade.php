@@ -8,6 +8,7 @@
     ];
     $route = $venue->routeIdentifier();
     $pending = $venue->hasPendingModerationRequest();
+    $passportLocked = $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED;
     $revision = $venueRevision?->payload ?? [];
     $details = array_replace([
         'name' => $venue->name, 'type' => $venue->type->value,
@@ -29,14 +30,6 @@
     $facilities = (array) ($revision['facilities'] ?? []);
     $specs = (array) ($facilities['characteristics'] ?? $venue->characteristics?->toArray() ?? []);
     $amenityIds = (array) ($facilities['amenity_ids'] ?? $venue->amenities->pluck('id')->all());
-    $tabs = [
-        'general' => 'Основное', 'address' => 'Адрес и метро',
-        'facilities' => 'Удобства', 'courts' => 'Залы и корты',
-        'schedule' => 'Расписание', 'photos' => 'Фотографии',
-        'contracts' => 'Контракты', 'rental' => 'Аренда',
-    ];
-    $canRentalTab = ($editor['rental'] ?? false) || ($editor['offers'] ?? false) || ($editor['memberships'] ?? false);
-    $canTab = static fn (string $key): bool => $key === 'rental' ? $canRentalTab : (bool) ($editor[$key] ?? false);
     $mutateUrl = route('account.venues.update', $route);
     $saveDisabled = $pending;
     $contractManager = null;
@@ -52,23 +45,12 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => $venue->name,
-        'intro' => 'Редактирование площадки',
     ])
 @endsection
 
 @section('account-content')
 <div class="app-venue-editor" data-venue-editor>
-    <nav class="app-venue-editor__tabs app-player-workspace__tabs" aria-label="Разделы редактирования площадки">
-        @foreach($tabs as $key => $label)
-            @if($canTab($key))
-                <a href="{{ route('account.venues.edit', ['alias' => $route, 'tab' => $key]) }}"
-                    @class(['is-active' => $tab === $key])
-                    @if($tab === $key) aria-current="page" @endif>{{ $label }}</a>
-            @else
-                <span class="app-venue-editor__tab-disabled" aria-disabled="true" title="Нет разрешения для этого раздела">{{ $label }}</span>
-            @endif
-        @endforeach
-    </nav>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => $tab])
 
     @if(session('status') || session('photo_status'))
         <div class="app-venue-editor__notice" role="status">{{ session('status') ?: session('photo_status') }}</div>
@@ -82,18 +64,18 @@
         <div class="app-venue-editor__notice app-venue-editor__notice--muted">Площадка на модерации. Изменения временно недоступны.</div>
     @endif
 
-    @if(in_array($tab, ['general','address','facilities'], true))
+    @if($tab === 'address' && $passportLocked)
+        @include('theme::pages.venues.partials.editor-confirmed-address')
+    @elseif(in_array($tab, ['general','address','facilities'], true))
         <form method="POST" action="{{ $mutateUrl }}" class="app-venue-editor__form">
             @csrf @method('PUT')
             <input type="hidden" name="editor_tab" value="{{ $tab }}">
             @if($tab !== 'general')
-                <input type="hidden" name="name" value="{{ $details['name'] }}">
-                <input type="hidden" name="type" value="{{ $details['type'] }}">
+                <input type="hidden" name="name" value="{{ $passportLocked ? $venue->name : $details['name'] }}">
+                <input type="hidden" name="type" value="{{ $passportLocked ? $venue->type->value : $details['type'] }}">
                 <input type="hidden" name="short_description" value="{{ $details['short_description'] }}">
                 <input type="hidden" name="full_description" value="{{ $details['full_description'] }}">
                 <input type="hidden" name="tags" value="{{ implode(', ', $tags) }}">
-                <input type="hidden" name="access_type" value="{{ $details['access_type'] }}">
-                <input type="hidden" name="requires_booking_approval" value="{{ (int) ($details['requires_booking_approval'] ?? false) }}">
             @endif
             <fieldset @disabled($saveDisabled) class="app-venue-editor__fieldset">
                 @if($tab === 'general')
@@ -101,33 +83,33 @@
                         <h2>Основные данные</h2>
                         <div class="app-venue-editor__grid">
                             <label class="app-venue-editor__field">Название площадки
-                                <input type="text" name="name" minlength="3" maxlength="255" required value="{{ old('name', $details['name']) }}">
+                                @if($passportLocked)
+                                    <input type="text" value="{{ $venue->name }}" disabled>
+                                    <input type="hidden" name="name" value="{{ $venue->name }}">
+                                @else
+                                    <input type="text" name="name" minlength="3" maxlength="255" required value="{{ old('name', $details['name']) }}">
+                                @endif
                             </label>
                             <label class="app-venue-editor__field">Тип площадки
-                                <select name="type" required>
-                                    @foreach($types as $item)
-                                        <option value="{{ $item->value }}" @selected(old('type', $details['type']) === $item->value)>{{ $item->label() }}</option>
-                                    @endforeach
-                                </select>
+                                @if($passportLocked)
+                                    <input type="text" value="{{ $venue->type->label() }}" disabled>
+                                    <input type="hidden" name="type" value="{{ $venue->type->value }}">
+                                @else
+                                    <span class="select-control">
+                                        <select name="type" required>
+                                        @foreach($types as $item)
+                                            <option value="{{ $item->value }}" @selected(old('type', $details['type']) === $item->value)>{{ $item->label() }}</option>
+                                        @endforeach
+                                    </select>
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                    </span>
+                                @endif
                             </label>
                             <label class="app-venue-editor__field">URL-алиас
                                 <input type="text" value="{{ $venue->alias }}" disabled>
                             </label>
                             <label class="app-venue-editor__field">Статус модерации
                                 <input type="text" value="{{ $venue->status->label() }}" disabled>
-                            </label>
-                            <label class="app-venue-editor__field">Условия посещения
-                                <select name="access_type">
-                                    @foreach(['unknown' => 'Не указано', 'free' => 'Бесплатно', 'paid' => 'Платно'] as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('access_type', $details['access_type']) === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label class="app-venue-editor__field app-venue-editor__field--check">
-                                <input type="hidden" name="requires_booking_approval" value="0">
-                                <input type="checkbox" name="requires_booking_approval" value="1"
-                                    @checked((bool) old('requires_booking_approval', $details['requires_booking_approval']))>
-                                Требуется подтверждение бронирования
                             </label>
                             <label class="app-venue-editor__field app-venue-editor__field--full">Краткое описание
                                 <textarea name="short_description" rows="3" maxlength="500">{{ old('short_description', $details['short_description']) }}</textarea>
@@ -163,13 +145,11 @@
                             <input type="hidden" name="location[address_selected]" value="1">
                             <input type="hidden" name="location[city_id]" value="{{ old('location.city_id', $location['city_id'] ?? '') }}">
                             <input type="hidden" name="location[district_id]" value="{{ old('location.district_id', $location['district_id'] ?? '') }}">
-                            <label class="app-venue-editor__field app-venue-editor__field--full">Станции метро
-                                <select name="location[metro_station_ids][]" multiple size="6">
-                                    @foreach($metros as $metro)
-                                        <option value="{{ $metro->id }}" @selected(in_array($metro->id, old('location.metro_station_ids', $location['metro_station_ids'] ?? [])))>{{ $metro->name }}@if($metro->lineName) · {{ $metro->lineName }}@endif</option>
-                                    @endforeach
-                                </select>
-                            </label>
+                            <div class="app-venue-editor__field app-venue-editor__field--full">
+                                @include('theme::pages.venues.partials.editor-metro-picker', [
+                                    'selectedMetroIds' => old('location.metro_station_ids', $location['metro_station_ids'] ?? []),
+                                ])
+                            </div>
                         </div>
                     </section>
                 @elseif($tab === 'facilities')
@@ -183,21 +163,27 @@
                                 'surface_condition' => ['Состояние покрытия', [1 => '1 — очень плохое', 2 => '2', 3 => '3', 4 => '4', 5 => '5 — отличное']],
                             ] as $key => [$label, $options])
                                 <label class="app-venue-editor__field">{{ $label }}
-                                    <select name="characteristics[{{ $key }}]">
+                                    <span class="select-control">
+                                        <select name="characteristics[{{ $key }}]">
                                         <option value="">Не указано</option>
                                         @foreach($options as $value => $option)
                                             <option value="{{ $value }}" @selected((string) old('characteristics.'.$key, $specs[$key] ?? '') === (string) $value)>{{ $option }}</option>
                                         @endforeach
                                     </select>
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                    </span>
                                 </label>
                             @endforeach
                             <label class="app-venue-editor__field">Разметка
-                                <select name="characteristics[marking_condition]">
+                                <span class="select-control">
+                                    <select name="characteristics[marking_condition]">
                                     <option value="">Не указана</option>
                                     @foreach(\App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum::cases() as $item)
                                         <option value="{{ $item->value }}" @selected(old('characteristics.marking_condition', $specs['marking_condition'] ?? '') === $item->value)>{{ $item->label() }}</option>
                                     @endforeach
                                 </select>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                         </div>
                     </section>
@@ -205,10 +191,10 @@
                         <h2>Общие удобства площадки</h2>
                         <div class="app-venue-editor__amenities">
                             @forelse($amenities as $amenity)
-                                <label class="app-venue-editor__amenity">
+                                <label class="check-label app-venue-editor__amenity">
                                     <input type="checkbox" name="amenity_ids[]" value="{{ $amenity->id }}"
                                         @checked(in_array($amenity->id, old('amenity_ids', $amenityIds)))>
-                                    {{ $amenity->name }}
+                                    <span>{{ $amenity->name }}</span>
                                 </label>
                             @empty
                                 <p>Удобства пока не добавлены.</p>
@@ -222,14 +208,14 @@
                 </div>
             </fieldset>
         </form>
-        @if($tab === 'general' && ! $pending)
+    @elseif($tab === 'photos')
+        @if(! $pending)
             @include('components.entity-banner-editor', [
                 'model' => $venue,
                 'context' => 'account',
                 'bannerOverride' => app(\App\Modules\Media\Application\Services\VenueBannerDraftManager::class)->preview($venue),
             ])
         @endif
-    @elseif($tab === 'photos')
         <section class="panel app-venue-editor__panel">
             <h2>Фотографии площадки</h2>
             <div class="app-venue-editor__gallery">

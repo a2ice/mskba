@@ -80,3 +80,46 @@
 }
 @media(max-width:440px){.app-venue-editor__gallery{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.app-venue-editor__tabs{scroll-behavior:auto}}
+
+
+/* 615 acceptance: use the actual UI Kit select-control and check-label everywhere. */
+.app-venue-editor .select-control,
+.app-rental-pricing .select-control{display:block;position:relative;width:100%;min-width:0}
+.app-venue-editor .select-control>select,
+.app-rental-pricing .select-control>select{appearance:none;-webkit-appearance:none;background-image:none!important;padding-inline-end:44px!important;cursor:pointer}
+.app-venue-editor .select-control>svg,
+.app-rental-pricing .select-control>svg{position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#5d6b7c}
+.app-venue-editor .select-control>select:disabled+svg,
+.app-rental-pricing .select-control>select:disabled+svg{opacity:.5}
+.app-venue-editor__amenity.check-label{display:flex;align-items:center;gap:12px;min-height:44px;margin:0;padding:0;font-size:14px;font-weight:600;line-height:20px}
+.app-venue-editor__amenity.check-label input{width:20px;height:20px;flex:0 0 20px;margin:0;accent-color:var(--accent)}
+.app-venue-editor__field--check.check-label{display:flex;align-items:center;gap:12px;font-size:14px;line-height:20px;font-weight:600;min-height:44px}
+.app-venue-editor__field--check.check-label input[type=checkbox]{width:20px;height:20px;margin:0;flex:0 0 20px;accent-color:var(--accent)}
+.app-venue-editor__grid>.app-venue-editor__field--check.check-label{align-self:stretch;padding-top:26px;box-sizing:border-box}
+@media(max-width:760px){.app-venue-editor__grid>.app-venue-editor__field--check.check-label{padding-top:0;min-height:44px}}
+@media(forced-colors:active){
+  .app-venue-editor .select-control>select,.app-rental-pricing .select-control>select{appearance:auto;-webkit-appearance:auto}
+  .app-venue-editor .select-control>svg,.app-rental-pricing .select-control>svg{display:none}
+}
+
+/* Searchable metro select with the same 44px controls and a removable chip row. */
+.app-venue-metro{display:grid;gap:12px;min-width:0}
+.app-venue-metro__search{position:relative;min-width:0}
+.app-venue-metro__search>input{width:100%;min-height:44px;box-sizing:border-box;border:1px solid #c8d3de;border-radius:10px;padding:10px 12px;background:#fff;color:#293b50;font-size:14px;font-weight:500;line-height:20px;font-family:inherit}
+.app-venue-metro__search>input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-venue-metro__search>input:disabled{background:#f4f6f8;cursor:not-allowed}
+.app-venue-metro__options{position:absolute;z-index:32;inset:calc(100% + 4px) 0 auto;max-height:230px;overflow:auto;display:grid;padding:4px;
+  background:#fff;border:1px solid #dce3ea;border-radius:11px;box-shadow:0 12px 30px rgba(35,52,71,.15)}
+.app-venue-metro__options[hidden],.app-venue-metro__chips[hidden]{display:none}
+.app-venue-metro__options button{display:block;width:100%;padding:11px 12px;text-align:left;border:0;border-radius:8px;background:transparent;
+  color:#293b50;font-size:13px;font-weight:600;line-height:20px;font-family:inherit;cursor:pointer;min-height:42px}
+.app-venue-metro__options button:hover,.app-venue-metro__options button.is-highlighted{background:#fff2e7;color:#bd520b}
+.app-venue-metro__chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:26px}
+.app-venue-metro__chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:5px 6px 5px 10px;border:1px solid #d7e0e7;
+  border-radius:999px;background:#f7f9fb;color:#293b50;font-size:12px;line-height:18px;font-weight:700}
+.app-venue-metro__dot{display:inline-block;width:9px;height:9px;flex:none;border-radius:50%;background:var(--metro-dot,#64748b)}
+.app-venue-metro__remove{display:grid;place-items:center;flex:none;width:24px;height:24px;border:0;border-radius:50%;padding:0;
+  background:transparent;color:#69798b;font-size:20px;line-height:20px;cursor:pointer}
+.app-venue-metro__remove:hover:not(:disabled){background:#e5ebf1;color:#ac4c10}
+.app-venue-metro__remove:disabled{opacity:.35;cursor:default}
+.app-venue-metro__remove:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

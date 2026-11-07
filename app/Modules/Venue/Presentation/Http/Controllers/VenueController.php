@@ -416,6 +416,19 @@ class VenueController extends Controller
         if (app(ThemeResolver::class)->active() === 'mskba_app') {
             $record = Venue::query()->whereRouteIdentifier($alias)->firstOrFail();
             abort_unless(app(AccountVenueEditorAccess::class)->capabilities($request->user(), $record)['general'], 403);
+            // Conditions are edited through their own handler, not this passport editor.
+            abort_if($request->hasAny(['access_type', 'requires_booking_approval', 'requires_booking']), 403);
+            // Confirmed passport/coordinates are read-only outside Filament. Only
+            // descriptions, tags, facilities and the separate metro action stay editable.
+            if ($record->status === VenueStatusEnum::CONFIRMED) {
+                abort_if(
+                    $request->input('name') !== $record->name
+                    || $request->input('type') !== $record->type->value
+                    || $request->has('location') || $request->has('raw_address')
+                    || $request->input('editor_tab') === 'address',
+                    403,
+                );
+            }
         }
         $editorTab = in_array($request->input('editor_tab'), ['general', 'address', 'facilities'], true)
             ? (string) $request->input('editor_tab') : null;

@@ -9,22 +9,32 @@
         return $raw === null ? '' : $money->format((int) $raw, $currency);
     };
     $canHalves = (int) ($venue->characteristics?->hoops_count ?? 0) >= 2;
+    $editor = app(\App\Modules\Venue\Application\Services\AccountVenueEditorAccess::class)
+        ->capabilities(auth()->user(), $venue);
+    $breadcrumbs = [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'rental'])],
+        ['label' => 'Условия аренды'],
+    ];
 @endphp
-@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name])
+@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name, 'breadcrumbs' => $breadcrumbs])
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => $title,
-        'subtitle' => $venue->name,
+        'heading' => $venue->name,
+        'subtitle' => $title,
     ])
 @endsection
 
 @section('account-content')
-<div class="app-rental-pricing">
+<div class="app-venue-editor" data-venue-editor>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
+    <div class="app-rental-pricing">
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
         <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
-        <a class="button secondary" href="{{ route('account.venues') }}">Мои площадки</a>
     </div>
     @if(session('status'))<p class="app-rental-pricing__success" role="status">{{ session('status') }}</p>@endif
     @if(session('error'))<p class="app-rental-pricing__error" role="alert">{{ session('error') }}</p>@endif
@@ -105,5 +115,6 @@
             'calendarId' => 'venue-calendar',
         ])
     @endif
+</div>
 </div>
 @endsection

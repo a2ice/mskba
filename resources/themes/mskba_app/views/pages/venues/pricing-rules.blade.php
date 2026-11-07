@@ -9,18 +9,29 @@
         ? number_format((int) $editing->value / 100, 2, '.', '')
         : $money->format((int) $editing->value, $currency));
     $preview = session('rule_preview');
+    $editor = app(\App\Modules\Venue\Application\Services\AccountVenueEditorAccess::class)
+        ->capabilities(auth()->user(), $venue);
+    $breadcrumbs = [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'rental'])],
+        ['label' => 'Тарифные условия'],
+    ];
 @endphp
-@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name])
+@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name, 'breadcrumbs' => $breadcrumbs])
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => $title,
-        'subtitle' => $venue->name,
+        'heading' => $venue->name,
+        'subtitle' => $title,
     ])
 @endsection
 
 @section('account-content')
-<div class="app-rental-pricing">
+<div class="app-venue-editor" data-venue-editor>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
+    <div class="app-rental-pricing">
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Базовые цены</a>
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
@@ -267,5 +278,6 @@
         </form>
         <p class="app-rental-pricing__subtle">Предварительный расчёт не создаёт бронь и не проверяет свободные слоты.</p>
     </section>
+</div>
 </div>
 @endsection
