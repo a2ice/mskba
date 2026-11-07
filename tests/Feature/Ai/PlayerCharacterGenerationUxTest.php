@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -172,6 +173,65 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             data_get($profile->extra, 'character.attributes'),
         );
         $this->assertFalse((bool) data_get($profile->extra, 'character.with_team_logo'));
+    }
+
+    public function test_generation_saves_owned_uniform_selection_even_before_face_references_exist(): void
+    {
+        $user = $this->player();
+        $design = UniformDesign::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Black and yellow',
+            'primary_color' => '#111924',
+            'secondary_color' => '#FFCC00',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeved',
+            'logo_source' => 'none',
+            'editor_version' => 1,
+        ]);
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $design->id,
+            'generation_logo_mode' => 'none',
+        ])->assertUnprocessable()->assertJsonPath('code', 'face_references_missing');
+
+        $character = (array) data_get($user->playerProfile()->firstOrFail()->fresh()->extra, 'character');
+        $this->assertSame('mine', $character['generation_uniform_source']);
+        $this->assertSame($design->id, $character['generation_uniform_design_id']);
+        $this->assertNull($character['generation_team_id']);
+    }
+
+    public function test_foreign_uniform_cannot_be_used_for_paid_generation(): void
+    {
+        $owner = $this->player();
+        $other = $this->player();
+        $foreign = UniformDesign::query()->create([
+            'user_id' => $other->id,
+            'name' => 'Чужая форма',
+            'primary_color' => '#111924',
+            'secondary_color' => '#FFCC00',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeveless',
+            'logo_source' => 'none',
+            'editor_version' => 1,
+        ]);
+
+        $this->actingAs($owner)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $foreign->id,
+        ])->assertUnprocessable()->assertJsonPath('code', 'uniform_design_unavailable');
+        $this->assertNull(data_get($owner->playerProfile()->firstOrFail()->fresh()->extra, 'character.generation_uniform_design_id'));
+    }
+
+    public function test_team_uniform_requires_explicit_team_selection(): void
+    {
+        $user = $this->player();
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'team',
+        ])->assertUnprocessable()->assertJsonPath('code', 'uniform_team_required');
     }
 
     public function test_generation_quote_uses_current_pricing_catalog(): void
