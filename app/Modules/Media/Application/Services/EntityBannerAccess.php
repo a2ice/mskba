@@ -24,6 +24,7 @@ use App\Modules\Tournament\Application\Services\TournamentAccess;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -69,9 +70,8 @@ final class EntityBannerAccess
                 && app(TeamManagementAccess::class)->allows($entity, $actor, TeamPermissionEnum::EDIT_SETTINGS),
             $entity instanceof Tournament => $actor !== null
                 && app(TournamentAccess::class)->allows($entity, $actor, TournamentPermissionEnum::MANAGE_DESCRIPTION),
-            $entity instanceof Venue => $actor !== null
-                && ! $entity->hasPendingModerationRequest()
-                && app(VenueAccessResolver::class)->canEdit($user, $entity, $actor),
+            $entity instanceof Venue => app(AccountVenueEditorAccess::class)
+                ->capabilities($user, $entity)['photos'],
             default => false,
         };
     }

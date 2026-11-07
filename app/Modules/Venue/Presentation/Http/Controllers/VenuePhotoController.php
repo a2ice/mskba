@@ -4,6 +4,8 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Venue\Application\Services\AccountVenueEditorAccess;
+use App\Presentation\Theming\ThemeResolver;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
 use App\Modules\Venue\Application\UseCases\ShowEditableVenueHandler;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -22,6 +24,7 @@ final class VenuePhotoController extends Controller
         } catch (\Exception $exception) {
             abort($exception->getCode() ?: 404, $exception->getMessage());
         }
+        $this->assertAppEditorAccess($request, $venue);
         $file = $request->file('photo');
         $path = $file?->getRealPath();
         $contents = is_string($path) ? file_get_contents($path) : false;
@@ -53,6 +56,7 @@ final class VenuePhotoController extends Controller
         } catch (\Exception $exception) {
             abort($exception->getCode() ?: 404, $exception->getMessage());
         }
+        $this->assertAppEditorAccess($request, $venue);
         $gallery->activate($venue, $photo, $actor);
 
         if ($request->expectsJson()) {
@@ -70,6 +74,7 @@ final class VenuePhotoController extends Controller
         } catch (\Exception $exception) {
             abort($exception->getCode() ?: 404, $exception->getMessage());
         }
+        $this->assertAppEditorAccess($request, $venue);
         $gallery->delete($venue, $photo, $actor);
 
         if ($request->expectsJson()) {
@@ -77,6 +82,15 @@ final class VenuePhotoController extends Controller
         }
 
         return back()->with('photo_status', 'Фотография удалена.');
+    }
+
+    private function assertAppEditorAccess(Request $request, Venue $venue): void
+    {
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            abort_unless(
+                app(AccountVenueEditorAccess::class)->capabilities($request->user(), $venue)['photos'], 403,
+            );
+        }
     }
 
     /** @return array<string, mixed> */

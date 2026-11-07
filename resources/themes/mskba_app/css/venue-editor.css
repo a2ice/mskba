@@ -1,0 +1,82 @@
+/* Account venue editor — the same geometry, tab scale, and form language as the player workspace. */
+.app-venue-editor{display:grid;gap:16px;min-width:0;color:var(--text,#24364c)}
+.app-venue-editor__tabs{position:sticky;top:var(--app-sticky-offset,calc(var(--header-height) + var(--context-bar-height)));z-index:19;
+  display:flex;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding:10px 12px;border:1px solid #dce3ea;border-radius:14px;
+  background:rgba(255,255,255,.97);box-shadow:0 3px 12px rgba(25,41,57,.045);scrollbar-width:thin}
+.app-venue-editor__tabs a,.app-venue-editor__tab-disabled{flex:0 0 auto;display:inline-flex;align-items:center;min-height:42px;box-sizing:border-box;
+  padding:9px 15px;border:1px solid transparent;border-radius:11px;color:#405165;background:#f4f7fa;
+  text-decoration:none;font-weight:700;font-size:14px;white-space:nowrap}
+.app-venue-editor__tabs a.is-active{background:#fff4eb;border-color:#f0c7ab;color:#be500a}
+.app-venue-editor__tabs a:hover:not(.is-active){border-color:#d9e1e9}
+.app-venue-editor__tabs a:focus-visible{outline:2px solid var(--accent,#ba560d);outline-offset:2px}
+.app-venue-editor__tab-disabled{opacity:.47;cursor:not-allowed}
+.app-venue-editor__form,.app-venue-editor__fieldset{display:grid;gap:16px;min-width:0}
+.app-venue-editor__fieldset{border:0;padding:0;margin:0;min-width:0}
+.app-venue-editor__panel{display:grid;gap:18px;padding:22px;border:1px solid #dce3ea;border-radius:16px;background:#fff;
+  box-shadow:0 3px 12px rgba(25,41,57,.035);min-width:0}
+.app-venue-editor__panel>h2,.app-venue-editor__panel-head h2{margin:0;color:#24364c;font-size:20px;line-height:1.3;font-weight:750}
+.app-venue-editor__panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.app-venue-editor__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.app-venue-editor__field{display:grid;align-content:start;gap:7px;min-width:0;color:#293b50;font-size:13px;font-weight:700}
+.app-venue-editor__field--full{grid-column:1/-1}
+.app-venue-editor__field input:not([type=checkbox]),.app-venue-editor__field :is(select,textarea),
+.app-venue-editor__time-range input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;border:1px solid #c8d3de;
+  border-radius:10px;padding:9px 12px;background:#fff;color:#293b50;font-size:14px;font-weight:500;line-height:1.4;font-family:inherit}
+.app-venue-editor__field textarea{resize:vertical}
+.app-venue-editor__field select[multiple]{min-height:120px}
+.app-venue-editor__field :is(input,select,textarea):disabled{background:#f4f6f8;color:#67798a;cursor:not-allowed}
+.app-venue-editor__field :is(input,select,textarea):focus-visible,.app-venue-editor__link:focus-visible,
+.app-venue-editor__feature:focus-visible{outline:2px solid var(--accent,#ba560d);outline-offset:2px}
+.app-venue-editor__field--check,.app-venue-editor__amenity{display:flex;align-items:center;gap:10px;min-height:44px}
+.app-venue-editor__field--check input[type=checkbox],.app-venue-editor__amenity input{width:18px;height:18px;accent-color:var(--accent,#ba560d);flex:none}
+.app-venue-editor__amenities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px}
+.app-venue-editor__amenity{font-size:14px;color:#33485c}
+.app-venue-editor__actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.app-venue-editor__actions .button,.app-venue-editor__panel .button{min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+.app-venue-editor__notice,.app-venue-editor__error{padding:13px 16px;border:1px solid #c8dfd0;border-radius:12px;
+  color:#21643f;background:#ecf8ef;font-size:14px}
+.app-venue-editor__error{color:#8d2929;border-color:#edb6b6;background:#fff1f1}
+.app-venue-editor__notice--muted{color:#65521e;background:#fff8e9;border-color:#e6d4a3}
+.app-venue-editor__gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.app-venue-editor__photo{overflow:hidden;min-width:0;border:1px solid #dce3ea;border-radius:12px;background:#f7f9fb}
+.app-venue-editor__photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.app-venue-editor__photo-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px}
+.app-venue-editor__photo-actions strong{color:#a6470e;font-size:13px}
+.app-venue-editor__photo-actions form{margin:0}
+.app-venue-editor__upload{display:flex;align-items:end;flex-wrap:wrap;gap:12px}
+.app-venue-editor__upload .app-venue-editor__field{flex:1 1 250px}
+.app-venue-editor__link{border:0;background:transparent;color:#ad4b0c;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+.app-venue-editor__court-list,.app-venue-editor__feature-list{display:grid;gap:10px}
+.app-venue-editor__court,.app-venue-editor__feature{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 15px;border-radius:11px;border:1px solid #dce3ea;background:#f8fafc;color:#293b50}
+.app-venue-editor__court strong{font-size:15px}.app-venue-editor__court p{margin:5px 0 0;color:#627489;font-size:13px}
+.app-venue-editor__feature{text-decoration:none;font-weight:700}
+.app-venue-editor__feature:hover:not(.is-disabled){border-color:#d2b39e;color:#ae4d0d}
+.app-venue-editor__feature.is-disabled{opacity:.5;cursor:not-allowed}
+.app-venue-editor__feature small{font-size:12px;font-weight:500;color:#617489}
+.app-venue-editor__week{display:grid;gap:12px}
+.app-venue-editor__day{display:grid;gap:10px;border-top:1px solid #e0e7ee;padding-top:13px}
+.app-venue-editor__day-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-venue-editor__day h3{margin:0;font-size:15px;color:#293b50}
+.app-venue-editor__time-range{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px;margin:8px 0}
+.app-venue-editor__time-range label{display:grid;gap:5px;font-size:12px;color:#53677b;font-weight:700}
+.app-venue-editor__exceptions{display:grid;gap:12px}
+.app-venue-editor__exception{border:1px solid #dce3ea;border-radius:12px;padding:15px;display:grid;gap:12px}
+.app-venue-editor__exception>.app-venue-editor__field{max-width:260px}
+.app-venue-editor__muted{color:#8492a0;font-size:13px;margin:0}
+.app-venue-editor__suggestions{position:absolute;z-index:21;left:0;right:0;top:100%;display:grid;background:#fff;
+  box-shadow:0 10px 28px #23344725;border:1px solid #dce3ea;border-radius:10px;max-height:220px;overflow-y:auto}
+.app-venue-editor__field:has([data-venue-editor-address]){position:relative}
+.app-venue-editor__suggestions[hidden]{display:none}
+.app-venue-editor__suggestions button{background:none;border:0;border-bottom:1px solid #e8edf1;cursor:pointer;text-align:left;padding:12px;font-size:13px;color:#293b50}
+.app-venue-editor__suggestions button:hover{background:#fff4eb}
+@media(max-width:760px){
+  .app-venue-editor__tabs{top:calc(var(--app-sticky-offset,124px) + 54px);margin-inline:-4px;padding:8px}
+  .app-venue-editor__tabs a,.app-venue-editor__tab-disabled{font-size:13px;padding:8px 12px;min-height:40px}
+  .app-venue-editor__grid,.app-venue-editor__amenities{grid-template-columns:1fr}
+  .app-venue-editor__panel{padding:16px;gap:14px}
+  .app-venue-editor__gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-venue-editor__time-range{grid-template-columns:1fr 1fr}.app-venue-editor__time-range button{grid-column:1/-1;justify-self:start}
+}
+@media(max-width:440px){.app-venue-editor__gallery{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.app-venue-editor__tabs{scroll-behavior:auto}}

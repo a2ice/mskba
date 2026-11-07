@@ -841,8 +841,11 @@ class AccountController extends Controller
         ]);
     }
 
-    public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response
+    public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response|RedirectResponse
     {
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            return redirect()->route('account.venues.edit', ['alias' => $alias, 'tab' => 'schedule']);
+        }
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
             $venue = $showVenueSchedule->handle($alias, $user);
@@ -893,13 +896,15 @@ class AccountController extends Controller
             );
         } catch (\Exception $e) {
             return redirect()
-                ->route('account.venues.schedule.edit', $alias)
+                ->route(app(ThemeResolver::class)->active() === 'mskba_app' ? 'account.venues.edit' : 'account.venues.schedule.edit',
+                    app(ThemeResolver::class)->active() === 'mskba_app' ? ['alias' => $alias, 'tab' => 'schedule'] : $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
 
         return redirect()
-            ->route('account.venues.schedule.edit', $alias)
+            ->route(app(ThemeResolver::class)->active() === 'mskba_app' ? 'account.venues.edit' : 'account.venues.schedule.edit',
+                app(ThemeResolver::class)->active() === 'mskba_app' ? ['alias' => $alias, 'tab' => 'schedule'] : $alias)
             ->with('status', 'Расписание сохранено.');
     }
 
