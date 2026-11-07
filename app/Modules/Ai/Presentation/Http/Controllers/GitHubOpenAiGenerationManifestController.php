@@ -4,6 +4,7 @@ namespace App\Modules\Ai\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Ai\Application\Services\PlayerCharacterGenerationPromptBuilder;
+use App\Modules\Ai\Infrastructure\Support\OpenAiPlayerCharacterImageModel;
 use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
@@ -67,7 +68,7 @@ final class GitHubOpenAiGenerationManifestController extends Controller
                 'generation' => $generation->public_id,
             ]),
             'openai' => [
-                'model' => (string) config('services.openai.image_model', 'gpt-image-2'),
+                'model' => OpenAiPlayerCharacterImageModel::configured(),
                 'size' => (string) config('services.openai.image_size', '1024x1536'),
                 'quality' => (string) config('services.github_openai.image_quality', 'high'),
                 'background' => 'transparent',
