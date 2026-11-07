@@ -561,9 +561,22 @@ if (workspace) {
             const payload = new FormData(form);
             payload.set('_method','PATCH');
             payload.set('mutation','generate_2d');
+            const source = workspace.querySelector('[data-player-uniform-source]')?.value || 'neutral';
             const team = workspace.querySelector('[data-player-generation-team]');
-            if (team?.value && team.value !== '__custom__') payload.set('generation_team_id',team.value);
-            const mode = workspace.dataset.playerGenerationLogoMode || 'none';
+            const design = workspace.querySelector('[data-player-generation-uniform-design]');
+            if (!['neutral', 'team', 'mine'].includes(source)) {
+                throw new Error('Выберите форму перед генерацией.');
+            }
+            payload.set('generation_uniform_source', source);
+            if (source === 'team') {
+                if (!team?.value) throw new Error('Выберите команду для формы.');
+                payload.set('generation_team_id', team.value);
+            }
+            if (source === 'mine') {
+                if (!design?.value) throw new Error('Выберите сохранённую форму.');
+                payload.set('generation_uniform_design_id', design.value);
+            }
+            const mode = source === 'mine' ? 'none' : (workspace.dataset.playerGenerationLogoMode || 'none');
             if (mode === 'custom' && !workspace.dataset.playerGenerationCustomLogoId) {
                 throw new Error('Выберите свой логотип в окне «Мои логотипы».');
             }
