@@ -3,7 +3,7 @@
 
     <nav class="venue-side-nav" aria-label="Внутренняя навигация площадки">
         <a
-            href="{{ route('account.venues.show', $venue->routeIdentifier()) }}"
+            href="{{ route('account.contracts.venues') }}"
             @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'show'])
             @if(($venueSidebarActive ?? null) === 'show') aria-current="page" @endif
         >Обзор</a>
