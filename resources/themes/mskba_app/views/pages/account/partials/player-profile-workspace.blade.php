@@ -92,7 +92,7 @@
                         role="group" aria-label="Выбор аватара для предпросмотра" data-player-avatar-rail hidden></div>
                     <p class="app-player-workspace__avatar-empty" data-player-avatar-empty>Сгенерированных аватаров пока нет.</p>
                     <div class="app-player-workspace__avatar-actions" data-player-avatar-actions hidden>
-                        <button type="button" class="app-player-workspace__secondary" data-player-avatar-make-primary hidden>Сделать основным</button>
+                        <a href="#" class="app-player-workspace__avatar-primary-link" data-player-avatar-make-primary hidden>Сделать основным</a>
                         <span class="app-player-workspace__avatar-primary-label" data-player-avatar-primary-label hidden>Основной аватар</span>
                     </div>
                     <p class="app-player-workspace__avatar-feedback" role="status" aria-live="polite" data-player-avatar-feedback></p>
