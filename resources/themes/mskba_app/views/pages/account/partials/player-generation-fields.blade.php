@@ -147,6 +147,10 @@
         </div>
     </fieldset>
     <div class="app-player-workspace__actions">
-        <button type="button" class="app-player-workspace__secondary" data-player-generate @disabled(! $avatarCanGenerate)>Сгенерировать</button>
+        <button type="button" class="app-player-workspace__secondary app-player-workspace__generate-button"
+            data-player-generate aria-busy="false" @disabled(! $avatarCanGenerate)>
+            <span class="app-player-workspace__generate-spinner" data-player-generate-spinner aria-hidden="true" hidden></span>
+            <span>Сгенерировать</span>
+        </button>
     </div>
 </div>
