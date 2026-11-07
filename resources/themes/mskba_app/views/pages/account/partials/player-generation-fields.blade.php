@@ -70,18 +70,26 @@
                     @include('account.partials.native-select-chevron')
                 </span>
             </label>
-            <label class="app-player-workspace__field" data-player-uniform-design-field
-                @if($uniformSource !== 'mine') hidden @endif>Мои формы
-                <span class="select-control">
-                    <select data-player-generation-uniform-design @if($uniformSource !== 'mine') disabled @endif required>
-                        <option value="">Выберите форму</option>
-                        @foreach($uniformDesigns as $design)
-                            <option value="{{ $design->id }}" @selected($savedDesignId === (int) $design->id)>{{ $design->name }}</option>
-                        @endforeach
-                    </select>
-                    @include('account.partials.native-select-chevron')
-                </span>
-            </label>
+            <div class="app-player-workspace__field" data-player-uniform-design-field
+                @if($uniformSource !== 'mine') hidden @endif>
+                <label for="player-generation-uniform-design">Мои формы</label>
+                <div class="app-player-workspace__uniform-design-controls">
+                    <span class="select-control">
+                        <select id="player-generation-uniform-design" data-player-generation-uniform-design
+                            @if($uniformSource !== 'mine') disabled @endif required>
+                            <option value="">Выберите форму</option>
+                            @foreach($uniformDesigns as $design)
+                                <option value="{{ $design->id }}" @selected($savedDesignId === (int) $design->id)>{{ $design->name }}</option>
+                            @endforeach
+                        </select>
+                        @include('account.partials.native-select-chevron')
+                    </span>
+                    <button type="button" class="app-player-workspace__secondary"
+                        data-player-uniform-view aria-haspopup="dialog"
+                        aria-controls="mskba-uniform-modal-title"
+                        @disabled($uniformSource !== 'mine' || ! $savedDesignId)>Посмотреть</button>
+                </div>
+            </div>
         </div>
         <div class="app-player-workspace__logo-control" data-player-logo-control
             @if($uniformSource === 'mine') hidden @endif>
