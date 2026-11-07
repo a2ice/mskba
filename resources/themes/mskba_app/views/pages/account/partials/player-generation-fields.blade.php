@@ -86,7 +86,7 @@
                     </span>
                     <button type="button" class="app-player-workspace__secondary"
                         data-player-uniform-view aria-haspopup="dialog"
-                        aria-controls="mskba-uniform-modal-title"
+                        aria-controls="mskba-uniform-dialog"
                         @disabled($uniformSource !== 'mine' || ! $savedDesignId)>Посмотреть</button>
                 </div>
             </div>
