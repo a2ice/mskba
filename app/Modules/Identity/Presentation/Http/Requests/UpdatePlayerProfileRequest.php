@@ -61,7 +61,9 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
-            'generation_team_id' => ['nullable', 'integer'],
+            'generation_uniform_source' => ['nullable', Rule::in(['neutral', 'team', 'mine'])],
+            'generation_uniform_design_id' => ['nullable', 'integer', 'min:1'],
+            'generation_team_id' => ['nullable', 'integer', 'min:1'],
             'generation_with_team_logo' => ['nullable', 'boolean'],
             'generation_logo_mode' => ['nullable', Rule::in(['none', 'team', 'custom'])],
             'generation_custom_logo_id' => ['nullable', 'integer', 'min:1'],
@@ -278,6 +280,12 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 : null;
         }
 
+        if ($this->has('generation_uniform_source')) {
+            $options['uniform_source'] = (string) $this->input('generation_uniform_source');
+        }
+        if ($this->filled('generation_uniform_design_id')) {
+            $options['uniform_design_id'] = (int) $this->input('generation_uniform_design_id');
+        }
         if ($this->has('generation_team_id')) {
             $options['team_id'] = $this->filled('generation_team_id')
                 ? (int) $this->input('generation_team_id')
