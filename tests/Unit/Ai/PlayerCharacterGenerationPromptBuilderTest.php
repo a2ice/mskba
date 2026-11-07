@@ -74,6 +74,30 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringNotContainsString('visual_body_fat_level', $withHistoricalValue);
     }
 
+    public function test_female_chest_volume_has_explicit_and_distinct_visual_instructions(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+        $medium = $builder->build([
+            'gender' => 'female',
+            'appearance' => ['chest_volume' => 'medium'],
+        ]);
+        $full = $builder->build([
+            'gender' => 'female',
+            'appearance' => ['chest_volume' => 'full'],
+        ]);
+        $male = $builder->build([
+            'gender' => 'male',
+            'appearance' => ['chest_volume' => 'full'],
+        ]);
+
+        $this->assertStringContainsString('medium bust with a natural', $medium);
+        $this->assertStringContainsString('pronounced fuller bust, visibly more projected', $full);
+        $this->assertStringContainsString('jersey contour than medium', $full);
+        $this->assertNotSame($medium, $full);
+        $this->assertStringNotContainsString('pronounced fuller bust, visibly more projected', $male);
+        $this->assertStringContainsString('"chest_volume": null', $male);
+    }
+
     public function test_new_normal_body_type_is_described_in_ai_prompt(): void
     {
         $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([

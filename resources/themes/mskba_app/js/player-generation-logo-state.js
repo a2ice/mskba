@@ -16,3 +16,18 @@ export function resolvePlayerLogoPreview(logos, selectedLogoId, origin, placehol
         return empty;
     }
 }
+
+/**
+ * The selected team logo is the team's actual public Media image, not the
+ * default placeholder or an unrelated private uploaded logo.
+ */
+export function resolvePlayerTeamLogoPreview(team, origin, placeholder) {
+    if (!team || !team.id || !team.logo_url) {
+        return { src: placeholder, alt: 'Логотип не выбран', label: 'Логотип не выбран' };
+    }
+    return resolvePlayerLogoPreview([{
+        id: team.id,
+        url: team.logo_url,
+        name: 'Логотип команды ' + (team.name || ''),
+    }], team.id, origin, placeholder);
+}

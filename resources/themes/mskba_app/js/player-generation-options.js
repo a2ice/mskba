@@ -1,4 +1,4 @@
-import { resolvePlayerLogoPreview } from './player-generation-logo-state.js';
+import { resolvePlayerLogoPreview, resolvePlayerTeamLogoPreview } from './player-generation-logo-state.js';
 
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
@@ -149,10 +149,13 @@ if (workspace) {
     const uniform = workspace.querySelector('[data-player-generation-team]');
     const firstTeam = Array.from(uniform?.options || []).find(option => option.value !== '__custom__')?.value || '';
     uniform?.addEventListener('change', () => {
-        if (uniform.value !== '__custom__') return;
-        // Workshop designs are never submitted as a team ID.
-        uniform.value = firstTeam;
-        window.dispatchEvent(new CustomEvent('mskba:uniform:open', {detail:{context:'player-avatar'}}));
+        if (uniform.value === '__custom__') {
+            // Workshop designs are never submitted as a team ID.
+            uniform.value = firstTeam;
+            window.dispatchEvent(new CustomEvent('mskba:uniform:open', {detail:{context:'player-avatar'}}));
+        }
+        refreshMode();
+        renderGallery();
     });
 
     const logoDialog = workspace.querySelector('[data-player-logo-dialog]');
@@ -160,6 +163,9 @@ if (workspace) {
     const logoOptions = workspace.querySelector('[data-player-logo-options]');
     const picker = workspace.querySelector('[data-player-logo-picker-open]');
     const preview = workspace.querySelector('[data-player-logo-preview]');
+    const previewButton = workspace.querySelector('[data-player-logo-preview-open]');
+    const viewDialog = workspace.querySelector('[data-player-logo-view-dialog]');
+    const viewImage = viewDialog?.querySelector('[data-player-logo-view-image]');
     const selectedText = workspace.querySelector('[data-player-logo-selected]');
     const status = logoDialog?.querySelector('[data-player-logo-status]');
     const gallery = logoDialog?.querySelector('[data-player-logo-gallery]');
@@ -167,29 +173,55 @@ if (workspace) {
     const upload = logoDialog?.querySelector('[data-player-logo-upload]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let selectedLogoId = Number(logoOptions?.dataset.savedLogoId || 0) || null;
+    let logoMode = logoOptions?.dataset.savedLogoMode === 'custom' ? 'custom' : 'team';
     let logos = [];
     const enabled = () => logoCheckbox?.checked === true;
     const setStatus = text => { if (status) status.textContent = text; };
+    const placeholder = preview?.dataset.logoPlaceholder || '';
+    const selectedTeamLogo = () => {
+        const option = uniform?.selectedOptions?.[0];
+        return resolvePlayerTeamLogoPreview({
+            id: Number(option?.value || 0),
+            name: option?.dataset.teamName || option?.textContent?.trim() || '',
+            logo_url: option?.dataset.teamLogoUrl || '',
+        }, window.location.origin, placeholder);
+    };
+    const currentLogo = () => logoMode === 'custom'
+        ? resolvePlayerLogoPreview(logos, selectedLogoId, window.location.origin, placeholder)
+        : selectedTeamLogo();
     const refreshMode = () => {
         const withLogo = enabled();
         if (logoOptions) logoOptions.hidden = !withLogo;
-        const image = resolvePlayerLogoPreview(
-            logos, selectedLogoId, window.location.origin, preview?.dataset.logoPlaceholder || '',
-        );
+        const image = currentLogo();
         if (preview) {
             preview.src = image.src;
             preview.alt = image.alt;
         }
+        if (previewButton) previewButton.disabled = !withLogo || !image.src || image.src === placeholder;
         if (selectedText) {
             selectedText.textContent = image.label;
             selectedText.title = image.label;
         }
-        // Keep generation payload consistent with checkbox state; missing
-        // selections are rejected before the paid generation request.
-        workspace.dataset.playerGenerationLogoMode = withLogo ? 'custom' : 'none';
-        workspace.dataset.playerGenerationCustomLogoId = selectedLogoId ? String(selectedLogoId) : '';
+        workspace.dataset.playerGenerationLogoMode = withLogo ? logoMode : 'none';
+        workspace.dataset.playerGenerationCustomLogoId = withLogo && logoMode === 'custom' && selectedLogoId
+            ? String(selectedLogoId) : '';
     };
     logoCheckbox?.addEventListener('change', refreshMode);
+    previewButton?.addEventListener('click', () => {
+        const image = currentLogo();
+        if (!enabled() || !image.src || image.src === placeholder || !viewDialog || !viewImage) return;
+        viewImage.src = image.src;
+        viewDialog.showModal();
+        viewDialog.querySelector('h2[tabindex="-1"]')?.focus({preventScroll:true});
+    });
+    viewDialog?.querySelector('[data-player-logo-view-close]')?.addEventListener('click', () => viewDialog.close());
+    viewDialog?.addEventListener('close', () => {
+        if (viewImage) viewImage.removeAttribute('src');
+        previewButton?.focus({preventScroll:true});
+    });
+    viewDialog?.addEventListener('click', event => {
+        if (event.target === viewDialog) viewDialog.close();
+    });
     const asJson = async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || Object.values(data.errors || {}).flat()[0] || 'Не удалось выполнить операцию.');
@@ -198,13 +230,35 @@ if (workspace) {
     const renderGallery = () => {
         if (!gallery) return;
         gallery.replaceChildren();
+        const teamImage = selectedTeamLogo();
+        if (teamImage.src && teamImage.src !== placeholder) {
+            const cell = document.createElement('div');
+            cell.className = 'app-player-workspace__logo-item app-player-workspace__logo-item--team';
+            const choose = document.createElement('button');
+            choose.type = 'button';
+            choose.className = 'app-player-workspace__logo-choice';
+            choose.setAttribute('aria-pressed', String(logoMode === 'team'));
+            const img = document.createElement('img');
+            img.src = teamImage.src;
+            img.alt = 'Логотип команды';
+            const name = document.createElement('span');
+            name.textContent = 'Логотип команды';
+            choose.append(img, name);
+            choose.addEventListener('click', () => {
+                logoMode = 'team';
+                refreshMode();
+                logoDialog.close();
+            });
+            cell.append(choose);
+            gallery.append(cell);
+        }
         logos.forEach(logo => {
             const cell = document.createElement('div');
             cell.className = 'app-player-workspace__logo-item';
             const choose = document.createElement('button');
             choose.type = 'button';
             choose.className = 'app-player-workspace__logo-choice';
-            choose.setAttribute('aria-pressed', String(Number(logo.id) === selectedLogoId));
+            choose.setAttribute('aria-pressed', String(logoMode === 'custom' && Number(logo.id) === selectedLogoId));
             const img = document.createElement('img');
             img.src = logo.url;
             img.alt = logo.name || 'Логотип';
@@ -213,6 +267,7 @@ if (workspace) {
             name.textContent = logo.name || 'Логотип';
             choose.append(name);
             choose.addEventListener('click', () => {
+                logoMode = 'custom';
                 selectedLogoId = Number(logo.id);
                 refreshMode();
                 logoDialog.close();
@@ -228,7 +283,10 @@ if (workspace) {
                         method: 'DELETE', credentials: 'same-origin',
                         headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'},
                     }));
-                    if (selectedLogoId === Number(logo.id)) selectedLogoId = null;
+                    if (selectedLogoId === Number(logo.id)) {
+                        selectedLogoId = null;
+                        if (logoMode === 'custom') logoMode = 'team';
+                    }
                     await loadLogos();
                     refreshMode();
                     setStatus('Логотип удалён.');
@@ -237,9 +295,9 @@ if (workspace) {
             cell.append(choose, remove);
             gallery.append(cell);
         });
-        if (!logos.length) {
+        if (!gallery.children.length) {
             const empty = document.createElement('p');
-            empty.textContent = 'Сохранённых логотипов пока нет.';
+            empty.textContent = 'Логотипов пока нет.';
             gallery.append(empty);
         }
         if (dropzone) dropzone.hidden = logos.length >= 3;
@@ -251,6 +309,7 @@ if (workspace) {
         logos = Array.isArray(data.logos) ? data.logos : [];
         if (selectedLogoId !== null && !logos.some(logo => Number(logo.id) === selectedLogoId)) {
             selectedLogoId = null; // The saved logo may have been deleted elsewhere.
+            if (logoMode === 'custom') logoMode = 'team';
         }
         renderGallery();
         refreshMode();
@@ -277,6 +336,7 @@ if (workspace) {
                 headers: {'X-CSRF-TOKEN': csrf, Accept: 'application/json'}, body: data,
             }));
             selectedLogoId = Number(payload.logo.id);
+            logoMode = 'custom';
             await loadLogos();
             refreshMode();
             setStatus('Логотип загружен и выбран.');
@@ -299,8 +359,9 @@ if (workspace) {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); upload?.click(); }
     });
     refreshMode();
-    // Restore the last selected private logo from stored profile preferences.
-    if (enabled() && selectedLogoId !== null) {
+    // Restore the last selected private logo; the team logo is available
+    // immediately from the authorized selected team option, without a placeholder.
+    if (enabled() && logoMode === 'custom' && selectedLogoId !== null) {
         void loadLogos().catch(() => { /* Retry through the chooser. */ });
     }
 }

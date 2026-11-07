@@ -714,6 +714,7 @@ class AccountController extends Controller
         if ($roleEnum === UserParticipationRoleEnum::PLAYER) {
             $identityIds = $user->identityIds();
             $playerTeams = Team::query()
+                ->with('logo')
                 ->whereNull('temporary_for_event_id')
                 ->whereHas('memberships', fn ($memberships) => $memberships
                     ->whereIn('user_id', $identityIds)
