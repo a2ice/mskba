@@ -136,7 +136,7 @@ Clothing - SELECTED UNIFORM IS AUTHORITATIVE:
 {$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
 - Apply the requested shoes and the following SELECTED accessories exactly at their specified locations. Selected accessories are mandatory clothing items, not optional decorative suggestions. Do not confuse wrist, elbow, knee or head placement.
 {$accessoryInstructions}
-- Never add unselected accessories or silently omit selected ones. A headband must visibly cross the forehead even if the subject has long hair; preserve the subject's hairstyle around it.
+- Never add unselected accessories or silently omit selected ones.
 
 OUTPUT REQUIREMENTS - STRICT:
 - Background MUST be fully transparent alpha, not white, black, gray, checkerboard, studio, floor, gradient, or scenery.
