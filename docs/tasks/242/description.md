@@ -39,3 +39,11 @@ OpenAI key не требуется на VDS для `github_openai`. На VDS dep
 ## Откат
 
 Вернуть `PLAYER_CHARACTER_AI_PROVIDER=yandex`. Код и тесты Yandex не удаляются.
+
+## Follow-up 2026-11-07 — transparent background model compatibility
+
+- `gpt-image-2` rejected `background=transparent` on dev after API balance replenishment.
+- New default: `gpt-image-2.5-sunburst` (explicit transparency support, editing with face references).
+- Both direct and GitHub Actions providers normalize old `gpt-image-2` configuration overrides, including dated snapshot, to the supported default.
+- The GitHub Actions runner retains provider error details in its own logs, but returns a localized generic message to the user.
+- Verify on dev after deploy with a real avatar request: completion, alpha-channel corners, billing and refund-on-error.

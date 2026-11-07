@@ -49,7 +49,7 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
             'generation_timeout_seconds' => 1200,
             'image_quality' => 'high',
         ]);
-        config()->set('services.openai.image_model', 'gpt-image-2');
+        config()->set('services.openai.image_model', 'gpt-image-2'); // Legacy server override.
         config()->set('services.openai.image_size', '1024x1536');
         config()->set('services.openai.image_quality', 'high');
         $this->app->forgetInstance(PlayerCharacterAiGateway::class);
@@ -100,7 +100,7 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
         $manifest = $this->getJson((string) $manifestUrl)
             ->assertOk()
             ->assertJsonPath('generation_id', $generationId)
-            ->assertJsonPath('openai.model', 'gpt-image-2')
+            ->assertJsonPath('openai.model', 'gpt-image-2.5-sunburst')
             ->assertJsonCount(3, 'references');
 
         $frontUrl = (string) $manifest->json('references.front');
@@ -178,7 +178,7 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
         $data = ['status' => $status, 'provider_run_id' => '12345'];
         if ($contents !== '') {
             $data['image'] = UploadedFile::fake()->createWithContent('player.png', $contents);
-            $data['model'] = 'gpt-image-2';
+            $data['model'] = 'gpt-image-2.5-sunburst';
         }
 
         $metadataHash = hash('sha256', implode("\n", [
