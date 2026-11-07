@@ -28,8 +28,8 @@ final class AdminRevertUserPermissionSnapshotHandler
                 ->lockForUpdate()->firstOrFail();
 
             $editor = app(AdminUpdateUserPermissionSnapshotHandler::class);
-            $before = (array) $revision->old_values;
-            $after = (array) $revision->new_values;
+            $before = $this->normalizeSnapshot((array) $revision->old_values);
+            $after = $this->normalizeSnapshot((array) $revision->new_values);
             $current = $editor->snapshot($target);
             if ($current !== $after) {
                 throw ValidationException::withMessages([
@@ -62,5 +62,21 @@ final class AdminRevertUserPermissionSnapshotHandler
 
             return $result;
         });
+    }
+
+    private function normalizeSnapshot(array $snapshot): array
+    {
+        $permissions = $snapshot['permissions'] ?? null;
+        if (($snapshot['role'] ?? null) === 'system' && is_array($permissions)
+            && in_array('backoffice.system_access', $permissions, true)) {
+            $permissions = array_values(array_diff($permissions, ['backoffice.system_access']));
+            if (! in_array(Permission::BACKOFFICE_ACCESS->value, $permissions, true)) {
+                $permissions[] = Permission::BACKOFFICE_ACCESS->value;
+            }
+            sort($permissions);
+            $snapshot['permissions'] = $permissions;
+        }
+
+        return $snapshot;
     }
 }

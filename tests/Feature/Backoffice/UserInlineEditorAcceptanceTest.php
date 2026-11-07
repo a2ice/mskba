@@ -177,7 +177,7 @@ final class UserInlineEditorAcceptanceTest extends TestCase
 
         Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
             ->fillForm(['backoffice_permissions' => [
-                Permission::BACKOFFICE_SYSTEM_ACCESS->value,
+                Permission::BACKOFFICE_ACCESS->value,
                 Permission::BACKOFFICE_BUILDER_VIEW->value,
             ]])
             ->callAction('savePermissionsInline', data: ['reason' => 'Доступ только к конструктору страниц'])
@@ -206,10 +206,6 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
         $profiles = app(StaffPermissionProfiles::class);
         foreach (Permission::cases() as $permission) {
-            if (in_array($permission, [Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_SYSTEM_ACCESS], true)) {
-                continue;
-            }
-
             $this->assertSame(
                 $profiles->allowedForRole(UserSystemRoleEnum::ADMIN, $permission),
                 $profiles->allowedForRole(UserSystemRoleEnum::SYSTEM, $permission),
@@ -226,7 +222,7 @@ final class UserInlineEditorAcceptanceTest extends TestCase
                     Permission::WALLET_USER_BALANCE_CREDIT->value,
                 ],
                 'backoffice_permissions' => [
-                    Permission::BACKOFFICE_SYSTEM_ACCESS->value,
+                    Permission::BACKOFFICE_ACCESS->value,
                     Permission::BACKOFFICE_VENUE_MANAGE->value,
                 ],
             ])
@@ -249,7 +245,6 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         $system = $this->user(UserSystemRoleEnum::SYSTEM);
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
         $system->operationalPermissions()->createMany([
-            ['permission' => Permission::BACKOFFICE_SYSTEM_ACCESS, 'is_allowed' => true],
             ['permission' => Permission::BACKOFFICE_BUILDER_VIEW, 'is_allowed' => true],
             ['permission' => Permission::WALLET_USER_BALANCE_CREDIT, 'is_allowed' => true],
         ]);
@@ -261,10 +256,36 @@ final class UserInlineEditorAcceptanceTest extends TestCase
         $migration->up();
 
         $checker = app(UserOperationalPermissionChecker::class);
-        $this->assertTrue($checker->allows($system, Permission::BACKOFFICE_SYSTEM_ACCESS));
         $this->assertTrue($checker->allows($system, Permission::BACKOFFICE_BUILDER_VIEW));
         $this->assertFalse($checker->allows($system, Permission::WALLET_USER_BALANCE_CREDIT));
         $this->assertTrue($checker->allows($admin, Permission::WALLET_USER_BALANCE_CREDIT));
+    }
+
+    public function test_entry_permission_migration_preserves_system_access_and_confirmation_rules(): void
+    {
+        $system = $this->user(UserSystemRoleEnum::SYSTEM);
+        $system->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $admin->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $system->operationalPermissions()->create([
+            'permission' => Permission::BACKOFFICE_ACCESS, 'is_allowed' => false,
+        ]);
+        $admin->operationalPermissions()->create([
+            'permission' => Permission::BACKOFFICE_ACCESS, 'is_allowed' => true,
+        ]);
+        \Illuminate\Support\Facades\DB::table('user_operational_permissions')->insert([
+            'user_id' => $system->id, 'permission' => 'backoffice.system_access', 'is_allowed' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_11_07_170000_unify_filament_entry_permission.php');
+        $migration->up();
+
+        $panel = Filament::getPanel('backoffice');
+        $this->assertTrue($system->canAccessPanel($panel));
+        $this->assertFalse($admin->canAccessPanel($panel));
+        $this->assertDatabaseMissing('user_operational_permissions', [
+            'user_id' => $system->id, 'permission' => 'backoffice.system_access',
+        ]);
     }
 
     public function test_delegated_admin_cannot_assign_system_role(): void
