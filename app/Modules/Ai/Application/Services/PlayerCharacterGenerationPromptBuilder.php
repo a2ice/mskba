@@ -10,6 +10,14 @@ final class PlayerCharacterGenerationPromptBuilder
         $appearance = (array) ($payload['appearance'] ?? []);
         $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
         $withTeamLogo = (bool) ($team['with_logo'] ?? false);
+        $female = ($payload['gender'] ?? null) === 'female';
+        $chestVolume = $female ? ($appearance['chest_volume'] ?? 'medium') : null;
+        $chestDescription = $female ? match ($chestVolume) {
+            'small' => 'small bust with a relatively flat upper-torso contour',
+            'large' => 'fuller bust with a clearly rounded upper-torso contour',
+            'full' => 'pronounced fuller bust, visibly more projected and fuller than medium or large, while keeping realistic athletic proportions',
+            default => 'medium bust with a natural, moderately rounded upper-torso contour',
+        } : null;
 
         $description = [
             'gender' => $payload['gender'] ?? null,
@@ -28,7 +36,8 @@ final class PlayerCharacterGenerationPromptBuilder
             },
             'shoes' => $appearance['shoes'] ?? 'white',
             'attributes' => array_values((array) ($appearance['attributes'] ?? [])),
-            'chest_volume' => $appearance['chest_volume'] ?? null,
+            'chest_volume' => $chestVolume,
+            'chest_volume_description' => $chestDescription,
             'team' => $team ? [
                 'name' => $team['name'] ?? null,
                 'colors' => $team['colors'] ?? null,
@@ -80,6 +89,8 @@ Composition - STRICT:
 - Basketball-player physique, not a bodybuilder caricature.
 - Respect the selected body_type and requested body proportions without exaggeration. Do not infer diagnoses or stigmatize body size.
 - Use height and weight for realistic body proportions; do not infer or reuse any hidden visual body-fat control.
+- For a female player, chest_volume_description is an explicit body-proportion requirement, not an optional styling hint. Make small, medium, large and full visibly distinguishable in the front-view upper-torso silhouette while keeping the player fully clothed, natural and athletic.
+- A full chest must have visibly more volume and jersey contour than medium, even when wearing a loose basketball jersey. Let the uniform drape naturally over the specified body shape; do not flatten or ignore the selected chest size. Preserve the same face, height, weight and overall body type when only chest_volume changes.
 
 Clothing:
 - Modern basketball jersey and matching shorts.
