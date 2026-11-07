@@ -98,6 +98,25 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('"chest_volume": null', $male);
     }
 
+    public function test_selected_headband_is_mandatory_and_on_forehead_not_an_elbow(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+        $withHeadband = $builder->build([
+            'appearance' => ['attributes' => ['headband', 'elbow_left']],
+        ]);
+        $withoutHeadband = $builder->build([
+            'appearance' => ['attributes' => ['elbow_left']],
+        ]);
+
+        $this->assertStringContainsString('"headband"', $withHeadband);
+        $this->assertStringContainsString('MANDATORY: a clearly visible athletic fabric sweatband', $withHeadband);
+        $this->assertStringContainsString('across the forehead', $withHeadband);
+        $this->assertStringContainsString('in front of the hair', $withHeadband);
+        $this->assertStringContainsString('never on an elbow, upper arm or wrist', $withHeadband);
+        $this->assertStringContainsString("PLAYER'S LEFT elbow", $withHeadband);
+        $this->assertStringNotContainsString('MANDATORY: a clearly visible athletic fabric sweatband', $withoutHeadband);
+    }
+
     public function test_uniform_selection_uses_own_palette_and_sleeves_without_inventing_team_branding(): void
     {
         $builder = new PlayerCharacterGenerationPromptBuilder();
