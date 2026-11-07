@@ -12,11 +12,14 @@
                 <input name="timezone" type="text" required maxlength="64" value="{{ old('timezone', $schedule?->timezone ?? 'Europe/Moscow') }}">
             </label>
             <label class="app-venue-editor__field">Состояние площадки
-                <select name="operational_status">
+                <span class="select-control">
+                    <select name="operational_status">
                     @foreach(\App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::cases() as $item)
                         <option value="{{ $item->value }}" @selected(old('operational_status', $venue->operational_status->value) === $item->value)>{{ $item->label() }}</option>
                     @endforeach
                 </select>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </span>
             </label>
         </div>
         <div class="app-venue-editor__week">
@@ -54,7 +57,7 @@
                     <label class="app-venue-editor__field">Дата
                         <input type="date" name="exceptions[{{ $index }}][date]" required value="{{ $exception->date?->format('Y-m-d') }}">
                     </label>
-                    <label class="app-venue-editor__field app-venue-editor__field--check">
+                    <label class="check-label app-venue-editor__field--check">
                         <input type="hidden" name="exceptions[{{ $index }}][is_closed]" value="0">
                         <input type="checkbox" name="exceptions[{{ $index }}][is_closed]" value="1" @checked($exception->is_closed) data-venue-exception-closed>
                         Закрыта весь день
@@ -89,7 +92,7 @@
             <label class="app-venue-editor__field">Дата
                 <input type="date" name="exceptions[__EX__][date]" required>
             </label>
-            <label class="app-venue-editor__field app-venue-editor__field--check">
+            <label class="check-label app-venue-editor__field--check">
                 <input type="hidden" name="exceptions[__EX__][is_closed]" value="0">
                 <input type="checkbox" name="exceptions[__EX__][is_closed]" value="1" data-venue-exception-closed>Закрыта весь день
             </label>

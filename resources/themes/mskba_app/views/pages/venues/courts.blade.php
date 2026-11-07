@@ -4,24 +4,34 @@
         ->where('venue_id', $venue->id)->where('active_marker', true)->first();
     $money = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
     $currency = $policy?->currency ?? 'RUB';
+    $editor = app(\App\Modules\Venue\Application\Services\AccountVenueEditorAccess::class)
+        ->capabilities(auth()->user(), $venue);
+    $breadcrumbs = [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'courts'])],
+        ['label' => 'Залы и корты'],
+    ];
 @endphp
-@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name])
+@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name, 'breadcrumbs' => $breadcrumbs])
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => $title,
-        'subtitle' => $venue->name,
+        'heading' => $venue->name,
+        'subtitle' => $title,
     ])
 @endsection
 
 @section('account-content')
-<div class="app-rental-pricing">
+<div class="app-venue-editor" data-venue-editor>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'courts', 'editor' => $editor])
+    <div class="app-rental-pricing">
     <div class="app-rental-pricing__actions">
         @if($policy)
             <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Условия площадки</a>
             <a class="button secondary" href="{{ route('account.venues.pricing-rules.index', $venue->id) }}">Тарифные условия</a>
         @endif
-        <a class="button secondary" href="{{ route('account.venues') }}">Мои площадки</a>
     </div>
 
     @if(session('status'))<p class="app-rental-pricing__success" role="status">{{ session('status') }}</p>@endif
@@ -61,29 +71,38 @@
                             </label>
                             <label class="field-group" for="court-{{ $court->id }}-hoops">
                                 <span>Количество колец</span>
-                                <select name="hoops_count" id="court-{{ $court->id }}-hoops">
+                                <span class="select-control">
+                                    <select name="hoops_count" id="court-{{ $court->id }}-hoops">
                                     @foreach([1,2] as $hoops)
                                         <option value="{{ $hoops }}" @selected((int) $court->hoops_count === $hoops)>{{ $hoops }}</option>
                                     @endforeach
                                 </select>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                             <label class="field-group" for="court-{{ $court->id }}-surface">
                                 <span>Покрытие</span>
-                                <select id="court-{{ $court->id }}-surface" name="surface_type">
+                                <span class="select-control">
+                                    <select id="court-{{ $court->id }}-surface" name="surface_type">
                                     <option value="">Не указано</option>
                                     @foreach($surfaceTypes as $surface)
                                         <option value="{{ $surface->value }}" @selected($court->surface_type?->value === $surface->value)>{{ $surface->label() }}</option>
                                     @endforeach
                                 </select>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                             <label class="field-group" for="court-{{ $court->id }}-environment">
                                 <span>Тип зала</span>
-                                <select id="court-{{ $court->id }}-environment" name="environment">
+                                <span class="select-control">
+                                    <select id="court-{{ $court->id }}-environment" name="environment">
                                     <option value="">Не указано</option>
                                     @foreach($courtEnvironments as $environment)
                                         <option value="{{ $environment->value }}" @selected($court->environment?->value === $environment->value)>{{ $environment->label() }}</option>
                                     @endforeach
                                 </select>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                         </div>
                         <div class="app-rental-pricing__grid">
@@ -159,11 +178,14 @@
                                 @endphp
                                 <label class="field-group" for="court-{{ $court->id }}-{{ $setting }}">
                                     <span>{{ $label }}</span>
-                                    <select id="court-{{ $court->id }}-{{ $setting }}" name="{{ $setting }}">
+                                    <span class="select-control">
+                                        <select id="court-{{ $court->id }}-{{ $setting }}" name="{{ $setting }}">
                                         @foreach($options as $optionValue => $text)
                                             <option value="{{ $optionValue }}" @selected($selected === $optionValue)>{{ $text }}</option>
                                         @endforeach
                                     </select>
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                    </span>
                                 </label>
                             @endforeach
                             @foreach([
@@ -223,11 +245,14 @@
                         <div class="app-rental-pricing__grid">
                             <label class="field-group" for="court-{{ $court->id }}-weekday">
                                 <span>День недели</span>
-                                <select id="court-{{ $court->id }}-weekday" name="day_of_week" required>
+                                <span class="select-control">
+                                    <select id="court-{{ $court->id }}-weekday" name="day_of_week" required>
                                     @foreach(['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] as $dayIndex => $day)
                                         <option value="{{ $dayIndex+1 }}">{{ $day }}</option>
                                     @endforeach
                                 </select>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                                </span>
                             </label>
                             <label class="field-group" for="court-{{ $court->id }}-weekly-time">
                                 <span>Время</span><input id="court-{{ $court->id }}-weekly-time" type="time" name="starts_at" required>
@@ -275,11 +300,14 @@
                     </label>
                 </div>
                 <label class="field-group">Тип игровой зоны *
-                    <select name="environment" required>
+                    <span class="select-control">
+                        <select name="environment" required>
                         <option value="">Выберите тип</option>
                         <option value="indoor">Крытый зал</option>
                         <option value="outdoor">Уличный корт</option>
                     </select>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </span>
                 </label>
                 <div class="app-rental-pricing__grid">
                     <label class="field-group" for="new-court-short-description">
@@ -298,5 +326,6 @@
             </form>
         </section>
     @endif
+</div>
 </div>
 @endsection

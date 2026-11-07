@@ -135,7 +135,7 @@ final class VenuePublicContextManagementActionsTest extends TestCase
             ->get(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Школа №1794')
-            ->assertSee('Редактирование')
+            ->assertSee('app-venue-editor__tabs', false)
             ->assertSeeInOrder(['Главная', 'Аккаунт', 'Мои контракты', 'Мои площадки', 'Школа №1794'])
             ->assertSee('href="'.route('account.contracts.venues').'"', false)
             ->assertDontSee('aria-current="page">Страница</span>', false);

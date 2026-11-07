@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (metros) {
                                 const matches = (item.metro_station_ids || []).map(String);
                                 [...metros.options].forEach((option) => { option.selected = matches.includes(option.value); });
+                                metros.dispatchEvent(new Event('change', { bubbles: true }));
                             }
                             close();
                         });
@@ -141,4 +142,119 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     schedule.querySelectorAll('[data-venue-exception-closed]:checked').forEach((input) =>
         input.dispatchEvent(new Event('change', { bubbles: true })));
+});
+
+
+// Shared account venue metro multi-select: searchable list + removable UI Kit chips.
+// The underlying native multiple select remains the single submitted field.
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-venue-metro-picker]').forEach((picker) => {
+        const select = picker.querySelector('[data-venue-metro-select]');
+        const search = picker.querySelector('[data-venue-metro-search]');
+        const list = picker.querySelector('[data-venue-metro-options]');
+        const chips = picker.querySelector('[data-venue-metro-chips]');
+        if (!select || !search || !list || !chips) return;
+
+        const stations = Array.from(select.options);
+        let highlighted = -1;
+        const closeList = () => {
+            list.hidden = true;
+            search.setAttribute('aria-expanded', 'false');
+            search.removeAttribute('aria-activedescendant');
+            highlighted = -1;
+        };
+        const renderChips = () => {
+            chips.replaceChildren();
+            stations.filter((station) => station.selected).forEach((station) => {
+                const chip = document.createElement('span');
+                chip.className = 'app-venue-metro__chip';
+                const dot = document.createElement('span');
+                dot.className = 'app-venue-metro__dot';
+                dot.style.setProperty('--metro-dot', /^#[0-9a-fA-F]{6}$/.test(station.dataset.lineColor || '') ? station.dataset.lineColor : '#64748b');
+                dot.setAttribute('aria-hidden', 'true');
+                const text = document.createElement('span');
+                text.textContent = station.textContent.trim();
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'app-venue-metro__remove';
+                remove.textContent = '×';
+                remove.disabled = select.disabled;
+                remove.setAttribute('aria-label', 'Убрать станцию ' + text.textContent);
+                remove.addEventListener('click', () => {
+                    station.selected = false;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    search.focus();
+                });
+                chip.append(dot, text, remove);
+                chips.append(chip);
+            });
+            chips.hidden = !chips.childElementCount;
+        };
+        const renderList = () => {
+            list.replaceChildren();
+            highlighted = -1;
+            if (select.disabled) return closeList();
+            const query = search.value.trim().toLocaleLowerCase('ru');
+            const available = stations.filter((station) => !station.selected &&
+                (station.textContent.toLocaleLowerCase('ru').includes(query)
+                    || (station.dataset.lineName || '').toLocaleLowerCase('ru').includes(query))).slice(0, 12);
+            if (!available.length) return closeList();
+
+            available.forEach((station, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.role = 'option';
+                button.id = 'venue-metro-option-' + index;
+                button.setAttribute('aria-selected', 'false');
+                button.textContent = station.textContent.trim();
+                button.addEventListener('pointerdown', (event) => event.preventDefault());
+                button.addEventListener('click', () => {
+                    station.selected = true;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    search.value = '';
+                    renderList();
+                    search.focus();
+                });
+                list.append(button);
+            });
+            list.hidden = false;
+            search.setAttribute('aria-expanded', 'true');
+        };
+        search.addEventListener('focus', renderList);
+        search.addEventListener('input', renderList);
+        search.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeList();
+                return;
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                if (list.hidden) renderList();
+                const buttons = [...list.querySelectorAll('button')];
+                if (!buttons.length) return;
+                event.preventDefault();
+                highlighted = (highlighted + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+                buttons.forEach((button, index) => {
+                    button.classList.toggle('is-highlighted', highlighted === index);
+                    button.setAttribute('aria-selected', highlighted === index ? 'true' : 'false');
+                });
+                search.setAttribute('aria-activedescendant', buttons[highlighted].id);
+            }
+            if (event.key === 'Enter' && !list.hidden) {
+                const button = [...list.querySelectorAll('button')][highlighted < 0 ? 0 : highlighted];
+                if (button) {
+                    event.preventDefault();
+                    button.click();
+                }
+            }
+        });
+        document.addEventListener('pointerdown', (event) => {
+            if (!picker.contains(event.target)) closeList();
+        });
+        select.addEventListener('change', () => {
+            renderChips();
+            if (!list.hidden) renderList();
+        });
+        renderChips();
+        closeList();
+    });
 });

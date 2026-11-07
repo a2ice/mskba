@@ -9,18 +9,29 @@
         ? number_format((int) $editing->value / 100, 2, '.', '')
         : $money->format((int) $editing->value, $currency));
     $preview = session('rule_preview');
+    $editor = app(\App\Modules\Venue\Application\Services\AccountVenueEditorAccess::class)
+        ->capabilities(auth()->user(), $venue);
+    $breadcrumbs = [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'rental'])],
+        ['label' => 'Тарифные условия'],
+    ];
 @endphp
-@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name])
+@extends('theme::layouts.account', ['title' => $title.' · '.$venue->name, 'breadcrumbs' => $breadcrumbs])
 
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
-        'heading' => $title,
-        'subtitle' => $venue->name,
+        'heading' => $venue->name,
+        'subtitle' => $title,
     ])
 @endsection
 
 @section('account-content')
-<div class="app-rental-pricing">
+<div class="app-venue-editor" data-venue-editor>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
+    <div class="app-rental-pricing">
     <div class="app-rental-pricing__actions">
         <a class="button secondary" href="{{ route('account.venues.booking-policy.edit', $venue->id) }}">Базовые цены</a>
         <a class="button secondary" href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}">Залы</a>
@@ -94,12 +105,12 @@
                         <input id="pricing-rule-name" name="name" maxlength="120" required value="{{ $formValue('name', $editing?->name ?? '') }}">
                     </label>
                     <label class="field-group" for="pricing-rule-court"><span>Область действия</span>
-                        <select id="pricing-rule-court" name="venue_court_id" @disabled($editing !== null)>
+                        <span class="select-control"><select id="pricing-rule-court" name="venue_court_id" @disabled($editing !== null)>
                             <option value="">Все залы площадки</option>
                             @foreach($courts as $court)
                                 <option value="{{ $court->id }}" @selected((string) $formValue('venue_court_id', $editing?->venue_court_id ?? '') === (string) $court->id)>{{ $court->name }}</option>
                             @endforeach
-                        </select>
+                        </select><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                         @if($editing)<input type="hidden" name="venue_court_id" value="{{ $editing->venue_court_id }}">@endif
                     </label>
                     <label class="field-group" for="pricing-rule-priority"><span>Приоритет (меньше — раньше)</span>
@@ -134,11 +145,11 @@
                         <input id="pricing-rule-to" type="date" name="date_to" value="{{ $formValue('date_to', $c['date_to'] ?? '') }}">
                     </label>
                     <label class="field-group" for="pricing-rule-scope"><span>Формат аренды</span>
-                        <select id="pricing-rule-scope" name="scope" required>
+                        <span class="select-control"><select id="pricing-rule-scope" name="scope" required>
                             @foreach(['all'=>'Любой', 'whole'=>'Весь зал', 'half'=>'Половина'] as $key => $label)
                                 <option value="{{ $key }}" @selected($formValue('scope', $c['scope'] ?? 'all') === $key)>{{ $label }}</option>
                             @endforeach
-                        </select>
+                        </select><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                     </label>
                     <label class="field-group" for="pricing-rule-time-from"><span>Время с</span>
                         <input id="pricing-rule-time-from" type="time" name="time_from" value="{{ $formValue('time_from', $c['time_from'] ?? '') }}">
@@ -165,7 +176,7 @@
                 <h2>Расчёт</h2>
                 <div class="app-rental-pricing__grid">
                     <label class="field-group" for="pricing-rule-operation"><span>Формула</span>
-                        <select id="pricing-rule-operation" name="operation" required>
+                        <span class="select-control"><select id="pricing-rule-operation" name="operation" required>
                             @foreach([
                                 'percent_discount' => 'Скидка, %',
                                 'fixed_discount' => 'Скидка, фиксированная сумма',
@@ -176,7 +187,7 @@
                             ] as $key => $label)
                                 <option value="{{ $key }}" @selected($formValue('operation', $editing?->operation ?? 'percent_discount') === $key)>{{ $label }}</option>
                             @endforeach
-                        </select>
+                        </select><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                     </label>
                     <label class="field-group" for="pricing-rule-value"><span>Величина, % или {{ $currency }}</span>
                         <input id="pricing-rule-value" type="text" name="value_text" inputmode="decimal" required
@@ -246,9 +257,9 @@
             @csrf
             <div class="app-rental-pricing__grid">
                 <label class="field-group" for="preview-court"><span>Зал</span>
-                    <select id="preview-court" name="venue_court_id" required>
+                    <span class="select-control"><select id="preview-court" name="venue_court_id" required>
                         @foreach($courts as $court)<option value="{{ $court->id }}">{{ $court->name }}</option>@endforeach
-                    </select>
+                    </select><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                 </label>
                 <label class="field-group" for="preview-start"><span>Начало</span>
                     <input id="preview-start" name="starts_at" type="datetime-local" required
@@ -258,14 +269,15 @@
                     <input id="preview-duration" name="duration_minutes" type="number" min="15" max="1440" value="120" required>
                 </label>
                 <label class="field-group" for="preview-scope"><span>Формат</span>
-                    <select id="preview-scope" name="scope">
+                    <span class="select-control"><select id="preview-scope" name="scope">
                         <option value="whole">Весь зал</option><option value="half_a">Половина А</option><option value="half_b">Половина Б</option>
-                    </select>
+                    </select><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                 </label>
             </div>
             <button class="button primary" type="submit">Проверить стоимость</button>
         </form>
         <p class="app-rental-pricing__subtle">Предварительный расчёт не создаёт бронь и не проверяет свободные слоты.</p>
     </section>
+</div>
 </div>
 @endsection

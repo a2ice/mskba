@@ -1,11 +1,27 @@
-@extends('theme::layouts.app', ['title' => 'Промокоды площадки: '.$venue->name])
-@section('content')
+@php
+    $editor = app(\App\Modules\Venue\Application\Services\AccountVenueEditorAccess::class)
+        ->capabilities(auth()->user(), $venue);
+    $breadcrumbs = [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.edit', ['alias' => $venue->routeIdentifier(), 'tab' => 'rental'])],
+        ['label' => 'Промокоды'],
+    ];
+@endphp
+@extends('theme::layouts.account', ['title' => 'Промокоды · '.$venue->name, 'breadcrumbs' => $breadcrumbs])
+@section('account-heading')
+    @include('theme::pages.account.partials.section-heading', ['heading' => $venue->name, 'subtitle' => 'Промокоды'])
+@endsection
+@section('account-content')
+<div class="app-venue-editor" data-venue-editor>
+    @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
 <section class="section app-venue-interest-group" aria-labelledby="manage-offers-heading">
-<div class="container">
+
 <header class="app-venue-interest-group__header">
 <div>
 <p class="eyebrow">Администрирование площадки</p>
-<h1 id="manage-offers-heading">Промокоды и специальные предложения</h1>
+<h2 id="manage-offers-heading">Промокоды и специальные предложения</h2>
 <p class="muted">{{ $venue->name }} · Группа интересов площадки</p>
 </div>
 <a class="button secondary" href="{{ route('venues.interest-group', ['venue'=>$venue->id]) }}">Открыть публичную страницу группы</a>
@@ -32,6 +48,6 @@
 {{ $visibleOffers->links() }}
 @include('theme::pages.venues.partials.group-offer-form')
 </div>
-</div>
 </section>
+</div>
 @endsection
