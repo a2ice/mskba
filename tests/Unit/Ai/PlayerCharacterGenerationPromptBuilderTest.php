@@ -110,7 +110,7 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
 
         $this->assertStringContainsString('"headband"', $withHeadband);
         $this->assertStringContainsString('MANDATORY: a clearly visible athletic fabric sweatband', $withHeadband);
-        $this->assertStringContainsString('across the forehead', $withHeadband);
+        $this->assertStringContainsString('around the forehead', $withHeadband);
         $this->assertStringContainsString('in front of the hair', $withHeadband);
         $this->assertStringContainsString('never on an elbow, upper arm or wrist', $withHeadband);
         $this->assertStringContainsString("PLAYER'S LEFT elbow", $withHeadband);
