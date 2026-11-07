@@ -152,6 +152,12 @@ async function save() {
       const issues = Object.values(result.errors || {}).flat().filter(Boolean);
       throw new Error(issues.join(' · ') || 'Не удалось сохранить форму.');
     }
+    if (props.context === 'player-avatar') {
+      window.dispatchEvent(new CustomEvent('mskba:uniform:saved', {
+        detail: { context: props.context, design: result.design },
+      }));
+      return;
+    }
     window.location.assign('/account/uniforms?saved=1');
   } catch (e) { error.value = e.message; }
   finally { busy.value = false; }
@@ -242,7 +248,7 @@ async function save() {
         <button type="submit" class="button primary" :disabled="busy || loading" :aria-busy="busy">
           {{ busy ? 'Сохраняем…' : editId ? 'Сохранить изменения' : 'Сохранить форму' }}
         </button>
-        <a class="button secondary" href="/account/uniforms">Мои формы</a>
+        <a v-if="context !== 'player-avatar'" class="button secondary" href="/account/uniforms">Мои формы</a>
       </div>
     </form>
   </div>
