@@ -111,7 +111,7 @@ TEXT;
         }
 
         $numberInstruction = $uniformSource === 'mine'
-            ? '- Render exactly the jersey number "'.$uniform['jersey_number'].'" on the front of the jersey and in a smaller size on the front of the left shorts leg. '
+            ? '- Render exactly the jersey number "'.$uniform['jersey_number'].'" on the front of the jersey and in a smaller size on the viewer's left shorts leg (the player's right leg). '
                 .'Use number_color if set, otherwise the secondary_color when present, or high contrast (white on dark, black on light) when absent. '
                 .'When number_outline is true, add a visible outline in number_outline_color if supplied. '
                 .'Otherwise, outline in the primary color if secondary_color exists; without secondary_color use black lettering with a white outline on dark fabric, '
