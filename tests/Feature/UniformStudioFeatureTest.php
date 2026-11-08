@@ -284,6 +284,41 @@ final class UniformStudioFeatureTest extends TestCase
             ->assertJsonPath('design.shorts_number_y', 755);
     }
 
+    public function test_workshop_has_single_size_dropdown_and_accessible_cyclic_side_arrows(): void
+    {
+        $workshop = file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformWorkshop.vue'));
+        $views = file_get_contents(resource_path('themes/mskba_app/js/uniforms/uniform-workshop-navigation.js'));
+
+        $this->assertIsString($workshop);
+        $this->assertIsString($views);
+        $this->assertStringContainsString('const selectedSize = computed({', $workshop);
+        $this->assertStringContainsString('form.sizes = [selectedSize.value]', $workshop);
+        $this->assertStringContainsString('<select v-model="selectedSize"', $workshop);
+        $this->assertStringContainsString(':size="selectedSize"', $workshop);
+        $this->assertStringNotContainsString('mskba-uniform-editor__size-grid', $workshop);
+        $this->assertStringNotContainsString('mskba-uniform-editor__preview-size', $workshop);
+        $this->assertStringNotContainsString('mskba-uniform-editor__views', $workshop);
+        $this->assertStringContainsString('@click="changeView(1)"', $workshop);
+        $this->assertStringContainsString('@click="changeView(-1)"', $workshop);
+        $this->assertStringContainsString('@click="resetNumberPosition"', $workshop);
+        $this->assertStringContainsString("['front', 'left', 'rear', 'right']", $views);
+    }
+
+    public function test_one_selected_uniform_size_round_trips_in_legacy_array_api(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $created = $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'sizes' => ['XXL'],
+        ])->assertCreated()->assertJsonPath('design.sizes', ['XXL']);
+
+        $this->putJson('/uniforms/projects/'.$created->json('design.id'), [
+            ...$this->input(),
+            'sizes' => ['XS'],
+        ])->assertOk()->assertJsonPath('design.sizes', ['XS']);
+    }
+
     public function test_page_builder_preserves_the_public_workshop_trigger_without_inline_js(): void
     {
         $html = app(\App\Modules\Content\Application\Services\PageBuilderMarkup::class)->html(
