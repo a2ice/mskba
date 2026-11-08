@@ -21,6 +21,13 @@ final class PlayerCharacterGenerationPromptBuilder
             'secondary_color' => $requestedUniform['secondary_color'] ?? null,
             'sleeve_style' => $requestedUniform['sleeve_style'] ?? 'sleeveless',
             'logo_source' => $requestedUniform['logo_source'] ?? 'none',
+            'jersey_number' => $uniformSource === 'mine'
+                ? str_pad((string) max(1, min(999, (int) ($requestedUniform['jersey_number'] ?? 1))), 2, '0', STR_PAD_LEFT) : null,
+            'number_color' => $requestedUniform['number_color'] ?? null,
+            'number_outline' => (bool) ($requestedUniform['number_outline'] ?? false),
+            'number_outline_color' => $requestedUniform['number_outline_color'] ?? null,
+            'logo_front_position' => $requestedUniform['logo_front_position'] ?? 'left',
+            'logo_back_position' => $requestedUniform['logo_back_position'] ?? 'above',
         ];
         $female = ($payload['gender'] ?? null) === 'female';
         $chestVolume = $female ? ($appearance['chest_volume'] ?? 'medium') : null;
@@ -96,6 +103,21 @@ TEXT
 - Do not place a selected logo on the uniform.
 TEXT;
 
+        if ($withTeamLogo && $uniformSource === 'mine') {
+            $placement = ($uniform['logo_front_position'] ?? 'left') === 'right'
+                ? "the PLAYER'S RIGHT upper chest (viewer's left)"
+                : "the PLAYER'S LEFT upper chest (viewer's right)";
+            $teamLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
+        }
+
+        $numberInstruction = $uniformSource === 'mine'
+            ? '- Render exactly the jersey number "'.$uniform['jersey_number'].'" on the front of the jersey and in a smaller size on the left side of the image (the right shorts leg of the player). '
+                .'Use number_color if set, otherwise the secondary_color when present, or high contrast (white on dark, black on light) when absent. '
+                .'When number_outline is true, add a visible outline in number_outline_color if supplied. '
+                .'Otherwise, outline in the primary color if secondary_color exists; without secondary_color use black lettering with a white outline on dark fabric, '
+                .'or white lettering with a black outline on light fabric. Never change the number or add any other lettering.'
+            : '- No jersey number is configured. Do not invent any lettering or numerals.';
+
         return <<<PROMPT
 Create ONE photorealistic full-body basketball player using all supplied face-reference images as identity references.
 
@@ -130,10 +152,12 @@ Clothing - SELECTED UNIFORM IS AUTHORITATIVE:
 - Modern basketball jersey and matching shorts. Respect the supplied uniform.source and sleeve_style.
 - uniform.source = "neutral": use a neutral light slate/gray jersey and matching shorts. Do not reuse old team colors or invent branding.
 - uniform.source = "team": use the selected team's configured primary_color as the main jersey AND shorts color and secondary_color as trim. Do not invent additional team markings.
-- uniform.source = "mine": reproduce the saved design's specified primary_color on jersey and shorts, secondary_color for borders, piping and trim. The saved design name is descriptive metadata only; do not print it on clothing.
+- uniform.source = "mine": reproduce the saved design's specified primary_color on jersey and shorts, and use secondary_color for borders, piping and trim ONLY when present. When absent, make a monochrome uniform. The saved design name is descriptive metadata only; do not print it on clothing.
 - sleeve_style = "sleeved": use a basketball jersey with short athletic sleeves, visibly covering the upper arms. sleeve_style = "sleeveless": use a sleeveless tank jersey.
 - For every source, keep shirt and shorts coordinated. A source with no configured team kit has already been normalized to neutral by the server; never guess a palette from the team name.
-{$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
+{$teamLogoInstruction}
+{$numberInstruction}
+- Do not invent brand logos, sponsors, extra text, names, watermarks, or badges.
 - Apply the requested shoes and the following SELECTED accessories exactly at their specified locations. Selected accessories are mandatory clothing items, not optional decorative suggestions. Do not confuse wrist, elbow, knee or head placement.
 {$accessoryInstructions}
 - Never add unselected accessories or silently omit selected ones.

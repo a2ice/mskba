@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'name', 'primary_color', 'secondary_color', 'sizes', 'sleeve_style', 'logo_source', 'logo_team_id', 'editor_version'])]
+#[Fillable(['user_id', 'name', 'primary_color', 'secondary_color', 'sizes', 'sleeve_style', 'logo_source', 'logo_team_id', 'jersey_number', 'number_color', 'number_outline', 'number_outline_color', 'logo_front_position', 'logo_back_position', 'editor_version'])]
 final class UniformDesign extends Model
 {
     use SoftDeletes;
@@ -39,6 +39,8 @@ final class UniformDesign extends Model
     {
         return [
             'sizes' => 'array',
+            'jersey_number' => 'integer',
+            'number_outline' => 'boolean',
             'editor_version' => 'integer',
         ];
     }

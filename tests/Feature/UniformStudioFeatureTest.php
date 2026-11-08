@@ -143,6 +143,80 @@ final class UniformStudioFeatureTest extends TestCase
             ->assertJsonValidationErrors(['primary_color', 'sizes.1', 'logo_source', 'sleeve_style']);
     }
 
+
+    public function test_four_view_svg_options_round_trip_without_a_secondary_color(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $input = [
+            ...$this->input(),
+            'secondary_color' => null,
+            'jersey_number' => 999,
+            'number_outline' => true,
+            'number_color' => '#123ABC',
+            'number_outline_color' => '#F1F2F3',
+            'logo_front_position' => 'right',
+            'logo_back_position' => 'below',
+        ];
+
+        $created = $this->postJson('/uniforms/projects', $input)->assertCreated()
+            ->assertJsonPath('design.secondary_color', null)
+            ->assertJsonPath('design.jersey_number', 999)
+            ->assertJsonPath('design.number_color', '#123ABC')
+            ->assertJsonPath('design.number_outline', true)
+            ->assertJsonPath('design.number_outline_color', '#F1F2F3')
+            ->assertJsonPath('design.logo_front_position', 'right')
+            ->assertJsonPath('design.logo_back_position', 'below');
+
+        $id = $created->json('design.id');
+        $this->getJson('/uniforms/projects/'.$id)->assertOk()
+            ->assertJsonPath('design.jersey_number', 999)
+            ->assertJsonPath('design.logo_front_position', 'right');
+
+        $this->putJson('/uniforms/projects/'.$id, [
+            ...$this->input(),
+            'jersey_number' => 1,
+            'number_outline' => false,
+            'logo_front_position' => 'none',
+            'logo_back_position' => 'above',
+        ])->assertOk()
+            ->assertJsonPath('design.jersey_number', 1)
+            ->assertJsonPath('design.number_outline', false)
+            ->assertJsonPath('design.number_outline_color', null)
+            ->assertJsonPath('design.logo_front_position', 'none');
+
+        $this->assertDatabaseHas('uniform_designs', [
+            'id' => $id,
+            'jersey_number' => 1,
+            'logo_front_position' => 'none',
+            'logo_back_position' => 'above',
+        ]);
+    }
+
+    public function test_svg_number_and_logo_position_validation(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_number' => 0,
+            'number_color' => 'red',
+            'number_outline_color' => 'url(#svg)',
+            'logo_front_position' => 'center',
+            'logo_back_position' => 'sleeve',
+        ])->assertUnprocessable()->assertJsonValidationErrors([
+            'jersey_number', 'number_color', 'number_outline_color',
+            'logo_front_position', 'logo_back_position',
+        ]);
+        $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_number' => 1000,
+        ])->assertUnprocessable()->assertJsonValidationErrors('jersey_number');
+
+        // Existing clients still get safe defaults when new fields are omitted.
+        $this->postJson('/uniforms/projects', $this->input())->assertCreated()
+            ->assertJsonPath('design.jersey_number', 1)
+            ->assertJsonPath('design.number_outline', false);
+    }
+
     public function test_page_builder_preserves_the_public_workshop_trigger_without_inline_js(): void
     {
         $html = app(\App\Modules\Content\Application\Services\PageBuilderMarkup::class)->html(
