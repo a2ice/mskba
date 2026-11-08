@@ -9,13 +9,32 @@ const props = defineProps({
 const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const form = reactive({
   name: 'Моя форма',
-  primary_color: '#111924',
-  secondary_color: '#F58220',
+  primary_color: '#DCE7EF',
+  secondary_color: '',
   sizes: ['M', 'L'],
   sleeve_style: 'sleeveless',
   logo_source: 'none',
   logo_team_id: '',
+  jersey_number: '01',
+  number_color: '',
+  number_outline: false,
+  number_outline_color: '',
+  logo_front_position: 'left',
+  logo_back_position: 'above',
 });
+const previewView = ref('front');
+const previewSize = ref('M');
+const viewOptions = [
+  { value: 'front', label: 'Спереди' }, { value: 'left', label: 'Слева' },
+  { value: 'right', label: 'Справа' }, { value: 'rear', label: 'Сзади' },
+];
+const activePreviewSize = computed(() => form.sizes.includes(previewSize.value)
+  ? previewSize.value : (form.sizes[0] || 'M'));
+function normalizeNumber() {
+  const numeric = Number.parseInt(form.jersey_number, 10);
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 999)
+    form.jersey_number = String(numeric).padStart(2, '0');
+}
 const logoFile = ref(null);
 const fileUrl = ref('');
 const storedLogoUrl = ref('');
@@ -51,9 +70,15 @@ function hydrate(design) {
   editId.value = design.id;
   form.name = design.name;
   form.primary_color = design.primary_color;
-  form.secondary_color = design.secondary_color;
+  form.secondary_color = design.secondary_color || '';
+  form.jersey_number = String(design.jersey_number || 1).padStart(2, '0');
+  form.number_color = design.number_color || '';
+  form.number_outline = !!design.number_outline;
+  form.number_outline_color = design.number_outline_color || '';
+  form.logo_front_position = design.logo_front_position || 'left';
+  form.logo_back_position = design.logo_back_position || 'above';
   form.sizes = [...design.sizes];
-  form.sleeve_style = design.sleeve_style || 'sleeved';
+  form.sleeve_style = 'sleeveless'; // Sleeves are not implemented in the SVG pattern yet.
   form.logo_source = design.logo_source;
   form.logo_team_id = design.logo_team_id || '';
   storedLogoUrl.value = design.logo_source === 'custom' ? (design.logo_url || '') : '';
@@ -95,6 +120,10 @@ async function savePendingDraft() {
     sessionStorage.setItem('mskba.uniform.pending.v1', JSON.stringify({
       name: form.name, primary_color: form.primary_color, secondary_color: form.secondary_color,
       sizes: [...form.sizes], sleeve_style: form.sleeve_style,
+      jersey_number: Number.parseInt(form.jersey_number, 10),
+      number_color: form.number_color || null, number_outline: form.number_outline,
+      number_outline_color: form.number_outline_color || null,
+      logo_front_position: form.logo_front_position, logo_back_position: form.logo_back_position,
       logo_source: form.logo_source, logo_team_id: form.logo_team_id || null, logo_data,
     }));
   } catch {
@@ -108,6 +137,11 @@ async function save() {
     return;
   }
   if (!form.sizes.length) { error.value = 'Выберите хотя бы один размер.'; return; }
+  const number = Number.parseInt(form.jersey_number, 10);
+  if (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999) {
+    error.value = 'Номер должен быть от 01 до 999.'; return;
+  }
+  normalizeNumber();
   if (form.logo_source === 'team' && !selectedTeam.value) { error.value = 'Выберите команду.'; return; }
   if (form.logo_source === 'custom' && !logoFile.value && !storedLogoUrl.value) {
     error.value = 'Загрузите логотип.';
@@ -124,7 +158,13 @@ async function save() {
     payload.append('name', form.name.trim());
     payload.append('primary_color', form.primary_color);
     payload.append('secondary_color', form.secondary_color);
-    payload.append('sleeve_style', form.sleeve_style);
+    payload.append('sleeve_style', 'sleeveless');
+    payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
+    payload.append('number_outline', form.number_outline ? '1' : '0');
+    if (form.number_color) payload.append('number_color', form.number_color);
+    if (form.number_outline_color) payload.append('number_outline_color', form.number_outline_color);
+    payload.append('logo_front_position', form.logo_front_position);
+    payload.append('logo_back_position', form.logo_back_position);
     form.sizes.forEach((s, i) => payload.append('sizes[' + i + ']', s));
     payload.append('logo_source', form.logo_source);
     if (form.logo_source === 'team') payload.append('logo_team_id', form.logo_team_id);
@@ -167,11 +207,25 @@ async function save() {
 <template>
   <div class="mskba-uniform-editor">
     <section class="mskba-uniform-editor__preview" aria-label="Предпросмотр формы">
+      <div class="mskba-uniform-editor__views" role="group" aria-label="Ракурс формы">
+        <button v-for="option in viewOptions" :key="option.value" type="button"
+          :class="{ 'is-active': previewView === option.value }" :aria-pressed="previewView === option.value"
+          @click="previewView = option.value">{{ option.label }}</button>
+      </div>
       <div class="mskba-uniform-editor__stage">
         <UniformKitPreview
           :name="form.name" :primary="form.primary_color" :secondary="form.secondary_color"
-          :sleeve-style="form.sleeve_style" :logo="logoUrl"/>
+          :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
+          :size="activePreviewSize" :number="form.jersey_number" :number-color="form.number_color"
+          :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
+          :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position" />
       </div>
+      <label class="mskba-uniform-editor__preview-size">
+        <span>Размер для просмотра</span>
+        <select v-model="previewSize" :disabled="!form.sizes.length">
+          <option v-for="size in form.sizes" :key="size" :value="size">{{ size }}</option>
+        </select>
+      </label>
     </section>
     <form class="mskba-uniform-editor__controls" @submit.prevent="save" novalidate>
       <h2>Настройки формы</h2>
@@ -188,13 +242,17 @@ async function save() {
             <span>{{ form.primary_color.toUpperCase() }}</span>
           </span>
         </label>
-        <label class="mskba-uniform-editor__field">
-          <span>Вспомогательный цвет</span>
-          <span class="mskba-uniform-editor__color">
-            <input v-model="form.secondary_color" type="color" aria-label="Вспомогательный цвет"/>
+        <div class="mskba-uniform-editor__field">
+          <label class="mskba-uniform-editor__optional"><input type="checkbox"
+            :checked="!!form.secondary_color"
+            @change="form.secondary_color = $event.target.checked ? '#F58220' : ''"/>
+            <span>Дополнительный цвет</span></label>
+          <span v-if="form.secondary_color" class="mskba-uniform-editor__color">
+            <input v-model="form.secondary_color" type="color" aria-label="Дополнительный цвет"/>
             <span>{{ form.secondary_color.toUpperCase() }}</span>
           </span>
-        </label>
+          <span v-else class="mskba-uniform-editor__hint">Не задан — форма одноцветная</span>
+        </div>
       </div>
       <fieldset class="mskba-uniform-editor__cut">
         <legend>Фасон</legend>
@@ -204,7 +262,7 @@ async function save() {
             <span>Без рукавов</span>
           </label>
           <label class="check-label">
-            <input v-model="form.sleeve_style" type="radio" name="sleeve-style" value="sleeved"/>
+            <input v-model="form.sleeve_style" type="radio" name="sleeve-style" value="sleeved" disabled/>
             <span>С рукавами</span>
           </label>
         </div>
@@ -216,6 +274,36 @@ async function save() {
             <input type="checkbox" :checked="form.sizes.includes(size)" @change="toggleSize(size)"/>
             <span>{{ size }}</span>
           </label>
+        </div>
+      </fieldset>
+      <fieldset class="mskba-uniform-editor__numbers">
+        <legend>Игровой номер</legend>
+        <label class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
+          <span>Номер (01–999)</span>
+          <input v-model="form.jersey_number" type="text" inputmode="numeric"
+            pattern="[0-9]{1,3}" maxlength="3" autocomplete="off"
+            aria-label="Игровой номер от 01 до 999" @blur="normalizeNumber"/>
+        </label>
+        <div class="mskba-uniform-editor__number-options">
+          <label class="mskba-uniform-editor__optional"><input type="checkbox"
+            :checked="!!form.number_color" @change="form.number_color = $event.target.checked ? '#111924' : ''"/>
+            <span>Свой цвет номера</span></label>
+          <span v-if="form.number_color" class="mskba-uniform-editor__color">
+            <input v-model="form.number_color" type="color" aria-label="Цвет игрового номера"/>
+            <span>{{ form.number_color.toUpperCase() }}</span>
+          </span>
+          <label class="mskba-uniform-editor__optional"><input v-model="form.number_outline"
+            type="checkbox"/><span>Обводка номера</span></label>
+          <label v-if="form.number_outline" class="mskba-uniform-editor__optional">
+            <input type="checkbox" :checked="!!form.number_outline_color"
+              @change="form.number_outline_color = $event.target.checked ? '#FFFFFF' : ''"/>
+            <span>Свой цвет обводки</span>
+          </label>
+          <span v-if="form.number_outline && form.number_outline_color" class="mskba-uniform-editor__color">
+            <input v-model="form.number_outline_color" type="color" aria-label="Цвет обводки номера"/>
+            <span>{{ form.number_outline_color.toUpperCase() }}</span>
+          </span>
+          <small class="mskba-uniform-editor__hint">Без ручных цветов контраст подбирается автоматически по ткани.</small>
         </div>
       </fieldset>
       <fieldset class="mskba-uniform-editor__logos">
@@ -241,6 +329,24 @@ async function save() {
           <input type="file" accept="image/png,image/jpeg,image/webp" @change="onFile"/>
           <small v-if="storedLogoUrl && !logoFile">Логотип загружен</small>
         </label>
+        <div v-if="form.logo_source !== 'none'" class="mskba-uniform-editor__logo-positions">
+          <label class="mskba-uniform-editor__field">
+            <span>Спереди (небольшой)</span>
+            <select v-model="form.logo_front_position">
+              <option value="none">Не размещать</option>
+              <option value="left">Слева</option>
+              <option value="right">Справа</option>
+            </select>
+          </label>
+          <label class="mskba-uniform-editor__field">
+            <span>Сзади</span>
+            <select v-model="form.logo_back_position">
+              <option value="none">Не размещать</option>
+              <option value="above">Над номером</option>
+              <option value="below">Под номером</option>
+            </select>
+          </label>
+        </div>
       </fieldset>
       <p v-if="loading" class="mskba-uniform-editor__message" role="status">Загружаем…</p>
       <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
