@@ -53,7 +53,10 @@ const center = computed(() => ({ front: 225, left: 488, right: 488, rear: 735 })
 const viewBox = computed(() => [center.value - 140, 148, 280, 662].join(' '));
 const isSide = computed(() => props.view === 'left' || props.view === 'right');
 const shape = computed(() => shapes[isSide.value ? 'left' : props.view] || shapes.front);
-const numberLabel = computed(() => String(Math.max(1, Math.min(999, Number.parseInt(props.number, 10) || 1))).padStart(2, '0'));
+const numberLabel = computed(() => {
+  const parsed = Number.parseInt(props.number, 10);
+  return String(Math.max(0, Math.min(999, Number.isFinite(parsed) ? parsed : 1))).padStart(2, '0');
+});
 const threeDigits = computed(() => numberLabel.value.length === 3);
 const isDark = computed(() => {
   const h = /^#[\da-f]{6}$/i.test(props.primary) ? props.primary.slice(1) : 'DCE7EF';
