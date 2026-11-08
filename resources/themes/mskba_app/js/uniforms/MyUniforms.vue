@@ -70,12 +70,16 @@ async function remove() {
       <article v-for="item in projects" :key="item.id" class="mskba-uniform-library__card">
         <div class="mskba-uniform-library__preview">
           <UniformKitPreview :name="item.name" :primary="item.primary_color"
-            :secondary="item.secondary_color" :sleeve-style="item.sleeve_style || 'sleeved'"
-            :logo="item.logo_url || ''"/>
+            :secondary="item.secondary_color || ''" :sleeve-style="item.sleeve_style || 'sleeveless'"
+            :logo="item.logo_url || ''" :number="item.jersey_number || 1"
+            :number-color="item.number_color || ''" :number-outline="!!item.number_outline"
+            :number-outline-color="item.number_outline_color || ''"
+            :logo-front-position="item.logo_front_position || 'left'"
+            :logo-back-position="item.logo_back_position || 'above'"/>
         </div>
         <div class="mskba-uniform-library__card-info">
           <h2>{{ item.name }}</h2>
-          <p>{{ item.sleeve_style === 'sleeveless' ? 'Без рукавов' : 'С рукавами' }} · {{ item.sizes.join(' · ') }}</p>
+          <p>№ {{ String(item.jersey_number || 1).padStart(2, '0') }} · {{ item.sizes.join(' · ') }}</p>
           <div class="mskba-uniform-library__actions">
             <a :href="'/uniforms/workshop?project=' + item.id" class="button secondary">Редактировать</a>
             <button type="button" class="button secondary" @click="open('production', item)">В производство</button>
