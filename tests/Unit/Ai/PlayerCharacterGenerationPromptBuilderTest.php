@@ -150,6 +150,32 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('neutral light slate/gray jersey', $neutral);
     }
 
+    public function test_saved_uniform_number_color_and_front_logo_position_are_authoritative(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+        $prompt = $builder->build([
+            'uniform' => [
+                'source' => 'mine',
+                'primary_color' => '#111924',
+                'secondary_color' => null,
+                'sleeve_style' => 'sleeveless',
+                'logo_source' => 'custom',
+                'jersey_number' => 7,
+                'number_outline' => true,
+                'logo_front_position' => 'right',
+                'logo_back_position' => 'below',
+            ],
+            'team' => ['with_logo' => true],
+        ]);
+
+        $this->assertStringContainsString('"jersey_number": "07"', $prompt);
+        $this->assertStringContainsString('jersey number "07"', $prompt);
+        $this->assertStringContainsString('SMALL logo only on the PLAYER\'S RIGHT upper chest', $prompt);
+        $this->assertStringContainsString('"logo_back_position": "below"', $prompt);
+        $this->assertStringContainsString('monochrome uniform', $prompt);
+        $this->assertStringContainsString('black lettering with a white outline on dark fabric', $prompt);
+    }
+
     public function test_new_normal_body_type_is_described_in_ai_prompt(): void
     {
         $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([
