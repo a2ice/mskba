@@ -188,6 +188,40 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringNotContainsString('Render exactly the jersey number "23"', $prompt);
     }
 
+
+    public function test_team_design_uses_roster_number_including_zero_and_honors_no_number(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+        $withRosterNumber = $builder->build([
+            'uniform' => [
+                'source' => 'team',
+                'name' => 'Сборная МСКБА',
+                'primary_color' => '#112233',
+                'secondary_color' => '#FFC800',
+                'logo_source' => 'none',
+                'jersey_number' => 0,
+                'number_enabled' => true,
+                'number_color' => '#FFC800',
+                'jersey_number_scale' => 1.2,
+            ],
+        ]);
+        $withoutRosterNumber = $builder->build([
+            'uniform' => [
+                'source' => 'team',
+                'primary_color' => '#112233',
+                'logo_source' => 'none',
+                'jersey_number' => null,
+                'number_enabled' => false,
+            ],
+        ]);
+
+        $this->assertStringContainsString('"jersey_number": "00"', $withRosterNumber);
+        $this->assertStringContainsString('jersey number "00"', $withRosterNumber);
+        $this->assertStringContainsString('"number_color": "#FFC800"', $withRosterNumber);
+        $this->assertStringContainsString('No number is enabled', $withoutRosterNumber);
+        $this->assertStringNotContainsString('Render exactly the jersey number', $withoutRosterNumber);
+    }
+
     public function test_new_normal_body_type_is_described_in_ai_prompt(): void
     {
         $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([

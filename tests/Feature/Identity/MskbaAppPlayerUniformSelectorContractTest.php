@@ -68,6 +68,24 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringContainsString("'team' => \$team?->logo", $handler);
     }
 
+    public function test_team_uniform_button_opens_shared_workshop_in_read_only_mode_without_edit_rights(): void
+    {
+        $root = __DIR__.'/../../../resources/themes/mskba_app/';
+        $fields = file_get_contents($root.'views/pages/account/partials/player-generation-fields.blade.php');
+        $selection = file_get_contents($root.'js/player-generation-uniform-selection.js');
+        $modal = file_get_contents($root.'js/uniforms/UniformModal.vue');
+        $editor = file_get_contents($root.'js/uniforms/UniformWorkshop.vue');
+
+        self::assertStringContainsString('data-player-team-uniform-view', $fields);
+        self::assertStringContainsString("context: 'team-avatar', teamId", $selection);
+        self::assertStringContainsString(':team-id="state.teamId"', $modal);
+        self::assertStringContainsString('v-if="readOnly"', $editor);
+        self::assertStringContainsString('v-else class="mskba-uniform-editor__controls"', $editor);
+        self::assertStringContainsString('Размеры', $editor);
+        self::assertStringContainsString('Присваивается в составе команды', $editor);
+        self::assertStringContainsString('!isTeamContext', $editor);
+    }
+
     public function test_paid_generation_sends_only_selected_and_owned_uniform_source(): void
     {
         $root = __DIR__.'/../../../';
