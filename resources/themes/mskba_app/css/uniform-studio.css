@@ -38,7 +38,7 @@
   padding: 20px;
   color: var(--text);
 }
-.mskba-uniform-editor__preview { display: flex; align-items: stretch; }
+.mskba-uniform-editor__preview { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
 .mskba-uniform-editor__stage {
   display: flex;
   align-items: center;
@@ -307,4 +307,99 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .mskba-uniform-editor * { transition: none !important; }
+}
+
+/* Four orthographic SVG views and size preview. Keep the same neutral stage as
+   the player silhouette, independent of the selected jersey pigment. */
+.mskba-uniform-editor__views {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--field);
+}
+.mskba-uniform-editor__views button {
+  min-width: 0;
+  padding: 9px 4px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mskba-uniform-editor__views button.is-active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 7%);
+}
+.mskba-uniform-editor__views button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mskba-uniform-editor__preview-size {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.mskba-uniform-editor__preview-size select,
+.mskba-uniform-editor__logo-positions select {
+  min-height: 36px;
+  padding: 5px 10px;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--control-line);
+  border-radius: 9px;
+  font: inherit;
+}
+.mskba-uniform-editor__preview-size select:focus-visible,
+.mskba-uniform-editor__logo-positions select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mskba-uniform-editor__optional {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.mskba-uniform-editor__optional input { flex-shrink: 0; accent-color: var(--accent); }
+.mskba-uniform-editor__hint {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.mskba-uniform-editor__number-field { max-width: 180px; }
+.mskba-uniform-editor__number-options {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 12px;
+}
+.mskba-uniform-editor__number-options .mskba-uniform-editor__color { min-width: 168px; }
+.mskba-uniform-editor__logo-positions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.mskba-uniform-editor__controls .check-label:has(input:disabled) {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 440px) {
+  .mskba-uniform-editor__views button { font-size: 11px; }
+  .mskba-uniform-editor__logo-positions { grid-template-columns: 1fr; }
 }
