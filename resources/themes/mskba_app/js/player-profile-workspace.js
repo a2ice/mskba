@@ -611,14 +611,6 @@ if (workspace) {
                 if (!design?.value) throw new Error('Выберите сохранённую форму.');
                 payload.set('generation_uniform_design_id', design.value);
             }
-            const mode = source === 'mine' ? 'none' : (workspace.dataset.playerGenerationLogoMode || 'none');
-            if (mode === 'custom' && !workspace.dataset.playerGenerationCustomLogoId) {
-                throw new Error('Выберите свой логотип в окне «Мои логотипы».');
-            }
-            payload.set('generation_logo_mode', mode);
-            if (mode === 'custom') {
-                payload.set('generation_custom_logo_id', workspace.dataset.playerGenerationCustomLogoId);
-            }
             for (const input of workspace.querySelectorAll('[data-player-face-slot]')) {
                 if (input.files?.[0]) {
                     if (input.files[0].size > 5 * 1024 * 1024) {

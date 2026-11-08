@@ -46,6 +46,28 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringContainsString("!event.detail.saved && creating", $state);
     }
 
+    public function test_avatar_uses_uniform_owned_logo_without_independent_mskba_app_control(): void
+    {
+        $root = __DIR__.'/../../../';
+        $fields = file_get_contents($root.'resources/themes/mskba_app/views/pages/account/partials/player-generation-fields.blade.php');
+        $workspace = file_get_contents($root.'resources/themes/mskba_app/views/pages/account/partials/player-profile-workspace.blade.php');
+        $options = file_get_contents($root.'resources/themes/mskba_app/js/player-generation-options.js');
+        $submit = file_get_contents($root.'resources/themes/mskba_app/js/player-profile-workspace.js');
+        $handler = file_get_contents($root.'app/Modules/Identity/Application/UseCases/GeneratePlayerCharacterTwoDimensionalHandler.php');
+
+        self::assertStringNotContainsString('data-player-logo-control', $fields);
+        self::assertStringNotContainsString('data-player-logo-enabled', $fields);
+        self::assertStringNotContainsString('С логотипом', $fields);
+        self::assertStringNotContainsString('player-generation-dialogs', $workspace);
+        self::assertStringNotContainsString('playerGenerationLogoMode', $options);
+        self::assertStringNotContainsString('data-player-logo-', $options);
+        self::assertStringContainsString('setupPlayerUniformSelection(workspace)', $options);
+        self::assertStringNotContainsString('generation_logo_mode', $submit);
+        self::assertStringNotContainsString('generation_custom_logo_id', $submit);
+        self::assertStringContainsString("'mine' =>", $handler);
+        self::assertStringContainsString("'team' => $"+'team?->logo', $handler);
+    }
+
     public function test_paid_generation_sends_only_selected_and_owned_uniform_source(): void
     {
         $root = __DIR__.'/../../../';

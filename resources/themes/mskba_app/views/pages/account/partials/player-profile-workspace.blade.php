@@ -198,7 +198,6 @@
                     <p class="app-player-workspace__generation-status" data-player-generation-status role="status" aria-live="polite"></p>
                 </section>
                 <dialog id="app-player-billing-dialog" class="app-player-workspace__topup-dialog" data-player-billing-dialog aria-labelledby="app-player-billing-title"><div class="app-player-workspace__topup-head"><h3 id="app-player-billing-title">Как списываются средства?</h3><button type="button" class="app-player-workspace__secondary" data-player-billing-close>Закрыть</button></div><div class="app-player-workspace__topup-body"><p>При оплате используются сначала бонусные средства, затем реальные. Стоимость и баланс проверяются ещё раз непосредственно перед списанием.</p></div></dialog>
-                @include('theme::pages.account.partials.player-generation-dialogs')
                 <dialog id="app-player-topup-dialog" class="app-player-workspace__topup-dialog" data-player-topup-dialog
                     aria-labelledby="app-player-topup-title">
                     <div class="app-player-workspace__topup-head">
