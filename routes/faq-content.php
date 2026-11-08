@@ -1,6 +1,5 @@
 <?php
 
-use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Content\Presentation\Http\Controllers\FaqController;
 use App\Modules\Content\Presentation\Http\Controllers\FaqHelpController;
 use App\Modules\Content\Presentation\Http\Controllers\SupportQuestionController;
@@ -24,13 +23,3 @@ Route::prefix('faq')->group(function (): void {
     Route::get('/{contentItem:alias}', [FaqController::class, 'show'])
         ->name('faq.show');
 });
-
-Route::prefix('admin/content')
-    ->middleware('auth', 'can:manage-content')
-    ->group(function (): void {
-        Route::post('/{contentItem:alias}/images', [AdminContentController::class, 'storeInlineImage'])
-            ->name('admin.content.images.store');
-        Route::delete('/{contentItem:alias}/images/{media}', [AdminContentController::class, 'destroyInlineImage'])
-            ->whereNumber('media')
-            ->name('admin.content.images.destroy');
-    });

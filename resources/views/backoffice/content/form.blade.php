@@ -14,7 +14,7 @@
     $inlineImages = $editing ? $contentItem->inlineImages : collect();
 @endphp
 
-@extends('theme::partials.admin.list-shell', [
+@extends('backoffice.content.layout', [
     'title' => $title,
     'subtitle' => 'Контент, FAQ, лента сайта и Telegram управляются из одного редактора.',
 ])
@@ -175,14 +175,14 @@
         <section class="content-admin-section" data-content-publication-section @if($selectedType === 'faq') hidden @endif>
             <h2 class="content-admin-section__title">Публикация</h2>
             <div class="content-publication-options">
-                @include('theme::partials.forms.toggle', [
+                @include('mskba-dark::partials.forms.toggle', [
                     'name' => 'publish_in_feed',
                     'id' => 'publishInFeed',
                     'title' => 'Публиковать в ленте',
                     'description' => 'Материал появится в разделе «Новости»',
                     'checked' => $publishInFeed,
                 ])
-                @include('theme::partials.forms.toggle', [
+                @include('mskba-dark::partials.forms.toggle', [
                     'name' => 'publish_in_telegram',
                     'id' => 'publishInTelegram',
                     'title' => 'Публиковать в Telegram',

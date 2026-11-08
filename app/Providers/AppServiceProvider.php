@@ -70,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register the theme's view namespace
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
+        View::addNamespace('mskba-dark', resource_path('themes/mskba_dark/views'));
         View::composer([
             'theme::pages.welcome',
             'theme::partials.mobile-primary-bar',

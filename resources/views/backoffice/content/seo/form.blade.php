@@ -1,6 +1,6 @@
 @php $title = 'SEO страницы'; @endphp
 
-@extends('theme::partials.admin.list-shell', [
+@extends('backoffice.content.layout', [
     'title' => $title,
     'subtitle' => $entityType->label().' · '.$entityTitle,
 ])

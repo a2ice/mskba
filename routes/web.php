@@ -286,7 +286,7 @@ Route::prefix('auth')->group(function () {
 
 });
 
-Route::prefix('admin/content')
+Route::prefix('backoffice/content')
     ->middleware('auth', 'can:manage-content')
     ->group(function () {
         Route::get('/', [AdminContentController::class, 'index'])
@@ -311,7 +311,19 @@ Route::prefix('admin/content')
             ->name('admin.content.edit');
         Route::put('/{contentItem:alias}', [AdminContentController::class, 'update'])
             ->name('admin.content.update');
+        Route::post('/{contentItem:alias}/images', [AdminContentController::class, 'storeInlineImage'])
+            ->name('admin.content.images.store');
+        Route::delete('/{contentItem:alias}/images/{media}', [AdminContentController::class, 'destroyInlineImage'])
+            ->whereNumber('media')
+            ->name('admin.content.images.destroy');
     });
+
+Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/admin/content/{path?}', function (\Illuminate\Http\Request $request) {
+    $path = substr($request->getPathInfo(), strlen('/admin/content'));
+    $query = $request->getQueryString();
+
+    return redirect('/backoffice/content'.$path.($query === null ? '' : '?'.$query), 307);
+})->where('path', '.*')->middleware('auth', 'can:manage-content');
 
 Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')

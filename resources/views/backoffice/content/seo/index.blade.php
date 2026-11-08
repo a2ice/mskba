@@ -1,6 +1,6 @@
 @php $title = 'SEO страниц'; @endphp
 
-@extends('theme::partials.admin.list-shell', [
+@extends('backoffice.content.layout', [
     'title' => $title,
     'subtitle' => 'Метаданные публичных страниц площадок, мероприятий и команд.',
 ])
@@ -68,6 +68,6 @@
                 </tbody>
             </table>
         </div>
-        @include('theme::partials.admin.pagination', ['paginator' => $entities])
+        @include('mskba-dark::partials.admin.pagination', ['paginator' => $entities])
     @endif
 @endsection

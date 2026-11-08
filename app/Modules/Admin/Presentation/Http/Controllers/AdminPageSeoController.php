@@ -10,7 +10,6 @@ use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +35,7 @@ final class AdminPageSeoController extends Controller
             ->get()
             ->keyBy('entity_id');
 
-        return ThemeResolver::page('admin.content.seo.index', [
+        return response()->view('backoffice.content.seo.index', [
             'entities' => $entities,
             'settings' => $settings,
             'types' => SeoEntityTypeEnum::cases(),
@@ -53,7 +52,7 @@ final class AdminPageSeoController extends Controller
             'entity_id' => $entityId,
         ]);
 
-        return ThemeResolver::page('admin.content.seo.form', [
+        return response()->view('backoffice.content.seo.form', [
             'entity' => $entity,
             'entityTitle' => $this->entityTitle($entity, $type),
             'entityType' => $type,
