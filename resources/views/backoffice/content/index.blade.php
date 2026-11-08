@@ -7,8 +7,8 @@
 
 @section('section-heading-action')
     <div class="content-admin-actions">
-        <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.seo') }}">SEO страниц</a>
-        <a class="btn btn--primary btn--sm" href="{{ route('admin.content.create') }}">Добавить материал</a>
+        <x-filament::button tag="a" color="gray" href="{{ route('admin.content.seo') }}">SEO страниц</x-filament::button>
+        <x-filament::button tag="a" href="{{ route('admin.content.create') }}">Добавить материал</x-filament::button>
     </div>
 @endsection
 
@@ -55,8 +55,8 @@
             </select>
         </label>
         <div class="admin-filter__actions">
-            <button class="btn btn--primary btn--sm" type="submit">Фильтр</button>
-            <a class="btn btn--secondary btn--sm" href="{{ route('admin.content') }}">Сброс</a>
+            <x-filament::button type="submit">Фильтр</x-filament::button>
+            <x-filament::button tag="a" color="gray" href="{{ route('admin.content') }}">Сброс</x-filament::button>
         </div>
     </form>
 
@@ -123,9 +123,9 @@
                             <td>{{ $contentItem->updated_at?->format('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="content-admin-actions">
-                                    <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.edit', $contentItem->alias) }}">Редактировать</a>
+                                    <x-filament::button tag="a" color="gray" href="{{ route('admin.content.edit', $contentItem->alias) }}">Редактировать</x-filament::button>
                                     @if($contentItem->status === \App\Modules\Content\Domain\Enums\ContentStatusEnum::PUBLISHED && ($isFaq || $contentItem->publish_in_feed))
-                                        <a class="btn btn--secondary btn--sm" href="{{ $contentItem->publicUrl() }}" target="_blank" rel="noopener">Просмотр</a>
+                                        <x-filament::button tag="a" color="gray" href="{{ $contentItem->publicUrl() }}" target="_blank" rel="noopener">Просмотр</x-filament::button>
                                     @endif
                                 </div>
                             </td>
@@ -134,6 +134,6 @@
                 </tbody>
             </table>
         </div>
-        @include('mskba-dark::partials.admin.pagination', ['paginator' => $contentItems])
+        @include('backoffice.content.pagination', ['paginator' => $contentItems])
     @endif
 @endsection

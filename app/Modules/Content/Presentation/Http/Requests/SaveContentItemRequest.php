@@ -5,6 +5,7 @@ namespace App\Modules\Content\Presentation\Http\Requests;
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
+use App\Modules\Content\Domain\Models\ContentItem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -28,7 +29,18 @@ final class SaveContentItemRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
+        $content = $this->route('contentItem');
+        $aliasRules = ['nullable', 'string', 'max:255'];
+        if ($this->input('alias') !== $content?->alias) {
+            $aliasRules = [
+                'bail', ...$aliasRules, 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/',
+                Rule::notIn(ContentItem::RESERVED_ALIASES),
+                Rule::unique(ContentItem::class, 'alias')->ignore($content),
+            ];
+        }
+
         return [
+            'alias' => $aliasRules,
             'title' => ['required', 'string', 'max:255'],
             'short_description' => ['required', 'string', 'max:1000'],
             'full_description' => ['required', 'string', 'max:50000'],
@@ -49,6 +61,15 @@ final class SaveContentItemRequest extends FormRequest
                 Rule::exists('telegram_chats', 'id')->where('is_active', true),
             ],
             'cover' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'alias.regex' => 'Используйте строчные латинские буквы и цифры, разделяя слова дефисом.',
+            'alias.not_in' => 'Этот алиас зарезервирован.',
+            'alias.unique' => 'Этот алиас уже занят.',
         ];
     }
 

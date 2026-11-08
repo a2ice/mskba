@@ -73,6 +73,7 @@ final class BackofficePanelProvider extends PanelProvider
                     ->icon('heroicon-o-document-text')
                     ->sort(1)
                     ->url(fn (): string => route('admin.content'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs('admin.content', 'admin.content.*'))
                     ->visible(fn (): bool => Gate::allows('manage-content')),
             ])
             ->resources([
@@ -107,6 +108,9 @@ final class BackofficePanelProvider extends PanelProvider
                 OperatorConversationResource::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => request()->routeIs('admin.content', 'admin.content.*')
+                ? view('backoffice.content.head')
+                : '')
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
                 '<link rel="stylesheet" href="'.e(asset('css/backoffice-tables.css').'?v=20261102-1').'">'
             ))

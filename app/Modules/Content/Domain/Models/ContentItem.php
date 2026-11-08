@@ -44,6 +44,8 @@ final class ContentItem extends Model
 {
     use Auditable, SoftDeletes;
 
+    public const RESERVED_ALIASES = ['create', 'seo', 'search', 'welcome', 'help-content'];
+
     protected $attributes = ['status' => 'published'];
 
     public function createdBy(): BelongsTo

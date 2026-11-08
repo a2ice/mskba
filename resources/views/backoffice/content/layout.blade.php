@@ -1,27 +1,20 @@
-<!doctype html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex, nofollow">
-    <title>{{ $title }} · MSKBA</title>
-    @vite('resources/themes/mskba_dark/css/app.css')
-</head>
-<body>
-    <main class="container py-4 admin-section">
-        @if (auth()->user()->canAccessPanel(\Filament\Facades\Filament::getPanel('backoffice')))
-            <a href="{{ route('filament.backoffice.pages.dashboard') }}" class="btn btn--secondary btn--sm mb-3">В панель управления</a>
-        @endif
-        <header class="section-content-heading mb-4">
-            <div class="section-content-heading__row">
-                <h1 class="layout-content-title">{{ $title }}</h1>
-                <div class="section-content-heading__action">
-                    @yield('section-heading-action')
-                </div>
+@php
+    $panelLayout = auth()->user()->canAccessPanel(filament()->getCurrentPanel())
+        ? 'filament-panels::layout.index'
+        : 'filament-panels::layout.base';
+@endphp
+
+<x-dynamic-component :component="$panelLayout">
+    <div class="content-editor">
+        <header class="fi-header fi-header-has-subheading">
+            <div>
+                <h1 class="fi-header-heading">{{ $title }}</h1>
+                <p class="fi-header-subheading">{{ $subtitle }}</p>
             </div>
-            <p class="section-sidebar-layout__subtitle">{{ $subtitle }}</p>
+            <div class="fi-header-actions-ctn">
+                @yield('section-heading-action')
+            </div>
         </header>
         @yield('section-content')
-    </main>
-</body>
-</html>
+    </div>
+</x-dynamic-component>

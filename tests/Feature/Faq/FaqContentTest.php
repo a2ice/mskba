@@ -44,6 +44,35 @@ final class FaqContentTest extends TestCase
         View::replaceNamespace('theme', resource_path('themes/'.$theme.'/views'));
     }
 
+    public function test_editor_can_set_and_change_a_unique_alias(): void
+    {
+        $this->actingAs($this->editor());
+        $data = [
+            'title' => 'Как принять участие в играх',
+            'short_description' => 'Инструкция',
+            'full_description' => 'Описание',
+            'type' => ContentTypeEnum::FAQ->value,
+            'alias' => 'faq-how-to-join-games',
+        ];
+
+        $this->post(route('admin.content.store'), $data)
+            ->assertRedirect(route('admin.content.edit', $data['alias']));
+        $this->post(route('admin.content.store'), $data)->assertSessionHasErrors('alias');
+        $this->post(route('admin.content.store'), [...$data, 'alias' => 'seo'])->assertSessionHasErrors('alias');
+
+        $item = ContentItem::query()->where('alias', $data['alias'])->sole();
+        $this->put(route('admin.content.update', $item->alias), $data)->assertSessionHasNoErrors();
+        $newAlias = 'faq-join-a-game';
+        $this->put(route('admin.content.update', $item->alias), [...$data, 'alias' => $newAlias])
+            ->assertRedirect(route('admin.content.edit', $newAlias));
+        $this->get(route('faq.help-content', ['section' => 'other', 'article' => $newAlias]))
+            ->assertJsonPath('article.alias', $newAlias);
+
+        $item->fresh()->delete();
+        $this->post(route('admin.content.store'), [...$data, 'alias' => $newAlias])
+            ->assertSessionHasErrors('alias');
+    }
+
     public function test_editor_can_create_faq_with_tags_and_search_uses_tags_only(): void
     {
         $editor = $this->editor();

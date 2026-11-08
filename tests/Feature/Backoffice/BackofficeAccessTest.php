@@ -60,7 +60,9 @@ final class BackofficeAccessTest extends TestCase
             ->assertViewIs('backoffice.content.index');
         $this->get(route('admin.content.create'))
             ->assertOk()
-            ->assertViewIs('backoffice.content.form');
+            ->assertViewIs('backoffice.content.form')
+            ->assertSee('name="alias"', escape: false)
+            ->assertSee('fi-sidebar', escape: false);
         $this->get('/admin/content?type=faq')
             ->assertStatus(307)
             ->assertRedirect(route('admin.content', ['type' => 'faq']));
