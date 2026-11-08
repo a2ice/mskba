@@ -15,12 +15,14 @@ use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -85,6 +87,11 @@ class Team extends Model
     {
         return $this->hasMany(ContractMembership::class, 'scope_id')
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value);
+    }
+
+    public function uniformDesign(): HasOne
+    {
+        return $this->hasOne(UniformDesign::class, 'team_id');
     }
 
     public function joinRequests(): HasMany

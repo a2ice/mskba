@@ -4,6 +4,11 @@ namespace App\Modules\Uniform\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Contract\Application\Services\ContractAssurance;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Uniform\Application\Services\UniformLogoService;
@@ -12,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -115,14 +121,117 @@ final class UniformDesignController extends Controller
         ]);
     }
 
+    /**
+     * One design belongs to the team itself, not to the creator's personal library.
+     * Every read enforces active team membership; every write enforces the contract
+     * capability, with the active owner contract receiving full access.
+     */
+    public function teamShow(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): JsonResponse
+    {
+        [$item, $member, $canEdit] = $this->teamContext($team, $request, $actors, $access);
+        $design = $item->uniformDesign()->with(['team', 'customLogo', 'logoTeam.logo'])->first();
+
+        return $this->json([
+            'team' => ['id' => $item->id, 'name' => $item->name],
+            'can_edit' => $canEdit,
+            'player_number' => $member?->formattedJerseyNumber(),
+            'design' => $design ? $this->present($design) : null,
+        ]);
+    }
+
+    public function teamSave(
+        string $team, Request $request, CurrentActorResolver $actors,
+        TeamManagementAccess $access, UniformLogoService $logos,
+    ): JsonResponse {
+        [$item, , $canEdit] = $this->teamContext($team, $request, $actors, $access);
+        abort_unless($canEdit, 403);
+        $data = $this->validateDesign($request);
+        // A team kit defines the style/position of a number, never a member's
+        // number; the roster's ContractMembership.jersey_number is authoritative.
+        $data['jersey_number'] = 1;
+        if ($data['logo_source'] === 'team') {
+            if (! $item->logo()->exists()) {
+                throw ValidationException::withMessages(['logo_source' => 'У команды пока нет логотипа.']);
+            }
+            if (isset($data['logo_team_id']) && (int) $data['logo_team_id'] !== (int) $item->id) {
+                throw ValidationException::withMessages(['logo_team_id' => 'Используйте логотип этой команды.']);
+            }
+            $data['logo_team_id'] = $item->id;
+        }
+        $result = DB::transaction(function () use ($item, $request, $data, $logos): UniformDesign {
+            // Lock the team, not merely an optional design row, to serialize first creation.
+            $locked = Team::query()->lockForUpdate()->findOrFail($item->id);
+            $design = $locked->uniformDesign()->with('customLogo')->first();
+            if ($data['logo_source'] === 'custom' && ! $request->hasFile('logo') && ! $design?->customLogo()->exists()) {
+                throw ValidationException::withMessages(['logo' => 'Загрузите логотип формы команды.']);
+            }
+            if ($design === null) {
+                $design = UniformDesign::query()->create([
+                    'team_id' => $locked->id,
+                    'user_id' => $request->user()->canonical()->id,
+                    ...$this->attributes($data),
+                ]);
+            } else {
+                $design->update($this->attributes($data, $design));
+            }
+            if ($data['logo_source'] === 'custom' && $request->hasFile('logo')) {
+                $logos->upload($design, $request->file('logo'));
+            } elseif ($data['logo_source'] !== 'custom') {
+                $logos->remove($design);
+            }
+
+            return $design->fresh()->load(['team', 'customLogo', 'logoTeam.logo']);
+        });
+
+        return $this->json(['design' => $this->present($result), 'can_edit' => true]);
+    }
+
+    public function teamLogo(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): Response
+    {
+        [$item] = $this->teamContext($team, $request, $actors, $access);
+        $design = $item->uniformDesign()->firstOrFail();
+        abort_unless($design->logo_source === 'custom', 404);
+        $media = $design->customLogo()->firstOrFail();
+        abort_unless(Storage::disk($media->disk)->exists($media->path), 404);
+
+        return response(Storage::disk($media->disk)->get($media->path), 200, [
+            'Content-Type' => 'image/webp',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /** @return array{Team, ?\App\Modules\Contract\Domain\Models\ContractMembership, bool} */
+    private function teamContext(
+        string $identifier, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access,
+    ): array {
+        $item = Team::query()->whereRouteIdentifier($identifier)
+            ->whereNull('temporary_for_event_id')->firstOrFail();
+        $user = $request->user()->canonical();
+        $member = $item->memberships()
+            ->whereIn('user_id', $user->identityIds())
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+            ->orderByDesc('id')->first();
+        $actor = $actors->resolveForRequest($request);
+        $canEdit = $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_UNIFORMS);
+        abort_unless($member !== null || $canEdit, 403);
+
+        return [$item, $member, $canEdit];
+    }
+
     private function owned(User $user): Builder
     {
-        return UniformDesign::query()->whereIn('user_id', $user->identityIds());
+        return UniformDesign::query()->whereNull('team_id')->whereIn('user_id', $user->identityIds());
     }
 
     private function authorizeOwner(Request $request, UniformDesign $design): UniformDesign
     {
-        abort_unless(in_array((int) $design->user_id, $request->user()->identityIds(), true), 404);
+        abort_unless($design->team_id === null && in_array((int) $design->user_id, $request->user()->identityIds(), true), 404);
         return $design;
     }
 
@@ -212,12 +321,15 @@ final class UniformDesignController extends Controller
     private function present(UniformDesign $design): array
     {
         $logoUrl = match ($design->logo_source) {
-            'custom' => $design->customLogo ? route('uniforms.projects.logo', $design) : null,
+            'custom' => $design->customLogo ? ($design->team_id !== null
+                ? route('uniforms.teams.logo', $design->team->routeIdentifier())
+                : route('uniforms.projects.logo', $design)) : null,
             'team' => $design->logoTeam?->logo?->publicUrl(),
             default => null,
         };
         return [
             'id' => $design->id,
+            'team_id' => $design->team_id,
             'name' => $design->name,
             'primary_color' => $design->primary_color,
             'secondary_color' => $design->secondary_color,

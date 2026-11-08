@@ -293,6 +293,8 @@ final class TeamController extends Controller
             'canManagePermissions' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS),
             'canRemoveMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS),
             'currentUserId' => $actor?->user_id,
+            'canManageUniform' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_UNIFORMS),
+            'teamHasUniform' => $item->uniformDesign()->exists(),
             'teamPermissions' => TeamPermissionEnum::cases(),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
             'sportTypes' => TeamSportTypeEnum::cases(),

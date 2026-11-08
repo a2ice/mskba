@@ -30,6 +30,23 @@ final class TeamManagementAccess
             return false;
         }
 
+        // An active owner contract is maximally privileged even when it predates
+        // the addition of the team.uniform.manage capability.
+        if ($permission === TeamPermissionEnum::MANAGE_UNIFORMS && ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
+            ->where('scope_id', $team->id)
+            ->whereIn('user_id', $user->identityIds())
+            ->where('access_level', 'owner')
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+            ->exists()) {
+            return true;
+        }
+
         // Historic seeders and older teams have owner membership rows without
         // explicit capability snapshots. Preserve creator fallback for those
         // only; new/backfilled owner contracts contain EDIT_SETTINGS.
