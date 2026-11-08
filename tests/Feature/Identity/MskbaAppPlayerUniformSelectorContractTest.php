@@ -65,7 +65,7 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringNotContainsString('generation_logo_mode', $submit);
         self::assertStringNotContainsString('generation_custom_logo_id', $submit);
         self::assertStringContainsString("'mine' =>", $handler);
-        self::assertStringContainsString("'team' => \$team?->logo", $handler);
+        self::assertStringContainsString("'team' => \$teamLogo", $handler);
     }
 
     public function test_team_uniform_button_opens_shared_workshop_in_read_only_mode_without_edit_rights(): void
@@ -98,6 +98,6 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringContainsString('->whereIn(\'user_id\', $user->identityIds())', $handler);
         self::assertStringContainsString("'uniform_design_unavailable'", $handler);
         self::assertStringContainsString("'uniform_team_required'", $handler);
-        self::assertStringContainsString("'source' => \$hasTeamKit ? 'team' : 'neutral'", $handler);
+        self::assertStringContainsString("'source' => \$teamUniform !== null || \$hasTeamKit ? 'team' : 'neutral'", $handler);
     }
 }
