@@ -65,7 +65,7 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringNotContainsString('generation_logo_mode', $submit);
         self::assertStringNotContainsString('generation_custom_logo_id', $submit);
         self::assertStringContainsString("'mine' =>", $handler);
-        self::assertStringContainsString("'team' => $"+'team?->logo', $handler);
+        self::assertStringContainsString("'team' => \$team?->logo", $handler);
     }
 
     public function test_paid_generation_sends_only_selected_and_owned_uniform_source(): void
