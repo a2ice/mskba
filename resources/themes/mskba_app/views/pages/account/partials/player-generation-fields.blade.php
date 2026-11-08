@@ -91,29 +91,6 @@
                 </div>
             </div>
         </div>
-        <div class="app-player-workspace__logo-control" data-player-logo-control
-            @if($uniformSource === 'mine') hidden @endif>
-            <label class="check-label app-player-workspace__logo-toggle">
-                <input type="checkbox" data-player-logo-enabled
-                    @checked(in_array(($character['generation_logo_mode'] ?? ''), ['team', 'custom'], true))>
-                <span>С логотипом</span>
-            </label>
-            <div class="app-player-workspace__logo-options" data-player-logo-options
-                data-saved-logo-id="{{ (int) ($character['generation_custom_logo_id'] ?? 0) }}"
-                data-saved-logo-mode="{{ $character['generation_logo_mode'] ?? 'none' }}"
-                @if(!in_array(($character['generation_logo_mode'] ?? ''), ['team', 'custom'], true)) hidden @endif>
-                <button type="button" class="app-player-workspace__logo-preview" data-player-logo-preview-open
-                    aria-label="Увеличить логотип команды" aria-haspopup="dialog"
-                    aria-controls="app-player-logo-view-dialog">
-                    <img src="{{ asset('images/team-placeholder.webp') }}" data-player-logo-preview
-                        data-logo-placeholder="{{ asset('images/team-placeholder.webp') }}"
-                        alt="Логотип не выбран" width="35" height="35" decoding="async">
-                </button>
-                <button type="button" class="app-player-workspace__secondary" data-player-logo-picker-open
-                    aria-haspopup="dialog" aria-controls="app-player-logo-dialog">Выбрать логотип</button>
-                <span class="app-player-workspace__logo-selected" data-player-logo-selected aria-live="polite">Логотип не выбран</span>
-            </div>
-        </div>
     </fieldset>
     <fieldset class="app-player-workspace__equipment">
         <legend>Спортивные аксессуары</legend>

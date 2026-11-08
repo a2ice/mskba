@@ -14,7 +14,7 @@ The player's avatar generation page offers a single **Форма** source select
 - **Нейтральная форма** hides and disables both dependent selects.
 - **Создать свою форму** opens the shared native `mskba-modal` workshop and immediately reverts the source selector to **Нейтральная форма** until a save response confirms persistence.
 - If the modal closes without a new saved design (close button, Escape or backdrop), keep **Нейтральная форма**, with no dependent selectors. If save succeeds, stay on the player profile (do NOT redirect to `/account/uniforms`), re-fetch `/uniforms/projects`, enable **Моя форма**, and select the newly saved project's ID; if the re-fetch fails, the successful POST response can populate that single entry. Ordinary workshop/page saves keep their existing navigation behavior.
-- Saved uniform projects already contain a logo choice. When **Моя форма** is selected, the separate avatar logo override is hidden and the saved design's owned custom/team crest is passed as a reference automatically. For team/neutral forms the existing separate logo override remains available.
+- **As of 2026-11-09, the active MSKBA App must never show a separate «С логотипом» checkbox or logo picker for avatar generation, regardless of selected source.** Branding is owned entirely by the uniform: `neutral` has no logo; `team` uses the selected team's configured logo if available; `mine` uses `UniformDesign.logo_source` and its configured team/custom media. For frontal avatars, preserve the design's `logo_front_position = none` behavior. Existing avatar-generation logo flags are ignored by the server; the client submits only source, team or saved design ID.
 
 ## Backend contract
 - Extend `generate_2d` request with `generation_uniform_source` (`neutral|team|mine`) and `generation_uniform_design_id` (for `mine`); re-use `generation_team_id` only for `team`.
@@ -31,3 +31,8 @@ The player's avatar generation page offers a single **Форма** source select
 - Create in avatar popup: save without redirect and select new design; cancel/close without save stays neutral.
 - User cannot select someone else's saved uniform ID; private saved design logo remains authorized.
 - PHPUnit contracts, prompt snapshot assertions, full CI and Vite build. Deploy to dev only and verify `/up` and frontend.
+
+## 2026-11-09 UI correction — PR #656
+- Removed the legacy `data-player-logo-enabled` checkbox, chooser and logo dialogs from the **active** `mskba_app` player profile, not merely the older `mskba_dark` theme.
+- `player-generation-options.js` only initializes the uniform selector; `player-profile-workspace.js` no longer sends `generation_logo_mode` / `generation_custom_logo_id`.
+- Regression contract checks the actual active Blade view and JS, not only backend rules. No changes to `main` or production.
