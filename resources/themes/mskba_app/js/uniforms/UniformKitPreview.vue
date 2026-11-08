@@ -105,7 +105,7 @@ const hasBackLogo = computed(() => !!props.logo && props.logoBackPosition !== 'n
             :letter-spacing="formattedNumber.length === 3 ? '-3' : '-2'"
             :style="lettering">{{ formattedNumber }}</text>
           <image v-if="view === 'front' && hasFrontLogo" :href="logo"
-            :x="logoFrontPosition === 'right' ? 258 : 180" y="115"
+            :x="logoFrontPosition === 'left' ? 258 : 180" y="115"
             width="31" height="31" preserveAspectRatio="xMidYMid meet"/>
           <image v-if="view === 'rear' && hasBackLogo" :href="logo"
             x="208" :y="logoBackPosition === 'below' ? 224 : 107"
