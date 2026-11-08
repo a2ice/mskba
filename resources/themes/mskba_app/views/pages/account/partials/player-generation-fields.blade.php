@@ -55,21 +55,29 @@
                     @include('account.partials.native-select-chevron')
                 </span>
             </label>
-            <label class="app-player-workspace__field" data-player-uniform-team-field
-                @if($uniformSource !== 'team') hidden @endif>Команда
-                <span class="select-control">
-                    <select data-player-generation-team @if($uniformSource !== 'team') disabled @endif required>
-                        <option value="">Выберите команду</option>
-                        @foreach($playerTeams as $team)
-                            <option value="{{ $team->id }}"
-                                @selected((int) ($character['generation_team_id'] ?? 0) === (int) $team->id)
-                                data-team-logo-url="{{ $team->logo?->publicUrl() }}"
-                                data-team-name="{{ $team->name }}">{{ $team->name }}</option>
-                        @endforeach
-                    </select>
-                    @include('account.partials.native-select-chevron')
-                </span>
-            </label>
+            <div class="app-player-workspace__field" data-player-uniform-team-field
+                @if($uniformSource !== 'team') hidden @endif>
+                <label for="player-generation-team-select">Команда</label>
+                <div class="app-player-workspace__uniform-design-controls">
+                    <span class="select-control">
+                        <select id="player-generation-team-select" data-player-generation-team
+                            @if($uniformSource !== 'team') disabled @endif required>
+                            <option value="">Выберите команду</option>
+                            @foreach($playerTeams as $team)
+                                <option value="{{ $team->id }}"
+                                    @selected((int) ($character['generation_team_id'] ?? 0) === (int) $team->id)
+                                    data-team-logo-url="{{ $team->logo?->publicUrl() }}"
+                                    data-team-name="{{ $team->name }}">{{ $team->name }}</option>
+                            @endforeach
+                        </select>
+                        @include('account.partials.native-select-chevron')
+                    </span>
+                    <button type="button" class="app-player-workspace__secondary"
+                        data-player-team-uniform-view aria-haspopup="dialog"
+                        aria-controls="mskba-uniform-dialog"
+                        @disabled($uniformSource !== 'team' || empty($character['generation_team_id']))>Посмотреть</button>
+                </div>
+            </div>
             <div class="app-player-workspace__field" data-player-uniform-design-field
                 @if($uniformSource !== 'mine') hidden @endif>
                 <label for="player-generation-uniform-design">Мои формы</label>

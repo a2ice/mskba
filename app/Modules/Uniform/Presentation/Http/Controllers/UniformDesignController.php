@@ -205,8 +205,13 @@ final class UniformDesignController extends Controller
     private function teamContext(
         string $identifier, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access,
     ): array {
-        $item = Team::query()->whereRouteIdentifier($identifier)
-            ->whereNull('temporary_for_event_id')->firstOrFail();
+        $query = Team::query()->whereNull('temporary_for_event_id');
+        if (ctype_digit($identifier)) {
+            $query->whereKey((int) $identifier);
+        } else {
+            $query->whereRouteIdentifier($identifier);
+        }
+        $item = $query->firstOrFail();
         $user = $request->user()->canonical();
         $member = $item->memberships()
             ->whereIn('user_id', $user->identityIds())

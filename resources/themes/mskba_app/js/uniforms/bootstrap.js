@@ -42,9 +42,9 @@ async function resumePending() {
   } catch { /* Preserve the pending design for a manual retry. */ }
   finally { savingPending=false; }
 }
-async function openStudio(context = 'home', projectId=null) {
+async function openStudio(context = 'home', projectId=null, teamId=null) {
   const module=await import('./studio-entry.js');
-  module.openUniformStudio({context,projectId});
+  module.openUniformStudio({context,projectId,teamId});
 }
 document.addEventListener('click', event => {
   // Page Builder component #7 remains Filament-owned and has been restructured:
@@ -57,11 +57,11 @@ document.addEventListener('click', event => {
   ) : null;
   if(!el) return;
   event.preventDefault();
-  void openStudio(el.dataset.mskbaWorkshopContext||'home',el.dataset.mskbaWorkshopProject||null);
+  void openStudio(el.dataset.mskbaWorkshopContext||'home',el.dataset.mskbaWorkshopProject||null,el.dataset.mskbaWorkshopTeam||null);
 });
 window.addEventListener('mskba:uniform:open',event => {
   const detail=event.detail||{};
-  void openStudio(detail.context||'profile', detail.projectId||null);
+  void openStudio(detail.context||'profile', detail.projectId||null, detail.teamId||null);
 });
 window.addEventListener('mskba:auth:success',()=>{ document.querySelector('meta[name="mskba-authenticated"]')?.setAttribute('content','1');void resumePending(); });
 window.addEventListener('mskba:onboarding-completed',()=>void resumePending());
