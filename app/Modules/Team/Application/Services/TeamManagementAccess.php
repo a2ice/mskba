@@ -77,6 +77,11 @@ final class TeamManagementAccess
     public function canManage(Team $team, Actor $actor): bool
     {
         foreach (TeamPermissionEnum::cases() as $permission) {
+            // Uniform-only delegation must not unlock historical endpoints
+            // that still authorize general team management through canManage().
+            if ($permission === TeamPermissionEnum::MANAGE_UNIFORMS) {
+                continue;
+            }
             if ($this->allows($team, $actor, $permission)) {
                 return true;
             }
