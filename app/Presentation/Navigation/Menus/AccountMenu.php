@@ -21,6 +21,7 @@ final class AccountMenu implements MenuHandler
         'account.roles' => 'people',
         'account.teams' => 'people',
         'account.my-games' => 'ball',
+        'account.leagues.index' => 'cup',
         'account.uniforms' => 'shirt',
         'play-intents.mine' => 'bell',
         'favorites.mine' => 'heart',
@@ -101,10 +102,7 @@ final class AccountMenu implements MenuHandler
     /** @return array<int, array<string, mixed>> */
     private function appItems(User $user): array
     {
-        $items = [
-            $this->link('Обзор', 'account'),
-            $this->link('Профиль', 'account.profile'),
-        ];
+        $items = [$this->link('Обзор', 'account')];
 
         // Navigation is an invitation to participate, not a report of existing relations.
         // Roles only control menu visibility; domain permissions are enforced by handlers.
@@ -169,6 +167,16 @@ final class AccountMenu implements MenuHandler
                 'children' => $roleChildren,
             ];
 
+        $profile = $this->link('Общие данные', 'account.profile');
+        $items[] = [
+            'label' => 'Профиль',
+            'icon' => self::APP_ICONS['account.profile'],
+            'url' => null,
+            'active' => $profile['active'] || $roleItem['active'],
+            'visible' => true,
+            'children' => [$profile, $roleItem],
+        ];
+
         $sectionKeys = [];
         foreach ($roleSections as $role => $sections) {
             if (! in_array($role, $roles, true)) {
@@ -193,9 +201,10 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        // Keep role management nested inside Participation, including the
-        // role-specific links. This group exists even before the first role.
-        $participationChildren = [$roleItem, ...$children];
+        $participationChildren = [...$children, [
+            ...$this->link('Мои лиги', 'account.leagues.index'),
+            'active' => $this->isActiveRoute('account.leagues.*'),
+        ]];
         $items[] = [
             'label' => 'Участие',
             'icon' => 'ball',

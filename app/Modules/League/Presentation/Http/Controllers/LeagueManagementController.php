@@ -42,6 +42,20 @@ final class LeagueManagementController extends Controller
                 SeasonPermissionEnum::EDIT->value), 403);
     }
 
+    public function myLeagues(Request $request): Response|RedirectResponse
+    {
+        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return redirect()->route('account');
+        }
+
+        return ThemeResolver::page('account.my-leagues', [
+            'leagues' => League::query()
+                ->where('owner_user_id', $request->user()->canonical()->id)
+                ->orderBy('name')
+                ->get(),
+        ]);
+    }
+
     public function createLeague(Request $request): Response
     {
         $this->authorizeCreation($request, Permission::CREATE_LEAGUE);

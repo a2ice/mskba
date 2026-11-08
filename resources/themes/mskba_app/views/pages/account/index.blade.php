@@ -15,23 +15,6 @@
     </section>
 @endpush
 @section('account-content')
-    @php($bannerOwnedLeagues = \App\Modules\League\Domain\Models\League::query()
-        ->where('owner_user_id', auth()->user()?->canonical()->id)
-        ->orderBy('name')
-        ->get())
-    @if($bannerOwnedLeagues->isNotEmpty())
-        <section class="panel app-league-ownership-links" aria-label="Мои лиги">
-            <h2>Мои лиги</h2>
-            <div class="app-league-ownership-links__list">
-                @foreach($bannerOwnedLeagues as $ownedLeague)
-                    <a class="button secondary" href="{{ route('account.leagues.banner', $ownedLeague->id) }}">
-                        {{ $ownedLeague->name }}
-                    </a>
-                @endforeach
-            </div>
-        </section>
-    @endif
-
     @if (isset($error))
         <p class="notice" role="alert">{{ $error['message'] }}</p>
     @else

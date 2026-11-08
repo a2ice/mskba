@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\League\Domain\Models\League;
 use App\Modules\League\Domain\Models\LeagueSeason;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ final class PublicLeaguePagesTest extends TestCase
     {
         parent::setUp();
         config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
         view()->replaceNamespace('theme', [resource_path('themes/mskba_app/views')]);
     }
 
@@ -42,6 +44,27 @@ final class PublicLeaguePagesTest extends TestCase
             'name' => $name,
             'status' => $status,
         ]);
+    }
+
+    public function test_owned_leagues_move_from_the_dashboard_to_the_account_league_list(): void
+    {
+        $league = $this->league('Моя тестовая лига');
+        $other = $this->league('Чужая тестовая лига');
+        $bannerUrl = route('account.leagues.banner', $league->id);
+
+        $this->actingAs($league->owner)->get(route('account'))
+            ->assertOk()
+            ->assertDontSee($bannerUrl);
+        $this->get(route('account.leagues.index'))
+            ->assertOk()
+            ->assertSee($league->name)
+            ->assertSee($bannerUrl)
+            ->assertDontSee($other->name);
+
+        $this->actingAs(User::factory()->create())->get(route('account.leagues.index'))
+            ->assertOk()
+            ->assertSee('У тебя пока нет своих лиг.')
+            ->assertDontSee($league->name);
     }
 
     public function test_guest_catalog_and_detail_hide_drafts_but_allow_archives(): void
