@@ -888,6 +888,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.profile.update');
         Route::get('/my-games', AccountMyGamesController::class)
             ->name('account.my-games')->defaults('breadcrumb', 'Мои игры');
+        Route::get('/leagues', [LeagueManagementController::class, 'myLeagues'])
+            ->name('account.leagues.index')->defaults('breadcrumb', 'Мои лиги');
         // Role-driven entry points in MSKBA App. Functional screens are introduced
         // incrementally; legacy theme keeps its established account routes.
         foreach ([

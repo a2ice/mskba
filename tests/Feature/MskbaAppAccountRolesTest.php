@@ -146,7 +146,7 @@ final class MskbaAppAccountRolesTest extends TestCase
             ->assertSee('Мои команды');
     }
 
-    public function test_ajax_role_toggle_preserves_roles_inside_participation_group(): void
+    public function test_ajax_role_toggle_preserves_roles_inside_profile_group(): void
     {
         $this->actingAs($this->user());
         $xpathFor = static function (string $html): \DOMXPath {
@@ -155,18 +155,18 @@ final class MskbaAppAccountRolesTest extends TestCase
 
             return new \DOMXPath($dom);
         };
-        $participation = '//nav[@aria-label="Разделы аккаунта"]/descendant::details[summary/span[text()="Участие"]]';
-        $group = $participation.'/descendant::details[summary/span[text()="Роли в проекте"]]';
-        $directLink = $participation.'/descendant::a[span[text()="Роли в проекте"]]';
+        $profile = '//nav[@aria-label="Разделы аккаунта"]/descendant::details[summary/span[text()="Профиль"]]';
+        $group = $profile.'/descendant::details[summary/span[text()="Роли в проекте"]]';
+        $directLink = $profile.'/descendant::a[span[text()="Роли в проекте"]]';
 
         $before = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
-        $this->assertSame(2, $before->query($participation.'[@open]')->length);
+        $this->assertSame(2, $before->query($profile.'[@open]')->length);
         $this->assertSame(0, $before->query($group)->length);
         $this->assertSame(2, $before->query($directLink)->length);
 
         $this->toggle('player')->assertOk()->assertJsonPath('enabled', true);
         $afterPlayer = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
-        $this->assertSame(2, $afterPlayer->query($participation.'[@open]')->length);
+        $this->assertSame(2, $afterPlayer->query($profile.'[@open]')->length);
         $this->assertSame(2, $afterPlayer->query($group.'[@open]')->length);
         $this->assertSame(0, $afterPlayer->query($directLink)->length);
         $this->assertSame(2, $afterPlayer->query($group.'//a[span[text()="Все роли"]]')->length);
