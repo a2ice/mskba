@@ -313,12 +313,14 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ];
         }
 
+        // The avatar image is frontal: a back-only crest must never be
+        // hallucinated on the chest merely because its image was attached.
         $selectedLogo = $uniformSource === 'mine'
-            ? match ($uniformDesign->logo_source) {
+            ? ($uniformDesign->logo_front_position === 'none' ? null : match ($uniformDesign->logo_source) {
                 'custom' => $uniformDesign->customLogo,
                 'team' => $uniformDesign->logoTeam?->logo,
                 default => null,
-            }
+            })
             : ($withTeamLogo ? $team?->logo : $customLogo);
         $teamColors = is_array($team?->colors) ? $team->colors : [];
         $primaryTeamColor = data_get($teamColors, 'home_primary');
@@ -332,6 +334,12 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'secondary_color' => $uniformDesign->secondary_color,
                 'sleeve_style' => $uniformDesign->sleeve_style,
                 'logo_source' => $uniformDesign->logo_source,
+                'jersey_number' => $uniformDesign->jersey_number,
+                'number_color' => $uniformDesign->number_color,
+                'number_outline' => (bool) $uniformDesign->number_outline,
+                'number_outline_color' => $uniformDesign->number_outline_color,
+                'logo_front_position' => $uniformDesign->logo_front_position,
+                'logo_back_position' => $uniformDesign->logo_back_position,
             ],
             'team' => [
                 'source' => $hasTeamKit ? 'team' : 'neutral',
