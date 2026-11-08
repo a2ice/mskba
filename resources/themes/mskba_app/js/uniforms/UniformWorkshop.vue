@@ -15,8 +15,10 @@ const missingTeamDesign = ref(false);
 const teamName = ref('');
 const assignedNumber = ref(null);
 const previewNumber = computed(() => isTeamContext.value ? (assignedNumber.value || '01') : form.jersey_number);
+// Even an authorized team editor must not see an invented "01" in place of
+// an unassigned roster number. The team template owns styling, not the number.
 const previewNumberEnabled = computed(() => form.number_enabled &&
-  (!readOnly.value || !isTeamContext.value || assignedNumber.value !== null));
+  (!isTeamContext.value || assignedNumber.value !== null));
 
 const form = reactive({
   name: 'Моя форма',
