@@ -27,23 +27,17 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('NO extra accessories unless explicitly selected', $prompt);
     }
 
-    public function test_prompt_uses_team_logo_only_when_explicitly_enabled(): void
+    public function test_prompt_uses_selected_uniform_logo_instead_of_legacy_team_flag(): void
     {
         $builder = new PlayerCharacterGenerationPromptBuilder();
 
         $withLogo = $builder->build([
-            'team' => [
-                'name' => 'MSKBA Test',
-                'colors' => ['home_primary' => '#ff6600'],
-                'with_logo' => true,
-            ],
+            'uniform' => ['source' => 'team', 'logo_source' => 'team'],
+            'team' => ['name' => 'MSKBA Test', 'with_logo' => false],
         ]);
         $withoutLogo = $builder->build([
-            'team' => [
-                'name' => 'MSKBA Test',
-                'colors' => ['home_primary' => '#ff6600'],
-                'with_logo' => false,
-            ],
+            'uniform' => ['source' => 'neutral', 'logo_source' => 'none'],
+            'team' => ['name' => 'MSKBA Test', 'with_logo' => true],
         ]);
 
         $this->assertStringContainsString('LAST supplied image is the selected logo reference', $withLogo);

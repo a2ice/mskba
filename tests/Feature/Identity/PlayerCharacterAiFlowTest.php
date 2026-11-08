@@ -21,6 +21,8 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
+use App\Modules\Uniform\Application\Services\UniformLogoService;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -423,6 +425,54 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame('athletic', $gateway->lastPayload['body_type']);
         $this->assertSame('black', $gateway->lastPayload['appearance']['shoes']);
         $this->assertSame(['elbow_left', 'wristband_right', 'knee_right'], $gateway->lastPayload['appearance']['attributes']);
+    }
+
+    public function test_uniform_logo_configuration_controls_avatar_reference_even_with_legacy_request_flags(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 20_000);
+        $gateway = $this->bindGateway();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'right');
+
+        $design = UniformDesign::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Форма с эмблемой',
+            'primary_color' => '#111924',
+            'secondary_color' => '#F58220',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeveless',
+            'logo_source' => 'custom',
+            'editor_version' => 1,
+        ]);
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('crest.png', 256, 256));
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $design->id,
+            'generation_with_team_logo' => false,
+            'generation_logo_mode' => 'none',
+        ])->assertOk();
+
+        $this->assertSame('mine', $gateway->lastPayload['uniform']['source']);
+        $this->assertSame('custom', $gateway->lastPayload['uniform']['logo_source']);
+        $this->assertTrue($gateway->lastPayload['team']['with_logo']);
+        $this->assertSame('image/webp', $gateway->lastPayload['team_logo_reference']['mime']);
+        $this->assertNotEmpty($gateway->lastPayload['team_logo_reference']['contents']);
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'neutral',
+            'generation_with_team_logo' => true,
+            'generation_logo_mode' => 'team',
+        ])->assertOk();
+
+        $this->assertSame('neutral', $gateway->lastPayload['uniform']['source']);
+        $this->assertSame('none', $gateway->lastPayload['uniform']['logo_source']);
+        $this->assertNull($gateway->lastPayload['team']);
+        $this->assertNull($gateway->lastPayload['team_logo_reference']);
     }
 
     public function test_saved_face_references_are_reused_without_revalidating_on_repeat_generation(): void

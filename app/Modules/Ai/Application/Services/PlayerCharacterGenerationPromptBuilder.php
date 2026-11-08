@@ -9,7 +9,6 @@ final class PlayerCharacterGenerationPromptBuilder
     {
         $appearance = (array) ($payload['appearance'] ?? []);
         $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
-        $withTeamLogo = (bool) ($team['with_logo'] ?? false);
         $requestedUniform = is_array($payload['uniform'] ?? null) ? $payload['uniform'] : null;
         $uniformSource = (string) ($requestedUniform['source'] ?? (
             $team && ! empty($team['colors']) ? 'team' : 'neutral'
@@ -29,6 +28,9 @@ final class PlayerCharacterGenerationPromptBuilder
             'logo_front_position' => $requestedUniform['logo_front_position'] ?? 'left',
             'logo_back_position' => $requestedUniform['logo_back_position'] ?? 'above',
         ];
+        // Logo visibility is resolved by the selected uniform, not a profile-level toggle.
+        $withUniformLogo = in_array($uniform['logo_source'], ['team', 'custom'], true)
+            && ($uniformSource !== 'mine' || $uniform['logo_front_position'] !== 'none');
         $female = ($payload['gender'] ?? null) === 'female';
         $chestVolume = $female ? ($appearance['chest_volume'] ?? 'medium') : null;
         $chestDescription = $female ? match ($chestVolume) {
@@ -82,7 +84,7 @@ final class PlayerCharacterGenerationPromptBuilder
             'team' => $team ? [
                 'name' => $team['name'] ?? null,
                 'colors' => $team['colors'] ?? null,
-                'with_logo' => $withTeamLogo,
+                'with_logo' => $withUniformLogo,
             ] : null,
         ];
 
@@ -91,7 +93,7 @@ final class PlayerCharacterGenerationPromptBuilder
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT,
         );
 
-        $teamLogoInstruction = $withTeamLogo
+        $uniformLogoInstruction = $withUniformLogo
             ? <<<'TEXT'
 - The LAST supplied image is the selected logo reference. It is NOT a face or identity reference.
 - Copy that supplied selected logo onto the jersey as faithfully and literally as possible in a natural basketball-uniform placement.
@@ -103,11 +105,11 @@ TEXT
 - Do not place a selected logo on the uniform.
 TEXT;
 
-        if ($withTeamLogo && $uniformSource === 'mine') {
+        if ($withUniformLogo && $uniformSource === 'mine') {
             $placement = ($uniform['logo_front_position'] ?? 'left') === 'right'
                 ? "the PLAYER'S RIGHT upper chest (viewer's left)"
                 : "the PLAYER'S LEFT upper chest (viewer's right)";
-            $teamLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
+            $uniformLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
         }
 
         $numberInstruction = $uniformSource === 'mine'
@@ -125,7 +127,7 @@ Reference mapping:
 - front is the frontal face reference;
 - left is the subject's left facial profile;
 - right is the subject's right facial profile.
-{$teamLogoInstruction}
+{$uniformLogoInstruction}
 
 Identity:
 - Preserve the same person's facial identity from all face-reference images as closely as possible.
@@ -150,12 +152,12 @@ Composition - STRICT:
 
 Clothing - SELECTED UNIFORM IS AUTHORITATIVE:
 - Modern basketball jersey and matching shorts. Respect the supplied uniform.source and sleeve_style.
-- uniform.source = "neutral": use a neutral light slate/gray jersey and matching shorts. Do not reuse old team colors or invent branding.
+- uniform.source = "neutral": use a neutral light slate/gray jersey and matching shorts. Do not reuse old team colors or invent branding beyond the explicitly supplied uniform logo.
 - uniform.source = "team": use the selected team's configured primary_color as the main jersey AND shorts color and secondary_color as trim. Do not invent additional team markings.
 - uniform.source = "mine": reproduce the saved design's specified primary_color on jersey and shorts, and use secondary_color for borders, piping and trim ONLY when present. When absent, make a monochrome uniform. The saved design name is descriptive metadata only; do not print it on clothing.
 - sleeve_style = "sleeved": use a basketball jersey with short athletic sleeves, visibly covering the upper arms. sleeve_style = "sleeveless": use a sleeveless tank jersey.
 - For every source, keep shirt and shorts coordinated. A source with no configured team kit has already been normalized to neutral by the server; never guess a palette from the team name.
-{$teamLogoInstruction}
+{$uniformLogoInstruction}
 {$numberInstruction}
 - Do not invent brand logos, sponsors, extra text, names, watermarks, or badges.
 - Apply the requested shoes and the following SELECTED accessories exactly at their specified locations. Selected accessories are mandatory clothing items, not optional decorative suggestions. Do not confuse wrist, elbow, knee or head placement.
