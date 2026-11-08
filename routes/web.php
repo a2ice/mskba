@@ -287,7 +287,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::prefix('backoffice/content')
-    ->middleware('auth', 'can:manage-content')
+    ->middleware('auth', 'can:manage-content', \Filament\Http\Middleware\SetUpPanel::class.':backoffice')
     ->group(function () {
         Route::get('/', [AdminContentController::class, 'index'])
             ->name('admin.content')

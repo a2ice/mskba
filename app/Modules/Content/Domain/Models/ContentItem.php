@@ -44,6 +44,8 @@ final class ContentItem extends Model
 {
     use Auditable, SoftDeletes;
 
+    public const RESERVED_ALIASES = ['create', 'seo', 'search', 'welcome', 'help-content'];
+
     protected $attributes = ['status' => 'published'];
 
     public function createdBy(): BelongsTo
@@ -77,6 +79,11 @@ final class ContentItem extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(ContentTag::class, 'content_item_tag');
+    }
+
+    public function faqSections(): BelongsToMany
+    {
+        return $this->belongsToMany(FaqSection::class);
     }
 
     public function telegramPublications(): HasMany

@@ -12,6 +12,7 @@ use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\FaqSection;
 use App\Modules\Content\Presentation\Http\Requests\SaveContentItemRequest;
 use App\Modules\Content\Presentation\Http\Requests\StoreContentInlineImageRequest;
 use App\Modules\Event\Domain\Models\Event;
@@ -102,11 +103,15 @@ final class AdminContentController extends Controller
                     ...$attributes,
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
-                    'alias' => $this->uniqueAlias($request->string('title')->toString(), $transliterator),
+                    'alias' => $request->validated('alias')
+                        ?? $this->uniqueAlias($request->string('title')->toString(), $transliterator),
                     'feed_published_at' => $publishInFeed ? now() : null,
                 ]);
 
                 $tags->sync($content, $request->string('tags')->toString());
+                if ($type === ContentTypeEnum::FAQ && $request->has('faq_section_ids')) {
+                    $content->faqSections()->sync($request->validated('faq_section_ids'));
+                }
 
                 return $content;
             });
@@ -133,7 +138,7 @@ final class AdminContentController extends Controller
 
     public function edit(ContentItem $contentItem): Response
     {
-        $contentItem->load(['cover', 'inlineImages', 'tags', 'telegramPublications']);
+        $contentItem->load(['cover', 'inlineImages', 'tags', 'telegramPublications', 'faqSections']);
 
         return response()->view('backoffice.content.form', [
             ...$this->formData(),
@@ -154,8 +159,11 @@ final class AdminContentController extends Controller
         ContentPublicationManager $publications,
         ContentTagManager $tags,
     ): RedirectResponse {
+        $savedAlias = null;
+
         try {
-            DB::transaction(function () use ($request, $contentItem, $bodySanitizer, $tags): void {
+            $contentItem = DB::transaction(function () use ($request, $contentItem, $bodySanitizer, $tags): ContentItem {
+                $contentItem = ContentItem::query()->lockForUpdate()->findOrFail($contentItem->getKey());
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
                 $wasPublished = $contentItem->feed_published_at;
@@ -165,11 +173,20 @@ final class AdminContentController extends Controller
                 $contentItem->update([
                     ...$attributes,
                     'updated_by_user_id' => $request->user()->id,
+                    'alias' => $request->validated('alias') ?? $contentItem->alias,
                     'feed_published_at' => $publishInFeed ? ($wasPublished ?? now()) : null,
                 ]);
 
                 $tags->sync($contentItem, $request->string('tags')->toString());
+                if ($type !== ContentTypeEnum::FAQ) {
+                    $contentItem->faqSections()->detach();
+                } elseif ($request->boolean('faq_sections_present') || $request->has('faq_section_ids')) {
+                    $contentItem->faqSections()->sync($request->validated('faq_section_ids', []));
+                }
+
+                return $contentItem;
             });
+            $savedAlias = $contentItem->alias;
 
             if ($request->hasFile('cover')) {
                 $covers->replace($contentItem, (string) $request->file('cover')->get());
@@ -177,13 +194,19 @@ final class AdminContentController extends Controller
 
             $publications->syncTelegramChats($contentItem->fresh(), $this->telegramChatIds($request, $contentItem));
 
-            return back()->with('status', 'Материал сохранён.');
+            return redirect()
+                ->route('admin.content.edit', $contentItem->alias)
+                ->with('status', 'Материал сохранён.');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
             report($exception);
 
-            return back()->withInput()->withErrors([
+            $redirect = $savedAlias === null
+                ? back()
+                : redirect()->route('admin.content.edit', $savedAlias);
+
+            return $redirect->withInput()->withErrors([
                 'content' => 'Не удалось сохранить материал. Попробуйте ещё раз.',
             ]);
         }
@@ -227,6 +250,7 @@ final class AdminContentController extends Controller
     {
         return [
             'types' => ContentTypeEnum::cases(),
+            'faqSections' => FaqSection::query()->orderBy('sort_order')->orderBy('id')->get(),
             'formats' => ContentFormatEnum::cases(),
             'telegramChats' => TelegramChat::query()
                 ->where('is_active', true)
@@ -307,11 +331,13 @@ final class AdminContentController extends Controller
     private function uniqueAlias(string $title, CyrillicTransliterator $transliterator): string
     {
         $base = Str::slug($transliterator->transliterate($title)) ?: 'material';
-        $alias = $base;
+        $alias = rtrim(substr($base, 0, 255), '-');
         $suffix = 2;
 
-        while (ContentItem::withTrashed()->where('alias', $alias)->exists()) {
-            $alias = $base.'-'.$suffix++;
+        while (in_array($alias, ContentItem::RESERVED_ALIASES, true)
+            || ContentItem::withTrashed()->where('alias', $alias)->exists()) {
+            $ending = '-'.$suffix++;
+            $alias = rtrim(substr($base, 0, 255 - strlen($ending)), '-').$ending;
         }
 
         return $alias;

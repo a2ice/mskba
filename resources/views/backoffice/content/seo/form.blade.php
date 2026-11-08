@@ -6,7 +6,7 @@
 ])
 
 @section('section-heading-action')
-    <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.seo', ['entity_type' => $entityType->value]) }}">К списку</a>
+    <x-filament::button tag="a" color="gray" href="{{ route('admin.content.seo', ['entity_type' => $entityType->value]) }}">К списку</x-filament::button>
 @endsection
 
 @section('section-content')
@@ -39,6 +39,6 @@
             </div>
         </div>
 
-        <button class="btn btn--primary" type="submit">Сохранить</button>
+        <x-filament::button type="submit">Сохранить</x-filament::button>
     </form>
 @endsection

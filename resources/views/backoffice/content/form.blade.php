@@ -12,6 +12,10 @@
     $cover = $contentItem->cover?->first();
     $tagsValue = old('tags', $editing ? $contentItem->tags->pluck('name')->implode(', ') : '');
     $inlineImages = $editing ? $contentItem->inlineImages : collect();
+    $assignedSections = old('faq_sections_present')
+        ? old('faq_section_ids', [])
+        : ($editing ? $contentItem->faqSections->modelKeys() : []);
+    $assignedSections = array_map('intval', (array) $assignedSections);
 @endphp
 
 @extends('backoffice.content.layout', [
@@ -20,7 +24,7 @@
 ])
 
 @section('section-heading-action')
-    <a class="btn btn--secondary btn--sm" href="{{ route('admin.content') }}">К списку</a>
+    <x-filament::button tag="a" color="gray" href="{{ route('admin.content') }}">К списку</x-filament::button>
 @endsection
 
 @section('section-content')
@@ -54,6 +58,20 @@
                 <label class="form-label" for="contentTitle">Название</label>
                 <input id="contentTitle" class="form-control @error('title') is-invalid @enderror" name="title" value="{{ old('title', $contentItem->title) }}" maxlength="255" required>
                 @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="contentAlias">Алиас</label>
+                <input id="contentAlias" class="form-control @error('alias') is-invalid @enderror" name="alias"
+                    value="{{ old('alias', $contentItem->alias) }}" maxlength="255" spellcheck="false"
+                    aria-describedby="contentAliasHint">
+                <small class="form-text" id="contentAliasHint">
+                    @if ($editing)
+                        При изменении алиаса обновите ссылки на материал и кнопки, открывающие его в FAQ.
+                    @else
+                        Оставьте пустым, чтобы создать алиас из названия.
+                    @endif
+                </small>
+                @error('alias') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="form-group field mb-3">
                 <label class="form-label" for="contentShortDescription">Краткое описание</label>
@@ -113,6 +131,20 @@
             <script type="application/json" data-content-related-options>@json($relatedEntities)</script>
             <input type="hidden" data-content-related-selected value="{{ $selectedRelatedId }}">
 
+            <fieldset class="form-group field mt-3" data-content-faq-sections @if ($selectedType !== 'faq') hidden disabled @endif>
+                <legend class="form-label">Разделы FAQ</legend>
+                <input type="hidden" name="faq_sections_present" value="1">
+                @foreach ($faqSections as $faqSection)
+                    <label class="content-chat-option">
+                        <input type="checkbox" class="fi-checkbox-input" name="faq_section_ids[]" value="{{ $faqSection->id }}"
+                            @checked(in_array($faqSection->id, $assignedSections, true))>
+                        <span>{{ $faqSection->name }}</span>
+                    </label>
+                @endforeach
+                <small class="form-text">Если ничего не выбрано, раздел определяется по тегам. Без подходящего тега статья попадёт в «Другие вопросы».</small>
+                @error('faq_section_ids') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                @error('faq_section_ids.*') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </fieldset>
             <div class="form-group field mt-3">
                 <label class="form-label" for="contentTags">Теги</label>
                 <input id="contentTags" class="form-control @error('tags') is-invalid @enderror" name="tags" value="{{ $tagsValue }}" maxlength="3000" placeholder="площадка, добавление площадки, подтверждение контакта">
@@ -174,28 +206,23 @@
 
         <section class="content-admin-section" data-content-publication-section @if($selectedType === 'faq') hidden @endif>
             <h2 class="content-admin-section__title">Публикация</h2>
+            <input type="hidden" name="publish_in_feed" value="0">
+            <input type="hidden" name="publish_in_telegram" value="0">
             <div class="content-publication-options">
-                @include('mskba-dark::partials.forms.toggle', [
-                    'name' => 'publish_in_feed',
-                    'id' => 'publishInFeed',
-                    'title' => 'Публиковать в ленте',
-                    'description' => 'Материал появится в разделе «Новости»',
-                    'checked' => $publishInFeed,
-                ])
-                @include('mskba-dark::partials.forms.toggle', [
-                    'name' => 'publish_in_telegram',
-                    'id' => 'publishInTelegram',
-                    'title' => 'Публиковать в Telegram',
-                    'description' => 'Сниппет будет создан или обновлён в выбранных чатах',
-                    'checked' => $publishInTelegram,
-                    'inputAttributes' => ['data-content-telegram-toggle' => true],
-                ])
+                <label class="content-chat-option">
+                    <input class="fi-checkbox-input" type="checkbox" name="publish_in_feed" value="1" @checked($publishInFeed)>
+                    <span>Публиковать в ленте</span>
+                </label>
+                <label class="content-chat-option">
+                    <input class="fi-checkbox-input" type="checkbox" name="publish_in_telegram" value="1" @checked($publishInTelegram) data-content-telegram-toggle>
+                    <span>Публиковать в Telegram</span>
+                </label>
             </div>
             <div class="content-chat-options" data-content-telegram-chats @if(! $publishInTelegram) hidden @endif>
                 <h3 class="content-chat-options__title">Telegram-чаты</h3>
                 @forelse($telegramChats as $chat)
                     <label class="content-chat-option">
-                        <input type="checkbox" name="telegram_chat_ids[]" value="{{ $chat->id }}" @checked($selectedChats->contains($chat->id))>
+                        <input class="fi-checkbox-input" type="checkbox" name="telegram_chat_ids[]" value="{{ $chat->id }}" @checked($selectedChats->contains($chat->id))>
                         <span>{{ $chat->title ?: 'Чат '.$chat->telegram_chat_id }}</span>
                     </label>
                 @empty
@@ -210,7 +237,7 @@
             FAQ публикуется в разделе справки и не отправляется в новостную ленту или Telegram.
         </div>
 
-        <button class="btn btn--primary" type="submit">{{ $editing ? 'Сохранить' : 'Создать материал' }}</button>
+        <x-filament::button type="submit">{{ $editing ? 'Сохранить' : 'Создать материал' }}</x-filament::button>
     </form>
 
     @if($editing)
@@ -236,7 +263,7 @@
                         <input id="contentInlineImageDescription" class="form-control" name="description" maxlength="1000">
                     </div>
                 </div>
-                <button class="btn btn--secondary mt-3" type="submit">Загрузить изображение</button>
+                <x-filament::button color="gray" type="submit">Загрузить изображение</x-filament::button>
             </form>
 
             @if($inlineImages->isEmpty())
@@ -252,12 +279,12 @@
                                 @if($media->description)<span>{{ $media->description }}</span>@endif
                                 <code>{{ $shortcode }}</code>
                                 <div class="content-admin-actions">
-                                    <button class="btn btn--secondary btn--sm" type="button" data-content-image-insert="{{ $shortcode }}">Вставить в текст</button>
-                                    <button class="btn btn--secondary btn--sm" type="button" data-content-image-insert="[image id=&quot;{{ $media->id }}&quot; view=&quot;wide&quot;]">Вставить wide</button>
+                                    <x-filament::button color="gray" type="button" data-content-image-insert="{{ $shortcode }}">Вставить в текст</x-filament::button>
+                                    <x-filament::button color="gray" type="button" data-content-image-insert="[image id=&quot;{{ $media->id }}&quot; view=&quot;wide&quot;]">Вставить wide</x-filament::button>
                                     <form method="POST" action="{{ route('admin.content.images.destroy', [$contentItem->alias, $media->id]) }}" onsubmit="return confirm('Удалить изображение? Shortcode в тексте нужно будет убрать вручную.');">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn--danger btn--sm" type="submit">Удалить</button>
+                                        <x-filament::button color="danger" type="submit">Удалить</x-filament::button>
                                     </form>
                                 </div>
                             </div>
@@ -283,8 +310,9 @@
             const selected = form.querySelector('[data-content-related-selected]')?.value || '';
             const options = JSON.parse(form.querySelector('[data-content-related-options]')?.textContent || '{}');
             const publication = form.querySelector('[data-content-publication-section]');
+            const faqSections = form.querySelector('[data-content-faq-sections]');
             const faqPublicationNote = form.parentElement.querySelector('[data-content-faq-publication-note]');
-            const feedToggle = form.querySelector('[name="publish_in_feed"]');
+            const feedToggle = form.querySelector('[type="checkbox"][name="publish_in_feed"]');
             const telegramToggle = form.querySelector('[data-content-telegram-toggle]');
             const telegramChats = form.querySelector('[data-content-telegram-chats]');
 
@@ -309,6 +337,8 @@
 
             const syncPublication = () => {
                 const isFaq = type.value === 'faq';
+                faqSections.hidden = !isFaq;
+                faqSections.disabled = !isFaq;
                 publication.hidden = isFaq || status.value !== 'published';
                 faqPublicationNote.hidden = !isFaq;
                 if (isFaq) {

@@ -6,7 +6,7 @@
 ])
 
 @section('section-heading-action')
-    <a class="btn btn--secondary btn--sm" href="{{ route('admin.content') }}">Материалы</a>
+    <x-filament::button tag="a" color="gray" href="{{ route('admin.content') }}">Материалы</x-filament::button>
 @endsection
 
 @section('section-content')
@@ -24,8 +24,8 @@
             </select>
         </label>
         <div class="admin-filter__actions">
-            <button class="btn btn--primary btn--sm" type="submit">Фильтр</button>
-            <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.seo', ['entity_type' => $selectedType->value]) }}">Сброс</a>
+            <x-filament::button type="submit">Фильтр</x-filament::button>
+            <x-filament::button tag="a" color="gray" href="{{ route('admin.content.seo', ['entity_type' => $selectedType->value]) }}">Сброс</x-filament::button>
         </div>
     </form>
 
@@ -59,15 +59,15 @@
                                 </span>
                             </td>
                             <td>
-                                <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.seo.edit', [$selectedType->value, $entity->id]) }}">
+                                <x-filament::button tag="a" color="gray" href="{{ route('admin.content.seo.edit', [$selectedType->value, $entity->id]) }}">
                                     Редактировать
-                                </a>
+                                </x-filament::button>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
-        @include('mskba-dark::partials.admin.pagination', ['paginator' => $entities])
+        @include('backoffice.content.pagination', ['paginator' => $entities])
     @endif
 @endsection

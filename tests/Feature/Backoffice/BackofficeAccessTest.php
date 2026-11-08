@@ -5,6 +5,9 @@ namespace Tests\Feature\Backoffice;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\Pages\CreateDashboardButtonStyle;
+use App\Filament\Backoffice\Resources\FaqSections\Pages\ManageFaqSections;
+use App\Modules\Content\Domain\Models\FaqSection;
+use Filament\Actions\Testing\TestAction;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -60,7 +63,9 @@ final class BackofficeAccessTest extends TestCase
             ->assertViewIs('backoffice.content.index');
         $this->get(route('admin.content.create'))
             ->assertOk()
-            ->assertViewIs('backoffice.content.form');
+            ->assertViewIs('backoffice.content.form')
+            ->assertSee('name="alias"', escape: false)
+            ->assertSee('fi-sidebar', escape: false);
         $this->get('/admin/content?type=faq')
             ->assertStatus(307)
             ->assertRedirect(route('admin.content', ['type' => 'faq']));
@@ -70,6 +75,31 @@ final class BackofficeAccessTest extends TestCase
             ->assertOk()
             ->assertDontSee('Материалы и FAQ');
         $this->get(route('admin.content'))->assertForbidden();
+    }
+
+    public function test_content_editor_can_create_and_rename_a_faq_section_in_filament(): void
+    {
+        $admin = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($admin)->get('/backoffice/faq-sections')->assertOk();
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(ManageFaqSections::class)
+            ->callAction('create', data: ['name' => 'Игры', 'code' => 'games', 'sort_order' => 25])
+            ->assertHasNoActionErrors();
+
+        $section = FaqSection::query()->where('code', 'games')->sole();
+        Livewire::test(ManageFaqSections::class)
+            ->callAction(TestAction::make('edit')->table($section), data: ['name' => 'Игры и участие', 'sort_order' => 5])
+            ->assertHasNoActionErrors();
+
+        $this->getJson(route('faq.help-content'))
+            ->assertJsonPath('sections.0.key', 'games')
+            ->assertJsonPath('sections.0.label', 'Игры и участие');
+
+        $this->flushSession();
+        $this->actingAs($this->account(UserSystemRoleEnum::MANAGER))
+            ->get('/backoffice/faq-sections')
+            ->assertForbidden();
     }
 
     public function test_resource_page_uses_existing_widget_records_and_limits_custom_html_to_superadmin(): void
