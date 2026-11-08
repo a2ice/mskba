@@ -40,6 +40,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -50,6 +51,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -65,6 +67,14 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
+            ->navigationItems([
+                NavigationItem::make('Материалы и FAQ')
+                    ->group('Контент')
+                    ->icon('heroicon-o-document-text')
+                    ->sort(1)
+                    ->url(fn (): string => route('admin.content'))
+                    ->visible(fn (): bool => Gate::allows('manage-content')),
+            ])
             ->resources([
                 AccountDashboardWidgetResource::class,
                 DashboardButtonStyleResource::class,

@@ -45,6 +45,33 @@ final class BackofficeAccessTest extends TestCase
         $this->actingAs($admin)->get('/backoffice')->assertOk();
     }
 
+    public function test_content_editor_link_uses_the_same_permission_as_the_editor(): void
+    {
+        $editor = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $manager = $this->account(UserSystemRoleEnum::MANAGER);
+
+        $this->actingAs($editor)->get('/backoffice')
+            ->assertOk()
+            ->assertSee('Материалы и FAQ')
+            ->assertSee(route('admin.content'));
+        $this->assertSame('/backoffice/content', route('admin.content', absolute: false));
+        $this->get(route('admin.content', ['type' => 'faq']))
+            ->assertOk()
+            ->assertViewIs('backoffice.content.index');
+        $this->get(route('admin.content.create'))
+            ->assertOk()
+            ->assertViewIs('backoffice.content.form');
+        $this->get('/admin/content?type=faq')
+            ->assertStatus(307)
+            ->assertRedirect(route('admin.content', ['type' => 'faq']));
+
+        $this->flushSession();
+        $this->actingAs($manager)->get('/backoffice')
+            ->assertOk()
+            ->assertDontSee('Материалы и FAQ');
+        $this->get(route('admin.content'))->assertForbidden();
+    }
+
     public function test_resource_page_uses_existing_widget_records_and_limits_custom_html_to_superadmin(): void
     {
         $admin = $this->account(UserSystemRoleEnum::ADMIN);

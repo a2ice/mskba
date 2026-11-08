@@ -1,6 +1,6 @@
 @php $title = 'Контент'; @endphp
 
-@extends('theme::partials.admin.list-shell', [
+@extends('backoffice.content.layout', [
     'title' => $title,
     'subtitle' => 'Материалы, FAQ, новостная лента и публикации в Telegram.',
 ])
@@ -134,6 +134,6 @@
                 </tbody>
             </table>
         </div>
-        @include('theme::partials.admin.pagination', ['paginator' => $contentItems])
+        @include('mskba-dark::partials.admin.pagination', ['paginator' => $contentItems])
     @endif
 @endsection

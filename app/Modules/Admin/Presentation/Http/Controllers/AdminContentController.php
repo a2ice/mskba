@@ -19,7 +19,6 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Presentation\Theming\ThemeResolver;
 use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,7 +65,7 @@ final class AdminContentController extends Controller
             $query->where('publish_in_telegram', false);
         }
 
-        return ThemeResolver::page('admin.content.index', [
+        return response()->view('backoffice.content.index', [
             'contentItems' => $query
                 ->latest()
                 ->paginate(20)
@@ -77,7 +76,7 @@ final class AdminContentController extends Controller
 
     public function create(): Response
     {
-        return ThemeResolver::page('admin.content.form', [
+        return response()->view('backoffice.content.form', [
             ...$this->formData(),
             'contentItem' => new ContentItem(['type' => ContentTypeEnum::MATERIAL, 'status' => ContentStatusEnum::DRAFT]),
             'selectedChatIds' => [],
@@ -136,7 +135,7 @@ final class AdminContentController extends Controller
     {
         $contentItem->load(['cover', 'inlineImages', 'tags', 'telegramPublications']);
 
-        return ThemeResolver::page('admin.content.form', [
+        return response()->view('backoffice.content.form', [
             ...$this->formData(),
             'contentItem' => $contentItem,
             'selectedChatIds' => $contentItem->telegramPublications
