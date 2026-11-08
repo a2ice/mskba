@@ -305,6 +305,8 @@ final class UpdatePlayerProfileController extends Controller
     {
         $playerProfile = $request->user()->playerProfile()->first();
         $character = (array) data_get($playerProfile?->extra, 'character', []);
+        // The logo is part of a uniform, not a player preference.
+        unset($character['with_team_logo'], $character['generation_logo_mode'], $character['generation_custom_logo_id']);
         $teams = $this->playerGenerationTeams($request->user());
 
         return response()->json([
@@ -315,9 +317,6 @@ final class UpdatePlayerProfileController extends Controller
             'generation_team_id' => data_get($character, 'generation_team_id'),
             'generation_uniform_source' => data_get($character, 'generation_uniform_source'),
             'generation_uniform_design_id' => data_get($character, 'generation_uniform_design_id'),
-            'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
-            'generation_logo_mode' => (string) data_get($character, 'generation_logo_mode', 'none'),
-            'generation_custom_logo_id' => data_get($character, 'generation_custom_logo_id'),
             'face_references' => $this->faceReferenceState($request->user()),
             'teams' => $teams->map(fn (Team $team): array => [
                 'id' => (int) $team->id,

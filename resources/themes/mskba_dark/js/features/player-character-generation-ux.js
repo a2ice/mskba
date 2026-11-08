@@ -6,14 +6,11 @@ const nativeFetch = window.fetch.bind(window);
 const confirmedClicks = new WeakSet();
 
 const state = {
-    teams: new Map(),
-    withTeamLogo: false,
     activeGenerationIds: new Set(),
     activePrices: new Map(),
     terminalSeen: new Set(),
     historySection: null,
     historyStrip: null,
-    logoControl: null,
 };
 
 function stageElement() {
@@ -362,94 +359,9 @@ async function refreshHistory(applyPrimary = false) {
     }
 }
 
-function createLogoControl() {
-    const form = formElement();
-    const teamSelect = form?.querySelector('[data-player-character-team]');
-    if (!teamSelect) {
-        return null;
-    }
-
-    if (state.logoControl?.isConnected) {
-        return state.logoControl;
-    }
-
-    const control = document.createElement('div');
-    control.className = 'account-player-generation-logo-control';
-    control.dataset.playerGenerationLogoControl = '';
-    control.innerHTML = `
-        <span class="account-player-generation-logo-control__label">Логотип команды на форме</span>
-        <div class="account-player-generation-logo-control__choices" role="group" aria-label="Логотип команды на форме">
-            <button type="button" class="account-player-generation-logo-control__choice" data-player-generation-logo-choice="1">С логотипом команды</button>
-            <button type="button" class="account-player-generation-logo-control__choice" data-player-generation-logo-choice="0">Без логотипа команды</button>
-        </div>
-        <p class="account-player-generation-logo-control__hint" data-player-generation-logo-hint></p>
-    `;
-
-    const insertionPoint = teamSelect.closest('.form-group') || teamSelect.parentElement;
-    insertionPoint?.insertAdjacentElement('afterend', control);
-    control.querySelectorAll('[data-player-generation-logo-choice]').forEach((button) => {
-        button.addEventListener('click', () => {
-            if (button.disabled) {
-                return;
-            }
-            state.withTeamLogo = button.dataset.playerGenerationLogoChoice === '1';
-            syncLogoControl();
-        });
-    });
-
-    state.logoControl = control;
-    teamSelect.addEventListener('change', syncLogoControl);
-    return control;
-}
-
-function selectedTeamLogoAvailability() {
-    const teamId = Number(formElement()?.querySelector('[data-player-character-team]')?.value || 0);
-    return teamId > 0 ? state.teams.get(teamId) : null;
-}
-
-function syncLogoControl() {
-    const control = createLogoControl();
-    if (!control) {
-        return;
-    }
-
-    const team = selectedTeamLogoAvailability();
-    const buttons = [...control.querySelectorAll('[data-player-generation-logo-choice]')];
-    const hint = control.querySelector('[data-player-generation-logo-hint]');
-
-    if (!team) {
-        state.withTeamLogo = false;
-        buttons.forEach((button) => { button.disabled = true; });
-        if (hint) {
-            hint.textContent = 'Сначала выберите команду.';
-        }
-    } else if (!team.has_logo) {
-        state.withTeamLogo = false;
-        buttons.forEach((button) => { button.disabled = true; });
-        if (hint) {
-            hint.textContent = 'У выбранной команды нет логотипа.';
-        }
-    } else {
-        buttons.forEach((button) => { button.disabled = false; });
-        if (hint) {
-            hint.textContent = '';
-        }
-    }
-
-    buttons.forEach((button) => {
-        const value = button.dataset.playerGenerationLogoChoice === '1';
-        button.setAttribute('aria-pressed', value === state.withTeamLogo ? 'true' : 'false');
-    });
-}
-
 async function loadPreferences() {
     try {
         const payload = await mutationRequest({ mutation: 'generation_preferences' });
-        state.teams = new Map(
-            (Array.isArray(payload.teams) ? payload.teams : [])
-                .map((team) => [Number(team.id), team]),
-        );
-
         const select = formElement()?.querySelector('[data-player-character-team]');
         const storedTeamId = payload.generation_team_id ? String(payload.generation_team_id) : '';
         if (select && storedTeamId && [...select.options].some((option) => option.value === storedTeamId)) {
@@ -458,14 +370,9 @@ async function loadPreferences() {
                 select.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
-
-        state.withTeamLogo = Boolean(payload.with_team_logo);
     } catch {
-        state.teams = new Map();
-        state.withTeamLogo = false;
+        // Preferences are optional; the uniform selector remains usable.
     }
-
-    syncLogoControl();
 }
 
 function priceModal(priceMinor) {
@@ -634,7 +541,6 @@ window.fetch = async (...args) => {
     const isStatus = isGenerationStatusRequest(args[0]);
 
     if (isGenerationRequest) {
-        formData.set('generation_with_team_logo', state.withTeamLogo ? '1' : '0');
         setGenerationBusy(true);
         ensureHistorySection();
         if (state.historyStrip && !state.historyStrip.querySelector('.account-player-generation-history__pending')) {
@@ -666,7 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ensureGenerationOverlay();
     ensureHistorySection();
-    createLogoControl();
 
     const activeGenerationId = readStoredActiveGeneration();
     if (activeGenerationId) {

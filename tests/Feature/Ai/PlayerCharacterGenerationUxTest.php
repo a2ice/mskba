@@ -131,11 +131,37 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ->assertJsonPath('weight_kg', 94)
             ->assertJsonPath('body_type', 'athletic')
             ->assertJsonPath('generation_team_id', 321)
-            ->assertJsonPath('with_team_logo', true)
-            ->assertJsonPath('generation_logo_mode', 'custom')
-            ->assertJsonPath('generation_custom_logo_id', 49)
             ->assertJsonPath('character.shoes', 'white')
             ->assertJsonPath('character.attributes.0', 'headband');
+    }
+
+    public function test_legacy_logo_preferences_are_not_exposed_as_avatar_controls(): void
+    {
+        $user = $this->player();
+        $profile = $user->playerProfile()->firstOrFail();
+        $profile->forceFill(['extra' => ['character' => [
+            'with_team_logo' => true,
+            'generation_logo_mode' => 'custom',
+            'generation_custom_logo_id' => 22,
+        ]]])->save();
+
+        $response = $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generation_preferences',
+        ])->assertOk();
+
+        $this->assertArrayNotHasKey('with_team_logo', $response->json());
+        $this->assertArrayNotHasKey('generation_logo_mode', $response->json());
+        $this->assertArrayNotHasKey('generation_custom_logo_id', $response->json());
+        $this->assertArrayNotHasKey('with_team_logo', $response->json('character'));
+        $this->assertArrayNotHasKey('generation_logo_mode', $response->json('character'));
+    }
+
+    public function test_avatar_generation_ui_has_no_independent_logo_control(): void
+    {
+        $js = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-generation-ux.js'));
+
+        $this->assertStringNotContainsString('data-player-generation-logo-choice', $js);
+        $this->assertStringNotContainsString("formData.set('generation_with_team_logo'", $js);
     }
 
     public function test_generation_start_persists_current_player_and_visual_settings(): void
@@ -172,7 +198,8 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ['knee_left', 'knee_right', 'headband'],
             data_get($profile->extra, 'character.attributes'),
         );
-        $this->assertFalse((bool) data_get($profile->extra, 'character.with_team_logo'));
+        $this->assertArrayNotHasKey('with_team_logo', (array) data_get($profile->extra, 'character'));
+        $this->assertArrayNotHasKey('generation_logo_mode', (array) data_get($profile->extra, 'character'));
     }
 
     public function test_generation_saves_owned_uniform_selection_even_before_face_references_exist(): void
@@ -200,6 +227,7 @@ final class PlayerCharacterGenerationUxTest extends TestCase
         $this->assertSame('mine', $character['generation_uniform_source']);
         $this->assertSame($design->id, $character['generation_uniform_design_id']);
         $this->assertNull($character['generation_team_id']);
+        $this->assertArrayNotHasKey('generation_logo_mode', $character);
     }
 
     public function test_foreign_uniform_cannot_be_used_for_paid_generation(): void

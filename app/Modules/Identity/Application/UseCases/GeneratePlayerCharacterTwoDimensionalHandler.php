@@ -16,7 +16,6 @@ use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
-use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -101,6 +100,8 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         $storedCharacter = (array) data_get($playerProfile?->extra, 'character', []);
         $requestedCharacter = is_array($options['character'] ?? null) ? $options['character'] : [];
         $character = array_merge($storedCharacter, $requestedCharacter);
+        // Legacy profile-level logo overrides no longer affect the selected uniform.
+        unset($character['with_team_logo'], $character['generation_logo_mode'], $character['generation_custom_logo_id']);
         $character['attributes'] = PlayerCharacterAppearanceOptions::normalizeAttributes(
             (array) ($character['attributes'] ?? []),
         );
@@ -155,37 +156,14 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
-        $logoMode = $uniformSource === 'mine' ? 'none' : (string) ($options['logo_mode'] ?? (
-            ($options['with_team_logo'] ?? false) ? 'team' : 'none'
-        ));
-        if (! in_array($logoMode, ['none', 'team', 'custom'], true)) {
-            throw new PlayerCharacterFlowException('logo_mode_invalid', 'Неизвестный вариант логотипа.', 422);
-        }
-        $withTeamLogo = $logoMode === 'team';
-        if ($withTeamLogo && ($team === null || $team->logo === null)) {
-            throw new PlayerCharacterFlowException('team_logo_unavailable', 'Выберите команду с логотипом.', 422);
-        }
-        $customLogo = null;
-        if ($logoMode === 'custom') {
-            $customLogo = Media::query()->where('mediable_type', User::class)
-                ->whereIn('mediable_id', $user->identityIds())
-                ->where('collection', 'player_generation_logos')
-                ->find((int) ($options['custom_logo_id'] ?? 0));
-            if ($customLogo === null) {
-                throw new PlayerCharacterFlowException('custom_logo_unavailable', 'Выберите свой загруженный логотип.', 422);
-            }
-        }
-
         if ($playerProfile !== null) {
             $extra = is_array($playerProfile->extra) ? $playerProfile->extra : [];
             $persistedCharacter = is_array($extra['character'] ?? null) ? $extra['character'] : [];
+            unset($persistedCharacter['with_team_logo'], $persistedCharacter['generation_logo_mode'], $persistedCharacter['generation_custom_logo_id']);
             $extra['character'] = array_merge($persistedCharacter, $character, [
                 'generation_team_id' => $team?->id,
                 'generation_uniform_source' => $uniformSource,
                 'generation_uniform_design_id' => $uniformDesign?->id,
-                'with_team_logo' => $withTeamLogo,
-                'generation_logo_mode' => $logoMode,
-                'generation_custom_logo_id' => $customLogo?->id,
             ]);
 
             $profileUpdates = ['extra' => $extra];
@@ -313,15 +291,28 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ];
         }
 
-        // The avatar image is frontal: a back-only crest must never be
-        // hallucinated on the chest merely because its image was attached.
-        $selectedLogo = $uniformSource === 'mine'
-            ? ($uniformDesign->logo_front_position === 'none' ? null : match ($uniformDesign->logo_source) {
+        // The selected uniform owns branding: its saved logo, or the team's logo.
+        $selectedLogo = match ($uniformSource) {
+            'mine' => match ($uniformDesign->logo_source) {
                 'custom' => $uniformDesign->customLogo,
                 'team' => $uniformDesign->logoTeam?->logo,
                 default => null,
-            })
-            : ($withTeamLogo ? $team?->logo : $customLogo);
+            },
+            'team' => $team?->logo,
+            default => null,
+        };
+        $logoSource = match ($uniformSource) {
+            'mine' => $uniformDesign->logo_source,
+            'team' => $selectedLogo !== null ? 'team' : 'none',
+            default => 'none',
+        };
+        if ($uniformSource === 'mine' && $logoSource !== 'none' && $selectedLogo === null) {
+            throw new PlayerCharacterFlowException(
+                'logo_unavailable',
+                'Логотип выбранной формы недоступен. Проверьте его в мастерской.',
+                422,
+            );
+        }
         $teamColors = is_array($team?->colors) ? $team->colors : [];
         $primaryTeamColor = data_get($teamColors, 'home_primary');
         $secondaryTeamColor = data_get($teamColors, 'home_secondary');
@@ -334,12 +325,6 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'secondary_color' => $uniformDesign->secondary_color,
                 'sleeve_style' => $uniformDesign->sleeve_style,
                 'logo_source' => $uniformDesign->logo_source,
-                'jersey_number' => $uniformDesign->jersey_number,
-                'number_color' => $uniformDesign->number_color,
-                'number_outline' => (bool) $uniformDesign->number_outline,
-                'number_outline_color' => $uniformDesign->number_outline_color,
-                'logo_front_position' => $uniformDesign->logo_front_position,
-                'logo_back_position' => $uniformDesign->logo_back_position,
             ],
             'team' => [
                 'source' => $hasTeamKit ? 'team' : 'neutral',
@@ -347,14 +332,14 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'primary_color' => $hasTeamKit ? $primaryTeamColor : null,
                 'secondary_color' => $hasTeamKit ? $secondaryTeamColor : null,
                 'sleeve_style' => 'sleeveless',
-                'logo_source' => $logoMode,
+                'logo_source' => $logoSource,
             ],
             default => [
                 'source' => 'neutral',
                 'primary_color' => null,
                 'secondary_color' => null,
                 'sleeve_style' => 'sleeveless',
-                'logo_source' => $logoMode,
+                'logo_source' => $logoSource,
             ],
         };
         $teamLogoPayload = null;
@@ -385,7 +370,7 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'id' => $team?->id, 'name' => $team?->name,
                 'colors' => $hasTeamKit ? $teamColors : null,
                 'with_logo' => $selectedLogo !== null,
-                'logo_source' => $uniformSource === 'mine' ? $uniformDesign->logo_source : $logoMode,
+                'logo_source' => $logoSource,
                 'logo_mime' => $selectedLogo?->mime,
             ] : null,
             'face_references' => $facePayload,
