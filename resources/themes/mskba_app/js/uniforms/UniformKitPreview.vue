@@ -50,7 +50,8 @@ const lens = { XS: .87, S: .94, M: 1, L: 1.06, XL: 1.12, XXL: 1.18 };
 const zoom = computed(() => lens[props.size] || 1);
 const viewName = computed(() => ({ front: 'спереди', left: 'слева', right: 'справа', rear: 'сзади' })[props.view] || 'спереди');
 const center = computed(() => ({ front: 225, left: 488, right: 488, rear: 735 })[props.view] || 225);
-const viewBox = computed(() => [center.value - 140, 148, 280, 662].join(' '));
+// One reference frame fits the full garment at XXL (zoom 1.18), with breathing room.
+const viewBox = computed(() => [center.value - 165, 100, 330, 760].join(' '));
 const isSide = computed(() => props.view === 'left' || props.view === 'right');
 const shape = computed(() => shapes[isSide.value ? 'left' : props.view] || shapes.front);
 const numberLabel = computed(() => String(Math.max(1, Math.min(999, Number.parseInt(props.number, 10) || 1))).padStart(2, '0'));

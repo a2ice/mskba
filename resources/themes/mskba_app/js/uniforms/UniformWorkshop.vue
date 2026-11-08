@@ -1,17 +1,18 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import UniformKitPreview from './UniformKitPreview.vue';
+import { cycleUniformView, singleUniformSize, UNIFORM_SIZE_OPTIONS } from './uniform-workshop-navigation.js';
 
 const props = defineProps({
   initialId: { type: [String, Number], default: null },
   context: { type: String, default: 'page' },
 });
-const sizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const sizeOptions = UNIFORM_SIZE_OPTIONS;
 const form = reactive({
   name: 'Моя форма',
   primary_color: '#DCE7EF',
   secondary_color: '',
-  sizes: ['M', 'L'],
+  sizes: ['M'],
   sleeve_style: 'sleeveless',
   logo_source: 'none',
   logo_team_id: '',
@@ -54,13 +55,19 @@ function resetNumberPosition() {
   const part = selectedNumberPart.value;
   changeNumberPosition({ part, ...initialNumberPositions[part] });
 }
-const previewSize = ref('M');
-const viewOptions = [
-  { value: 'front', label: 'Спереди' }, { value: 'left', label: 'Слева' },
-  { value: 'right', label: 'Справа' }, { value: 'rear', label: 'Сзади' },
-];
-const activePreviewSize = computed(() => form.sizes.includes(previewSize.value)
-  ? previewSize.value : (form.sizes[0] || 'M'));
+// The existing API stores sizes as an array for backward compatibility.
+ // A design now has exactly one active/preview size selected in this editor.
+const selectedSize = computed({
+  get: () => singleUniformSize(form.sizes),
+  set: size => { form.sizes = [singleUniformSize([size])]; },
+});
+const viewNames = { front: 'Спереди', left: 'Слева', rear: 'Сзади', right: 'Справа' };
+const viewCaption = computed(() => viewNames[previewView.value] || viewNames.front);
+const previousViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, -1)]);
+const nextViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, 1)]);
+function changeView(direction) {
+  previewView.value = cycleUniformView(previewView.value, direction);
+}
 function normalizeNumber() {
   const numeric = Number.parseInt(form.jersey_number, 10);
   if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 999)
@@ -80,11 +87,6 @@ const logoUrl = computed(() => form.logo_source === 'custom'
   ? (fileUrl.value || storedLogoUrl.value)
   : form.logo_source === 'team' ? (selectedTeam.value?.logo_url || '') : '');
 
-function toggleSize(size) {
-  const index = form.sizes.indexOf(size);
-  if (index >= 0) form.sizes.splice(index, 1);
-  else form.sizes.push(size);
-}
 function onFile(event) {
   error.value = '';
   const file = event.target.files?.[0] || null;
@@ -116,7 +118,7 @@ function hydrate(design) {
   form.number_outline_color = design.number_outline_color || '';
   form.logo_front_position = design.logo_front_position || 'left';
   form.logo_back_position = design.logo_back_position || 'above';
-  form.sizes = [...design.sizes];
+  form.sizes = [singleUniformSize(design.sizes)];
   form.sleeve_style = 'sleeveless'; // Sleeves are not implemented in the SVG pattern yet.
   form.logo_source = design.logo_source;
   form.logo_team_id = design.logo_team_id || '';
@@ -179,7 +181,8 @@ async function save() {
     error.value = 'Укажите название формы (минимум два символа).';
     return;
   }
-  if (!form.sizes.length) { error.value = 'Выберите хотя бы один размер.'; return; }
+  // Even older multi-size designs are saved with one actively selected size.
+  form.sizes = [selectedSize.value];
   const number = Number.parseInt(form.jersey_number, 10);
   if (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999) {
     error.value = 'Номер должен быть от 01 до 999.'; return;
@@ -256,16 +259,18 @@ async function save() {
 <template>
   <div class="mskba-uniform-editor">
     <section class="mskba-uniform-editor__preview" aria-label="Предпросмотр формы">
-      <div class="mskba-uniform-editor__views" role="group" aria-label="Ракурс формы">
-        <button v-for="option in viewOptions" :key="option.value" type="button"
-          :class="{ 'is-active': previewView === option.value }" :aria-pressed="previewView === option.value"
-          @click="previewView = option.value">{{ option.label }}</button>
-      </div>
       <div class="mskba-uniform-editor__stage">
+        <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--previous"
+          :aria-label="'Предыдущий ракурс: ' + previousViewCaption" :title="'Предыдущий: ' + previousViewCaption"
+          @click="changeView(-1)">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
         <UniformKitPreview
           :name="form.name" :primary="form.primary_color" :secondary="form.secondary_color"
           :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
-          :size="activePreviewSize" :number="form.jersey_number" :number-color="form.number_color"
+          :size="selectedSize" :number="form.jersey_number" :number-color="form.number_color"
           :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
           :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position"
           :number-enabled="form.number_enabled" :jersey-number-x="form.jersey_number_x"
@@ -274,13 +279,15 @@ async function save() {
           :shorts-number-scale="form.shorts_number_scale" :editable="form.number_enabled"
           :selected-part="selectedNumberPart" @select-number="selectNumberPart"
           @change-number="changeNumberPosition" />
+        <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--next"
+          :aria-label="'Следующий ракурс: ' + nextViewCaption" :title="'Следующий: ' + nextViewCaption"
+          @click="changeView(1)">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="mskba-uniform-editor__view-caption" role="status" aria-live="polite">{{ viewCaption }}</span>
       </div>
-      <label class="mskba-uniform-editor__preview-size">
-        <span>Размер для просмотра</span>
-        <select v-model="previewSize" :disabled="!form.sizes.length">
-          <option v-for="size in form.sizes" :key="size" :value="size">{{ size }}</option>
-        </select>
-      </label>
     </section>
     <form class="mskba-uniform-editor__controls" @submit.prevent="save" novalidate>
       <h2>Настройки формы</h2>
@@ -323,13 +330,13 @@ async function save() {
         </div>
       </fieldset>
       <fieldset class="mskba-uniform-editor__sizes">
-        <legend>Размеры</legend>
-        <div class="mskba-uniform-editor__size-grid">
-          <label v-for="size in sizeOptions" :key="size" class="check-label">
-            <input type="checkbox" :checked="form.sizes.includes(size)" @change="toggleSize(size)"/>
-            <span>{{ size }}</span>
-          </label>
-        </div>
+        <legend>Размер</legend>
+        <label class="mskba-uniform-editor__field">
+          <span>Размер формы</span>
+          <select v-model="selectedSize" aria-label="Размер формы">
+            <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</option>
+          </select>
+        </label>
       </fieldset>
       <fieldset class="mskba-uniform-editor__numbers">
         <legend>Игровой номер</legend>
