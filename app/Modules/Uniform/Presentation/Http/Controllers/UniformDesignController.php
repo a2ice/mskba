@@ -221,7 +221,10 @@ final class UniformDesignController extends Controller
                 ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
                 ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
-            ->orderByDesc('id')->first();
+            ->orderByDesc('id')->get();
+        // A user may have a separate management contract as well as a player
+        // contract. Show the jersey number from the playing membership.
+        $member = $member->first(fn ($membership) => $membership->isPlayingMember()) ?? $member->first();
         $actor = $actors->resolveForRequest($request);
         $canEdit = $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_UNIFORMS);
         abort_unless($member !== null || $canEdit, 403);
