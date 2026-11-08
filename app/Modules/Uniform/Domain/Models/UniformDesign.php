@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'name', 'primary_color', 'secondary_color', 'sizes', 'sleeve_style', 'logo_source', 'logo_team_id', 'jersey_number', 'number_color', 'number_outline', 'number_outline_color', 'logo_front_position', 'logo_back_position', 'editor_version'])]
+#[Fillable(['user_id', 'name', 'primary_color', 'secondary_color', 'sizes', 'sleeve_style', 'logo_source', 'logo_team_id', 'jersey_number', 'number_enabled', 'jersey_number_x', 'jersey_number_y', 'jersey_number_scale', 'shorts_number_x', 'shorts_number_y', 'shorts_number_scale', 'number_color', 'number_outline', 'number_outline_color', 'logo_front_position', 'logo_back_position', 'editor_version'])]
 final class UniformDesign extends Model
 {
     use SoftDeletes;
@@ -40,6 +40,13 @@ final class UniformDesign extends Model
         return [
             'sizes' => 'array',
             'jersey_number' => 'integer',
+            'number_enabled' => 'boolean',
+            'jersey_number_x' => 'integer',
+            'jersey_number_y' => 'integer',
+            'jersey_number_scale' => 'float',
+            'shorts_number_x' => 'integer',
+            'shorts_number_y' => 'integer',
+            'shorts_number_scale' => 'float',
             'number_outline' => 'boolean',
             'editor_version' => 'integer',
         ];

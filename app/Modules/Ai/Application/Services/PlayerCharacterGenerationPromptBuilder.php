@@ -20,6 +20,13 @@ final class PlayerCharacterGenerationPromptBuilder
             'secondary_color' => $requestedUniform['secondary_color'] ?? null,
             'sleeve_style' => $requestedUniform['sleeve_style'] ?? 'sleeveless',
             'logo_source' => $requestedUniform['logo_source'] ?? 'none',
+            'number_enabled' => (bool) ($requestedUniform['number_enabled'] ?? true),
+            'jersey_number_scale' => (float) ($requestedUniform['jersey_number_scale'] ?? 1),
+            'shorts_number_scale' => (float) ($requestedUniform['shorts_number_scale'] ?? 1),
+            'jersey_number_x' => (int) ($requestedUniform['jersey_number_x'] ?? 225),
+            'jersey_number_y' => (int) ($requestedUniform['jersey_number_y'] ?? 394),
+            'shorts_number_x' => (int) ($requestedUniform['shorts_number_x'] ?? 178),
+            'shorts_number_y' => (int) ($requestedUniform['shorts_number_y'] ?? 755),
             'jersey_number' => $uniformSource === 'mine'
                 ? str_pad((string) max(1, min(999, (int) ($requestedUniform['jersey_number'] ?? 1))), 2, '0', STR_PAD_LEFT) : null,
             'number_color' => $requestedUniform['number_color'] ?? null,
@@ -112,13 +119,13 @@ TEXT;
             $uniformLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
         }
 
-        $numberInstruction = $uniformSource === 'mine'
+        $numberInstruction = $uniformSource === 'mine' && $uniform['number_enabled']
             ? '- Render exactly the jersey number "'.$uniform['jersey_number'].'" on the front of the jersey and in a smaller size on the left side of the image (the right shorts leg of the player). '
                 .'Use number_color if set, otherwise the secondary_color when present, or high contrast (white on dark, black on light) when absent. '
                 .'When number_outline is true, add a visible outline in number_outline_color if supplied. '
                 .'Otherwise, outline in the primary color if secondary_color exists; without secondary_color use black lettering with a white outline on dark fabric, '
-                .'or white lettering with a black outline on light fabric. Never change the number or add any other lettering.'
-            : '- No jersey number is configured. Do not invent any lettering or numerals.';
+                .'or white lettering with a black outline on light fabric. Respect the saved front jersey and shorts scale and placement fields (these are SVG pattern-space units, not pixel coordinates of the player image), keeping both numbers within their respective garments. Never change the number or add any other lettering.'
+            : '- No number is enabled for the selected uniform. The jersey AND shorts must have no numerals anywhere. Do not invent any lettering or numerals.';
 
         return <<<PROMPT
 Create ONE photorealistic full-body basketball player using all supplied face-reference images as identity references.

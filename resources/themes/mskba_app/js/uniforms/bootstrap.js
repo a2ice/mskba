@@ -19,6 +19,13 @@ async function resumePending() {
     for (const field of ['jersey_number', 'number_color', 'number_outline_color', 'logo_front_position', 'logo_back_position']) {
       if (data[field] !== null && data[field] !== undefined && data[field] !== '') payload.append(field, String(data[field]));
     }
+    payload.append('number_enabled', data.number_enabled === false ? '0' : '1');
+    for (const part of ['jersey', 'shorts']) {
+      for (const key of ['x', 'y', 'scale']) {
+        const field = part + '_number_' + key;
+        if (data[field] !== undefined && data[field] !== null) payload.append(field, String(data[field]));
+      }
+    }
     payload.append('number_outline', data.number_outline ? '1' : '0');
     (data.sizes || []).forEach((s,i)=>payload.append('sizes['+i+']',s));
     if(data.logo_source==='team'&&data.logo_team_id) payload.append('logo_team_id',data.logo_team_id);

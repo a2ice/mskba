@@ -1,5 +1,5 @@
 <script setup>
-import { computed, getCurrentInstance } from 'vue';
+import { computed, getCurrentInstance, ref } from 'vue';
 
 const props = defineProps({
   name: { type: String, default: 'Моя форма' },
@@ -9,169 +9,324 @@ const props = defineProps({
   view: { type: String, default: 'front' },
   size: { type: String, default: 'M' },
   number: { type: [String, Number], default: '01' },
+  numberEnabled: { type: Boolean, default: true },
   numberColor: { type: String, default: '' },
   numberOutline: { type: Boolean, default: false },
   numberOutlineColor: { type: String, default: '' },
   logoFrontPosition: { type: String, default: 'left' },
   logoBackPosition: { type: String, default: 'above' },
-  sleeveStyle: { type: String, default: 'sleeveless' },
+  jerseyNumberX: { type: Number, default: 225 },
+  jerseyNumberY: { type: Number, default: 394 },
+  jerseyNumberScale: { type: Number, default: 1 },
+  shortsNumberX: { type: Number, default: 178 },
+  shortsNumberY: { type: Number, default: 755 },
+  shortsNumberScale: { type: Number, default: 1 },
+  editable: { type: Boolean, default: false },
+  selectedPart: { type: String, default: 'jersey' },
 });
-const id = 'mskba-uniform-svg-' + getCurrentInstance().uid;
-const sizes = { XS: 0.87, S: 0.94, M: 1, L: 1.06, XL: 1.12, XXL: 1.18 };
-const scale = computed(() => sizes[props.size] || 1);
-const label = computed(() => ({ front: 'спереди', left: 'слева', right: 'справа', rear: 'сзади' })[props.view] || 'спереди');
-const formattedNumber = computed(() => String(Math.min(999, Math.max(1, Number.parseInt(props.number, 10) || 1))).padStart(2, '0'));
+const emit = defineEmits(['select-number', 'change-number']);
+const svg = ref(null);
+const garmentCoordinates = ref(null);
+const drag = ref(null);
+const prefix = 'mskba-kit-' + getCurrentInstance().uid;
+
+// The geometry is re-drafted from the exact silhouette of the supplied
+// three-angle photographic reference; right profile is its mirrored left.
+const shapes = {
+  front: {
+    jersey: 'M184 182 Q165 188 149 205 L152 259 Q152 281 130 303 L136 455 L125 503 Q162 529 208 527 Q267 528 324 503 L313 438 L319 302 Q297 282 298 265 L301 208 L265 182 Q251 189 240 189 Q216 194 184 182Z',
+    shorts: 'M152 539 Q225 535 296 539 L319 635 L330 765 Q299 774 233 778 L225 747 L216 778 Q149 777 119 765 L131 630Z',
+  },
+  left: {
+    jersey: 'M514 183 Q483 183 464 205 Q441 227 426 284 L431 404 L419 520 Q439 537 482 535 L489 518 L491 534 Q531 536 556 522 L549 500 L541 363 L545 253 Q538 208 514 183Z',
+    shorts: 'M431 538 Q487 535 541 539 L556 619 L551 677 L553 763 Q526 771 490 773 L486 760 L483 773 Q448 772 418 761 L424 689 L426 554Z',
+  },
+  rear: {
+    jersey: 'M694 182 Q674 190 659 205 L661 265 Q655 288 640 302 L646 439 L635 503 Q661 526 717 527 Q784 532 834 500 L823 455 L829 303 Q810 282 807 258 L810 205 Q787 187 775 182 Q757 191 750 189 Q724 196 694 182Z',
+    shorts: 'M661 539 Q733 535 807 539 L831 635 L841 765 Q810 775 743 778 L735 747 L726 778 Q663 779 629 765 L641 635Z',
+  },
+};
+const lens = { XS: .87, S: .94, M: 1, L: 1.06, XL: 1.12, XXL: 1.18 };
+const zoom = computed(() => lens[props.size] || 1);
+const viewName = computed(() => ({ front: 'спереди', left: 'слева', right: 'справа', rear: 'сзади' })[props.view] || 'спереди');
+const center = computed(() => ({ front: 225, left: 488, right: 488, rear: 735 })[props.view] || 225);
+const viewBox = computed(() => [center.value - 140, 148, 280, 662].join(' '));
+const isSide = computed(() => props.view === 'left' || props.view === 'right');
+const shape = computed(() => shapes[isSide.value ? 'left' : props.view] || shapes.front);
+const numberLabel = computed(() => String(Math.max(1, Math.min(999, Number.parseInt(props.number, 10) || 1))).padStart(2, '0'));
+const threeDigits = computed(() => numberLabel.value.length === 3);
 const isDark = computed(() => {
-  const hex = /^#[\da-f]{6}$/i.test(props.primary) ? props.primary.slice(1) : 'DCE7EF';
+  const h = /^#[\da-f]{6}$/i.test(props.primary) ? props.primary.slice(1) : 'DCE7EF';
   const [r, g, b] = [0, 2, 4].map(i => {
-    const n = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+    const v = parseInt(h.slice(i, i + 2), 16) / 255;
+    return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4;
   });
-  return r * 0.2126 + g * 0.7152 + b * 0.0722 < 0.38;
+  return r * .2126 + g * .7152 + b * .0722 < .38;
 });
-const ink = computed(() => props.numberColor || (props.secondary || (props.numberOutline
+const thread = computed(() => isDark.value ? '#C4D1D9' : '#6D8395');
+const trim = computed(() => props.secondary || props.primary);
+const ink = computed(() => props.numberColor || props.secondary || (props.numberOutline
   ? (isDark.value ? '#111924' : '#FFFFFF')
-  : (isDark.value ? '#FFFFFF' : '#111924'))));
-const outlineInk = computed(() => props.numberOutlineColor || (props.secondary
-  ? props.primary
   : (isDark.value ? '#FFFFFF' : '#111924')));
-const accent = computed(() => props.secondary || props.primary);
-const seam = computed(() => isDark.value ? '#F5F9FC' : '#60798E');
-const lettering = computed(() => ({
-  fill: ink.value,
-  stroke: props.numberOutline ? outlineInk.value : 'none',
-  strokeWidth: props.numberOutline ? 5 : 0,
-  paintOrder: 'stroke',
+const outlineInk = computed(() => props.numberOutlineColor || (props.secondary
+  ? props.primary : (isDark.value ? '#FFFFFF' : '#111924')));
+const typeStyle = computed(() => ({
+  fill: ink.value, stroke: props.numberOutline ? outlineInk.value : 'none',
+  strokeWidth: props.numberOutline ? 5 : 0, strokeLinejoin: 'round', paintOrder: 'stroke',
 }));
-const hasFrontLogo = computed(() => !!props.logo && props.logoFrontPosition !== 'none');
-const hasBackLogo = computed(() => !!props.logo && props.logoBackPosition !== 'none');
+const jerseyFont = computed(() => props.view === 'rear' ? (threeDigits.value ? 82 : 98) : (threeDigits.value ? 57 : 72));
+const shortsFont = computed(() => threeDigits.value ? 34 : 45);
+const jerseyX = computed(() => props.view === 'rear' ? 735 + props.jerseyNumberX - 225 : props.jerseyNumberX);
+const jerseyY = computed(() => props.view === 'rear' ? 371 + props.jerseyNumberY - 394 : props.jerseyNumberY);
+const partSizes = computed(() => ({
+  jersey: { width: jerseyFont.value * (threeDigits.value ? 1.72 : 1.32), height: jerseyFont.value },
+  shorts: { width: shortsFont.value * (threeDigits.value ? 1.72 : 1.32), height: shortsFont.value },
+}));
+const activeNumber = computed(() => props.editable && props.numberEnabled && !isSide.value);
+const at = which => which === 'jersey'
+  ? { x: jerseyX.value, y: jerseyY.value, scale: props.jerseyNumberScale }
+  : { x: props.shortsNumberX, y: props.shortsNumberY, scale: props.shortsNumberScale };
+const partLimit = which => which === 'jersey'
+  ? { x: [188, 268], y: [316, 450] }
+  : { x: [148, 302], y: [658, 766] };
+const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
+function svgPoint(event) {
+  const matrix = garmentCoordinates.value?.getScreenCTM();
+  if (!matrix || !svg.value) return null;
+  const point = svg.value.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  return point.matrixTransform(matrix.inverse());
+}
+function startDrag(which, mode, event) {
+  if (!activeNumber.value || event.button !== 0) return;
+  const start = svgPoint(event);
+  if (!start) return;
+  event.preventDefault();
+  event.stopPropagation();
+  emit('select-number', which);
+  const own = at(which);
+  drag.value = {
+    pointerId: event.pointerId, which, mode,
+    originX: start.x, originY: start.y,
+    x: which === 'jersey' ? props.jerseyNumberX : props.shortsNumberX,
+    y: which === 'jersey' ? props.jerseyNumberY : props.shortsNumberY,
+    scale: own.scale,
+  };
+  svg.value.setPointerCapture(event.pointerId);
+}
+function moveDrag(event) {
+  const state = drag.value;
+  if (!state || state.pointerId !== event.pointerId) return;
+  const p = svgPoint(event);
+  if (!p) return;
+  if (state.mode === 'scale') {
+    emit('change-number', {
+      part: state.which,
+      scale: clamp(Math.round((state.scale + (p.x - state.originX) / 96) * 100) / 100, .4, 1.6),
+    });
+    return;
+  }
+  const limits = partLimit(state.which);
+  emit('change-number', {
+    part: state.which,
+    x: clamp(Math.round(state.x + p.x - state.originX), ...limits.x),
+    y: clamp(Math.round(state.y + p.y - state.originY), ...limits.y),
+  });
+}
+function endDrag(event) {
+  if (!drag.value || drag.value.pointerId !== event.pointerId) return;
+  drag.value = null;
+  if (svg.value?.hasPointerCapture?.(event.pointerId)) svg.value.releasePointerCapture(event.pointerId);
+}
+function moveWithKeys(which, event) {
+  if (!activeNumber.value) return;
+  const p = at(which);
+  const step = event.shiftKey ? 10 : 2;
+  const limits = partLimit(which);
+  let result;
+  switch (event.key) {
+    case 'ArrowLeft': result = { x: clamp((which === 'jersey' ? props.jerseyNumberX : p.x) - step, ...limits.x) }; break;
+    case 'ArrowRight': result = { x: clamp((which === 'jersey' ? props.jerseyNumberX : p.x) + step, ...limits.x) }; break;
+    case 'ArrowUp': result = { y: clamp((which === 'jersey' ? props.jerseyNumberY : p.y) - step, ...limits.y) }; break;
+    case 'ArrowDown': result = { y: clamp((which === 'jersey' ? props.jerseyNumberY : p.y) + step, ...limits.y) }; break;
+    case '+': case '=': result = { scale: clamp(p.scale + .05, .4, 1.6) }; break;
+    case '-': result = { scale: clamp(p.scale - .05, .4, 1.6) }; break;
+    default: return;
+  }
+  event.preventDefault();
+  emit('select-number', which);
+  emit('change-number', { part: which, ...result });
+}
 </script>
 
 <template>
-  <div class="mskba-kit-preview" :style="{ '--kit-primary': primary, '--kit-secondary': accent }">
-    <svg class="mskba-kit-preview__drawing" xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 460 550" role="img"
-      :aria-label="'Баскетбольная форма «' + name + '», ' + label + ', размер ' + size">
+  <div class="mskba-kit-preview" :style="{ '--kit-primary': primary, '--kit-trim': trim }">
+    <svg ref="svg" class="mskba-kit-preview__drawing" :class="{ 'is-number-editable': activeNumber }"
+      :viewBox="viewBox" role="img" xmlns="http://www.w3.org/2000/svg"
+      :aria-label="'Баскетбольная форма «' + name + '», ' + viewName + ', размер ' + size"
+      @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag"
+      @lostpointercapture="drag = null">
       <defs>
-        <linearGradient :id="id + '-sheen'" x1="0" y1="0" x2="1" y2=".17">
-          <stop offset="0" stop-color="#ffffff" stop-opacity=".26"/>
-          <stop offset=".26" stop-color="#ffffff" stop-opacity="0"/>
-          <stop offset=".77" stop-color="#172C3D" stop-opacity="0"/>
-          <stop offset="1" stop-color="#172C3D" stop-opacity=".18"/>
+        <linearGradient :id="prefix + '-sheen'" x1="0" y1="0" x2="1" y2=".12">
+          <stop offset="0" stop-color="#FFFFFF" stop-opacity=".06"/>
+          <stop offset=".3" stop-color="#FFFFFF" stop-opacity=".015"/>
+          <stop offset=".78" stop-color="#101A20" stop-opacity=".025"/>
+          <stop offset="1" stop-color="#101A20" stop-opacity=".08"/>
         </linearGradient>
-        <linearGradient :id="id + '-hem'" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#101B26" stop-opacity="0"/>
-          <stop offset="1" stop-color="#101B26" stop-opacity=".16"/>
-        </linearGradient>
+        <mask :id="prefix + '-side-hole'" maskUnits="userSpaceOnUse" x="390" y="170" width="175" height="370">
+          <rect x="390" y="170" width="175" height="370" fill="#FFFFFF"/>
+          <ellipse cx="486" cy="263" rx="25" ry="45" transform="rotate(1 486 263)" fill="#000000"/>
+        </mask>
       </defs>
-      <g :transform="'translate(230 276) scale(' + scale + ') translate(-230 -276)'">
-        <ellipse cx="230" cy="522" rx="103" ry="7" fill="#58738A" opacity=".13"/>
+      <g ref="garmentCoordinates"
+        :transform="'translate(' + center + ' 480) scale(' + zoom + ') translate(' + (-center) + ' -480)'">
+        <g :transform="view === 'right' ? 'translate(976 0) scale(-1 1)' : undefined">
+          <!-- Outer garment contours follow the reference, not an invented t-shirt draft. -->
+          <path :d="shape.jersey" fill="var(--kit-primary)" :stroke="thread"
+            stroke-width="1.8" stroke-opacity=".55" stroke-linejoin="round"
+            :mask="isSide ? 'url(#' + prefix + '-side-hole)' : undefined"/>
+          <path :d="shape.jersey" :fill="'url(#' + prefix + '-sheen)'"
+            :mask="isSide ? 'url(#' + prefix + '-side-hole)' : undefined"/>
 
-        <!-- Flat pattern-inspired front / back: narrow shoulders, deep arm openings,
-             slightly tapered torso, natural waistband and separately hemmed legs. -->
-        <g v-if="view === 'front' || view === 'rear'" class="mskba-kit-preview__garment">
-          <!-- Jersey -->
-          <path d="M165 67 194 56Q205 87 230 88Q255 87 266 56L295 67
-              Q303 89 310 127L293 158 285 151
-              281 292Q230 299 179 292L175 151 167 158 150 127Q157 89 165 67Z"
-            fill="var(--kit-primary)" stroke="#324758" stroke-opacity=".53" stroke-width="1.7" stroke-linejoin="round"/>
-          <path d="M165 67 194 56Q205 87 230 88Q255 87 266 56L295 67
-              Q303 89 310 127L293 158 285 151
-              281 292Q230 299 179 292L175 151 167 158 150 127Q157 89 165 67Z"
-            :fill="'url(#' + id + '-sheen)'"/>
-          <!-- Rib-knit double collar, armhole piping and neck depth -->
-          <path d="M194 56Q207 91 230 92Q253 91 266 56" fill="none"
-            :stroke="accent" stroke-width="9" stroke-linecap="round"/>
-          <path d="M194 56Q207 88 230 89Q253 88 266 56" fill="none"
-            :stroke="seam" stroke-opacity=".58" stroke-width="1.7"/>
-          <path d="M166 69Q157 96 151 127L167 158 175 151M294 69Q303 96 309 127L293 158 285 151"
-            fill="none" :stroke="accent" stroke-width="6.5" stroke-linejoin="round"/>
-          <path d="M166 69Q157 96 151 127L167 158 175 151M294 69Q303 96 309 127L293 158 285 151"
-            fill="none" :stroke="seam" stroke-opacity=".35" stroke-width="1.3"/>
-          <!-- Reference: narrow contrasting side inserts, not thick straight cartoon bars -->
-          <path d="M175 151Q181 155 185 155L190 292 179 292Z
-                   M285 151Q279 155 275 155L270 292 281 292Z"
-            :fill="accent" :opacity="secondary ? 1 : .16"/>
-          <path d="M188 155 193 291M272 155 267 291" stroke="#172C3D" stroke-opacity=".12" stroke-width="2"/>
-          <path d="M181 284Q230 291 279 284M181 291Q230 298 279 291"
-            fill="none" :stroke="seam" stroke-opacity=".55" stroke-width="1.25"/>
-          <path d="M198 139Q192 184 198 231M263 142Q267 188 263 230M213 280Q229 282 246 280"
-            fill="none" :stroke="seam" stroke-opacity=".12" stroke-width="1.5"/>
+          <template v-if="view === 'front'">
+            <!-- True V-neck and sleeveless deep arm openings. No sleeves at any angle. -->
+            <path d="M182 185Q188 207 225 236Q262 208 268 185"
+              fill="none" stroke="var(--kit-trim)" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M184 186Q192 207 225 233Q260 208 266 185"
+              fill="none" :stroke="thread" stroke-width=".9" stroke-opacity=".5"/>
+            <path d="M151 204Q158 277 131 302L134 322M298 204Q287 275 317 303L314 322"
+              fill="none" stroke="var(--kit-trim)" stroke-width="5.5"/>
+            <path d="M146 307Q150 407 145 478L139 505M304 305Q301 411 306 476L313 505"
+              stroke="var(--kit-trim)" stroke-width="5.5" fill="none"/>
+            <path d="M130 493L146 475Q152 492 150 513L126 503ZM304 474L313 471L324 503L300 517Q297 489 304 474Z"
+              fill="var(--kit-trim)"/>
+            <path d="M146 320L146 473M303 318L303 471"
+              :stroke="thread" stroke-opacity=".48" stroke-width="1.5" stroke-dasharray="17 9"/>
+          </template>
+          <template v-else-if="view === 'rear'">
+            <path d="M694 185Q729 203 775 185"
+              fill="none" stroke="var(--kit-trim)" stroke-width="6.5"/>
+            <path d="M659 207Q670 281 641 302L645 322M810 207Q798 279 828 304L825 322"
+              fill="none" stroke="var(--kit-trim)" stroke-width="5.5"/>
+            <path d="M655 307L658 477L643 506M814 306L810 474L829 504"
+              fill="none" stroke="var(--kit-trim)" stroke-width="6"/>
+            <path d="M638 500L646 473L659 478L659 511Q643 511 635 503ZM810 474L823 473L834 500Q824 512 809 513Z"
+              fill="var(--kit-trim)"/>
+            <path d="M657 332V468M812 332V468" :stroke="thread"
+              stroke-opacity=".46" stroke-width="1.5" stroke-dasharray="17 9"/>
+          </template>
+          <template v-else>
+            <path d="M512 186Q463 195 433 271" stroke="var(--kit-trim)"
+              fill="none" stroke-width="5"/>
+            <ellipse cx="486" cy="263" rx="27" ry="47" fill="none"
+              stroke="var(--kit-trim)" stroke-width="5"/>
+            <path d="M474 307V531M500 308V531" fill="none"
+              stroke="var(--kit-trim)" stroke-width="6"/>
+            <path d="M486 320V470" :stroke="thread" stroke-width="4"
+              stroke-dasharray="9 20" opacity=".65"/>
+            <path d="M477 496L488 479L497 496V531H477Z" fill="var(--kit-trim)"/>
+          </template>
 
-          <!-- Jersey number, centered; no hard-coded club lettering. -->
-          <text x="230" :y="view === 'rear' ? 205 : 210" text-anchor="middle"
-            font-family="Arial, Helvetica, sans-serif" font-weight="800"
-            :font-size="formattedNumber.length === 3 ? 59 : 71"
-            :letter-spacing="formattedNumber.length === 3 ? '-3' : '-2'"
-            :style="lettering">{{ formattedNumber }}</text>
-          <image v-if="view === 'front' && hasFrontLogo" :href="logo"
-            :x="logoFrontPosition === 'left' ? 258 : 180" y="115"
-            width="31" height="31" preserveAspectRatio="xMidYMid meet"/>
-          <image v-if="view === 'rear' && hasBackLogo" :href="logo"
-            x="208" :y="logoBackPosition === 'below' ? 224 : 107"
-            width="44" height="44" preserveAspectRatio="xMidYMid meet"/>
+          <!-- The waistband and straight leg hems are true to the reference's
+               shallow crotch cut rather than a long triangular split. -->
+          <path :d="shape.shorts" fill="var(--kit-primary)" :stroke="thread"
+            stroke-width="1.8" stroke-opacity=".55" stroke-linejoin="round"/>
+          <path :d="shape.shorts" :fill="'url(#' + prefix + '-sheen)'"/>
+          <template v-if="view === 'front'">
+            <path d="M152 539Q225 536 296 539L299 556Q225 560 149 556Z"
+              fill="var(--kit-primary)" :stroke="thread" stroke-opacity=".55" stroke-width="1.5"/>
+            <path d="M151 542Q225 541 296 542M151 551Q225 550 298 551"
+              :stroke="thread" stroke-width="2" opacity=".6"/>
+            <path d="M148 557L133 627L119 765L135 769L154 556Z
+                     M298 557L313 626L330 765L314 769L296 557Z"
+              fill="var(--kit-trim)"/>
+            <path d="M137 633L132 748M312 636L318 751"
+              stroke="var(--kit-primary)" stroke-width="5" stroke-dasharray="25 16" fill="none"/>
+            <path d="M225 729L225 748M126 763Q162 775 216 778M233 778Q295 775 325 765"
+              fill="none" :stroke="thread" stroke-width="1.6" stroke-opacity=".45"/>
+          </template>
+          <template v-else-if="view === 'rear'">
+            <path d="M661 539Q735 536 807 539L810 556Q735 560 658 556Z"
+              fill="var(--kit-primary)" :stroke="thread" stroke-opacity=".55" stroke-width="1.5"/>
+            <path d="M659 542Q735 541 808 542M660 551Q735 550 808 551"
+              :stroke="thread" stroke-width="2" opacity=".6"/>
+            <path d="M658 558L641 628L629 765L646 769L663 555Z
+                     M810 557L826 628L841 765L824 769L806 556Z"
+              fill="var(--kit-trim)"/>
+            <path d="M648 635L642 753M821 636L828 751"
+              stroke="var(--kit-primary)" stroke-width="5" stroke-dasharray="25 16" fill="none"/>
+            <path d="M735 730L735 746M636 763Q672 778 726 778M743 778Q808 776 836 765"
+              fill="none" :stroke="thread" stroke-width="1.6" stroke-opacity=".45"/>
+          </template>
+          <template v-else>
+            <path d="M431 539Q487 538 541 539L543 557Q487 560 427 556Z"
+              fill="var(--kit-primary)" :stroke="thread" stroke-width="1.5" stroke-opacity=".5"/>
+            <path d="M428 543H541M427 552H543" stroke="var(--kit-trim)" stroke-width="2"/>
+            <path d="M473 561H501V771H473Z" fill="var(--kit-trim)"/>
+            <path d="M487 622V751" :stroke="thread" stroke-width="4" stroke-dasharray="13 18"/>
+            <path d="M425 752Q450 770 479 771M494 770Q532 773 551 763"
+              stroke="var(--kit-primary)" fill="none" stroke-width="1.8"/>
+          </template>
 
-          <!-- Elastic waistband and shorts, with a believable fork and two leg openings -->
-          <path d="M166 316Q230 310 294 316L300 340 323 486
-                   Q284 496 246 491L230 411 214 491Q176 496 137 486L160 340Z"
-            fill="var(--kit-primary)" stroke="#324758" stroke-opacity=".5" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M166 316Q230 310 294 316L300 340 323 486
-                   Q284 496 246 491L230 411 214 491Q176 496 137 486L160 340Z"
-            :fill="'url(#' + id + '-sheen)'"/>
-          <path d="M166 316Q230 310 294 316L300 340 323 486
-                   Q284 496 246 491L230 411 214 491Q176 496 137 486L160 340Z"
-            :fill="'url(#' + id + '-hem)'"/>
-          <path d="M165 317Q230 312 295 317L298 336Q230 330 162 336Z"
-            :fill="accent" :opacity="secondary ? 1 : .22"/>
-          <path d="M163 337Q230 332 297 337" fill="none" :stroke="seam" stroke-opacity=".57" stroke-width="1.8"/>
-          <path d="M160 340 137 486Q148 491 163 491L179 343Z
-                   M300 340 323 486Q312 491 297 491L281 343Z"
-            :fill="accent" :opacity="secondary ? 1 : .16"/>
-          <path d="M153 464 137 486Q176 496 214 491M307 464 323 486Q284 496 246 491"
-            fill="none" :stroke="seam" stroke-width="2" stroke-opacity=".55"/>
-          <path d="M230 345 230 411M221 386 230 411 239 386"
-            fill="none" :stroke="seam" stroke-opacity=".26" stroke-width="1.4"/>
-          <path d="M184 353Q179 413 172 460M276 353Q281 413 288 460"
-            fill="none" :stroke="seam" stroke-opacity=".13" stroke-width="2"/>
-          <text v-if="view === 'front'" x="187" y="447" text-anchor="middle"
-            font-family="Arial, Helvetica, sans-serif" font-weight="800"
-            :font-size="formattedNumber.length === 3 ? 22 : 29"
-            :style="lettering">{{ formattedNumber }}</text>
-        </g>
-
-        <!-- Profile pattern: both real side views share one mirrored drafting geometry.
-             Front of garment faces left in the left-side view. -->
-        <g v-else :transform="view === 'right' ? 'translate(460 0) scale(-1 1)' : undefined"
-          class="mskba-kit-preview__garment">
-          <path d="M224 58Q237 58 250 67Q263 91 265 128L257 157
-                   258 291Q232 296 209 291L213 157Q205 146 200 127
-                   Q201 93 214 70Z"
-            fill="var(--kit-primary)" stroke="#324758" stroke-opacity=".5" stroke-width="1.8"/>
-          <path d="M224 58Q237 58 250 67Q263 91 265 128L257 157
-                   258 291Q232 296 209 291L213 157Q205 146 200 127
-                   Q201 93 214 70Z" :fill="'url(#' + id + '-sheen)'"/>
-          <path d="M214 70Q224 98 238 96Q246 93 250 67" fill="none"
-            :stroke="accent" stroke-width="7"/>
-          <path d="M249 68Q260 94 263 127L257 157 250 150" fill="none"
-            :stroke="accent" stroke-width="5"/>
-          <path d="M218 154Q232 159 246 154L245 290Q232 295 218 290Z"
-            :fill="accent" :opacity="secondary ? 1 : .17"/>
-          <path d="M221 162 221 285M240 160 240 287"
-            :stroke="seam" stroke-width="1.4" stroke-dasharray="4 5" stroke-opacity=".55"/>
-          <path d="M211 284Q235 289 256 284M210 291Q235 296 258 291" fill="none"
-            :stroke="seam" stroke-width="1.3" stroke-opacity=".5"/>
-          <path d="M210 317Q232 312 255 316L260 337 279 489
-                   Q256 497 234 491L226 408 218 491Q197 496 179 487L199 337Z"
-            fill="var(--kit-primary)" stroke="#324758" stroke-opacity=".5" stroke-width="1.8"/>
-          <path d="M210 317Q232 312 255 316L260 337 279 489
-                   Q256 497 234 491L226 408 218 491Q197 496 179 487L199 337Z"
-            :fill="'url(#' + id + '-sheen)'"/>
-          <path d="M210 317Q232 312 255 316L260 337 199 337Z"
-            :fill="accent" :opacity="secondary ? 1 : .19"/>
-          <path d="M217 340 239 339 258 487Q244 494 234 491L226 408 218 491Q208 493 196 490Z"
-            :fill="accent" :opacity="secondary ? 1 : .15"/>
-          <path d="M226 340 226 407M203 477Q218 495 234 491M241 478Q258 497 279 489"
-            fill="none" :stroke="seam" stroke-width="1.5" stroke-opacity=".55"/>
+          <!-- The reference number only appears on the jersey front/back and
+               on the front left shorts leg. Placement is retained per design. -->
+          <template v-if="numberEnabled && !isSide">
+            <g :transform="'translate(' + jerseyX + ' ' + jerseyY + ') scale(' + jerseyNumberScale + ')'"
+              class="mskba-kit-preview__number" :class="{ 'is-selected': activeNumber && selectedPart === 'jersey' }"
+              :tabindex="activeNumber ? 0 : undefined"
+              role="group" :aria-label="'Номер на майке ' + numberLabel"
+              @keydown="moveWithKeys('jersey', $event)" @pointerdown="startDrag('jersey', 'move', $event)">
+              <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+                font-weight="800" :font-size="jerseyFont" :style="typeStyle">{{ numberLabel }}</text>
+              <template v-if="activeNumber">
+                <rect :x="-partSizes.jersey.width / 2 - 6" :y="-partSizes.jersey.height + 5"
+                  :width="partSizes.jersey.width + 12" :height="partSizes.jersey.height + 8"
+                  class="mskba-kit-preview__drag-target"/>
+                <rect v-if="selectedPart === 'jersey'" :x="-partSizes.jersey.width / 2 - 6"
+                  :y="-partSizes.jersey.height + 5" :width="partSizes.jersey.width + 12"
+                  :height="partSizes.jersey.height + 8" class="mskba-kit-preview__selection"/>
+                <circle v-if="selectedPart === 'jersey'" :cx="partSizes.jersey.width / 2 + 6"
+                  :cy="12" r="12" class="mskba-kit-preview__resize" role="button"
+                  aria-label="Изменить размер номера на майке"
+                  @pointerdown.stop="startDrag('jersey', 'scale', $event)"/>
+              </template>
+            </g>
+            <image v-if="view === 'front' && logo && logoFrontPosition !== 'none'" :href="logo"
+              :x="logoFrontPosition === 'left' ? 260 : 169" y="243" width="26" height="26"
+              preserveAspectRatio="xMidYMid meet"/>
+            <image v-if="view === 'rear' && logo && logoBackPosition !== 'none'" :href="logo"
+              x="718" :y="logoBackPosition === 'below' ? 415 : 222"
+              width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+            <g v-if="view === 'front'"
+              :transform="'translate(' + shortsNumberX + ' ' + shortsNumberY + ') scale(' + shortsNumberScale + ')'"
+              class="mskba-kit-preview__number" :class="{ 'is-selected': activeNumber && selectedPart === 'shorts' }"
+              :tabindex="activeNumber ? 0 : undefined" role="group"
+              :aria-label="'Номер на шортах ' + numberLabel"
+              @keydown="moveWithKeys('shorts', $event)" @pointerdown="startDrag('shorts', 'move', $event)">
+              <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+                font-weight="800" :font-size="shortsFont" :style="typeStyle">{{ numberLabel }}</text>
+              <template v-if="activeNumber">
+                <rect :x="-partSizes.shorts.width / 2 - 7" :y="-partSizes.shorts.height + 5"
+                  :width="partSizes.shorts.width + 14" :height="partSizes.shorts.height + 10"
+                  class="mskba-kit-preview__drag-target"/>
+                <rect v-if="selectedPart === 'shorts'" :x="-partSizes.shorts.width / 2 - 7"
+                  :y="-partSizes.shorts.height + 5" :width="partSizes.shorts.width + 14"
+                  :height="partSizes.shorts.height + 10" class="mskba-kit-preview__selection"/>
+                <circle v-if="selectedPart === 'shorts'" :cx="partSizes.shorts.width / 2 + 7"
+                  :cy="15" r="12" class="mskba-kit-preview__resize"
+                  @pointerdown.stop="startDrag('shorts', 'scale', $event)"/>
+              </template>
+            </g>
+          </template>
+          <template v-else>
+            <image v-if="view === 'front' && logo && logoFrontPosition !== 'none'" :href="logo"
+              :x="logoFrontPosition === 'left' ? 260 : 169" y="243" width="26" height="26"
+              preserveAspectRatio="xMidYMid meet"/>
+            <image v-if="view === 'rear' && logo && logoBackPosition !== 'none'" :href="logo"
+              x="718" :y="logoBackPosition === 'below' ? 415 : 222"
+              width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+          </template>
         </g>
       </g>
     </svg>

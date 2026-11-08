@@ -16,6 +16,13 @@ const form = reactive({
   logo_source: 'none',
   logo_team_id: '',
   jersey_number: '01',
+  number_enabled: true,
+  jersey_number_x: 225,
+  jersey_number_y: 394,
+  jersey_number_scale: 1,
+  shorts_number_x: 178,
+  shorts_number_y: 755,
+  shorts_number_scale: 1,
   number_color: '',
   number_outline: false,
   number_outline_color: '',
@@ -23,6 +30,30 @@ const form = reactive({
   logo_back_position: 'above',
 });
 const previewView = ref('front');
+const selectedNumberPart = ref('jersey');
+const initialNumberPositions = {
+  jersey: { x: 225, y: 394, scale: 1 },
+  shorts: { x: 178, y: 755, scale: 1 },
+};
+const selectedScale = computed({
+  get: () => Number(form[selectedNumberPart.value + '_number_scale']) || 1,
+  set: value => { form[selectedNumberPart.value + '_number_scale'] = Math.min(1.6, Math.max(.4, Number(value))); },
+});
+function selectNumberPart(part) {
+  if (!['jersey', 'shorts'].includes(part)) return;
+  selectedNumberPart.value = part;
+  if (part === 'shorts' || ['left', 'right'].includes(previewView.value)) previewView.value = 'front';
+}
+function changeNumberPosition({ part, x, y, scale } = {}) {
+  if (!['jersey', 'shorts'].includes(part)) return;
+  if (Number.isFinite(x)) form[part + '_number_x'] = x;
+  if (Number.isFinite(y)) form[part + '_number_y'] = y;
+  if (Number.isFinite(scale)) form[part + '_number_scale'] = scale;
+}
+function resetNumberPosition() {
+  const part = selectedNumberPart.value;
+  changeNumberPosition({ part, ...initialNumberPositions[part] });
+}
 const previewSize = ref('M');
 const viewOptions = [
   { value: 'front', label: 'Спереди' }, { value: 'left', label: 'Слева' },
@@ -72,6 +103,14 @@ function hydrate(design) {
   form.primary_color = design.primary_color;
   form.secondary_color = design.secondary_color || '';
   form.jersey_number = String(design.jersey_number || 1).padStart(2, '0');
+  form.number_enabled = design.number_enabled !== false;
+  for (const part of ['jersey', 'shorts']) {
+    const defaults = initialNumberPositions[part];
+    for (const name of ['x', 'y', 'scale']) {
+      const value = Number(design[part + '_number_' + name]);
+      form[part + '_number_' + name] = Number.isFinite(value) && value > 0 ? value : defaults[name];
+    }
+  }
   form.number_color = design.number_color || '';
   form.number_outline = !!design.number_outline;
   form.number_outline_color = design.number_outline_color || '';
@@ -120,7 +159,11 @@ async function savePendingDraft() {
     sessionStorage.setItem('mskba.uniform.pending.v1', JSON.stringify({
       name: form.name, primary_color: form.primary_color, secondary_color: form.secondary_color,
       sizes: [...form.sizes], sleeve_style: form.sleeve_style,
-      jersey_number: Number.parseInt(form.jersey_number, 10),
+      jersey_number: Number.parseInt(form.jersey_number, 10), number_enabled: form.number_enabled,
+      jersey_number_x: form.jersey_number_x, jersey_number_y: form.jersey_number_y,
+      jersey_number_scale: form.jersey_number_scale,
+      shorts_number_x: form.shorts_number_x, shorts_number_y: form.shorts_number_y,
+      shorts_number_scale: form.shorts_number_scale,
       number_color: form.number_color || null, number_outline: form.number_outline,
       number_outline_color: form.number_outline_color || null,
       logo_front_position: form.logo_front_position, logo_back_position: form.logo_back_position,
@@ -160,6 +203,12 @@ async function save() {
     payload.append('secondary_color', form.secondary_color);
     payload.append('sleeve_style', 'sleeveless');
     payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
+    payload.append('number_enabled', form.number_enabled ? '1' : '0');
+    for (const part of ['jersey', 'shorts']) {
+      for (const field of ['x', 'y', 'scale']) {
+        payload.append(part + '_number_' + field, String(form[part + '_number_' + field]));
+      }
+    }
     payload.append('number_outline', form.number_outline ? '1' : '0');
     if (form.number_color) payload.append('number_color', form.number_color);
     if (form.number_outline_color) payload.append('number_outline_color', form.number_outline_color);
@@ -218,7 +267,13 @@ async function save() {
           :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
           :size="activePreviewSize" :number="form.jersey_number" :number-color="form.number_color"
           :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
-          :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position" />
+          :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position"
+          :number-enabled="form.number_enabled" :jersey-number-x="form.jersey_number_x"
+          :jersey-number-y="form.jersey_number_y" :jersey-number-scale="form.jersey_number_scale"
+          :shorts-number-x="form.shorts_number_x" :shorts-number-y="form.shorts_number_y"
+          :shorts-number-scale="form.shorts_number_scale" :editable="form.number_enabled"
+          :selected-part="selectedNumberPart" @select-number="selectNumberPart"
+          @change-number="changeNumberPosition" />
       </div>
       <label class="mskba-uniform-editor__preview-size">
         <span>Размер для просмотра</span>
@@ -278,6 +333,10 @@ async function save() {
       </fieldset>
       <fieldset class="mskba-uniform-editor__numbers">
         <legend>Игровой номер</legend>
+        <label class="mskba-uniform-editor__optional mskba-uniform-editor__number-toggle">
+          <input v-model="form.number_enabled" type="checkbox"/><span>С номером</span>
+        </label>
+        <div v-if="form.number_enabled" class="mskba-uniform-editor__number-configuration">
         <label class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
           <span>Номер (01–999)</span>
           <input v-model="form.jersey_number" type="text" inputmode="numeric"
@@ -304,6 +363,25 @@ async function save() {
             <span>{{ form.number_outline_color.toUpperCase() }}</span>
           </span>
           <small class="mskba-uniform-editor__hint">Без ручных цветов контраст подбирается автоматически по ткани.</small>
+        </div>
+          <div class="mskba-uniform-editor__number-transform">
+            <span class="mskba-uniform-editor__label">Размещение и размер</span>
+            <div class="mskba-uniform-editor__number-tabs" role="group" aria-label="Выбор номера для редактирования">
+              <button type="button" :class="{ 'is-active': selectedNumberPart === 'jersey' }"
+                :aria-pressed="selectedNumberPart === 'jersey'" @click="selectNumberPart('jersey')">На майке</button>
+              <button type="button" :class="{ 'is-active': selectedNumberPart === 'shorts' }"
+                :aria-pressed="selectedNumberPart === 'shorts'" @click="selectNumberPart('shorts')">На шортах</button>
+            </div>
+            <label class="mskba-uniform-editor__scale-label">
+              <span>Масштаб</span>
+              <input v-model.number="selectedScale" type="range" min="0.4" max="1.6" step="0.05"/>
+              <output>{{ Math.round(selectedScale * 100) }}%</output>
+            </label>
+            <div class="mskba-uniform-editor__number-edit-hint">
+              <small>Нажмите и перетащите номер на форме. Потяните за круглую точку, чтобы изменить размер. Стрелки — точная настройка.</small>
+              <button type="button" class="button secondary" @click="resetNumberPosition">Сбросить положение</button>
+            </div>
+          </div>
         </div>
       </fieldset>
       <fieldset class="mskba-uniform-editor__logos">

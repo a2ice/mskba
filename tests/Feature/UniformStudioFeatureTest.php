@@ -217,6 +217,73 @@ final class UniformStudioFeatureTest extends TestCase
             ->assertJsonPath('design.number_outline', false);
     }
 
+    public function test_number_toggle_and_independent_drag_coordinates_are_persisted(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $created = $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_number' => 23,
+            'number_enabled' => false,
+            'jersey_number_x' => 244,
+            'jersey_number_y' => 412,
+            'jersey_number_scale' => 0.65,
+            'shorts_number_x' => 196,
+            'shorts_number_y' => 735,
+            'shorts_number_scale' => 1.15,
+        ])->assertCreated()
+            ->assertJsonPath('design.jersey_number', 23)
+            ->assertJsonPath('design.number_enabled', false)
+            ->assertJsonPath('design.jersey_number_x', 244)
+            ->assertJsonPath('design.jersey_number_y', 412)
+            ->assertJsonPath('design.jersey_number_scale', 0.65)
+            ->assertJsonPath('design.shorts_number_x', 196)
+            ->assertJsonPath('design.shorts_number_y', 735)
+            ->assertJsonPath('design.shorts_number_scale', 1.15);
+
+        $id = $created->json('design.id');
+        $this->getJson('/uniforms/projects/'.$id)->assertOk()
+            ->assertJsonPath('design.number_enabled', false)
+            ->assertJsonPath('design.jersey_number_x', 244);
+
+        // Enabling the number does not erase either set of saved coordinates.
+        $this->putJson('/uniforms/projects/'.$id, [
+            ...$this->input(),
+            'jersey_number' => 23,
+            'number_enabled' => true,
+            'jersey_number_x' => 244,
+            'jersey_number_y' => 412,
+            'jersey_number_scale' => 0.65,
+            'shorts_number_x' => 196,
+            'shorts_number_y' => 735,
+            'shorts_number_scale' => 1.15,
+        ])->assertOk()
+            ->assertJsonPath('design.number_enabled', true)
+            ->assertJsonPath('design.jersey_number_scale', 0.65)
+            ->assertJsonPath('design.shorts_number_scale', 1.15);
+    }
+
+    public function test_number_drag_rejects_out_of_bounds_and_old_clients_receive_defaults(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_number_x' => 900,
+            'shorts_number_y' => 10,
+            'jersey_number_scale' => 2.5,
+            'shorts_number_scale' => 0.1,
+        ])->assertUnprocessable()->assertJsonValidationErrors([
+            'jersey_number_x', 'shorts_number_y', 'jersey_number_scale',
+            'shorts_number_scale',
+        ]);
+
+        $this->postJson('/uniforms/projects', $this->input())->assertCreated()
+            ->assertJsonPath('design.number_enabled', true)
+            ->assertJsonPath('design.jersey_number_x', 225)
+            ->assertJsonPath('design.jersey_number_y', 394)
+            ->assertJsonPath('design.shorts_number_x', 178)
+            ->assertJsonPath('design.shorts_number_y', 755);
+    }
+
     public function test_page_builder_preserves_the_public_workshop_trigger_without_inline_js(): void
     {
         $html = app(\App\Modules\Content\Application\Services\PageBuilderMarkup::class)->html(
