@@ -403,3 +403,118 @@
   .mskba-uniform-editor__views button { font-size: 11px; }
   .mskba-uniform-editor__logo-positions { grid-template-columns: 1fr; }
 }
+
+
+/* Reference-accurate flat-pattern preview: keep both pieces visible when the
+   settings pane scrolls; use the same neutral stage as the player profile. */
+.mskba-uniform-editor { align-items: start; }
+.mskba-uniform-editor__preview {
+  align-self: start;
+  position: sticky;
+  top: 12px;
+}
+.mskba-uniform-editor__stage,
+.mskba-uniform-dialog .mskba-uniform-editor__stage {
+  height: clamp(430px, 64dvh, 630px);
+  min-height: 0;
+  flex: none;
+}
+.mskba-kit-preview { height: 100%; }
+.mskba-kit-preview__drawing,
+.mskba-uniform-dialog .mskba-kit-preview__drawing {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  padding: 0;
+  object-fit: contain;
+}
+.mskba-kit-preview__number {
+  cursor: default;
+  user-select: none;
+}
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__number {
+  cursor: grab;
+  touch-action: none;
+}
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__number:active { cursor: grabbing; }
+.mskba-kit-preview__drag-target {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+.mskba-kit-preview__selection {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 5;
+  pointer-events: none;
+}
+.mskba-kit-preview__resize {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 3;
+  cursor: nwse-resize;
+  pointer-events: all;
+  touch-action: none;
+}
+.mskba-kit-preview__number:focus-visible { outline: none; }
+.mskba-kit-preview__number:focus-visible .mskba-kit-preview__selection {
+  stroke-width: 4px;
+}
+.mskba-uniform-editor__number-configuration { display: grid; gap: 14px; margin-top: 12px; }
+.mskba-uniform-editor__number-toggle { font-size: 14px; font-weight: 700; }
+.mskba-uniform-editor__label { color: var(--text); font-size: 13px; font-weight: 650; }
+.mskba-uniform-editor__number-transform { display: grid; gap: 10px; }
+.mskba-uniform-editor__number-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+.mskba-uniform-editor__number-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mskba-uniform-editor__number-tabs button.is-active {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 7%);
+}
+.mskba-uniform-editor__scale-label {
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 52px;
+  gap: 12px;
+  font-size: 13px;
+}
+.mskba-uniform-editor__scale-label input { width: 100%; accent-color: var(--accent); }
+.mskba-uniform-editor__scale-label output { text-align: right; font-variant-numeric: tabular-nums; }
+.mskba-uniform-editor__number-edit-hint { display: grid; justify-items: start; gap: 10px; }
+.mskba-uniform-editor__number-edit-hint small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.mskba-uniform-editor__number-edit-hint .button { min-height: 34px; }
+@media (max-width: 800px) {
+  .mskba-uniform-editor__preview { position: static; top: auto; }
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage { height: 440px; }
+}
+@media (max-width: 639px) {
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage { height: 340px; }
+}

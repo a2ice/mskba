@@ -170,6 +170,24 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
         $this->assertStringContainsString('black lettering with a white outline on dark fabric', $prompt);
     }
 
+    public function test_disabled_uniform_number_never_appears_on_ai_avatar(): void
+    {
+        $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([
+            'uniform' => [
+                'source' => 'mine',
+                'jersey_number' => 23,
+                'number_enabled' => false,
+                'jersey_number_scale' => 0.65,
+                'shorts_number_scale' => 1.15,
+                'logo_source' => 'none',
+            ],
+        ]);
+
+        $this->assertStringContainsString('"number_enabled": false', $prompt);
+        $this->assertStringContainsString('jersey AND shorts must have no numerals anywhere', $prompt);
+        $this->assertStringNotContainsString('Render exactly the jersey number "23"', $prompt);
+    }
+
     public function test_new_normal_body_type_is_described_in_ai_prompt(): void
     {
         $prompt = (new PlayerCharacterGenerationPromptBuilder())->build([
