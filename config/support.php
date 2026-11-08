@@ -2,19 +2,14 @@
 
 return [
     'email' => env('SUPPORT_EMAIL', 'support@mskba.ru'),
-    // FAQ does not yet have a persisted category tree. These virtual sections
-    // group published FAQ materials by stable system keys or editor-managed tags.
-    'faq_sections' => [
-        'welcome' => ['label' => 'Первые шаги', 'keys' => ['faq.welcome']],
-        'venues' => ['label' => 'Площадки', 'keys' => ['faq.creation.venues']],
-        'events' => ['label' => 'Мероприятия', 'keys' => ['faq.creation.events']],
-        'teams' => ['label' => 'Команды', 'keys' => ['faq.creation.teams']],
-        'tournaments' => ['label' => 'Турниры', 'keys' => ['faq.creation.tournaments']],
-        'sections' => ['label' => 'Секции и тренировки', 'keys' => ['faq.creation.sections']],
-        'coordination' => ['label' => 'Координация', 'keys' => ['faq.creation.coordination']],
-        'account' => ['label' => 'Аккаунт и профиль', 'keys' => []],
-        'payments' => ['label' => 'Оплата и бонусы', 'keys' => []],
-        'other' => ['label' => 'Другие вопросы', 'keys' => []],
+    'faq_system_sections' => [
+        'faq.welcome' => 'welcome',
+        'faq.creation.venues' => 'venues',
+        'faq.creation.events' => 'events',
+        'faq.creation.teams' => 'teams',
+        'faq.creation.tournaments' => 'tournaments',
+        'faq.creation.sections' => 'sections',
+        'faq.creation.coordination' => 'coordination',
     ],
     'question_topics' => [
         'venues' => 'Площадки и бронирование',

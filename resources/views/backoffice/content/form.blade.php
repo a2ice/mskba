@@ -12,6 +12,10 @@
     $cover = $contentItem->cover?->first();
     $tagsValue = old('tags', $editing ? $contentItem->tags->pluck('name')->implode(', ') : '');
     $inlineImages = $editing ? $contentItem->inlineImages : collect();
+    $assignedSections = old('faq_sections_present')
+        ? old('faq_section_ids', [])
+        : ($editing ? $contentItem->faqSections->modelKeys() : []);
+    $assignedSections = array_map('intval', (array) $assignedSections);
 @endphp
 
 @extends('backoffice.content.layout', [
@@ -127,6 +131,20 @@
             <script type="application/json" data-content-related-options>@json($relatedEntities)</script>
             <input type="hidden" data-content-related-selected value="{{ $selectedRelatedId }}">
 
+            <fieldset class="form-group field mt-3" data-content-faq-sections @if ($selectedType !== 'faq') hidden disabled @endif>
+                <legend class="form-label">Разделы FAQ</legend>
+                <input type="hidden" name="faq_sections_present" value="1">
+                @foreach ($faqSections as $faqSection)
+                    <label class="content-chat-option">
+                        <input type="checkbox" class="fi-checkbox-input" name="faq_section_ids[]" value="{{ $faqSection->id }}"
+                            @checked(in_array($faqSection->id, $assignedSections, true))>
+                        <span>{{ $faqSection->name }}</span>
+                    </label>
+                @endforeach
+                <small class="form-text">Если ничего не выбрано, раздел определяется по тегам. Без подходящего тега статья попадёт в «Другие вопросы».</small>
+                @error('faq_section_ids') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                @error('faq_section_ids.*') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </fieldset>
             <div class="form-group field mt-3">
                 <label class="form-label" for="contentTags">Теги</label>
                 <input id="contentTags" class="form-control @error('tags') is-invalid @enderror" name="tags" value="{{ $tagsValue }}" maxlength="3000" placeholder="площадка, добавление площадки, подтверждение контакта">
@@ -292,6 +310,7 @@
             const selected = form.querySelector('[data-content-related-selected]')?.value || '';
             const options = JSON.parse(form.querySelector('[data-content-related-options]')?.textContent || '{}');
             const publication = form.querySelector('[data-content-publication-section]');
+            const faqSections = form.querySelector('[data-content-faq-sections]');
             const faqPublicationNote = form.parentElement.querySelector('[data-content-faq-publication-note]');
             const feedToggle = form.querySelector('[type="checkbox"][name="publish_in_feed"]');
             const telegramToggle = form.querySelector('[data-content-telegram-toggle]');
@@ -318,6 +337,8 @@
 
             const syncPublication = () => {
                 const isFaq = type.value === 'faq';
+                faqSections.hidden = !isFaq;
+                faqSections.disabled = !isFaq;
                 publication.hidden = isFaq || status.value !== 'published';
                 faqPublicationNote.hidden = !isFaq;
                 if (isFaq) {

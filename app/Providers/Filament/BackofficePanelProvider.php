@@ -16,6 +16,7 @@ use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Filament\Backoffice\Resources\Events\EventResource;
+use App\Filament\Backoffice\Resources\FaqSections\FaqSectionResource;
 use App\Filament\Backoffice\Resources\Teams\TeamResource;
 use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
 use App\Filament\Backoffice\Resources\Seasons\SeasonResource;
@@ -87,6 +88,7 @@ final class BackofficePanelProvider extends PanelProvider
                 SiteMediaFolderResource::class,
                 VenueResource::class,
                 EventResource::class,
+                FaqSectionResource::class,
                 TeamResource::class,
                 LeagueResource::class,
                 SeasonResource::class,

@@ -4,6 +4,7 @@ namespace App\Modules\Content\Application\Services;
 
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\FaqSection;
 use Illuminate\Support\Str;
 
 final class FaqHelpCatalog
@@ -13,28 +14,33 @@ final class FaqHelpCatalog
     /** @return array<string, mixed> */
     public function content(?string $context, ?string $section, ?string $article): array
     {
-        $definitions = config('support.faq_sections', []);
+        $systemSections = config('support.faq_system_sections', []);
         $items = ContentItem::query()->published()->where('type', ContentTypeEnum::FAQ)
-            ->with(['tags', 'inlineImages'])->orderBy('title')->get();
+            ->with(['tags', 'inlineImages', 'faqSections'])->orderBy('title')->get();
         $groups = [];
-        foreach ($definitions as $key => $definition) {
-            $groups[$key] = [
-                'key' => $key,
-                'label' => $definition['label'],
+        foreach (FaqSection::query()->orderBy('sort_order')->orderBy('id')->get() as $faqSection) {
+            $groups[$faqSection->code] = [
+                'key' => $faqSection->code,
+                'label' => $faqSection->name,
                 'articles' => [],
             ];
         }
+
         foreach ($items as $item) {
-            $tags = $item->tags->pluck('normalized_name')->all();
-            $assigned = false;
-            foreach ($definitions as $key => $definition) {
-                if (in_array($item->system_key, $definition['keys'] ?? [], true) || in_array($key, $tags, true)) {
-                    $groups[$key]['articles'][] = $this->summary($item);
-                    $assigned = true;
-                }
+            $selectedSections = $item->faqSections->pluck('code')->all();
+            $sectionCodes = $selectedSections ?: $item->tags->pluck('normalized_name')->all();
+
+            if (isset($systemSections[$item->system_key])) {
+                $sectionCodes[] = $systemSections[$item->system_key];
             }
-            if (! $assigned && isset($groups['other'])) {
-                $groups['other']['articles'][] = $this->summary($item);
+
+            $matchingSections = array_intersect(array_keys($groups), $sectionCodes);
+            if ($matchingSections === [] && isset($groups['other'])) {
+                $matchingSections = ['other'];
+            }
+
+            foreach ($matchingSections as $code) {
+                $groups[$code]['articles'][] = $this->summary($item);
             }
         }
 

@@ -81,6 +81,11 @@ final class ContentItem extends Model
         return $this->belongsToMany(ContentTag::class, 'content_item_tag');
     }
 
+    public function faqSections(): BelongsToMany
+    {
+        return $this->belongsToMany(FaqSection::class);
+    }
+
     public function telegramPublications(): HasMany
     {
         return $this->hasMany(TelegramContentPublication::class);

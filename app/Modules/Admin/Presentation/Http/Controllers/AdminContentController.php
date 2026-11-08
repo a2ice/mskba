@@ -12,6 +12,7 @@ use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\FaqSection;
 use App\Modules\Content\Presentation\Http\Requests\SaveContentItemRequest;
 use App\Modules\Content\Presentation\Http\Requests\StoreContentInlineImageRequest;
 use App\Modules\Event\Domain\Models\Event;
@@ -108,6 +109,9 @@ final class AdminContentController extends Controller
                 ]);
 
                 $tags->sync($content, $request->string('tags')->toString());
+                if ($type === ContentTypeEnum::FAQ && $request->has('faq_section_ids')) {
+                    $content->faqSections()->sync($request->validated('faq_section_ids'));
+                }
 
                 return $content;
             });
@@ -134,7 +138,7 @@ final class AdminContentController extends Controller
 
     public function edit(ContentItem $contentItem): Response
     {
-        $contentItem->load(['cover', 'inlineImages', 'tags', 'telegramPublications']);
+        $contentItem->load(['cover', 'inlineImages', 'tags', 'telegramPublications', 'faqSections']);
 
         return response()->view('backoffice.content.form', [
             ...$this->formData(),
@@ -158,7 +162,8 @@ final class AdminContentController extends Controller
         $savedAlias = null;
 
         try {
-            DB::transaction(function () use ($request, $contentItem, $bodySanitizer, $tags): void {
+            $contentItem = DB::transaction(function () use ($request, $contentItem, $bodySanitizer, $tags): ContentItem {
+                $contentItem = ContentItem::query()->lockForUpdate()->findOrFail($contentItem->getKey());
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
                 $wasPublished = $contentItem->feed_published_at;
@@ -173,6 +178,13 @@ final class AdminContentController extends Controller
                 ]);
 
                 $tags->sync($contentItem, $request->string('tags')->toString());
+                if ($type !== ContentTypeEnum::FAQ) {
+                    $contentItem->faqSections()->detach();
+                } elseif ($request->boolean('faq_sections_present') || $request->has('faq_section_ids')) {
+                    $contentItem->faqSections()->sync($request->validated('faq_section_ids', []));
+                }
+
+                return $contentItem;
             });
             $savedAlias = $contentItem->alias;
 
@@ -238,6 +250,7 @@ final class AdminContentController extends Controller
     {
         return [
             'types' => ContentTypeEnum::cases(),
+            'faqSections' => FaqSection::query()->orderBy('sort_order')->orderBy('id')->get(),
             'formats' => ContentFormatEnum::cases(),
             'telegramChats' => TelegramChat::query()
                 ->where('is_active', true)
