@@ -75,11 +75,18 @@ async function remove() {
             :number-color="item.number_color || ''" :number-outline="!!item.number_outline"
             :number-outline-color="item.number_outline_color || ''"
             :logo-front-position="item.logo_front_position || 'left'"
-            :logo-back-position="item.logo_back_position || 'above'"/>
+            :logo-back-position="item.logo_back_position || 'above'"
+            :number-enabled="item.number_enabled !== false"
+            :jersey-number-x="item.jersey_number_x ?? 225"
+            :jersey-number-y="item.jersey_number_y ?? 394"
+            :jersey-number-scale="item.jersey_number_scale ?? 1"
+            :shorts-number-x="item.shorts_number_x ?? 178"
+            :shorts-number-y="item.shorts_number_y ?? 755"
+            :shorts-number-scale="item.shorts_number_scale ?? 1"/>
         </div>
         <div class="mskba-uniform-library__card-info">
           <h2>{{ item.name }}</h2>
-          <p>№ {{ String(item.jersey_number || 1).padStart(2, '0') }} · {{ item.sizes.join(' · ') }}</p>
+          <p>{{ item.number_enabled === false ? 'Без номера' : '№ ' + String(item.jersey_number || 1).padStart(2, '0') }} · {{ item.sizes.join(' · ') }}</p>
           <div class="mskba-uniform-library__actions">
             <a :href="'/uniforms/workshop?project=' + item.id" class="button secondary">Редактировать</a>
             <button type="button" class="button secondary" @click="open('production', item)">В производство</button>
