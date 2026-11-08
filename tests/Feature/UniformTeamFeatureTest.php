@@ -141,6 +141,13 @@ final class UniformTeamFeatureTest extends TestCase
         $this->actingAs($delegate)->postJson($path, $this->design())->assertOk()
             ->assertJsonPath('design.team_id', $team->id);
         $this->getJson($path)->assertJsonPath('can_edit', true);
+        // Permission to style a uniform does not grant access to team settings.
+        $this->put(route('teams.update', $team->routeIdentifier()), [
+            'name' => 'Нельзя менять настройки команды',
+        ])->assertForbidden();
+        $this->post(route('teams.logo.store', $team->routeIdentifier()), [
+            'logo' => UploadedFile::fake()->image('forbidden-logo.png', 200, 200),
+        ])->assertForbidden();
 
         $membership = $team->memberships()->where('user_id', $delegate->id)->firstOrFail();
         $membership->contract->update(['expires_at' => now()->subMinute()]);
