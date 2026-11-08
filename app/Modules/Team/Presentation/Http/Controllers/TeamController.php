@@ -295,6 +295,10 @@ final class TeamController extends Controller
             'currentUserId' => $actor?->user_id,
             'canManageUniform' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_UNIFORMS),
             'teamHasUniform' => $item->uniformDesign()->exists(),
+            'isActiveTeamMember' => $request->user() !== null && $activeMemberships->contains(
+                fn ($membership) => in_array((int) $membership->user_id,
+                    $request->user()->canonical()->identityIds(), true),
+            ),
             'teamPermissions' => TeamPermissionEnum::cases(),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
             'sportTypes' => TeamSportTypeEnum::cases(),
