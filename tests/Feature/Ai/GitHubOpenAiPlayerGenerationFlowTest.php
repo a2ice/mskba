@@ -145,6 +145,46 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_real_generation_manifest_includes_signed_logo_of_selected_personal_uniform(): void
+    {
+        Http::fake([
+            'https://api.github.test/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml/dispatches' => Http::response(null, 204),
+        ]);
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $design = $this->design($user);
+        $design->forceFill(['logo_source' => 'custom'])->save();
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('badge.png', 320, 320));
+        $logo = $design->fresh()->customLogo()->firstOrFail();
+
+        $result = $this->actingAs($user)->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_uniform_source' => 'mine',
+                'generation_uniform_design_id' => $design->id,
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'right' => UploadedFile::fake()->image('right.jpg', 1200, 900),
+                ],
+            ])->assertAccepted();
+
+        $generation = PlayerCharacterGeneration::query()
+            ->where('public_id', $result->json('generation_id'))->firstOrFail();
+        $this->assertSame($design->id, (int) data_get($generation->payload_snapshot, 'uniform.design_id'));
+        $this->assertSame($logo->id, (int) ($generation->reference_media_ids['team_logo'] ?? 0));
+        $manifestUrl = null;
+        Http::assertSent(function (Request $request) use (&$manifestUrl): bool {
+            $manifestUrl = data_get($request->data(), 'inputs.manifest_url');
+            return is_string($manifestUrl) && $manifestUrl !== '';
+        });
+
+        $manifest = $this->getJson((string) $manifestUrl)->assertOk();
+        $signedLogoUrl = (string) $manifest->json('team_logo_reference.url');
+        $this->assertNotSame('', $signedLogoUrl);
+        $this->get($signedLogoUrl)->assertOk()->assertHeader('Content-Type', 'image/webp');
+    }
+
     public function test_signed_runner_download_reads_custom_logo_from_personal_uniform_not_legacy_profile_collection(): void
     {
         $user = $this->player();
