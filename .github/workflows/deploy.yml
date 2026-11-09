@@ -94,6 +94,8 @@ jobs:
             if [ -n "$GITHUB_AI_TOKEN_SECRET" ] && [ -n "$GITHUB_AI_CALLBACK_SECRET_VALUE" ]; then
               update_env_value GITHUB_AI_TOKEN "$GITHUB_AI_TOKEN_SECRET"
               update_env_value GITHUB_AI_CALLBACK_SECRET "$GITHUB_AI_CALLBACK_SECRET_VALUE"
+              # Dev backend must dispatch its matching workflow revision, not main.
+              update_env_value GITHUB_AI_REF dev
               update_env_value PLAYER_CHARACTER_AI_PROVIDER github_openai
               echo "GitHub-hosted OpenAI player generation enabled"
             else
