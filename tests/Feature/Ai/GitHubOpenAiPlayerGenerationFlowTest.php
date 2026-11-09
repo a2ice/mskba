@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Uniform\Application\Services\UniformLogoService;
 use App\Modules\Uniform\Domain\Models\UniformDesign;
@@ -181,7 +182,10 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
     public function test_signed_runner_download_reads_custom_logo_from_team_uniform(): void
     {
         $user = $this->player();
-        $team = Team::query()->create(['name' => 'Команда теста', 'alias' => 'runner-crest']);
+        $team = Team::query()->create([
+            'name' => 'Команда теста', 'alias' => 'runner-crest',
+            'created_by_actor_id' => Actor::factory()->create(['user_id' => $user->id])->id,
+        ]);
         $design = $this->design($user, $team->id);
         $design->forceFill(['logo_source' => 'custom'])->save();
         app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('team-crest.png', 320, 320));
@@ -204,7 +208,10 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
     public function test_signed_runner_download_resolves_logo_team_from_personal_uniform(): void
     {
         $user = $this->player();
-        $team = Team::query()->create(['name' => 'Команда логотипа', 'alias' => 'uniform-logo-team']);
+        $team = Team::query()->create([
+            'name' => 'Команда логотипа', 'alias' => 'uniform-logo-team',
+            'created_by_actor_id' => Actor::factory()->create(['user_id' => $user->id])->id,
+        ]);
         $logoContents = UploadedFile::fake()->image('team.png', 320, 320)->get();
         Storage::disk('local')->put('tests/logos/team.png', $logoContents);
         $logo = $team->media()->create([
