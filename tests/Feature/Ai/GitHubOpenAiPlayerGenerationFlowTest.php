@@ -16,6 +16,10 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Uniform\Application\Services\UniformLogoService;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -139,6 +143,174 @@ final class GitHubOpenAiPlayerGenerationFlowTest extends TestCase
         $this->actingAs($other)
             ->getJson(route('account.player-character.generations.show', $generationId))
             ->assertNotFound();
+    }
+
+    public function test_real_generation_manifest_includes_signed_logo_of_selected_personal_uniform(): void
+    {
+        Http::fake([
+            'https://api.github.test/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml/dispatches' => Http::response(null, 204),
+        ]);
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $design = $this->design($user);
+        $design->forceFill(['logo_source' => 'custom'])->save();
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('badge.png', 320, 320));
+        $logo = $design->fresh()->customLogo()->firstOrFail();
+
+        $result = $this->actingAs($user)->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_uniform_source' => 'mine',
+                'generation_uniform_design_id' => $design->id,
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'right' => UploadedFile::fake()->image('right.jpg', 1200, 900),
+                ],
+            ])->assertAccepted();
+
+        $generation = PlayerCharacterGeneration::query()
+            ->where('public_id', $result->json('generation_id'))->firstOrFail();
+        $this->assertSame($design->id, (int) data_get($generation->payload_snapshot, 'uniform.design_id'));
+        $this->assertSame($logo->id, (int) ($generation->reference_media_ids['team_logo'] ?? 0));
+        $manifestUrl = null;
+        Http::assertSent(function (Request $request) use (&$manifestUrl): bool {
+            $manifestUrl = data_get($request->data(), 'inputs.manifest_url');
+            return is_string($manifestUrl) && $manifestUrl !== '';
+        });
+
+        $manifest = $this->getJson((string) $manifestUrl)->assertOk();
+        $signedLogoUrl = (string) $manifest->json('team_logo_reference.url');
+        $this->assertNotSame('', $signedLogoUrl);
+        $this->get($signedLogoUrl)->assertOk()->assertHeader('Content-Type', 'image/webp');
+    }
+
+    public function test_signed_runner_download_reads_custom_logo_from_personal_uniform_not_legacy_profile_collection(): void
+    {
+        $user = $this->player();
+        $design = $this->design($user);
+        $design->forceFill(['logo_source' => 'custom'])->save();
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('crest.png', 320, 320));
+        $logo = $design->fresh()->customLogo()->firstOrFail();
+
+        $generation = $this->logoGeneration($user, $logo->id, [
+            'source' => 'mine',
+            'design_id' => $design->id,
+        ], 'custom');
+
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'integrations.github-openai.player-character.reference',
+            now()->addMinutes(10),
+            ['generation' => $generation->public_id, 'slot' => 'team_logo'],
+        );
+
+        $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/webp');
+        // A generation bound to another user's design must not expose its file.
+        $other = $this->player();
+        $foreignGeneration = $this->logoGeneration($other, $logo->id, [
+            'source' => 'mine',
+            'design_id' => $design->id,
+        ], 'custom');
+        $foreignUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'integrations.github-openai.player-character.reference',
+            now()->addMinutes(10),
+            ['generation' => $foreignGeneration->public_id, 'slot' => 'team_logo'],
+        );
+        $this->get($foreignUrl)->assertNotFound();
+    }
+
+    public function test_signed_runner_download_reads_custom_logo_from_team_uniform(): void
+    {
+        $user = $this->player();
+        $team = Team::query()->create([
+            'name' => 'Команда теста', 'alias' => 'runner-crest',
+            'created_by_actor_id' => Actor::factory()->create(['user_id' => $user->id])->id,
+        ]);
+        $design = $this->design($user, $team->id);
+        $design->forceFill(['logo_source' => 'custom'])->save();
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('team-crest.png', 320, 320));
+        $logo = $design->fresh()->customLogo()->firstOrFail();
+
+        $generation = $this->logoGeneration($user, $logo->id, [
+            'source' => 'team',
+            'design_id' => $design->id,
+        ], 'custom', $team->id);
+
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'integrations.github-openai.player-character.reference',
+            now()->addMinutes(10),
+            ['generation' => $generation->public_id, 'slot' => 'team_logo'],
+        );
+
+        $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/webp');
+    }
+
+    public function test_signed_runner_download_resolves_logo_team_from_personal_uniform(): void
+    {
+        $user = $this->player();
+        $team = Team::query()->create([
+            'name' => 'Команда логотипа', 'alias' => 'uniform-logo-team',
+            'created_by_actor_id' => Actor::factory()->create(['user_id' => $user->id])->id,
+        ]);
+        $logoContents = UploadedFile::fake()->image('team.png', 320, 320)->get();
+        Storage::disk('local')->put('tests/logos/team.png', $logoContents);
+        $logo = $team->media()->create([
+            'collection' => 'team_logo', 'disk' => 'local',
+            'path' => 'tests/logos/team.png', 'mime' => 'image/png',
+            'is_featured' => true,
+        ]);
+        $design = $this->design($user);
+        $design->forceFill(['logo_source' => 'team', 'logo_team_id' => $team->id])->save();
+
+        $generation = $this->logoGeneration($user, $logo->id, [
+            'source' => 'mine',
+            'design_id' => $design->id,
+            'logo_team_id' => $team->id,
+        ], 'team');
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'integrations.github-openai.player-character.reference',
+            now()->addMinutes(10),
+            ['generation' => $generation->public_id, 'slot' => 'team_logo'],
+        );
+
+        $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png');
+    }
+
+    private function design(User $user, ?int $teamId = null): UniformDesign
+    {
+        return UniformDesign::query()->create([
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'name' => 'Форма для GitHub runner',
+            'primary_color' => '#111924',
+            'secondary_color' => '#F58220',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeveless',
+            'logo_source' => 'none',
+            'editor_version' => 1,
+        ]);
+    }
+
+    /** @param array<string, mixed> $uniform */
+    private function logoGeneration(User $user, int $logoId, array $uniform, string $logoSource, ?int $teamId = null): PlayerCharacterGeneration
+    {
+        return PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+            'reference_media_ids' => ['team_logo' => $logoId],
+            'payload_snapshot' => [
+                'uniform' => $uniform,
+                'team' => [
+                    'id' => $teamId,
+                    'with_logo' => true,
+                    'logo_source' => $logoSource,
+                    'logo_mime' => 'image/webp',
+                ],
+            ],
+            'expires_at' => now()->addMinutes(20),
+        ]);
     }
 
     public function test_expired_non_terminal_generation_is_reported_as_failed(): void
