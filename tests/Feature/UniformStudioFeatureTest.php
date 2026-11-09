@@ -284,19 +284,27 @@ final class UniformStudioFeatureTest extends TestCase
             ->assertJsonPath('design.shorts_number_y', 755);
     }
 
-    public function test_workshop_has_single_size_dropdown_and_accessible_cyclic_side_arrows(): void
+    public function test_workshop_has_no_size_controls_but_preserves_backend_metadata(): void
     {
         $workshop = file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformWorkshop.vue'));
+        $preview = file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformKitPreview.vue'));
         $views = file_get_contents(resource_path('themes/mskba_app/js/uniforms/uniform-workshop-navigation.js'));
 
         $this->assertIsString($workshop);
+        $this->assertIsString($preview);
         $this->assertIsString($views);
-        $this->assertStringContainsString('const selectedSize = computed({', $workshop);
-        $this->assertStringContainsString('form.sizes = [selectedSize.value]', $workshop);
-        $this->assertStringContainsString('<select v-model="selectedSize"', $workshop);
-        $this->assertStringContainsString(':size="selectedSize"', $workshop);
-        $this->assertStringNotContainsString('mskba-uniform-editor__size-grid', $workshop);
-        $this->assertStringNotContainsString('mskba-uniform-editor__preview-size', $workshop);
+        $this->assertStringNotContainsString('selectedSize', $workshop);
+        $this->assertStringNotContainsString('singleUniformSize', $workshop);
+        $this->assertStringNotContainsString('mskba-uniform-editor__sizes', $workshop);
+        $this->assertStringNotContainsString('<dt>Размеры</dt>', $workshop);
+        $this->assertStringNotContainsString('Размер формы', $workshop);
+        $this->assertStringContainsString(':size="\'M\'"', $workshop);
+        $this->assertStringNotContainsString(', размер ', $preview);
+        $this->assertStringContainsString('form.sizes = Array.isArray(design.sizes)', $workshop);
+        $this->assertStringContainsString("form.sizes.forEach((s, i) => payload.append('sizes[' + i + ']', s))", $workshop);
+        $this->assertStringNotContainsString('form.sizes = [selectedSize.value]', $workshop);
+        $this->assertStringNotContainsString('<dt>Логотип</dt>', $workshop);
+        $this->assertStringNotContainsString('readonly-note', $workshop);
         $this->assertStringNotContainsString('mskba-uniform-editor__views', $workshop);
         $this->assertStringContainsString('@click="changeView(1)"', $workshop);
         $this->assertStringContainsString('@click="changeView(-1)"', $workshop);
@@ -304,7 +312,7 @@ final class UniformStudioFeatureTest extends TestCase
         $this->assertStringContainsString("['front', 'left', 'rear', 'right']", $views);
     }
 
-    public function test_one_selected_uniform_size_round_trips_in_legacy_array_api(): void
+    public function test_legacy_backend_uniform_size_metadata_remains_available(): void
     {
         $this->actingAs(User::factory()->create());
 
