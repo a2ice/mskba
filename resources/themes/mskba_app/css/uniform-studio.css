@@ -167,11 +167,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px 12px;
 }
-.mskba-uniform-editor__size-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2px 16px;
-}
 .mskba-uniform-editor :is(.check-label) { color: var(--text); }
 .mskba-uniform-editor__logos > .mskba-uniform-editor__field { margin-top: 12px; }
 .mskba-uniform-editor__field small,
@@ -549,8 +544,6 @@
 .mskba-uniform-editor__details dd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;color:var(--text,#1c2937);font-weight:600;overflow-wrap:anywhere}
 .mskba-uniform-editor__details dd small{display:block;flex-basis:100%;font-size:11px;color:var(--muted,#65758b);font-weight:400}
 .mskba-uniform-editor__swatch{display:inline-block;flex:0 0 22px;width:22px;height:22px;border:1px solid var(--line,#c8d3de);border-radius:5px}
-.mskba-uniform-editor__size-label{display:inline-block;padding:3px 9px;border-radius:6px;border:1px solid var(--line,#c8d3de);font-size:12px}
-.mskba-uniform-editor__readonly-note{margin:0;color:var(--muted,#65758b);font-size:12px;line-height:1.5}
 @media(max-width:560px){.mskba-uniform-editor__details>div{grid-template-columns:1fr;gap:4px}}
 
 /* Unified direct-manipulation controls for jersey numbers and logos. */

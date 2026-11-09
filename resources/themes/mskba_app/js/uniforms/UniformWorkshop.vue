@@ -1,14 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import UniformKitPreview from './UniformKitPreview.vue';
-import { cycleUniformView, singleUniformSize, UNIFORM_SIZE_OPTIONS } from './uniform-workshop-navigation.js';
+import { cycleUniformView } from './uniform-workshop-navigation.js';
 
 const props = defineProps({
   initialId: { type: [String, Number], default: null },
   context: { type: String, default: 'page' },
   teamId: { type: [String, Number], default: null },
 });
-const sizeOptions = UNIFORM_SIZE_OPTIONS;
 const isTeamContext = computed(() => !!props.teamId);
 const canEdit = ref(!props.teamId);
 const readOnly = computed(() => isTeamContext.value && !canEdit.value);
@@ -93,11 +92,6 @@ function clearOutsideSelection(event) {
   if (event.target?.closest?.('[data-editable-piece], .mskba-uniform-editor__piece-actions')) return;
   selectedPart.value = null;
 }
-// Keep storage backward-compatible (sizes array) while exposing one active size.
-const selectedSize = computed({
-  get: () => singleUniformSize(form.sizes),
-  set: size => { form.sizes = [singleUniformSize([size])]; },
-});
 const viewNames = { front: 'Спереди', left: 'Слева', rear: 'Сзади', right: 'Справа' };
 const viewCaption = computed(() => viewNames[previewView.value] || viewNames.front);
 const previousViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, -1)]);
@@ -165,7 +159,8 @@ function hydrate(design) {
   form.number_outline_color = design.number_outline_color || '';
   form.logo_front_position = design.logo_front_position || 'left';
   form.logo_back_position = design.logo_back_position || 'above';
-  form.sizes = [singleUniformSize(design.sizes)];
+  // Preserve historical backend size metadata until sizing is modeled separately.
+  form.sizes = Array.isArray(design.sizes) && design.sizes.length ? [...design.sizes] : ['M'];
   form.sleeve_style = 'sleeveless'; // Sleeves are not implemented in the SVG pattern yet.
   form.logo_source = design.logo_source;
   form.logo_team_id = design.logo_team_id || '';
@@ -252,7 +247,6 @@ async function save() {
     error.value = 'Укажите название формы (минимум два символа).';
     return;
   }
-  form.sizes = [selectedSize.value];
   const number = Number.parseInt(form.jersey_number, 10);
   if (!isTeamContext.value && (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999)) {
     error.value = 'Номер должен быть от 01 до 999.'; return;
@@ -351,7 +345,7 @@ async function save() {
         <UniformKitPreview
           :name="form.name" :primary="form.primary_color" :secondary="form.secondary_color"
           :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
-          :size="selectedSize" :number="previewNumber" :number-color="form.number_color"
+          :size="'M'" :number="previewNumber" :number-color="form.number_color"
           :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
           :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position"
           :number-enabled="previewNumberEnabled" :jersey-number-x="form.jersey_number_x"
@@ -392,15 +386,10 @@ async function save() {
           <div><dt>Основной цвет</dt><dd><span class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.primary_color }"></span>{{ form.primary_color.toUpperCase() }}</dd></div>
           <div><dt>Дополнительный цвет</dt><dd><span v-if="form.secondary_color" class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.secondary_color }"></span>{{ form.secondary_color ? form.secondary_color.toUpperCase() : 'Не задан' }}</dd></div>
           <div><dt>Фасон</dt><dd>{{ form.sleeve_style === 'sleeved' ? 'С рукавами' : 'Без рукавов' }}</dd></div>
-          <div><dt>Размеры</dt><dd><span v-for="size in form.sizes" :key="size" class="mskba-uniform-editor__size-label">{{ size }}</span></dd></div>
           <div><dt>Игровой номер</dt><dd>{{ form.number_enabled && assignedNumber !== null ? assignedNumber : 'Не назначен' }} <small>Присваивается в составе команды</small></dd></div>
           <div><dt>Цвет номера</dt><dd>{{ form.number_color || 'Автоматический контраст' }}</dd></div>
           <div><dt>Обводка номера</dt><dd>{{ form.number_outline ? (form.number_outline_color || 'Автоматическая') : 'Нет' }}</dd></div>
-          <div><dt>Логотип</dt><dd>{{ form.logo_source === 'none' ? 'Без логотипа' : form.logo_source === 'team' ? 'Логотип команды' : 'Собственный' }}</dd></div>
-          <div v-if="form.logo_source !== 'none'"><dt>Логотип спереди</dt><dd>{{ form.logo_front_enabled ? 'Да' : 'Нет' }}</dd></div>
-          <div v-if="form.logo_source !== 'none'"><dt>Логотип сзади и на шортах</dt><dd>{{ form.logo_back_enabled ? 'Сзади' : '' }}{{ form.logo_back_enabled && form.logo_shorts_enabled ? ', ' : '' }}{{ form.logo_shorts_enabled ? 'На шортах' : '' }}{{ !form.logo_back_enabled && !form.logo_shorts_enabled ? 'Нет' : '' }}</dd></div>
         </dl>
-        <p class="mskba-uniform-editor__readonly-note">Форма доступна только для просмотра. Её параметры и номер игрока здесь не изменяются.</p>
       </template>
       <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
     </section>
@@ -443,15 +432,6 @@ async function save() {
             <span>С рукавами</span>
           </label>
         </div>
-      </fieldset>
-      <fieldset class="mskba-uniform-editor__sizes">
-        <legend>Размер</legend>
-        <label class="mskba-uniform-editor__field">
-          <span>Размер формы</span>
-          <select v-model="selectedSize" aria-label="Размер формы">
-            <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</option>
-          </select>
-        </label>
       </fieldset>
       <fieldset class="mskba-uniform-editor__numbers">
         <legend>Игровой номер</legend>

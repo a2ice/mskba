@@ -209,7 +209,7 @@ function moveWithKeys(which, event) {
   <div class="mskba-kit-preview" :style="{ '--kit-primary': primary, '--kit-trim': trim }">
     <svg ref="svg" class="mskba-kit-preview__drawing" :class="{ 'is-number-editable': isInteractive }"
       :viewBox="viewBox" role="img" xmlns="http://www.w3.org/2000/svg"
-      :aria-label="'Баскетбольная форма «' + name + '», ' + viewName + ', размер ' + size"
+      :aria-label="'Баскетбольная форма «' + name + '», ' + viewName"
       @pointerdown="clearSelection" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag"
       @lostpointercapture="drag = null">
       <defs>
