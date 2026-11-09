@@ -24,7 +24,9 @@ final class EditShopProduct extends EditRecord
         $data['tag_ids'] = $this->record->tags()->pluck('shop_tags.id')->all();
         $existing = $this->record->attributeValues()->get(['attribute_id', 'value'])
             ->map(fn ($value): array => ['attribute_id' => $value->attribute_id, 'value' => $value->value])->all();
-        $data['characteristics'] = app(ShopCatalogService::class)->characteristicRows($categoryIds, $existing);
+        $data['characteristics'] = app(ShopCatalogService::class)->characteristicRows(
+            $categoryIds, $existing, $this->record->product_type_id ? (int) $this->record->product_type_id : null,
+        );
         $data['price_rub'] = $this->record->price_kopecks === null
             ? null : number_format($this->record->price_kopecks / 100, 2, '.', '');
         $data['old_price_rub'] = $this->record->old_price_kopecks === null

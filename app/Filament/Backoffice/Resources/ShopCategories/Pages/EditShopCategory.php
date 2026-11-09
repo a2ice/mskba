@@ -12,12 +12,9 @@ final class EditShopCategory extends EditRecord
 
     private array $tagIds = [];
 
-    private array $attributeIds = [];
-
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['tag_ids'] = $this->record->tags()->pluck('shop_tags.id')->all();
-        $data['attribute_ids'] = $this->record->attributes()->pluck('shop_attributes.id')->all();
 
         return $data;
     }
@@ -25,8 +22,7 @@ final class EditShopCategory extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->tagIds = (array) ($data['tag_ids'] ?? []);
-        $this->attributeIds = (array) ($data['attribute_ids'] ?? []);
-        unset($data['tag_ids'], $data['attribute_ids']);
+        unset($data['tag_ids']);
 
         return $data;
     }
@@ -34,7 +30,6 @@ final class EditShopCategory extends EditRecord
     protected function afterSave(): void
     {
         $this->record->tags()->sync($this->tagIds);
-        $this->record->attributes()->sync($this->attributeIds);
     }
 
     protected function getHeaderActions(): array

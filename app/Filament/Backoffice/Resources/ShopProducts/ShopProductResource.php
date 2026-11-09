@@ -9,6 +9,7 @@ use App\Modules\Shop\Application\Services\ShopCatalogService;
 use App\Modules\Shop\Domain\Models\ShopAttribute;
 use App\Modules\Shop\Domain\Models\ShopCategory;
 use App\Modules\Shop\Domain\Models\ShopProduct;
+use App\Modules\Shop\Domain\Models\ShopProductType;
 use App\Modules\Shop\Domain\Models\ShopTag;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -95,8 +96,27 @@ final class ShopProductResource extends Resource
                     ->searchable()->preload()->options(fn (): array => ShopCategory::query()
                     ->orderBy('name')->pluck('name', 'id')->all())
                     ->live()->afterStateUpdated(function ($state, Get $get, Set $set): void {
+                        $typeId = $get('product_type_id');
+                        if (! $typeId && is_array($state) && $state !== []) {
+                            $typeId = ShopCategory::query()->whereIn('id', $state)
+                                ->whereNotNull('default_product_type_id')->value('default_product_type_id');
+                            if ($typeId) {
+                                $set('product_type_id', $typeId);
+                            }
+                        }
                         $set('characteristics', app(ShopCatalogService::class)->characteristicRows(
                             (array) $state, (array) $get('characteristics'),
+                            $typeId ? (int) $typeId : null,
+                        ));
+                    })->columnSpanFull(),
+                Select::make('product_type_id')->label('Тип товара / набор характеристик')
+                    ->searchable()->preload()->required()->native(false)
+                    ->options(fn (): array => ShopProductType::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->helperText('Тип определяет характеристики независимо от категорий. Выберите один тип.')
+                    ->live()->afterStateUpdated(function ($state, Get $get, Set $set): void {
+                        $set('characteristics', app(ShopCatalogService::class)->characteristicRows(
+                            (array) $get('category_ids'), (array) $get('characteristics'),
+                            $state ? (int) $state : null,
                         ));
                     })->columnSpanFull(),
                 Select::make('tag_ids')->label('Теги')->multiple()->searchable()->preload()
@@ -115,6 +135,7 @@ final class ShopProductResource extends Resource
                         'in_stock' => 'На складе',
                         'out_of_stock' => 'Нет в наличии',
                         'preorder' => 'Предзаказ',
+                        'on_request' => 'Наличие уточняется',
                     ])->required()->default('out_of_stock')->native(false),
                 TextInput::make('stock_quantity')->label('Остаток, шт.')
                     ->integer()->numeric()->minValue(0)->default(0)->required(),
@@ -122,8 +143,8 @@ final class ShopProductResource extends Resource
                     ->minValue(0)->default(100)->required(),
             ]),
             Section::make('Характеристики')->description(
-                'Набор полей определяется категориями товара и всеми их родителями. '
-                .'При выборе нескольких категорий одинаковые характеристики не дублируются.'
+                'Поля определяются выбранным типом товара. Категории и родительские категории '
+                .'не влияют на набор характеристик.'
             )->schema([
                 Repeater::make('characteristics')->label('Значения')->default([])
                     ->schema([
@@ -187,12 +208,14 @@ final class ShopProductResource extends Resource
             TextColumn::make('name')->label('Товар')->searchable()->sortable(),
             TextColumn::make('sku')->label('Артикул')->searchable(),
             TextColumn::make('categories.name')->label('Категории')->listWithLineBreaks()->limitList(3),
+            TextColumn::make('productType.name')->label('Тип товара'),
             TextColumn::make('price_kopecks')->label('Цена')
                 ->formatStateUsing(fn ($state): string => ShopProduct::rubles($state === null ? null : (int) $state) ?? '—'),
             TextColumn::make('stock_quantity')->label('Остаток')->numeric()->sortable(),
             TextColumn::make('stock_status')->label('Склад')->badge()
                 ->formatStateUsing(fn (string $state): string => [
                     'in_stock' => 'На складе', 'out_of_stock' => 'Нет', 'preorder' => 'Предзаказ',
+                    'on_request' => 'Уточняется',
                 ][$state] ?? $state),
             TextColumn::make('status')->label('Статус')->badge()
                 ->formatStateUsing(fn (string $state): string => [
@@ -204,6 +227,7 @@ final class ShopProductResource extends Resource
             ]),
             SelectFilter::make('stock_status')->options([
                 'in_stock' => 'На складе', 'out_of_stock' => 'Нет в наличии', 'preorder' => 'Предзаказ',
+                'on_request' => 'Наличие уточняется',
             ]),
         ])->recordActions([EditAction::make(), DeleteAction::make()]);
     }

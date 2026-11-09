@@ -20,6 +20,11 @@ final class ShopAttribute extends Model
         return $this->belongsToMany(ShopCategory::class, 'shop_attribute_category', 'attribute_id', 'category_id');
     }
 
+    public function productTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(ShopProductType::class, 'shop_attribute_product_type', 'attribute_id', 'product_type_id');
+    }
+
     public function productValues(): HasMany
     {
         return $this->hasMany(ShopProductAttributeValue::class, 'attribute_id');

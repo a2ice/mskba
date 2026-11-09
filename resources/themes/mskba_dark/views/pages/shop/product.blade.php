@@ -91,6 +91,7 @@
                     {{ match($product->stock_status) {
                         'in_stock' => 'На складе',
                         'preorder' => 'Предзаказ',
+                        'on_request' => 'Наличие уточняется',
                         default => 'Нет в наличии',
                     } }}
                 </span>

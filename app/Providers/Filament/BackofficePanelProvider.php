@@ -29,6 +29,7 @@ use App\Filament\Backoffice\Resources\Seasons\SeasonResource;
 use App\Filament\Backoffice\Resources\ShopAttributes\ShopAttributeResource;
 use App\Filament\Backoffice\Resources\ShopCategories\ShopCategoryResource;
 use App\Filament\Backoffice\Resources\ShopProducts\ShopProductResource;
+use App\Filament\Backoffice\Resources\ShopProductTypes\ShopProductTypeResource;
 use App\Filament\Backoffice\Resources\ShopTags\ShopTagResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaAssetResource;
 use App\Filament\Backoffice\Resources\SiteMedia\SiteMediaFolderResource;
@@ -111,6 +112,7 @@ final class BackofficePanelProvider extends PanelProvider
                 ManagerSpecializationResource::class,
                 ShopCategoryResource::class,
                 ShopProductResource::class,
+                ShopProductTypeResource::class,
                 ShopAttributeResource::class,
                 ShopTagResource::class,
                 SupportTicketResource::class,

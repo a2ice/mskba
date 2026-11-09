@@ -3,6 +3,7 @@
 namespace App\Modules\Shop\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 final class ShopProduct extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'sku', 'description', 'status', 'stock_status',
+        'name', 'slug', 'sku', 'description', 'status', 'product_type_id', 'stock_status',
         'stock_quantity', 'price_kopecks', 'old_price_kopecks', 'images', 'sort_order',
     ];
 
@@ -37,6 +38,11 @@ final class ShopProduct extends Model
                 ]);
             }
         });
+    }
+
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ShopProductType::class, 'product_type_id');
     }
 
     public function categories(): BelongsToMany

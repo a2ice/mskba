@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 final class ShopCategory extends Model
 {
-    protected $fillable = ['parent_id', 'name', 'slug', 'description', 'status', 'sort_order', 'images'];
+    protected $fillable = ['parent_id', 'default_product_type_id', 'name', 'slug', 'description', 'status', 'sort_order', 'images'];
 
     protected function casts(): array
     {
@@ -36,6 +36,11 @@ final class ShopCategory extends Model
                 $parentId = self::query()->whereKey($parentId)->value('parent_id');
             }
         });
+    }
+
+    public function defaultProductType(): BelongsTo
+    {
+        return $this->belongsTo(ShopProductType::class, 'default_product_type_id');
     }
 
     public function parent(): BelongsTo
