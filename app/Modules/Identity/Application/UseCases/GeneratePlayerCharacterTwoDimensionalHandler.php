@@ -306,13 +306,15 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         // Only a front-positioned crest is supplied for frontal AI avatars;
         // an explicitly back-only crest must not be hallucinated on the chest.
         $teamLogo = $teamUniform === null ? $team?->logo
-            : ($teamUniform->logo_front_position === 'none' ? null : match ($teamUniform->logo_source) {
+            : (! (($teamUniform->logo_front_enabled ?? $teamUniform->logo_front_position !== 'none')
+                || ($teamUniform->logo_shorts_enabled ?? false)) ? null : match ($teamUniform->logo_source) {
                 'custom' => $teamUniform->customLogo,
                 'team' => $teamUniform->logoTeam?->logo,
                 default => null,
             });
         $selectedLogo = match ($uniformSource) {
-            'mine' => $uniformDesign->logo_front_position === 'none'
+            'mine' => ! ($uniformDesign->logo_front_enabled ?? $uniformDesign->logo_front_position !== 'none')
+                && ! ($uniformDesign->logo_shorts_enabled ?? false)
                 ? null
                 : match ($uniformDesign->logo_source) {
                     'custom' => $uniformDesign->customLogo,
@@ -323,9 +325,11 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             default => null,
         };
         $logoSource = match ($uniformSource) {
-            'mine' => $uniformDesign->logo_front_position === 'none' ? 'none' : $uniformDesign->logo_source,
+            'mine' => (($uniformDesign->logo_front_enabled ?? $uniformDesign->logo_front_position !== 'none')
+                || ($uniformDesign->logo_shorts_enabled ?? false)) ? $uniformDesign->logo_source : 'none',
             'team' => $teamUniform === null ? ($selectedLogo !== null ? 'team' : 'none')
-                : ($teamUniform->logo_front_position === 'none' ? 'none' : $teamUniform->logo_source),
+                : ((($teamUniform->logo_front_enabled ?? $teamUniform->logo_front_position !== 'none')
+                    || ($teamUniform->logo_shorts_enabled ?? false)) ? $teamUniform->logo_source : 'none'),
             default => 'none',
         };
         if ($logoSource !== 'none' && $selectedLogo === null) {
@@ -352,6 +356,9 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'jersey_number_x' => $uniformDesign->jersey_number_x ?? 225,
                 'jersey_number_y' => $uniformDesign->jersey_number_y ?? 394,
                 'jersey_number_scale' => $uniformDesign->jersey_number_scale ?? 1,
+                'jersey_back_number_x' => $uniformDesign->jersey_back_number_x ?? 735,
+                'jersey_back_number_y' => $uniformDesign->jersey_back_number_y ?? 371,
+                'jersey_back_number_scale' => $uniformDesign->jersey_back_number_scale ?? 1,
                 'shorts_number_x' => $uniformDesign->shorts_number_x ?? 178,
                 'shorts_number_y' => $uniformDesign->shorts_number_y ?? 755,
                 'shorts_number_scale' => $uniformDesign->shorts_number_scale ?? 1,
@@ -360,6 +367,18 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'number_outline_color' => $uniformDesign->number_outline_color,
                 'logo_front_position' => $uniformDesign->logo_front_position,
                 'logo_back_position' => $uniformDesign->logo_back_position,
+                'logo_front_enabled' => (bool) ($uniformDesign->logo_front_enabled ?? true),
+                'logo_back_enabled' => (bool) ($uniformDesign->logo_back_enabled ?? true),
+                'logo_shorts_enabled' => (bool) ($uniformDesign->logo_shorts_enabled ?? false),
+                'logo_front_x' => $uniformDesign->logo_front_x ?? 273,
+                'logo_front_y' => $uniformDesign->logo_front_y ?? 256,
+                'logo_front_scale' => $uniformDesign->logo_front_scale ?? 1,
+                'logo_back_x' => $uniformDesign->logo_back_x ?? 735,
+                'logo_back_y' => $uniformDesign->logo_back_y ?? 245,
+                'logo_back_scale' => $uniformDesign->logo_back_scale ?? 1,
+                'logo_shorts_x' => $uniformDesign->logo_shorts_x ?? 275,
+                'logo_shorts_y' => $uniformDesign->logo_shorts_y ?? 686,
+                'logo_shorts_scale' => $uniformDesign->logo_shorts_scale ?? 1,
             ],
             'team' => [
                 'source' => $teamUniform !== null || $hasTeamKit ? 'team' : 'neutral',
@@ -382,11 +401,26 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'jersey_number_x' => $teamUniform?->jersey_number_x ?? 225,
                 'jersey_number_y' => $teamUniform?->jersey_number_y ?? 394,
                 'jersey_number_scale' => $teamUniform?->jersey_number_scale ?? 1,
+                'jersey_back_number_x' => $teamUniform?->jersey_back_number_x ?? 735,
+                'jersey_back_number_y' => $teamUniform?->jersey_back_number_y ?? 371,
+                'jersey_back_number_scale' => $teamUniform?->jersey_back_number_scale ?? 1,
                 'shorts_number_x' => $teamUniform?->shorts_number_x ?? 178,
                 'shorts_number_y' => $teamUniform?->shorts_number_y ?? 755,
                 'shorts_number_scale' => $teamUniform?->shorts_number_scale ?? 1,
                 'logo_front_position' => $teamUniform?->logo_front_position ?? 'left',
                 'logo_back_position' => $teamUniform?->logo_back_position ?? 'above',
+                'logo_front_enabled' => (bool) ($teamUniform?->logo_front_enabled ?? true),
+                'logo_back_enabled' => (bool) ($teamUniform?->logo_back_enabled ?? true),
+                'logo_shorts_enabled' => (bool) ($teamUniform?->logo_shorts_enabled ?? false),
+                'logo_front_x' => $teamUniform?->logo_front_x ?? 273,
+                'logo_front_y' => $teamUniform?->logo_front_y ?? 256,
+                'logo_front_scale' => $teamUniform?->logo_front_scale ?? 1,
+                'logo_back_x' => $teamUniform?->logo_back_x ?? 735,
+                'logo_back_y' => $teamUniform?->logo_back_y ?? 245,
+                'logo_back_scale' => $teamUniform?->logo_back_scale ?? 1,
+                'logo_shorts_x' => $teamUniform?->logo_shorts_x ?? 275,
+                'logo_shorts_y' => $teamUniform?->logo_shorts_y ?? 686,
+                'logo_shorts_scale' => $teamUniform?->logo_shorts_scale ?? 1,
             ],
             default => [
                 'source' => 'neutral',

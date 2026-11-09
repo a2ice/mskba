@@ -114,10 +114,28 @@ jobs:
           }
           trap fail_callback ERR
 
-          curl --fail-with-body --silent --show-error \
-            --header "Accept: application/json" \
-            "${MANIFEST_URL}" \
-            --output manifest.json
+          # Retry when GitHub starts before the signed manifest is visible.
+          # The observed 404 happens before the OpenAI API is called.
+          manifest_code=""
+          for attempt in {1..10}; do
+            manifest_code="$(curl --silent --show-error               --header "Accept: application/json"               --output manifest.json               --write-out '%{http_code}'               --connect-timeout 10 --max-time 20               "$MANIFEST_URL" || true)"
+            if [[ "$manifest_code" == "200" ]]; then break; fi
+            case "$manifest_code" in
+              000|404|408|429|500|502|503|504)
+                if [[ "$attempt" -lt 10 ]]; then
+                  echo "Generation manifest not ready (HTTP $manifest_code); retry $attempt/10." >&2
+                  sleep 3
+                else
+                  echo "Manifest unavailable after 10 attempts (HTTP $manifest_code)." >&2
+                  exit 1
+                fi
+                ;;
+              *)
+                echo "Manifest request rejected (HTTP $manifest_code)." >&2
+                exit 1
+                ;;
+            esac
+          done
 
           manifest_generation_id="$(jq -r '.generation_id' manifest.json)"
           if [[ "${manifest_generation_id}" != "${GENERATION_ID}" ]]; then

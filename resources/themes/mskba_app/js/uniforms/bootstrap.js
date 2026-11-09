@@ -26,6 +26,18 @@ async function resumePending() {
         if (data[field] !== undefined && data[field] !== null) payload.append(field, String(data[field]));
       }
     }
+    for (const key of ['x', 'y', 'scale']) {
+      const field = 'jersey_back_number_' + key;
+      if (data[field] !== undefined && data[field] !== null) payload.append(field, String(data[field]));
+    }
+    for (const place of ['front', 'back', 'shorts']) {
+      const enabled = 'logo_' + place + '_enabled';
+      payload.append(enabled, data[enabled] === undefined ? (place === 'shorts' ? '0' : '1') : (data[enabled] ? '1' : '0'));
+      for (const key of ['x', 'y', 'scale']) {
+        const field = 'logo_' + place + '_' + key;
+        if (data[field] !== undefined && data[field] !== null) payload.append(field, String(data[field]));
+      }
+    }
     payload.append('number_outline', data.number_outline ? '1' : '0');
     (data.sizes || []).forEach((s,i)=>payload.append('sizes['+i+']',s));
     if(data.logo_source==='team'&&data.logo_team_id) payload.append('logo_team_id',data.logo_team_id);

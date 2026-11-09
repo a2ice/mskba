@@ -34,6 +34,9 @@ const form = reactive({
   jersey_number_x: 225,
   jersey_number_y: 394,
   jersey_number_scale: 1,
+  jersey_back_number_x: 735,
+  jersey_back_number_y: 371,
+  jersey_back_number_scale: 1,
   shorts_number_x: 178,
   shorts_number_y: 755,
   shorts_number_scale: 1,
@@ -42,36 +45,53 @@ const form = reactive({
   number_outline_color: '',
   logo_front_position: 'left',
   logo_back_position: 'above',
+  logo_front_enabled: true,
+  logo_back_enabled: true,
+  logo_shorts_enabled: false,
+  logo_front_x: 273,
+  logo_front_y: 256,
+  logo_front_scale: 1,
+  logo_back_x: 735,
+  logo_back_y: 245,
+  logo_back_scale: 1,
+  logo_shorts_x: 275,
+  logo_shorts_y: 686,
+  logo_shorts_scale: 1,
 });
 const previewView = ref('front');
-const selectedNumberPart = ref('jersey');
-const initialNumberPositions = {
+const selectedPart = ref(null);
+const defaultPieces = Object.freeze({
   jersey: { x: 225, y: 394, scale: 1 },
+  jersey_back: { x: 735, y: 371, scale: 1 },
   shorts: { x: 178, y: 755, scale: 1 },
-};
-const selectedScale = computed({
-  get: () => Number(form[selectedNumberPart.value + '_number_scale']) || 1,
-  set: value => { form[selectedNumberPart.value + '_number_scale'] = Math.min(1.6, Math.max(.4, Number(value))); },
+  logo_front: { x: 273, y: 256, scale: 1 },
+  logo_back: { x: 735, y: 245, scale: 1 },
+  logo_shorts: { x: 275, y: 686, scale: 1 },
 });
-function selectNumberPart(part) {
-  if (!['jersey', 'shorts'].includes(part)) return;
-  selectedNumberPart.value = part;
-  if (readOnly.value || part === 'shorts' || ['left', 'right'].includes(previewView.value)) {
-    if (!readOnly.value) previewView.value = 'front';
-  }
+const pieceKeys = Object.keys(defaultPieces);
+function selectPiece(part) {
   if (readOnly.value) return;
+  selectedPart.value = part && pieceKeys.includes(part) ? part : null;
 }
-function changeNumberPosition({ part, x, y, scale } = {}) {
+function changePiecePosition({ part, x, y, scale } = {}) {
   if (readOnly.value) return;
-  if (!['jersey', 'shorts'].includes(part)) return;
-  if (Number.isFinite(x)) form[part + '_number_x'] = x;
-  if (Number.isFinite(y)) form[part + '_number_y'] = y;
-  if (Number.isFinite(scale)) form[part + '_number_scale'] = scale;
+  if (!pieceKeys.includes(part)) return;
+  const prefix = part.startsWith('logo_') ? part : part + '_number';
+  if (Number.isFinite(x)) form[prefix + '_x'] = x;
+  if (Number.isFinite(y)) form[prefix + '_y'] = y;
+  if (Number.isFinite(scale)) form[prefix + '_scale'] = scale;
 }
-function resetNumberPosition() {
+function resetSelectedPosition() {
   if (readOnly.value) return;
-  const part = selectedNumberPart.value;
-  changeNumberPosition({ part, ...initialNumberPositions[part] });
+  const part = selectedPart.value;
+  if (part && defaultPieces[part]) changePiecePosition({ part, ...defaultPieces[part] });
+}
+function clearOutsideSelection(event) {
+  if (readOnly.value) return;
+  // Keep selection only when touching the actual piece or its reset action.
+  // A click on the form settings, side arrows or empty preview removes handles.
+  if (event.target?.closest?.('[data-editable-piece], .mskba-uniform-editor__piece-actions')) return;
+  selectedPart.value = null;
 }
 // Keep storage backward-compatible (sizes array) while exposing one active size.
 const selectedSize = computed({
@@ -84,6 +104,7 @@ const previousViewCaption = computed(() => viewNames[cycleUniformView(previewVie
 const nextViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, 1)]);
 function changeView(direction) {
   previewView.value = cycleUniformView(previewView.value, direction);
+  selectedPart.value = null;
 }
 function normalizeNumber() {
   const numeric = Number.parseInt(form.jersey_number, 10);
@@ -123,13 +144,22 @@ function hydrate(design) {
   form.secondary_color = design.secondary_color || '';
   form.jersey_number = String(design.jersey_number || 1).padStart(2, '0');
   form.number_enabled = design.number_enabled !== false;
-  for (const part of ['jersey', 'shorts']) {
-    const defaults = initialNumberPositions[part];
+  for (const part of pieceKeys) {
+    const prefix = part.startsWith('logo_') ? part : part + '_number';
+    const defaults = defaultPieces[part];
     for (const name of ['x', 'y', 'scale']) {
-      const value = Number(design[part + '_number_' + name]);
-      form[part + '_number_' + name] = Number.isFinite(value) && value > 0 ? value : defaults[name];
+      let fallback = defaults[name];
+      if (part === 'logo_front' && name === 'x' && design.logo_front_position === 'right') fallback = 182;
+      if (part === 'logo_back' && name === 'y' && design.logo_back_position === 'below') fallback = 432;
+      const raw = design[prefix + '_' + name];
+      const value = raw === null || raw === undefined ? NaN : Number(raw);
+      form[prefix + '_' + name] = Number.isFinite(value) && value > 0 ? value : fallback;
     }
   }
+  form.logo_front_enabled = design.logo_front_enabled ?? (design.logo_front_position !== 'none');
+  form.logo_back_enabled = design.logo_back_enabled ?? (design.logo_back_position !== 'none');
+  form.logo_shorts_enabled = design.logo_shorts_enabled ?? false;
+  selectedPart.value = null;
   form.number_color = design.number_color || '';
   form.number_outline = !!design.number_outline;
   form.number_outline_color = design.number_outline_color || '';
@@ -199,6 +229,13 @@ async function savePendingDraft() {
       jersey_number_scale: form.jersey_number_scale,
       shorts_number_x: form.shorts_number_x, shorts_number_y: form.shorts_number_y,
       shorts_number_scale: form.shorts_number_scale,
+      jersey_back_number_x: form.jersey_back_number_x,
+      jersey_back_number_y: form.jersey_back_number_y,
+      jersey_back_number_scale: form.jersey_back_number_scale,
+      ...Object.fromEntries(['front', 'back', 'shorts'].flatMap(place => [
+        ['logo_' + place + '_enabled', form['logo_' + place + '_enabled']],
+        ...['x', 'y', 'scale'].map(axis => ['logo_' + place + '_' + axis, form['logo_' + place + '_' + axis]]),
+      ])),
       number_color: form.number_color || null, number_outline: form.number_outline,
       number_outline_color: form.number_outline_color || null,
       logo_front_position: form.logo_front_position, logo_back_position: form.logo_back_position,
@@ -240,10 +277,14 @@ async function save() {
     payload.append('sleeve_style', 'sleeveless');
     if (!isTeamContext.value) payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
     payload.append('number_enabled', form.number_enabled ? '1' : '0');
-    for (const part of ['jersey', 'shorts']) {
-      for (const field of ['x', 'y', 'scale']) {
-        payload.append(part + '_number_' + field, String(form[part + '_number_' + field]));
+    for (const part of pieceKeys) {
+      const prefix = part.startsWith('logo_') ? part : part + '_number';
+      for (const axis of ['x', 'y', 'scale']) {
+        payload.append(prefix + '_' + axis, String(form[prefix + '_' + axis]));
       }
+    }
+    for (const place of ['front', 'back', 'shorts']) {
+      payload.append('logo_' + place + '_enabled', form['logo_' + place + '_enabled'] ? '1' : '0');
     }
     payload.append('number_outline', form.number_outline ? '1' : '0');
     if (form.number_color) payload.append('number_color', form.number_color);
@@ -297,7 +338,7 @@ async function save() {
 </script>
 
 <template>
-  <div class="mskba-uniform-editor">
+  <div class="mskba-uniform-editor" @pointerdown.capture="clearOutsideSelection">
     <section class="mskba-uniform-editor__preview" aria-label="Предпросмотр формы">
       <div class="mskba-uniform-editor__stage">
         <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--previous"
@@ -316,9 +357,20 @@ async function save() {
           :number-enabled="previewNumberEnabled" :jersey-number-x="form.jersey_number_x"
           :jersey-number-y="form.jersey_number_y" :jersey-number-scale="form.jersey_number_scale"
           :shorts-number-x="form.shorts_number_x" :shorts-number-y="form.shorts_number_y"
-          :shorts-number-scale="form.shorts_number_scale" :editable="!readOnly && form.number_enabled"
-          :selected-part="selectedNumberPart" @select-number="selectNumberPart"
-          @change-number="changeNumberPosition" />
+          :shorts-number-scale="form.shorts_number_scale"
+          :jersey-back-number-x="form.jersey_back_number_x"
+          :jersey-back-number-y="form.jersey_back_number_y"
+          :jersey-back-number-scale="form.jersey_back_number_scale"
+          :logo-front-enabled="form.logo_front_enabled" :logo-back-enabled="form.logo_back_enabled"
+          :logo-shorts-enabled="form.logo_shorts_enabled"
+          :logo-front-x="form.logo_front_x" :logo-front-y="form.logo_front_y"
+          :logo-front-scale="form.logo_front_scale"
+          :logo-back-x="form.logo_back_x" :logo-back-y="form.logo_back_y"
+          :logo-back-scale="form.logo_back_scale"
+          :logo-shorts-x="form.logo_shorts_x" :logo-shorts-y="form.logo_shorts_y"
+          :logo-shorts-scale="form.logo_shorts_scale"
+          :editable="!readOnly" :selected-part="selectedPart"
+          @select-element="selectPiece" @change-element="changePiecePosition" />
         <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--next"
           :aria-label="'Следующий ракурс: ' + nextViewCaption" :title="'Следующий: ' + nextViewCaption"
           @click="changeView(1)">
@@ -345,8 +397,8 @@ async function save() {
           <div><dt>Цвет номера</dt><dd>{{ form.number_color || 'Автоматический контраст' }}</dd></div>
           <div><dt>Обводка номера</dt><dd>{{ form.number_outline ? (form.number_outline_color || 'Автоматическая') : 'Нет' }}</dd></div>
           <div><dt>Логотип</dt><dd>{{ form.logo_source === 'none' ? 'Без логотипа' : form.logo_source === 'team' ? 'Логотип команды' : 'Собственный' }}</dd></div>
-          <div v-if="form.logo_source !== 'none'"><dt>Размещение спереди</dt><dd>{{ { none: 'Не размещать', left: 'Слева', right: 'Справа' }[form.logo_front_position] }}</dd></div>
-          <div v-if="form.logo_source !== 'none'"><dt>Размещение сзади</dt><dd>{{ { none: 'Не размещать', above: 'Над номером', below: 'Под номером' }[form.logo_back_position] }}</dd></div>
+          <div v-if="form.logo_source !== 'none'"><dt>Логотип спереди</dt><dd>{{ form.logo_front_enabled ? 'Да' : 'Нет' }}</dd></div>
+          <div v-if="form.logo_source !== 'none'"><dt>Логотип сзади и на шортах</dt><dd>{{ form.logo_back_enabled ? 'Сзади' : '' }}{{ form.logo_back_enabled && form.logo_shorts_enabled ? ', ' : '' }}{{ form.logo_shorts_enabled ? 'На шортах' : '' }}{{ !form.logo_back_enabled && !form.logo_shorts_enabled ? 'Нет' : '' }}</dd></div>
         </dl>
         <p class="mskba-uniform-editor__readonly-note">Форма доступна только для просмотра. Её параметры и номер игрока здесь не изменяются.</p>
       </template>
@@ -404,7 +456,7 @@ async function save() {
       <fieldset class="mskba-uniform-editor__numbers">
         <legend>Игровой номер</legend>
         <label class="mskba-uniform-editor__optional mskba-uniform-editor__number-toggle">
-          <input v-model="form.number_enabled" type="checkbox"/><span>С номером</span>
+          <input v-model="form.number_enabled" type="checkbox" @change="selectedPart = null"/><span>С номером</span>
         </label>
         <div v-if="form.number_enabled" class="mskba-uniform-editor__number-configuration">
         <label v-if="!isTeamContext" class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
@@ -433,34 +485,15 @@ async function save() {
             <input v-model="form.number_outline_color" type="color" aria-label="Цвет обводки номера"/>
             <span>{{ form.number_outline_color.toUpperCase() }}</span>
           </span>
-          <small class="mskba-uniform-editor__hint">Без ручных цветов контраст подбирается автоматически по ткани.</small>
         </div>
-          <div class="mskba-uniform-editor__number-transform">
-            <span class="mskba-uniform-editor__label">Размещение и размер</span>
-            <div class="mskba-uniform-editor__number-tabs" role="group" aria-label="Выбор номера для редактирования">
-              <button type="button" :class="{ 'is-active': selectedNumberPart === 'jersey' }"
-                :aria-pressed="selectedNumberPart === 'jersey'" @click="selectNumberPart('jersey')">На майке</button>
-              <button type="button" :class="{ 'is-active': selectedNumberPart === 'shorts' }"
-                :aria-pressed="selectedNumberPart === 'shorts'" @click="selectNumberPart('shorts')">На шортах</button>
-            </div>
-            <label class="mskba-uniform-editor__scale-label">
-              <span>Масштаб</span>
-              <input v-model.number="selectedScale" type="range" min="0.4" max="1.6" step="0.05"/>
-              <output>{{ Math.round(selectedScale * 100) }}%</output>
-            </label>
-            <div class="mskba-uniform-editor__number-edit-hint">
-              <small>Нажмите и перетащите номер на форме. Потяните за круглую точку, чтобы изменить размер. Стрелки — точная настройка.</small>
-              <button type="button" class="button secondary" @click="resetNumberPosition">Сбросить положение</button>
-            </div>
-          </div>
         </div>
       </fieldset>
       <fieldset class="mskba-uniform-editor__logos">
         <legend>Логотип</legend>
         <div class="mskba-uniform-editor__choices mskba-uniform-editor__choices--logos">
-          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="none"/><span>Без логотипа</span></label>
-          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="team"/><span>Моя команда</span></label>
-          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="custom"/><span>Загрузить свой</span></label>
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="none" @change="selectedPart = null"/><span>Без логотипа</span></label>
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="team" @change="selectedPart = null"/><span>Моя команда</span></label>
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="custom" @change="selectedPart = null"/><span>Загрузить свой</span></label>
         </div>
         <label v-if="form.logo_source === 'team'" class="mskba-uniform-editor__field">
           <span>Команда</span>
@@ -478,25 +511,24 @@ async function save() {
           <input type="file" accept="image/png,image/jpeg,image/webp" @change="onFile"/>
           <small v-if="storedLogoUrl && !logoFile">Логотип загружен</small>
         </label>
-        <div v-if="form.logo_source !== 'none'" class="mskba-uniform-editor__logo-positions">
-          <label class="mskba-uniform-editor__field">
-            <span>Спереди (небольшой)</span>
-            <select v-model="form.logo_front_position">
-              <option value="none">Не размещать</option>
-              <option value="left">Слева</option>
-              <option value="right">Справа</option>
-            </select>
+        <div v-if="form.logo_source !== 'none'" class="mskba-uniform-editor__logo-checkboxes">
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_front_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип спереди</span>
           </label>
-          <label class="mskba-uniform-editor__field">
-            <span>Сзади</span>
-            <select v-model="form.logo_back_position">
-              <option value="none">Не размещать</option>
-              <option value="above">Над номером</option>
-              <option value="below">Под номером</option>
-            </select>
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_back_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип сзади</span>
+          </label>
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_shorts_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип на шортах</span>
           </label>
         </div>
       </fieldset>
+      <div v-if="selectedPart" class="mskba-uniform-editor__piece-actions">
+        <button type="button" class="button secondary" @click="resetSelectedPosition">Сбросить положение</button>
+      </div>
       <p v-if="loading" class="mskba-uniform-editor__message" role="status">Загружаем…</p>
       <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
       <div class="mskba-uniform-editor__actions">

@@ -385,15 +385,15 @@
   padding: 0;
   object-fit: contain;
 }
-.mskba-kit-preview__number {
+.mskba-kit-preview__piece {
   cursor: default;
   user-select: none;
 }
-.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__number {
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__piece {
   cursor: grab;
   touch-action: none;
 }
-.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__number:active { cursor: grabbing; }
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__piece:active { cursor: grabbing; }
 .mskba-kit-preview__drag-target {
   fill: transparent;
   stroke: none;
@@ -414,8 +414,8 @@
   pointer-events: all;
   touch-action: none;
 }
-.mskba-kit-preview__number:focus-visible { outline: none; }
-.mskba-kit-preview__number:focus-visible .mskba-kit-preview__selection {
+.mskba-kit-preview__piece:focus-visible { outline: none; }
+.mskba-kit-preview__piece:focus-visible .mskba-kit-preview__selection {
   stroke-width: 4px;
 }
 .mskba-uniform-editor__number-configuration { display: grid; gap: 14px; margin-top: 12px; }
@@ -552,3 +552,13 @@
 .mskba-uniform-editor__size-label{display:inline-block;padding:3px 9px;border-radius:6px;border:1px solid var(--line,#c8d3de);font-size:12px}
 .mskba-uniform-editor__readonly-note{margin:0;color:var(--muted,#65758b);font-size:12px;line-height:1.5}
 @media(max-width:560px){.mskba-uniform-editor__details>div{grid-template-columns:1fr;gap:4px}}
+
+/* Unified direct-manipulation controls for jersey numbers and logos. */
+.mskba-uniform-editor__logo-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+.mskba-uniform-editor__piece-actions { display: flex; justify-content: flex-start; }
+.mskba-uniform-editor__piece-actions .button { min-height: 34px; }
