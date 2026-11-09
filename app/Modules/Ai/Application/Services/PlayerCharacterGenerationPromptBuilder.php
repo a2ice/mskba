@@ -15,7 +15,7 @@ final class PlayerCharacterGenerationPromptBuilder
         ));
         $uniform = [
             'source' => $uniformSource,
-            'name' => $uniformSource === 'mine' ? ($requestedUniform['name'] ?? null) : null,
+            'name' => in_array($uniformSource, ['mine', 'team'], true) ? ($requestedUniform['name'] ?? null) : null,
             'primary_color' => $requestedUniform['primary_color'] ?? null,
             'secondary_color' => $requestedUniform['secondary_color'] ?? null,
             'sleeve_style' => $requestedUniform['sleeve_style'] ?? 'sleeveless',
@@ -27,8 +27,10 @@ final class PlayerCharacterGenerationPromptBuilder
             'jersey_number_y' => (int) ($requestedUniform['jersey_number_y'] ?? 394),
             'shorts_number_x' => (int) ($requestedUniform['shorts_number_x'] ?? 178),
             'shorts_number_y' => (int) ($requestedUniform['shorts_number_y'] ?? 755),
-            'jersey_number' => $uniformSource === 'mine'
-                ? str_pad((string) max(1, min(999, (int) ($requestedUniform['jersey_number'] ?? 1))), 2, '0', STR_PAD_LEFT) : null,
+            'jersey_number' => in_array($uniformSource, ['mine', 'team'], true)
+                && ($uniformSource === 'mine' || ($requestedUniform['jersey_number'] ?? null) !== null)
+                ? str_pad((string) max($uniformSource === 'team' ? 0 : 1,
+                    min(999, (int) ($requestedUniform['jersey_number'] ?? 1))), 2, '0', STR_PAD_LEFT) : null,
             'number_color' => $requestedUniform['number_color'] ?? null,
             'number_outline' => (bool) ($requestedUniform['number_outline'] ?? false),
             'number_outline_color' => $requestedUniform['number_outline_color'] ?? null,
@@ -112,14 +114,15 @@ TEXT
 - Do not place a selected logo on the uniform.
 TEXT;
 
-        if ($withUniformLogo && $uniformSource === 'mine') {
+        if ($withUniformLogo && in_array($uniformSource, ['mine', 'team'], true)) {
             $placement = ($uniform['logo_front_position'] ?? 'left') === 'right'
                 ? "the PLAYER'S RIGHT upper chest (viewer's left)"
                 : "the PLAYER'S LEFT upper chest (viewer's right)";
             $uniformLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
         }
 
-        $numberInstruction = $uniformSource === 'mine' && $uniform['number_enabled']
+        $numberInstruction = in_array($uniformSource, ['mine', 'team'], true)
+            && $uniform['number_enabled'] && $uniform['jersey_number'] !== null
             ? '- Render exactly the jersey number "'.$uniform['jersey_number'].'" on the front of the jersey and in a smaller size on the left side of the image (the right shorts leg of the player). '
                 .'Use number_color if set, otherwise the secondary_color when present, or high contrast (white on dark, black on light) when absent. '
                 .'When number_outline is true, add a visible outline in number_outline_color if supplied. '

@@ -139,6 +139,10 @@ class PublicVenuesApiTest extends TestCase
         ]);
         $paid = Venue::factory()->create([
             'name' => 'School Paid Court',
+            // Keep free-text fixtures deterministic; faker address/description
+            // must not accidentally match the "school free" keyword pair.
+            'short_description' => 'Платная аренда зала',
+            'raw_address' => 'Paid School Street 2',
             'type' => VenueTypeEnum::SCHOOL->value,
             'status' => VenueStatusEnum::CONFIRMED->value,
             'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,

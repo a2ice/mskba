@@ -4,9 +4,9 @@ import UniformModal from './UniformModal.vue';
 import MyUniforms from './MyUniforms.vue';
 import '../../css/uniform-studio.css';
 
-const modal = reactive({open:false,seq:0,context:'home',projectId:null});
+const modal = reactive({open:false,seq:0,context:'home',projectId:null,teamId:null});
 let mounted = false;
-export function openUniformStudio({context='home',projectId=null} = {}) {
+export function openUniformStudio({context='home',projectId=null,teamId=null} = {}) {
   if (!mounted) {
     const root = document.createElement('div');
     root.dataset.mskbaUniformDialogRoot = '';
@@ -16,6 +16,7 @@ export function openUniformStudio({context='home',projectId=null} = {}) {
   }
   modal.context = context;
   modal.projectId = projectId;
+  modal.teamId = teamId;
   modal.seq += 1;
   modal.open = true;
 }

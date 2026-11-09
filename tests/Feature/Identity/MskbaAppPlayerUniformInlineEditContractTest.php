@@ -28,7 +28,7 @@ final class MskbaAppPlayerUniformInlineEditContractTest extends TestCase
         self::assertStringContainsString("event.detail?.context !== 'player-avatar'", $selection);
         self::assertStringContainsString('selectedOption.textContent = String(saved.name', $selection);
         self::assertStringContainsString(":initial-id=\"state.projectId\"", $modal);
-        self::assertStringContainsString("if (editId.value) payload.append('_method', 'PUT')", $workshop);
+        self::assertStringContainsString("if (!isTeamContext.value && editId.value) payload.append('_method', 'PUT')", $workshop);
         self::assertStringContainsString("props.context === 'player-avatar'", $workshop);
         self::assertStringContainsString("new CustomEvent('mskba:uniform:saved'", $workshop);
         self::assertStringContainsString('.app-player-workspace__uniform-design-controls', $styles);

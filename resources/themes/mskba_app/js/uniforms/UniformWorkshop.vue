@@ -6,8 +6,21 @@ import { cycleUniformView, singleUniformSize, UNIFORM_SIZE_OPTIONS } from './uni
 const props = defineProps({
   initialId: { type: [String, Number], default: null },
   context: { type: String, default: 'page' },
+  teamId: { type: [String, Number], default: null },
 });
 const sizeOptions = UNIFORM_SIZE_OPTIONS;
+const isTeamContext = computed(() => !!props.teamId);
+const canEdit = ref(!props.teamId);
+const readOnly = computed(() => isTeamContext.value && !canEdit.value);
+const missingTeamDesign = ref(false);
+const teamName = ref('');
+const assignedNumber = ref(null);
+const previewNumber = computed(() => isTeamContext.value ? (assignedNumber.value || '01') : form.jersey_number);
+// Even an authorized team editor must not see an invented "01" in place of
+// an unassigned roster number. The team template owns styling, not the number.
+const previewNumberEnabled = computed(() => form.number_enabled &&
+  (!isTeamContext.value || assignedNumber.value !== null));
+
 const form = reactive({
   name: 'Моя форма',
   primary_color: '#DCE7EF',
@@ -43,20 +56,24 @@ const selectedScale = computed({
 function selectNumberPart(part) {
   if (!['jersey', 'shorts'].includes(part)) return;
   selectedNumberPart.value = part;
-  if (part === 'shorts' || ['left', 'right'].includes(previewView.value)) previewView.value = 'front';
+  if (readOnly.value || part === 'shorts' || ['left', 'right'].includes(previewView.value)) {
+    if (!readOnly.value) previewView.value = 'front';
+  }
+  if (readOnly.value) return;
 }
 function changeNumberPosition({ part, x, y, scale } = {}) {
+  if (readOnly.value) return;
   if (!['jersey', 'shorts'].includes(part)) return;
   if (Number.isFinite(x)) form[part + '_number_x'] = x;
   if (Number.isFinite(y)) form[part + '_number_y'] = y;
   if (Number.isFinite(scale)) form[part + '_number_scale'] = scale;
 }
 function resetNumberPosition() {
+  if (readOnly.value) return;
   const part = selectedNumberPart.value;
   changeNumberPosition({ part, ...initialNumberPositions[part] });
 }
-// The existing API stores sizes as an array for backward compatibility.
- // A design now has exactly one active/preview size selected in this editor.
+// Keep storage backward-compatible (sizes array) while exposing one active size.
 const selectedSize = computed({
   get: () => singleUniformSize(form.sizes),
   set: size => { form.sizes = [singleUniformSize([size])]; },
@@ -134,8 +151,24 @@ onMounted(async () => {
     if (!response.ok) throw new Error('Не удалось загрузить доступные логотипы.');
     const data = await response.json();
     authenticated.value = !!data.authenticated;
-    teams.value = data.teams || [];
-    if (editId.value) {
+    teams.value = (data.teams || []).filter(team => !isTeamContext.value || String(team.id) === String(props.teamId));
+    if (isTeamContext.value) {
+      const response = await fetch('/uniforms/teams/' + encodeURIComponent(props.teamId), {
+        headers: { Accept: 'application/json' }, credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error(response.status === 403
+        ? 'Нет доступа к форме этой команды.' : 'Не удалось загрузить форму команды.');
+      const data = await response.json();
+      canEdit.value = data.can_edit === true;
+      teamName.value = data.team?.name || 'Команда';
+      assignedNumber.value = data.player_number || null;
+      missingTeamDesign.value = !data.design;
+      if (data.design) {
+        hydrate(data.design);
+      } else {
+        form.name = 'Форма «' + teamName.value + '»';
+      }
+    } else if (editId.value) {
       const result = await fetch('/uniforms/projects/' + encodeURIComponent(editId.value), {
         headers: { Accept: 'application/json' },
         credentials: 'same-origin',
@@ -176,15 +209,15 @@ async function savePendingDraft() {
   }
 }
 async function save() {
+  if (readOnly.value) return;
   error.value = '';
   if (!form.name.trim() || form.name.trim().length < 2) {
     error.value = 'Укажите название формы (минимум два символа).';
     return;
   }
-  // Even older multi-size designs are saved with one actively selected size.
   form.sizes = [selectedSize.value];
   const number = Number.parseInt(form.jersey_number, 10);
-  if (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999) {
+  if (!isTeamContext.value && (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999)) {
     error.value = 'Номер должен быть от 01 до 999.'; return;
   }
   normalizeNumber();
@@ -205,7 +238,7 @@ async function save() {
     payload.append('primary_color', form.primary_color);
     payload.append('secondary_color', form.secondary_color);
     payload.append('sleeve_style', 'sleeveless');
-    payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
+    if (!isTeamContext.value) payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
     payload.append('number_enabled', form.number_enabled ? '1' : '0');
     for (const part of ['jersey', 'shorts']) {
       for (const field of ['x', 'y', 'scale']) {
@@ -221,8 +254,9 @@ async function save() {
     payload.append('logo_source', form.logo_source);
     if (form.logo_source === 'team') payload.append('logo_team_id', form.logo_team_id);
     if (form.logo_source === 'custom' && logoFile.value) payload.append('logo', logoFile.value);
-    const url = editId.value ? '/uniforms/projects/' + editId.value : '/uniforms/projects';
-    if (editId.value) payload.append('_method', 'PUT');
+    const url = isTeamContext.value ? '/uniforms/teams/' + encodeURIComponent(props.teamId)
+      : (editId.value ? '/uniforms/projects/' + editId.value : '/uniforms/projects');
+    if (!isTeamContext.value && editId.value) payload.append('_method', 'PUT');
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -243,6 +277,12 @@ async function save() {
     if (!response.ok) {
       const issues = Object.values(result.errors || {}).flat().filter(Boolean);
       throw new Error(issues.join(' · ') || 'Не удалось сохранить форму.');
+    }
+    if (isTeamContext.value) {
+      window.dispatchEvent(new CustomEvent('mskba:uniform:saved', {
+        detail: { context: props.context, teamId: props.teamId, design: result.design },
+      }));
+      return;
     }
     if (props.context === 'player-avatar') {
       window.dispatchEvent(new CustomEvent('mskba:uniform:saved', {
@@ -270,13 +310,13 @@ async function save() {
         <UniformKitPreview
           :name="form.name" :primary="form.primary_color" :secondary="form.secondary_color"
           :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
-          :size="selectedSize" :number="form.jersey_number" :number-color="form.number_color"
+          :size="selectedSize" :number="previewNumber" :number-color="form.number_color"
           :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
           :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position"
-          :number-enabled="form.number_enabled" :jersey-number-x="form.jersey_number_x"
+          :number-enabled="previewNumberEnabled" :jersey-number-x="form.jersey_number_x"
           :jersey-number-y="form.jersey_number_y" :jersey-number-scale="form.jersey_number_scale"
           :shorts-number-x="form.shorts_number_x" :shorts-number-y="form.shorts_number_y"
-          :shorts-number-scale="form.shorts_number_scale" :editable="form.number_enabled"
+          :shorts-number-scale="form.shorts_number_scale" :editable="!readOnly && form.number_enabled"
           :selected-part="selectedNumberPart" @select-number="selectNumberPart"
           @change-number="changeNumberPosition" />
         <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--next"
@@ -289,7 +329,30 @@ async function save() {
         <span class="mskba-uniform-editor__view-caption" role="status" aria-live="polite">{{ viewCaption }}</span>
       </div>
     </section>
-    <form class="mskba-uniform-editor__controls" @submit.prevent="save" novalidate>
+    <section v-if="readOnly" class="mskba-uniform-editor__controls mskba-uniform-editor__readonly"
+      aria-label="Описание командной формы">
+      <h2>Форма команды</h2>
+      <p v-if="loading" role="status">Загружаем форму…</p>
+      <p v-else-if="missingTeamDesign">Командная форма ещё не создана. Создать её может владелец команды или участник с соответствующим правом.</p>
+      <template v-else>
+        <dl class="mskba-uniform-editor__details">
+          <div><dt>Название формы</dt><dd>{{ form.name }}</dd></div>
+          <div><dt>Основной цвет</dt><dd><span class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.primary_color }"></span>{{ form.primary_color.toUpperCase() }}</dd></div>
+          <div><dt>Дополнительный цвет</dt><dd><span v-if="form.secondary_color" class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.secondary_color }"></span>{{ form.secondary_color ? form.secondary_color.toUpperCase() : 'Не задан' }}</dd></div>
+          <div><dt>Фасон</dt><dd>{{ form.sleeve_style === 'sleeved' ? 'С рукавами' : 'Без рукавов' }}</dd></div>
+          <div><dt>Размеры</dt><dd><span v-for="size in form.sizes" :key="size" class="mskba-uniform-editor__size-label">{{ size }}</span></dd></div>
+          <div><dt>Игровой номер</dt><dd>{{ form.number_enabled && assignedNumber !== null ? assignedNumber : 'Не назначен' }} <small>Присваивается в составе команды</small></dd></div>
+          <div><dt>Цвет номера</dt><dd>{{ form.number_color || 'Автоматический контраст' }}</dd></div>
+          <div><dt>Обводка номера</dt><dd>{{ form.number_outline ? (form.number_outline_color || 'Автоматическая') : 'Нет' }}</dd></div>
+          <div><dt>Логотип</dt><dd>{{ form.logo_source === 'none' ? 'Без логотипа' : form.logo_source === 'team' ? 'Логотип команды' : 'Собственный' }}</dd></div>
+          <div v-if="form.logo_source !== 'none'"><dt>Размещение спереди</dt><dd>{{ { none: 'Не размещать', left: 'Слева', right: 'Справа' }[form.logo_front_position] }}</dd></div>
+          <div v-if="form.logo_source !== 'none'"><dt>Размещение сзади</dt><dd>{{ { none: 'Не размещать', above: 'Над номером', below: 'Под номером' }[form.logo_back_position] }}</dd></div>
+        </dl>
+        <p class="mskba-uniform-editor__readonly-note">Форма доступна только для просмотра. Её параметры и номер игрока здесь не изменяются.</p>
+      </template>
+      <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
+    </section>
+    <form v-else class="mskba-uniform-editor__controls" @submit.prevent="save" novalidate>
       <h2>Настройки формы</h2>
       <label class="mskba-uniform-editor__field">
         <span>Название формы</span>
@@ -344,12 +407,13 @@ async function save() {
           <input v-model="form.number_enabled" type="checkbox"/><span>С номером</span>
         </label>
         <div v-if="form.number_enabled" class="mskba-uniform-editor__number-configuration">
-        <label class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
+        <label v-if="!isTeamContext" class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
           <span>Номер (01–999)</span>
           <input v-model="form.jersey_number" type="text" inputmode="numeric"
             pattern="[0-9]{1,3}" maxlength="3" autocomplete="off"
             aria-label="Игровой номер от 01 до 999" @blur="normalizeNumber"/>
         </label>
+        <p v-else class="mskba-uniform-editor__hint">Командный шаблон определяет оформление номера. Сам номер каждому игроку назначается в составе команды и не редактируется здесь.</p>
         <div class="mskba-uniform-editor__number-options">
           <label class="mskba-uniform-editor__optional"><input type="checkbox"
             :checked="!!form.number_color" @change="form.number_color = $event.target.checked ? '#111924' : ''"/>
@@ -437,9 +501,9 @@ async function save() {
       <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
       <div class="mskba-uniform-editor__actions">
         <button type="submit" class="button primary" :disabled="busy || loading" :aria-busy="busy">
-          {{ busy ? 'Сохраняем…' : editId ? 'Сохранить изменения' : 'Сохранить форму' }}
+          {{ busy ? 'Сохраняем…' : isTeamContext ? 'Сохранить форму команды' : editId ? 'Сохранить изменения' : 'Сохранить форму' }}
         </button>
-        <a v-if="context !== 'player-avatar'" class="button secondary" href="/account/uniforms">Мои формы</a>
+        <a v-if="!isTeamContext && context !== 'player-avatar'" class="button secondary" href="/account/uniforms">Мои формы</a>
       </div>
     </form>
   </div>

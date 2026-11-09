@@ -16,7 +16,8 @@ function close(saved = false) {
   }
 }
 function onSaved(event) {
-  if (event.detail?.context === 'player-avatar' && props.state.context === 'player-avatar') {
+  if (event.detail?.context === props.state.context &&
+    ['player-avatar', 'team', 'team-avatar'].includes(props.state.context)) {
     close(true);
   }
 }
@@ -44,7 +45,8 @@ function backdrop(event) {
       <button type="button" class="app-profile__dialog-close" aria-label="Закрыть" @click="close(false)">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll mskba-uniform-dialog__body">
-      <UniformWorkshop v-if="state.open" :key="state.seq" :initial-id="state.projectId" :context="state.context"/>
+      <UniformWorkshop v-if="state.open" :key="state.seq" :initial-id="state.projectId"
+        :team-id="state.teamId" :context="state.context"/>
     </div>
   </dialog>
 </template>

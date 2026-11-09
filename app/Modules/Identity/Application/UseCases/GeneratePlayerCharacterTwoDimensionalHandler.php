@@ -121,7 +121,7 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         }
         if ($teamId !== null) {
             $team = Team::query()
-                ->with('logo')
+                ->with(['logo', 'uniformDesign.customLogo', 'uniformDesign.logoTeam.logo'])
                 ->whereKey((int) $teamId)
                 ->whereNull('temporary_for_event_id')
                 ->whereHas('memberships', fn ($memberships) => $memberships
@@ -146,6 +146,7 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             $uniformDesign = UniformDesign::query()
                 ->with(['customLogo', 'logoTeam.logo'])
                 ->whereIn('user_id', $user->identityIds())
+                ->whereNull('team_id')
                 ->find((int) ($options['uniform_design_id'] ?? 0));
             if ($uniformDesign === null) {
                 throw new PlayerCharacterFlowException(
@@ -291,8 +292,25 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ];
         }
 
-        // Only the selected uniform controls its logo. A back-only crest is
-        // deliberately excluded from the frontal avatar's image references.
+        // The team kit is stored on the team, not on the player's profile.
+        // Per-player numbers always come from an accepted team membership.
+        $teamUniform = $team?->uniformDesign;
+        $teamMember = $team === null ? null : $team->memberships()
+            ->whereIn('user_id', $user->identityIds())
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->withSportRole(TeamMemberTypeEnum::PLAYER)
+            ->whereHas('contract', fn ($contract) => $contract
+                ->where('status', ContractStatusEnum::ACTIVE->value))
+            ->first();
+        $teamNumber = $teamMember?->jersey_number;
+        // Only a front-positioned crest is supplied for frontal AI avatars;
+        // an explicitly back-only crest must not be hallucinated on the chest.
+        $teamLogo = $teamUniform === null ? $team?->logo
+            : ($teamUniform->logo_front_position === 'none' ? null : match ($teamUniform->logo_source) {
+                'custom' => $teamUniform->customLogo,
+                'team' => $teamUniform->logoTeam?->logo,
+                default => null,
+            });
         $selectedLogo = match ($uniformSource) {
             'mine' => $uniformDesign->logo_front_position === 'none'
                 ? null
@@ -301,12 +319,13 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                     'team' => $uniformDesign->logoTeam?->logo,
                     default => null,
                 },
-            'team' => $team?->logo,
+            'team' => $teamLogo,
             default => null,
         };
         $logoSource = match ($uniformSource) {
             'mine' => $uniformDesign->logo_front_position === 'none' ? 'none' : $uniformDesign->logo_source,
-            'team' => $selectedLogo !== null ? 'team' : 'none',
+            'team' => $teamUniform === null ? ($selectedLogo !== null ? 'team' : 'none')
+                : ($teamUniform->logo_front_position === 'none' ? 'none' : $teamUniform->logo_source),
             default => 'none',
         };
         if ($logoSource !== 'none' && $selectedLogo === null) {
@@ -343,12 +362,31 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'logo_back_position' => $uniformDesign->logo_back_position,
             ],
             'team' => [
-                'source' => $hasTeamKit ? 'team' : 'neutral',
+                'source' => $teamUniform !== null || $hasTeamKit ? 'team' : 'neutral',
                 'team_name' => $team->name,
-                'primary_color' => $hasTeamKit ? $primaryTeamColor : null,
-                'secondary_color' => $hasTeamKit ? $secondaryTeamColor : null,
-                'sleeve_style' => 'sleeveless',
+                'name' => $teamUniform?->name,
+                'primary_color' => $teamUniform?->primary_color ?? ($hasTeamKit ? $primaryTeamColor : null),
+                'secondary_color' => $teamUniform !== null
+                    ? $teamUniform->secondary_color : ($hasTeamKit ? $secondaryTeamColor : null),
+                'sleeve_style' => $teamUniform?->sleeve_style ?? 'sleeveless',
                 'logo_source' => $logoSource,
+                // The design controls whether numbers are printed, their color,
+                // outline and placement. Only the roster controls their value.
+                'jersey_number' => $teamUniform !== null && $teamNumber !== null
+                    && $teamUniform->number_enabled ? $teamNumber : null,
+                'number_enabled' => $teamUniform !== null && $teamNumber !== null
+                    && (bool) $teamUniform->number_enabled,
+                'number_color' => $teamUniform?->number_color,
+                'number_outline' => (bool) ($teamUniform?->number_outline ?? false),
+                'number_outline_color' => $teamUniform?->number_outline_color,
+                'jersey_number_x' => $teamUniform?->jersey_number_x ?? 225,
+                'jersey_number_y' => $teamUniform?->jersey_number_y ?? 394,
+                'jersey_number_scale' => $teamUniform?->jersey_number_scale ?? 1,
+                'shorts_number_x' => $teamUniform?->shorts_number_x ?? 178,
+                'shorts_number_y' => $teamUniform?->shorts_number_y ?? 755,
+                'shorts_number_scale' => $teamUniform?->shorts_number_scale ?? 1,
+                'logo_front_position' => $teamUniform?->logo_front_position ?? 'left',
+                'logo_back_position' => $teamUniform?->logo_back_position ?? 'above',
             ],
             default => [
                 'source' => 'neutral',

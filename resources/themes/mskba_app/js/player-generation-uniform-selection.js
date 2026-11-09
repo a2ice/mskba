@@ -5,6 +5,7 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
     const team = workspace.querySelector('[data-player-generation-team]');
     const design = workspace.querySelector('[data-player-generation-uniform-design]');
     const view = workspace.querySelector('[data-player-uniform-view]');
+    const teamView = workspace.querySelector('[data-player-team-uniform-view]');
     const teamField = workspace.querySelector('[data-player-uniform-team-field]');
     const designField = workspace.querySelector('[data-player-uniform-design-field]');
     if (!source || !team || !design) return;
@@ -20,6 +21,7 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
         team.disabled = !teamVisible;
         design.disabled = !mineVisible;
         if (view) view.disabled = !mineVisible || !design.value;
+        if (teamView) teamView.disabled = !teamVisible || !team.value;
         if (mode === 'neutral') {
             team.value = '';
             design.value = '';
@@ -45,10 +47,20 @@ export function setupPlayerUniformSelection(workspace, onChanged = () => {}) {
         }
         setMode();
     });
-    team.addEventListener('change', onChanged);
+    team.addEventListener('change', () => {
+        if (teamView) teamView.disabled = source.value !== 'team' || !team.value;
+        onChanged();
+    });
     design.addEventListener('change', () => {
         if (view) view.disabled = source.value !== 'mine' || !design.value;
         onChanged();
+    });
+    teamView?.addEventListener('click', () => {
+        const teamId = Number(team.value);
+        if (source.value !== 'team' || !Number.isSafeInteger(teamId) || teamId <= 0) return;
+        window.dispatchEvent(new CustomEvent('mskba:uniform:open', {
+            detail: { context: 'team-avatar', teamId },
+        }));
     });
     view?.addEventListener('click', () => {
         const projectId = Number(design.value);

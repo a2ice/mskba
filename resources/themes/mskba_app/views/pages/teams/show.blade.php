@@ -12,6 +12,12 @@
         @include('components.entity-public-banner', ['bannerUrl' => $team->bannerUrl()])
         <div class="app-team-actions">
             <a class="button secondary" href="{{ route('teams.index') }}">Все команды</a>
+            @if(!empty($canManageUniform) || (!empty($isActiveTeamMember) && !empty($teamHasUniform)))
+                <button type="button" class="button secondary" data-mskba-open-workshop
+                    data-mskba-workshop-context="team" data-mskba-workshop-team="{{ $team->id }}">
+                    {{ !empty($canManageUniform) ? 'Настроить форму команды' : 'Посмотреть форму команды' }}
+                </button>
+            @endif
             @auth <a class="button secondary" href="{{ route('account.teams') }}">Мои команды</a> @endauth
         </div>
         @if (session('status'))

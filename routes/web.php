@@ -162,6 +162,12 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/uniforms/projects', [UniformDesignController::class, 'index'])->name('uniforms.projects.index');
     Route::post('/uniforms/projects', [UniformDesignController::class, 'store'])
         ->middleware('throttle:12,1')->name('uniforms.projects.store');
+    Route::get('/uniforms/teams/{team}', [UniformDesignController::class, 'teamShow'])
+        ->middleware('throttle:60,1')->name('uniforms.teams.show');
+    Route::post('/uniforms/teams/{team}', [UniformDesignController::class, 'teamSave'])
+        ->middleware('throttle:24,1')->name('uniforms.teams.save');
+    Route::get('/uniforms/teams/{team}/logo', [UniformDesignController::class, 'teamLogo'])
+        ->name('uniforms.teams.logo');
     Route::get('/uniforms/projects/{design}', [UniformDesignController::class, 'show'])->name('uniforms.projects.show');
     Route::put('/uniforms/projects/{design}', [UniformDesignController::class, 'update'])
         ->middleware('throttle:24,1')->name('uniforms.projects.update');
