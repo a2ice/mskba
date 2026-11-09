@@ -15,16 +15,31 @@ const props = defineProps({
   numberOutlineColor: { type: String, default: '' },
   logoFrontPosition: { type: String, default: 'left' },
   logoBackPosition: { type: String, default: 'above' },
+  logoFrontEnabled: { type: Boolean, default: true },
+  logoBackEnabled: { type: Boolean, default: true },
+  logoShortsEnabled: { type: Boolean, default: false },
+  logoFrontX: { type: Number, default: 273 },
+  logoFrontY: { type: Number, default: 256 },
+  logoFrontScale: { type: Number, default: 1 },
+  logoBackX: { type: Number, default: 735 },
+  logoBackY: { type: Number, default: 245 },
+  logoBackScale: { type: Number, default: 1 },
+  logoShortsX: { type: Number, default: 275 },
+  logoShortsY: { type: Number, default: 686 },
+  logoShortsScale: { type: Number, default: 1 },
   jerseyNumberX: { type: Number, default: 225 },
   jerseyNumberY: { type: Number, default: 394 },
   jerseyNumberScale: { type: Number, default: 1 },
+  jerseyBackNumberX: { type: Number, default: 735 },
+  jerseyBackNumberY: { type: Number, default: 371 },
+  jerseyBackNumberScale: { type: Number, default: 1 },
   shortsNumberX: { type: Number, default: 178 },
   shortsNumberY: { type: Number, default: 755 },
   shortsNumberScale: { type: Number, default: 1 },
   editable: { type: Boolean, default: false },
   selectedPart: { type: String, default: 'jersey' },
 });
-const emit = defineEmits(['select-number', 'change-number']);
+const emit = defineEmits(['select-element', 'change-element']);
 const svg = ref(null);
 const garmentCoordinates = ref(null);
 const drag = ref(null);
@@ -80,19 +95,44 @@ const typeStyle = computed(() => ({
 }));
 const jerseyFont = computed(() => props.view === 'rear' ? (threeDigits.value ? 82 : 98) : (threeDigits.value ? 57 : 72));
 const shortsFont = computed(() => threeDigits.value ? 34 : 45);
-const jerseyX = computed(() => props.view === 'rear' ? 735 + props.jerseyNumberX - 225 : props.jerseyNumberX);
-const jerseyY = computed(() => props.view === 'rear' ? 371 + props.jerseyNumberY - 394 : props.jerseyNumberY);
+const jerseyPart = computed(() => props.view === 'rear' ? 'jersey_back' : 'jersey');
+const jerseyX = computed(() => props.view === 'rear' ? props.jerseyBackNumberX : props.jerseyNumberX);
+const jerseyY = computed(() => props.view === 'rear' ? props.jerseyBackNumberY : props.jerseyNumberY);
+const jerseyScale = computed(() => props.view === 'rear' ? props.jerseyBackNumberScale : props.jerseyNumberScale);
 const partSizes = computed(() => ({
   jersey: { width: jerseyFont.value * (threeDigits.value ? 1.72 : 1.32), height: jerseyFont.value },
   shorts: { width: shortsFont.value * (threeDigits.value ? 1.72 : 1.32), height: shortsFont.value },
 }));
-const activeNumber = computed(() => props.editable && props.numberEnabled && !isSide.value);
-const at = which => which === 'jersey'
-  ? { x: jerseyX.value, y: jerseyY.value, scale: props.jerseyNumberScale }
-  : { x: props.shortsNumberX, y: props.shortsNumberY, scale: props.shortsNumberScale };
-const partLimit = which => which === 'jersey'
-  ? { x: [188, 268], y: [316, 450] }
-  : { x: [148, 302], y: [658, 766] };
+const isInteractive = computed(() => props.editable && !isSide.value);
+const at = which => {
+  const prefix = which.startsWith('logo_') ? which : which + '_number';
+  return {
+    x: props[prefix === 'jersey_number' ? 'jerseyNumberX' :
+      prefix === 'jersey_back_number' ? 'jerseyBackNumberX' :
+      prefix === 'shorts_number' ? 'shortsNumberX' :
+      prefix === 'logo_front' ? 'logoFrontX' :
+      prefix === 'logo_back' ? 'logoBackX' : 'logoShortsX'],
+    y: props[prefix === 'jersey_number' ? 'jerseyNumberY' :
+      prefix === 'jersey_back_number' ? 'jerseyBackNumberY' :
+      prefix === 'shorts_number' ? 'shortsNumberY' :
+      prefix === 'logo_front' ? 'logoFrontY' :
+      prefix === 'logo_back' ? 'logoBackY' : 'logoShortsY'],
+    scale: props[prefix === 'jersey_number' ? 'jerseyNumberScale' :
+      prefix === 'jersey_back_number' ? 'jerseyBackNumberScale' :
+      prefix === 'shorts_number' ? 'shortsNumberScale' :
+      prefix === 'logo_front' ? 'logoFrontScale' :
+      prefix === 'logo_back' ? 'logoBackScale' : 'logoShortsScale'],
+  };
+};
+const limits = {
+  jersey: { x: [188, 268], y: [316, 450] },
+  jersey_back: { x: [700, 780], y: [305, 455] },
+  shorts: { x: [148, 302], y: [658, 766] },
+  logo_front: { x: [172, 280], y: [252, 480] },
+  logo_back: { x: [680, 795], y: [230, 478] },
+  logo_shorts: { x: [160, 300], y: [620, 745] },
+};
+const partLimit = which => limits[which] || limits.jersey;
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 function svgPoint(event) {
   const matrix = garmentCoordinates.value?.getScreenCTM();
@@ -103,19 +143,17 @@ function svgPoint(event) {
   return point.matrixTransform(matrix.inverse());
 }
 function startDrag(which, mode, event) {
-  if (!activeNumber.value || event.button !== 0) return;
+  if (!isInteractive.value || (event.pointerType === 'mouse' && event.button !== 0)) return;
   const start = svgPoint(event);
   if (!start) return;
   event.preventDefault();
   event.stopPropagation();
-  emit('select-number', which);
-  const own = at(which);
+  emit('select-element', which);
+  const p = at(which);
   drag.value = {
     pointerId: event.pointerId, which, mode,
     originX: start.x, originY: start.y,
-    x: which === 'jersey' ? props.jerseyNumberX : props.shortsNumberX,
-    y: which === 'jersey' ? props.jerseyNumberY : props.shortsNumberY,
-    scale: own.scale,
+    x: p.x, y: p.y, scale: p.scale,
   };
   svg.value.setPointerCapture(event.pointerId);
 }
@@ -125,17 +163,17 @@ function moveDrag(event) {
   const p = svgPoint(event);
   if (!p) return;
   if (state.mode === 'scale') {
-    emit('change-number', {
+    emit('change-element', {
       part: state.which,
       scale: clamp(Math.round((state.scale + (p.x - state.originX) / 96) * 100) / 100, .4, 1.6),
     });
     return;
   }
-  const limits = partLimit(state.which);
-  emit('change-number', {
+  const range = partLimit(state.which);
+  emit('change-element', {
     part: state.which,
-    x: clamp(Math.round(state.x + p.x - state.originX), ...limits.x),
-    y: clamp(Math.round(state.y + p.y - state.originY), ...limits.y),
+    x: clamp(Math.round(state.x + p.x - state.originX), ...range.x),
+    y: clamp(Math.round(state.y + p.y - state.originY), ...range.y),
   });
 }
 function endDrag(event) {
@@ -143,33 +181,36 @@ function endDrag(event) {
   drag.value = null;
   if (svg.value?.hasPointerCapture?.(event.pointerId)) svg.value.releasePointerCapture(event.pointerId);
 }
+function clearSelection(event) {
+  if (!event.target?.closest?.('[data-editable-piece]')) emit('select-element', null);
+}
 function moveWithKeys(which, event) {
-  if (!activeNumber.value) return;
+  if (!isInteractive.value) return;
   const p = at(which);
   const step = event.shiftKey ? 10 : 2;
-  const limits = partLimit(which);
+  const range = partLimit(which);
   let result;
   switch (event.key) {
-    case 'ArrowLeft': result = { x: clamp((which === 'jersey' ? props.jerseyNumberX : p.x) - step, ...limits.x) }; break;
-    case 'ArrowRight': result = { x: clamp((which === 'jersey' ? props.jerseyNumberX : p.x) + step, ...limits.x) }; break;
-    case 'ArrowUp': result = { y: clamp((which === 'jersey' ? props.jerseyNumberY : p.y) - step, ...limits.y) }; break;
-    case 'ArrowDown': result = { y: clamp((which === 'jersey' ? props.jerseyNumberY : p.y) + step, ...limits.y) }; break;
+    case 'ArrowLeft': result = { x: clamp(p.x - step, ...range.x) }; break;
+    case 'ArrowRight': result = { x: clamp(p.x + step, ...range.x) }; break;
+    case 'ArrowUp': result = { y: clamp(p.y - step, ...range.y) }; break;
+    case 'ArrowDown': result = { y: clamp(p.y + step, ...range.y) }; break;
     case '+': case '=': result = { scale: clamp(p.scale + .05, .4, 1.6) }; break;
     case '-': result = { scale: clamp(p.scale - .05, .4, 1.6) }; break;
     default: return;
   }
   event.preventDefault();
-  emit('select-number', which);
-  emit('change-number', { part: which, ...result });
+  emit('select-element', which);
+  emit('change-element', { part: which, ...result });
 }
 </script>
 
 <template>
   <div class="mskba-kit-preview" :style="{ '--kit-primary': primary, '--kit-trim': trim }">
-    <svg ref="svg" class="mskba-kit-preview__drawing" :class="{ 'is-number-editable': activeNumber }"
+    <svg ref="svg" class="mskba-kit-preview__drawing" :class="{ 'is-number-editable': isInteractive }"
       :viewBox="viewBox" role="img" xmlns="http://www.w3.org/2000/svg"
       :aria-label="'Баскетбольная форма «' + name + '», ' + viewName + ', размер ' + size"
-      @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag"
+      @pointerdown="clearSelection" @pointermove="moveDrag" @pointerup="endDrag" @pointercancel="endDrag"
       @lostpointercapture="drag = null">
       <defs>
         <linearGradient :id="prefix + '-sheen'" x1="0" y1="0" x2="1" y2=".12">
@@ -273,64 +314,96 @@ function moveWithKeys(which, event) {
               stroke="var(--kit-primary)" fill="none" stroke-width="1.8"/>
           </template>
 
-          <!-- The reference number only appears on the jersey front/back and
-               on the front left shorts leg. Placement is retained per design. -->
-          <template v-if="numberEnabled && !isSide">
-            <g :transform="'translate(' + jerseyX + ' ' + jerseyY + ') scale(' + jerseyNumberScale + ')'"
-              class="mskba-kit-preview__number" :class="{ 'is-selected': activeNumber && selectedPart === 'jersey' }"
-              :tabindex="activeNumber ? 0 : undefined"
-              role="group" :aria-label="'Номер на майке ' + numberLabel"
-              @keydown="moveWithKeys('jersey', $event)" @pointerdown="startDrag('jersey', 'move', $event)">
-              <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-                font-weight="800" :font-size="jerseyFont" :style="typeStyle">{{ numberLabel }}</text>
-              <template v-if="activeNumber">
-                <rect :x="-partSizes.jersey.width / 2 - 6" :y="-partSizes.jersey.height + 5"
-                  :width="partSizes.jersey.width + 12" :height="partSizes.jersey.height + 8"
-                  class="mskba-kit-preview__drag-target"/>
-                <rect v-if="selectedPart === 'jersey'" :x="-partSizes.jersey.width / 2 - 6"
-                  :y="-partSizes.jersey.height + 5" :width="partSizes.jersey.width + 12"
-                  :height="partSizes.jersey.height + 8" class="mskba-kit-preview__selection"/>
-                <circle v-if="selectedPart === 'jersey'" :cx="partSizes.jersey.width / 2 + 6"
-                  :cy="12" r="12" class="mskba-kit-preview__resize" role="button"
-                  aria-label="Изменить размер номера на майке"
-                  @pointerdown.stop="startDrag('jersey', 'scale', $event)"/>
-              </template>
-            </g>
-            <image v-if="view === 'front' && logo && logoFrontPosition !== 'none'" :href="logo"
-              :x="logoFrontPosition === 'left' ? 260 : 169" y="243" width="26" height="26"
-              preserveAspectRatio="xMidYMid meet"/>
-            <image v-if="view === 'rear' && logo && logoBackPosition !== 'none'" :href="logo"
-              x="718" :y="logoBackPosition === 'below' ? 415 : 222"
-              width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
-            <g v-if="view === 'front'"
-              :transform="'translate(' + shortsNumberX + ' ' + shortsNumberY + ') scale(' + shortsNumberScale + ')'"
-              class="mskba-kit-preview__number" :class="{ 'is-selected': activeNumber && selectedPart === 'shorts' }"
-              :tabindex="activeNumber ? 0 : undefined" role="group"
-              :aria-label="'Номер на шортах ' + numberLabel"
-              @keydown="moveWithKeys('shorts', $event)" @pointerdown="startDrag('shorts', 'move', $event)">
-              <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
-                font-weight="800" :font-size="shortsFont" :style="typeStyle">{{ numberLabel }}</text>
-              <template v-if="activeNumber">
-                <rect :x="-partSizes.shorts.width / 2 - 7" :y="-partSizes.shorts.height + 5"
-                  :width="partSizes.shorts.width + 14" :height="partSizes.shorts.height + 10"
-                  class="mskba-kit-preview__drag-target"/>
-                <rect v-if="selectedPart === 'shorts'" :x="-partSizes.shorts.width / 2 - 7"
-                  :y="-partSizes.shorts.height + 5" :width="partSizes.shorts.width + 14"
-                  :height="partSizes.shorts.height + 10" class="mskba-kit-preview__selection"/>
-                <circle v-if="selectedPart === 'shorts'" :cx="partSizes.shorts.width / 2 + 7"
-                  :cy="15" r="12" class="mskba-kit-preview__resize"
-                  @pointerdown.stop="startDrag('shorts', 'scale', $event)"/>
-              </template>
-            </g>
-          </template>
-          <template v-else>
-            <image v-if="view === 'front' && logo && logoFrontPosition !== 'none'" :href="logo"
-              :x="logoFrontPosition === 'left' ? 260 : 169" y="243" width="26" height="26"
-              preserveAspectRatio="xMidYMid meet"/>
-            <image v-if="view === 'rear' && logo && logoBackPosition !== 'none'" :href="logo"
-              x="718" :y="logoBackPosition === 'below' ? 415 : 222"
-              width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
-          </template>
+          <!-- Two independent jersey positions: front and rear no longer share a transform. -->
+          <g v-if="numberEnabled && (view === 'front' || view === 'rear')"
+            data-editable-piece :data-piece="jerseyPart"
+            :transform="'translate(' + jerseyX + ' ' + jerseyY + ') scale(' + jerseyScale + ')'"
+            class="mskba-kit-preview__piece"
+            :tabindex="isInteractive ? 0 : undefined"
+            role="group" :aria-label="'Номер на майке ' + numberLabel"
+            @keydown="moveWithKeys(jerseyPart, $event)"
+            @pointerdown="startDrag(jerseyPart, 'move', $event)">
+            <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+              font-weight="800" :font-size="jerseyFont" :style="typeStyle">{{ numberLabel }}</text>
+            <template v-if="isInteractive">
+              <rect :x="-partSizes.jersey.width / 2 - 6" :y="-partSizes.jersey.height + 5"
+                :width="partSizes.jersey.width + 12" :height="partSizes.jersey.height + 8"
+                class="mskba-kit-preview__drag-target"/>
+              <rect v-if="selectedPart === jerseyPart" :x="-partSizes.jersey.width / 2 - 6"
+                :y="-partSizes.jersey.height + 5" :width="partSizes.jersey.width + 12"
+                :height="partSizes.jersey.height + 8" class="mskba-kit-preview__selection"/>
+              <circle v-if="selectedPart === jerseyPart" :cx="partSizes.jersey.width / 2 + 6"
+                :cy="12" r="12" class="mskba-kit-preview__resize" role="button"
+                :aria-label="'Изменить масштаб номера ' + (view === 'rear' ? 'сзади' : 'спереди')"
+                @pointerdown.stop="startDrag(jerseyPart, 'scale', $event)"/>
+            </template>
+          </g>
+          <g v-if="numberEnabled && view === 'front'"
+            data-editable-piece data-piece="shorts"
+            :transform="'translate(' + shortsNumberX + ' ' + shortsNumberY + ') scale(' + shortsNumberScale + ')'"
+            class="mskba-kit-preview__piece"
+            :tabindex="isInteractive ? 0 : undefined" role="group"
+            :aria-label="'Номер на шортах ' + numberLabel"
+            @keydown="moveWithKeys('shorts', $event)"
+            @pointerdown="startDrag('shorts', 'move', $event)">
+            <text x="0" y="0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+              font-weight="800" :font-size="shortsFont" :style="typeStyle">{{ numberLabel }}</text>
+            <template v-if="isInteractive">
+              <rect :x="-partSizes.shorts.width / 2 - 7" :y="-partSizes.shorts.height + 5"
+                :width="partSizes.shorts.width + 14" :height="partSizes.shorts.height + 10"
+                class="mskba-kit-preview__drag-target"/>
+              <rect v-if="selectedPart === 'shorts'" :x="-partSizes.shorts.width / 2 - 7"
+                :y="-partSizes.shorts.height + 5" :width="partSizes.shorts.width + 14"
+                :height="partSizes.shorts.height + 10" class="mskba-kit-preview__selection"/>
+              <circle v-if="selectedPart === 'shorts'" :cx="partSizes.shorts.width / 2 + 7"
+                :cy="15" r="12" class="mskba-kit-preview__resize"
+                @pointerdown.stop="startDrag('shorts', 'scale', $event)"/>
+            </template>
+          </g>
+
+          <!-- All logo placements have independent x/y/scale; no dependency on numbering. -->
+          <g v-if="logo && logoFrontEnabled && view === 'front'" data-editable-piece
+            data-piece="logo_front" class="mskba-kit-preview__piece"
+            :transform="'translate(' + logoFrontX + ' ' + logoFrontY + ') scale(' + logoFrontScale + ')'"
+            :tabindex="isInteractive ? 0 : undefined" role="group" aria-label="Логотип спереди"
+            @keydown="moveWithKeys('logo_front', $event)"
+            @pointerdown="startDrag('logo_front', 'move', $event)">
+            <image :href="logo" x="-15" y="-15" width="30" height="30" preserveAspectRatio="xMidYMid meet"/>
+            <rect v-if="isInteractive" x="-17" y="-17" width="34" height="34"
+              class="mskba-kit-preview__drag-target"/>
+            <rect v-if="isInteractive && selectedPart === 'logo_front'"
+              x="-17" y="-17" width="34" height="34" class="mskba-kit-preview__selection"/>
+            <circle v-if="isInteractive && selectedPart === 'logo_front'" cx="22" cy="22" r="12"
+              class="mskba-kit-preview__resize" @pointerdown.stop="startDrag('logo_front', 'scale', $event)"/>
+          </g>
+          <g v-if="logo && logoBackEnabled && view === 'rear'" data-editable-piece
+            data-piece="logo_back" class="mskba-kit-preview__piece"
+            :transform="'translate(' + logoBackX + ' ' + logoBackY + ') scale(' + logoBackScale + ')'"
+            :tabindex="isInteractive ? 0 : undefined" role="group" aria-label="Логотип сзади"
+            @keydown="moveWithKeys('logo_back', $event)"
+            @pointerdown="startDrag('logo_back', 'move', $event)">
+            <image :href="logo" x="-17" y="-17" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+            <rect v-if="isInteractive" x="-19" y="-19" width="38" height="38"
+              class="mskba-kit-preview__drag-target"/>
+            <rect v-if="isInteractive && selectedPart === 'logo_back'"
+              x="-19" y="-19" width="38" height="38" class="mskba-kit-preview__selection"/>
+            <circle v-if="isInteractive && selectedPart === 'logo_back'" cx="24" cy="24" r="12"
+              class="mskba-kit-preview__resize" @pointerdown.stop="startDrag('logo_back', 'scale', $event)"/>
+          </g>
+          <g v-if="logo && logoShortsEnabled && view === 'front'" data-editable-piece
+            data-piece="logo_shorts" class="mskba-kit-preview__piece"
+            :transform="'translate(' + logoShortsX + ' ' + logoShortsY + ') scale(' + logoShortsScale + ')'"
+            :tabindex="isInteractive ? 0 : undefined" role="group" aria-label="Логотип на шортах"
+            @keydown="moveWithKeys('logo_shorts', $event)"
+            @pointerdown="startDrag('logo_shorts', 'move', $event)">
+            <image :href="logo" x="-15" y="-15" width="30" height="30" preserveAspectRatio="xMidYMid meet"/>
+            <rect v-if="isInteractive" x="-17" y="-17" width="34" height="34"
+              class="mskba-kit-preview__drag-target"/>
+            <rect v-if="isInteractive && selectedPart === 'logo_shorts'"
+              x="-17" y="-17" width="34" height="34" class="mskba-kit-preview__selection"/>
+            <circle v-if="isInteractive && selectedPart === 'logo_shorts'" cx="22" cy="22" r="12"
+              class="mskba-kit-preview__resize" @pointerdown.stop="startDrag('logo_shorts', 'scale', $event)"/>
+          </g>
         </g>
       </g>
     </svg>

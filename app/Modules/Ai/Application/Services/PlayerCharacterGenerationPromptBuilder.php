@@ -22,6 +22,7 @@ final class PlayerCharacterGenerationPromptBuilder
             'logo_source' => $requestedUniform['logo_source'] ?? 'none',
             'number_enabled' => (bool) ($requestedUniform['number_enabled'] ?? true),
             'jersey_number_scale' => (float) ($requestedUniform['jersey_number_scale'] ?? 1),
+            'jersey_back_number_scale' => (float) ($requestedUniform['jersey_back_number_scale'] ?? 1),
             'shorts_number_scale' => (float) ($requestedUniform['shorts_number_scale'] ?? 1),
             'jersey_number_x' => (int) ($requestedUniform['jersey_number_x'] ?? 225),
             'jersey_number_y' => (int) ($requestedUniform['jersey_number_y'] ?? 394),
@@ -36,10 +37,21 @@ final class PlayerCharacterGenerationPromptBuilder
             'number_outline_color' => $requestedUniform['number_outline_color'] ?? null,
             'logo_front_position' => $requestedUniform['logo_front_position'] ?? 'left',
             'logo_back_position' => $requestedUniform['logo_back_position'] ?? 'above',
+            'logo_front_enabled' => (bool) ($requestedUniform['logo_front_enabled'] ?? true),
+            'logo_back_enabled' => (bool) ($requestedUniform['logo_back_enabled'] ?? true),
+            'logo_shorts_enabled' => (bool) ($requestedUniform['logo_shorts_enabled'] ?? false),
+            'logo_front_x' => (int) ($requestedUniform['logo_front_x']
+                ?? (($requestedUniform['logo_front_position'] ?? 'left') === 'right' ? 182 : 273)),
+            'logo_front_y' => (int) ($requestedUniform['logo_front_y'] ?? 256),
+            'logo_front_scale' => (float) ($requestedUniform['logo_front_scale'] ?? 1),
+            'logo_shorts_x' => (int) ($requestedUniform['logo_shorts_x'] ?? 275),
+            'logo_shorts_y' => (int) ($requestedUniform['logo_shorts_y'] ?? 686),
+            'logo_shorts_scale' => (float) ($requestedUniform['logo_shorts_scale'] ?? 1),
         ];
         // Logo visibility is resolved by the selected uniform, not a profile-level toggle.
         $withUniformLogo = in_array($uniform['logo_source'], ['team', 'custom'], true)
-            && ($uniformSource !== 'mine' || $uniform['logo_front_position'] !== 'none');
+            && (! in_array($uniformSource, ['mine', 'team'], true)
+                || $uniform['logo_front_enabled'] || $uniform['logo_shorts_enabled']);
         $female = ($payload['gender'] ?? null) === 'female';
         $chestVolume = $female ? ($appearance['chest_volume'] ?? 'medium') : null;
         $chestDescription = $female ? match ($chestVolume) {
@@ -105,20 +117,29 @@ final class PlayerCharacterGenerationPromptBuilder
         $uniformLogoInstruction = $withUniformLogo
             ? <<<'TEXT'
 - The LAST supplied image is the selected logo reference. It is NOT a face or identity reference.
-- Copy that supplied selected logo onto the jersey as faithfully and literally as possible in a natural basketball-uniform placement.
+- Copy that supplied selected logo faithfully and literally on the explicitly enabled front-facing uniform pieces only.
 - Do NOT redesign, stylize, simplify, reinterpret, substitute, replace, or invent the selected logo.
 - Preserve the logo's geometry, layout, colors, proportions, internal marks, and high-contrast details. If the logo is a QR code, preserve the QR module pattern and quiet-zone structure as accurately as possible.
-- The jersey logo must visually match the LAST supplied image, not merely represent the team identity or theme.
+- Every enabled logo must visually match the LAST supplied image, not merely represent the team identity or theme.
 TEXT
             : <<<'TEXT'
 - Do not place a selected logo on the uniform.
 TEXT;
 
         if ($withUniformLogo && in_array($uniformSource, ['mine', 'team'], true)) {
-            $placement = ($uniform['logo_front_position'] ?? 'left') === 'right'
-                ? "the PLAYER'S RIGHT upper chest (viewer's left)"
-                : "the PLAYER'S LEFT upper chest (viewer's right)";
-            $uniformLogoInstruction .= "\n- Place a SMALL logo only on {$placement}, matching the saved uniform design's logo placement. No central or oversized crest.";
+            // Back-only artwork must not appear on a frontal avatar.
+            $placement = $uniform['logo_front_x'] < 225
+                ? "the PLAYER'S RIGHT side of the jersey (viewer's left)"
+                : "the PLAYER'S LEFT side of the jersey (viewer's right)";
+            $frontLogoInstruction = $uniform['logo_front_enabled']
+                ? "Place a SMALL selected logo near {$placement}, scaled like logo_front_scale."
+                : 'No logo anywhere on the front of the jersey.';
+            $shortsPlacement = $uniform['logo_shorts_x'] < 225
+                ? "the viewer's left leg panel" : "the viewer's right leg panel";
+            $shortsLogoInstruction = $uniform['logo_shorts_enabled']
+                ? "Place a second SMALL selected logo on {$shortsPlacement}, scaled like logo_shorts_scale."
+                : 'No selected logo on the shorts.';
+            $uniformLogoInstruction .= "\n- {$frontLogoInstruction}\n- {$shortsLogoInstruction}";
         }
 
         $numberInstruction = in_array($uniformSource, ['mine', 'team'], true)
@@ -137,7 +158,6 @@ Reference mapping:
 - front is the frontal face reference;
 - left is the subject's left facial profile;
 - right is the subject's right facial profile.
-{$uniformLogoInstruction}
 
 Identity:
 - Preserve the same person's facial identity from all face-reference images as closely as possible.

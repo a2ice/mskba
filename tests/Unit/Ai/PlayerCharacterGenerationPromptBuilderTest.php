@@ -164,10 +164,42 @@ final class PlayerCharacterGenerationPromptBuilderTest extends TestCase
 
         $this->assertStringContainsString('"jersey_number": "07"', $prompt);
         $this->assertStringContainsString('jersey number "07"', $prompt);
-        $this->assertStringContainsString('SMALL logo only on the PLAYER\'S RIGHT upper chest', $prompt);
+        $this->assertStringContainsString('SMALL selected logo near the PLAYER\'S RIGHT side of the jersey', $prompt);
         $this->assertStringContainsString('"logo_back_position": "below"', $prompt);
         $this->assertStringContainsString('monochrome uniform', $prompt);
         $this->assertStringContainsString('black lettering with a white outline on dark fabric', $prompt);
+    }
+
+    public function test_only_enabled_front_and_shorts_logos_are_visible_on_front_avatar(): void
+    {
+        $builder = new PlayerCharacterGenerationPromptBuilder();
+
+        $backOnly = $builder->build([
+            'uniform' => [
+                'source' => 'mine',
+                'logo_source' => 'custom',
+                'logo_front_enabled' => false,
+                'logo_back_enabled' => true,
+                'logo_shorts_enabled' => false,
+            ],
+        ]);
+        $this->assertStringContainsString('Do not place a selected logo on the uniform', $backOnly);
+        $this->assertStringNotContainsString('The LAST supplied image is the selected logo reference', $backOnly);
+
+        $shortsOnly = $builder->build([
+            'uniform' => [
+                'source' => 'mine',
+                'logo_source' => 'custom',
+                'logo_front_enabled' => false,
+                'logo_back_enabled' => true,
+                'logo_shorts_enabled' => true,
+                'logo_shorts_x' => 172,
+                'logo_shorts_scale' => 0.7,
+            ],
+        ]);
+        $this->assertStringContainsString('No logo anywhere on the front of the jersey', $shortsOnly);
+        $this->assertStringContainsString("logo on the viewer's left leg panel", $shortsOnly);
+        $this->assertStringContainsString('"logo_shorts_scale": 0.7', $shortsOnly);
     }
 
     public function test_disabled_uniform_number_never_appears_on_ai_avatar(): void

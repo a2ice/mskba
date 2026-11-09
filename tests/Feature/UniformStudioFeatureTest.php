@@ -300,7 +300,7 @@ final class UniformStudioFeatureTest extends TestCase
         $this->assertStringNotContainsString('mskba-uniform-editor__views', $workshop);
         $this->assertStringContainsString('@click="changeView(1)"', $workshop);
         $this->assertStringContainsString('@click="changeView(-1)"', $workshop);
-        $this->assertStringContainsString('@click="resetNumberPosition"', $workshop);
+        $this->assertStringContainsString('@click="resetSelectedPosition"', $workshop);
         $this->assertStringContainsString("['front', 'left', 'rear', 'right']", $views);
     }
 
@@ -317,6 +317,101 @@ final class UniformStudioFeatureTest extends TestCase
             ...$this->input(),
             'sizes' => ['XS'],
         ])->assertOk()->assertJsonPath('design.sizes', ['XS']);
+    }
+
+    public function test_front_and_back_number_and_three_logos_keep_independent_coordinates(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $created = $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_number_x' => 251,
+            'jersey_number_y' => 420,
+            'jersey_number_scale' => 0.7,
+            'jersey_back_number_x' => 763,
+            'jersey_back_number_y' => 386,
+            'jersey_back_number_scale' => 1.35,
+            'shorts_number_x' => 191,
+            'logo_front_enabled' => false,
+            'logo_back_enabled' => true,
+            'logo_shorts_enabled' => true,
+            'logo_front_x' => 207,
+            'logo_front_y' => 279,
+            'logo_front_scale' => 0.5,
+            'logo_back_x' => 776,
+            'logo_back_y' => 269,
+            'logo_back_scale' => 1.25,
+            'logo_shorts_x' => 282,
+            'logo_shorts_y' => 708,
+            'logo_shorts_scale' => 0.75,
+        ])->assertCreated()
+            ->assertJsonPath('design.jersey_number_x', 251)
+            ->assertJsonPath('design.jersey_back_number_x', 763)
+            ->assertJsonPath('design.jersey_back_number_y', 386)
+            ->assertJsonPath('design.jersey_back_number_scale', 1.35)
+            ->assertJsonPath('design.logo_front_enabled', false)
+            ->assertJsonPath('design.logo_back_enabled', true)
+            ->assertJsonPath('design.logo_shorts_enabled', true)
+            ->assertJsonPath('design.logo_front_x', 207)
+            ->assertJsonPath('design.logo_back_x', 776)
+            ->assertJsonPath('design.logo_shorts_x', 282)
+            ->assertJsonPath('design.logo_shorts_scale', 0.75);
+        $id = $created->json('design.id');
+        $this->getJson('/uniforms/projects/'.$id)->assertOk()
+            ->assertJsonPath('design.jersey_number_scale', 0.7)
+            ->assertJsonPath('design.jersey_back_number_scale', 1.35)
+            ->assertJsonPath('design.logo_front_scale', 0.5)
+            ->assertJsonPath('design.logo_back_scale', 1.25);
+
+        // Editing only the front must not overwrite saved back or shorts marks.
+        $this->putJson('/uniforms/projects/'.$id, [
+            ...$this->input(),
+            'jersey_number_x' => 220,
+            'logo_front_enabled' => true,
+            'logo_front_x' => 242,
+        ])->assertOk()
+            ->assertJsonPath('design.jersey_number_x', 220)
+            ->assertJsonPath('design.jersey_back_number_x', 763)
+            ->assertJsonPath('design.jersey_back_number_scale', 1.35)
+            ->assertJsonPath('design.logo_front_enabled', true)
+            ->assertJsonPath('design.logo_front_x', 242)
+            ->assertJsonPath('design.logo_back_enabled', true)
+            ->assertJsonPath('design.logo_shorts_enabled', true)
+            ->assertJsonPath('design.logo_back_x', 776);
+    }
+
+    public function test_new_logo_and_back_number_positions_are_validated(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $this->postJson('/uniforms/projects', [
+            ...$this->input(),
+            'jersey_back_number_x' => 270,
+            'jersey_back_number_y' => 700,
+            'jersey_back_number_scale' => 2.5,
+            'logo_front_x' => 0,
+            'logo_back_y' => 800,
+            'logo_shorts_scale' => 0.01,
+            'logo_front_enabled' => 'definitely',
+        ])->assertUnprocessable()->assertJsonValidationErrors([
+            'jersey_back_number_x', 'jersey_back_number_y',
+            'jersey_back_number_scale', 'logo_front_x',
+            'logo_back_y', 'logo_shorts_scale', 'logo_front_enabled',
+        ]);
+    }
+
+    public function test_numbers_and_logos_have_no_persistent_selection_or_slider_ui(): void
+    {
+        $workshop = file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformWorkshop.vue'));
+        $preview = file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformKitPreview.vue'));
+        $this->assertStringNotContainsString('v-model.number="selectedScale"', $workshop);
+        $this->assertStringNotContainsString('mskba-uniform-editor__number-tabs', $workshop);
+        $this->assertStringNotContainsString('Нажмите и перетащите номер', $workshop);
+        $this->assertStringContainsString('Логотип спереди', $workshop);
+        $this->assertStringContainsString('Логотип сзади', $workshop);
+        $this->assertStringContainsString('Логотип на шортах', $workshop);
+        $this->assertStringContainsString('data-editable-piece', $preview);
+        $this->assertStringContainsString('clearSelection', $preview);
+        $this->assertStringContainsString('jerseyBackNumberX', $preview);
     }
 
     public function test_page_builder_preserves_the_public_workshop_trigger_without_inline_js(): void

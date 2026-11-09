@@ -40,6 +40,13 @@ final class MskbaAppPlayerLogoDialogContractTest extends TestCase
         self::assertStringContainsString("payload.append('logo_source', form.logo_source)", $workshop);
         self::assertStringContainsString("payload.append('logo_team_id', form.logo_team_id)", $workshop);
         self::assertStringContainsString("payload.append('logo', logoFile.value)", $workshop);
-        self::assertStringContainsString('mskba-uniform-editor__logo-positions', $workshop);
+        // Artwork placement is controlled by three independent checkboxes,
+        // not by the old front/rear dropdowns.
+        self::assertStringContainsString('mskba-uniform-editor__logo-checkboxes', $workshop);
+        foreach (['front', 'back', 'shorts'] as $place) {
+            self::assertStringContainsString('v-model="form.logo_'.$place.'_enabled"', $workshop);
+            self::assertStringContainsString("payload.append('logo_' + place + '_enabled'", $workshop);
+        }
+        self::assertStringNotContainsString('mskba-uniform-editor__logo-positions', $workshop);
     }
 }
