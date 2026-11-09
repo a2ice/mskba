@@ -22,6 +22,26 @@
 /* Keep the image height tied to the ruler. A width cap or flex-shrink silently stops growth near 200cm. */
 .app-player-workspace__figure img{flex:0 0 auto;height:var(--figure-height,74%);max-height:100%;max-width:none;width:auto;object-fit:contain;object-position:center bottom;transform-origin:center bottom;transform:scaleX(var(--figure-width,1));transition:height .2s ease,transform .2s ease;filter:drop-shadow(0 6px 11px #304f6880)}
 .app-player-workspace__figure img.is-generated{transform:none}
+/* Only generated images require a loading layer. The default figure is fully
+   sized in server HTML and must never be obscured by an unnecessary loader. */
+.app-player-workspace__figure-loading{
+  position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:11px;
+  background:rgba(238,244,249,.88);color:#405469;
+  font-size:12px;font-weight:700;backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);border-radius:inherit;
+}
+.app-player-workspace__figure-loading[hidden]{display:none!important}
+.app-player-workspace__figure-spinner{
+  display:block;width:29px;height:29px;border-radius:50%;
+  border:3px solid #cad7e4;border-top-color:var(--accent,#c2510c);
+  animation:app-player-figure-spin .8s linear infinite;
+}
+@keyframes app-player-figure-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+  .app-player-workspace__figure-spinner{animation-duration:1.6s}
+}
+
 .app-player-workspace__floor{position:absolute;bottom:10%;left:58px;right:0;border-bottom:2px solid #8b9eb1}
 .app-player-workspace__metrics{display:flex;align-items:center;flex-wrap:nowrap;gap:10px;font-size:12px;font-weight:700;color:#405469;white-space:nowrap;min-width:0;overflow-x:auto}
 .app-player-workspace__hint{font-size:13px;line-height:1.5;color:#637386;margin:0}
