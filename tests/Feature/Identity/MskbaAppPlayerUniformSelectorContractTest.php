@@ -81,7 +81,10 @@ final class MskbaAppPlayerUniformSelectorContractTest extends TestCase
         self::assertStringContainsString(':team-id="state.teamId"', $modal);
         self::assertStringContainsString('v-if="readOnly"', $editor);
         self::assertStringContainsString('v-else class="mskba-uniform-editor__controls"', $editor);
-        self::assertStringContainsString('Размеры', $editor);
+        self::assertStringNotContainsString('<dt>Размеры</dt>', $editor);
+        self::assertStringNotContainsString('mskba-uniform-editor__sizes', $editor);
+        self::assertStringNotContainsString('<dt>Логотип</dt>', $editor);
+        self::assertStringNotContainsString('mskba-uniform-editor__readonly-note', $editor);
         self::assertStringContainsString('Присваивается в составе команды', $editor);
         self::assertStringContainsString('!isTeamContext.value || assignedNumber.value !== null', $editor);
         self::assertStringContainsString('!isTeamContext', $editor);
