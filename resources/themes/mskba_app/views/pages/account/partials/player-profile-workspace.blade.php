@@ -29,6 +29,18 @@
         'knee' => ['name' => 'Наколенник', 'left' => 'knee_left', 'right' => 'knee_right'],
     ];
     $selectedEquipment = Appearance::normalizeAttributes((array) old('character.attributes', $character['attributes'] ?? []));
+    // Pre-compute the same initial figure geometry as updateFigure() in the browser.
+    // There must be no 74%-to-profile-height jump during JS bootstrap.
+    $initialBodyType = (string) old('body_type', $profile?->body_type?->value ?? 'normal');
+    $initialBmi = $weightValue / (($heightValue / 100) ** 2);
+    $initialBodyAdjustment = [
+        'slim' => -0.09, 'normal' => 0, 'athletic' => 0,
+        'muscular' => 0.12, 'stocky' => 0.15, 'large' => 0.20,
+    ][$initialBodyType] ?? 0;
+    $initialFigureWidth = min(1.4, max(0.78, 1 + ($initialBmi - 23) * 0.009 + $initialBodyAdjustment));
+    $initialFigureHeight = round($heightValue / 225 * 100, 4);
+    $initialAvatar = $playerInitialAvatar ?? null;
+    $defaultFigureSrc = asset('images/blank/avatar/body-'.$gender.'.webp');
 @endphp
 
 <div class="app-player-workspace" data-player-workspace>
@@ -55,9 +67,11 @@
         <div class="app-player-workspace__physical">
             <aside class="app-player-workspace__preview" aria-label="Предпросмотр персонажа" data-player-preview
                 data-gender="{{ $gender }}"
-                data-default-src="{{ asset('images/blank/avatar/body-'.$gender.'.webp') }}"
+                data-default-src="{{ $defaultFigureSrc }}"
+                data-initial-avatar-id="{{ $initialAvatar['generation_id'] ?? '' }}"
                 data-history-url="{{ route('account.player-profile.update') }}">
                 <div class="app-player-workspace__stage" data-player-stage
+                    style="--figure-height:{{ $initialFigureHeight }}%;--figure-width:{{ number_format($initialFigureWidth, 4, '.', '') }}"
                     role="img" aria-label="Изображение персонажа рядом со шкалой роста">
                     <div class="app-player-workspace__scale" aria-hidden="true">
                         @foreach([0,50,100,150,200,225] as $height)
@@ -71,10 +85,17 @@
                         </div>
                     </div>
                     <div class="app-player-workspace__figure">
-                        <img src="{{ asset('images/blank/avatar/body-'.$gender.'.webp') }}"
-                            alt="Внешний вид баскетболиста" data-player-figure>
+                        <img src="{{ $initialAvatar['image_url'] ?? $defaultFigureSrc }}"
+                            class="{{ $initialAvatar ? 'is-generated' : '' }}"
+                            alt="Внешний вид баскетболиста" data-player-figure
+                            decoding="async" fetchpriority="high">
                     </div>
                     <div class="app-player-workspace__floor" aria-hidden="true"></div>
+                    <div class="app-player-workspace__figure-loading" data-player-figure-loading
+                        role="status" aria-live="polite" @if(!$initialAvatar) hidden @endif>
+                        <span class="app-player-workspace__figure-spinner" aria-hidden="true"></span>
+                        <span>Загружаем аватар…</span>
+                    </div>
                 </div>
                 <div class="app-player-workspace__metrics" aria-live="polite">
                     <span class="app-player-workspace__gender-meta">
@@ -90,7 +111,7 @@
                     <h3 class="app-player-workspace__avatar-heading" data-player-avatar-heading hidden>Аватаров: <span data-player-avatar-count>0</span></h3>
                     <div class="app-player-workspace__avatar-rail mskba-scroll"
                         role="group" aria-label="Выбор аватара для предпросмотра" data-player-avatar-rail hidden></div>
-                    <p class="app-player-workspace__avatar-empty" data-player-avatar-empty>Сгенерированных аватаров пока нет.</p>
+                    <p class="app-player-workspace__avatar-empty" data-player-avatar-empty @if($initialAvatar) hidden @endif>Сгенерированных аватаров пока нет.</p>
                     <div class="app-player-workspace__avatar-actions" data-player-avatar-actions hidden>
                         <a href="#" class="app-player-workspace__avatar-primary-link" data-player-avatar-make-primary hidden>Сделать основным</a>
                         <span class="app-player-workspace__avatar-primary-label" data-player-avatar-primary-label hidden>Основной аватар</span>
