@@ -541,6 +541,9 @@ jobs:
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             # Staging FAQ defaults: idempotent, never overwrite editorial content.
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\FaqContentSeeder' --force --no-interaction
+            # A single reference-only draft for validating the shop in staging.
+            # Idempotent; no placeholder photos/prices, no production changes.
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\ShopOzonReferenceDemoSeeder' --force --no-interaction
             # Copy hashed assets first, then atomically publish the new Vite manifest.
             # Keep previous hashed assets, so in-flight browser requests remain valid.
             mkdir -p public/build
