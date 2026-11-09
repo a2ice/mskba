@@ -64,6 +64,16 @@ final readonly class GetBookingDetails
                 'amount_minor' => data_get($booking->quote_snapshot, 'pricing.amount_minor'),
                 'currency' => data_get($booking->quote_snapshot, 'pricing.currency'),
             ] : null,
+            // Same immutable amounts used by the payment attempt; never recalculate fees.
+            'pricing_breakdown' => $includeFinancial ? [
+                'provider_amount_minor' => data_get(
+                    $booking->quote_snapshot, 'pricing.commissions.provider_amount_minor',
+                    data_get($booking->quote_snapshot, 'pricing.amount_minor'),
+                ),
+                'portal_fee_minor' => data_get($booking->quote_snapshot, 'pricing.commissions.portal_fee_minor', 0),
+                'agent_fee_minor' => data_get($booking->quote_snapshot, 'pricing.commissions.agent_fee_minor', 0),
+                'total_minor' => data_get($booking->quote_snapshot, 'pricing.amount_minor'),
+            ] : null,
             'payment_state' => $includeFinancial ? $booking->payment_state->value : null,
             'payment_window_expires_at' => $includeFinancial ? $booking->payment_window_expires_at?->utc()->toIso8601String() : null,
             'payment_attempt' => ! $includeFinancial || $booking->paymentAttempt === null ? null : [
