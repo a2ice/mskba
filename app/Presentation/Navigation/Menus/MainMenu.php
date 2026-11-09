@@ -148,7 +148,7 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Магазин',
-                'url' => $this->routeUrl('/#shop'),
+                'url' => $this->routeUrl('shop.index'),
                 'active' => $this->isActiveRoute('shop, shop.*'),
                 'visible' => true,
             ],

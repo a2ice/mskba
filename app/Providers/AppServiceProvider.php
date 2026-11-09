@@ -14,21 +14,24 @@ use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Portal\Application\Services\SiteSummaryService;
 use App\Modules\Portal\Infrastructure\Observers\EventSiteSummaryObserver;
 use App\Modules\Portal\Infrastructure\Observers\UserSiteSummaryObserver;
+use App\Modules\Shop\Domain\Models\ShopCategory;
+use App\Modules\Shop\Domain\Models\ShopProduct;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Tournament\Infrastructure\Observers\TournamentEntryObserver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
-use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
 use App\Modules\Venue\Domain\Models\VenueScheduleExceptionInterval;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use App\Modules\Venue\Domain\Models\VenueTag;
 use App\Modules\Venue\Infrastructure\Observers\VenueSearchCacheObserver;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Presentation\Navigation\ConfigMenuResolver;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event as EventFacade;
 use Illuminate\Support\Facades\RateLimiter;
@@ -55,6 +58,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Shop tags use a stable morph alias, and this project enforces morph maps.
+        Relation::morphMap([
+            'shop_category' => ShopCategory::class,
+            'shop_product' => ShopProduct::class,
+        ]);
         // Applied per authenticated canonical user across ALL direct-message recipients.
         // Count attempts before dispatch so parallel requests cannot bypass the cap.
         RateLimiter::for('direct-messages', static fn (Request $request) => Limit::perSecond(3, 10)

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Backoffice\OpenApiDocumentController;
 use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminAcquisitionController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
@@ -8,8 +9,6 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminPageSeoController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminProfileChangeRequestsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
-use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
-use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
@@ -20,18 +19,27 @@ use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageC
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
+use App\Modules\Content\Application\Services\PageBuilderRenderer;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
+use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Content\Presentation\Http\PageBuilderController;
 use App\Modules\Content\Presentation\Http\PageBuilderScriptController;
-use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
+use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
+use App\Modules\Contract\Presentation\Http\Controllers\BackofficeContractVerificationController;
+use App\Modules\Contract\Presentation\Http\Controllers\ContractEvidenceController;
+use App\Modules\Contract\Presentation\Http\Controllers\ContractTemplateController;
+use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
 use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
+use App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController;
 use App\Modules\Finance\Presentation\Http\Controllers\AccountWalletController;
 use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBonusGrantController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
@@ -39,11 +47,6 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSea
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
-use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
-use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
-use App\Modules\Contract\Presentation\Http\Controllers\ContractTemplateController;
-use App\Modules\Contract\Presentation\Http\Controllers\ContractEvidenceController;
-use App\Modules\Contract\Presentation\Http\Controllers\BackofficeContractVerificationController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -53,25 +56,38 @@ use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountControlle
 use App\Modules\Identity\Presentation\Http\Controllers\ParticipantCatalogController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerCharacterFaceReferencePreviewController;
+use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
 use App\Modules\Identity\Presentation\Http\Controllers\ProfileChangeRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
-use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
-use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueManagementController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
+use App\Modules\Media\Presentation\Http\Controllers\EntityBannerController;
+use App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController;
+use App\Modules\Media\Presentation\Http\SiteMediaController;
+use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationRailController;
 use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
 use App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController;
+use App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController;
+use App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController;
 use App\Modules\Notification\Presentation\Http\Controllers\ProfileRequestThreadController;
+use App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueGroupOfferController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController;
+use App\Modules\Portal\Presentation\Http\Controllers\OperatorActivityHeartbeatController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Pricing\Presentation\Http\Controllers\AdminPricingController;
 use App\Modules\Rewards\Presentation\Http\Controllers\AdminRewardsController;
+use App\Modules\Shop\Presentation\Http\Controllers\ShopController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\AccountSportsSectionController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionCandidateController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionController;
@@ -80,7 +96,6 @@ use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionResourc
 use App\Modules\SportsSection\Presentation\Http\Controllers\TrainingSessionController;
 use App\Modules\Team\Presentation\Http\Controllers\AccountTeamsController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamController;
-use App\Modules\Uniform\Presentation\Http\Controllers\UniformDesignController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamHiringController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamInvitationController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamPermissionController;
@@ -100,14 +115,14 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchScheduli
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistrationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
+use App\Modules\Uniform\Presentation\Http\Controllers\UniformDesignController;
+use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginalController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
-use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
-use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueGroupOfferController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
-use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginalController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\BookingContributionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
@@ -115,18 +130,30 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventCont
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
-use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
+use App\Presentation\Theming\DesignThemePreviewController;
+use App\Presentation\Theming\DesignThemeScriptController;
+use App\Presentation\Theming\DesignThemeStylesheetController;
+use App\Presentation\Theming\DesignThemeUiKitController;
 use App\Presentation\Theming\ThemeResolver;
+use App\Presentation\Theming\UpdateDesignThemePreferenceController;
+use Filament\Http\Middleware\SetUpPanel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 $themeResolver = app(ThemeResolver::class);
 
 Route::get('/', function () use ($themeResolver) {
-    return app(PageBuilderController::class)->home(app(\App\Modules\Content\Application\Services\PageBuilderRenderer::class))
+    return app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
         ?? $themeResolver->page('welcome');
 })->name('welcome');
+
+// Catalog-only storefront. Product route precedes category route.
+Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/shop/p/{product:slug}', [ShopController::class, 'product'])->name('shop.product');
+Route::get('/shop/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 
 Route::get('/backoffice/venues/{venue}/photos/{photo}/original', BackofficeVenuePhotoOriginalController::class)
     ->middleware(['auth', 'throttle:60,1'])
@@ -179,16 +206,16 @@ Route::middleware('auth')->group(function (): void {
 
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 
-Route::get('/assets/design-themes/{theme}/{revision}.css', \App\Presentation\Theming\DesignThemeStylesheetController::class)
+Route::get('/assets/design-themes/{theme}/{revision}.css', DesignThemeStylesheetController::class)
     ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('revision', '[a-f0-9]{16}')
     ->name('design-themes.css');
-Route::get('/assets/design-themes/{theme}/{hash}.js', \App\Presentation\Theming\DesignThemeScriptController::class)
+Route::get('/assets/design-themes/{theme}/{hash}.js', DesignThemeScriptController::class)
     ->middleware('throttle:120,1')
     ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('hash', '[a-f0-9]{64}')
     ->name('design-themes.script');
-Route::get('/backoffice/design-themes/preview/{theme}', \App\Presentation\Theming\DesignThemePreviewController::class)
+Route::get('/backoffice/design-themes/preview/{theme}', DesignThemePreviewController::class)
     ->middleware('auth')->name('design-themes.preview');
-Route::get('/backoffice/design-themes/ui-kit/{theme}', \App\Presentation\Theming\DesignThemeUiKitController::class)
+Route::get('/backoffice/design-themes/ui-kit/{theme}', DesignThemeUiKitController::class)
     ->middleware(['auth', 'throttle:60,1'])->name('design-themes.ui-kit');
 
 Route::post('/site-summary/heartbeat', SiteSummaryController::class)
@@ -293,7 +320,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::prefix('backoffice/content')
-    ->middleware('auth', 'can:manage-content', \Filament\Http\Middleware\SetUpPanel::class.':backoffice')
+    ->middleware('auth', 'can:manage-content', SetUpPanel::class.':backoffice')
     ->group(function () {
         Route::get('/', [AdminContentController::class, 'index'])
             ->name('admin.content')
@@ -324,7 +351,7 @@ Route::prefix('backoffice/content')
             ->name('admin.content.images.destroy');
     });
 
-Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/admin/content/{path?}', function (\Illuminate\Http\Request $request) {
+Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/admin/content/{path?}', function (Request $request) {
     $path = substr($request->getPathInfo(), strlen('/admin/content'));
     $query = $request->getQueryString();
 
@@ -882,7 +909,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
         Route::post('/presence/heartbeat',
-            \App\Modules\Portal\Presentation\Http\Controllers\OperatorActivityHeartbeatController::class)
+            OperatorActivityHeartbeatController::class)
             ->middleware('throttle:20,1')->name('account.presence.heartbeat');
 
         Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
@@ -984,7 +1011,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/player/generations/{generation}/image', PlayerCharacterGenerationImageController::class)
             ->name('account.player-character.generations.image');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
-        Route::patch('/settings/appearance', \App\Presentation\Theming\UpdateDesignThemePreferenceController::class)
+        Route::patch('/settings/appearance', UpdateDesignThemePreferenceController::class)
             ->middleware('throttle:12,1')->name('account.settings.appearance.update');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
@@ -999,7 +1026,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
-        Route::get('/notifications/rail', \App\Modules\Notification\Presentation\Http\Controllers\AccountConversationRailController::class)->middleware('throttle:30,1')->name('account.notifications.rail');
+        Route::get('/notifications/rail', AccountConversationRailController::class)->middleware('throttle:30,1')->name('account.notifications.rail');
         Route::get('/notifications/direct/test/users', [DirectMessagesController::class, 'testCandidates'])->middleware('throttle:30,1')->name('account.notifications.direct.test.users');
         Route::get('/notifications/users/{user}/message-access', [DirectMessagesController::class, 'access'])
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
@@ -1016,15 +1043,15 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/notifications/threads/profile/{changeRequest}/remove', [ProfileRequestThreadController::class, 'remove'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.remove');
         Route::post('/notifications/threads/profile/{changeRequest}/messages', [ProfileRequestThreadController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.profile.messages');
         // Operator-service conversations are distinct from personal DMs.
-        Route::get('/notifications/threads/operator/{conversation}', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'show'])
+        Route::get('/notifications/threads/operator/{conversation}', [OperatorConversationsController::class, 'show'])
             ->name('account.notifications.threads.operator')->defaults('breadcrumb', 'Диалог с оператором');
-        Route::get('/notifications/threads/operator/{conversation}/history', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'history'])
+        Route::get('/notifications/threads/operator/{conversation}/history', [OperatorConversationsController::class, 'history'])
             ->middleware('throttle:60,1')->name('account.notifications.threads.operator.history');
-        Route::get('/notifications/threads/operator/{conversation}/state', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'state'])
+        Route::get('/notifications/threads/operator/{conversation}/state', [OperatorConversationsController::class, 'state'])
             ->middleware('throttle:30,1')->name('account.notifications.threads.operator.state');
-        Route::patch('/notifications/threads/operator/{conversation}/read', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'read'])
+        Route::patch('/notifications/threads/operator/{conversation}/read', [OperatorConversationsController::class, 'read'])
             ->name('account.notifications.threads.operator.read');
-        Route::post('/notifications/threads/operator/{conversation}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController::class, 'send'])
+        Route::post('/notifications/threads/operator/{conversation}/messages', [OperatorConversationsController::class, 'send'])
             ->middleware('throttle:direct-messages')->name('account.notifications.threads.operator.messages');
         Route::get('/notifications/threads/direct/{conversation}', [DirectMessagesController::class, 'show'])
             ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
@@ -1040,25 +1067,25 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
         Route::patch('/notifications/threads/team/{joinRequest}/read', [AccountConversationsController::class, 'readTeam'])
             ->name('account.notifications.threads.team.read');
-        Route::get('/notifications/support/start', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'start'])->name('account.notifications.support.start');
-        Route::post('/notifications/support', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'store'])->middleware('throttle:5,1')->name('account.notifications.support.store');
-        Route::get('/notifications/threads/support/{ticket}', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'show'])->name('account.notifications.threads.support')->defaults('breadcrumb', 'Техподдержка');
-        Route::get('/notifications/threads/support/{ticket}/history', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.support.history');
-        Route::get('/notifications/threads/support/{ticket}/state', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'state'])->middleware('throttle:30,1')->name('account.notifications.threads.support.state');
-        Route::patch('/notifications/threads/support/{ticket}/read', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'read'])->name('account.notifications.threads.support.read');
-        Route::post('/notifications/threads/support/{ticket}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.support.messages');
-        Route::post('/notifications/threads/support/{ticket}/claim', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.support.claim');
-        Route::post('/notifications/threads/support/{ticket}/transfer', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.support.transfer');
-        Route::post('/notifications/threads/support/{ticket}/close', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'close'])->middleware('throttle:10,1')->name('account.notifications.threads.support.close');
-        Route::post('/notifications/threads/support/{ticket}/reopen', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'reopen'])->middleware('throttle:10,1')->name('account.notifications.threads.support.reopen');
+        Route::get('/notifications/support/start', [SupportTicketsController::class, 'start'])->name('account.notifications.support.start');
+        Route::post('/notifications/support', [SupportTicketsController::class, 'store'])->middleware('throttle:5,1')->name('account.notifications.support.store');
+        Route::get('/notifications/threads/support/{ticket}', [SupportTicketsController::class, 'show'])->name('account.notifications.threads.support')->defaults('breadcrumb', 'Техподдержка');
+        Route::get('/notifications/threads/support/{ticket}/history', [SupportTicketsController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.support.history');
+        Route::get('/notifications/threads/support/{ticket}/state', [SupportTicketsController::class, 'state'])->middleware('throttle:30,1')->name('account.notifications.threads.support.state');
+        Route::patch('/notifications/threads/support/{ticket}/read', [SupportTicketsController::class, 'read'])->name('account.notifications.threads.support.read');
+        Route::post('/notifications/threads/support/{ticket}/messages', [SupportTicketsController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.support.messages');
+        Route::post('/notifications/threads/support/{ticket}/claim', [SupportTicketsController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.support.claim');
+        Route::post('/notifications/threads/support/{ticket}/transfer', [SupportTicketsController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.support.transfer');
+        Route::post('/notifications/threads/support/{ticket}/close', [SupportTicketsController::class, 'close'])->middleware('throttle:10,1')->name('account.notifications.threads.support.close');
+        Route::post('/notifications/threads/support/{ticket}/reopen', [SupportTicketsController::class, 'reopen'])->middleware('throttle:10,1')->name('account.notifications.threads.support.reopen');
         Route::get('/notifications/threads/system/history', [AccountConversationsController::class, 'historySystem'])->middleware('throttle:60,1')->name('account.notifications.threads.system.history');
         Route::patch('/notifications/threads/system/read', [AccountConversationsController::class, 'readSystem'])
             ->name('account.notifications.threads.system.read');
         Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])
             ->name('account.notifications.threads.system')->defaults('breadcrumb', 'Система MSKBA');
-        Route::get('/notifications/popover/notice/{id}', [\App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class, 'notice'])
+        Route::get('/notifications/popover/notice/{id}', [NotificationPopoverController::class, 'notice'])
             ->whereNumber('id')->middleware('throttle:20,1')->name('account.notifications.popover.notice');
-        Route::get('/notifications/popover/{kind}/{id}', \App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController::class)
+        Route::get('/notifications/popover/{kind}/{id}', NotificationPopoverController::class)
             ->where('kind', 'support|direct|operator')->whereNumber('id')
             ->middleware('throttle:30,1')->name('account.notifications.popover');
         Route::get('/notifications/new', [AccountController::class, 'newNotifications'])
@@ -1150,7 +1177,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.venues.group-offers.store');
         Route::post('/venues/{venue}/group-offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
             ->middleware('throttle:20,1')->whereNumber('venue')->whereNumber('offer')
-            ->where('action','publish|pause|revoke')->name('account.venues.group-offers.transition');
+            ->where('action', 'publish|pause|revoke')->name('account.venues.group-offers.transition');
         // Backwards-compatible alias for saved links; only /contracts/venues is canonical.
         Route::get('/venues', fn () => redirect()->route('account.contracts.venues', request()->query(), 302))
             ->name('account.venues')
@@ -1199,7 +1226,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/venues/{alias}/conditions', [VenueConditionsController::class, 'edit'])->name('account.venues.conditions.edit')->defaults('breadcrumb', 'Условия');
         Route::put('/venues/{alias}/conditions', [VenueConditionsController::class, 'update'])->name('account.venues.conditions.update');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
-        Route::put('/venues/{alias}/metro', [\App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController::class, 'update'])
+        Route::put('/venues/{alias}/metro', [VenueMetroStationController::class, 'update'])
             ->name('account.venues.metro.update');
         Route::get('/venues/{alias}/status', [VenueController::class, 'status'])
             ->name('account.venues.status')
@@ -1228,23 +1255,24 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 });
 
 // Stable public image identity; the actual blob changes without editing Page Builder links.
-Route::get('/media/site/{uuid}', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'show'])
+Route::get('/media/site/{uuid}', [SiteMediaController::class, 'show'])
     ->whereUuid('uuid')->name('site-media.show');
-Route::get('/media/site/{uuid}/lqip', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'lqip'])
+Route::get('/media/site/{uuid}/lqip', [SiteMediaController::class, 'lqip'])
     ->whereUuid('uuid')->name('site-media.lqip');
-Route::get('/backoffice/site-media/{uuid}/previous', [\App\Modules\Media\Presentation\Http\SiteMediaController::class, 'previous'])
+Route::get('/backoffice/site-media/{uuid}/previous', [SiteMediaController::class, 'previous'])
     ->middleware('auth:web')->whereUuid('uuid')->name('site-media.previous');
 
 // OpenAPI source is available only to confirmed, permitted Filament developers.
 // Unlike /api/v1/*, this is NOT a public API route.
 Route::get('/backoffice/rest-api/openapi.json',
-    \App\Http\Controllers\Backoffice\OpenApiDocumentController::class)
+    OpenApiDocumentController::class)
     ->middleware('auth:web')->name('backoffice.rest-api.openapi');
 
 // MSKBA App account page. Existing legacy account routes remain unchanged.
-Route::get('/account/subscriptions', function (\App\Presentation\Theming\ThemeResolver $themes) {
+Route::get('/account/subscriptions', function (ThemeResolver $themes) {
     abort_unless($themes->active() === 'mskba_app', 404);
-    return \App\Presentation\Theming\ThemeResolver::page('account.play-interests', [
+
+    return ThemeResolver::page('account.play-interests', [
         'breadcrumbs' => [
             ['label' => 'Аккаунт', 'url' => route('account')],
             ['label' => 'Мои подписки', 'url' => null],
@@ -1257,27 +1285,28 @@ Route::get('/account/play-interests', fn () => redirect()->route('play-intents.m
 
 // Polymorphic favorites: guest cookie plus authenticated account, with reversible trash.
 Route::get('/favorites/status',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'status'])
+    [FavoritesController::class, 'status'])
     ->middleware('throttle:60,1')->name('favorites.status');
 Route::get('/favorites/venue-statuses',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'venueStatuses'])
+    [FavoritesController::class, 'venueStatuses'])
     ->middleware('throttle:60,1')->name('favorites.venue-statuses');
 Route::post('/favorites/toggle',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'toggle'])
+    [FavoritesController::class, 'toggle'])
     ->middleware('throttle:30,1')->name('favorites.toggle');
 Route::post('/favorites/preferences',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'updatePreferences'])
+    [FavoritesController::class, 'updatePreferences'])
     ->middleware('throttle:30,1')->name('favorites.preferences');
 Route::get('/account/favorites/items',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'index'])
+    [FavoritesController::class, 'index'])
     ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.items');
 Route::get('/account/favorites/count',
-    [\App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController::class, 'count'])
+    [FavoritesController::class, 'count'])
     ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.count');
 
-Route::get('/account/favorites', function (\App\Presentation\Theming\ThemeResolver $themes) {
+Route::get('/account/favorites', function (ThemeResolver $themes) {
     abort_unless($themes->active() === 'mskba_app', 404);
-    return \App\Presentation\Theming\ThemeResolver::page('account.favorites', [
+
+    return ThemeResolver::page('account.favorites', [
         'breadcrumbs' => [
             ['label' => 'Аккаунт', 'url' => route('account')],
             ['label' => 'Избранное', 'url' => null],
@@ -1288,19 +1317,19 @@ Route::get('/account/favorites', function (\App\Presentation\Theming\ThemeResolv
 // Task 286: JSON contract consumed by the venue and account UI. No extra public data.
 // Keep this outside legacy theme templates and behind ordinary web CSRF/session auth.
 Route::get('/play-intents/amenities',
-    [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController::class, 'amenities'])
+    [PlayIntentController::class, 'amenities'])
     ->middleware('throttle:60,1')->name('play-intents.amenities');
 
 Route::get('/account/subscription-channels',
-    [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'availability'])
+    [VenueSubscriptionController::class, 'availability'])
     ->middleware(['auth:web', 'throttle:30,1'])->name('subscriptions.channels');
 Route::patch('/account/venue-subscriptions/{venueSubscription}',
-    [\App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController::class, 'update'])
+    [VenueSubscriptionController::class, 'update'])
     ->middleware(['auth:web', 'throttle:30,1'])->whereNumber('venueSubscription')
     ->name('venue-subscriptions.update');
 
 Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])->group(function (): void {
-    $controller = \App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController::class;
+    $controller = PlayIntentController::class;
     Route::get('/', [$controller, 'index'])->name('play-intents.index');
     Route::post('/', [$controller, 'store'])->name('play-intents.store');
     Route::put('/{playIntent}', [$controller, 'update'])->whereNumber('playIntent')->name('play-intents.update');
@@ -1322,28 +1351,29 @@ Route::middleware('auth:web')
     ->prefix('entity-banners/{context}/{type}/{id}')
     ->where(['context' => 'account|backoffice', 'type' => 'league|season|tournament|team|venue|user', 'id' => '[0-9]+'])
     ->group(function (): void {
-        Route::get('/source', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'source'])
+        Route::get('/source', [EntityBannerController::class, 'source'])
             ->name('entity-banners.source');
-        Route::post('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'update'])
+        Route::post('/', [EntityBannerController::class, 'update'])
             ->middleware('throttle:10,1')->name('entity-banners.update');
-        Route::delete('/', [\App\Modules\Media\Presentation\Http\Controllers\EntityBannerController::class, 'destroy'])
+        Route::delete('/', [EntityBannerController::class, 'destroy'])
             ->middleware('throttle:10,1')->name('entity-banners.destroy');
     });
 
 Route::middleware('auth:web')->group(function (): void {
     Route::get('/account/leagues/{league}/banner',
-        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'league'])
+        [LeagueBannerManagementController::class, 'league'])
         ->whereNumber('league')->name('account.leagues.banner');
     Route::get('/account/leagues/{league}/seasons/{season}/banner',
-        [\App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController::class, 'season'])
+        [LeagueBannerManagementController::class, 'season'])
         ->whereNumber('league')->whereNumber('season')->name('account.leagues.seasons.banner');
 });
 
 // Only run after ALL explicit routes (including routes in other files).
 // Laravel prioritizes fallback routes after normal matching.
-Route::fallback(function (\Illuminate\Http\Request $request, \App\Modules\Content\Application\Services\PageBuilderRenderer $renderer) {
+Route::fallback(function (Request $request, PageBuilderRenderer $renderer) {
     abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
     $slug = $request->path();
     abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
+
     return app(PageBuilderController::class)->dynamic($slug, $renderer);
 })->name('page-builder.dynamic');
