@@ -28,6 +28,7 @@ use App\Modules\Identity\Application\Services\AccountCheckForPresentationService
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
+use App\Modules\Identity\Application\Services\PlayerCharacterInitialRenderService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
@@ -738,7 +739,10 @@ class AccountController extends Controller
             && app(ThemeResolver::class)->active() === 'mskba_app') {
             $canonical = $user->canonical()->loadMissing('profile');
             $requests = ProfileChangeRequest::query()->where('user_id', $canonical->id);
+            $initial = app(PlayerCharacterInitialRenderService::class);
             $personalData = [
+                'playerFaceReferences' => $initial->faceReferences($canonical),
+                'playerInitialAvatar' => $initial->initialAvatar($canonical),
                 'personalProfile' => $canonical->profile,
                 'profileConfirmed' => $canonical->isConfirmed(),
                 'genders' => UserGenderEnum::cases(),

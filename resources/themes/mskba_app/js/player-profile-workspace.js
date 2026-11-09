@@ -167,7 +167,37 @@ if (workspace) {
 
     const feedback = workspace.querySelector('[data-player-generation-status]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    let lastImage = '';
+
+    // The server renders the real first frame: either the correctly scaled
+    // silhouette or the primary generated avatar. Never show an interim sprite.
+    const figureLoading = workspace.querySelector('[data-player-figure-loading]');
+    const hasInitialAvatar = Boolean(preview?.dataset.initialAvatarId);
+    let lastImage = hasInitialAvatar ? figure?.src || '' : '';
+    let figureRequest = 0;
+    const setFigureLoading = loading => {
+        if (figureLoading) figureLoading.hidden = !loading;
+        stage?.classList.toggle('is-figure-loading', loading);
+    };
+    if (figure && hasInitialAvatar) {
+        const settleInitial = () => setFigureLoading(false);
+        const handleInitialError = () => {
+            // Preserve a usable first frame if an old generation file has gone missing.
+            // Keep the layer visible until the fallback silhouette has loaded too.
+            lastImage = '';
+            figure.classList.remove('is-generated');
+            figure.addEventListener('load', settleInitial, {once: true});
+            figure.addEventListener('error', settleInitial, {once: true});
+            figure.src = preview.dataset.defaultSrc;
+            if (figure.complete && figure.naturalWidth > 0) settleInitial();
+        };
+        if (figure.complete) {
+            if (figure.naturalWidth > 0) settleInitial();
+            else handleInitialError();
+        } else {
+            figure.addEventListener('load', settleInitial, {once: true});
+            figure.addEventListener('error', handleInitialError, {once: true});
+        }
+    }
 
     workspace.querySelectorAll('[data-player-skill]').forEach(slider => {
         const output = slider.parentElement?.querySelector('output');
@@ -259,14 +289,43 @@ if (workspace) {
         feedback.textContent = text;
         feedback.classList.toggle('is-error', error);
     };
-    const setImage = url => {
-        if (!url || !figure) return;
-        const target = new URL(url, location.origin);
-        if (target.origin !== location.origin) return;
-        lastImage = target.href;
-        figure.src = lastImage;
-        figure.classList.add('is-generated');
+    const setImage = (url, allowData = false) => {
+        if (!url || !figure) return Promise.resolve(false);
+        let target;
+        try {
+            target = new URL(url, location.origin);
+        } catch {
+            return Promise.resolve(false);
+        }
+        if (target.origin !== location.origin &&
+            !(allowData && /^data:image\/(?:png|jpeg|webp);base64,/i.test(url))) {
+            return Promise.resolve(false);
+        }
+        if (lastImage === target.href) return Promise.resolve(true);
 
+        const requestId = ++figureRequest;
+        setFigureLoading(true);
+        // Decode off-screen first so a clicked avatar never replaces the stage
+        // with a blank/broken image while its private endpoint is loading.
+        return new Promise(resolve => {
+            const image = new Image();
+            image.onload = () => {
+                if (requestId !== figureRequest) return resolve(false);
+                lastImage = target.href;
+                figure.src = target.href;
+                figure.classList.add('is-generated');
+                setFigureLoading(false);
+                resolve(true);
+            };
+            image.onerror = () => {
+                if (requestId === figureRequest) {
+                    setFigureLoading(false);
+                    avatarStatus('Не удалось загрузить изображение аватара.', true);
+                }
+                resolve(false);
+            };
+            image.src = target.href;
+        });
     };
     const readJson = async response => {
         const data = await response.json().catch(() => null);
@@ -482,7 +541,7 @@ if (workspace) {
                 throw failure;
             }
             if (data.status === 'completed' && data.image_url) {
-                setImage(data.image_url);
+                await setImage(data.image_url);
                 let selectedAsPrimary = false;
                 try {
                     await jsonMutation({mutation:'generation_primary',generation_id:id});
@@ -490,8 +549,7 @@ if (workspace) {
                 } catch { /* Avatar is ready even if making it primary failed. */ }
                 selectedAvatarId = id;
                 await showExisting({generation_id:id, image_url:data.image_url});
-                // A history-request error must not overwrite the verified result.
-                setImage(data.image_url);
+                // History refresh does not overwrite the decoded image with an interim sprite.
                 workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
                 message(selectedAsPrimary
                     ? 'Готово! Аватар создан и установлен как основной.'
@@ -628,15 +686,12 @@ if (workspace) {
                 // zero-balance warning until the generation has actually settled.
                 terminalResultReceived = await pollGeneration(result.status_url,result.generation_id);
             } else if (result.image_data_url?.startsWith('data:image/')) {
-                figure.src = result.image_data_url;
-                figure.classList.add('is-generated');
+                await setImage(result.image_data_url, true);
                 if (result.generation_id) {
                     selectedAvatarId = result.generation_id;
                     await showExisting({generation_id:result.generation_id});
-                    figure.src = result.image_data_url;
                 } else {
                     await showExisting();
-                    figure.src = result.image_data_url;
                 }
                 message('Готово! Аватар создан.');
                 workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));

@@ -9,6 +9,7 @@ use App\Modules\Ai\Domain\Exceptions\AiServiceException;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\UseCases\GeneratePlayerCharacterTwoDimensionalHandler;
+use App\Modules\Identity\Application\Services\PlayerCharacterInitialRenderService;
 use App\Modules\Identity\Application\UseCases\StorePlayerCharacterFaceReferenceHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerCharacterRenderModeHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerProfileHandler;
@@ -246,45 +247,10 @@ final class UpdatePlayerProfileController extends Controller
             ->exists();
     }
 
-    /**
-     * Stored face references and whether exactly these media were included
-     * in a successfully completed generation (not merely uploaded).
-     *
-     * @return array<string, array{id: int, url: string, verified: bool}>
-     */
+    /** @return array<string, array{id: int, url: string, verified: bool}> */
     private function faceReferenceState(User $user): array
     {
-        $profile = $user->profile;
-        if ($profile === null) {
-            return [];
-        }
-
-        $references = $profile->media()
-            ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
-            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
-            ->latest('id')
-            ->get()
-            ->unique('collection');
-
-        $result = [];
-        foreach ($references as $reference) {
-            $slot = PlayerCharacterFaceReferenceOptions::slotForCollection($reference->collection);
-            if ($slot === null) {
-                continue;
-            }
-            $verified = PlayerCharacterGeneration::query()
-                ->whereIn('user_id', $user->identityIds())
-                ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
-                ->whereJsonContains('reference_media_ids->'.$slot, (int) $reference->id)
-                ->exists();
-            $result[$slot] = [
-                'id' => (int) $reference->id,
-                'url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$reference->id,
-                'verified' => $verified,
-            ];
-        }
-
-        return $result;
+        return app(PlayerCharacterInitialRenderService::class)->faceReferences($user);
     }
 
     private function generationQuote(

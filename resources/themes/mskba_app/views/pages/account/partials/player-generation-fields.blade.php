@@ -4,20 +4,25 @@
         <p>Загрузите анфас и хотя бы один профиль — слева или справа. Фото сохраняются и могут быть заменены или удалены.</p>
         <div class="app-player-workspace__face-uploads">
             @foreach(['front' => 'Анфас', 'left' => 'Слева', 'right' => 'Справа'] as $slot => $label)
-                <div class="app-player-workspace__face-upload" data-face-upload="{{ $slot }}">
+                @php
+                    $savedFace = ($playerFaceReferences ?? [])[$slot] ?? null;
+                    $placeholderFace = asset('images/blank/avatar/'.$slot.'-'.$gender.'.png');
+                @endphp
+                <div class="app-player-workspace__face-upload {{ $savedFace ? 'has-file' : '' }} {{ !empty($savedFace['verified']) ? 'is-verified' : '' }}"
+                    data-face-upload="{{ $slot }}">
                     <label class="app-player-workspace__face-select">
                         <input type="file" accept="image/jpeg,image/png,image/webp" data-player-face-slot="{{ $slot }}" aria-label="Загрузить или заменить фото: {{ $label }}">
                         <span class="app-player-workspace__face-icon">
-                            <img src="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
-                                data-face-photo data-face-placeholder="{{ asset('images/blank/avatar/'.$slot.'-'.$gender.'.png') }}"
+                            <img src="{{ $savedFace['url'] ?? $placeholderFace }}"
+                                data-face-photo data-face-placeholder="{{ $placeholderFace }}"
                                 alt="" width="94" height="94" decoding="async">
                             <span class="app-player-workspace__face-tick" aria-label="Фотография использована в успешной генерации">✓</span>
                         </span>
                         <span>{{ $label }}</span>
-                        <small data-face-filename>Добавить фото</small>
+                        <small data-face-filename>{{ $savedFace ? 'Заменить фото' : 'Добавить фото' }}</small>
                     </label>
                     <button type="button" class="app-player-workspace__face-delete"
-                        data-face-delete aria-label="Удалить фото {{ $label }}" hidden>Удалить фото</button>
+                        data-face-delete aria-label="Удалить фото {{ $label }}" @if(!$savedFace) hidden @endif>Удалить фото</button>
                     <small class="app-player-workspace__face-feedback" data-face-feedback role="status" aria-live="polite" hidden></small>
                 </div>
             @endforeach

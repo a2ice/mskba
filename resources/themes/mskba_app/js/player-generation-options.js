@@ -142,9 +142,8 @@ if (workspace) {
     workspace.addEventListener('mskba:avatar-generated', () => {
         void refreshFaceReferences().catch(() => {});
     });
-    void refreshFaceReferences().catch(() => {
-        faceFeedback(null, 'Не удалось загрузить сохранённые фотографии. Обновите страницу.', true);
-    });
+    // First paint already includes private saved references and verified states
+    // from Blade. Re-fetch only after mutations/generation, not on every reload.
 
     // The selected uniform is the single source for branding and avatar generation.
     setupPlayerUniformSelection(workspace);
