@@ -346,6 +346,10 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         $uniform = match ($uniformSource) {
             'mine' => [
                 'source' => 'mine',
+                // Snapshot the selected design identity so signed runner downloads
+                // can resolve its logo without consulting obsolete profile collections.
+                'design_id' => $uniformDesign->id,
+                'logo_team_id' => $uniformDesign->logo_team_id,
                 'name' => $uniformDesign->name,
                 'primary_color' => $uniformDesign->primary_color,
                 'secondary_color' => $uniformDesign->secondary_color,
@@ -382,6 +386,8 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ],
             'team' => [
                 'source' => $teamUniform !== null || $hasTeamKit ? 'team' : 'neutral',
+                'design_id' => $teamUniform?->id,
+                'logo_team_id' => $teamUniform?->logo_team_id,
                 'team_name' => $team->name,
                 'name' => $teamUniform?->name,
                 'primary_color' => $teamUniform?->primary_color ?? ($hasTeamKit ? $primaryTeamColor : null),
