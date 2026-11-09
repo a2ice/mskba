@@ -64,40 +64,49 @@ final class ShopCatalogService
         return array_keys($ids);
     }
 
-    /** Include attributes defined at ancestors of every selected category. */
+    /** Legacy fallback: only attributes attached DIRECTLY to these categories. No parent inheritance. */
     public function attributesForCategoryIds(array $categoryIds): EloquentCollection
     {
-        $categories = ShopCategory::query()->get(['id', 'parent_id'])->keyBy('id');
-        $allIds = [];
-        foreach ($categoryIds as $categoryId) {
-            $id = (int) $categoryId;
-            $seen = [];
-            while ($id > 0 && ! isset($seen[$id])) {
-                $seen[$id] = true;
-                $category = $categories->get($id);
-                if ($category === null) {
-                    break;
-                }
-                $allIds[$id] = true;
-                $id = (int) $category->parent_id;
-            }
-        }
-
-        if ($allIds === []) {
+        if ($categoryIds === []) {
             return new EloquentCollection;
         }
 
         return ShopAttribute::query()->whereHas('categories', fn ($query) => $query
-            ->whereIn('shop_categories.id', array_keys($allIds)))
+            ->whereIn('shop_categories.id', array_map('intval', $categoryIds)))
             ->orderBy('sort_order')->orderBy('name')->get();
     }
 
-    public function characteristicRows(array $categoryIds, array $currentRows = []): array
+    public function attributesForProductType(?int $typeId): EloquentCollection
+    {
+        if (! $typeId) {
+            return new EloquentCollection;
+        }
+
+        return ShopAttribute::query()->whereHas('productTypes', fn ($query) => $query
+            ->where('shop_product_types.id', $typeId))
+            ->orderBy('sort_order')->orderBy('name')->get();
+    }
+
+    public function attributesForProduct(ShopProduct $product): EloquentCollection
+    {
+        if ($product->product_type_id !== null) {
+            return $this->attributesForProductType((int) $product->product_type_id);
+        }
+
+        // Compatibility for catalog items made before product types were introduced.
+        return $this->attributesForCategoryIds($product->categories()->pluck('shop_categories.id')->all());
+    }
+
+    public function characteristicRows(array $categoryIds, array $currentRows = [], ?int $typeId = null): array
     {
         $values = collect($currentRows)->filter(fn ($row) => is_array($row) && isset($row['attribute_id']))
             ->mapWithKeys(fn ($row): array => [(int) $row['attribute_id'] => (string) ($row['value'] ?? '')]);
 
-        return $this->attributesForCategoryIds($categoryIds)->map(
+        $attributes = $typeId !== null
+            ? $this->attributesForProductType($typeId)
+            : $this->attributesForCategoryIds($categoryIds);
+
+        return $attributes->map(
             fn (ShopAttribute $attribute): array => [
                 'attribute_id' => $attribute->id,
                 'value' => $values->get($attribute->id, ''),
@@ -105,11 +114,10 @@ final class ShopCatalogService
         )->all();
     }
 
-    /** Save values only for attributes inherited from the product's actual categories. */
+    /** Save values only for the selected type (or directly assigned legacy category fields). */
     public function syncAttributes(ShopProduct $product, array $rows): void
     {
-        $allowed = $this->attributesForCategoryIds($product->categories()->pluck('shop_categories.id')->all())
-            ->keyBy('id');
+        $allowed = $this->attributesForProduct($product)->keyBy('id');
         $submitted = [];
         foreach ($rows as $row) {
             if (! is_array($row) || ! isset($row['attribute_id'])) {

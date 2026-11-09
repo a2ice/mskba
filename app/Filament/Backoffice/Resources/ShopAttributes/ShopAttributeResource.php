@@ -65,7 +65,8 @@ final class ShopAttributeResource extends Resource
     public static function canDelete(Model $record): bool
     {
         return self::canViewAny() && $record instanceof ShopAttribute
-            && ! $record->categories()->exists() && ! $record->productValues()->exists();
+            && ! $record->categories()->exists() && ! $record->productTypes()->exists()
+            && ! $record->productValues()->exists();
     }
 
     public static function form(Schema $schema): Schema
@@ -97,7 +98,7 @@ final class ShopAttributeResource extends Resource
             TextColumn::make('code')->label('Код')->searchable(),
             TextColumn::make('type')->label('Тип'),
             TextColumn::make('unit')->label('Ед. изм.'),
-            TextColumn::make('categories_count')->counts('categories')->label('Категорий'),
+            TextColumn::make('product_types_count')->counts('productTypes')->label('Типов товаров'),
         ])->recordActions([EditAction::make(), DeleteAction::make()]);
     }
 

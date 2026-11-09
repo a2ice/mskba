@@ -8,6 +8,7 @@
     $sidebarNavigationTitle = $sidebarNavigationTitle ?? $title;
     $sidebarPreNavigationTitle = $sidebarPreNavigationTitle ?? null;
     $sidebarFiltersTitle = $sidebarFiltersTitle ?? 'Фильтры';
+    $filtersInitiallyOpen = (bool) ($filtersInitiallyOpen ?? false);
     $hasContextSubmenu = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve() !== [];
 @endphp
 
@@ -85,11 +86,11 @@
                             </div>
                         </section>
 
-                        <section class="default-category-sidebar-accordion__item" data-default-category-sidebar-item>
+                        <section @class(['default-category-sidebar-accordion__item', 'is-open' => $filtersInitiallyOpen]) data-default-category-sidebar-item>
                             <button
                                 class="default-category-sidebar-accordion__trigger"
                                 type="button"
-                                aria-expanded="false"
+                                aria-expanded="{{ $filtersInitiallyOpen ? 'true' : 'false' }}"
                                 aria-controls="{{ $categoryId }}-sidebar-filters"
                                 data-default-category-sidebar-trigger
                             >
@@ -100,7 +101,7 @@
                                 id="{{ $categoryId }}-sidebar-filters"
                                 class="default-category-sidebar-accordion__content"
                                 data-default-category-sidebar-content
-                                hidden
+                                @unless($filtersInitiallyOpen) hidden @endunless
                             >
                                 <div class="default-category__desktop-filters">
                                     @yield('category-filters-desktop')

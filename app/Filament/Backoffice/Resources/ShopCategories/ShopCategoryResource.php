@@ -5,8 +5,8 @@ namespace App\Filament\Backoffice\Resources\ShopCategories;
 use App\Filament\Backoffice\Resources\ShopCategories\Pages\CreateShopCategory;
 use App\Filament\Backoffice\Resources\ShopCategories\Pages\EditShopCategory;
 use App\Filament\Backoffice\Resources\ShopCategories\Pages\ListShopCategories;
-use App\Modules\Shop\Domain\Models\ShopAttribute;
 use App\Modules\Shop\Domain\Models\ShopCategory;
+use App\Modules\Shop\Domain\Models\ShopProductType;
 use App\Modules\Shop\Domain\Models\ShopTag;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -97,10 +97,10 @@ final class ShopCategoryResource extends Resource
                 Select::make('tag_ids')->label('Теги')->multiple()->searchable()->preload()
                     ->options(fn (): array => ShopTag::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->helperText('Новые теги добавляются в разделе «Магазин → Теги».'),
-                Select::make('attribute_ids')->label('Характеристики категории')->multiple()
-                    ->searchable()->preload()
-                    ->options(fn (): array => ShopAttribute::query()->orderBy('name')->pluck('name', 'id')->all())
-                    ->helperText('Товары унаследуют эти характеристики, включая характеристики родительских категорий.'),
+                Select::make('default_product_type_id')->label('Тип товара по умолчанию')
+                    ->searchable()->preload()->native(false)
+                    ->options(fn (): array => ShopProductType::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->helperText('Предлагается при создании товара в этой категории. Не наследуется дочерними категориями.'),
             ]),
             Section::make('Изображения')->schema([
                 FileUpload::make('images')->label('Галерея категории')->image()->multiple()
