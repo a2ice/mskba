@@ -182,10 +182,13 @@ if (workspace) {
         const settleInitial = () => setFigureLoading(false);
         const handleInitialError = () => {
             // Preserve a usable first frame if an old generation file has gone missing.
+            // Keep the layer visible until the fallback silhouette has loaded too.
             lastImage = '';
             figure.classList.remove('is-generated');
+            figure.addEventListener('load', settleInitial, {once: true});
+            figure.addEventListener('error', settleInitial, {once: true});
             figure.src = preview.dataset.defaultSrc;
-            settleInitial();
+            if (figure.complete && figure.naturalWidth > 0) settleInitial();
         };
         if (figure.complete) {
             if (figure.naturalWidth > 0) settleInitial();
