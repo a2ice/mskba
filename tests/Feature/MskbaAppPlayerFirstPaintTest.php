@@ -126,7 +126,7 @@ final class MskbaAppPlayerFirstPaintTest extends TestCase
         $this->assertStringContainsString('src="'.$imageUrl.'"', $html);
         $this->assertMatchesRegularExpression('/<img[^>]*class="is-generated"[^>]*data-player-figure/', $html);
         $this->assertStringContainsString('data-player-figure-loading', $html);
-        $this->assertStringContainsString('data-player-avatar-empty hidden', $html);
+        $this->assertMatchesRegularExpression('/data-player-avatar-empty\\s+hidden/', $html);
     }
 
     public function test_saved_face_reference_is_rendered_in_html_with_private_url_and_no_initial_ajax_needed(): void
@@ -165,7 +165,9 @@ final class MskbaAppPlayerFirstPaintTest extends TestCase
         $this->assertStringContainsString("new Image()", $js);
         $this->assertStringContainsString("data-player-figure-loading", $html);
         $this->assertStringContainsString('setFigureLoading(false)', $js);
-        $this->assertStringNotContainsString('void refreshFaceReferences().catch(() => {', $faces);
+        // A single refresh remains after successful generation; there is no initial fetch.
+        $this->assertSame(1, substr_count($faces, 'void refreshFaceReferences().catch(() => {});'));
+        $this->assertStringContainsString('First paint already includes private saved references', $faces);
         $this->assertStringContainsString('form.sizes', file_get_contents(resource_path('themes/mskba_app/js/uniforms/UniformWorkshop.vue')));
     }
 }
