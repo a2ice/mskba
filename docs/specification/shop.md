@@ -24,8 +24,12 @@
 - Public `ShopController` serves /shop, /shop/{category:slug}, /shop/p/{product:slug}.
   It checks published category ancestry and product publication; query filters
   use constrained inputs, relationship queries and pagination (10).
-- /shop reuses `layouts.default-category`, with filters initially expanded,
-  sticky sidebar/toolbar, mobile modal and cards/list controls. No checkout.
+- The storefront must exist in BOTH public themes: `mskba_dark` uses
+  `layouts.default-category`; `mskba_app` (active on dev) has dedicated
+  `pages.shop.index` and `pages.shop.product` with native app design tokens,
+  sticky sidebar/toolbar, mobile collapsible filters and cards/list controls.
+  Missing `mskba_app` views render a deceptive HTTP 200 `view_not_found`
+  placeholder, so themed feature tests verify the actual content. No checkout.
 - Main product images are files in Laravel `public` disk, referenced by paths.
   The demo fixture copies the provided screenshot crop there once.
 

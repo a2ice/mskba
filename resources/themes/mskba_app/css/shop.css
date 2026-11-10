@@ -1,0 +1,685 @@
+/* Catalog shop for the active MSKBA App theme. Uses the theme's design tokens. */
+.app-shop {
+    padding-top: 36px;
+    padding-bottom: 90px;
+}
+
+.app-shop__heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+.app-shop__heading h1 {
+    margin: 8px 0 10px;
+    font-size: clamp(32px, 4vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -.045em;
+    overflow-wrap: anywhere;
+}
+
+.app-shop__heading .muted {
+    font-size: 15px;
+}
+
+.app-shop__catalog-badge {
+    align-self: center;
+}
+
+.app-shop__layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+}
+
+.app-shop__sidebar {
+    position: sticky;
+    z-index: 8;
+    top: calc(var(--app-sticky-offset, 136px) + 15px);
+    max-height: calc(100dvh - var(--app-sticky-offset, 136px) - 30px);
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    transition: top 180ms ease, max-height 180ms ease;
+}
+
+.app-shop__sidebar h2,
+.app-shop__mobile-filters h2 {
+    font-size: 15px;
+    line-height: 1.4;
+    font-weight: 800;
+}
+
+.app-shop__sidebar-head,
+.app-shop__sidebar-label {
+    margin-bottom: 14px;
+    color: var(--accent);
+}
+
+.app-shop__sidebar-divider {
+    height: 1px;
+    margin: 18px 0;
+    background: var(--line);
+}
+
+.app-shop__categories {
+    display: grid;
+    gap: 5px;
+}
+
+.app-shop__categories a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    padding: 8px 10px 8px calc(10px + var(--depth, 0) * 14px);
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.app-shop__categories a:hover,
+.app-shop__categories a.is-active {
+    border-color: var(--control-line);
+    background: var(--surface-raised);
+    color: var(--text);
+}
+
+.app-shop__categories a.is-active {
+    border-color: var(--accent);
+}
+
+.app-shop__categories a > span:last-child {
+    color: var(--faint);
+    flex-shrink: 0;
+}
+
+.app-shop__filters {
+    display: grid;
+    gap: 15px;
+}
+
+.app-shop__filters label {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.app-shop__filters label > span,
+.app-shop__filters legend {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.app-shop__filters fieldset {
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+.app-shop__filters legend {
+    margin-bottom: 7px;
+}
+
+.app-shop__filters select,
+.app-shop__filters input {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    border: 1px solid var(--control-line);
+    border-radius: 10px;
+    padding: 9px 10px;
+    background: var(--field);
+    color: var(--text);
+    outline-offset: 2px;
+}
+
+.app-shop__filters select:focus-visible,
+.app-shop__filters input:focus-visible,
+.app-shop__search input:focus-visible {
+    outline: 2px solid var(--accent);
+}
+
+.app-shop__price-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.app-shop__filter-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.app-shop__filter-actions .button {
+    padding-inline: 8px;
+    min-height: 42px;
+}
+
+.app-shop__main {
+    min-width: 0;
+}
+
+.app-shop__toolbar {
+    position: sticky;
+    top: calc(var(--app-sticky-offset, 136px) + 12px);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 18px;
+    background: var(--surface);
+    transition: top 180ms ease;
+}
+
+.app-shop__search {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    gap: 8px;
+}
+
+.app-shop__search input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--control-line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--field);
+    color: var(--text);
+    font-size: 14px;
+}
+
+.app-shop__search .button {
+    min-width: 82px;
+}
+
+.app-shop__view-switch {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--field);
+}
+
+.app-shop__view-switch a {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: var(--muted);
+}
+
+.app-shop__view-switch a:hover,
+.app-shop__view-switch a.is-active {
+    background: var(--surface-raised);
+    color: var(--accent);
+}
+
+.app-shop__results-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.app-shop__clear-filters {
+    color: var(--accent);
+}
+
+.app-shop__products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px;
+}
+
+.app-shop__card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color 160ms;
+}
+
+.app-shop__card:hover {
+    border-color: var(--control-line);
+}
+
+.app-shop__card-photo {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #f7f7f7;
+}
+
+.app-shop__card-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 200ms;
+}
+
+.app-shop__card-photo:hover img {
+    transform: scale(1.035);
+}
+
+.app-shop__photo-empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    width: 100%;
+    background: #23272b;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.app-shop__card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 18px;
+}
+
+.app-shop__card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 12px;
+    color: var(--faint);
+}
+
+.app-shop__card-body h2 {
+    font-size: 18px;
+    line-height: 1.32;
+    font-weight: 800;
+}
+
+.app-shop__card-body h2 a:hover {
+    color: var(--accent);
+}
+
+.app-shop__card-price {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    margin-top: auto;
+}
+
+.app-shop__card-price strong {
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.app-shop__card-price del {
+    color: var(--faint);
+    font-size: 14px;
+}
+
+.app-shop__card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.app-shop__card-footer .button {
+    min-height: 38px;
+    padding: 8px 12px;
+}
+
+.app-shop__stock {
+    color: var(--warning);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.app-shop__stock.is-available {
+    color: var(--success);
+}
+
+.app-shop__products--list {
+    grid-template-columns: 1fr;
+}
+
+.app-shop__products--list .app-shop__card {
+    flex-direction: row;
+    min-height: 220px;
+}
+
+.app-shop__products--list .app-shop__card-photo {
+    width: min(32%, 220px);
+    flex: 0 0 min(32%, 220px);
+    aspect-ratio: auto;
+}
+
+.app-shop__empty {
+    display: grid;
+    justify-items: center;
+    grid-column: 1 / -1;
+    gap: 14px;
+    padding: 45px 24px;
+    text-align: center;
+}
+
+.app-shop__empty h2 {
+    font-size: 22px;
+}
+
+.app-shop__pagination {
+    margin-top: 25px;
+}
+
+.app-shop__mobile-filters {
+    display: none;
+}
+
+/* Product detail */
+.app-shop__product-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr);
+    align-items: start;
+    gap: 24px;
+}
+
+.app-shop__gallery-stage {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #f7f7f7;
+}
+
+.app-shop__gallery-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.app-shop__gallery-thumbs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.app-shop__gallery-thumbs a {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+
+.app-shop__gallery-thumbs img {
+    aspect-ratio: 1;
+    width: 100%;
+    object-fit: cover;
+}
+
+.app-shop__product-info {
+    display: grid;
+    gap: 20px;
+    padding: 28px;
+}
+
+.app-shop__product-info > .badge {
+    justify-self: start;
+}
+
+.app-shop__product-price {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+}
+
+.app-shop__product-price strong {
+    font-size: clamp(30px, 4vw, 42px);
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.app-shop__product-price del {
+    color: var(--faint);
+}
+
+.app-shop__quick-specs {
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.app-shop__quick-specs h2 {
+    margin-bottom: 10px;
+    font-size: 17px;
+}
+
+.app-shop__quick-specs dl,
+.app-shop__specs {
+    margin: 0;
+}
+
+.app-shop__quick-specs dl > div,
+.app-shop__specs > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+}
+
+.app-shop__quick-specs dt,
+.app-shop__specs dt {
+    color: var(--muted);
+}
+
+.app-shop__quick-specs dd,
+.app-shop__specs dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.app-shop__product-notice {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--field);
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.app-shop__product-section {
+    margin-top: 24px;
+    padding: 26px;
+}
+
+.app-shop__product-section h2 {
+    margin-bottom: 18px;
+    font-size: 22px;
+}
+
+.app-shop__description {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    color: var(--muted);
+    line-height: 1.7;
+}
+
+.app-shop__specs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 30px;
+}
+
+.app-shop__product-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.app-shop__product-tags a:hover {
+    color: var(--accent);
+}
+
+@media (max-width: 1050px) {
+    .app-shop__layout {
+        grid-template-columns: minmax(205px, 240px) minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .app-shop__sidebar {
+        padding: 14px;
+    }
+}
+
+@media (max-width: 850px) {
+    .app-shop__layout {
+        grid-template-columns: 1fr;
+    }
+
+    .app-shop__sidebar {
+        display: none;
+    }
+
+    .app-shop__mobile-filters {
+        display: block;
+        margin-bottom: 18px;
+        padding: 0;
+    }
+
+    .app-shop__mobile-filters summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 18px;
+        font-weight: 700;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .app-shop__mobile-filters summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .app-shop__mobile-filters summary .badge {
+        margin-left: auto;
+    }
+
+    .app-shop__mobile-filters[open] summary > svg {
+        transform: rotate(180deg);
+    }
+
+    .app-shop__mobile-filters-body {
+        display: grid;
+        gap: 14px;
+        padding: 0 18px 18px;
+    }
+
+    .app-shop__mobile-filters-body h2 {
+        color: var(--accent);
+        padding-top: 4px;
+    }
+
+    .app-shop__product-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 580px) {
+    .app-shop {
+        padding-top: 24px;
+        padding-bottom: 55px;
+    }
+
+    .app-shop__heading {
+        margin-bottom: 18px;
+    }
+
+    .app-shop__heading h1 {
+        font-size: 32px;
+    }
+
+    .app-shop__catalog-badge {
+        display: none;
+    }
+
+    .app-shop__toolbar {
+        position: static;
+        gap: 8px;
+        padding: 9px;
+        border-radius: 16px;
+    }
+
+    .app-shop__search .button {
+        min-width: 0;
+        padding: 9px 11px;
+    }
+
+    .app-shop__view-switch {
+        gap: 0;
+    }
+
+    .app-shop__view-switch a {
+        height: 34px;
+        width: 30px;
+    }
+
+    .app-shop__products {
+        gap: 10px;
+    }
+
+    .app-shop__card-body {
+        padding: 14px;
+    }
+
+    .app-shop__card-price strong {
+        font-size: 20px;
+    }
+
+    .app-shop__products--list .app-shop__card-photo {
+        width: 35%;
+        flex-basis: 35%;
+    }
+
+    .app-shop__product-info,
+    .app-shop__product-section {
+        padding: 18px;
+    }
+
+    .app-shop__specs {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-shop__sidebar,
+    .app-shop__toolbar,
+    .app-shop__card,
+    .app-shop__card-photo img {
+        transition: none;
+    }
+}
