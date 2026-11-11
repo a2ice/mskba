@@ -121,6 +121,18 @@ final class AccountDashboardService
             ]);
         }
 
+        // can_move protects the widget's actual grid slot, not merely its
+        // existence in the submitted list. Movable widgets can exchange only
+        // the remaining slots; even a forged HTTP request cannot shift a
+        // locked widget indirectly by moving another one across it.
+        foreach ($this->forUser($user) as $index => $widget) {
+            if (! $widget->can_move && $orderedIds[$index] !== (int) $widget->getKey()) {
+                throw ValidationException::withMessages([
+                    'widget_ids' => 'Нельзя менять положение виджета, закреплённого администратором.',
+                ]);
+            }
+        }
+
         $now = now();
         $rows = [];
         foreach ($orderedIds as $index => $id) {
