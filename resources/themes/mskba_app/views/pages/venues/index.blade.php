@@ -46,7 +46,6 @@
                 </label>
                 <div class="app-venues-catalog__filter-actions">
                     <button class="button primary" type="submit">Применить</button>
-                    <a href="{{ route('venues') }}" class="button secondary">Сбросить</a>
                 </div>
             </form>
         </aside>
