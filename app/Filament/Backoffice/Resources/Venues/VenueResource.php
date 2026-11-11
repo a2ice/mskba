@@ -42,6 +42,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
@@ -419,9 +420,13 @@ final class VenueResource extends Resource
         return [
             CourtsRelationManager::class,
             PricingRulesRelationManager::class,
-            VenueIntegrationsRelationManager::class,
-            VenueIntegrationSourcesRelationManager::class,
-            VenueIntegrationAuditRelationManager::class,
+            // A single first-level tab. EditVenue renders its three members
+            // as native Filament second-level tabs (like Users → Roles & Rights).
+            RelationGroup::make('Интеграции', [
+                VenueIntegrationsRelationManager::class,
+                VenueIntegrationSourcesRelationManager::class,
+                VenueIntegrationAuditRelationManager::class,
+            ])->icon('heroicon-o-arrow-path'),
             CommissionAgentsRelationManager::class,
             CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
