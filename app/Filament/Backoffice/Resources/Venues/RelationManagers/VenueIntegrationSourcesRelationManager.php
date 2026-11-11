@@ -185,7 +185,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                             compact('report', 'error'),
                         );
                     }),
-                Action::make('editIntegrationSource'->label('Изменить')
+                Action::make('editIntegrationSource')->label('Изменить')
                     ->icon('heroicon-o-pencil-square')
                     ->visible(fn (): bool => $this->canManage())
                     ->modalHeading('Настройки источника')
