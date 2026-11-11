@@ -1,7 +1,7 @@
 /* MSKBA Classic design-system foundation.
    Installed as the published CSS of the msKBA Classic DesignTheme.
    Every selector is scoped: never restyle court_day / arena_night. */
-html[data-design-theme="mskba_classic"] .mskba-page-builder {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) {
   --classic-control-height: 48px;
   --classic-control-radius: 12px;
   --classic-card-radius: 24px;
@@ -11,42 +11,42 @@ html[data-design-theme="mskba_classic"] .mskba-page-builder {
   font-size: 16px;
   line-height: 24px;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h1,h2,h3,h4,h5,h6) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h1,h2,h3,h4,h5,h6) {
   color: var(--text);
   font-family: var(--theme-heading-font-family, Inter, Arial, sans-serif);
   margin-block: 0;
   text-wrap: balance;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h1) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h1) {
   font-size: 40px; line-height: 44px; font-weight: 800; letter-spacing: -.035em;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h2) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h2) {
   font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -.025em;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h3) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h3) {
   font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -.015em;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h4) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h4) {
   font-size: 18px; line-height: 24px; font-weight: 700;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h5) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h5) {
   font-size: 16px; line-height: 24px; font-weight: 700;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h6) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h6) {
   font-size: 14px; line-height: 20px; font-weight: 700;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.eyebrow,[class$="__eyebrow"]) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.eyebrow,[class$="__eyebrow"]) {
   font-size: 12px; line-height: 16px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.field-group,.classic-field) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.field-group,.classic-field) {
   display: grid; gap: 8px; min-width: 0;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.field-group,.classic-field) > :where(label,.field-label) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.field-group,.classic-field) > :where(label,.field-label) {
   color: var(--text); font-size: 14px; line-height: 20px; font-weight: 600;
   text-transform: none;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]),select,textarea,.form-control,.form-select) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]),select,textarea,.form-control,.form-select) {
   min-width: 0; width: 100%; min-height: var(--classic-control-height);
   padding: 11px 14px; border: 1px solid var(--control-line);
   border-radius: var(--classic-control-radius);
@@ -55,55 +55,55 @@ html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input:not([ty
   outline: none;
   transition: border-color .16s ease-out, background-color .16s ease-out, box-shadow .16s ease-out;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select)::placeholder {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select)::placeholder {
   color: var(--muted); opacity: 1;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(textarea,textarea.form-control) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(textarea,textarea.form-control) {
   min-height: 112px; resize: vertical;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select):hover:not(:disabled) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):hover:not(:disabled) {
   border-color: var(--muted);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select):focus-visible,
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select):focus-within {
-  border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 3px;
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):focus-visible,
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select):focus-within {
+  border-color: var(--accent); outline: 2px solid var(--accent) !important; outline-offset: 3px !important;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select)[aria-invalid="true"] {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select)[aria-invalid="true"] {
   border-color: var(--danger);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select):disabled {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):disabled {
   background: var(--surface-raised); color: var(--muted);
   border-color: var(--line); cursor: not-allowed; opacity: .75;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.helper,.form-text,[data-field-helper]) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.helper,.form-text,[data-field-helper]) {
   font-size: 14px; line-height: 20px; color: var(--muted);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.error,[data-field-error]) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.error,[data-field-error]) {
   font-size: 14px; line-height: 20px; color: var(--danger);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.check-label,.classic-check-label) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.check-label,.classic-check-label) {
   display: inline-flex; align-items: center; min-height: 44px;
   gap: 12px; font-size: 14px; line-height: 20px; cursor: pointer;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input[type="checkbox"],input[type="radio"]) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input[type="checkbox"],input[type="radio"]) {
   flex: 0 0 20px; width: 20px; height: 20px; margin: 0;
   accent-color: var(--accent);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select,.select-control) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select,.select-control) {
   position: relative; display: block; width: 100%; min-width: 0;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select,.select-control) select {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select,.select-control) select {
   appearance: none; -webkit-appearance: none; padding-inline-end: 48px; cursor: pointer;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select,.select-control) > svg {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select,.select-control) > svg {
   position: absolute; top: 50%; inset-inline-end: 16px;
   width: 20px; height: 20px; transform: translateY(-50%);
   color: var(--muted); pointer-events: none;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder select option {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) select option {
   background: var(--surface); color: var(--text);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button,.btn) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button,.btn) {
   display: inline-flex; align-items: center; justify-content: center;
   gap: 8px; min-height: 44px; padding: 11px 16px;
   border: 1px solid transparent; border-radius: 12px;
@@ -111,48 +111,80 @@ html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button,.btn)
   text-align: center; text-decoration: none;
   transition: background .16s ease-out, border-color .16s ease-out, color .16s ease-out;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.large,.btn--lg) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.large,.btn--lg) {
   min-height: 48px; padding: 13px 20px;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.primary,.btn--primary) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.primary,.btn--primary) {
   background: var(--accent); color: var(--on-accent);
   border-color: var(--accent); box-shadow: var(--shadow-accent);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.primary,.btn--primary):hover:not(:disabled) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.primary,.btn--primary):hover:not(:disabled) {
   background: var(--accent-hover); border-color: var(--accent-hover);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.primary,.btn--primary):active:not(:disabled) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.primary,.btn--primary):active:not(:disabled) {
   background: var(--accent-active); border-color: var(--accent-active); box-shadow: none;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.secondary,.btn--secondary) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.secondary,.btn--secondary) {
   background: var(--surface); color: var(--text); border-color: var(--control-line); box-shadow: none;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button.secondary,.btn--secondary):hover:not(:disabled) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button.secondary,.btn--secondary):hover:not(:disabled) {
   background: var(--surface-raised); border-color: var(--muted);
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button,.btn):disabled,
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.button,.btn)[aria-disabled="true"] {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button,.btn):disabled,
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.button,.btn)[aria-disabled="true"] {
   opacity: .5; cursor: not-allowed; box-shadow: none;
 }
-html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.panel,.classic-panel) {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.panel,.classic-panel) {
   border: 1px solid var(--line); border-radius: var(--classic-card-radius);
   background: var(--surface); padding: 24px;
 }
 @media (max-width: 639px) {
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h1) { font-size: 32px; line-height: 36px; }
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(h2) { font-size: 24px; line-height: 30px; }
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.panel,.classic-panel) { padding: 20px; }
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h1) { font-size: 32px; line-height: 36px; }
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(h2) { font-size: 24px; line-height: 30px; }
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.panel,.classic-panel) { padding: 20px; }
 }
 @media (forced-colors: active) {
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select,.select-control) select {
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select,.select-control) select {
     appearance: auto; -webkit-appearance: auto;
   }
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(.mskba-classic-select,.select-control) > svg {
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select,.select-control) > svg {
     display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-design-theme="mskba_classic"] .mskba-page-builder :where(input,select,textarea,.form-control,.form-select,.button,.btn) {
+  html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select,.button,.btn) {
     transition: none;
+  }
+}
+
+/* The classic hero is a display component; never inherit Latin-only legacy fonts. */
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-welcome__title {
+  color: var(--text); font-family: var(--theme-heading-font-family, Inter, Arial, sans-serif);
+  font-size: 64px; line-height: 64px; font-weight: 900; letter-spacing: -.045em;
+  text-shadow: none;
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-welcome__title span {
+  color: var(--accent); -webkit-text-stroke: 0; text-stroke: 0;
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-welcome__subtitle {
+  font-size: 16px; line-height: 24px; max-width: 65ch; color: var(--muted);
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-search-field {
+  border: 1px solid var(--control-line); border-radius: 12px;
+  background: var(--field); min-height: 48px;
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-search-field:focus-within {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-search-field input {
+  border: 0; background: transparent; outline: 0 !important;
+  box-shadow: none !important; min-height: 46px; width: 100%;
+}
+html[data-design-theme="mskba_classic"] .mskba-page-builder .home-search-field input:focus-visible {
+  outline: 0 !important;
+}
+@media (max-width: 639px) {
+  html[data-design-theme="mskba_classic"] .mskba-page-builder .home-welcome__title {
+    font-size: 40px; line-height: 42px;
   }
 }
