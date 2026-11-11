@@ -13,7 +13,6 @@ if (dashboard && controls) {
     let enabled = false;
     let saving = false;
     let dragged = null;
-    let originalIds = [];
 
     const widgets = () => Array.from(dashboard.querySelectorAll('[data-dashboard-widget]'));
     const slots = () => widgets().map((node) => ({
@@ -101,6 +100,19 @@ if (dashboard && controls) {
         });
     }
 
+    document.addEventListener('mskba:dashboard-edit-cancel', () => {
+        if (!enabled) return;
+        enabled = false;
+        dashboard.dataset.dashboardOrdering = '0';
+        if (toggle) {
+            toggle.setAttribute('aria-pressed', 'false');
+            toggle.textContent = 'Изменить порядок';
+        }
+        if (hint) hint.hidden = true;
+        widgets().forEach((node) => node.removeAttribute('draggable'));
+        showStatus('Список доступных виджетов изменился. Порядок обновлён.');
+    });
+
     dashboard.addEventListener('click', (event) => {
         const button = event.target.closest('[data-dashboard-move]');
         if (!enabled || saving || !button) return;
@@ -128,7 +140,6 @@ if (dashboard && controls) {
             return;
         }
         dragged = node;
-        originalIds = ids();
         node.classList.add('app-dashboard-widget--dragging');
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', node.dataset.dashboardWidget);
