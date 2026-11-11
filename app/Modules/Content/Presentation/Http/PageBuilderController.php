@@ -10,6 +10,7 @@ use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Presentation\Theming\ThemeResolver;
 use App\Presentation\Theming\DesignThemeManager;
+use App\Presentation\Theming\DesignTheme;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -108,6 +109,9 @@ final class PageBuilderController extends Controller
             'builderLqipMap' => $output['lqip'],
             'builderScripts' => $output['scripts'],
             'builderPreview' => $preview,
+            'builderPreviewTheme' => $preview && $page->design_theme_id
+                ? DesignTheme::query()->whereKey($page->design_theme_id)->where('is_published', true)->first()
+                : null,
             'builderTheme' => app(ThemeResolver::class)->active(),
         ]);
     }
