@@ -1,0 +1,63 @@
+/* Personal dashboard controls — MSKBA App design tokens only. */
+.app-dashboard-customize {
+    display:flex; align-items:center; justify-content:space-between; gap:12px 20px;
+    flex-wrap:wrap; margin:0 0 16px; min-width:0;
+}
+.app-dashboard-customize__actions {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-left:auto}
+.app-dashboard-customize__actions .button {min-height:44px}
+.app-dashboard-customize__status {margin:0;min-height:0;font-size:14px;color:var(--muted)}
+.app-dashboard-customize__status:empty {display:none}
+.app-dashboard-customize [data-dashboard-order-hint] {font-size:14px;flex:1 1 100%;margin:0}
+.app-dashboard-widget__reorder-controls {display:none;align-items:center;gap:6px;margin-left:auto}
+.app-dashboard-grid[data-dashboard-ordering="1"] .app-dashboard-widget__reorder-controls {display:flex}
+.app-dashboard-widget__reorder-controls button {
+    display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;
+    padding:8px;border:1px solid var(--control-line);border-radius:12px;
+    background:var(--surface);color:var(--text);cursor:pointer;
+}
+.app-dashboard-widget__reorder-controls button:hover:not(:disabled) {
+    background:var(--surface-raised);border-color:var(--accent);
+}
+.app-dashboard-widget__reorder-controls button:disabled {opacity:.35;cursor:not-allowed}
+.app-dashboard-widget__reorder-controls svg {width:20px;height:20px;fill:none;stroke:currentColor;flex-shrink:0}
+.app-dashboard-widget__move--down svg {transform:rotate(180deg)}
+.app-dashboard-widget__drag-handle {cursor:grab!important;touch-action:pan-y}
+.app-dashboard-widget__drag-handle:active {cursor:grabbing!important}
+.app-dashboard-grid[data-dashboard-ordering="1"] .app-dashboard-widget {position:relative}
+.app-dashboard-widget--dragging {opacity:.6}
+.app-dashboard-widget--drag-target {outline:2px dashed var(--accent);outline-offset:3px}
+.app-dashboard-settings {padding:24px;display:flex;flex-direction:column;gap:20px}
+.app-dashboard-settings__head {display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap}
+.app-dashboard-settings__head h2 {margin:0 0 12px}
+.app-dashboard-settings__head p {margin:0;max-width:68ch}
+.app-dashboard-settings__form {width:100%;margin:0}
+.app-dashboard-settings__list {display:grid;gap:12px}
+.app-dashboard-settings__item {
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    min-width:0;min-height:80px;padding:16px 18px;
+    border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);
+    cursor:pointer;
+}
+.app-dashboard-settings__item:hover {border-color:var(--control-line)}
+.app-dashboard-settings__item:focus-within {outline:2px solid var(--accent);outline-offset:3px}
+.app-dashboard-settings__description {display:grid;gap:6px;min-width:0}
+.app-dashboard-settings__description strong {font-size:16px;line-height:24px;color:var(--text)}
+.app-dashboard-settings__description > span:not(.app-dashboard-settings__required) {font-size:14px;line-height:20px;color:var(--muted)}
+.app-dashboard-settings__required {font-size:12px;line-height:16px;color:var(--muted)}
+.app-dashboard-settings__check {
+    display:inline-flex;align-items:center;gap:10px;flex:0 0 auto;
+    min-height:44px;font-size:14px;line-height:20px;color:var(--text);
+}
+.app-dashboard-settings__check input {width:20px;height:20px;flex:0 0 20px;margin:0;accent-color:var(--accent)}
+.app-dashboard-settings__check input:disabled {opacity:.65;cursor:not-allowed}
+.app-dashboard-settings__actions {display:flex;align-items:center;gap:12px}
+.app-dashboard-settings__notice {border-left:3px solid var(--success);padding:12px 16px;background:var(--surface-raised);color:var(--text)}
+@media(max-width:639px) {
+    .app-dashboard-settings {padding:20px}
+    .app-dashboard-settings__item {align-items:flex-start;flex-direction:column;padding:16px}
+    .app-dashboard-customize__actions {width:100%;margin-left:0}
+    .app-dashboard-customize__actions .button {flex:1;min-width:0}
+}
+@media(prefers-reduced-motion:reduce) {
+    .app-dashboard-widget--dragging,.app-dashboard-widget--drag-target {transition:none}
+}
