@@ -129,6 +129,7 @@
         venue:{subject:'Площадка',added:'Площадка добавлена в избранное',removed:'Площадка убрана из избранного'},
         event:{subject:'Мероприятие',added:'Мероприятие добавлено в избранное',removed:'Мероприятие убрано из избранного'},
         team:{subject:'Команда',added:'Команда добавлена в избранное',removed:'Команда убрана из избранного'},
+        product:{subject:'Товар',added:'Товар добавлен в избранное',removed:'Товар убран из избранного'},
         user:{subject:'Пользователь',added:'Пользователь добавлен в избранное',removed:'Пользователь убран из избранного'},
     };
     const pendingGeneric=new Set();
@@ -167,9 +168,12 @@
                 button.setAttribute('aria-pressed',String(result.state==='active'));
                 button.title=result.state==='active'?'Убрать из избранного':'Добавить в избранное';
             }
-            if(result.state==='active')window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
-                detail:{source:'favorite',type,id,name},
-            }));
+            if(result.state==='active') {
+                if(type==='product')toast(words?.added||'Добавлено в избранное');
+                else window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
+                    detail:{source:'favorite',type,id,name},
+                }));
+            }
         }catch(e){toast(e.message||'Не удалось изменить избранное.',true);}
         finally{pendingGeneric.delete(key);if(button)button.disabled=false;}
     }

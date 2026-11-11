@@ -3,6 +3,7 @@
 namespace App\Modules\Shop\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Favorites\Application\Services\FavoritesManager;
 use App\Modules\Shop\Application\Services\ShopCatalogService;
 use App\Modules\Shop\Domain\Models\ShopCategory;
 use App\Modules\Shop\Domain\Models\ShopProduct;
@@ -24,6 +25,11 @@ final class ShopController extends Controller
     public function category(Request $request, ShopCategory $category, ShopCatalogService $catalog): Response
     {
         return $this->catalog($request, $catalog, $category);
+    }
+
+    public function create(): Response
+    {
+        return ThemeResolver::page('shop.create');
     }
 
     private function catalog(Request $request, ShopCatalogService $catalog, ?ShopCategory $category = null): Response
@@ -89,6 +95,17 @@ final class ShopController extends Controller
         $allCategories = ShopCategory::query()->whereIn('id', $visibleIds)
             ->orderBy('sort_order')->orderBy('name')->get();
         $categoryNav = $this->categoryNavigation($allCategories);
+        $categoryTree = $this->categoryTree($allCategories);
+        $expandedCategoryIds = [];
+        $cursor = $category;
+        while ($cursor && ! in_array($cursor->id, $expandedCategoryIds, true)) {
+            $expandedCategoryIds[] = $cursor->id;
+            $cursor = $cursor->parent;
+        }
+        $favoriteProductIds = app(FavoritesManager::class)->owned($request)
+            ->where('entity_type', 'product')->whereNull('trashed_at')
+            ->whereIn('entity_id', $products->getCollection()->pluck('id')->all())
+            ->pluck('entity_id')->map(fn ($id) => (int) $id)->all();
         $types = ShopProductType::query()->whereHas('products', fn ($q) => $q
             ->where('status', 'published')->whereHas('categories',
                 fn ($cats) => $cats->whereIn('shop_categories.id', $activeIds)))
@@ -108,7 +125,8 @@ final class ShopController extends Controller
         }
 
         return ThemeResolver::page('shop.index', compact(
-            'category', 'categoryNav', 'products', 'filters', 'tags', 'types', 'availableAttributes',
+            'category', 'categoryNav', 'categoryTree', 'expandedCategoryIds',
+            'favoriteProductIds', 'products', 'filters', 'tags', 'types', 'availableAttributes',
         ));
     }
 
@@ -142,7 +160,29 @@ final class ShopController extends Controller
         return $result;
     }
 
-    public function product(ShopProduct $product, ShopCatalogService $catalog): Response
+    /** @return array<int, array{category: ShopCategory, children: array}> */
+    private function categoryTree(Collection $categories): array
+    {
+        $children = $categories->groupBy(fn (ShopCategory $item) => (int) ($item->parent_id ?? 0));
+        $build = function (int $parentId, array $ancestors = []) use (&$build, $children): array {
+            $items = [];
+            foreach ($children->get($parentId, collect()) as $item) {
+                if (in_array($item->id, $ancestors, true)) {
+                    continue;
+                }
+                $items[] = [
+                    'category' => $item,
+                    'children' => $build((int) $item->id, [...$ancestors, (int) $item->id]),
+                ];
+            }
+
+            return $items;
+        };
+
+        return $build(0);
+    }
+
+    public function product(Request $request, ShopProduct $product, ShopCatalogService $catalog): Response
     {
         $visibleIds = $catalog->visibleCategoryIds();
         abort_unless($product->status === 'published'
@@ -150,6 +190,7 @@ final class ShopController extends Controller
 
         $product->load(['categories', 'tags', 'productType', 'attributeValues.attribute']);
         $visibleCategories = $product->categories->whereIn('id', $visibleIds);
+        $isFavorite = app(FavoritesManager::class)->status($request, 'product', $product->id) === 'active';
         $breadcrumbs = $visibleCategories->first();
 
         $allowed = $catalog->attributesForProduct($product)->pluck('id')->all();
@@ -159,7 +200,7 @@ final class ShopController extends Controller
             ->values();
 
         return ThemeResolver::page('shop.product', compact(
-            'product', 'breadcrumbs', 'characteristics', 'visibleCategories',
+            'product', 'breadcrumbs', 'characteristics', 'visibleCategories', 'isFavorite',
         ));
     }
 }

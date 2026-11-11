@@ -5,6 +5,8 @@ namespace App\Modules\Favorites\Application\Services;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Shop\Application\Services\ShopCatalogService;
+use App\Modules\Shop\Domain\Models\ShopProduct;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -17,6 +19,7 @@ final class FavoriteTargetRegistry
         'venue' => 'Площадки',
         'event' => 'Мероприятия',
         'team' => 'Команды',
+        'product' => 'Товары',
     ];
 
     public function visible(string $type, int $id): ?Model
@@ -28,6 +31,10 @@ final class FavoriteTargetRegistry
                 ->whereIn('status', [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value])->first(),
             'team' => Team::query()->whereKey($id)
                 ->where('status', TeamStatusEnum::ACTIVE)->whereNull('temporary_for_event_id')->first(),
+            'product' => ShopProduct::query()->whereKey($id)->where('status', 'published')
+                ->whereHas('categories', fn ($query) => $query->whereIn(
+                    'shop_categories.id', app(ShopCatalogService::class)->visibleCategoryIds(),
+                ))->first(),
             default => null,
         };
     }
@@ -50,6 +57,7 @@ final class FavoriteTargetRegistry
                 'venue' => route('venues.show', $target->routeIdentifier()),
                 'event' => route('events.show', $target->routeIdentifier()),
                 'team' => route('teams.show', $target->routeIdentifier()),
+                'product' => route('shop.product', $target->slug),
             },
             'available' => true,
         ];
