@@ -1,4 +1,4 @@
-@extends('theme::layouts.app', ['title' => $title, 'metaTitle' => $metaTitle, 'metaDescription' => $metaDescription, 'metaRobots' => $metaRobots])
+@extends('theme::layouts.app', ['title' => $title, 'metaTitle' => $metaTitle, 'metaDescription' => $metaDescription, 'metaRobots' => $metaRobots, 'appearanceTheme' => $builderPreviewTheme])
 
 @if ($builderTheme === 'mskba_app')
     @push('meta')

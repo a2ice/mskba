@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             // A Page Builder page can have a different server-rendered body
             // for the selected theme, not only a different stylesheet.
-            if (document.querySelector('.mskba-page-builder')) {
+            const currentTheme = document.documentElement.dataset.designTheme;
+            if (document.querySelector('.mskba-page-builder')
+                || currentTheme === 'mskba_classic' || data.theme === 'mskba_classic') {
                 window.location.reload();
                 return;
             }

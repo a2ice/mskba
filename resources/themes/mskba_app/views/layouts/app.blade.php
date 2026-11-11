@@ -1,4 +1,4 @@
-@php($appearanceTheme = app(\App\Presentation\Theming\DesignThemeManager::class)->current())
+@php($appearanceTheme = ($appearanceTheme ?? null) ?: app(\App\Presentation\Theming\DesignThemeManager::class)->current())
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-design-theme="{{ $appearanceTheme->slug }}" data-appearance-mode="{{ $appearanceTheme->mode }}">
     <head>

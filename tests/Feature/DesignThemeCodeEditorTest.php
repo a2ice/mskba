@@ -157,4 +157,81 @@ final class DesignThemeCodeEditorTest extends TestCase
             $this->assertTrue($modal->isModalFooterSticky());
         }
     }
+    public function test_classic_theme_owns_ui_css_js_without_touching_other_themes(): void
+    {
+        $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
+        $night = DesignTheme::query()->where('slug', 'arena_night')->firstOrFail();
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+
+        foreach (['css', 'js'] as $kind) {
+            $asset = app(DesignThemeCodeManager::class)->asset($classic, $kind);
+            $this->assertNotNull($asset);
+            $this->assertTrue($asset->is_enabled);
+            $this->assertNotNull($asset->published_hash);
+            $this->assertSame($asset->published_source, $asset->draft_source);
+            $this->assertSame(1, $asset->revisions()->count());
+        }
+
+        $css = $this->get(app(DesignThemeManager::class)->cssUrl($classic))->assertOk();
+        $css->assertSee('--classic-control-height: 48px;', false)
+            ->assertSee('data-design-theme="mskba_classic"', false)
+            ->assertSee('focus-visible', false);
+
+        $jsUrl = app(DesignThemeManager::class)->jsUrl($classic);
+        $this->assertNotNull($jsUrl);
+        $this->get($jsUrl)->assertOk()
+            ->assertSee('mskba-classic-select', false)
+            ->assertSee('createElementNS', false);
+
+        $this->get(app(DesignThemeManager::class)->cssUrl($day))
+            ->assertOk()->assertDontSee('--classic-control-height:', false);
+        $this->get(app(DesignThemeManager::class)->cssUrl($night))
+            ->assertOk()->assertDontSee('--classic-control-height:', false);
+        $this->assertNull(app(DesignThemeManager::class)->jsUrl($night));
+        $this->assertNull(app(DesignThemeManager::class)->jsUrl($day));
+    }
+
+    public function test_classic_page_preview_uses_the_scoped_theme_even_when_admin_selected_light(): void
+    {
+        // The project's default test APP_THEME is mskba_dark, whereas
+        // design themes (including Classic) are rendered by mskba_app.
+        // Exercise the actual dev application layout without changing .env.
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        view()->getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $admin = $this->admin();
+        $admin->forceFill(['design_theme_id' => $day->getKey()])->save();
+        $page = \App\Modules\Content\Domain\Models\PageBuilderPage::query()
+            ->where('path', '/')->where('design_theme_id', $classic->getKey())->firstOrFail();
+
+        $this->withoutVite();
+        $this->actingAs($admin)->get(route('page-builder.preview', $page))
+            ->assertOk()
+            ->assertSee('data-design-theme="mskba_classic"', false)
+            ->assertSee('mskba-classic-home', false)
+            ->assertSee('Предпросмотр черновика')
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+
+        $this->assertSame($day->getKey(), $admin->fresh()->design_theme_id);
+        $this->assertNull($page->fresh()->published_at);
+    }
+
+    public function test_classic_seed_does_not_replace_editor_published_css(): void
+    {
+        $admin = $this->admin();
+        $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
+        $this->actingAs($admin);
+        $manager = app(DesignThemeCodeManager::class);
+        $manager->saveAndPublish($admin, $classic, 'css', '.custom-classic { color: red; }');
+
+        $migration = require database_path('migrations/2026_11_12_001000_seed_classic_design_theme_code.php');
+        $migration->up();
+
+        $this->assertSame('.custom-classic { color: red; }', $manager->asset($classic, 'css')->published_source);
+        $this->assertSame(2, $manager->asset($classic, 'css')->revisions()->count());
+    }
+
 }

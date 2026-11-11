@@ -881,3 +881,38 @@ header **не теряет** класс `.is-scroll-revealed` на границ�
 область сохраняется отдельно от черновой, пока редактор явно не публикует
 изменения. Действующая главная и шапка/подвал не меняются автоматически
 при создании черновика Classic; для проверки используется Page Builder preview.
+
+
+### MSKBA Classic — повторное использование контракта темы (2026-11-12)
+
+Базовые визуальные примитивы Classic размещаются **в CSS/JS темы**, а не в
+HTML/CSS каждой импортируемой страницы: `design_theme_code_assets`
+(`mskba_classic`, публикационные ревизии через штатный редактор Filament).
+Git-источники первоначальной версии:
+`resources/themes/mskba_app/presets/mskba-classic.css` и
+`resources/themes/mskba_app/presets/mskba-classic.js`.
+Палитра — существующая `arena_night` с токенами `--bg`,
+`--surface`, `--field`, `--control-line`, `--accent`, `--on-accent`.
+
+- **Заголовки:** Inter (кириллица), display 64/64/900 и mobile 40/42/900,
+  h1 40/44 (mobile 32/36), h2 28/34 (mobile 24/30),
+  h3 20/26, eyebrow 12/16 tracking .12em.
+- **Формы:** поле min-height 48, font 16, border `--control-line`,
+  radius 12; textarea min-height 112; label 14/20/600,
+  helper/error 14/20; чекбокс/радио 20 px внутри label min-height 44.
+- **Select:** только нативный popup, `appearance:none` и декоративный
+  Tabler chevron-down 20 px; inline-end 16 px и padding-end 48px.
+  Тема JS добавляет SVG только при отсутствии уже готовой обёртки
+  `.select-control`; не вводит самодельные списки или перехват ввода.
+  В forced-colors возвращаются стандартные элементы браузера.
+- **Действия:** primary/secondary 44 px (large 48), primary text
+  `--on-accent`, hover/pressed/disabled, focus 2 px + offset 3.
+  `prefers-reduced-motion` отключает переходы.
+- Тематические селекторы ограничены `data-design-theme="mskba_classic"`
+  и элементами Page Builder / UI Kit, без влияния на две базовые темы.
+  Существующий HTML/CSS конкретных страниц сохраняет композиционную
+  свободу; классические секции постепенно мигрируют с legacy CSS на
+  эти примитивы по мере редактирования.
+- Preview Page Builder обязан применять CSS/JS темы, выбранной для записи,
+  а не текущую пользовательскую настройку редактора. Предпочтение
+  редактора не изменяется.
