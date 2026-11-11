@@ -29,6 +29,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegration;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationAuditEvent;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -98,6 +102,27 @@ class Venue extends Model
     public function allowsOperationalChanges(): bool
     {
         return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
+    }
+
+    public function integrations(): HasMany
+    {
+        return $this->hasMany(VenueIntegration::class);
+    }
+
+    public function integrationSources(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            VenueIntegrationSource::class, VenueIntegration::class,
+            'venue_id', 'venue_integration_id',
+        );
+    }
+
+    public function integrationAuditEvents(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            VenueIntegrationAuditEvent::class, VenueIntegration::class,
+            'venue_id', 'venue_integration_id',
+        );
     }
 
     public function bookingPolicyCurrency(): string
