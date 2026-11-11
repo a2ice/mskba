@@ -12,17 +12,20 @@ return new class extends Migration
         Schema::table('page_builder_pages', function (Blueprint $table): void {
             $table->foreignId('design_theme_id')->nullable()
                 ->after('path')->constrained('design_themes')->restrictOnDelete();
+            // Draft selection must not move a live page until publication.
+            $table->foreignId('published_design_theme_id')->nullable()
+                ->constrained('design_themes')->restrictOnDelete();
             $table->dropUnique('page_builder_pages_path_unique');
             $table->dropUnique('page_builder_pages_published_path_unique');
             $table->unique(['path', 'design_theme_id'], 'pb_page_path_theme_unique');
-            $table->unique(['published_path', 'design_theme_id'], 'pb_page_published_path_theme_unique');
+            $table->unique(['published_path', 'published_design_theme_id'], 'pb_page_published_path_theme_unique');
         });
 
         // PostgreSQL/SQLite both allow multiple NULLs in a composite UNIQUE.
         // These partial indexes guarantee exactly one default (all-themes)
         // page for each draft and published URL while permitting themed copies.
         DB::statement('CREATE UNIQUE INDEX pb_page_default_path_unique ON page_builder_pages (path) WHERE design_theme_id IS NULL');
-        DB::statement('CREATE UNIQUE INDEX pb_page_default_published_path_unique ON page_builder_pages (published_path) WHERE design_theme_id IS NULL AND published_path IS NOT NULL');
+        DB::statement('CREATE UNIQUE INDEX pb_page_default_published_path_unique ON page_builder_pages (published_path) WHERE published_design_theme_id IS NULL AND published_path IS NOT NULL');
     }
 
     public function down(): void
@@ -45,6 +48,7 @@ return new class extends Migration
             $table->dropUnique('pb_page_path_theme_unique');
             $table->dropUnique('pb_page_published_path_theme_unique');
             $table->dropConstrainedForeignId('design_theme_id');
+            $table->dropConstrainedForeignId('published_design_theme_id');
             $table->unique('path');
             $table->unique('published_path');
         });
