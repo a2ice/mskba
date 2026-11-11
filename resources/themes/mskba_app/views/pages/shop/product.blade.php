@@ -26,12 +26,21 @@
 <section class="container app-shop app-shop--detail" aria-labelledby="app-shop-product-title">
     <header class="app-shop__heading">
         <div>
-            <p class="eyebrow accent">MSKBA / МАГАЗИН / {{ $product->productType?->name ?? 'ТОВАР' }}</p>
             <h1 id="app-shop-product-title">{{ $product->name }}</h1>
             @if($product->sku)<p class="muted">Артикул: {{ $product->sku }}</p>@endif
         </div>
-        <a class="button secondary" href="{{ $visibleCategories->first()
-            ? route('shop.category', $visibleCategories->first()->slug) : route('shop.index') }}">К каталогу</a>
+        <div class="app-shop__product-header-actions">
+            <button class="mskba-favorite-heart" type="button"
+                data-favorite-type="product" data-favorite-id="{{ $product->id }}"
+                data-favorite-name="{{ $product->name }}"
+                aria-label="{{ $isFavorite ? 'Убрать из избранного' : 'Добавить в избранное' }}"
+                aria-pressed="{{ $isFavorite ? 'true' : 'false' }}"
+                title="{{ $isFavorite ? 'Убрать из избранного' : 'Добавить в избранное' }}">
+                <svg aria-hidden="true"><use href="#heart"/></svg>
+            </button>
+            <a class="button secondary" href="{{ $visibleCategories->first()
+                ? route('shop.category', $visibleCategories->first()->slug) : route('shop.index') }}">К каталогу</a>
+        </div>
     </header>
 
     <div class="app-shop__product-layout">

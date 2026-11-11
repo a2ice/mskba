@@ -153,6 +153,7 @@ Route::get('/', function () use ($themeResolver) {
 // Catalog-only storefront. Product route precedes category route.
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/shop/p/{product:slug}', [ShopController::class, 'product'])->name('shop.product');
+Route::get('/shop/create', [ShopController::class, 'create'])->name('shop.create');
 Route::get('/shop/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 
 Route::get('/backoffice/venues/{venue}/photos/{photo}/original', BackofficeVenuePhotoOriginalController::class)

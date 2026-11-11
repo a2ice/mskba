@@ -20,6 +20,7 @@
                     <option value="venue">Площадки</option>
                     <option value="event">Мероприятия</option>
                     <option value="team">Команды</option>
+                    <option value="product">Товары</option>
                 </select>
                     @include('account.partials.native-select-chevron')
                 </span>

@@ -54,6 +54,7 @@ import '../css/player-profile-workspace.css';
 import './account-favorites.js';
 import './venue-favorites.js';
 import './venue-catalog.js';
+import './shop-categories.js';
 import '../css/account-collection.css';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
