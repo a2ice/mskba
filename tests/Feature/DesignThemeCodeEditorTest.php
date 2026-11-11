@@ -193,6 +193,13 @@ final class DesignThemeCodeEditorTest extends TestCase
 
     public function test_classic_page_preview_uses_the_scoped_theme_even_when_admin_selected_light(): void
     {
+        // The project's default test APP_THEME is mskba_dark, whereas
+        // design themes (including Classic) are rendered by mskba_app.
+        // Exercise the actual dev application layout without changing .env.
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        view()->getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
         $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
         $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
         $admin = $this->admin();
