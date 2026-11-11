@@ -107,8 +107,6 @@ if (dashboard) {
     };
 
     const refresh = async () => {
-        // Don't reconcile server snapshots while the user is dragging cards.
-        if (dashboard.dataset.dashboardOrdering === '1') return;
         const serial = ++version;
         controller?.abort();
         controller = new AbortController();
@@ -121,8 +119,24 @@ if (dashboard) {
             });
             if (!response.ok) return;
             const data = await response.json();
-            if (dashboard.dataset.dashboardOrdering === '1'
-                || serial !== version || typeof data.html !== 'string') return;
+            if (serial !== version || typeof data.html !== 'string') return;
+            if (dashboard.dataset.dashboardOrdering === '1') {
+                // A removed, unpublished or audience-restricted widget must
+                // disappear immediately even while the user is sorting.
+                // When identities are unchanged, defer DOM reconciliation so
+                // admin/realtime refreshes cannot undo local drag order.
+                const snapshot = document.createElement('template');
+                snapshot.innerHTML = data.html;
+                const ids = (nodes) => Array.from(nodes)
+                    .filter((node) => node.hasAttribute('data-dashboard-widget'))
+                    .map((node) => node.dataset.dashboardWidget).sort();
+                const oldIds = ids(dashboard.children);
+                const newIds = ids(snapshot.content.children);
+                if (oldIds.length === newIds.length
+                    && oldIds.every((id, index) => id === newIds[index])) return;
+
+                document.dispatchEvent(new Event('mskba:dashboard-edit-cancel'));
+            }
             reconcile(data.html);
         } catch (_error) {
             // Preserve last authorized snapshot; retry on reconnect/focus.
