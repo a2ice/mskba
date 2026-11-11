@@ -32,11 +32,12 @@
         $refreshSeconds = min(60, max(0, (int) ($widget->refresh_delay_seconds ?? 5)));
     @endphp
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
-             data-dashboard-widget="{{ $widget->id }}" data-widget-kind="{{ $widget->kind }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}"
+             data-dashboard-widget="{{ $widget->id }}" data-widget-kind="{{ $widget->kind }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}" data-widget-can-move="{{ $widget->can_move ? '1' : '0' }}"
              data-widget-version="{{ $widgetVersion }}" data-widget-refresh-delay="{{ $refreshSeconds }}"
              @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header">
             <h2>{{ $widget->title }}</h2>
+            @if ($widget->can_move)
             <div class="app-dashboard-widget__reorder-controls" aria-label="Порядок виджета">
                 <button type="button" class="app-dashboard-widget__move app-dashboard-widget__move--up"
                         data-dashboard-move="up" aria-label="Переместить {{ $widget->title }} выше"
@@ -49,6 +50,7 @@
                     <svg aria-hidden="true"><use href="#sliders"/></svg>
                 </button>
             </div>
+            @endif
             @if ($widget->kind === 'advertisement')<span class="app-dashboard-widget__ad-label">Реклама</span>@endif
         </div>
         <div class="app-dashboard-widget__composition{{ $showImage ? ' app-dashboard-widget__composition--'.$imagePosition : '' }}"
