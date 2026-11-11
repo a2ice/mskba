@@ -35,9 +35,17 @@ final class PageBuilderPublisher
                     ->whereKey($item->template_id)->whereNotNull('published_at')->exists()) {
                     throw ValidationException::withMessages(['template_id' => 'Сначала опубликуй выбранный шаблон.']);
                 }
-                if (PageBuilderPage::query()->where('published_path', $item->path)
-                    ->where('id', '!=', $item->getKey())->exists()) {
-                    throw ValidationException::withMessages(['path' => 'Этот URL уже занят другой опубликованной страницей.']);
+                $collision = PageBuilderPage::query()->where('published_path', $item->path)
+                    ->whereKeyNot($item->getKey());
+                if ($item->design_theme_id === null) {
+                    $collision->whereNull('published_design_theme_id');
+                } else {
+                    $collision->where('published_design_theme_id', $item->design_theme_id);
+                }
+                if ($collision->exists()) {
+                    throw ValidationException::withMessages([
+                        'path' => 'Этот URL уже опубликован для выбранной области отображения.',
+                    ]);
                 }
                 // Preview resolves draft components, while public pages require published ones.
                 // Reject missing dependencies BEFORE writing any public snapshot.
@@ -47,6 +55,7 @@ final class PageBuilderPublisher
                 $item->published_route_name = $route['route_name'];
                 $item->cms_override_enabled = $route['route_name'] !== null;
                 $item->published_path = $item->path;
+                $item->published_design_theme_id = $item->design_theme_id;
                 $item->published_name = $item->name;
                 $item->published_meta_title = $item->meta_title;
                 $item->published_meta_description = $item->meta_description;
@@ -243,7 +252,7 @@ final class PageBuilderPublisher
                 ->where('entity_type', self::type($item))->where('entity_id', $item->getKey())
                 ->findOrFail($revisionId);
             $state = (array) $revision->snapshot;
-            foreach (['draft_html', 'draft_css', 'draft_slides', 'draft_options', 'name', 'path', 'meta_title', 'meta_description', 'template_id'] as $key) {
+            foreach (['draft_html', 'draft_css', 'draft_slides', 'draft_options', 'name', 'path', 'meta_title', 'meta_description', 'template_id', 'design_theme_id'] as $key) {
                 if (array_key_exists($key, $state) && $item->isFillable($key)) {
                     $item->{$key} = $state[$key];
                 }
@@ -314,7 +323,7 @@ final class PageBuilderPublisher
     {
         $state = $item->only(['name', 'draft_html', 'draft_css']);
         if ($item instanceof PageBuilderPage) {
-            $state += $item->only(['path', 'meta_title', 'meta_description', 'template_id']);
+            $state += $item->only(['path', 'meta_title', 'meta_description', 'template_id', 'design_theme_id']);
             $state['published_route_type'] = $item->published_route_type;
             $state['published_route_name'] = $item->published_route_name;
         }
