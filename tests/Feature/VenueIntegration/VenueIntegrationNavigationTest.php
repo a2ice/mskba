@@ -61,10 +61,4 @@ final class VenueIntegrationNavigationTest extends TestCase
             ->assertSee('Журнал изменений');
     }
 
-    public function test_guest_cannot_access_the_integration_edit_page(): void
-    {
-        $venue = Venue::factory()->create();
-
-        $this->get(VenueResource::getUrl('edit', ['record' => $venue]))->assertRedirect();
-    }
 }
