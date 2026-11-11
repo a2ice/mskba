@@ -36,7 +36,7 @@ final class PageBuilderPublisher
                     throw ValidationException::withMessages(['template_id' => 'Сначала опубликуй выбранный шаблон.']);
                 }
                 $collision = PageBuilderPage::query()->where('published_path', $item->path)
-                    ->whereKeyNot($item->getKey());
+                    ->where('id', '!=', $item->getKey());
                 if ($item->design_theme_id === null) {
                     $collision->whereNull('published_design_theme_id');
                 } else {
