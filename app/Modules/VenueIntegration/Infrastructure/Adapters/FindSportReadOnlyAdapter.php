@@ -116,7 +116,7 @@ final class FindSportReadOnlyAdapter
         }
 
         $data = json_decode($match[1], true, 128, JSON_THROW_ON_ERROR);
-        $bookedMap = json_decode($availabilityJson, true, 128, JSON_THROW_ON_ERROR);
+        $bookedMap = json_decode(preg_replace('/^\xEF\xBB\xBF/', '', $availabilityJson), true, 128, JSON_THROW_ON_ERROR);
         if (! is_array($data) || ! is_array($bookedMap)
             || (int) ($data['playground']['id'] ?? 0) !== $expectedId) {
             throw new RuntimeException('Ответ FindSport не соответствует ожидаемой площадке.');
