@@ -55,6 +55,7 @@ import './account-favorites.js';
 import './venue-favorites.js';
 import './venue-catalog.js';
 import './shop-categories.js';
+import './shop-price-range.js';
 import '../css/account-collection.css';
 
 const authRoot = document.querySelector('[data-mskba-auth-dialog]');
