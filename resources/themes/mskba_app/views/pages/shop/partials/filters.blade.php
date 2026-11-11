@@ -1,6 +1,7 @@
 @php($filterAction = $category ? route('shop.category', $category->slug) : route('shop.index'))
 <form id="{{ $formId ?? 'shop-filter-form' }}" method="GET" action="{{ $filterAction }}" class="app-shop__filters">
     @if($filters['view'] === 'list')<input type="hidden" name="view" value="list">@endif
+    @if($filters['sort'] !== '')<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
     <label><span>Поиск товара</span>
         <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название товара или артикул">
     </label>
