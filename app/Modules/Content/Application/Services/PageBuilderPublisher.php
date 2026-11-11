@@ -280,6 +280,14 @@ final class PageBuilderPublisher
                 ]);
             }
             $name = $nameMatch[1];
+            if ($name === 'classic-home') {
+                if ($page->path !== '/' || $page->design_theme_id === null) {
+                    throw ValidationException::withMessages([
+                        'draft_html' => 'Системный компонент classic-home доступен только для главной страницы отдельной темы.',
+                    ]);
+                }
+                continue;
+            }
             if ($name === 'games-list') {
                 preg_match('/\bsource="([^"]*)"/', $match['attrs'], $sourceMatch);
                 if (! $this->sources->isRegistered((string) ($sourceMatch[1] ?? ''))) {
