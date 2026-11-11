@@ -9,6 +9,8 @@ use App\Modules\Content\Domain\Models\PageBuilderPage;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Presentation\Theming\ThemeResolver;
+use App\Presentation\Theming\DesignThemeManager;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +22,7 @@ final class PageBuilderController extends Controller
     public function home(PageBuilderRenderer $renderer): ?Response
     {
         try {
-            $page = PageBuilderPage::query()->where('published_path', '/')->whereNotNull('published_at')->first();
+            $page = $this->publishedForPath('/');
         } catch (QueryException $exception) {
             if (! Schema::hasTable('page_builder_pages')) {
                 return null; // Zero-downtime deploy: existing homepage remains available.
@@ -32,8 +34,8 @@ final class PageBuilderController extends Controller
 
     public function dynamic(string $builderSlug, PageBuilderRenderer $renderer): Response
     {
-        $page = PageBuilderPage::query()->where('published_path', '/'.$builderSlug)
-            ->whereNotNull('published_at')->firstOrFail();
+        $page = $this->publishedForPath('/'.$builderSlug);
+        abort_unless($page !== null, 404);
         return $this->page($page, $renderer, false);
     }
 
@@ -41,8 +43,32 @@ final class PageBuilderController extends Controller
     public function published(PageBuilderPage $page, PageBuilderRenderer $renderer): Response
     {
         abort_unless($page->published_at !== null, 404);
+        $matched = $this->publishedForPath((string) $page->published_path);
+        abort_unless($matched !== null, 404);
 
-        return $this->page($page, $renderer, false);
+        return $this->page($matched, $renderer, false);
+    }
+
+    /**
+     * Explicit theme wins; the unscoped published page is the fallback.
+     * Never leak another theme's page when no fallback exists.
+     */
+    private function publishedForPath(string $path): ?PageBuilderPage
+    {
+        $themeId = app(DesignThemeManager::class)->current()->getKey();
+        $pages = PageBuilderPage::query()
+            ->where('published_path', $path)
+            ->whereNotNull('published_at');
+
+        if ($themeId === null) {
+            return $pages->whereNull('published_design_theme_id')->first();
+        }
+
+        return $pages
+            ->where(fn (Builder $query) => $query->where('published_design_theme_id', $themeId)
+                ->orWhereNull('published_design_theme_id'))
+            ->orderByRaw('CASE WHEN published_design_theme_id = ? THEN 0 ELSE 1 END', [$themeId])
+            ->first();
     }
 
     public function preview(PageBuilderPage $page, PageBuilderRenderer $renderer): Response

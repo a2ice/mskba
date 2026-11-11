@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) throw new Error('Ошибка сохранения настроек.');
             const data = await response.json();
+            // A Page Builder page can have a different server-rendered body
+            // for the selected theme, not only a different stylesheet.
+            if (document.querySelector('.mskba-page-builder')) {
+                window.location.reload();
+                return;
+            }
             const stylesheet = document.getElementById('mskba-appearance-css');
             if (stylesheet) stylesheet.href = data.css_url;
             document.documentElement.dataset.designTheme = data.theme;

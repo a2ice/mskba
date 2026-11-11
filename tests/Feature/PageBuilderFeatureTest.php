@@ -11,6 +11,7 @@ use App\Modules\Content\Domain\Models\PageBuilderRevision;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Theming\DesignTheme;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -21,7 +22,7 @@ final class PageBuilderFeatureTest extends TestCase
 
     private function home(): PageBuilderPage
     {
-        return PageBuilderPage::query()->where('path', '/')->firstOrFail();
+        return PageBuilderPage::query()->where('path', '/')->whereNull('design_theme_id')->firstOrFail();
     }
 
     public function test_page_builder_is_a_fluid_canvas_with_explicit_boxed_and_full_width_sections(): void
@@ -356,4 +357,78 @@ CSS;
         $this->expectException(ValidationException::class);
         app(PageBuilderPublisher::class)->publish($page);
     }
+    public function test_theme_specific_homepage_overrides_the_shared_url_without_changing_guests(): void
+    {
+        $publisher = app(PageBuilderPublisher::class);
+        $shared = $this->home();
+        $shared->update(['draft_html' => '<h1>Новая главная</h1>']);
+        $publisher->publish($shared);
+
+        $source = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $classic = $source->replicate(['slug', 'is_system', 'is_published']);
+        $classic->slug = 'classic_home';
+        $classic->name = 'MSKBA Classic';
+        $classic->is_published = true;
+        $classic->save();
+
+        $classicHome = PageBuilderPage::query()->create([
+            'name' => 'Главная — Classic',
+            'path' => '/',
+            'design_theme_id' => $classic->getKey(),
+            'draft_html' => '<h1>Классическая главная</h1>',
+        ]);
+        $publisher->publish($classicHome);
+        $this->assertSame($classic->getKey(), $classicHome->refresh()->published_design_theme_id);
+        $this->withoutVite();
+
+        $this->get('/')->assertOk()->assertSee('Новая главная')->assertDontSee('Классическая главная');
+
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'design_theme_id' => $classic->getKey(),
+        ]);
+        $this->actingAs($user)->get('/')->assertOk()
+            ->assertSee('Классическая главная')->assertDontSee('Новая главная');
+
+        $user->forceFill(['design_theme_id' => $source->getKey()])->save();
+        $this->get('/')->assertOk()->assertSee('Новая главная');
+    }
+
+    public function test_editing_theme_scope_draft_does_not_change_the_published_homepage(): void
+    {
+        $publisher = app(PageBuilderPublisher::class);
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $night = DesignTheme::query()->where('slug', 'arena_night')->firstOrFail();
+        $page = PageBuilderPage::query()->create([
+            'path' => '/scoped-example',
+            'name' => 'Тема',
+            'design_theme_id' => $night->getKey(),
+            'draft_html' => '<h1>Ночная версия</h1>',
+        ]);
+        $publisher->publish($page);
+        $page->update(['design_theme_id' => $day->getKey()]);
+
+        $this->assertSame($night->getKey(), $page->refresh()->published_design_theme_id);
+        $publisher->publish($page);
+        $this->assertSame($day->getKey(), $page->refresh()->published_design_theme_id);
+    }
+
+    public function test_classic_home_is_seeded_as_draft_and_keeps_original_home_unmodified(): void
+    {
+        $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
+        $page = PageBuilderPage::query()
+            ->where('path', '/')->where('design_theme_id', $classic->getKey())
+            ->firstOrFail();
+
+        $this->assertNull($page->published_at);
+        $this->assertNull($page->published_path);
+        $this->assertStringContainsString('classic-home', $page->draft_html);
+        $this->assertNull($this->home()->published_at);
+
+        $html = app(PageBuilderRenderer::class)->render($page, true)['html'];
+        $this->assertStringContainsString('mskba-classic-home', $html);
+        $this->assertStringContainsString('Выбирай, что нужно тебе сегодня', $html);
+        $this->assertStringContainsString('Найди место,', $html);
+    }
+
 }

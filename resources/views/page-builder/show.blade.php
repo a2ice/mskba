@@ -12,6 +12,9 @@
 
 @push('styles')
     @vite('resources/css/page-builder.css')
+    @if (str_contains($builderHtml, 'mskba-classic-home'))
+        @vite('resources/css/page-builder-classic-home.css')
+    @endif
     @if ($builderCss !== '')
         <style data-mskba-lqip-css>{!! $builderCss !!}</style>
     @endif
