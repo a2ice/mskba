@@ -683,3 +683,46 @@
         transition: none;
     }
 }
+
+
+/* Catalog parity with the venues page — catalog header, toolbar and card proportions. */
+.app-shop--catalog .app-shop__heading{align-items:center;margin-bottom:32px}
+.app-shop--catalog .app-shop__heading h1{margin:0 0 10px}
+.app-shop__add{white-space:nowrap}
+.app-shop--catalog .app-shop__sidebar{padding:22px}
+.app-shop--catalog .app-shop__sidebar-head h2{font-size:21px;font-weight:800;color:var(--text)}
+.app-shop--catalog .app-shop__sidebar-label{font-size:16px;font-weight:800;color:var(--accent)}
+.app-shop--catalog .app-shop__filters{gap:16px}
+.app-shop--catalog .app-shop__filters label>span{color:var(--text);font-size:13px}
+.app-shop--catalog .app-shop__filters :is(input,select){min-height:45px;border-radius:11px}
+.app-shop--catalog .app-shop__toolbar{position:static;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:0;margin-bottom:20px;background:transparent;border:0;box-shadow:none}
+.app-shop__toolbar-count{color:var(--muted);font-size:14px}
+.app-shop--catalog .app-shop__view-switch{white-space:nowrap}
+.app-shop--catalog .app-shop__view-switch a{width:auto;height:auto;min-height:42px;padding:10px 16px;font-weight:700;font-size:14px}
+.app-shop--catalog .app-shop__view-switch a.is-active{border:1px solid var(--control-line)}
+.app-shop--catalog .app-shop__results-head{margin-bottom:14px}
+.app-shop__category-node{min-width:0}
+.app-shop__category-row{display:flex;align-items:center;gap:4px}
+.app-shop__category-row>a{flex:1;min-width:0;overflow-wrap:anywhere}
+.app-shop__category-toggle{display:grid;place-items:center;flex:none;width:35px;height:39px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.app-shop__category-toggle:hover,.app-shop__category-toggle:focus-visible{border-color:var(--control-line);color:var(--accent)}
+.app-shop__category-toggle svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
+.app-shop__category-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
+.app-shop__category-children{margin:3px 0 5px 12px;padding-left:9px;border-left:1px solid var(--line)}
+.app-shop__category-children[hidden]{display:none!important}
+.app-shop--catalog .app-shop__categories>a{font-weight:800}
+.app-shop--catalog .app-shop__card{position:relative}
+.app-shop--catalog .app-shop__card-photo{aspect-ratio:1.58}
+.app-shop--catalog .app-shop__card-photo img{object-fit:contain}
+.app-shop--catalog .app-shop__card-body{gap:12px;padding:18px}
+.app-shop--catalog .app-shop__card-body h2{font-size:19px;line-height:1.35}
+.app-shop__card-badge{display:inline-block;padding:5px 9px;border:1px solid var(--line);border-radius:99px;background:var(--surface-raised);font-size:12px;color:var(--muted)}
+.app-shop__card-sku{color:var(--muted);font-size:13px}
+.app-shop__card-details{align-self:start}
+.app-shop--catalog .app-shop__card-price{margin-top:auto}
+.app-shop--catalog .app-shop__products--list .app-shop__card-photo{width:32%;flex:0 0 32%;aspect-ratio:auto}
+.app-shop--catalog .mskba-favorite-heart--card{top:12px;right:12px}
+.app-shop__product-header-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+@media(max-width:850px){.app-shop--catalog .app-shop__toolbar{position:static}}
+@media(max-width:580px){.app-shop--catalog .app-shop__toolbar{align-items:start;flex-wrap:wrap}.app-shop--catalog .app-shop__view-switch{margin-left:auto}.app-shop--catalog .app-shop__card-body{padding:14px}.app-shop--catalog .app-shop__heading{align-items:start}}
+@media(prefers-reduced-motion:reduce){.app-shop__category-toggle svg{transition:none}}
