@@ -107,6 +107,8 @@ if (dashboard) {
     };
 
     const refresh = async () => {
+        // Don't reconcile server snapshots while the user is dragging cards.
+        if (dashboard.dataset.dashboardOrdering === '1') return;
         const serial = ++version;
         controller?.abort();
         controller = new AbortController();
@@ -119,7 +121,8 @@ if (dashboard) {
             });
             if (!response.ok) return;
             const data = await response.json();
-            if (serial !== version || typeof data.html !== 'string') return;
+            if (dashboard.dataset.dashboardOrdering === '1'
+                || serial !== version || typeof data.html !== 'string') return;
             reconcile(data.html);
         } catch (_error) {
             // Preserve last authorized snapshot; retry on reconnect/focus.
@@ -129,6 +132,7 @@ if (dashboard) {
     subscribePublic('account-dashboard', '.dashboard.changed', () => void refresh());
     if (header) subscribePrivate('users.' + header.dataset.notificationUserId,
         '.notification.created', () => void refresh());
+    document.addEventListener('mskba:dashboard-refresh-requested', () => void refresh());
     window.addEventListener('mskba:realtime-state', event => {
         if (event.detail?.state === 'connected') void refresh();
     });
