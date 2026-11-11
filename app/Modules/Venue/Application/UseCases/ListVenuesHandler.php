@@ -22,7 +22,7 @@ final class ListVenuesHandler
         private readonly VenueCourtDiscoveryAccess $courtDiscovery,
     ) {}
 
-    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null} $filters */
+    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null} $filters */
     public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
@@ -55,7 +55,14 @@ final class ListVenuesHandler
                 ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status));
         })
             ->with('courts.media')
-            ->orderBy('name')
+            ->when(
+                ($filters['sort'] ?? null) === 'new',
+                fn ($query) => $query->orderByDesc('created_at')->orderByDesc('id'),
+                function ($query) use ($filters): void {
+                    $direction = ($filters['sort'] ?? null) === 'name_desc' ? 'desc' : 'asc';
+                    $query->orderBy('name', $direction)->orderBy('id');
+                },
+            )
             ->get();
 
         $policies = VenueBookingPolicy::query()

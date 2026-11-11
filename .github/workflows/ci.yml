@@ -541,6 +541,20 @@ jobs:
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             # Staging FAQ defaults: idempotent, never overwrite editorial content.
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\FaqContentSeeder' --force --no-interaction
+            # Public-disk photos must be accessible by the staging Nginx container.
+            # The seeder writes storage/app/public; on a fresh server /storage
+            # would otherwise be missing even though the product img src exists.
+            # Never replace an existing non-symlink entry or delete uploaded media.
+            if [ ! -L public/storage ]; then
+              test ! -e public/storage || { echo 'public/storage exists but is not a symlink'; exit 1; }
+              ln -s ../storage/app/public public/storage
+            fi
+            # Both conventional Laravel (absolute container) and relative links
+            # resolve inside Nginx. Reject unexpected targets, never silently rewire.
+            case "$(readlink public/storage)" in
+              '../storage/app/public'|'/var/www/html/storage/app/public') ;;
+              *) echo 'Unexpected public/storage link target'; exit 1 ;;
+            esac
             # A single reference-only draft for validating the shop in staging.
             # Idempotent; no placeholder photos/prices, no production changes.
             $COMPOSE run --rm -T --no-deps --user www-data phpfpm php artisan db:seed --class='Database\Seeders\ShopOzonReferenceDemoSeeder' --force --no-interaction
@@ -587,6 +601,14 @@ jobs:
               }
               echo "Staging GitHub/OpenAI generation gateway and authenticated GitHub API connection ready.\n";
             '
+            # Check the actual public asset via Nginx, not just its DB reference.
+            # An HTTP 200 HTML catalog does not imply the /storage image exists.
+            SHOP_PHOTO_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/storage/shop/products/ozon-5041196075.webp)"
+            if [ "$SHOP_PHOTO_HTTP" != '200' ]; then
+              echo "Staging demo product photo is not reachable (HTTP $SHOP_PHOTO_HTTP)"
+              exit 1
+            fi
+            echo 'Staging demo product photo available (HTTP 200)'
             # The panel must at least respond with HTTP 302 (portal login) to guests;
             # a missing route or server error is a release failure.
             BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
