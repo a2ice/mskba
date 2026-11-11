@@ -64,8 +64,7 @@ html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas)
 html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):hover:not(:disabled) {
   border-color: var(--muted);
 }
-html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):focus-visible,
-html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(.mskba-classic-select):focus-within {
+html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select):focus-visible {
   border-color: var(--accent); outline: 2px solid var(--accent) !important; outline-offset: 3px !important;
 }
 html[data-design-theme="mskba_classic"] :is(.mskba-page-builder, .ui-kit-canvas) :where(input,select,textarea,.form-control,.form-select)[aria-invalid="true"] {
