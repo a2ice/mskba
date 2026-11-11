@@ -413,4 +413,22 @@ CSS;
         $this->assertSame($day->getKey(), $page->refresh()->published_design_theme_id);
     }
 
+    public function test_classic_home_is_seeded_as_draft_and_keeps_original_home_unmodified(): void
+    {
+        $classic = DesignTheme::query()->where('slug', 'mskba_classic')->firstOrFail();
+        $page = PageBuilderPage::query()
+            ->where('path', '/')->where('design_theme_id', $classic->getKey())
+            ->firstOrFail();
+
+        $this->assertNull($page->published_at);
+        $this->assertNull($page->published_path);
+        $this->assertStringContainsString('classic-home', $page->draft_html);
+        $this->assertNull($this->home()->published_at);
+
+        $html = app(PageBuilderRenderer::class)->render($page, true)['html'];
+        $this->assertStringContainsString('mskba-classic-home', $html);
+        $this->assertStringContainsString('Выбирай, что нужно тебе сегодня', $html);
+        $this->assertStringContainsString('Найди место,', $html);
+    }
+
 }
