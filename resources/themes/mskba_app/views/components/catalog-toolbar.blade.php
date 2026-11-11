@@ -1,8 +1,8 @@
 @php
     $cardsUrl = $baseUrl.(count($viewQuery) ? '?'.http_build_query($viewQuery) : '');
     $listUrl = $baseUrl.'?'.http_build_query(array_merge($viewQuery, ['view' => 'list']));
-    $sortQuery = request()->except(['sort', 'page']);
-    $sortChoices = [
+    $sortQuery = request()->except(['sort', 'page', 'fragment']);
+    $sortChoices = $sortChoices ?? [
         '' => 'По порядку',
         'new' => 'Сначала новые',
         'price_asc' => 'Сначала дешевле',

@@ -19,6 +19,7 @@
             <h2>Поиск площадок</h2>
             <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters">
                 @if($currentView === 'list')<input type="hidden" name="view" value="list">@endif
+                @if(filled($filters['sort'] ?? null))<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
                 <label><span>Поиск площадки</span>
                     <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
                 </label>
@@ -58,7 +59,13 @@
                     'viewQuery' => $viewQuery,
                     'currentView' => $currentView,
                     'resetUrl' => route('venues', $currentView === 'list' ? ['view' => 'list'] : []),
-                    'enableSorting' => false,
+                    'enableSorting' => true,
+                    'sortValue' => $filters['sort'] ?? '',
+                    'sortChoices' => [
+                        '' => 'По названию (А–Я)',
+                        'name_desc' => 'По названию (Я–А)',
+                        'new' => 'Сначала новые',
+                    ],
                 ])
             </div>
             <div @class(['app-venues-catalog__items', 'app-venues-catalog__items--list' => $currentView === 'list']) data-venue-items>
