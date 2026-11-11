@@ -22,8 +22,10 @@
             <div class="app-dashboard-customize" data-dashboard-customize>
                 <p class="muted" data-dashboard-order-hint hidden>Перетаскивай карточки за специальный значок или используй кнопки перемещения. Порядок сохраняется автоматически.</p>
                 <div class="app-dashboard-customize__actions">
-                    <button class="button secondary" type="button" data-dashboard-order-toggle
-                            aria-pressed="false">Изменить порядок</button>
+                    @if ($dashboardWidgets->where('can_move', true)->count() > 1)
+                        <button class="button secondary" type="button" data-dashboard-order-toggle
+                                aria-pressed="false">Изменить порядок</button>
+                    @endif
                     <a class="button secondary" href="{{ route('account.settings.dashboard') }}">Выбрать виджеты</a>
                 </div>
                 <p class="app-dashboard-customize__status" data-dashboard-order-status role="status" aria-live="polite"></p>
