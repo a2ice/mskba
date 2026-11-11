@@ -37,6 +37,18 @@
              @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header">
             <h2>{{ $widget->title }}</h2>
+            <div class="app-dashboard-widget__reorder-controls" aria-label="Порядок виджета">
+                <button type="button" class="app-dashboard-widget__move app-dashboard-widget__move--up"
+                        data-dashboard-move="up" aria-label="Переместить {{ $widget->title }} выше"
+                        title="Переместить выше"><svg aria-hidden="true"><use href="#arrow-up"/></svg></button>
+                <button type="button" class="app-dashboard-widget__move app-dashboard-widget__move--down"
+                        data-dashboard-move="down" aria-label="Переместить {{ $widget->title }} ниже"
+                        title="Переместить ниже"><svg aria-hidden="true"><use href="#arrow-up"/></svg></button>
+                <button type="button" class="app-dashboard-widget__drag-handle" data-dashboard-drag-handle
+                        aria-label="Перетащить {{ $widget->title }}" title="Перетащить виджет">
+                    <svg aria-hidden="true"><use href="#sliders"/></svg>
+                </button>
+            </div>
             @if ($widget->kind === 'advertisement')<span class="app-dashboard-widget__ad-label">Реклама</span>@endif
         </div>
         <div class="app-dashboard-widget__composition{{ $showImage ? ' app-dashboard-widget__composition--'.$imagePosition : '' }}"
