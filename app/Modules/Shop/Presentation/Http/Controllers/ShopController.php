@@ -59,6 +59,10 @@ final class ShopController extends Controller
             ->where('status', 'published')
             ->whereHas('categories', fn ($query) => $query->whereIn('shop_categories.id', $activeIds));
 
+        $highestPriceKopecks = (int) (clone $baseProducts)->max('price_kopecks');
+        $priceCeiling = max(1000, (int) (ceil($highestPriceKopecks / 100 / 500) * 500),
+            $filters['min_price'] ?? 0, $filters['max_price'] ?? 0);
+
         $products = (clone $baseProducts)->with(['categories', 'tags', 'productType'])
             ->when($filters['q'] !== '', fn ($query) => $query->where(fn ($q) => $q
                 ->whereRaw('LOWER(shop_products.name) LIKE ?', ['%'.mb_strtolower($filters['q']).'%'])
@@ -126,7 +130,7 @@ final class ShopController extends Controller
 
         return ThemeResolver::page('shop.index', compact(
             'category', 'categoryNav', 'categoryTree', 'expandedCategoryIds',
-            'favoriteProductIds', 'products', 'filters', 'tags', 'types', 'availableAttributes',
+            'favoriteProductIds', 'products', 'filters', 'tags', 'types', 'availableAttributes', 'priceCeiling',
         ));
     }
 

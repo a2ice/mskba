@@ -43,13 +43,14 @@
         <main class="app-shop__main">
             <div class="app-shop__toolbar">
                 <span class="app-shop__toolbar-count">Показано {{ $products->count() }} из {{ $products->total() }} товаров</span>
-                <nav class="app-shop__view-switch" aria-label="Отображение товаров">
-                    <a @class(['is-active' => ! $isList]) href="{{ route($category ? 'shop.category' : 'shop.index', $category ? array_merge(['category' => $category->slug], $viewQuery) : $viewQuery) }}"
-                       @if(! $isList) aria-current="page" @endif>Карточки</a>
-                    <a @class(['is-active' => $isList])
-                       href="{{ route($category ? 'shop.category' : 'shop.index', $category ? array_merge(['category' => $category->slug], $viewQuery, ['view' => 'list']) : array_merge($viewQuery, ['view' => 'list'])) }}"
-                       @if($isList) aria-current="page" @endif>Списком</a>
-                </nav>
+                @include('theme::components.catalog-toolbar', [
+                    'baseUrl' => $action,
+                    'viewQuery' => $viewQuery,
+                    'currentView' => $isList ? 'list' : 'cards',
+                    'resetUrl' => $action.($isList ? '?view=list' : ''),
+                    'enableSorting' => true,
+                    'sortValue' => $filters['sort'],
+                ])
             </div>
 
             <details class="app-shop__mobile-filters panel">
@@ -64,12 +65,6 @@
                 </div>
             </details>
 
-            @if($activeCount)
-                <div class="app-shop__results-head">
-                    <span>Фильтры применены</span>
-                    <a class="app-shop__clear-filters" href="{{ $action }}">Сбросить фильтры</a>
-                </div>
-            @endif
             <div @class(['app-shop__products', 'app-shop__products--list' => $isList])>
                 @forelse($products as $product)
                     @include('theme::pages.shop.partials.card', ['product' => $product])
