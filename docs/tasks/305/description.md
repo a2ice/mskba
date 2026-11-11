@@ -15,3 +15,36 @@
 
 ## Acceptance
 Superadmin, delegated permission, venue owner без привилегии, guest, read-only, forced URL, CSRF, SSRF validation, encrypt/masking, audit, draft enable gate, multi sources. PostgreSQL/feature, CI green, merge dev, реальная проверка UI/permissions, приёмка.
+
+
+## Реализация — первая безопасная фаза (2026-11-12)
+
+**В отдельном PR, до приёмки не считается завершённой.** Добавлены:
+`venue_integrations`, `venue_integration_sources`, отдельные привязки к
+`VenueCourt`, журнал `venue_integration_audit_events`, модели и
+`VenueIntegrationManager` с allowlist-валидацией и обособленными
+backoffice permissions (view/manage/execute/audit). Filament на странице
+площадки показывает настройки, источники и неизменяемый журнал.
+
+- Все настройки и источники **выключены по умолчанию**. Внешние API/Browser
+  нельзя активировать, пока `venue_integrations.live_source_execution_enabled`
+  равен `false` (глобальный kill switch).
+- Сервис **не делает внешних HTTP/browser вызовов**, не создаёт брони,
+  не меняет quote/расписание/цены и не планирует jobs.
+- Доступ к редактированию только по глобальным backoffice permissions
+  **с проверкой на сервере**; владелец площадки не получает его по
+  контракту автоматически. Сквозная Filament-страница Venue также
+  требует действующее `backoffice.venue.manage`.
+- Ключи сохраняются только в зашифрованном `credentials` и никогда
+  не отображаются в формах, JSON-модели или аудитных событиях.
+- Адресам разрешены только публичные HTTPS-host без userinfo и secret
+  query-параметров; полноценная DNS/IP revalidation требуется при
+  фактическом выполнении адаптера в Task 306.
+- Статус `mskba_allowed` остаётся **внутренним решением** с ссылкой
+  на подтверждение допустимости, а не заменяет ToS третьей стороны.
+
+**Остаток Task 305 после первой фазы:** глобальная админская витрина всех
+интеграций, расширенные права/просмотр аудита и запреты по всем
+непосредственным Livewire/URL входам, безопасная модель approval для
+production, полная браузерная UX-приёмка, отдельный аудит чтения.
+Не закрывать задачу по факту успешной миграции.
