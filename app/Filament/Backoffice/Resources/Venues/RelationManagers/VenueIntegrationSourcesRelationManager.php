@@ -6,6 +6,7 @@ use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
+use App\Modules\VenueIntegration\Infrastructure\Adapters\FindSportReadOnlyAdapter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
@@ -18,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 
 final class VenueIntegrationSourcesRelationManager extends RelationManager
@@ -41,6 +43,15 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
 
         return $actor !== null && app(VenueIntegrationManager::class)->can(
             $actor, Permission::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE,
+        );
+    }
+
+    private function canExecute(): bool
+    {
+        $actor = auth('web')->user();
+
+        return $actor !== null && app(VenueIntegrationManager::class)->can(
+            $actor, Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
         );
     }
 
@@ -147,7 +158,34 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                Action::make('editIntegrationSource')->label('Изменить')
+                Action::make('previewFindSport')->label('Получить данные')
+                    ->icon('heroicon-o-eye')
+                    ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
+                        && $record->adapter_key === 'api'
+                        && str_starts_with((string) $record->endpoint_url, 'https://findsport.ru/playground/'))
+                    ->modalHeading('FindSport — read-only предпросмотр')
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalContent(function (VenueIntegrationSource $record): View {
+                        abort_unless($this->canExecute(), 403);
+
+                        try {
+                            $report = app(FindSportReadOnlyAdapter::class)->preview(
+                                $record, auth('web')->user(),
+                            );
+                            $error = null;
+                        } catch (\Throwable $exception) {
+                            report($exception);
+                            $report = null;
+                            $error = $exception->getMessage();
+                        }
+
+                        return view(
+                            'filament.backoffice.venue-integrations.findsport-preview',
+                            compact('report', 'error'),
+                        );
+                    }),
+                Action::make('editIntegrationSource'->label('Изменить')
                     ->icon('heroicon-o-pencil-square')
                     ->visible(fn (): bool => $this->canManage())
                     ->modalHeading('Настройки источника')
