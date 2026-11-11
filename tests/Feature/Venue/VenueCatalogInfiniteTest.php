@@ -40,12 +40,12 @@ final class VenueCatalogInfiniteTest extends TestCase
             ->assertDontSee('Тестовая площадка 06')
             ->assertDontSee('БАСКЕТБОЛЬНЫЕ ПЛОЩАДКИ');
 
-        $this->getJson('/venues?page=2&fragment=items')
+        $response = $this->getJson('/venues?page=2&fragment=items')
             ->assertOk()->assertJsonPath('has_more', false)
             ->assertJsonPath('next_page', null)
-            ->assertJsonPath('total', 6)
-            ->assertSee('Тестовая площадка 06')
-            ->assertDontSee('Тестовая площадка 01');
+            ->assertJsonPath('total', 6);
+        $this->assertStringContainsString('Тестовая площадка 06', $response->json('html'));
+        $this->assertStringNotContainsString('Тестовая площадка 01', $response->json('html'));
 
         $this->get('/venues?view=list')
             ->assertOk()->assertSee('app-venues-catalog__items--list');
