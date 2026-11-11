@@ -791,3 +791,17 @@ header **не теряет** класс `.is-scroll-revealed` на границ�
 - Реализация: `resources/themes/mskba_app/css/shop.css`, подключённый через
   `css/app.css`; Blade-компоненты в `pages/shop/partials`.
   Проверки: `tests/Feature/Shop/ShopAppThemeTest.php`.
+
+
+## MSKBA App: площадки — бесконечная подгрузка (2026-11-11)
+
+- У /venues нет eyebrow: заголовок, описание, кнопка «Добавить площадку», sticky sidebar фильтров.
+- Переключатель «Карточки / Списком» оформляется как у магазина, с сохранением query-параметров.
+- Начальная выдача содержит 4 площадки. Следующие загружаются из /venues?page=N&fragment=items,
+  ответ содержит HTML элементов, has_more, next_page, total. Повторные ID не добавляются.
+- IntersectionObserver инициирует подгрузку заранее; ошибки требуют ручного повтора, одновременные
+  запросы исключены. Фильтры сохраняются, пагинация с переходами по страницам не отображается.
+- Использовать только проектный CSS spinner image-upload-loading__spinner из
+  resources/themes/mskba_dark/css/image-upload.css; не создавать новый GIF или анимацию мяча.
+- Исходники: resources/themes/mskba_app/views/pages/venues/index.blade.php,
+  css/venue-catalog.css и js/venue-catalog.js. Тема mskba_dark сохраняет прежнее поведение.

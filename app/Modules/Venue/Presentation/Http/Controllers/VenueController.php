@@ -71,7 +71,7 @@ class VenueController extends Controller
         ]);
     }
 
-    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response
+    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response|JsonResponse
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
@@ -79,12 +79,38 @@ class VenueController extends Controller
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
             'view' => ['nullable', Rule::in(['list', 'map'])],
+            'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'fragment' => ['nullable', Rule::in(['items'])],
         ]);
         $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters);
+        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return ThemeResolver::page('venues.index', [
+                'venues' => $venues,
+                'filters' => $filters,
+                'types' => VenueTypeEnum::cases(),
+                'operationalStatuses' => VenueOperationalStatusEnum::cases(),
+            ]);
+        }
 
-        return ThemeResolver::page('venues.index', [
-            'venues' => $venues,
-            'filters' => $filters,
+        $total = count($venues);
+        $page = (int) ($filters['page'] ?? 1);
+        $perPage = 4;
+        $venues = array_slice($venues, ($page - 1) * $perPage, $perPage);
+        $hasMore = $page * $perPage < $total;
+        $currentView = ($filters['view'] ?? null) === 'list' ? 'list' : 'cards';
+
+        if (($filters['fragment'] ?? null) === 'items') {
+            return response()->json([
+                'html' => view('theme::pages.venues.partials.index-items', compact('venues', 'page'))->render(),
+                'has_more' => $hasMore,
+                'next_page' => $hasMore ? $page + 1 : null,
+                'total' => $total,
+            ])->header('Cache-Control', 'private, no-store');
+        }
+
+        return ThemeResolver::page('venues.index', compact(
+            'venues', 'filters', 'total', 'page', 'hasMore', 'currentView',
+        ) + [
             'types' => VenueTypeEnum::cases(),
             'operationalStatuses' => VenueOperationalStatusEnum::cases(),
         ]);
