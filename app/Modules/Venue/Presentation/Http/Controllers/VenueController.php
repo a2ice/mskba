@@ -101,7 +101,7 @@ class VenueController extends Controller
 
         if (($filters['fragment'] ?? null) === 'items') {
             return response()->json([
-                'html' => view('theme::pages.venues.partials.index-items', compact('venues'))->render(),
+                'html' => view('theme::pages.venues.partials.index-items', compact('venues', 'page'))->render(),
                 'has_more' => $hasMore,
                 'next_page' => $hasMore ? $page + 1 : null,
                 'total' => $total,
