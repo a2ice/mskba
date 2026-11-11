@@ -264,8 +264,8 @@
 }
 
 .app-shop__card-photo {
-    display: grid;
-    place-items: center;
+    position: relative;
+    display: block;
     width: 100%;
     aspect-ratio: 1;
     overflow: hidden;
@@ -273,6 +273,12 @@
 }
 
 .app-shop__card-photo img {
+    /* Grid + percent height used the intrinsic image aspect ratio even when
+       the photo frame was shorter, clipping the bottom in card view.
+       Fill the frame explicitly; list view uses the same rule. */
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
