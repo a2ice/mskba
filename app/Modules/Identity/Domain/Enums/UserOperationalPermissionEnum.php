@@ -33,6 +33,10 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
     case BACKOFFICE_VENUE_MANAGE = 'backoffice.venue.manage';
+    case BACKOFFICE_VENUE_INTEGRATIONS_VIEW = 'backoffice.venue.integrations.view';
+    case BACKOFFICE_VENUE_INTEGRATIONS_MANAGE = 'backoffice.venue.integrations.manage';
+    case BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE = 'backoffice.venue.integrations.execute';
+    case BACKOFFICE_VENUE_INTEGRATIONS_AUDIT = 'backoffice.venue.integrations.audit';
     case BACKOFFICE_VENUE_MODERATE = 'backoffice.venue.moderate';
     case BACKOFFICE_EVENT_MANAGE = 'backoffice.event.manage';
     case BACKOFFICE_CONTRACT_VIEW = 'backoffice.contract.view';
@@ -85,6 +89,10 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_VIEW,
             self::BACKOFFICE_THEME_MANAGE,
             self::BACKOFFICE_VENUE_MANAGE,
+            self::BACKOFFICE_VENUE_INTEGRATIONS_VIEW,
+            self::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE,
+            self::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
+            self::BACKOFFICE_VENUE_INTEGRATIONS_AUDIT,
             self::BACKOFFICE_VENUE_MODERATE,
             self::BACKOFFICE_EVENT_MANAGE,
             self::BACKOFFICE_CONTRACT_VIEW,
@@ -161,6 +169,10 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
             self::BACKOFFICE_VENUE_MANAGE => 'Создание, изменение и удаление площадок и справочников в Filament',
+            self::BACKOFFICE_VENUE_INTEGRATIONS_VIEW => 'Просмотр настроек интеграций площадок',
+            self::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE => 'Настройка и активация источников интеграций площадок',
+            self::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE => 'Ручной запуск разрешённых интеграций площадок',
+            self::BACKOFFICE_VENUE_INTEGRATIONS_AUDIT => 'Просмотр журнала интеграций площадок',
             self::BACKOFFICE_VENUE_MODERATE => 'Рассмотрение заявок модерации площадок и разрешение дублей в Filament',
             self::BACKOFFICE_EVENT_MANAGE => 'Управление мероприятиями, участниками и их бронированиями в Filament',
             self::BACKOFFICE_CONTRACT_VIEW => 'Просмотр контрактов в бэк-офисе',
