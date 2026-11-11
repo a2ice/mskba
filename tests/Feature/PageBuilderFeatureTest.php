@@ -22,7 +22,7 @@ final class PageBuilderFeatureTest extends TestCase
 
     private function home(): PageBuilderPage
     {
-        return PageBuilderPage::query()->where('path', '/')->firstOrFail();
+        return PageBuilderPage::query()->where('path', '/')->whereNull('design_theme_id')->firstOrFail();
     }
 
     public function test_page_builder_is_a_fluid_canvas_with_explicit_boxed_and_full_width_sections(): void
