@@ -167,6 +167,7 @@
             if(button) {
                 button.setAttribute('aria-pressed',String(result.state==='active'));
                 button.title=result.state==='active'?'Убрать из избранного':'Добавить в избранное';
+                button.setAttribute('aria-label',button.title);
             }
             if(result.state==='active') {
                 if(type==='product')toast(words?.added||'Добавлено в избранное');
