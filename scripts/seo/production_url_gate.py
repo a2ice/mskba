@@ -20,11 +20,24 @@ import csv
 import json
 import re
 import sys
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from compare_public_urls import get, normalize_path, parse_html, sitemap_paths, target_url
+
+
+TRANSIENT_HTTP_STATUSES = {0, 429, 502, 503, 504}
+
+
+def fetch_with_retry(url, timeout, retries=2):
+    """Retry only network/transient failures; never obscure persistent HTTP errors."""
+    for attempt in range(retries + 1):
+        response = get(url, timeout)
+        if response["status"] not in TRANSIENT_HTTP_STATUSES or attempt == retries:
+            return response
+        time.sleep(0.5 * (attempt + 1))
 
 
 FIELDS = (
@@ -34,7 +47,7 @@ FIELDS = (
 
 
 def capture_one(origin, path, timeout):
-    response = get(target_url(origin, path), timeout)
+    response = fetch_with_retry(target_url(origin, path), timeout)
     html = parse_html(response)
     return {
         "path": path,
@@ -126,7 +139,7 @@ def main():
     p.add_argument("--baseline", type=Path, help="CSV created before deploying the new production code")
     p.add_argument("--extra-paths", type=Path, help="Optional historical paths from logs/Search Console")
     p.add_argument("--workers", type=int, default=3)
-    p.add_argument("--timeout", type=float, default=12)
+    p.add_argument("--timeout", type=float, default=15)
     args = p.parse_args()
 
     if args.workers < 1 or args.workers > 8 or args.timeout <= 0:
