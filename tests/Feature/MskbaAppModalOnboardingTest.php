@@ -62,7 +62,7 @@ final class MskbaAppModalOnboardingTest extends TestCase
             ->get(route('account.privacy.distribution'))->assertOk()
             ->assertSee('data-auto-show="0"', false)
             ->assertSee('data-force-show="0"', false);
-        $this->get(route('welcome'))->assertOk()
+        $this->get(route('homepage.original'))->assertOk()
             ->assertSee('data-auto-show="0"', false);
         $this->get(route('personal-data.consent'))->assertOk();
     }
