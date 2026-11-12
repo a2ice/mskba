@@ -22,7 +22,7 @@ final class PageBuilderRouteRegistry
      * This is a denylist of systems, not an allowlist of public content.
      */
     private const PROTECTED_ROOTS = [
-        'account', 'admin', 'backoffice', 'api', 'auth', 'login', 'register',
+        'home', 'account', 'admin', 'backoffice', 'api', 'auth', 'login', 'register',
         'logout', 'dashboard', 'storage', 'assets', 'page-builder',
         'site-summary', 'integrations', 'r', 'up', 'sanctum', 'livewire',
         'horizon', 'telescope', 'broadcasting', 'oauth', 'webhooks', 'password',
