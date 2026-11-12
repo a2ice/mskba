@@ -23,6 +23,7 @@ final class PublicContentAppThemeTest extends TestCase
         ]);
         app()->forgetInstance(ThemeResolver::class);
         View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        $this->withoutVite();
     }
 
     public function test_existing_news_slug_renders_database_article_and_original_seo(): void
