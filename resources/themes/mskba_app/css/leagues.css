@@ -86,3 +86,7 @@
 .app-league-logo-field .form-hint{margin:0}
 .app-league-banner-settings{min-width:0;margin-top:24px}
 .app-league-banner-settings .entity-banner-editor{margin:0}
+
+/* League-specific logo treatment inside the shared light catalog cards/list. */
+.app-category__league-cover img{box-sizing:border-box;object-fit:contain;padding:26px}
+.app-category__league-cover .app-category__cover-placeholder svg{width:68px;height:68px;color:var(--muted)}
