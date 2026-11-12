@@ -26,7 +26,7 @@ final class SeoLegacyPublicFallbackTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_published_feed_catalog_renders_real_legacy_page_instead_of_soft_404(): void
+    public function test_app_theme_published_feed_catalog_is_not_a_soft_404(): void
     {
         $this->get('https://mskba.ru/feed')
             ->assertOk()
@@ -61,7 +61,9 @@ final class SeoLegacyPublicFallbackTest extends TestCase
 
     public function test_legacy_page_restores_new_theme_namespace_for_subsequent_requests(): void
     {
-        $this->get('https://mskba.ru/feed')->assertOk();
+        $this->get('https://mskba.ru/faq/welcome')
+            ->assertOk()
+            ->assertDontSee('MSKBA App theme');
 
         $this->get('https://mskba.ru/venues')
             ->assertOk()
@@ -74,7 +76,7 @@ final class SeoLegacyPublicFallbackTest extends TestCase
 
     public function test_dev_stays_noindex_when_serving_legacy_published_pages(): void
     {
-        $this->get('https://dev.mskba.ru/feed')
+        $this->get('https://dev.mskba.ru/faq/welcome')
             ->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
