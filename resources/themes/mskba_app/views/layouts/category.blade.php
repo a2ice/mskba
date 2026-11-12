@@ -16,6 +16,7 @@
     $categoryViewQuery = $categoryViewQuery ?? request()->except(['view', 'page', 'fragment']);
     $categoryResetUrl = $categoryResetUrl ?? $categoryBaseUrl;
     $categoryRootId = $categoryRootId ?? 'mskba-category';
+    $categoryHeadingId = $categoryHeadingId ?? $categoryRootId.'-title';
     $categorySidebarLabel = $categorySidebarLabel ?? 'Навигация и фильтры';
     $categoryToolbarCount = $categoryToolbarCount ?? null;
 @endphp
@@ -25,10 +26,10 @@
 <section class="container {{ $categoryRootClass }}" id="{{ $categoryRootId }}"
     data-default-category data-default-category-view="{{ $categoryView }}"
     @if($categoryRootId === 'venues-catalog') data-venue-infinite-catalog data-next-page="{{ $hasMore ? $page + 1 : '' }}" @endif
-    aria-labelledby="{{ $categoryRootId }}-title">
+    aria-labelledby="{{ $categoryHeadingId }}">
     <header class="{{ $categoryHeaderClass }}">
         <div>
-            <h1 id="{{ $categoryRootId }}-title">{{ $categoryTitle }}</h1>
+            <h1 id="{{ $categoryHeadingId }}">{{ $categoryTitle }}</h1>
             @if($categoryDescription !== '')<p class="muted">{{ $categoryDescription }}</p>@endif
         </div>
         @yield('category-heading-action')
@@ -57,7 +58,8 @@
             </div>
             @yield('category-before-items')
             <div class="{{ $categoryItemsClass }}{{ $categoryView === 'list' ? ' '.$categoryItemsListClass : '' }}"
-                data-default-category-results="{{ $categoryView }}">
+                data-default-category-results="{{ $categoryView }}"
+                @if($categoryRootId === 'venues-catalog') data-venue-items @endif>
                 @yield('category-items')
             </div>
             @yield('category-after-items')
