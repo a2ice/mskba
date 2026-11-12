@@ -387,6 +387,9 @@ CSS;
             'status' => UserStatusEnum::CONFIRMED,
             'design_theme_id' => $classic->getKey(),
         ]);
+        // Site homepage is now a per-user choice; this test exercises
+        // the explicit 'current homepage' option rather than the default account.
+        $user->forceFill(['homepage_preference' => 'current'])->save();
         $this->actingAs($user)->get('/')->assertOk()
             ->assertSee('Классическая главная')->assertDontSee('Новая главная');
 
