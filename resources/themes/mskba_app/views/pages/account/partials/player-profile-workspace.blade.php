@@ -56,64 +56,57 @@
         </div>
     @endif
 
-    <section class="panel app-profile__panel" aria-label="Статус подтверждения игрока">
-        <h2>Статус игрока</h2>
-        @if($playerConfirmed)
-            <p>Подтверждённый игрок. Рост и поле «Играю с» защищены. Вес, телосложение и остальные характеристики можно редактировать как обычно.</p>
-            @if($canEditConfirmedPlayer)
-                <p>У тебя есть разрешение на прямое изменение собственных подтверждённых данных.</p>
-            @elseif($activePlayerChangeRequest === null)
-                <button type="button" class="button secondary" data-player-change-request-open>Запросить изменение подтверждённых данных игрока</button>
-            @else
-                <p>Сейчас есть активная заявка на изменение данных игрока. Дождись решения по ней.</p>
-            @endif
-        @else
-            <p>После заполнения характеристик ты сможешь подтвердить свой профиль игрока. Рост и год начала игры после этого изменяются только по заявке, если нет специального разрешения.</p>
-            @if($playerConfirmationReady)
-                <form method="POST" action="{{ route('account.player.confirm') }}" id="player-confirmation-form">
+    @unless($playerConfirmed)
+        <form id="player-confirmation-form" method="POST" action="{{ route('account.player.confirm') }}"
+            data-confirm-context="player" hidden>
+            @csrf
+            <input type="hidden" name="height_cm" value="{{ $profile?->height_cm }}"
+                data-confirm-requirement data-confirm-label="Рост"
+                data-confirm-href="{{ route('account.participation-role', ['role' => 'player', 'tab' => 'physical']) }}#player-height">
+            <input type="hidden" name="experience_started_year" value="{{ $profile?->experience_started_year }}"
+                data-confirm-requirement data-confirm-label="Играю с"
+                data-confirm-href="{{ route('account.participation-role', ['role' => 'player', 'tab' => 'game']) }}#player-experience-started-year">
+        </form>
+        @include('theme::pages.account.partials.confirmation-review-dialog', [
+            'formId' => 'player-confirmation-form',
+            'dialogId' => 'player-confirmation-review',
+            'heading' => 'Подтверждение игрока',
+            'warning' => 'Рост и год начала игры после подтверждения изменяются только по заявке, если нет специального разрешения.',
+            'values' => [
+                'Рост' => $profile?->height_cm === null ? null : $profile->height_cm.' см',
+                'Играю с' => $profile?->experience_started_year,
+            ],
+        ])
+        @include('theme::pages.account.partials.confirmation-missing-dialog', [
+            'formId' => 'player-confirmation-form',
+            'dialogId' => 'player-confirmation-missing',
+            'heading' => 'Не все данные игрока заполнены',
+        ])
+    @endunless
+
+    @if(session('profile_status'))
+        <p class="app-player-workspace__notice" role="status">{{ session('profile_status') }}</p>
+    @endif
+    @if($latestPlayerChangeRequest)
+        <div class="app-player-workspace__request-summary">
+            <span>Заявка №{{ $latestPlayerChangeRequest->id }}:
+                <strong>{{ [
+                    'pending' => 'На рассмотрении',
+                    'approved' => 'Одобрена',
+                    'rejected' => 'Отклонена',
+                    'blocked' => 'Заблокирована',
+                    'cancelled' => 'Отменена',
+                ][$latestPlayerChangeRequest->status] ?? $latestPlayerChangeRequest->status }}</strong>
+            </span>
+            <a href="{{ route('account.notifications.threads.profile', $latestPlayerChangeRequest) }}">Обсуждение</a>
+            @if($latestPlayerChangeRequest->status === 'pending')
+                <form method="POST" action="{{ route('account.profile-change-requests.cancel', $latestPlayerChangeRequest) }}">
                     @csrf
-                    <button type="submit" class="button primary">Подтвердить игрока</button>
+                    <button type="submit" class="button secondary">Отменить заявку</button>
                 </form>
-                @include('theme::pages.account.partials.confirmation-review-dialog', [
-                    'formId' => 'player-confirmation-form',
-                    'dialogId' => 'player-confirmation-review',
-                    'heading' => 'Подтверждение игрока',
-                    'values' => [
-                        'Рост' => $profile->height_cm.' см',
-                        'Играю с' => (string) $profile->experience_started_year,
-                    ],
-                ])
-            @else
-                <p>Для подтверждения необходимо заполнить и сохранить <strong>рост</strong> и <strong>«Играю с»</strong> на соответствующих вкладках.</p>
             @endif
-        @endif
-        @if(session('profile_status'))
-            <p role="status">{{ session('profile_status') }}</p>
-        @endif
-        @if($latestPlayerChangeRequest)
-            <div>
-                <p><strong>Заявка №{{ $latestPlayerChangeRequest->id }}:</strong>
-                    {{ [
-                        'pending' => 'На рассмотрении',
-                        'approved' => 'Одобрена',
-                        'rejected' => 'Отклонена',
-                        'blocked' => 'Заблокирована',
-                        'cancelled' => 'Отменена',
-                    ][$latestPlayerChangeRequest->status] ?? $latestPlayerChangeRequest->status }}
-                    @if($latestPlayerChangeRequest->review_reason)
-                        — {{ $latestPlayerChangeRequest->review_reason }}
-                    @endif
-                </p>
-                <a class="button secondary" href="{{ route('account.notifications.threads.profile', $latestPlayerChangeRequest) }}">Открыть обсуждение</a>
-                @if($latestPlayerChangeRequest->status === 'pending')
-                    <form method="POST" action="{{ route('account.profile-change-requests.cancel', $latestPlayerChangeRequest) }}">
-                        @csrf
-                        <button type="submit" class="button secondary">Отменить заявку</button>
-                    </form>
-                @endif
-            </div>
-        @endif
-    </section>
+        </div>
+    @endif
 
     <nav class="app-player-workspace__tabs" aria-label="Параметры роли Игрок" data-player-section-nav>
         <a href="{{ route('account.participation-role', ['role' => 'player', 'tab' => 'physical']) }}"
@@ -408,7 +401,7 @@
                 <div class="app-player-workspace__fields">
                     <label class="app-player-workspace__field">Играю с
                         <span class="select-control">
-                            <select name="experience_started_year" @disabled($playerProtectedFieldsLocked)>
+                            <select id="player-experience-started-year" name="experience_started_year" @disabled($playerProtectedFieldsLocked)>
                             <option value="">Не указано</option>
                             @for($year=now()->year-10;$year>=now()->year-50;$year--)
                                 <option value="{{ $year }}" @selected((string)old('experience_started_year',$profile?->experience_started_year)===(string)$year)>{{ $year }}</option>

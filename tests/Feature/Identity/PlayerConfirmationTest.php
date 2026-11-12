@@ -164,13 +164,18 @@ final class PlayerConfirmationTest extends TestCase
         $user = $this->player();
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
             ->assertOk()
-            ->assertSee('Подтвердить игрока')
-            ->assertSee('data-confirm-review-target="player-confirmation-form"', false);
+            ->assertSee('form="player-confirmation-form"', false)
+            ->assertSee('>Подтвердить</button>', false)
+            ->assertSee('data-confirm-missing-target="player-confirmation-form"', false)
+            ->assertSee('data-confirm-review-target="player-confirmation-form"', false)
+            ->assertDontSee('Статус игрока');
 
         $this->post(route('account.player.confirm'))->assertRedirect();
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
             ->assertOk()
+            ->assertSee('Подтверждён')
             ->assertSee('data-player-change-request-open', false)
+            ->assertDontSee('form="player-confirmation-form"', false)
             ->assertSee('id="player-height"', false);
         $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
             ->assertOk()
@@ -178,4 +183,21 @@ final class PlayerConfirmationTest extends TestCase
 
         $this->get(route('account.confirmation'))->assertOk();
     }
+    public function test_confirmation_action_stays_available_for_unfilled_player_with_missing_data_dialog(): void
+    {
+        $user = $this->player(false);
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
+            ->assertOk()
+            ->assertSee('form="player-confirmation-form"', false)
+            ->assertSee('data-confirm-requirement', false)
+            ->assertSee('data-confirm-label="Рост"', false)
+            ->assertSee('data-confirm-label="Играю с"', false)
+            ->assertSee('data-confirm-missing-list', false)
+            ->assertDontSee('Статус игрока');
+
+        $this->get(route('account.participation-role', ['role' => 'player', 'tab' => 'game']))
+            ->assertOk()
+            ->assertSee('id="player-experience-started-year"', false);
+    }
+
 }

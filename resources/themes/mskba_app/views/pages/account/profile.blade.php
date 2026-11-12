@@ -4,10 +4,50 @@
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Профиль',
         'intro' => 'Управляй аватаром, никнеймом и личными данными.',
+        'introConfirmation' => [
+            'confirmed' => $profileConfirmed,
+            'formId' => 'profile-confirmation-form',
+        ],
     ])
 @endsection
 
 @section('account-content')
+    @unless($profileConfirmed)
+        <form id="profile-confirmation-form" action="{{ route('account.confirmation.complete') }}" method="POST"
+            data-confirm-context="profile"
+            data-confirm-contact-verified="{{ $primaryVerifiedContact ? 'true' : 'false' }}"
+            data-confirm-contact-href="{{ route('account.contacts') }}" hidden>
+            @csrf
+            @foreach([
+                'first_name' => ['Имя', '#app-profile-first-name'],
+                'last_name' => ['Фамилия', '#app-profile-last-name'],
+                'birth_date' => ['Дата рождения', '#app-profile-birth-date'],
+                'gender' => ['Пол', '#app-profile-gender'],
+            ] as $field => [$label, $href])
+                <input type="hidden" name="{{ $field }}" value="{{ $field === 'birth_date' ? $profile?->birth_date?->toDateString() : ($field === 'gender' ? $profile?->gender?->value : $profile?->{$field}) }}"
+                    data-confirm-requirement data-confirm-label="{{ $label }}" data-confirm-href="{{ $href }}">
+            @endforeach
+        </form>
+        @include('theme::pages.account.partials.confirmation-review-dialog', [
+            'formId' => 'profile-confirmation-form',
+            'dialogId' => 'profile-confirmation-review',
+            'heading' => 'Подтверждение профиля',
+            'liveFields' => ['Имя' => 'first_name', 'Фамилия' => 'last_name', 'Дата рождения' => 'birth_date', 'Пол' => 'gender'],
+            'values' => [
+                'Имя' => $profile?->first_name,
+                'Фамилия' => $profile?->last_name,
+                'Дата рождения' => $profile?->birth_date?->format('d.m.Y'),
+                'Пол' => $profile?->gender?->label(),
+                'Основной контакт' => $primaryVerifiedContact
+                    ? $primaryVerifiedContact->type->label().': '.$primaryVerifiedContact->displayValue() : null,
+            ],
+        ])
+        @include('theme::pages.account.partials.confirmation-missing-dialog', [
+            'formId' => 'profile-confirmation-form',
+            'dialogId' => 'profile-confirmation-missing',
+            'heading' => 'Не все данные профиля заполнены',
+        ])
+    @endunless
     <div class="app-profile-page">
     <div class="app-profile" data-account-profile>
         @if (session('profile_status') || session('avatar_status'))

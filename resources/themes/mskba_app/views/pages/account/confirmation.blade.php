@@ -9,6 +9,10 @@
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Подтверждение аккаунта',
         'intro' => 'Проверь и заполни данные. После подтверждения имя, фамилию, дату рождения и пол можно будет изменить только по заявке.',
+        'introConfirmation' => [
+            'confirmed' => $isConfirmed,
+            'formId' => 'confirmation-complete-form',
+        ],
     ])
 @endsection
 
@@ -51,8 +55,20 @@
             <form id="confirmation-complete-form" method="POST" action="{{ route('account.confirmation.complete') }}"
                   class="app-confirmation__form" data-confirmation-profile
                   data-save-url="{{ route('account.profile.update') }}"
-                  data-has-verified-contact="{{ $primaryVerifiedContact ? 'true' : 'false' }}">
+                  data-has-verified-contact="{{ $primaryVerifiedContact ? 'true' : 'false' }}"
+                  data-confirm-context="confirmation"
+                  data-confirm-contact-verified="{{ $primaryVerifiedContact ? 'true' : 'false' }}"
+                  data-confirm-contact-href="#confirmation-main-contact">
                 @csrf
+                @foreach([
+                    'first_name' => ['Имя', '#confirmation-first-name'],
+                    'last_name' => ['Фамилия', '#confirmation-last-name'],
+                    'birth_date' => ['Дата рождения', '#confirmation-birth-date'],
+                    'gender' => ['Пол', '#confirmation-gender'],
+                ] as $field => [$label, $href])
+                    <span hidden data-confirm-requirement data-confirm-name="{{ $field }}"
+                        data-confirm-label="{{ $label }}" data-confirm-href="{{ $href }}"></span>
+                @endforeach
                 <section class="panel app-confirmation__card" aria-labelledby="confirmation-profile-title">
                     <div class="app-confirmation__card-heading">
                         <h2 id="confirmation-profile-title">Профиль</h2>
@@ -131,23 +147,11 @@
                 @error('contact') <p class="app-confirmation__error" role="alert">{{ $message }}</p> @enderror
             </section>
 
-            <div class="app-confirmation__finish">
-                <p data-confirmation-requirement>
-                    @if ($missingTotal)
-                        Для подтверждения аккаунта необходимо
-                        @if ($firstMissing)
-                            <a href="#{{ $firstMissing['id'] }}" data-confirmation-missing-link>заполнить {{ mb_strtolower($firstMissing['label']) }}</a>
-                        @else
-                            <a href="#confirmation-main-contact" data-confirmation-missing-link>подтвердить основной контакт</a>
-                        @endif
-                        @if($missingTotal > 1) и ещё {{ $missingTotal - 1 }}@endif.
-                    @else
-                        Все обязательные данные заполнены. Теперь можно подтвердить аккаунт.
-                    @endif
-                </p>
-                <button class="button primary" type="submit" form="confirmation-complete-form"
-                        data-confirmation-submit @if($missingTotal) disabled @endif>Подтвердить аккаунт</button>
-            </div>
+            @include('theme::pages.account.partials.confirmation-missing-dialog', [
+                'formId' => 'confirmation-complete-form',
+                'dialogId' => 'account-confirmation-missing',
+                'heading' => 'Не все данные профиля заполнены',
+            ])
             @include('theme::pages.account.partials.confirmation-review-dialog', [
                 'formId' => 'confirmation-complete-form',
                 'dialogId' => 'account-confirmation-review',
