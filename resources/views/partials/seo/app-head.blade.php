@@ -4,7 +4,7 @@
     $seoRoute = (array) (config('seo.pages', [])[$seoRouteName] ?? []);
     $seoPageTitle = isset($metaTitle) && filled($metaTitle)
         ? (string) $metaTitle
-        : ($seoRoute['title'] ?? (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA')));
+        : ($seoRoute['title'] ?? (isset($title) ? $title.' · MSKBA' : 'MSKBA'));
     $seoExplicitDescription = isset($metaDescription) ? trim((string) $metaDescription) : '';
     $seoRouteDescription = trim((string) ($seoRoute['description'] ?? ''));
     $seoPageDescription = $seoExplicitDescription !== ''
