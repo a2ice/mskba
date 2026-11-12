@@ -243,3 +243,4 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 - [ ] 313 - Добавить редакционные материалы и FAQ в меню Filament ([описание](tasks/313/description.md))
 - [ ] 314 - Перенести «Мои лиги» в «Участие», а роли в «Профиль» ([описание](tasks/314/description.md))
 - [ ] 315 - Мультиканальная публикация материалов в Telegram, VK и Instagram ([описание](tasks/315/description.md))
+- [ ] 316 - Production Content & SEO Migration: полная совместимость URL, контента, SEO и аналитики при переходе с dev на prod ([план и декомпозиция](tasks/316/description.md))
