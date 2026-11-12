@@ -38,7 +38,7 @@ final class RequiredPrivacyOnboardingTest extends TestCase
             ->assertSee('Настройка публичности');
 
         $this->get(route('personal-data.distribution-consent'))->assertOk();
-        $this->get(route('welcome'))->assertOk();
+        $this->get(route('homepage.original'))->assertOk();
     }
 
     public function test_pending_user_cannot_mutate_account_via_html_or_json(): void

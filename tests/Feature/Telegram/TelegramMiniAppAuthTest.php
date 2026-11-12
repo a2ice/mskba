@@ -255,7 +255,7 @@ class TelegramMiniAppAuthTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->get(route('welcome'))
+            ->get(route('homepage.original'))
             ->assertOk()
             ->assertSee('data-authenticated="1"', false)
             ->assertSee('data-profile-initials', false)

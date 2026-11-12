@@ -55,8 +55,8 @@
 
             <nav class="site-footer__nav" aria-label="Информация и документы">
                 <h2>Информация</h2>
-                <a href="{{ route('welcome') }}#about">О проекте</a>
-                <a href="{{ route('welcome') }}#partners">Партнёрам</a>
+                <a href="{{ route('homepage.original') }}#about">О проекте</a>
+                <a href="{{ route('homepage.original') }}#partners">Партнёрам</a>
                 <a href="{{ route('privacy.policy') }}">Персональные данные</a>
                 <a href="mailto:{{ config('legal.privacy_email') }}">Связаться с нами</a>
             </nav>

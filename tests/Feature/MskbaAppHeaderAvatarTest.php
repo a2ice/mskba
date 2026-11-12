@@ -64,7 +64,7 @@ final class MskbaAppHeaderAvatarTest extends TestCase
                 'status' => UserStatusEnum::CONFIRMED,
             ]);
 
-            $response = $this->actingAs($user)->get(route('welcome'))->assertOk();
+            $response = $this->actingAs($user)->get(route('homepage.original'))->assertOk();
             $roleColor = $role->avatarBorderColor();
             $response->assertSee('class="avatar app-user-avatar app-header-avatar"', false)
                 ->assertSee('data-avatar-role="'.$role->value.'"', false)
@@ -91,7 +91,7 @@ final class MskbaAppHeaderAvatarTest extends TestCase
             ]);
             $this->createNotifications($user, 1, 1);
 
-            $this->actingAs($user)->get(route('welcome'))->assertOk()
+            $this->actingAs($user)->get(route('homepage.original'))->assertOk()
                 ->assertSee('class="avatar app-user-avatar app-header-avatar"', false)
                 ->assertSee('aria-label="Личный кабинет"', false)
                 ->assertDontSee('data-avatar-role=', false)

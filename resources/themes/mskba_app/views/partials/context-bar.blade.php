@@ -1,7 +1,7 @@
 @php
     $accountIsUnconfirmed = auth()->check()
         && auth()->user()->canonical()->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED;
-    $isHomePage = request()->routeIs('welcome', 'home');
+    $isHomePage = request()->routeIs('welcome', 'home', 'homepage.original');
 @endphp
 {{-- Home keeps its clean header for guests and confirmed users. Only an
      unconfirmed member gets the minimal contextual Actions bar there. --}}

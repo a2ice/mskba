@@ -64,7 +64,7 @@ final class MskbaAppGuidedPrivacyTest extends TestCase
             ->assertSee('data-privacy-profile-children', false)
             ->assertSee('data-privacy-search-children', false);
 
-        $this->get(route('welcome'))->assertSee('app-header-account--setup-pending');
+        $this->get(route('homepage.original'))->assertSee('app-header-account--setup-pending');
     }
 
     public function test_hierarchy_prevents_public_children_when_profile_parent_is_closed(): void
