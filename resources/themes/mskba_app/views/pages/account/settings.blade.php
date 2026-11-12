@@ -28,6 +28,28 @@
             <button class="button primary" type="submit">Сохранить</button>
         </form>
     </section>
+    <section class="panel app-appearance-settings" aria-labelledby="homepage-preference-heading">
+        <h2 id="homepage-preference-heading">Главная страница</h2>
+        <p class="muted">Выбери, какой раздел открывать при переходе на главную, когда ты вошёл в аккаунт. Для гостей всегда показывается обычная главная.</p>
+        <form action="{{ route('account.settings.homepage.update') }}" method="POST">
+            @csrf
+            @method('PATCH')
+            <label for="homepage-preference">Главная страница после входа</label>
+            <span class="select-control app-appearance-settings__select">
+                <select id="homepage-preference" name="homepage_preference" required>
+                    @foreach (\App\Modules\Identity\Application\Services\HomepagePreference::OPTIONS as $value => $label)
+                        <option value="{{ $value }}" @selected(old('homepage_preference', $user ? app(\App\Modules\Identity\Application\Services\HomepagePreference::class)->selected($user) : 'account') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <svg aria-hidden="true" focusable="false"><use href="#chevron-down"/></svg>
+            </span>
+            @error('homepage_preference')
+                <p class="error" role="alert">{{ $message }}</p>
+            @enderror
+            <button class="button primary" type="submit">Сохранить</button>
+            <p class="muted">Обычную главную можно открыть в любое время: <a href="{{ route('homepage.original') }}">Посмотреть главную MSKBA</a>.</p>
+        </form>
+    </section>
     <section class="panel app-appearance-settings" aria-labelledby="appearance-heading">
         <h2 id="appearance-heading">Оформление сайта</h2>
         <p class="muted">Выбери тему для своего аккаунта или используй оформление, установленное для всех.</p>
