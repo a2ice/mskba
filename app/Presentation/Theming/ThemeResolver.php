@@ -14,8 +14,9 @@ class ThemeResolver
      */
     private const LEGACY_PUBLIC_PAGES = [
         'news.index', 'news.show',
-        'events.index', 'events.show',
-        'tournaments.index', 'tournaments.show',
+        'events.index', 'events.show', 'events.game-show',
+        'events.game-live', 'events.game-qr-join',
+        'tournaments.index', 'tournaments.show', 'tournaments.on-site-registration',
         'sports-sections.index', 'sports-sections.show',
         'participants.index',
         'coordination.index', 'coordination.show',
