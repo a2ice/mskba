@@ -4,6 +4,7 @@ namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
+use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Reaction\Application\Services\ReactionReadService;
@@ -20,11 +21,26 @@ final class NewsController extends Controller
             return redirect()->route('news.index', request()->query(), 301);
         }
 
+        $validated = request()->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', \Illuminate\Validation\Rule::enum(ContentTypeEnum::class)],
+        ]);
+        $filters = [
+            'q' => trim((string) ($validated['q'] ?? '')),
+            'type' => $validated['type'] ?? '',
+        ];
+        $types = ContentTypeEnum::cases();
+
         $contentItems = ContentItem::query()
             ->publishedInFeed()
             ->with('cover')
+            ->when($filters['q'] !== '', fn ($query) => $query->where(fn ($search) => $search
+                ->whereLike('title', '%'.$filters['q'].'%')
+                ->orWhereLike('short_description', '%'.$filters['q'].'%')))
+            ->when($filters['type'] !== '', fn ($query) => $query->where('type', $filters['type']))
             ->orderByDesc('feed_published_at')
-            ->paginate(12);
+            ->paginate(12)
+            ->withQueryString();
 
         $reactionSummaries = $reactions->forSubjects(
             ReactionSubjectTypeEnum::CONTENT,
@@ -32,7 +48,7 @@ final class NewsController extends Controller
             $this->viewer(),
         );
 
-        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries'));
+        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types'))
     }
 
     public function show(ContentItem $contentItem, ReactionReadService $reactions): Response|RedirectResponse
