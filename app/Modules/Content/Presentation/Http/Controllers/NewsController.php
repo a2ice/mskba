@@ -48,7 +48,7 @@ final class NewsController extends Controller
             $this->viewer(),
         );
 
-        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types'))
+        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types'));
     }
 
     public function show(ContentItem $contentItem, ReactionReadService $reactions): Response|RedirectResponse
