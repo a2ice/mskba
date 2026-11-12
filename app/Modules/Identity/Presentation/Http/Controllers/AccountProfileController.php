@@ -32,8 +32,10 @@ final class AccountProfileController
             'nicknameSuggestion' => $suggestions->suggest($user),
             'genders' => UserGenderEnum::cases(),
             'profileConfirmed' => $user->isConfirmed(),
-            'latestProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)->latest('id')->first(),
+            'latestProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_ACCOUNT)->latest('id')->first(),
             'activeProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_ACCOUNT)
                 ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])->first(),
         ]);
     }

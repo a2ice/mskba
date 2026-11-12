@@ -148,6 +148,20 @@
                 <button class="button primary" type="submit" form="confirmation-complete-form"
                         data-confirmation-submit @if($missingTotal) disabled @endif>Подтвердить аккаунт</button>
             </div>
+            @include('theme::pages.account.partials.confirmation-review-dialog', [
+                'formId' => 'confirmation-complete-form',
+                'dialogId' => 'account-confirmation-review',
+                'heading' => 'Подтверждение аккаунта',
+                'values' => [
+                    'Имя' => $profile?->first_name,
+                    'Фамилия' => $profile?->last_name,
+                    'Дата рождения' => $profile?->birth_date?->format('d.m.Y'),
+                    'Пол' => $profile?->gender?->label(),
+                    'Основной контакт' => $primaryVerifiedContact
+                        ? $primaryVerifiedContact->type->label().': '.$primaryVerifiedContact->displayValue()
+                        : null,
+                ],
+            ])
         @endif
     </div>
 @endsection

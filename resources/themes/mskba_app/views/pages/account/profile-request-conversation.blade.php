@@ -14,7 +14,7 @@
         </a>
         <span class="app-messages__avatar" aria-hidden="true"><svg><use href="#message"/></svg></span>
         <div class="app-messages__thread-contact">
-            <h2>Изменение данных №{{ $changeRequest->id }}</h2>
+            <h2>Изменение данных: {{ $changeRequest->scopeLabel() }} №{{ $changeRequest->id }}</h2>
             <p>{{ !$canRead ? 'Доступ прекращён' : match($changeRequest->status) {
                 'pending' => 'На рассмотрении', 'approved' => 'Одобрена', 'rejected' => 'Отклонена',
                 'blocked' => 'Заблокирована', 'cancelled' => 'Отменена', default => 'Заявка' } }}</p>

@@ -41,6 +41,8 @@
     $initialFigureHeight = round($heightValue / 225 * 100, 4);
     $initialAvatar = $playerInitialAvatar ?? null;
     $defaultFigureSrc = asset('images/blank/avatar/body-'.$gender.'.webp');
+    $playerProtectedFieldsLocked = $playerConfirmed && ! $canEditConfirmedPlayer;
+    $playerConfirmationReady = $profile?->height_cm !== null && $profile?->experience_started_year !== null;
 @endphp
 
 <div class="app-player-workspace" data-player-workspace>
@@ -53,6 +55,65 @@
             <ul>@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul>
         </div>
     @endif
+
+    <section class="panel app-profile__panel" aria-label="Статус подтверждения игрока">
+        <h2>Статус игрока</h2>
+        @if($playerConfirmed)
+            <p>Подтверждённый игрок. Рост и поле «Играю с» защищены. Вес, телосложение и остальные характеристики можно редактировать как обычно.</p>
+            @if($canEditConfirmedPlayer)
+                <p>У тебя есть разрешение на прямое изменение собственных подтверждённых данных.</p>
+            @elseif($activePlayerChangeRequest === null)
+                <button type="button" class="button secondary" data-player-change-request-open>Запросить изменение подтверждённых данных игрока</button>
+            @else
+                <p>Сейчас есть активная заявка на изменение данных игрока. Дождись решения по ней.</p>
+            @endif
+        @else
+            <p>После заполнения характеристик ты сможешь подтвердить свой профиль игрока. Рост и год начала игры после этого изменяются только по заявке, если нет специального разрешения.</p>
+            @if($playerConfirmationReady)
+                <form method="POST" action="{{ route('account.player.confirm') }}" id="player-confirmation-form">
+                    @csrf
+                    <button type="submit" class="button primary">Подтвердить игрока</button>
+                </form>
+                @include('theme::pages.account.partials.confirmation-review-dialog', [
+                    'formId' => 'player-confirmation-form',
+                    'dialogId' => 'player-confirmation-review',
+                    'heading' => 'Подтверждение игрока',
+                    'values' => [
+                        'Рост' => $profile->height_cm.' см',
+                        'Играю с' => (string) $profile->experience_started_year,
+                    ],
+                ])
+            @else
+                <p>Для подтверждения необходимо заполнить и сохранить <strong>рост</strong> и <strong>«Играю с»</strong> на соответствующих вкладках.</p>
+            @endif
+        @endif
+        @if(session('profile_status'))
+            <p role="status">{{ session('profile_status') }}</p>
+        @endif
+        @if($latestPlayerChangeRequest)
+            <div>
+                <p><strong>Заявка №{{ $latestPlayerChangeRequest->id }}:</strong>
+                    {{ [
+                        'pending' => 'На рассмотрении',
+                        'approved' => 'Одобрена',
+                        'rejected' => 'Отклонена',
+                        'blocked' => 'Заблокирована',
+                        'cancelled' => 'Отменена',
+                    ][$latestPlayerChangeRequest->status] ?? $latestPlayerChangeRequest->status }}
+                    @if($latestPlayerChangeRequest->review_reason)
+                        — {{ $latestPlayerChangeRequest->review_reason }}
+                    @endif
+                </p>
+                <a class="button secondary" href="{{ route('account.notifications.threads.profile', $latestPlayerChangeRequest) }}">Открыть обсуждение</a>
+                @if($latestPlayerChangeRequest->status === 'pending')
+                    <form method="POST" action="{{ route('account.profile-change-requests.cancel', $latestPlayerChangeRequest) }}">
+                        @csrf
+                        <button type="submit" class="button secondary">Отменить заявку</button>
+                    </form>
+                @endif
+            </div>
+        @endif
+    </section>
 
     <nav class="app-player-workspace__tabs" aria-label="Параметры роли Игрок" data-player-section-nav>
         <a href="{{ route('account.participation-role', ['role' => 'player', 'tab' => 'physical']) }}"
@@ -131,7 +192,7 @@
                     <div class="app-player-workspace__fields">
                         <label class="app-player-workspace__field app-player-workspace__range-field" for="player-height">
                             <span class="app-player-workspace__range-heading">Рост, см <output for="player-height" data-physical-height-value>{{ $heightValue }} см</output></span>
-                            <input id="player-height" type="range" name="height_cm" min="150" max="220" step="1" value="{{ $heightValue }}" data-physical-height>
+                            <input id="player-height" type="range" name="height_cm" min="150" max="220" step="1" value="{{ $heightValue }}" data-physical-height @disabled($playerProtectedFieldsLocked)>
                             <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>150 см</span><span>220 см</span></span>
                         </label>
                         <label class="app-player-workspace__field app-player-workspace__range-field" for="player-weight">
@@ -347,7 +408,7 @@
                 <div class="app-player-workspace__fields">
                     <label class="app-player-workspace__field">Играю с
                         <span class="select-control">
-                            <select name="experience_started_year">
+                            <select name="experience_started_year" @disabled($playerProtectedFieldsLocked)>
                             <option value="">Не указано</option>
                             @for($year=now()->year-10;$year>=now()->year-50;$year--)
                                 <option value="{{ $year }}" @selected((string)old('experience_started_year',$profile?->experience_started_year)===(string)$year)>{{ $year }}</option>
@@ -406,6 +467,51 @@
                 </div>
             </section>
         </section>
+    @endif
+
+    @if($playerConfirmed && ! $canEditConfirmedPlayer && $activePlayerChangeRequest === null)
+        <dialog class="mskba-modal app-profile__request-dialog"
+            data-player-change-request-dialog aria-labelledby="player-change-request-heading">
+            <div class="mskba-modal__header app-profile__request-header">
+                <h2 id="player-change-request-heading" tabindex="-1">Изменение данных игрока</h2>
+                <button type="button" class="app-profile__dialog-close" data-player-change-request-close aria-label="Закрыть">×</button>
+            </div>
+            <div class="mskba-modal__body mskba-scroll app-profile__request-body">
+                <p>Укажи новые значения и причину. До одобрения заявки текущие характеристики не изменятся.</p>
+                <form method="POST" action="{{ route('account.profile-change-requests.store') }}"
+                    id="player-change-request-form" class="app-profile__personal-form">
+                    @csrf
+                    <input type="hidden" name="scope" value="player">
+                    <div class="app-profile__field-grid">
+                        <div class="field-group">
+                            <label for="player-change-height">Рост, см</label>
+                            <input id="player-change-height" type="number" name="height_cm"
+                                min="150" max="220" step="1" required value="{{ old('height_cm', $profile?->height_cm) }}">
+                        </div>
+                        <div class="field-group">
+                            <label for="player-change-started">Играю с</label>
+                            <span class="select-control">
+                                <select id="player-change-started" name="experience_started_year" required>
+                                    @for($year = now()->year - 10; $year >= now()->year - 50; $year--)
+                                        <option value="{{ $year }}" @selected((string) old('experience_started_year', $profile?->experience_started_year) === (string) $year)>{{ $year }}</option>
+                                    @endfor
+                                </select>
+                                @include('account.partials.native-select-chevron')
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label for="player-change-reason">Причина изменения</label>
+                        <textarea id="player-change-reason" name="reason" rows="3" minlength="10" maxlength="2000" required>{{ old('reason') }}</textarea>
+                        @error('reason')<small class="app-profile__error">{{ $message }}</small>@enderror
+                    </div>
+                </form>
+            </div>
+            <div class="mskba-modal__footer app-profile__request-footer">
+                <button type="button" class="button secondary" data-player-change-request-close>Отмена</button>
+                <button type="submit" form="player-change-request-form" class="button primary">Отправить заявку</button>
+            </div>
+        </dialog>
     @endif
 
     @if($tab === 'physical')

@@ -135,7 +135,7 @@
 
 ## Профили участия пользователя
 
-Техническая модель предметных профилей участия пользователя в `Identity` описана в [Identity Participation Profiles](specification/identity-participation-profiles.md).
+Техническая модель предметных профилей участия пользователя в `Identity` описана в [Identity Participation Profiles](specification/identity-participation-profiles.md). Подтверждение роли игрока независимо от подтверждения аккаунта; защищённые поля, единый пермишен и разделение заявок — в разделе [Подтверждение роли игрока](specification/identity-participation-profiles.md#подтверждение-роли-игрока).
 
 ## Игровой персонаж и 3D-форма
 

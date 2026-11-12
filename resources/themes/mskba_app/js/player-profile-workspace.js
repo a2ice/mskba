@@ -1,5 +1,20 @@
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
+    const playerChangeDialog = workspace.querySelector('[data-player-change-request-dialog]');
+    const playerChangeTrigger = workspace.querySelector('[data-player-change-request-open]');
+    if (playerChangeDialog && playerChangeTrigger) {
+        playerChangeTrigger.addEventListener('click', () => {
+            playerChangeDialog.showModal();
+            playerChangeDialog.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+        });
+        playerChangeDialog.querySelectorAll('[data-player-change-request-close]').forEach(button => {
+            button.addEventListener('click', () => playerChangeDialog.close());
+        });
+        playerChangeDialog.addEventListener('close', () => {
+            if (playerChangeTrigger.isConnected) playerChangeTrigger.focus({ preventScroll: true });
+        });
+    }
+
     const preview = workspace.querySelector('[data-player-preview]');
     const form = workspace.querySelector('[data-player-physical-form]');
     const height = form?.querySelector('[data-physical-height]');

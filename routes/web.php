@@ -65,6 +65,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordCont
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
+use App\Modules\Identity\Presentation\Http\Controllers\ConfirmPlayerProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueController;
 use App\Modules\League\Presentation\Http\Controllers\LeagueManagementController;
@@ -1040,6 +1041,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::delete('/participation/player/logos/{media}', [PlayerGenerationLogoController::class, 'destroy'])->middleware('throttle:10,1')->name('account.player-character.logos.destroy');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
             ->name('account.player-profile.update');
+        Route::post('/participation/player/confirmation', ConfirmPlayerProfileController::class)
+            ->middleware('throttle:10,1')->name('account.player.confirm');
         Route::get('/participation/player/face-reference/{slot}', PlayerCharacterFaceReferencePreviewController::class)
             ->where('slot', 'front|left|right')
             ->name('account.player-character.face-reference');

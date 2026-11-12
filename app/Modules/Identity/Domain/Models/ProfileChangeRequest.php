@@ -9,10 +9,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['user_id', 'status', 'original_data', 'proposed_data', 'reason', 'review_reason',
+#[Fillable(['user_id', 'scope', 'status', 'original_data', 'proposed_data', 'reason', 'review_reason',
     'reviewed_by_user_id', 'reviewed_at', 'blocked_at', 'unblocked_by_user_id', 'unblocked_at', 'cancelled_at'])]
 final class ProfileChangeRequest extends Model
 {
+    public const SCOPE_ACCOUNT = 'account';
+
+    public const SCOPE_PLAYER = 'player';
+
     public const PENDING = 'pending';
 
     public const APPROVED = 'approved';
@@ -22,6 +26,19 @@ final class ProfileChangeRequest extends Model
     public const BLOCKED = 'blocked';
 
     public const CANCELLED = 'cancelled';
+
+    /** @return array<string, string> */
+    public function fieldLabels(): array
+    {
+        return $this->scope === self::SCOPE_PLAYER
+            ? ['height_cm' => 'Рост, см', 'experience_started_year' => 'Играю с']
+            : ['first_name' => 'Имя', 'last_name' => 'Фамилия', 'birth_date' => 'Дата рождения', 'gender' => 'Пол'];
+    }
+
+    public function scopeLabel(): string
+    {
+        return $this->scope === self::SCOPE_PLAYER ? 'Игрок' : 'Профиль';
+    }
 
     public function user(): BelongsTo
     {
