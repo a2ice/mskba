@@ -6,6 +6,22 @@ document.querySelectorAll('[data-confirm-review-dialog]').forEach(dialog => {
     let accepted = false;
     let previousFocus = null;
 
+    const refreshSavedValues = () => {
+        dialog.querySelectorAll('[data-confirm-review-live]').forEach(target => {
+            const field = target.dataset.confirmReviewLive;
+            const row = form.querySelector('[data-confirmation-field][data-field-name="' + field + '"]');
+            if (!row) return;
+            let value = row.dataset.savedValue || '';
+            if (field === 'gender') {
+                value = ({male: 'Мужской', female: 'Женский'})[value] || value;
+            } else if (field === 'birth_date' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+                const [year, month, day] = value.split('-');
+                value = [day, month, year].join('.');
+            }
+            target.textContent = value || 'Не указано';
+        });
+    };
+
     form.addEventListener('submit', event => {
         if (accepted) {
             accepted = false;
@@ -13,6 +29,7 @@ document.querySelectorAll('[data-confirm-review-dialog]').forEach(dialog => {
         }
         if (event.defaultPrevented || !form.checkValidity()) return;
         event.preventDefault();
+        refreshSavedValues();
         previousFocus = document.activeElement;
         if (!dialog.open) {
             dialog.showModal();

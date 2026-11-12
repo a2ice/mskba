@@ -9,7 +9,7 @@
         <p>Уверен, что ввёл данные верно? Подтверждаются следующие значения:</p>
         <ul>
             @foreach($values as $label => $value)
-                <li><strong>{{ $label }}:</strong> {{ filled($value) ? $value : 'Не указано' }}</li>
+                <li><strong>{{ $label }}:</strong> <span @if(isset($liveFields[$label])) data-confirm-review-live="{{ $liveFields[$label] }}" @endif>{{ filled($value) ? $value : 'Не указано' }}</span></li>
             @endforeach
         </ul>
         <p><strong>После подтверждения некоторые данные можно будет изменить только по запросу с указанием причины.</strong></p>

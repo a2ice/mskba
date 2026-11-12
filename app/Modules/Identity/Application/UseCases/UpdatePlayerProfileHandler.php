@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class UpdatePlayerProfileHandler
 {
@@ -40,12 +41,22 @@ final class UpdatePlayerProfileHandler
             }
 
             $existing = $lockedUser->playerProfile()->lockForUpdate()->first();
-            if ($role->confirmed_at !== null && ! app(UserOperationalPermissionChecker::class)
-                ->allows($lockedUser, UserOperationalPermissionEnum::EDIT_OWN_PROFILE)) {
+            if ($role->confirmed_at !== null) {
                 foreach (['height_cm', 'experience_started_year'] as $key) {
-                    if (array_key_exists($key, $profileData)
-                        && (string) ($profileData[$key] ?? '') !== (string) ($existing?->{$key} ?? '')) {
-                        throw new AuthorizationException('Для изменения подтверждённых данных игрока отправь заявку.');
+                    if (array_key_exists($key, $profileData) && $profileData[$key] === null) {
+                        throw ValidationException::withMessages([
+                            $key => 'Подтверждённое значение нельзя очищать.',
+                        ]);
+                    }
+                }
+
+                if (! app(UserOperationalPermissionChecker::class)
+                    ->allows($lockedUser, UserOperationalPermissionEnum::EDIT_OWN_PROFILE)) {
+                    foreach (['height_cm', 'experience_started_year'] as $key) {
+                        if (array_key_exists($key, $profileData)
+                            && (string) ($profileData[$key] ?? '') !== (string) ($existing?->{$key} ?? '')) {
+                            throw new AuthorizationException('Для изменения подтверждённых данных игрока отправь заявку.');
+                        }
                     }
                 }
             }

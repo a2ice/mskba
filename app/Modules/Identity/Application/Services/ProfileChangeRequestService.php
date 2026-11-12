@@ -92,7 +92,7 @@ final class ProfileChangeRequestService
 
             $original = $this->scopeSnapshot($user, $scope);
             if ($original === $proposed) {
-                throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в данных профиля.']);
+                throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в подтверждённых данных.']);
             }
 
             $this->threadAccess->initializeNewReviewerCursors();

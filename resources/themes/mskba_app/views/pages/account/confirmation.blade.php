@@ -152,6 +152,12 @@
                 'formId' => 'confirmation-complete-form',
                 'dialogId' => 'account-confirmation-review',
                 'heading' => 'Подтверждение аккаунта',
+                'liveFields' => [
+                    'Имя' => 'first_name',
+                    'Фамилия' => 'last_name',
+                    'Дата рождения' => 'birth_date',
+                    'Пол' => 'gender',
+                ],
                 'values' => [
                     'Имя' => $profile?->first_name,
                     'Фамилия' => $profile?->last_name,
