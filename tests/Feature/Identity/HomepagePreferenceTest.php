@@ -25,7 +25,9 @@ final class HomepagePreferenceTest extends TestCase
 
     public function test_guest_gets_the_existing_homepage_and_original_alias_is_accessible(): void
     {
-        $this->get('/')->assertOk();
+        $this->get('/')->assertOk()
+            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Vary', 'Cookie');
         $this->get(route('homepage.original'))->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, follow')
             ->assertHeader('Cache-Control', 'private, no-store');
@@ -38,7 +40,8 @@ final class HomepagePreferenceTest extends TestCase
         $this->assertNull($user->homepage_preference);
         $this->actingAs($user)->get('/')->assertStatus(302)
             ->assertRedirect(route('account'))
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Vary', 'Cookie');
         $this->get(route('homepage.original'))->assertOk();
         $this->assertSame(HomepagePreference::DEFAULT, app(HomepagePreference::class)->selected($user));
     }
