@@ -8,6 +8,9 @@ return [
     'live_source_execution_enabled' => false,
 
     // A separate, single-click, read-only diagnostic. Off on all environments
-    // until explicitly enabled on dev. It does not enable polling or booking.
-    'findsport_preview_enabled' => (bool) env('VENUE_INTEGRATIONS_FINDSPORT_PREVIEW_ENABLED', false),
+    // except on the isolated staging environment. It never enables polling or booking.
+    'findsport_preview_enabled' => (bool) env(
+        'VENUE_INTEGRATIONS_FINDSPORT_PREVIEW_ENABLED',
+        env('APP_ENV') === 'staging',
+    ),
 ];
