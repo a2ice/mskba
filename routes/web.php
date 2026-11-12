@@ -138,6 +138,8 @@ use App\Presentation\Theming\DesignThemePreviewController;
 use App\Presentation\Theming\DesignThemeScriptController;
 use App\Presentation\Theming\DesignThemeStylesheetController;
 use App\Presentation\Theming\DesignThemeUiKitController;
+use App\Modules\Identity\Application\Services\HomepagePreference;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateHomepagePreferenceController;
 use App\Presentation\Theming\ThemeResolver;
 use App\Presentation\Theming\UpdateDesignThemePreferenceController;
 use Filament\Http\Middleware\SetUpPanel;
@@ -146,10 +148,30 @@ use Illuminate\Support\Facades\Route;
 
 $themeResolver = app(ThemeResolver::class);
 
-Route::get('/', function () use ($themeResolver) {
+Route::get('/', function (Request $request) use ($themeResolver) {
+    if ($request->user()) {
+        $destination = app(HomepagePreference::class)->destination($request->user());
+        if ($destination !== null) {
+            // Not a 301: the user's choice can change at any time.
+            return redirect($destination, 302)->header('Cache-Control', 'private, no-store');
+        }
+    }
+
     return app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
         ?? $themeResolver->page('welcome');
 })->name('welcome');
+
+// Explicit way to see the original themed/CMS homepage even if '/' redirects.
+// Never allow the Page Builder to replace this application-controlled URL.
+Route::get('/home', function () use ($themeResolver) {
+    $response = app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
+        ?? $themeResolver->page('welcome');
+
+    return $response
+        ->header('X-Robots-Tag', 'noindex, follow')
+        ->header('Link', '<'.route('welcome').'>; rel="canonical"')
+        ->header('Cache-Control', 'private, no-store');
+})->name('homepage.original');
 
 // Catalog-only storefront. Product route precedes category route.
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
@@ -1019,6 +1041,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/player/generations/{generation}/image', PlayerCharacterGenerationImageController::class)
             ->name('account.player-character.generations.image');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+        Route::patch('/settings/homepage', UpdateHomepagePreferenceController::class)
+            ->middleware('throttle:12,1')->name('account.settings.homepage.update');
         Route::patch('/settings/appearance', UpdateDesignThemePreferenceController::class)
             ->middleware('throttle:12,1')->name('account.settings.appearance.update');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
