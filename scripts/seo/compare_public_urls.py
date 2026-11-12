@@ -144,11 +144,11 @@ def parse_html(response):
         "robots": parser.meta.get("robots", ""),
         "og_title": parser.meta.get("og:title", ""),
         "og_description": parser.meta.get("og:description", ""),
-        # Inspect visible page content, NOT global dialogs or FAQ help which
-        # mention unfinished features on otherwise fully rendered pages.
+        # A shared support popup can contain a future-feature notice within
+        # <main>; only the actual page heading/title proves a placeholder.
         "is_placeholder": (
             "раздел в разработке" in parser.title.lower()
-            or any(needle in " ".join(parser.main_text)[:900].lower() for needle in PLACEHOLDERS)
+            or parser.h1.strip().lower() == "mskba app theme"
         ),
     })
     return result
@@ -212,6 +212,11 @@ def audit_one(path, source, target, target_sitemap, timeout):
             issues.append("REVIEW_DESCRIPTION_DIFF")
         if a["h1"] != b["h1"]:
             issues.append("REVIEW_H1_DIFF")
+            # Same numeric ID/slug URL, different published entity: this is
+            # more dangerous than a missing SEO description. The staging DB
+            # cannot be used as a mapping source for production IDs.
+            if re.match(r"^/(venues|events|teams|tournaments|sections)/[0-9]+[-/]", path) and a["h1"] and b["h1"]:
+                issues.append("BLOCKER_ENTITY_CONTENT_MISMATCH")
         if path not in target_sitemap and src["status"] == 200:
             issues.append("REVIEW_TARGET_SITEMAP_OMISSION")
 
