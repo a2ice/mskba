@@ -85,6 +85,10 @@ final class SeoLegacyEntityDetailParityTest extends TestCase
             ->assertSee('Игра на площадке для теста')
             ->assertDontSee('MSKBA App theme');
 
+        $this->get(route('events.games.live', [$event->routeIdentifier(), $game->id]))
+            ->assertOk()
+            ->assertDontSee('MSKBA App theme');
+
         // The join page is public only for a standalone game with individual draft.
         [$standalone, $joinableGame] = $this->game(EventTypeEnum::GAME, GameRecruitmentModeEnum::INDIVIDUAL_DRAFT);
         $this->get(route('events.games.recruitment.join', [$standalone->routeIdentifier(), $joinableGame->id]))
