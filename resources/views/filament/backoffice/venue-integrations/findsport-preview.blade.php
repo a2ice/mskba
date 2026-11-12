@@ -10,8 +10,8 @@
             <p class="text-gray-500 dark:text-gray-400">{{ $report['notice'] }}</p>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="mskba-bo-table mskba-bo-table--cards">
+            <table class="mskba-bo-table__table">
                 <thead class="border-b border-gray-200 text-left dark:border-gray-700">
                     <tr>
                         <th class="p-2">Дата</th>
@@ -25,12 +25,12 @@
                 <tbody>
                     @foreach ($report['days'] as $day)
                         <tr class="border-b border-gray-100 dark:border-gray-800">
-                            <td class="p-2">{{ $day['date'] }}</td>
-                            <td class="p-2">{{ $day['complete'] ? 'Полный ответ' : 'Нет данных' }}</td>
-                            <td class="p-2">{{ $day['counts']['available'] }}</td>
-                            <td class="p-2">{{ $day['counts']['booked'] }}</td>
-                            <td class="p-2">{{ $day['counts']['unavailable'] }}</td>
-                            <td class="p-2">{{ $day['counts']['unknown'] }}</td>
+                            <td data-label="Дата">{{ $day['date'] }}</td>
+                            <td data-label="Полнота">{{ $day['complete'] ? 'Полный ответ' : 'Нет данных' }}</td>
+                            <td data-label="Не занято">{{ $day['counts']['available'] }}</td>
+                            <td data-label="Занято">{{ $day['counts']['booked'] }}</td>
+                            <td data-label="Недоступно">{{ $day['counts']['unavailable'] }}</td>
+                            <td data-label="Неизвестно">{{ $day['counts']['unknown'] }}</td>
                         </tr>
                     @endforeach
                 </tbody>
