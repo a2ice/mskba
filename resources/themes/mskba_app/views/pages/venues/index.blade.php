@@ -3,6 +3,7 @@
     $breadcrumbs = [['label' => 'Площадки', 'url' => route('venues')]];
     $categoryTitle = $title;
     $categoryDescription = 'Найдите подходящий зал или уличную площадку для игры.';
+    $categoryHeadingId = 'venue-catalog-title';
     $categoryRootId = 'venues-catalog';
     $categoryRootClass = 'app-venues-catalog';
     $categoryHeaderClass = 'app-venues-catalog__header';
