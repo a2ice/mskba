@@ -57,6 +57,23 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
         $this->assertTrue(View::exists('theme::layouts.category'));
     }
 
+    public function test_venue_infinite_scroll_and_shop_card_hooks_survive_shared_layout(): void
+    {
+        $this->get(route('venues'))
+            ->assertOk()
+            ->assertSee('data-venue-infinite-catalog', false)
+            ->assertSee('data-venue-items', false)
+            ->assertSee('data-venue-sentinel', false)
+            ->assertSee('id="venue-catalog-title"', false);
+
+        $this->get(route('shop.index'))
+            ->assertOk()
+            ->assertSee('app-shop__products', false)
+            ->assertSee('shop-filters-desktop', false)
+            ->assertSee('shop-filters-mobile', false)
+            ->assertSee('id="app-shop-title"', false);
+    }
+
     public function test_filter_controls_match_guideline_and_have_mobile_equivalents(): void
     {
         foreach ([
