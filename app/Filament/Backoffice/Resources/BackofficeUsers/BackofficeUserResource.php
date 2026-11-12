@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUserRole;
 use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\ListBackofficeUsers;
+use App\Modules\Acquisition\Domain\Models\ReferralAttribution;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
 use App\Modules\Identity\Application\Services\StaffPermissionProfiles;
@@ -193,6 +194,10 @@ final class BackofficeUserResource extends Resource
                                             ->content(fn (?User $record): string => $record?->created_at?->format('d.m.Y H:i') ?? '—'),
                                         Placeholder::make('registration_channel_info')->label('Канал регистрации')
                                             ->content(fn (?User $record): string => $record?->registration_channel?->value ?? '—'),
+                                        Placeholder::make('referral_source_page_info')->label('Страница реферального приглашения')
+                                            ->content(fn (?User $record): string => $record === null ? '—' : (ReferralAttribution::query()
+                                                ->where('referred_user_id', $record->canonical()->id)
+                                                ->value('source_page') ?? '—')),
                                         Placeholder::make('first_login_info')->label('Первый вход')
                                             ->content(fn (?User $record): string => $record?->first_logged_in_at?->format('d.m.Y H:i') ?? '—'),
                                         Placeholder::make('system_role_info')->label('Системная роль')
