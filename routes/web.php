@@ -153,12 +153,19 @@ Route::get('/', function (Request $request) use ($themeResolver) {
         $destination = app(HomepagePreference::class)->destination($request->user());
         if ($destination !== null) {
             // Not a 301: the user's choice can change at any time.
-            return redirect($destination, 302)->header('Cache-Control', 'private, no-store');
+            return redirect($destination, 302)
+                ->header('Cache-Control', 'private, no-store')
+                ->header('Vary', 'Cookie');
         }
     }
 
-    return app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
+    // '/' is now personalized; prevent a proxy from caching the guest
+    // homepage and serving it instead of the redirect to a signed-in user.
+    $response = app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
         ?? $themeResolver->page('welcome');
+
+    return $response->header('Cache-Control', 'private, no-store')
+        ->header('Vary', 'Cookie');
 })->name('welcome');
 
 // Explicit way to see the original themed/CMS homepage even if '/' redirects.
