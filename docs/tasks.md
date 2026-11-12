@@ -245,3 +245,4 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 - [ ] 315 - Мультиканальная публикация материалов в Telegram, VK и Instagram ([описание](tasks/315/description.md))
 - [ ] 316 - Production Content & SEO Migration: полная совместимость URL, контента, SEO и аналитики при переходе с dev на prod ([план и декомпозиция](tasks/316/description.md))
 - [ ] 317 - Сохранять страницу источника реферального приглашения ([описание](tasks/317/description.md))
+- [ ] 318 - Привести публичный каталог лиг к единому светлому виду категории ([описание](tasks/318/description.md))

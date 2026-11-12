@@ -32,7 +32,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_all_six_catalogs_use_one_app_theme_category_layout(): void
+    public function test_all_seven_catalogs_use_one_app_theme_category_layout(): void
     {
         foreach ([
             ['url' => route('venues'), 'heading' => 'Площадки'],
@@ -41,6 +41,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             ['url' => route('events.index'), 'heading' => 'Мероприятия'],
             ['url' => route('tournaments.index'), 'heading' => 'Турниры'],
             ['url' => route('sports-sections.index'), 'heading' => 'Секции'],
+            ['url' => route('leagues.index'), 'heading' => 'Лиги'],
         ] as $catalog) {
             $this->get($catalog['url'])
                 ->assertOk()
@@ -81,6 +82,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             ['url' => route('events.index'), 'prefix' => 'events'],
             ['url' => route('tournaments.index'), 'prefix' => 'tournaments'],
             ['url' => route('sports-sections.index'), 'prefix' => 'sections'],
+            ['url' => route('leagues.index'), 'prefix' => 'leagues'],
         ] as $catalog) {
             $this->get($catalog['url'])
                 ->assertOk()
@@ -99,6 +101,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             route('events.index', ['type' => 'games', 'view' => 'list']),
             route('tournaments.index', ['period' => 'upcoming', 'view' => 'list']),
             route('sports-sections.index', ['recruiting' => 1, 'view' => 'list']),
+            route('leagues.index', ['status' => 'archived', 'view' => 'list']),
         ] as $url) {
             $this->get($url)->assertOk()
                 ->assertSee('data-default-category-view="list"', false)
@@ -180,7 +183,7 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
 
     public function test_all_category_urls_remain_noindex_on_dev(): void
     {
-        foreach (['/feed', '/events', '/tournaments', '/sections', '/shop', '/venues'] as $path) {
+        foreach (['/feed', '/events', '/tournaments', '/sections', '/shop', '/venues', '/leagues'] as $path) {
             $this->get('https://dev.mskba.ru'.$path)
                 ->assertOk()
                 ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
