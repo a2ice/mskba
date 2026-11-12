@@ -24,7 +24,13 @@ final class PreventNonProductionIndexing
         );
 
         if (! in_array(strtolower($request->getHost()), $hosts, true)) {
-            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+            // Respect stronger/existing page-specific rules (draft previews,
+            // account areas and the original homepage). Do not replace their
+            // carefully chosen directives with an environment-wide default.
+            $existing = (string) $response->headers->get('X-Robots-Tag', '');
+            if (! str_contains(strtolower($existing), 'noindex')) {
+                $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+            }
         }
 
         return $response;
