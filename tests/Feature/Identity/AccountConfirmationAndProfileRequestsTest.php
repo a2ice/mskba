@@ -253,4 +253,29 @@ final class AccountConfirmationAndProfileRequestsTest extends TestCase
 
         $this->assertSame(ProfileChangeRequest::PENDING, $change->fresh()->status);
     }
+    public function test_profile_intro_has_compact_confirmation_and_missing_dialog_until_account_is_confirmed(): void
+    {
+        $user = $this->account();
+        $response = $this->actingAs($user)->get(route('account.profile'))->assertOk();
+        $response
+            ->assertSee('form="profile-confirmation-form"', false)
+            ->assertSee('data-confirm-missing-target="profile-confirmation-form"', false)
+            ->assertSee('data-confirm-label="Имя"', false)
+            ->assertSee('data-confirm-label="Фамилия"', false)
+            ->assertSee('data-confirm-label="Дата рождения"', false)
+            ->assertSee('data-confirm-label="Пол"', false);
+
+        $this->get(route('account.confirmation'))->assertOk()
+            ->assertSee('form="confirmation-complete-form"', false)
+            ->assertSee('data-confirm-missing-target="confirmation-complete-form"', false)
+            ->assertDontSee('data-confirmation-submit', false);
+
+        $user->forceFill(['status' => UserStatusEnum::CONFIRMED])->save();
+        $this->get(route('account.profile'))->assertOk()
+            ->assertSee('Подтверждён')
+            ->assertDontSee('form="profile-confirmation-form"', false);
+        $this->get(route('account.confirmation'))->assertOk()
+            ->assertSee('Подтверждён');
+    }
+
 }

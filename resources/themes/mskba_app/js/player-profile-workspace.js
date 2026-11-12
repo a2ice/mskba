@@ -1,7 +1,7 @@
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
     const playerChangeDialog = workspace.querySelector('[data-player-change-request-dialog]');
-    const playerChangeTrigger = workspace.querySelector('[data-player-change-request-open]');
+    const playerChangeTrigger = document.querySelector('[data-player-change-request-open]');
     if (playerChangeDialog && playerChangeTrigger) {
         playerChangeTrigger.addEventListener('click', () => {
             playerChangeDialog.showModal();

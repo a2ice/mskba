@@ -270,3 +270,8 @@
 .app-player-workspace__uniform-design-controls{display:flex;align-items:center;gap:8px;min-width:0}
 .app-player-workspace__uniform-design-controls>.select-control{flex:1 1 auto;min-width:0}
 .app-player-workspace__uniform-design-controls>[data-player-uniform-view]{flex:0 0 auto;min-height:42px;padding:9px 11px;white-space:nowrap}
+
+/* Confirmation state now shares the account intro; requests remain in a compact inline row. */
+.app-player-workspace__request-summary{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:3px 0;font-size:13px;color:var(--muted)}
+.app-player-workspace__request-summary a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.app-player-workspace__request-summary .button{min-height:32px;padding:5px 10px;font-size:12px}

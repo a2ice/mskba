@@ -8,9 +8,21 @@
 </section>
 @if (filled($intro ?? null))
     @push('account-intro')
-        <section class="panel app-account-intro{{ filled($introActionUrl ?? null) && filled($introActionLabel ?? null) ? ' app-account-intro--with-action' : '' }}" aria-label="О разделе">
+        <section class="panel app-account-intro{{ (filled($introActionUrl ?? null) && filled($introActionLabel ?? null)) || isset($introConfirmation) ? ' app-account-intro--with-action' : '' }}" aria-label="О разделе">
             <p>{{ $intro }}</p>
-            @if (filled($introActionUrl ?? null) && filled($introActionLabel ?? null))
+            @if (isset($introConfirmation))
+                <div class="app-account-intro__actions">
+                    @if($introConfirmation['confirmed'])
+                        <span class="app-account-intro__confirmed" aria-label="Статус: подтверждён">Подтверждён</span>
+                        @if($introConfirmation['canRequestChange'] ?? false)
+                            <button type="button" class="button secondary app-account-intro__request" data-player-change-request-open>Запросить изменение</button>
+                        @endif
+                    @else
+                        <button type="submit" form="{{ $introConfirmation['formId'] }}"
+                            class="button primary app-account-intro__confirm">Подтвердить</button>
+                    @endif
+                </div>
+            @elseif (filled($introActionUrl ?? null) && filled($introActionLabel ?? null))
                 <a class="button primary app-account-intro__action" href="{{ $introActionUrl }}">{{ $introActionLabel }}</a>
             @endif
         </section>

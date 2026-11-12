@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
+use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
 use App\Modules\Identity\Application\Services\NicknameSuggestionService;
 use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
@@ -17,6 +18,7 @@ final class AccountProfileController
         Request $request,
         PublicUserProfileService $publicProfiles,
         NicknameSuggestionService $suggestions,
+        AccountConfirmationWizardService $confirmationWizard,
     ): Response|RedirectResponse {
         if (app(ThemeResolver::class)->active() !== 'mskba_app') {
             return redirect()->route('account');
@@ -32,6 +34,7 @@ final class AccountProfileController
             'nicknameSuggestion' => $suggestions->suggest($user),
             'genders' => UserGenderEnum::cases(),
             'profileConfirmed' => $user->isConfirmed(),
+            'primaryVerifiedContact' => $confirmationWizard->primaryVerifiedContact($user),
             'latestProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)
                 ->where('scope', ProfileChangeRequest::SCOPE_ACCOUNT)->latest('id')->first(),
             'activeProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)

@@ -8,6 +8,15 @@
         'intro' => isset($role) && $role->value === 'player'
             ? 'Создай свой игровой образ и настрой характеристики для игр, команд и турниров.'
             : (isset($role) ? $role->description() : 'Информация о твоём участии в проекте.'),
+        'introConfirmation' => isset($role, $participationRole)
+            && $role === \App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum::PLAYER
+            ? [
+                'confirmed' => (bool) ($playerConfirmed ?? false),
+                'formId' => 'player-confirmation-form',
+                'canRequestChange' => ($playerConfirmed ?? false)
+                    && ! ($canEditConfirmedPlayer ?? false)
+                    && ($activePlayerChangeRequest ?? null) === null,
+            ] : null,
     ])
 @endsection
 

@@ -40,6 +40,11 @@
 .app-account-intro--with-action p { flex:1 1 260px;min-width:0; }
 .app-account-intro__action { flex:0 0 auto; }
 .app-account-intro__actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+.app-account-intro__confirm{flex:0 0 auto;min-height:36px;padding:7px 15px;font-size:13px;line-height:20px;white-space:nowrap}
+.app-account-intro__confirmed{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);color:var(--text);font-size:13px;font-weight:700;white-space:nowrap}
+.app-account-intro__confirmed::before{content:"✓";margin-right:6px;color:var(--accent);font-weight:800}
+.app-account-intro__request{min-height:34px;padding:6px 12px;font-size:12px;line-height:20px}
+@media(max-width:639px){.app-account-intro--with-action p{flex-basis:100%}.app-account-intro__actions{justify-content:flex-start}}
 
 @media(max-width:639px){
   .app-account-intro--with-action .app-account-intro__action{max-width:100%;}
