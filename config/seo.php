@@ -2,6 +2,9 @@
 
 return [
     'site_name' => 'MSKBA',
+    // Only live canonical hosts may be indexed. Other hosts (dev, staging, localhost)
+    // receive an X-Robots-Tag header and app-theme noindex meta directive.
+    'indexable_hosts' => ['mskba.ru', 'www.mskba.ru'],
     'html_lang' => 'ru',
     'og_locale' => 'ru_RU',
     'default_image' => 'images/bg-home-welcome-screen.png',

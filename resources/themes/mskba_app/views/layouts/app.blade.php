@@ -1,6 +1,6 @@
 @php($appearanceTheme = ($appearanceTheme ?? null) ?: app(\App\Presentation\Theming\DesignThemeManager::class)->current())
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-design-theme="{{ $appearanceTheme->slug }}" data-appearance-mode="{{ $appearanceTheme->mode }}">
+<html lang="{{ config('seo.html_lang', 'ru') }}" data-design-theme="{{ $appearanceTheme->slug }}" data-appearance-mode="{{ $appearanceTheme->mode }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,7 +9,7 @@
         <meta name="mskba-authenticated" content="{{ auth()->check() ? '1' : '0' }}">
         {{-- The Reverb app key is public; secrets never enter the HTML. --}}
         <meta name="mskba-reverb-app-key" content="{{ config('broadcasting.connections.reverb.key') }}">
-        <title>{{ isset($metaTitle) && filled($metaTitle) ? $metaTitle : (isset($title) ? $title.' · MSKBA' : 'MSKBA') }}</title>
+        @include('partials.seo.app-head')
         @stack('meta')
         <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
         @vite(['resources/themes/mskba_app/css/app.css', 'resources/themes/mskba_app/js/app.js'])
@@ -20,6 +20,9 @@
         @stack('styles')
     </head>
     <body>
+        @if(in_array(strtolower(request()->getHost()), array_map('strtolower', (array) config('seo.indexable_hosts', ['mskba.ru'])), true))
+            @include('partials.analytics.yandex-metrika-noscript')
+        @endif
         @include('theme::partials.icons')
         @include('theme::partials.header')
         @include('theme::partials.context-bar')
