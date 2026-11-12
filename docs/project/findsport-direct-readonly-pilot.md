@@ -64,9 +64,7 @@
 3. Внести проверенный источник/основание тестового доступа через
    `permission_status=testing_only` и `permission_reference`;
    внутренний статус не заменяет условия доступа третьей стороны.
-4. На **dev** явно установить
-   `VENUE_INTEGRATIONS_FINDSPORT_PREVIEW_ENABLED=true`
-   и обновить Laravel config cache.
+4. На изолированном **dev** (`APP_ENV=staging`) ручной предпросмотр разрешён по умолчанию; при необходимости его можно выключить через `VENUE_INTEGRATIONS_FINDSPORT_PREVIEW_ENABLED=false` с обновлением config cache. На production он выключен по умолчанию.
 5. С учётной записью с правом
    `backoffice.venue.integrations.execute` нажать «Получить данные».
 6. Сверить даты, маски занятости, цены в рублях и метку времени с FindSport.
