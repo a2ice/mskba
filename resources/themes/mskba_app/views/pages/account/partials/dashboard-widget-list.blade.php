@@ -130,7 +130,7 @@
         </section>
     @endif
 @endforelse
-@if ($hiddenDashboardWidgets->isNotEmpty())
+@if ($dashboardAvailableWidgets->isNotEmpty())
     <button type="button" class="panel app-dashboard-widget app-dashboard-widget--add"
             data-dashboard-add-widget title="Добавить виджет" aria-label="Добавить виджет">
         <span class="app-dashboard-widget__add-icon" aria-hidden="true">+</span>
