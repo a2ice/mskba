@@ -2,7 +2,6 @@
     $dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class);
     $dashboardAvailableWidgets = $dashboardAvailableWidgets
         ?? app(\App\Modules\Dashboard\Application\Services\AccountDashboardService::class)->availableForUser($dashboardUser);
-    $hiddenDashboardWidgets = $dashboardAvailableWidgets->whereNotIn('id', $dashboardWidgets->pluck('id')->all());
     $dashboardActions = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetActions::class);
     $dashboardButtonStyles = \App\Modules\Dashboard\Domain\Models\DashboardButtonStyle::query()
         ->where('enabled', true)->pluck('class_name')->all();
