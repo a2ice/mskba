@@ -22,3 +22,12 @@
 - UI-проверка: контекстная панель для подтверждения аккаунта остаётся на каталогах; переход из fallback на новый app-layout не загрязняет кэш Blade; SEO 200/без soft-404.
 
 Данное изменение UI дополняет предыдущий этап 316/002, **не меняет** утверждённую стилистику раздела площадок и личного кабинета. Временный fallback не считать готовым финальным дизайном.
+
+## Этап 316/004 — детальные страницы контента, PR #686
+
+- Вместо временного legacy fallback для `news.show`, `faq.show`, `faq.creation`, `faq.welcome` добавлены собственные Blade-шаблоны в `mskba_app`.
+- Сохраняем `ContentItem` + `ContentBodyRenderer`, старые URL/alias, canonical, SEO-переопределения (`meta_title`, `meta_description`, `meta_keywords`), обложки, даты публикации и NewsArticle JSON-LD.
+- FAQ-инструкции используют текущий `creation-guides` и сохраняют якоря ссылок из требования (`contact-confirmation`, `participation-role`, `account-confirmation`, `creation-permissions`).
+- Внешний вид использует общий `container`, `panel`, `button`, `badge`, `muted`, стили только в `resources/themes/mskba_app/css/public-content.css`, адаптивная сетка без JS; глобальный header/context-bar остаётся тем же.
+- Нативные каталоги `/feed` и `/faq` уже реализованы в PR #683 — их не заменяем повторно. Другие публичные страницы пока используют ограниченный fallback PR #683.
+- Приёмка: CI + проверки опубликованной записи, 404 отсутствующей/скрытой записи, canonical/SEO, noindex dev, дат/контента и сохранности FAQ-якорей. Изменения не затрагивают production-БД.
