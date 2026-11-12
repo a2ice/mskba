@@ -372,7 +372,7 @@ final class AccountDashboardTest extends TestCase
         ])->assertOk();
         $this->get(route('account'))->assertOk()
             ->assertSee('data-dashboard-widget="'.$messages->id.'"', false)
-            ->assertDontSee('data-dashboard-add-widget', false);
+            ->assertSee('data-dashboard-add-widget', false);
     }
 
 }
