@@ -19,21 +19,27 @@
         <p class="notice" role="alert">{{ $error['message'] }}</p>
     @else
         <section class="app-account-overview" aria-label="Обзор аккаунта">
-            <div class="app-dashboard-customize" data-dashboard-customize>
-                <p class="muted" data-dashboard-order-hint hidden>Перетаскивай карточки за специальный значок или используй кнопки перемещения. Порядок сохраняется автоматически.</p>
-                <div class="app-dashboard-customize__actions">
-                    @if ($dashboardWidgets->where('can_move', true)->count() > 1)
-                        <button class="button secondary" type="button" data-dashboard-order-toggle
-                                aria-pressed="false">Изменить порядок</button>
-                    @endif
-                    <a class="button secondary" href="{{ route('account.settings.dashboard') }}">Выбрать виджеты</a>
-                </div>
-                <p class="app-dashboard-customize__status" data-dashboard-order-status role="status" aria-live="polite"></p>
-            </div>
+            <p class="app-dashboard-customize__status" data-dashboard-order-status role="status" aria-live="polite"></p>
             <div class="app-dashboard-grid" data-account-dashboard data-refresh-url="{{ route('account.dashboard.widgets') }}"
-                 data-order-url="{{ route('account.dashboard.widgets.order') }}">
+                 data-order-url="{{ route('account.dashboard.widgets.order') }}"
+                 data-visibility-url="{{ route('account.settings.dashboard.update') }}">
                 @include('theme::pages.account.partials.dashboard-widget-list')
             </div>
+            <dialog class="mskba-modal app-dashboard-picker" data-dashboard-picker
+                    aria-labelledby="app-dashboard-picker-title">
+                <header class="mskba-modal__header app-dashboard-picker__header">
+                    <h2 id="app-dashboard-picker-title">Добавить виджет</h2>
+                    <button type="button" class="icon-button app-dashboard-picker__close"
+                            data-dashboard-picker-close aria-label="Закрыть окно">
+                        <svg aria-hidden="true"><use href="#close"/></svg>
+                    </button>
+                </header>
+                <div class="mskba-modal__body mskba-scroll app-dashboard-picker__body">
+                    <p>Выбери доступный виджет, чтобы добавить его в личный кабинет.</p>
+                    <div class="app-dashboard-picker__list" data-dashboard-picker-list></div>
+                    <p class="app-dashboard-picker__status" data-dashboard-picker-status role="status" aria-live="polite"></p>
+                </div>
+            </dialog>
             @if (app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup(auth()->user()))
                 <div class="notice app-account-overview__pending" role="status">
                     <div><strong>Остался последний шаг регистрации</strong>
