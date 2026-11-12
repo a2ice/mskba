@@ -58,7 +58,7 @@ final class TournamentController extends Controller
         $now = now();
         $tournaments = Tournament::query()
             ->whereIn('status', [TournamentStatusEnum::CONFIRMED->value, TournamentStatusEnum::CANCELLED->value])
-            ->with('cover')
+            ->with(['cover', 'defaultVenue.location.address'])
             ->when($validated['query'] ?? null, fn ($query, $value) => $query->where('title', 'like', '%'.$value.'%'))
             ->when($validated['date_from'] ?? null, fn ($query, $value) => $query->where('starts_on', '>=', $value))
             ->when($validated['date_to'] ?? null, fn ($query, $value) => $query->where('starts_on', '<=', $value))

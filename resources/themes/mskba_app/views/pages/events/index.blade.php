@@ -1,124 +1,100 @@
 @php
     $title = 'Мероприятия';
     $metaDescription = 'Баскетбольные игры, тренировки и спортивные мероприятия Москвы: выбирай подходящие события на MSKBA.';
-    $canonicalUrl = $events->currentPage() > 1
-        ? route('events.index', ['page' => $events->currentPage()])
-        : route('events.index');
+    $canonicalUrl = $events->currentPage() > 1 ? route('events.index', ['page' => $events->currentPage()]) : route('events.index');
     $paginationPrevUrl = $events->previousPageUrl();
     $paginationNextUrl = $events->nextPageUrl();
+    $categoryTitle = $title;
+    $categoryDescription = 'Найди баскетбольную игру или тренировку рядом с собой.';
+    $categoryRootId = 'events-catalog';
+    $categorySidebarLabel = 'Навигация и фильтры мероприятий';
+    $categoryView = request('view') === 'list' ? 'list' : 'cards';
+    $categoryBaseUrl = route('events.index');
+    $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
+    $categoryResetUrl = $categoryBaseUrl.($categoryView === 'list' ? '?view=list' : '');
+    $categoryToolbarCount = 'Найдено '.$events->total().' мероприятий';
 @endphp
-@extends('theme::layouts.app', ['title' => $title])
+@extends('theme::layouts.category')
 
-@section('content')
-    <section class="container app-team-section app-team-public" aria-labelledby="events-heading">
-        <header class="app-account-overview__intro">
-            <h1 id="events-heading">Мероприятия</h1>
-            <p>Найди баскетбольную игру, тренировку или турнир рядом с собой.</p>
-        </header>
+@section('category-heading-action')
+    <a class="button primary" href="{{ route('events.create') }}">+ Создать мероприятие</a>
+@endsection
 
-        <div class="app-team-actions">
-            <a class="button secondary" href="{{ route('events.create') }}">Создать мероприятие</a>
+@section('category-sidebar')
+    <h2>Мероприятия</h2>
+    <nav class="app-category__nav" aria-label="Разделы мероприятий">
+        <a href="{{ route('events.index') }}" @class(['is-active' => !filled($typeFilter)])>Все мероприятия</a>
+        <a href="{{ route('events.index', ['type' => 'games']) }}" @class(['is-active' => $typeFilter === 'games'])>Игры</a>
+        @foreach($types as $eventType)
+            <a href="{{ route('events.index', ['type' => $eventType->value]) }}"
+               @class(['is-active' => $typeFilter === $eventType->value])>{{ $eventType->label() }}</a>
+        @endforeach
+    </nav>
+    <div class="app-category__separator" aria-hidden="true"></div>
+    <h2>Фильтры</h2>
+    @include('theme::pages.events.partials.category-filters', ['scope' => 'desktop'])
+@endsection
+
+@section('category-before-items')
+    <details class="app-category__mobile-filters panel">
+        <summary>Категории и фильтры <span aria-hidden="true">⌄</span></summary>
+        <div class="app-category__mobile-filters-body">
+            <h2>Мероприятия</h2>
+            <nav class="app-category__nav" aria-label="Разделы мероприятий">
+                <a href="{{ route('events.index') }}" @class(['is-active' => !filled($typeFilter)])>Все мероприятия</a>
+                <a href="{{ route('events.index', ['type' => 'games']) }}" @class(['is-active' => $typeFilter === 'games'])>Игры</a>
+                @foreach($types as $eventType)
+                    <a href="{{ route('events.index', ['type' => $eventType->value]) }}"
+                        @class(['is-active' => $typeFilter === $eventType->value])>{{ $eventType->label() }}</a>
+                @endforeach
+            </nav>
+            <h2>Фильтры</h2>
+            @include('theme::pages.events.partials.category-filters', ['scope' => 'mobile'])
         </div>
+    </details>
+@endsection
 
-        <form class="panel app-team-filters" method="GET" action="{{ route('events.index') }}" aria-label="Фильтры мероприятий">
-            <label class="app-team-field">
-                <span>Поиск</span>
-                <input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка">
-            </label>
-            <label class="app-team-field">
-                <span>Период</span>
-                <select name="period">
-                    <option value="upcoming" @selected($period === 'upcoming')>Предстоящие</option>
-                    <option value="past" @selected($period === 'past')>Прошедшие</option>
-                </select>
-            </label>
-            <label class="app-team-field">
-                <span>Формат мероприятия</span>
-                <select name="type">
-                    <option value="">Все виды</option>
-                    <option value="games" @selected($typeFilter === 'games')>Игры</option>
-                    @foreach($types as $eventType)
-                        <option value="{{ $eventType->value }}" @selected($typeFilter === $eventType->value)>{{ $eventType->label() }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="app-team-field">
-                <span>Дата с</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}">
-            </label>
-            <label class="app-team-field">
-                <span>Дата по</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}">
-            </label>
-            <label class="app-team-field">
-                <span>Площадка</span>
-                <select name="venue_id">
-                    <option value="">Все площадки</option>
-                    @foreach($filterVenues as $venue)
-                        <option value="{{ $venue->id }}" @selected($venueId === (int) $venue->id)>{{ $venue->name }}</option>
-                    @endforeach
-                </select>
-            </label>
-            @if($period === 'past')
-                <label class="app-team-field">
-                    <span>Результат</span>
-                    <select name="outcome">
-                        <option value="">Все</option>
-                        <option value="completed" @selected($outcome === 'completed')>Завершённые</option>
-                        <option value="cancelled" @selected($outcome === 'cancelled')>Отменённые</option>
-                        <option value="unmarked" @selected($outcome === 'unmarked')>Без результата</option>
-                    </select>
-                </label>
-            @endif
-            <label class="app-team-field">
-                <span>Статус</span>
-                <select name="status">
-                    <option value="not_cancelled" @selected($statusFilter === 'not_cancelled')>Кроме отменённых</option>
-                    <option value="all" @selected($statusFilter === 'all')>Все</option>
-                    <option value="cancelled" @selected($statusFilter === 'cancelled')>Отменённые</option>
-                </select>
-            </label>
-            <label class="app-team-checkbox">
-                <input type="checkbox" name="has_mini_games" value="1" @checked($hasMiniGames)>
-                <span>С мини-играми</span>
-            </label>
-            <div class="app-team-filter-actions">
-                <button class="button primary" type="submit">Найти</button>
-                <a class="app-team-link" href="{{ route('events.index') }}">Сбросить</a>
+@section('category-items')
+    @forelse($events as $event)
+        @php
+            $eventUrl = route('events.show', $event->routeIdentifier());
+            $photo = $event->venue?->media?->first();
+            $timezone = $event->venue?->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+            $starts = $event->starts_at->setTimezone($timezone);
+        @endphp
+        <article class="panel app-category__card" data-event-id="{{ $event->id }}">
+            <a class="app-category__card-cover" href="{{ $eventUrl }}" aria-label="{{ $event->title }}">
+                <img loading="lazy" src="{{ $photo?->publicUrl() ?: asset('images/venue-placeholder.png') }}" alt="{{ $event->title }}">
+            </a>
+            <div class="app-category__card-body">
+                <div class="app-category__badges">
+                    <span>{{ $event->type->label() }}</span>
+                    <span>{{ $event->status->label() }}</span>
+                </div>
+                <h2><a href="{{ $eventUrl }}">{{ $event->title }}</a></h2>
+                <p><time datetime="{{ $event->starts_at->toIso8601String() }}">{{ $starts->format('d.m.Y · H:i') }}</time></p>
+                @if($event->venue)
+                    <p>{{ $event->venue->name }}@if($event->venue->raw_address) · {{ $event->venue->raw_address }}@endif</p>
+                @endif
+                <p>Участники: {{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : '' }}</p>
+                @if($event->games->isNotEmpty() && $event->type !== \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME)
+                    <p>Мини-игры: {{ $event->games->count() }}</p>
+                @endif
+                @if($event->description)<p class="app-category__description">{{ \Illuminate\Support\Str::limit($event->description, 145) }}</p>@endif
+                <a class="button secondary app-category__details" href="{{ $eventUrl }}">Подробнее</a>
             </div>
-        </form>
+        </article>
+    @empty
+        <section class="panel app-category__empty">
+            <h2>Мероприятия не найдены</h2>
+            <p>Попробуйте изменить условия поиска или сбросить параметры.</p>
+            <a class="button secondary" href="{{ route('events.index') }}">Сбросить параметры</a>
+        </section>
+    @endforelse
+@endsection
 
-        <div class="app-team-grid" aria-label="Список мероприятий">
-            @forelse($events as $event)
-                <article class="panel app-team-card">
-                    <div class="app-team-card__sports">
-                        <span class="badge">{{ $event->type->label() }}</span>
-                        <span class="badge">{{ $event->status->label() }}</span>
-                    </div>
-                    <div class="app-team-card__title">
-                        <h2><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
-                    </div>
-                    @if($event->starts_at)
-                        <p class="app-team-card__detail">
-                            <time datetime="{{ $event->starts_at->toIso8601String() }}">{{ $event->starts_at->locale('ru')->translatedFormat('j F Y · H:i') }}</time>
-                        </p>
-                    @endif
-                    @if($event->venue)
-                        <p class="app-team-card__detail">Площадка: {{ $event->venue->name }}</p>
-                    @endif
-                    <a class="button secondary" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее</a>
-                </article>
-            @empty
-                <section class="panel app-team-empty">
-                    <h2>Подходящих мероприятий пока нет</h2>
-                    <p>Попробуй изменить фильтры или вернуться к списку всех мероприятий.</p>
-                    <a class="button secondary" href="{{ route('events.index') }}">Сбросить фильтры</a>
-                </section>
-            @endforelse
-        </div>
-
-        @if($events->hasPages())
-            <nav class="app-team-pagination" aria-label="Страницы мероприятий">{{ $events->withQueryString()->links() }}</nav>
-        @endif
-    </section>
+@section('category-after-items')
+    @if($events->hasPages())
+        <nav class="app-category__pagination" aria-label="Страницы мероприятий">{{ $events->links() }}</nav>
+    @endif
 @endsection
