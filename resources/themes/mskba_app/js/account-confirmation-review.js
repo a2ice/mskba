@@ -128,6 +128,11 @@ document.querySelectorAll('[data-confirm-review-dialog]').forEach(dialog => {
     missingDialog?.querySelectorAll('[data-confirm-missing-close]').forEach(button => {
         button.addEventListener('click', () => missingDialog.close());
     });
+    // A link to a field on this very page must dismiss the top-layer dialog;
+    // otherwise the fragment scrolls behind an open modal.
+    missingDialog?.addEventListener('click', event => {
+        if (event.target.closest('a[href]')) missingDialog.close();
+    });
     missingDialog?.addEventListener('close', () => {
         if (previousFocus?.isConnected) previousFocus.focus({preventScroll: true});
     });
