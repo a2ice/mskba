@@ -25,3 +25,10 @@
 Миграция `2026_11_12_150000_restore_laravel_events_catalog_on_dev.php` восстанавливает Laravel-каталог **только** на `APP_ENV=staging` + `APP_URL=https://dev.mskba.ru`, используя существующую обратимую операцию `PageBuilderPublisher::setOverrideEnabled(false)`. Контент Page Builder остаётся опубликованным и доступным для повторного включения в редакторе; `main` и production-БД не меняются.
 
 После деплоя проверить `/events`: H1 «Мероприятия», фильтры, ссылки на реальные события и отсутствие soft-404; для редакционных CMS-публикаций — сохранность snapshot/override истории.
+
+## Этап 316/004 — подробные страницы игр, турниров и секций
+
+- Проверена текущая структура: страницы событий (включая игру и live-режим), турниров и секций уже существуют как сложные функциональные Blade-шаблоны в `mskba_dark` (участие, результаты, расписание, карты, регистрация). Их упрощённая замена нарушила бы функциональный parity; сохраняем действующий публичный bridge, пока отдельные полноценные версии `mskba_app` не готовы.
+- Устранён пропуск whitelist временного `ThemeResolver` fallback: `events.game-show`, `events.game-live`, `events.game-qr-join`, `tournaments.on-site-registration`. Эти маршруты раньше могли отдавать пустую `MSKBA App theme` заглушку с HTTP 200.
+- Добавлены feature tests в `SeoLegacyEntityDetailParityTest`: обычная опубликованная тренировка, standalone game, mini-game, live, публичное QR-присоединение, турнир с URL `id-alias`, регистрация на турнире, секция по alias. Проверяются 200, контент конкретной БД, SEO title/canonical, 404 на несуществующие сущности и noindex dev.
+- Production-БД по-прежнему не изменять. Проверка URL базируется на одинаковых prod-данных до/после production deploy, а не на несовпадающих записях dev/prod.
