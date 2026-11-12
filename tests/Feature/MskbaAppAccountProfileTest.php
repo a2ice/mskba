@@ -130,7 +130,8 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertSee('<use href="#save"/>', false)
             ->assertSee('data-confirmation-save-all', false)
             ->assertSee('Сохранить всё')
-            ->assertSee('data-confirmation-requirement', false)
+            ->assertSee('data-confirm-missing-target="confirmation-complete-form"', false)
+            ->assertSee('form="confirmation-complete-form"', false)
             ->assertSee('Управлять контактами')
             ->assertDontSee('Управлять контактами и выбрать основной')
             ->assertDontSee('confirmation-first-title');
