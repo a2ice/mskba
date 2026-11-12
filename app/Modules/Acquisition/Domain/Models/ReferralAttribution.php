@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'referrer_user_id',
     'referred_user_id',
     'source',
+    'source_page',
     'captured_at',
     'linked_at',
 ])]
