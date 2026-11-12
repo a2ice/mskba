@@ -85,4 +85,18 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
+
+    public function test_staging_nginx_robots_rules_use_real_newline_escapes(): void
+    {
+        $nginxConfig = file_get_contents(base_path('docker/nginx/default.conf'));
+        $this->assertIsString($nginxConfig);
+
+        // In nginx string literals, backslash+n means newline. Writing
+        // double-backslash+n instead emits the literal characters "\\n" and
+        // leaves User-agent and Disallow on one physical robots.txt line.
+        $slash = chr(92);
+        $expected = 'return 200 "User-agent: *'.$slash.'nDisallow: /'.$slash.'n";';
+        $this->assertStringContainsString($expected, $nginxConfig);
+        $this->assertStringNotContainsString($slash.$slash.'n', $nginxConfig);
+    }
 }
