@@ -1,31 +1,68 @@
-/* Personal dashboard controls — MSKBA App design tokens only. */
-.app-dashboard-customize {
-    display:flex; align-items:center; justify-content:space-between; gap:12px 20px;
-    flex-wrap:wrap; margin:0 0 16px; min-width:0;
-}
-.app-dashboard-customize__actions {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-left:auto}
-.app-dashboard-customize__actions .button {min-height:44px}
-.app-dashboard-customize__status {margin:0;min-height:0;font-size:14px;color:var(--muted)}
+/* Inline dashboard editing uses the same grip as movable MSKBA modal headers. */
+.app-dashboard-customize__status {margin:0;font-size:13px;color:var(--muted)}
 .app-dashboard-customize__status:empty {display:none}
-.app-dashboard-customize [data-dashboard-order-hint] {font-size:14px;flex:1 1 100%;margin:0}
-.app-dashboard-widget__reorder-controls {display:none;align-items:center;gap:6px;margin-left:auto}
-.app-dashboard-grid[data-dashboard-ordering="1"] .app-dashboard-widget__reorder-controls {display:flex}
-.app-dashboard-widget__reorder-controls button {
-    display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;
-    padding:8px;border:1px solid var(--control-line);border-radius:12px;
-    background:var(--surface);color:var(--text);cursor:pointer;
+.app-dashboard-customize__status[data-error="1"] {color:var(--danger,var(--accent))}
+.app-dashboard-widget__header h2 {flex:1;min-width:0}
+.app-dashboard-widget__header--movable {cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.app-dashboard-widget__header--movable:active {cursor:grabbing}
+.app-dashboard-widget__header--movable::before {
+    content:"⠿";display:inline-block;flex:0 0 auto;align-self:center;
+    margin-inline-end:2px;font-size:1rem;line-height:1;font-weight:400;
+    color:var(--muted);pointer-events:none;
 }
-.app-dashboard-widget__reorder-controls button:hover:not(:disabled) {
-    background:var(--surface-raised);border-color:var(--accent);
+.app-dashboard-widget__header--movable:focus-visible {outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}
+.app-dashboard-widget__header--movable :is(button,a) {cursor:pointer;touch-action:auto}
+.app-dashboard-widget__hide {
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px;
+    width:34px;height:34px;margin-left:auto;padding:7px;border:1px solid var(--line);
+    border-radius:10px;background:var(--surface-raised);color:var(--muted);cursor:pointer;
 }
-.app-dashboard-widget__reorder-controls button:disabled {opacity:.35;cursor:not-allowed}
-.app-dashboard-widget__reorder-controls svg {width:20px;height:20px;fill:none;stroke:currentColor;flex-shrink:0}
-.app-dashboard-widget__move--down svg {transform:rotate(180deg)}
-.app-dashboard-widget__drag-handle {cursor:grab!important;touch-action:pan-y}
-.app-dashboard-widget__drag-handle:active {cursor:grabbing!important}
-.app-dashboard-grid[data-dashboard-ordering="1"] .app-dashboard-widget {position:relative}
-.app-dashboard-widget--dragging {opacity:.6}
+.app-dashboard-widget__hide:hover:not(:disabled) {border-color:var(--accent);color:var(--text)}
+.app-dashboard-widget__hide:disabled {opacity:.5;cursor:wait}
+.app-dashboard-widget__hide svg,.app-dashboard-picker__close svg {width:18px;height:18px;fill:none;stroke:currentColor}
+.app-dashboard-widget--dragging {opacity:.55}
 .app-dashboard-widget--drag-target {outline:2px dashed var(--accent);outline-offset:3px}
+.app-dashboard-widget--add {
+    min-height:148px;width:100%;padding:20px;display:grid;place-items:center;
+    justify-items:center;align-items:center;cursor:pointer;border:1px dashed var(--control-line);
+    background:var(--surface);color:var(--muted);
+}
+.app-dashboard-widget--add:hover,.app-dashboard-widget--add:focus-visible {
+    border-color:var(--accent);color:var(--accent);background:var(--surface-raised);
+}
+.app-dashboard-widget__add-icon {
+    display:grid;place-items:center;width:56px;height:56px;border:2px solid currentColor;
+    border-radius:50%;font-size:40px;font-weight:300;line-height:1;
+}
+.app-dashboard-picker {width:min(540px,calc(100vw - 24px))}
+.app-dashboard-picker__header {
+    display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--line);
+}
+.app-dashboard-picker__header h2 {margin:0;flex:1;font-size:20px;color:var(--text)}
+.app-dashboard-picker__close {
+    display:inline-grid;place-items:center;flex:0 0 40px;width:40px;height:40px;
+    border:1px solid var(--line);border-radius:10px;color:var(--text);
+    background:var(--surface-raised);cursor:pointer;
+}
+.app-dashboard-picker__body {padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+.app-dashboard-picker__body>p {margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.app-dashboard-picker__list {display:grid;gap:10px}
+.app-dashboard-picker__option {
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 16px;min-height:54px;width:100%;text-align:left;
+    border:1px solid var(--control-line);border-radius:var(--radius-control);
+    color:var(--text);background:var(--surface-raised);cursor:pointer;font:inherit;
+}
+.app-dashboard-picker__option:hover:not(:disabled),.app-dashboard-picker__option:focus-visible {
+    border-color:var(--accent);color:var(--accent);
+}
+.app-dashboard-picker__option:disabled {opacity:.6;cursor:wait}
+.app-dashboard-picker__option-plus {font-size:24px;font-weight:400;line-height:1;color:var(--accent)}
+.app-dashboard-picker__status {min-height:0}
+@media(max-width:639px) {
+    .app-dashboard-picker__header {padding:16px}
+    .app-dashboard-picker__body {padding:18px}
+}
 .app-dashboard-settings {padding:24px;display:flex;flex-direction:column;gap:20px}
 .app-dashboard-settings__head {display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap}
 .app-dashboard-settings__head h2 {margin:0 0 12px}
@@ -55,8 +92,6 @@
 @media(max-width:639px) {
     .app-dashboard-settings {padding:20px}
     .app-dashboard-settings__item {align-items:flex-start;flex-direction:column;padding:16px}
-    .app-dashboard-customize__actions {width:100%;margin-left:0}
-    .app-dashboard-customize__actions .button {flex:1;min-width:0}
 }
 @media(prefers-reduced-motion:reduce) {
     .app-dashboard-widget--dragging,.app-dashboard-widget--drag-target {transition:none}

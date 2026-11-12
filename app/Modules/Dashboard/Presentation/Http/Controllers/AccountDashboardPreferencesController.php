@@ -27,7 +27,7 @@ final class AccountDashboardPreferencesController extends Controller
         ]);
     }
 
-    public function update(Request $request, AccountDashboardService $dashboard): RedirectResponse
+    public function update(Request $request, AccountDashboardService $dashboard): RedirectResponse|JsonResponse
     {
         abort_unless(app(ThemeResolver::class)->active() === 'mskba_app', 404);
 
@@ -40,6 +40,10 @@ final class AccountDashboardPreferencesController extends Controller
             $request->user(),
             array_map('intval', $validated['visible_widget_ids'] ?? []),
         );
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true])->header('Cache-Control', 'private, no-store');
+        }
 
         return redirect()->route('account.settings.dashboard')
             ->with('status', 'Виджеты дашборда сохранены.');

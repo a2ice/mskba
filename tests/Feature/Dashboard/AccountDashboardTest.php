@@ -334,4 +334,45 @@ final class AccountDashboardTest extends TestCase
         $this->assertFalse($statusWidget->fresh()->can_move);
     }
 
+    public function test_dashboard_inline_controls_hide_restore_and_respect_widget_flags(): void
+    {
+        $user = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $required = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+        $movable = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $messages = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail();
+        $required->update(['can_hide' => false, 'can_move' => false]);
+        $movable->update(['can_hide' => true, 'can_move' => true]);
+        $messages->update(['can_hide' => true, 'can_move' => true]);
+
+        $initial = $this->actingAs($user)->get(route('account'))->assertOk();
+        $initial->assertDontSee('Изменить порядок')
+            ->assertDontSee('Выбрать виджеты')
+            ->assertSee('data-dashboard-picker', false)
+            ->assertSee('data-dashboard-hide-widget="'.$movable->id.'"', false)
+            ->assertDontSee('data-dashboard-hide-widget="'.$required->id.'"', false)
+            ->assertSee('data-dashboard-add-widget', false);
+
+        $this->postJson(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [$required->id, $movable->id],
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $hidden = $this->get(route('account'))->assertOk();
+        $hidden->assertSee('data-dashboard-add-widget', false)
+            ->assertDontSee('data-dashboard-widget="'.$messages->id.'"', false)
+            ->assertSee('data-dashboard-drag-handle', false);
+
+        $response = $this->getJson(route('account.dashboard.widgets'))->assertOk()
+            ->assertJsonStructure(['html', 'available']);
+        $catalog = collect($response->json('available'));
+        $this->assertFalse($catalog->firstWhere('id', $messages->id)['visible']);
+        $this->assertTrue($catalog->firstWhere('id', $required->id)['visible']);
+
+        $this->postJson(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [$required->id, $movable->id, $messages->id],
+        ])->assertOk();
+        $this->get(route('account'))->assertOk()
+            ->assertSee('data-dashboard-widget="'.$messages->id.'"', false)
+            ->assertSee('data-dashboard-add-widget', false);
+    }
+
 }
