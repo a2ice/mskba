@@ -20,6 +20,7 @@
     $viewQuery = request()->except(['view', 'page']);
     $categoryTitle = $title;
     $categoryDescription = $category?->description ?: 'Баскетбольная экипировка, форма и аксессуары.';
+    $categoryHeadingId = 'app-shop-title';
     $categoryRootId = 'shop-catalog';
     $categoryRootClass = 'app-shop app-shop--catalog';
     $categoryHeaderClass = 'app-shop__heading';
