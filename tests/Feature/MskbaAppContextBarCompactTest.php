@@ -184,11 +184,11 @@ final class MskbaAppContextBarCompactTest extends TestCase
         $this->assertStringNotContainsString('data-app-context-bar', $guest);
 
         $confirmed = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED]);
-        $confirmedHtml = $this->actingAs($confirmed)->get(route('welcome'))->assertOk()->getContent();
+        $confirmedHtml = $this->actingAs($confirmed)->get(route('homepage.original'))->assertOk()->getContent();
         $this->assertStringNotContainsString('data-app-context-bar', $confirmedHtml);
 
         $unconfirmed = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED]);
-        $html = $this->actingAs($unconfirmed)->get(route('welcome'))->assertOk()->getContent();
+        $html = $this->actingAs($unconfirmed)->get(route('homepage.original'))->assertOk()->getContent();
         $this->assertSame(1, substr_count($html, 'data-app-context-bar'));
         $this->assertSame(1, substr_count($html, 'Подтвердить акк...'));
         $this->assertSame(2, substr_count($html, 'class="app-context-actions__attention"'));
