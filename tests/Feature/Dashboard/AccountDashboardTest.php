@@ -350,7 +350,7 @@ final class AccountDashboardTest extends TestCase
             ->assertSee('data-dashboard-picker', false)
             ->assertSee('data-dashboard-hide-widget="'.$movable->id.'"', false)
             ->assertDontSee('data-dashboard-hide-widget="'.$required->id.'"', false)
-            ->assertDontSee('data-dashboard-add-widget', false);
+            ->assertSee('data-dashboard-add-widget', false);
 
         $this->postJson(route('account.settings.dashboard.update'), [
             'visible_widget_ids' => [$required->id, $movable->id],
