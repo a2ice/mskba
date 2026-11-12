@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ShowCreationPageAccess;
+use App\Http\Middleware\PreventNonProductionIndexing;
 use App\Modules\Favorites\Infrastructure\Http\Middleware\ClaimGuestFavorites;
 use App\Modules\Content\Presentation\Http\Middleware\PageBuilderRouteOverride;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->append(PreventNonProductionIndexing::class);
         $middleware->alias([
             'throttle' => RouteScopedThrottleRequests::class,
             'venue-rental-feature' => EnsureVenueRentalFeatureEnabled::class,
