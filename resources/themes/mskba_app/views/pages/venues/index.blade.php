@@ -1,21 +1,37 @@
 @php
     $title = 'Площадки';
     $breadcrumbs = [['label' => 'Площадки', 'url' => route('venues')]];
-    $viewQuery = request()->except(['view', 'page', 'fragment']);
+    $categoryTitle = $title;
+    $categoryDescription = 'Найдите подходящий зал или уличную площадку для игры.';
+    $categoryRootId = 'venues-catalog';
+    $categoryRootClass = 'app-venues-catalog';
+    $categoryHeaderClass = 'app-venues-catalog__header';
+    $categoryLayoutClass = 'app-venues-catalog__layout';
+    $categorySidebarClass = 'app-venues-catalog__sidebar';
+    $categoryMainClass = 'app-venues-catalog__main';
+    $categoryToolbarClass = 'app-venues-catalog__toolbar';
+    $categoryItemsClass = 'app-venues-catalog__items';
+    $categoryItemsListClass = 'app-venues-catalog__items--list';
+    $categoryView = $currentView;
+    $categoryBaseUrl = route('venues');
+    $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
+    $categoryResetUrl = route('venues', $currentView === 'list' ? ['view' => 'list'] : []);
+    $categoryEnableSorting = true;
+    $categorySortValue = $filters['sort'] ?? '';
+    $categorySortChoices = [
+        '' => 'По названию (А–Я)',
+        'name_desc' => 'По названию (Я–А)',
+        'new' => 'Сначала новые',
+    ];
+    $categorySidebarLabel = 'Фильтры площадок';
 @endphp
-@extends('theme::layouts.app', ['title' => $title, 'breadcrumbs' => $breadcrumbs])
-@section('content')
-<section class="container app-venues-catalog" data-venue-infinite-catalog
-    data-next-page="{{ $hasMore ? $page + 1 : '' }}" aria-labelledby="venue-catalog-title">
-    <header class="app-venues-catalog__header">
-        <div>
-            <h1 id="venue-catalog-title">Площадки</h1>
-            <p>Найдите подходящий зал или уличную площадку для игры.</p>
-        </div>
-        <a class="button primary" href="{{ route('venues.create') }}">+ Добавить площадку</a>
-    </header>
-    <div class="app-venues-catalog__layout">
-        <aside class="app-venues-catalog__sidebar panel" aria-label="Фильтры площадок">
+@extends('theme::layouts.category')
+
+@section('category-heading-action')
+    <a class="button primary" href="{{ route('venues.create') }}">+ Добавить площадку</a>
+@endsection
+
+@section('category-sidebar')
             <h2>Поиск площадок</h2>
             <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters">
                 @if($currentView === 'list')<input type="hidden" name="view" value="list">@endif
@@ -49,29 +65,19 @@
                     <button class="button primary" type="submit">Применить</button>
                 </div>
             </form>
-        </aside>
 
-        <main class="app-venues-catalog__main">
-            <div class="app-venues-catalog__toolbar">
-                <span role="status" aria-live="polite">Показано <b data-venue-visible-count>{{ count($venues) }}</b> из {{ $total }} площадок</span>
-                @include('theme::components.catalog-toolbar', [
-                    'baseUrl' => route('venues'),
-                    'viewQuery' => $viewQuery,
-                    'currentView' => $currentView,
-                    'resetUrl' => route('venues', $currentView === 'list' ? ['view' => 'list'] : []),
-                    'enableSorting' => true,
-                    'sortValue' => $filters['sort'] ?? '',
-                    'sortChoices' => [
-                        '' => 'По названию (А–Я)',
-                        'name_desc' => 'По названию (Я–А)',
-                        'new' => 'Сначала новые',
-                    ],
-                ])
-            </div>
-            <div @class(['app-venues-catalog__items', 'app-venues-catalog__items--list' => $currentView === 'list']) data-venue-items>
-                @include('theme::pages.venues.partials.index-items')
-            </div>
-            <div class="app-venues-catalog__loader" data-venue-loader hidden role="status" aria-live="polite">
+@endsection
+
+@section('category-toolbar-count')
+    <span role="status" aria-live="polite">Показано <b data-venue-visible-count>{{ count($venues) }}</b> из {{ $total }} площадок</span>
+@endsection
+
+@section('category-items')
+    @include('theme::pages.venues.partials.index-items')
+@endsection
+
+@section('category-after-items')
+    <div class="app-venues-catalog__loader" data-venue-loader hidden role="status" aria-live="polite">
                 <span class="image-upload-loading__spinner" aria-hidden="true"></span>
                 <span>Загружаем площадки…</span>
             </div>
@@ -80,7 +86,5 @@
                 <button class="button secondary" type="button" data-venue-retry>Повторить</button>
             </div>
             <div class="app-venues-catalog__sentinel" data-venue-sentinel aria-hidden="true"></div>
-        </main>
-    </div>
-</section>
+
 @endsection
