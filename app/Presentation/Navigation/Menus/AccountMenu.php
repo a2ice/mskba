@@ -39,6 +39,7 @@ final class AccountMenu implements MenuHandler
         'account.contacts' => 'contact-mail',
         'account.wallet' => 'currency-ruble',
         'account.settings' => 'sliders',
+        'account.settings.dashboard' => 'home',
         'account.contracts' => 'file-description',
         'account.contracts.venues' => 'pin',
         'auth.logout' => 'arrow-up-right',
@@ -229,6 +230,7 @@ final class AccountMenu implements MenuHandler
         $items[] = $this->contractsGroup();
         $settingsChildren = [
             $this->link('Общие настройки', 'account.settings'),
+            $this->link('Дашборд', 'account.settings.dashboard'),
             [
                 'label' => 'Контакты',
                 'icon' => self::APP_ICONS['account.contacts'],

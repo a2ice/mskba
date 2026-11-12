@@ -199,6 +199,8 @@ final class AccountDashboardWidgetResource extends Resource
                         Toggle::make('enabled')->label('Публиковать')->default(true),
                         Toggle::make('can_hide')->label('Можно скрыть пользователю')->default(true)
                             ->helperText('Обязательные виджеты нельзя будет скрывать в настройках аккаунта.'),
+                        Toggle::make('can_move')->label('Можно перемещать пользователю')->default(true)
+                            ->helperText('Если выключено, виджет остаётся на своём месте при сортировке в обзоре аккаунта.'),
                         TextInput::make('refresh_delay_seconds')
                             ->label('Задержка обновления (секунд)')
                             ->integer()->minValue(0)->maxValue(60)->default(5)->required()

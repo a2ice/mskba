@@ -26,7 +26,7 @@ final class AccountDashboardWidget extends Model
     protected function casts(): array
     {
         return [
-            'enabled' => 'boolean', 'can_hide' => 'boolean',
+            'enabled' => 'boolean', 'can_hide' => 'boolean', 'can_move' => 'boolean',
             'sort_order' => 'integer', 'iframe_height' => 'integer',
             'image_gap_px' => 'integer', 'image_width_percent' => 'integer',
             'refresh_delay_seconds' => 'integer', 'last_edit_at' => 'datetime',

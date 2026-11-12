@@ -244,4 +244,94 @@ final class AccountDashboardTest extends TestCase
         $this->assertSame(0, AccountDashboardWidget::query()->where('kind', 'advertisement')->count());
     }
 
+    public function test_dashboard_settings_allow_individual_visibility_and_restore_without_affecting_others(): void
+    {
+        $one = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $two = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $statusWidget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+        $startedWidget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $messagesWidget = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail();
+
+        $this->get(route('account.settings.dashboard'))->assertRedirect();
+        $this->actingAs($one)->get(route('account.settings.dashboard'))->assertOk()
+            ->assertSee('Мои виджеты')
+            ->assertSee('Обязательный виджет')
+            ->assertSee('Статус пользователя')
+            ->assertSee('Мои сообщения');
+
+        $this->post(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [$statusWidget->id],
+        ])->assertRedirect(route('account.settings.dashboard'));
+        $this->get(route('account'))->assertOk()
+            ->assertSee('Статус пользователя')
+            ->assertDontSee('Возможности MSKBA')
+            ->assertDontSee('Мои сообщения');
+
+        $this->actingAs($two)->get(route('account'))->assertOk()
+            ->assertSee('Возможности MSKBA')->assertSee('Мои сообщения');
+
+        $this->actingAs($one)->post(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [$startedWidget->id, $messagesWidget->id],
+        ])->assertRedirect(route('account.settings.dashboard'));
+        $this->get(route('account'))->assertOk()
+            ->assertSee('Статус пользователя')
+            ->assertSee('Возможности MSKBA')
+            ->assertSee('Мои сообщения');
+
+        $this->post(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [999999],
+        ])->assertSessionHasErrors(['visible_widget_ids']);
+    }
+
+    public function test_reorder_respects_can_move_fixed_slots_and_rejects_forged_requests(): void
+    {
+        $user = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $statusWidget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+        $startedWidget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $messagesWidget = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail();
+
+        $startedWidget->update(['can_move' => false]);
+        $this->actingAs($user)->get(route('account'))->assertOk()
+            ->assertSee('data-widget-can-move="0"', false)
+            ->assertSee('data-widget-can-move="1"', false);
+
+        $this->patchJson(route('account.dashboard.widgets.order'), [
+            'widget_ids' => [$startedWidget->id, $statusWidget->id, $messagesWidget->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['widget_ids']);
+
+        $this->patchJson(route('account.dashboard.widgets.order'), [
+            'widget_ids' => [$messagesWidget->id, $startedWidget->id, $statusWidget->id],
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $reordered = app(\App\Modules\Dashboard\Application\Services\AccountDashboardService::class)
+            ->forUser($user)->pluck('id')->all();
+        $this->assertSame([$messagesWidget->id, $startedWidget->id, $statusWidget->id], $reordered);
+
+        $this->patchJson(route('account.dashboard.widgets.order'), [
+            'widget_ids' => [$messagesWidget->id, $statusWidget->id, $startedWidget->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['widget_ids']);
+
+        $this->patchJson(route('account.dashboard.widgets.order'), [
+            'widget_ids' => [$messagesWidget->id, $startedWidget->id, 999999],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['widget_ids']);
+    }
+
+    public function test_can_hide_and_can_move_are_separate_admin_controls(): void
+    {
+        $statusWidget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+        $statusWidget->update(['can_hide' => false, 'can_move' => false]);
+        $user = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+
+        $this->actingAs($user)->post(route('account.settings.dashboard.update'), [
+            'visible_widget_ids' => [],
+        ])->assertRedirect();
+        $this->get(route('account'))->assertOk()
+            ->assertSee('data-dashboard-widget="'.$statusWidget->id.'"', false)
+            ->assertSee('data-widget-can-move="0"', false)
+            ->assertDontSee('data-dashboard-drag-handle', false);
+
+        $this->assertFalse($statusWidget->fresh()->can_hide);
+        $this->assertFalse($statusWidget->fresh()->can_move);
+    }
+
 }

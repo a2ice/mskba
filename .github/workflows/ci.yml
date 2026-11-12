@@ -197,8 +197,8 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
 
-      - name: Check DEV Page Builder bridge manifest guards
-        run: node --test tests/JavaScript/page-builder-agent-bridge.test.mjs
+      - name: Check DEV Page Builder bridge and personal widget ordering
+        run: node --test tests/JavaScript/page-builder-agent-bridge.test.mjs tests/JavaScript/dashboard-widget-order.test.mjs
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
         if: steps.change_scope.outputs.full_suite == 'true'

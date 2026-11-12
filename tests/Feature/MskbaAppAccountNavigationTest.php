@@ -236,9 +236,9 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertSame('shirt', $menu->firstWhere('label', 'Мои формы')['icon']);
         $settings = $menu->firstWhere('label', 'Настройки');
         $this->assertNull($settings['url']);
-        $this->assertSame(['Общие настройки', 'Контакты', 'Кошелёк'], array_column($settings['children'], 'label'));
+        $this->assertSame(['Общие настройки', 'Дашборд', 'Контакты', 'Кошелёк'], array_column($settings['children'], 'label'));
         $this->assertSame([
-            route('account.settings'), route('account.contacts'), route('account.wallet'),
+            route('account.settings'), route('account.settings.dashboard'), route('account.contacts'), route('account.wallet'),
         ], array_column($settings['children'], 'url'));
         $this->assertSame(['Мои лиги'], array_column($menu->firstWhere('label', 'Участие')['children'], 'label'));
         $profile = $menu->firstWhere('label', 'Профиль');
