@@ -30,7 +30,8 @@ final class HomepagePreferenceTest extends TestCase
             ->assertHeader('Vary', 'Cookie');
         $this->get(route('homepage.original'))->assertOk()
             ->assertHeader('X-Robots-Tag', 'noindex, follow')
-            ->assertHeader('Cache-Control', 'no-store, private');
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('href="'.route('homepage.original').'#about"', false);
     }
 
     public function test_authenticated_user_defaults_to_account_with_a_temporary_non_cached_redirect(): void
