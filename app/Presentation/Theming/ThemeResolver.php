@@ -73,6 +73,9 @@ class ThemeResolver
                 && is_file($legacyFile)) {
                 $resolver->renderingLegacyPublicPage = true;
                 View::replaceNamespace('theme', resource_path('themes/mskba_dark/views'));
+                // The finder memoizes resolved paths by view name. Changing
+                // namespace hints alone keeps cached legacy paths alive.
+                View::getFinder()->flush();
 
                 try {
                     // response()->view renders synchronously; restore the
@@ -82,6 +85,7 @@ class ThemeResolver
                 } finally {
                     $resolver->renderingLegacyPublicPage = false;
                     View::replaceNamespace('theme', $resolver->viewsPath());
+                    View::getFinder()->flush();
                 }
             }
 
