@@ -1,5 +1,20 @@
 const workspace = document.querySelector('[data-player-workspace]');
 if (workspace) {
+    const playerChangeDialog = workspace.querySelector('[data-player-change-request-dialog]');
+    const playerChangeTrigger = workspace.querySelector('[data-player-change-request-open]');
+    if (playerChangeDialog && playerChangeTrigger) {
+        playerChangeTrigger.addEventListener('click', () => {
+            playerChangeDialog.showModal();
+            playerChangeDialog.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+        });
+        playerChangeDialog.querySelectorAll('[data-player-change-request-close]').forEach(button => {
+            button.addEventListener('click', () => playerChangeDialog.close());
+        });
+        playerChangeDialog.addEventListener('close', () => {
+            if (playerChangeTrigger.isConnected) playerChangeTrigger.focus({ preventScroll: true });
+        });
+    }
+
     const preview = workspace.querySelector('[data-player-preview]');
     const form = workspace.querySelector('[data-player-physical-form]');
     const height = form?.querySelector('[data-physical-height]');
@@ -243,7 +258,7 @@ if (workspace) {
     let activeHeightPointer = null;
     let heightDragOffsetY = 0;
     const applyPointerHeight = clientY => {
-        if (!height || !heightScale) return;
+        if (!height || height.disabled || !heightScale) return;
         const rect = heightScale.getBoundingClientRect();
         if (rect.height <= 0) return;
         const proposedCm = Math.round((rect.bottom - clientY) / rect.height * 225);
@@ -253,7 +268,7 @@ if (workspace) {
         height.dispatchEvent(new Event('input', {bubbles:true}));
     };
     heightMarkerDrag?.addEventListener('pointerdown', event => {
-        if (!height || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        if (!height || height.disabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
         const bounds = heightScale?.getBoundingClientRect();
         if (!bounds?.height) return;
         event.preventDefault();

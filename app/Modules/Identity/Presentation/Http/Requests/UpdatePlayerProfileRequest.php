@@ -169,6 +169,14 @@ final class UpdatePlayerProfileRequest extends FormRequest
     {
         $data = $this->profileData();
 
+        // A disabled protected field is absent from the request. Never erase it
+        // when the remaining fields of the physical/game section are saved.
+        foreach (['height_cm', 'experience_started_year'] as $protected) {
+            if (! $this->exists($protected)) {
+                unset($data[$protected]);
+            }
+        }
+
         return match ($this->section()) {
             'physical' => array_intersect_key($data, array_flip(['height_cm', 'weight_kg', 'body_type'])),
             'game' => array_intersect_key($data, array_flip(['experience_started_year', 'comment'])),

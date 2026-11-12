@@ -738,7 +738,12 @@ class AccountController extends Controller
         if ($roleEnum === UserParticipationRoleEnum::PLAYER
             && app(ThemeResolver::class)->active() === 'mskba_app') {
             $canonical = $user->canonical()->loadMissing('profile');
-            $requests = ProfileChangeRequest::query()->where('user_id', $canonical->id);
+            $requests = ProfileChangeRequest::query()->where('user_id', $canonical->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_ACCOUNT);
+            $playerRequests = ProfileChangeRequest::query()->where('user_id', $canonical->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_PLAYER);
+            $canEditConfirmedPlayer = app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
+                ->allows($canonical, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::EDIT_OWN_PROFILE);
             $initial = app(PlayerCharacterInitialRenderService::class);
             $personalData = [
                 'playerFaceReferences' => $initial->faceReferences($canonical),
@@ -748,6 +753,12 @@ class AccountController extends Controller
                 'genders' => UserGenderEnum::cases(),
                 'latestProfileChangeRequest' => (clone $requests)->latest('id')->first(),
                 'activeProfileChangeRequest' => (clone $requests)
+                    ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])
+                    ->first(),
+                'playerConfirmed' => $participationRole->confirmed_at !== null,
+                'canEditConfirmedPlayer' => $canEditConfirmedPlayer,
+                'latestPlayerChangeRequest' => (clone $playerRequests)->latest('id')->first(),
+                'activePlayerChangeRequest' => (clone $playerRequests)
                     ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])
                     ->first(),
             ];

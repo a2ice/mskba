@@ -11,7 +11,7 @@
     <div class="app-profile-change-review-list">
         @forelse ($requests as $item)
             <section class="panel app-profile-change-review" aria-labelledby="profile-request-{{ $item->id }}">
-                <h2 id="profile-request-{{ $item->id }}">Заявка №{{ $item->id }} — {{ $item->user?->username ?? ('#'.$item->user_id) }}</h2>
+                <h2 id="profile-request-{{ $item->id }}">Заявка №{{ $item->id }} ({{ $item->scopeLabel() }}) — {{ $item->user?->username ?? ('#'.$item->user_id) }}</h2>
                 <p><strong>Статус:</strong> {{ [
                     'pending' => 'На рассмотрении', 'approved' => 'Одобрена',
                     'rejected' => 'Отклонена', 'blocked' => 'Заблокирована',
@@ -28,7 +28,7 @@
                 <table class="app-profile-change-review__table">
                     <thead><tr><th>Поле</th><th>Было</th><th>Предлагается</th></tr></thead>
                     <tbody>
-                        @foreach (['first_name' => 'Имя', 'last_name' => 'Фамилия', 'birth_date' => 'Дата рождения', 'gender' => 'Пол'] as $field => $label)
+                        @foreach ($item->fieldLabels() as $field => $label)
                             <tr>
                                 <th>{{ $label }}</th>
                                 <td>{{ $item->original_data[$field] ?? '—' }}</td>

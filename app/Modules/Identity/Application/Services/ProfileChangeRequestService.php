@@ -4,6 +4,9 @@ namespace App\Modules\Identity\Application\Services;
 
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
@@ -18,8 +21,6 @@ final class ProfileChangeRequestService
         private readonly RequestThreadMembershipManager $members,
     ) {}
 
-    private const FIELDS = ['first_name', 'last_name', 'birth_date', 'gender'];
-
     /** @return array<string, string|null> */
     public function snapshot(?Profile $profile): array
     {
@@ -31,17 +32,57 @@ final class ProfileChangeRequestService
         ];
     }
 
-    /** @param array<string, string> $proposed */
-    public function submit(User $actor, array $proposed, string $reason): ProfileChangeRequest
+    /** @return array{height_cm: int|null, experience_started_year: int|null} */
+    public function playerSnapshot(?PlayerProfile $profile): array
     {
+        return [
+            'height_cm' => $profile?->height_cm === null ? null : (int) $profile->height_cm,
+            'experience_started_year' => $profile?->experience_started_year === null
+                ? null : (int) $profile->experience_started_year,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function scopeSnapshot(User $user, string $scope): array
+    {
+        return match ($scope) {
+            ProfileChangeRequest::SCOPE_ACCOUNT => $this->snapshot($user->profile()->lockForUpdate()->first()),
+            ProfileChangeRequest::SCOPE_PLAYER => $this->playerSnapshot($user->playerProfile()->lockForUpdate()->first()),
+            default => abort(422, 'Неизвестная область изменения данных.'),
+        };
+    }
+
+    private function assertScopeConfirmed(User $user, string $scope): void
+    {
+        if ($scope === ProfileChangeRequest::SCOPE_ACCOUNT) {
+            abort_unless($user->status === UserStatusEnum::CONFIRMED, 403);
+            return;
+        }
+
+        abort_unless($scope === ProfileChangeRequest::SCOPE_PLAYER, 422);
+        $role = $user->participationRoles(false)->where('role', UserParticipationRoleEnum::PLAYER->value)
+            ->lockForUpdate()->first();
+        abort_unless($role && $role->status === UserParticipationRoleStatusEnum::ACTIVE
+            && $role->confirmed_at !== null, 403);
+    }
+
+    /** @param array<string, mixed> $proposed */
+    public function submit(
+        User $actor,
+        array $proposed,
+        string $reason,
+        string $scope = ProfileChangeRequest::SCOPE_ACCOUNT,
+    ): ProfileChangeRequest {
         $canonicalId = $actor->canonical()->id;
 
-        return DB::transaction(function () use ($canonicalId, $proposed, $reason): ProfileChangeRequest {
+        return DB::transaction(function () use ($canonicalId, $proposed, $reason, $scope): ProfileChangeRequest {
             $user = User::query()->whereKey($canonicalId)->lockForUpdate()->firstOrFail();
-            abort_unless($user->status === UserStatusEnum::CONFIRMED && ! $user->trashed(), 403);
+            abort_unless(! $user->isBlocked() && ! $user->trashed(), 403);
+            $this->assertScopeConfirmed($user, $scope);
 
-            // The scope is canonical user + confirmed_profile_change.
+            // Independent active requests per canonical user and profile scope.
             $existing = ProfileChangeRequest::query()->where('user_id', $user->id)
+                ->where('scope', $scope)
                 ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])->exists();
             if ($existing) {
                 throw ValidationException::withMessages([
@@ -49,14 +90,15 @@ final class ProfileChangeRequestService
                 ]);
             }
 
-            $original = $this->snapshot($user->profile()->lockForUpdate()->first());
+            $original = $this->scopeSnapshot($user, $scope);
             if ($original === $proposed) {
-                throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в данных профиля.']);
+                throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в подтверждённых данных.']);
             }
 
             $this->threadAccess->initializeNewReviewerCursors();
             $request = ProfileChangeRequest::query()->create([
                 'user_id' => $user->id,
+                'scope' => $scope,
                 'status' => ProfileChangeRequest::PENDING,
                 'original_data' => $original,
                 'proposed_data' => $proposed,
@@ -103,9 +145,13 @@ final class ProfileChangeRequestService
             }
 
             if ($action === 'approve') {
-                abort_unless($user->status === UserStatusEnum::CONFIRMED, 422);
-                $profile = $user->profile()->lockForUpdate()->firstOrFail();
-                if ($this->snapshot($profile) !== $locked->original_data) {
+                $this->assertScopeConfirmed($user, $locked->scope);
+                $profile = $locked->scope === ProfileChangeRequest::SCOPE_PLAYER
+                    ? $user->playerProfile()->lockForUpdate()->firstOrFail()
+                    : $user->profile()->lockForUpdate()->firstOrFail();
+                $snapshot = $locked->scope === ProfileChangeRequest::SCOPE_PLAYER
+                    ? $this->playerSnapshot($profile) : $this->snapshot($profile);
+                if ($snapshot !== $locked->original_data) {
                     throw ValidationException::withMessages(['review_reason' => 'Профиль изменился после подачи заявки. Нельзя применить устаревшие значения.']);
                 }
             }

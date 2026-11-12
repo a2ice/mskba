@@ -17,6 +17,7 @@ import './account-roles.js';
 import './account-profile.js';
 import './account-confirmation-contact-wizard.js';
 import './account-confirmation-profile.js';
+import './account-confirmation-review.js';
 import './account-messages.js';
 import './account-dashboard.js';
 import './account-dashboard-reorder.js';

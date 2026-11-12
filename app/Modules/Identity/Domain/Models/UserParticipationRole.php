@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'assigned_by',
     'assigner',
     'comment',
+    'confirmed_at',
 ])]
 class UserParticipationRole extends Model
 {
@@ -45,6 +46,7 @@ class UserParticipationRole extends Model
             'assigner' => UserParticipationRoleAssignerEnum::class,
             'assigned_at' => 'datetime',
             'expires_at' => 'datetime',
+            'confirmed_at' => 'datetime',
         ];
     }
 }
