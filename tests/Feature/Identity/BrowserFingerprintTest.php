@@ -68,7 +68,7 @@ class BrowserFingerprintTest extends TestCase
             ->actingAs($user)
             ->withCookie('mskba_browser_fp', $fingerprintId)
             ->get('/')
-            ->assertOk();
+            ->assertRedirect(route('account'));
 
         $fingerprint->refresh();
 
@@ -144,7 +144,7 @@ class BrowserFingerprintTest extends TestCase
             ->actingAs($firstUser)
             ->withCookie('mskba_browser_fp', $fingerprintId)
             ->get('/')
-            ->assertOk();
+            ->assertRedirect(route('account'));
 
         auth()->logout();
 
@@ -152,7 +152,7 @@ class BrowserFingerprintTest extends TestCase
             ->actingAs($secondUser)
             ->withCookie('mskba_browser_fp', $fingerprintId)
             ->get('/')
-            ->assertOk();
+            ->assertRedirect(route('account'));
 
         $fingerprint->refresh();
 
@@ -172,13 +172,13 @@ class BrowserFingerprintTest extends TestCase
         $this
             ->actingAs($user)
             ->get('/')
-            ->assertOk();
+            ->assertRedirect(route('account'));
 
         $this
             ->actingAs($user)
             ->withCookie('mskba_browser_fp', '8c4fd47f-a10d-4a48-8f6e-b1222a459e78')
             ->get('/')
-            ->assertOk();
+            ->assertRedirect(route('account'));
 
         $this->assertSame(2, UserFingerprint::query()->count());
         $this->assertSame(2, $user->fingerprints()->count());
