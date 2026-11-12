@@ -14,7 +14,7 @@ document.querySelectorAll('[data-confirm-review-dialog]').forEach(dialog => {
             let value = row.dataset.savedValue || '';
             if (field === 'gender') {
                 value = ({male: 'Мужской', female: 'Женский'})[value] || value;
-            } else if (field === 'birth_date' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+            } else if (field === 'birth_date' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) {
                 const [year, month, day] = value.split('-');
                 value = [day, month, year].join('.');
             }
