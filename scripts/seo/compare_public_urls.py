@@ -44,9 +44,13 @@ class HeadAndHeadingParser(HTMLParser):
         self.canonical = ""
         self.lang = ""
         self._capture = None
+        self._in_main = 0
+        self.main_text = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if tag == "main":
+            self._in_main += 1
         if tag == "html":
             self.lang = attrs.get("lang", "")
         elif tag == "title":
@@ -61,12 +65,16 @@ class HeadAndHeadingParser(HTMLParser):
             self.canonical = attrs.get("href", "")
 
     def handle_data(self, data):
+        if self._in_main:
+            self.main_text.append(data)
         if self._capture == "title":
             self.title += data
         elif self._capture == "h1":
             self.h1 += data
 
     def handle_endtag(self, tag):
+        if tag == "main":
+            self._in_main = max(0, self._in_main - 1)
         if tag in ("title", "h1"):
             self._capture = None
 
@@ -136,7 +144,12 @@ def parse_html(response):
         "robots": parser.meta.get("robots", ""),
         "og_title": parser.meta.get("og:title", ""),
         "og_description": parser.meta.get("og:description", ""),
-        "is_placeholder": any(needle in body.lower() for needle in PLACEHOLDERS),
+        # Inspect visible page content, NOT global dialogs or FAQ help which
+        # mention unfinished features on otherwise fully rendered pages.
+        "is_placeholder": (
+            "раздел в разработке" in parser.title.lower()
+            or any(needle in " ".join(parser.main_text)[:900].lower() for needle in PLACEHOLDERS)
+        ),
     })
     return result
 
