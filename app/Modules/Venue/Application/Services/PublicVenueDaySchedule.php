@@ -45,7 +45,11 @@ final readonly class PublicVenueDaySchedule
         $refresh = $this->refresher->forCourt($court);
         $import = $this->imports->activeFor($court);
         $snapshot = $import?->snapshot;
-        $stale = $snapshot?->isStale() ?? false;
+        $stale = $snapshot !== null && ($snapshot->isStale()
+            || (config('venue_integrations.public_schedule_refresh_enabled', false)
+                && $snapshot->observed_at->lessThan(
+                    now()->subSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS),
+                )));
         $rangeStart = $day;
         $rangeEnd = $day->addDay();
         $projection = $this->availability->handle(
