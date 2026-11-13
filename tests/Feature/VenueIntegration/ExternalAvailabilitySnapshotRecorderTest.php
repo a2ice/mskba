@@ -127,7 +127,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $first = $snapshot->slots()->orderBy('starts_at')->firstOrFail();
         $this->assertSame('2026-11-13 04:00', $first->starts_at->utc()->format('Y-m-d H:i'));
         $this->assertSame(162500, $first->price_minor);
-        $this->assertFalse($snapshot->isStale());
+        $this->assertFalse($snapshot->isStale($snapshot->observed_at->addMinutes(1)));
 
         $same = $recorder->record($source, $actor, $report);
         $this->assertSame($snapshot->id, $same->id);
@@ -163,7 +163,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame(238, $original->slots()->count());
         $this->assertDatabaseCount('external_availability_snapshots', 2);
         $this->travel(20)->minutes();
-        $this->assertTrue($original->refresh()->isStale());
+        $this->assertTrue($original->refresh()->isStale($original->observed_at->addMinutes(20)));
     }
 
     public function test_invalid_report_is_rejected_without_overwriting_previous_state(): void
