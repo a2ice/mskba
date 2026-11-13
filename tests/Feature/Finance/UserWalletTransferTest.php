@@ -58,6 +58,9 @@ final class UserWalletTransferTest extends TestCase
             $result->operation->entries->sortBy('id')->pluck('amount_minor')->values()->all(),
         );
         $this->assertSame(100_000, $source->bonus_balance_minor + $destination->bonus_balance_minor);
+        $notification = UserNotification::query()->sole();
+        $this->assertSame($recipient->id, $notification->user_id);
+        $this->assertSame('user', $notification->payload['transfer_origin']);
     }
 
     public function test_bonus_transfer_is_idempotent(): void
@@ -93,6 +96,7 @@ final class UserWalletTransferTest extends TestCase
         $this->assertTrue($second->replayed);
         $this->assertSame(40_000, $source->refresh()->bonus_balance_minor);
         $this->assertDatabaseCount('wallet_ledger_entries', 3);
+        $this->assertSame(1, UserNotification::query()->where('user_id', $recipient->id)->count());
     }
 
     public function test_insufficient_bonus_rolls_back_transfer(): void
@@ -203,6 +207,7 @@ final class UserWalletTransferTest extends TestCase
         $this->assertStringContainsString('@sender', $notification->body);
         $this->assertStringContainsString('125,50 ₽', $notification->body);
         $this->assertSame('system', $notification->payload['delivery_category']);
+        $this->assertSame('user', $notification->payload['transfer_origin']);
 
         $this->actingAs($sender)
             ->get(route('account.wallet'))

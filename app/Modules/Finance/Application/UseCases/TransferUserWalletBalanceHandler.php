@@ -3,6 +3,7 @@
 namespace App\Modules\Finance\Application\UseCases;
 
 use App\Modules\Finance\Application\DTO\WalletTransferResult;
+use App\Modules\Finance\Application\Services\NotifyWalletTransferRecipient;
 use App\Modules\Finance\Application\Services\WalletOwnerOperationsPolicy;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOperationStatusEnum;
@@ -21,6 +22,7 @@ final readonly class TransferUserWalletBalanceHandler
     public function __construct(
         private EnsureWalletHandler $wallets,
         private WalletOwnerOperationsPolicy $ownerOperations,
+        private NotifyWalletTransferRecipient $recipientNotifications,
     ) {}
 
     public function handle(
@@ -83,7 +85,7 @@ final readonly class TransferUserWalletBalanceHandler
         $senderHandle = $this->handleFor($sender);
         $recipientHandle = $this->handleFor($recipient);
 
-        return DB::transaction(function () use (
+        $result = DB::transaction(function () use (
             $sourceWallet,
             $destinationWallet,
             $sender,
@@ -197,6 +199,21 @@ final readonly class TransferUserWalletBalanceHandler
 
             return new WalletTransferResult($operation->fresh('entries'), false);
         });
+
+        // The ledger has already committed in a normal request. A notification
+        // failure must not make the sender repeat a successful money transfer.
+        // On replay, retry creation only when the operation has no notification.
+        try {
+            $this->recipientNotifications->handle(
+                $result->operation, $sender, $recipient, $amountMinor, $balanceType,
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return new WalletTransferResult($result->operation, $result->replayed, true);
+        }
+
+        return $result;
     }
 
     private function handleFor(User $user): string

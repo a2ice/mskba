@@ -21,6 +21,8 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,6 +138,14 @@ final class BackofficeUserWalletManagementTest extends TestCase
         $this->assertSame($super->id, $first->operation->metadata['source_superadmin_user_id']);
         $this->assertSame('Бонус за участие в турнире', $first->operation->metadata['reason']);
         $this->assertSame(1, AuditLog::query()->where('event', 'backoffice_user_bonus_funded')->count());
+        $notice = UserNotification::query()->sole();
+        $this->assertSame($recipient->id, $notice->user_id);
+        $this->assertSame(UserNotificationTypeEnum::FINANCE, $notice->type);
+        $this->assertSame('finance.wallet.transfer.received', $notice->payload['source']);
+        $this->assertSame('system', $notice->payload['delivery_category']);
+        $this->assertSame('backoffice', $notice->payload['transfer_origin']);
+        $this->assertSame($first->operation->id, $notice->payload['wallet_operation_id']);
+        $this->assertStringContainsString('325,00 ₽', $notice->body);
 
         $recipientHistory = app(GetAccountWalletOverview::class)->handle($recipient);
         $sourceHistory = app(GetAccountWalletOverview::class)->handle($super);

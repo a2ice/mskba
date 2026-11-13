@@ -10,6 +10,7 @@ use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Jobs\SendUserNotificationEmailJob;
 use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
+use Illuminate\Support\Facades\DB;
 
 final class CreateUserNotificationHandler
 {
@@ -17,7 +18,7 @@ final class CreateUserNotificationHandler
         private readonly UserNotificationCounterStore $counterStore,
     ) {}
 
-    public function handle(CreateUserNotificationDTO $data): UserNotification
+    public function handle(CreateUserNotificationDTO $data, bool $deferEventUntilCommit = false): UserNotification
     {
         $targetUser = User::query()->find($data->userId);
         $targetUserId = $targetUser === null
@@ -41,7 +42,12 @@ final class CreateUserNotificationHandler
 
         if ($internal) {
             $this->counterStore->forget($targetUserId);
-            UserNotificationCreated::dispatch($notification->id);
+            if ($deferEventUntilCommit && DB::transactionLevel() > 0) {
+                // Realtime consumers must only see the committed notification.
+                DB::afterCommit(static fn () => UserNotificationCreated::dispatch($notification->id));
+            } else {
+                UserNotificationCreated::dispatch($notification->id);
+            }
         } else {
             // An external-only subscription should not create a new message
             // or realtime toast in the site's personal messenger.
