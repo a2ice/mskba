@@ -27,9 +27,9 @@ final class VenueRewardOverrideResource extends Resource
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 11;
 
-    public static function getNavigationLabel(): string { return 'Кешбэк: исключения'; }
+    public static function getNavigationLabel(): string { return 'Кешбэк по площадкам'; }
     public static function getModelLabel(): string { return 'настройка кешбэка'; }
-    public static function getPluralModelLabel(): string { return 'Исключения кешбэка'; }
+    public static function getPluralModelLabel(): string { return 'Кешбэк по площадкам'; }
 
     private static function superadmin(): bool
     {
@@ -50,7 +50,7 @@ final class VenueRewardOverrideResource extends Resource
     {
         return $schema->components([
             Section::make('Переопределение кешбэка для площадки')
-                ->description('Здесь только исключения. Если площадка не указана в таблице, она автоматически наследует настройку из «Вознаграждения» → «Кешбэк за завершённую аренду». Глобальное отключение сильнее локальных настроек.')
+                ->description('По умолчанию площадка наследует глобальный фиксированный номинал и статус из Rewards. Глобальное отключение сильнее локальных настроек.')
                 ->columns(2)
                 ->schema([
                     Select::make('venue_id')->label('Площадка')
@@ -111,8 +111,6 @@ final class VenueRewardOverrideResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->emptyStateHeading('Индивидуальных настроек нет')
-            ->emptyStateDescription('Это нормально: все площадки наследуют глобальную ставку из раздела «Вознаграждения». Для другой суммы или отключения нажмите «Создать».')
             ->defaultSort('id', 'desc')
             ->columns([
                 TextColumn::make('venue.name')->label('Площадка')->searchable(),
