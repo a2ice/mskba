@@ -4,6 +4,7 @@ namespace App\Modules\VenueIntegration\Application\Services;
 
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueIntegration\Infrastructure\Adapters\FindSportReadOnlyAdapter;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -24,8 +25,9 @@ final class FindSportOnDemandRefresh
     ) {}
 
     /** @return array{state:string, message:string|null} */
-    public function forCourt(VenueCourt $court): array
+    public function forCourt(VenueCourt $court, ?CarbonInterface $asOf = null): array
     {
+        $reference = $asOf ?? now();
         $result = static fn (string $state, ?string $message = null): array => compact('state', 'message');
 
         if (! app()->environment('staging', 'testing')
@@ -53,7 +55,7 @@ final class FindSportOnDemandRefresh
 
         $lastSuccessful = $current->snapshot?->observed_at;
         if ($lastSuccessful !== null
-            && $lastSuccessful->greaterThan(now()->subSeconds(self::REFRESH_AFTER_SECONDS))) {
+            && $lastSuccessful->greaterThan($reference->copy()->subSeconds(self::REFRESH_AFTER_SECONDS))) {
             return $result('cached');
         }
 
@@ -74,7 +76,7 @@ final class FindSportOnDemandRefresh
             // first visitor has already completed the refresh.
             $fresh = $this->applied->activeFor($court);
             if ($fresh?->snapshot?->observed_at?->greaterThan(
-                now()->subSeconds(self::REFRESH_AFTER_SECONDS),
+                $reference->copy()->subSeconds(self::REFRESH_AFTER_SECONDS),
             )) {
                 return $result('cached');
             }
