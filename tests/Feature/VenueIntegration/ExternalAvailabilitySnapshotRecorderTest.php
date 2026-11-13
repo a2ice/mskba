@@ -234,11 +234,13 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $guard = app(AppliedImportedCourtAvailability::class);
         $guard->assertAvailable($court,
             CarbonImmutable::parse('2026-11-13 09:00', 'Europe/Moscow'),
-            CarbonImmutable::parse('2026-11-13 10:00', 'Europe/Moscow'));
+            CarbonImmutable::parse('2026-11-13 10:00', 'Europe/Moscow'),
+            $snapshot->observed_at->addMinutes(1));
         try {
             $guard->assertAvailable($court,
                 CarbonImmutable::parse('2026-11-13 08:00', 'Europe/Moscow'),
-                CarbonImmutable::parse('2026-11-13 09:00', 'Europe/Moscow'));
+                CarbonImmutable::parse('2026-11-13 09:00', 'Europe/Moscow'),
+                $snapshot->observed_at->addMinutes(1));
             $this->fail('Occupied interval was treated as free.');
         } catch (\InvalidArgumentException $exception) {
             $this->assertStringContainsString('занято или недоступно', $exception->getMessage());
