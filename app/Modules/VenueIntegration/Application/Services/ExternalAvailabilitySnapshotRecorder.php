@@ -109,6 +109,10 @@ final class ExternalAvailabilitySnapshotRecorder
                     throw new RuntimeException("Снимок {$date}: неверный временной интервал или статус.");
                 }
                 $time = $slot['time'];
+                $expectedTime = gmdate('H:i', 25200 + count($seen) * 1800);
+                if ($time !== $expectedTime) {
+                    throw new RuntimeException("Снимок {$date}: нарушена последовательность интервалов, ожидалось {$expectedTime}.");
+                }
                 if (isset($seen[$time])) {
                     throw new RuntimeException("Снимок {$date}: повторяется слот {$time}.");
                 }
