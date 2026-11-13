@@ -13,6 +13,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
+use App\Modules\VenueIntegration\Infrastructure\Adapters\FindSportReadOnlyAdapter;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -232,6 +233,73 @@ final class VenueIntegrationFoundationTest extends TestCase
         $this->assertDatabaseCount('venue_integrations', 1);
         $this->assertFalse($manager->can($admin, Permission::BACKOFFICE_VENUE_INTEGRATIONS_AUDIT));
         $this->assertFalse($manager->can($admin, Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE));
+    }
+
+    public function test_findsport_preview_reports_missing_access_basis_without_network_request(): void
+    {
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+        $actor = $this->superadmin();
+        $manager = app(VenueIntegrationManager::class);
+        $venue = Venue::factory()->create();
+        $config = $manager->saveConfiguration($venue, $actor, $this->settings());
+        $source = $manager->saveSource($config, $actor, $this->source(
+            $venue->courts()->firstOrFail()->id,
+            [
+                'adapter_key' => 'api',
+                'endpoint_url' => 'https://findsport.ru/playground/4805',
+                'permission_status' => 'testing_only',
+                'permission_reference' => null,
+            ],
+        ));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('не заполнено поле «Основание допустимого доступа»');
+        app(FindSportReadOnlyAdapter::class)->preview($source, $actor);
+    }
+
+    public function test_findsport_preview_reports_missing_court_binding_without_network_request(): void
+    {
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+        $actor = $this->superadmin();
+        $manager = app(VenueIntegrationManager::class);
+        $venue = Venue::factory()->create();
+        $config = $manager->saveConfiguration($venue, $actor, $this->settings());
+        $source = $manager->saveSource($config, $actor, $this->source(
+            $venue->courts()->firstOrFail()->id,
+            [
+                'adapter_key' => 'api',
+                'endpoint_url' => 'https://findsport.ru/playground/4805',
+                'permission_status' => 'testing_only',
+                'permission_reference' => 'Подтверждённый тестовый доступ',
+            ],
+        ));
+        $this->assertNotNull($source->access_reviewed_at);
+        $source->courtMappings()->delete();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Сейчас привязано: 0');
+        app(FindSportReadOnlyAdapter::class)->preview($source->refresh(), $actor);
+    }
+
+    public function test_findsport_review_can_be_reconfirmed_when_old_timestamp_is_missing(): void
+    {
+        $actor = $this->superadmin();
+        $manager = app(VenueIntegrationManager::class);
+        $venue = Venue::factory()->create();
+        $config = $manager->saveConfiguration($venue, $actor, $this->settings());
+        $courtId = $venue->courts()->firstOrFail()->id;
+        $data = $this->source($courtId, [
+            'adapter_key' => 'api',
+            'endpoint_url' => 'https://findsport.ru/playground/4805',
+            'permission_status' => 'testing_only',
+            'permission_reference' => 'Проверенное основание',
+        ]);
+        $source = $manager->saveSource($config, $actor, $data);
+        $source->update(['access_reviewed_at' => null]);
+        $this->assertNull($source->refresh()->access_reviewed_at);
+
+        $updated = $manager->saveSource($config, $actor, $data, $source);
+        $this->assertNotNull($updated->access_reviewed_at);
     }
 
     public function test_filament_has_native_settings_sources_and_read_only_audit_tabs(): void
