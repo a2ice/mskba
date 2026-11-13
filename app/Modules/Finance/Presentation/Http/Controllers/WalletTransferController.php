@@ -11,6 +11,7 @@ use App\Modules\Finance\Domain\Exceptions\WalletException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +68,7 @@ final class WalletTransferController extends Controller
                     actionText: 'Открыть кошелёк',
                     payload: [
                         'source' => 'finance.wallet.transfer.received',
+                        'delivery_category' => UserNotificationDeliveryCategoryEnum::SYSTEM->value,
                         'wallet_operation_id' => (int) $result->operation->id,
                         'sender_user_id' => (int) $sender->id,
                         'amount_minor' => $amountMinor,
