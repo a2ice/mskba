@@ -76,6 +76,11 @@
 .app-play-dialog__public-intent{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised);align-items:start}
 .app-play-dialog__public-intent input{flex:none;margin-top:3px}
 
+/* Public promotion panels are direct siblings of the gallery's hero grid.
+ * Keep the standard 20px section rhythm; they must never touch the gallery. */
+.app-venue-page > .app-venue-promotion { margin-top:20px; }
+.app-venue-promotion__amount, .app-venue-day-dialog__promotion-amount { font-weight:650; }
+
 /* Anchors follow the site header and breadcrumb bar while a venue is in view. */
 .app-venue-page__anchors{
     position:sticky;
