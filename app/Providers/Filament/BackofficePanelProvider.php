@@ -22,6 +22,7 @@ use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
 use App\Filament\Backoffice\Resources\ManagerSpecializations\ManagerSpecializationResource;
 use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
 use App\Filament\Backoffice\Resources\OperatorUsers\OperatorUserResource;
+use App\Filament\Backoffice\Resources\Rewards\RewardResource;
 use App\Filament\Backoffice\Resources\Promotions\PromotionResource;
 use App\Filament\Backoffice\Resources\VenueRewardOverrides\VenueRewardOverrideResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
@@ -120,6 +121,7 @@ final class BackofficePanelProvider extends PanelProvider
                 SupportTicketResource::class,
                 OperatorUserResource::class,
                 OperatorConversationResource::class,
+                RewardResource::class,
                 PromotionResource::class,
                 VenueRewardOverrideResource::class,
             ])
