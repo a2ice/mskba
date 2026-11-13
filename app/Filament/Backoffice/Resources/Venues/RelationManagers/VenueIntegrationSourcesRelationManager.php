@@ -70,7 +70,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                 ->default('manual'),
             TextInput::make('external_id')->label('Внешний ID')->maxLength(190),
             TextInput::make('endpoint_url')->label('HTTPS-адрес источника')
-                ->maxLength(2048)->helperText('Внешние вызовы пока отключены. Секреты в URL запрещены.'),
+                ->maxLength(2048)->helperText('Ручная проверка доступна для тестового FindSport API-источника. Автоматическая синхронизация остаётся отключённой. Секреты в URL запрещены.'),
             TextInput::make('priority')->label('Приоритет')->numeric()->integer()
                 ->minValue(0)->maxValue(1000)->default(100)->required(),
             CheckboxList::make('capabilities')->label('Данные источника')
@@ -89,12 +89,12 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                 ])
                 ->default('unchecked')->required(),
             Textarea::make('permission_reference')->label('Основание допустимого доступа')
-                ->maxLength(2000)->helperText('Контакт, договор, публичные условия. Сам статус не заменяет проверку ToS.'),
+                ->maxLength(2000)->helperText('Для ручного получения данных поле обязательно: укажите реальное проверенное основание допустимого доступа (например, договор или согласование). Выбор статуса «Только тестирование» без основания недостаточен.'),
             TextInput::make('credentials_token')->label('Токен / ключ доступа (зашифрован)')
                 ->password()->revealable(false)->maxLength(8000)
                 ->helperText('Оставьте пустым, чтобы не менять существующий ключ. Он никогда не отображается обратно.'),
             Toggle::make('enabled')->label('Активировать источник')->default(false)
-                ->helperText('Внешние API/Browser-источники блокируются общим kill switch до задачи 306.'),
+                ->helperText('Оставьте выключенным для ручного предпросмотра. Этот переключатель управляет автоматической интеграцией, а не кнопкой «Получить данные».') ,
         ];
     }
 
