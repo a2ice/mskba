@@ -30,6 +30,11 @@ on:
         type: boolean
         required: false
         default: false
+      activate_dev_rental_cashback:
+        description: "Explicit staging-only cashback activation after green CI"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -653,6 +658,42 @@ jobs:
             rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
             ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
+
+  activate_dev_rental_cashback:
+    needs: [test, deploy_dev]
+    # One-time guarded activation on a specially named merge commit; manual dispatch
+    # remains possible only with deploy_dev_now=true. Never before a green dev deploy.
+    if: >-
+      ${{ github.ref == 'refs/heads/dev'
+          && needs.test.result == 'success'
+          && needs.deploy_dev.result == 'success'
+          && (
+            (github.event_name == 'push' && github.event.head_commit.message == 'release(dev): activate rental cashback after PR #707')
+            || (github.event_name == 'workflow_dispatch' && inputs.activate_dev_rental_cashback)
+          ) }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 10
+    steps:
+      - name: Explicit staging-only activation and scanner verification
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = deploy
+            cd /var/www/mskba-dev-next
+            test -f .env
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test "$(git rev-parse HEAD)" = '${{ github.sha }}'
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE exec -T phpfpm php artisan rewards:enable-rental-cashback-dev
+            $COMPOSE exec -T phpfpm php artisan rewards:grant-completed-rentals
+            echo 'Staging cashback activated; production untouched'
 
   ssh_smoke_dev:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_dev_ssh && github.ref == 'refs/heads/dev' }}
