@@ -57,7 +57,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
             $toggle->handle($venue, $owner, true);
             $this->fail('Нельзя включать аренду без опубликованных условий.');
         } catch (VenueBookingPolicyException $exception) {
-            $this->assertStringContainsString('Сначала опубликуйте', $exception->getMessage());
+            $this->assertStringContainsString('сначала опубликуйте', $exception->getMessage());
         }
 
         $first = app(PublishVenueBookingPolicyHandler::class)->handle(
