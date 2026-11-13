@@ -262,7 +262,9 @@
                             <div class="venue-occupancy-calendar" aria-label="Занятость площадки на девять дней">
                                 @foreach($venue->occupancyDays as $dayIndex => $day)
                                     @php
-                                        $slotCount = count($day['slots']);
+                                        $slotCount = isset($day['externalSnapshot'])
+                                            ? ($day['externalBusyCount'] ?? 0) + count($day['slots'])
+                                            : count($day['slots']);
                                         $dayStateLabel = isset($day['externalSnapshot'])
                                             ? 'расписание FindSport: наблюдаемая занятость, не гарантирует свободную бронь'
                                             : match ($day['state']) {
