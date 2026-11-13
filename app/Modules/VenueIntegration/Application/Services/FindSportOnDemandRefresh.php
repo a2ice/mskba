@@ -28,7 +28,7 @@ final class FindSportOnDemandRefresh
     {
         $result = static fn (string $state, ?string $message = null): array => compact('state', 'message');
 
-        if (! app()->environment('staging')
+        if (! app()->environment('staging', 'testing')
             || ! config('venue_integrations.public_schedule_refresh_enabled', false)
             || ! config('venue_integrations.findsport_preview_enabled', false)) {
             return $result('disabled');
