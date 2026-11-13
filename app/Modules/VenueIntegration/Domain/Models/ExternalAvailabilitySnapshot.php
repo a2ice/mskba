@@ -50,7 +50,7 @@ final class ExternalAvailabilitySnapshot extends Model
 
     public function isStale(): bool
     {
-        return $this->observed_at->addSeconds($this->freshness_ttl_seconds)->isPast();
+        return $this->observed_at->addSeconds($this->freshness_ttl_seconds)->lessThan(now());
     }
 
     protected function casts(): array
