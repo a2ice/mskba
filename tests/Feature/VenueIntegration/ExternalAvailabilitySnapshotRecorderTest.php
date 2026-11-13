@@ -7,6 +7,9 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
+use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use Illuminate\Support\Facades\Cache;
 use App\Modules\VenueIntegration\Application\Services\ApplyFindSportSnapshotToNativeSchedule;
 use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
@@ -288,6 +291,112 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('только на тестовом сервере');
         app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+    }
+
+    public function test_public_day_modal_reads_applied_native_schedule_and_reuses_recent_snapshot(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        // The HTTP response must not issue an external request in tests.
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+        config()->set('features.venue_rental.rental_flow', false);
+
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+        $court = $venue->courts()->firstOrFail();
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+
+        $path = route('venues.schedule.day', ['venue' => $venue->id,
+            'date' => '2026-11-13', 'venue_court_id' => $court->id]);
+
+        $this->getJson($path)->assertOk()
+            ->assertJsonPath('date', '2026-11-13')
+            ->assertJsonPath('step_minutes', 30)
+            ->assertJsonPath('minimum_minutes', 60)
+            ->assertJsonPath('refresh_interval_seconds', 300)
+            ->assertJsonPath('refresh_state', 'disabled')
+            ->assertJsonPath('booking_enabled', false)
+            ->assertJsonPath('slots.0.starts_at', '07:00')
+            ->assertJsonPath('slots.0.status', 'available')
+            ->assertJsonPath('slots.0.price_minor', 162500)
+            ->assertJsonPath('slots.2.status', 'booked')
+            ->assertJsonPath('slots.2.selectable', false)
+            ->assertJsonCount(34, 'slots');
+
+        $this->getJson($path)->assertOk()
+            ->assertJsonPath('refresh_state', 'disabled');
+        $this->assertDatabaseCount('external_availability_snapshots', 1);
+        $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
+    public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+        $court = $venue->courts()->firstOrFail();
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+
+        $this->assertSame('cached', app(FindSportOnDemandRefresh::class)
+            ->forCourt($court, $snapshot->observed_at->addMinute())['state']);
+        $lock = Cache::lock("venue-integration:findsport:refresh-lock:{$source->id}", 45);
+        $this->assertTrue($lock->get());
+        try {
+            $result = app(FindSportOnDemandRefresh::class)
+                ->forCourt($court, $snapshot->observed_at->addMinutes(6));
+            $this->assertSame('updating', $result['state']);
+        } finally {
+            $lock->release();
+        }
+        $this->assertDatabaseCount('external_availability_snapshots', 1);
+    }
+
+    public function test_public_refresh_can_save_and_apply_without_admin_actor(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)
+            ->recordFromPublicSchedule($source, $this->report($source));
+
+        $this->assertNull($snapshot->created_by_user_id);
+        $applied = app(ApplyFindSportSnapshotToNativeSchedule::class)
+            ->applyFromPublicSchedule($source, $snapshot);
+
+        $this->assertSame($snapshot->id, $applied->external_availability_snapshot_id);
+        $this->assertNull($applied->applied_by_user_id);
+        $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
+    public function test_public_day_endpoint_rejects_another_court_and_out_of_range_date(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $another = Venue::factory()->create();
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-11-13',
+            'venue_court_id' => $another->courts()->firstOrFail()->id,
+        ]))->assertUnprocessable();
+
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-12-30',
+        ]))->assertUnprocessable();
     }
 
     public function test_different_sources_for_same_court_are_not_merged(): void

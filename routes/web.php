@@ -123,6 +123,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginal
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleDayController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
@@ -616,6 +617,10 @@ Route::prefix('venues')->group(function () {
             ->whereNumber('venue')
             ->name('venues.rental.availability');
     });
+    Route::get('/{venue}/schedule/day', VenueScheduleDayController::class)
+        ->whereNumber('venue')
+        ->middleware('throttle:30,1')
+        ->name('venues.schedule.day');
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
         ->name('venues.preview');

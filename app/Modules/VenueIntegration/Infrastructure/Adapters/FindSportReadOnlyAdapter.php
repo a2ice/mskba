@@ -27,6 +27,26 @@ final class FindSportReadOnlyAdapter
             $actor, Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
         );
 
+        return $this->read($source, $actor);
+    }
+
+    /**
+     * Only the server-side on-demand refresher can call this path.
+     * The source still passes every existing verified-host/source guard.
+     */
+    public function readFromPublicSchedule(VenueIntegrationSource $source): array
+    {
+        if (! config('venue_integrations.apply_findsport_native_enabled', false)
+            || ! config('venue_integrations.public_schedule_refresh_enabled', false)
+            || $source->external_id !== '4805') {
+            throw new RuntimeException('Публичное обновление FindSport отключено.');
+        }
+
+        return $this->read($source, null);
+    }
+
+    private function read(VenueIntegrationSource $source, ?User $actor): array
+    {
         if (! config('venue_integrations.findsport_preview_enabled', false)) {
             throw new RuntimeException('Тестовое чтение FindSport отключено конфигурацией сервера.');
         }
@@ -115,7 +135,7 @@ final class FindSportReadOnlyAdapter
         DB::table('venue_integration_audit_events')->insert([
             'venue_integration_id' => $source->venue_integration_id,
             'venue_integration_source_id' => $source->id,
-            'actor_user_id' => $actor->id,
+            'actor_user_id' => $actor?->id,
             'action' => 'source.read_only_preview',
             'changes' => json_encode([
                 'external_id' => $externalId,

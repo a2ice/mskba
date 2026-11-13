@@ -36,6 +36,27 @@ final class ApplyFindSportSnapshotToNativeSchedule
             $actor, Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
         );
 
+        return $this->applySnapshot($source, $snapshot, $actor);
+    }
+
+    /** Guarded server-side refresh only; leaves the same native validation intact. */
+    public function applyFromPublicSchedule(
+        VenueIntegrationSource $source,
+        ExternalAvailabilitySnapshot $snapshot,
+    ): VenueCourtExternalScheduleImport {
+        if (! config('venue_integrations.public_schedule_refresh_enabled', false)
+            || $source->external_id !== '4805') {
+            throw new RuntimeException('Автоматическое применение FindSport отключено.');
+        }
+
+        return $this->applySnapshot($source, $snapshot, null);
+    }
+
+    private function applySnapshot(
+        VenueIntegrationSource $source,
+        ExternalAvailabilitySnapshot $snapshot,
+        ?User $actor,
+    ): VenueCourtExternalScheduleImport {
         if (! config('venue_integrations.apply_findsport_native_enabled', false)) {
             throw new RuntimeException('Импорт в штатное расписание разрешён только на тестовом сервере.');
         }
@@ -197,7 +218,7 @@ final class ApplyFindSportSnapshotToNativeSchedule
                     'venue_id' => $venue->id,
                     'venue_integration_source_id' => $source->id,
                     'external_availability_snapshot_id' => $snapshot->id,
-                    'applied_by_user_id' => $actor->id,
+                    'applied_by_user_id' => $actor?->id,
                     'first_date' => $firstDate,
                     'last_date' => $lastDate,
                     'applied_at' => now(),
@@ -207,7 +228,7 @@ final class ApplyFindSportSnapshotToNativeSchedule
             DB::table('venue_integration_audit_events')->insert([
                 'venue_integration_id' => $source->venue_integration_id,
                 'venue_integration_source_id' => $source->id,
-                'actor_user_id' => $actor->id,
+                'actor_user_id' => $actor?->id,
                 'action' => 'source.snapshot_applied_to_court_schedule',
                 'changes' => json_encode([
                     'snapshot_id' => $snapshot->id,
