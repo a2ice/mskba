@@ -33,7 +33,6 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
-use App\Modules\VenueIntegration\Application\Services\FindSportPublicCourtSchedule;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
@@ -46,7 +45,6 @@ final class ShowVenueHandler
         private readonly EventIdentityParticipationService $identityParticipation,
         private readonly EffectiveVenueHours $hours,
         private readonly EffectiveCourtPolicy $courtPolicies,
-        private readonly FindSportPublicCourtSchedule $externalCourtSchedule,
     ) {}
 
     public function handle(
@@ -184,12 +182,7 @@ final class ShowVenueHandler
             ->where('active_marker', true)
             ->where('is_enabled', true)
             ->first();
-        // A venue with exactly one physical hall can safely use that hall's
-        // external occupancy on the venue overview as well as the hall page.
-        // Multi-court venue overviews retain their aggregate MSKBA schedule.
-        $occupancyCourt = $courtIdentifier !== null || $courts->count() === 1
-            ? $selectedCourt : null;
-        $occupancyDays = $this->occupancyDays($venue, $occupancyCourt, $timezone, $rentalPolicy, $user);
+        $occupancyDays = $this->occupancyDays($venue, $courtIdentifier === null ? null : $selectedCourt, $timezone, $rentalPolicy, $user);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -442,9 +435,6 @@ final class ShowVenueHandler
             });
         }
 
-        // A historical FindSport snapshot supersedes the staging court-page
-        // occupancy display. It does not overwrite MSKBA bookings or policies.
-        $external = $court !== null ? $this->externalCourtSchedule->forCourt($court, $today) : null;
         $days = [];
 
         for ($offset = 0; $offset < 9; $offset++) {
@@ -457,92 +447,6 @@ final class ShowVenueHandler
             $hasConfirmed = $dayBookings->contains(
                 fn ($booking): bool => $booking->status === VenueBookingStatusEnum::CONFIRMED
             );
-
-            if ($external !== null) {
-                $date = $dayStart->toDateString();
-                $sourceSlots = $external['days'][$date] ?? [];
-                $timeline = [];
-                $externallyBusy = 0;
-                $unconfirmed = 0;
-
-                // Missing dates are unknown, never silently free.
-                if ($sourceSlots === []) {
-                    $timeline[] = [
-                        'kind' => 'external',
-                        'startsAt' => '07:00',
-                        'endsAt' => '24:00',
-                        'status' => 'unknown',
-                        'statusLabel' => 'Нет данных FindSport',
-                        'price_minor' => null,
-                    ];
-                    $unconfirmed++;
-                }
-
-                foreach ($sourceSlots as $slot) {
-                    $start = CarbonImmutable::parse($date.' '.$slot['starts_at'], $external['timezone']);
-                    $endDate = $slot['ends_at'] === '00:00' ? $dayStart->addDay()->toDateString() : $date;
-                    $end = CarbonImmutable::parse($endDate.' '.$slot['ends_at'], $external['timezone']);
-                    $localBookings = $dayBookings->filter(fn ($booking): bool =>
-                        $booking->starts_at->lessThan($end)
-                        && $booking->ends_at->greaterThan($start));
-                    if ($localBookings->isNotEmpty()) {
-                        $timeline[] = [
-                            'kind' => 'occupied',
-                            'startsAt' => $slot['starts_at'],
-                            'endsAt' => $slot['ends_at'] === '00:00' ? '24:00' : $slot['ends_at'],
-                            'slots' => $localBookings->map(
-                                fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart)
-                            )->values()->all(),
-                        ];
-                        continue;
-                    }
-
-                    $status = $slot['status'];
-                    if ($status === 'booked') {
-                        $externallyBusy++;
-                    } elseif ($status !== 'available') {
-                        $unconfirmed++;
-                    }
-
-                    $timeline[] = [
-                        'kind' => 'external',
-                        'startsAt' => $slot['starts_at'],
-                        'endsAt' => $slot['ends_at'] === '00:00' ? '24:00' : $slot['ends_at'],
-                        'status' => $status,
-                        'statusLabel' => match ($status) {
-                            'booked' => 'Занято на FindSport',
-                            'available' => 'Не отмечено занятым',
-                            'unavailable' => 'Недоступно',
-                            default => 'Нет подтверждённых данных',
-                        },
-                        'price_minor' => $slot['price_minor'],
-                    ];
-                }
-
-                $days[] = [
-                    'date' => $date,
-                    'label' => $this->russianDateLabel($dayStart),
-                    'weekday' => $this->russianWeekdayLabel($dayStart),
-                    'isToday' => $offset === 0,
-                    'state' => $hasConfirmed || $externallyBusy > 0 ? 'confirmed'
-                        : (($dayBookings->isNotEmpty() || $unconfirmed > 0 || $external['stale']) ? 'tentative' : 'free'),
-                    // Only MSKBA bookings belong in the "Игры и мероприятия"
-                    // activity feed. External occupancy is a separate schedule.
-                    'slots' => $dayBookings
-                        ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart))
-                        ->all(),
-                    'externalBusyCount' => $externallyBusy,
-                    'timeline' => $timeline,
-                    'externalSnapshot' => [
-                        'provider' => 'FindSport',
-                        'snapshotId' => $external['snapshot_id'],
-                        'observedAt' => $external['observed_at'],
-                        'stale' => $external['stale'],
-                    ],
-                ];
-
-                continue;
-            }
 
             $days[] = [
                 'date' => $dayStart->toDateString(),
