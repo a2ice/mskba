@@ -26,6 +26,7 @@ use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
+use App\Modules\Venue\Application\Services\VenueScheduleDayOccupancy;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
@@ -45,6 +46,7 @@ final class ShowVenueHandler
         private readonly EventIdentityParticipationService $identityParticipation,
         private readonly EffectiveVenueHours $hours,
         private readonly EffectiveCourtPolicy $courtPolicies,
+        private readonly VenueScheduleDayOccupancy $scheduleOccupancy,
     ) {}
 
     public function handle(
@@ -175,6 +177,16 @@ final class ShowVenueHandler
             ->all();
         $scheduleContextCourt = $courtIdentifier === null ? null : $selectedCourt;
         $scheduleDays = $this->scheduleDays($venue, $scheduleContextCourt);
+        $percentages = $this->scheduleOccupancy->forDays(
+            $venue,
+            $scheduleContextCourt,
+            $scheduleDays,
+            (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow')),
+        );
+        foreach ($scheduleDays as &$day) {
+            $day['occupancyPercent'] = $percentages[$day['date']] ?? null;
+        }
+        unset($day);
         $openingState = $this->openingState($venue, $scheduleContextCourt);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
         $rentalPolicy = VenueBookingPolicy::query()
