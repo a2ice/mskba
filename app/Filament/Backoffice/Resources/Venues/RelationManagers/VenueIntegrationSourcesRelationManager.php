@@ -8,6 +8,8 @@ use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
 use App\Modules\VenueIntegration\Infrastructure\Adapters\FindSportReadOnlyAdapter;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
+use App\Modules\VenueIntegration\Application\Services\ApplyFindSportSnapshotToNativeSchedule;
+use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
 use App\Modules\VenueIntegration\Domain\Models\ExternalAvailabilitySnapshot;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -215,6 +217,39 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                                 ->body($exception->getMessage())->send();
                         }
                     }),
+                Action::make('applyFindSportSnapshot')->label('Применить к расписанию MSKBA')
+                    ->icon('heroicon-o-arrow-down-on-square')
+                    ->color('warning')
+                    ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
+                        && config('venue_integrations.apply_findsport_native_enabled', false)
+                        && $record->adapter_key === 'api'
+                        && $record->external_id === '4805'
+                        && ExternalAvailabilitySnapshot::query()
+                            ->where('venue_integration_source_id', $record->id)->exists())
+                    ->requiresConfirmation()
+                    ->modalHeading('Перезаписать расписание связанного зала?')
+                    ->modalDescription('Последний полный снимок FindSport заменит часы работы площадки и её единственного зала, исключения по датам и цены зала. Занятые интервалы станут недоступны для бронирования. Существующие мероприятия и бронирования сохраняются. Только dev.')
+                    ->action(function (VenueIntegrationSource $record): void {
+                        abort_unless($this->canExecute(), 403);
+                        try {
+                            $snapshot = ExternalAvailabilitySnapshot::query()
+                                ->where('venue_integration_source_id', $record->id)
+                                ->orderByDesc('observed_at')->orderByDesc('id')
+                                ->firstOrFail();
+                            $import = app(ApplyFindSportSnapshotToNativeSchedule::class)->apply(
+                                $record, $snapshot, auth('web')->user(),
+                            );
+                            Notification::make()->success()
+                                ->title("Снимок #{$snapshot->id} применён к залу MSKBA")
+                                ->body("Зал #{$import->venue_court_id}, период {$import->first_date->toDateString()} — {$import->last_date->toDateString()}. Часы, цены и занятость обновлены.")
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            report($exception);
+                            Notification::make()->danger()
+                                ->title('Не удалось применить снимок')
+                                ->body($exception->getMessage())->send();
+                        }
+                    }),
                 Action::make('viewFindSportSnapshot')->label('Сохранённые данные')
                     ->icon('heroicon-o-archive-box')
                     ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
@@ -233,8 +268,11 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                         $latest = $history->first();
                         $latest?->load(['slots' => fn ($query) => $query->orderBy('starts_at')]);
 
+                        $appliedImport = VenueCourtExternalScheduleImport::query()
+                            ->where('venue_integration_source_id', $record->id)->first();
+
                         return view('filament.backoffice.venue-integrations.findsport-snapshots',
-                            compact('history', 'latest'));
+                            compact('history', 'latest', 'appliedImport'));
                     }),
                 Action::make('editIntegrationSource')->label('Изменить')
                     ->icon('heroicon-o-pencil-square')
