@@ -78,7 +78,7 @@ final class PromotionResource extends Resource
                     TextInput::make('title')->label('Заголовок')->required()->maxLength(200)->columnSpanFull()
                         ->helperText('Можно использовать {amount}, {amount_number} и {currency}. Сумма подставляется из действующего вознаграждения.'),
                     Textarea::make('description')->label('Основное описание')->rows(3)->columnSpanFull()
-                        ->helperText('Для динамической суммы используйте {amount}, например «Получите {amount} бонусами».')
+                        ->helperText('Для динамической суммы используйте {amount}, например «Получите {amount} бонусами».'),
                     TextInput::make('cta_label')->label('Текст кнопки')->maxLength(120),
                     TextInput::make('cta_url')->label('Внутренняя ссылка')->maxLength(1000)
                         ->regex('/\A\/(?!\/)[^\s]*\z/D')
