@@ -149,7 +149,9 @@ final class VenueRentalPolicyEditor
         $values['currency'] = strtoupper(trim((string) $values['currency']));
         if (! $values['requires_payment']) {
             $values['whole_price_per_step_minor'] = 0;
-            $values['half_price_per_step_minor'] = null;
+            // Existing free policies may store 0 rather than NULL; preserve
+            // the snapshot and avoid publishing a new version on an unrelated edit.
+            $values['half_price_per_step_minor'] = $current?->half_price_per_step_minor === 0 ? 0 : null;
             $values['payment_window_minutes'] = null;
         } else {
             $parser = app(MinorAmountParser::class);
