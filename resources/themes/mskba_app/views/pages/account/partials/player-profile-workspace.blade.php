@@ -286,7 +286,7 @@
                                 <summary><span>За выполнение заданий</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
                                 <div class="app-player-workspace__topup-method-content">
                                     <p class="app-player-workspace__topup-note">Бонусы начисляются только после выполнения задания и проверки результата.</p>
-                                    @forelse($avatarOffer['bonus_opportunities'] as $opportunity)
+                                    @forelse(collect($avatarOffer['bonus_opportunities'])->reject(fn (array $item): bool => ($item['code'] ?? '') === 'venue_rental_completed') as $opportunity)
                                         <details class="app-player-workspace__topup-task" data-topup-task @if($loop->first) open @endif>
                                             <summary>
                                                 <span>{{ $opportunity['title'] }}</span>
@@ -294,21 +294,25 @@
                                             </summary>
                                             <div class="app-player-workspace__topup-task-content">
                                                 <dl class="app-player-workspace__topup-task-properties">
-                                                    <div>
-                                                        <dt>Вознаграждение:</dt>
-                                                        <dd>{{ $formatPoints((int) $opportunity['amount_minor']) }}</dd>
-                                                    </div>
+                                                    @if($opportunity['amount_minor'] !== null)
+                                                        <div>
+                                                            <dt>Вознаграждение:</dt>
+                                                            <dd>{{ $formatPoints((int) $opportunity['amount_minor']) }}</dd>
+                                                        </div>
+                                                    @endif
                                                     <div>
                                                         <dt>Условие:</dt>
                                                         <dd>{{ $opportunity['description'] }}</dd>
                                                     </div>
                                                 </dl>
                                                 @if($opportunity['code'] === 'venue_first_approval')
-                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="venue">Добавить площадку</button>
+                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="venue">{{ $opportunity['cta_label'] ?: 'Добавить площадку' }}</button>
                                                 @elseif($opportunity['code'] === 'referral_user_confirmed')
-                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">Пригласить друга</button>
+                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">{{ $opportunity['cta_label'] ?: 'Пригласить друга' }}</button>
                                                 @elseif($opportunity['code'] === 'referral_second_level_user_confirmed')
-                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">Начать с приглашения</button>
+                                                    <button type="button" class="app-player-workspace__primary" data-topup-open-dialog="referral">{{ $opportunity['cta_label'] ?: 'Начать с приглашения' }}</button>
+                                                @elseif(! empty($opportunity['cta_url']))
+                                                    <a class="app-player-workspace__primary" href="{{ $opportunity['cta_url'] }}">{{ $opportunity['cta_label'] ?: 'Подробнее' }}</a>
                                                 @endif
                                             </div>
                                         </details>
@@ -317,6 +321,20 @@
                                     @endforelse
                                 </div>
                             </details>
+                            @php
+                                $rentalPromotion = collect($avatarOffer['bonus_opportunities'])->firstWhere('code', 'venue_rental_completed');
+                            @endphp
+                            @if($rentalPromotion)
+                                <details class="app-player-workspace__topup-method" data-topup-method="rental">
+                                    <summary><span>Аренда зала</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
+                                    <div class="app-player-workspace__topup-method-content">
+                                        <h4>{{ $rentalPromotion['title'] }}</h4>
+                                        <p class="app-player-workspace__topup-note">{{ $rentalPromotion['description'] }}</p>
+                                        <p class="app-player-workspace__topup-note">Вознаграждение: {{ $formatPoints((int) $rentalPromotion['amount_minor']) }}</p>
+                                        <a class="app-player-workspace__primary" href="{{ $rentalPromotion['cta_url'] ?: url('/venues') }}">{{ $rentalPromotion['cta_label'] ?: 'Арендовать зал' }}</a>
+                                    </div>
+                                </details>
+                            @endif
                             <details class="app-player-workspace__topup-method" data-topup-method="payment">
                                 <summary><span>Пополнение баланса</span><span class="app-player-workspace__topup-method-action" data-topup-more>подробнее</span><span class="app-player-workspace__topup-method-action" data-topup-less>свернуть</span></summary>
                                 <div class="app-player-workspace__topup-method-content">

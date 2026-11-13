@@ -192,7 +192,7 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertDontSee('data-referral-url', false);
     }
 
-    public function test_topup_uses_three_exclusive_details_and_reward_key_value_rows(): void
+    public function test_topup_uses_contextual_promotions_and_reward_key_value_rows(): void
     {
         $user = $this->player();
         $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
@@ -207,7 +207,7 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertSee('Вознаграждение:')
             ->assertSee('100 баллов')
             ->assertSee('Условие:')
-            ->assertSee('После первой успешной модерации новой площадки.')
+            ->assertSee('Добавьте новую площадку. Бонусы начисляются после её первой успешной модерации.')
             ->assertDontSee('role="tablist"', false)
             ->assertDontSee('100,00 ₽ бонусами');
 
@@ -270,7 +270,8 @@ final class PlayerAvatarGenerationOfferTest extends TestCase
             ->assertOk()
             ->assertJsonPath('section', 'payments')
             ->assertJsonPath('breadcrumbs.1.label', 'Оплата и бонусы')
-            ->assertJsonPath('bonus_opportunities.0.code', 'venue_first_approval');
+            ->assertJsonStructure(['bonus_opportunities' => [['code', 'title', 'description', 'amount_minor']]])
+            ->assertJsonFragment(['code' => 'venue_first_approval']);
 
         Reward::query()->where('code', 'venue_first_approval')->update(['is_enabled' => false]);
         $this->getJson(route('faq.help-content', ['context' => 'payments']))

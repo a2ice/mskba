@@ -12,12 +12,18 @@ use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Data\RewardMechanismDecision;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Tests\TestCase;
 
 final class RewardsCatalogTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTruncation;
+
+    protected function beforeTruncatingDatabase(): void
+    {
+        RefreshDatabaseState::$migrated = false;
+    }
 
     public function test_initial_catalog_contains_implemented_and_enabled_rewards(): void
     {
@@ -45,7 +51,10 @@ final class RewardsCatalogTest extends TestCase
             ->assertSee('Вознаграждения')
             ->assertSee('Подтверждённый приглашённый пользователь')
             ->assertSee('Подтверждённый пользователь второго уровня')
-            ->assertSee('Первая успешная модерация новой площадки');
+            ->assertSee('Первая успешная модерация новой площадки')
+            ->assertSee('Выплата реальными деньгами')
+            ->assertSee('Пока недоступно. Начисления производятся только бонусными средствами.')
+            ->assertSee('type="checkbox" disabled aria-describedby="reward-real-payment-create-hint"', false);
     }
 
     public function test_superadmin_can_create_reward_and_standard_audit_is_written(): void

@@ -1,6 +1,7 @@
 @extends('theme::layouts.account', ['title' => 'Кошелёк'])
 @php
     $money = static fn (int $minor): string => number_format($minor / 100, 2, ',', ' ').' ₽';
+    $walletPromotions = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class)->forPlacement('account_wallet');
 @endphp
 
 @section('account-heading')
@@ -22,6 +23,23 @@
                 <p>Основные средства <strong>{{ $money($realBalanceMinor) }}</strong></p>
             </div>
         </section>
+        @if($walletPromotions !== [])
+            <section class="panel app-wallet__history" aria-label="Действующие акции">
+                <h2>Как получить бонусы</h2>
+                @foreach($walletPromotions as $promotion)
+                    <div class="app-wallet__promotion">
+                        <h3>{{ $promotion['title'] }}</h3>
+                        @if($promotion['description'])<p>{{ $promotion['description'] }}</p>@endif
+                        @if($promotion['amount_minor'] !== null)
+                            <p>Вознаграждение: <strong>{{ $money((int) $promotion['amount_minor']) }}</strong></p>
+                        @endif
+                        @if($promotion['cta_url'])
+                            <a class="button secondary" href="{{ $promotion['cta_url'] }}">{{ $promotion['cta_label'] ?: 'Подробнее' }}</a>
+                        @endif
+                    </div>
+                @endforeach
+            </section>
+        @endif
         <section class="panel app-wallet__transfer">
             <h2>Перевести бонусы</h2>
             <p>Здесь можно перевести бонусные средства другому пользователю. Основной баланс и вывод не подключены.</p>

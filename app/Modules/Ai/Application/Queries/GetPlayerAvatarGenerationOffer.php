@@ -8,21 +8,16 @@ use App\Modules\Finance\Domain\Enums\WalletTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
-use App\Modules\Rewards\Domain\Models\Reward;
+use App\Modules\Promotions\Application\Queries\ResolveActivePromotions;
 
 final readonly class GetPlayerAvatarGenerationOffer
 {
     private const SERVICE_CODE = 'avatar_generation';
 
-    private const EARNING_MECHANISMS = [
-        'venue_first_approval' => 'Подтверждённое добавление новой площадки',
-        'referral_user_confirmed' => 'Приглашение друга с подтверждённым аккаунтом',
-        'referral_second_level_user_confirmed' => 'Подтверждение приглашённого пользователя второго уровня',
-    ];
-
     public function __construct(
         private PricingPriceResolver $prices,
         private WalletOwnerResolver $owners,
+        private ResolveActivePromotions $promotions,
     ) {}
 
     /**
@@ -60,36 +55,9 @@ final readonly class GetPlayerAvatarGenerationOffer
         ];
     }
 
-    /** @return list<array{code: string, title: string, amount_minor: int, description: string}> */
+    /** @return list<array<string, mixed>> */
     public function bonusOpportunities(): array
     {
-        $rewards = Reward::query()
-            ->whereIn('code', array_keys(self::EARNING_MECHANISMS))
-            ->where('is_enabled', true)
-            ->whereHas('currentVersion')
-            ->with('currentVersion')
-            ->get()
-            ->keyBy('code');
-
-        $result = [];
-        foreach (self::EARNING_MECHANISMS as $code => $title) {
-            $version = $rewards->get($code)?->currentVersion;
-            if ($version === null
-                || $version->mechanism_code !== $code
-                || $version->currency !== 'RUB'
-                || (int) $version->amount_minor <= 0
-                || ($version->valid_from !== null && $version->valid_from->isFuture())
-                || ($version->valid_until !== null && $version->valid_until->isPast())) {
-                continue;
-            }
-            $result[] = [
-                'code' => $code,
-                'title' => $title,
-                'amount_minor' => (int) $version->amount_minor,
-                'description' => (string) ($version->trigger_description ?: 'Бонус начисляется после выполнения и проверки условия.'),
-            ];
-        }
-
-        return $result;
+        return $this->promotions->forPlacement('avatar_topup');
     }
 }
