@@ -363,6 +363,27 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertDatabaseCount('external_availability_snapshots', 1);
     }
 
+    public function test_public_refresh_can_save_and_apply_without_admin_actor(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)
+            ->recordFromPublicSchedule($source, $this->report($source));
+
+        $this->assertNull($snapshot->created_by_user_id);
+        $applied = app(ApplyFindSportSnapshotToNativeSchedule::class)
+            ->applyFromPublicSchedule($source, $snapshot);
+
+        $this->assertSame($snapshot->id, $applied->external_availability_snapshot_id);
+        $this->assertNull($applied->applied_by_user_id);
+        $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
     public function test_public_day_endpoint_rejects_another_court_and_out_of_range_date(): void
     {
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
