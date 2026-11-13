@@ -233,6 +233,19 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertSame(100000, $schedule['price_preview']['provider_amount_minor']);
         $this->assertSame(5000, $schedule['price_preview']['portal_fee_minor']);
         $this->assertSame(105000, $schedule['price_preview']['total_minor']);
+
+        // Published court weekly tariffs must not diverge from quote pricing.
+        $court->slotPrices()->create([
+            'day_of_week' => $date->dayOfWeekIso,
+            'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 60000,
+        ]);
+        $withWeeklyOverride = $days->forDate($venue, $court, $date->toDateString(), '12:00', 60);
+        $firstSlot = collect($withWeeklyOverride['slots'])->firstWhere('starts_at', '12:00');
+        $this->assertSame(60000, $firstSlot['base_price_minor']);
+        $this->assertSame(65000, $firstSlot['price_minor']);
+        $this->assertSame(110000, $withWeeklyOverride['price_preview']['provider_amount_minor']);
+        $this->assertSame(115000, $withWeeklyOverride['price_preview']['total_minor']);
     }
 
     public function test_fixed_fees_rounding_and_zero_prices(): void
