@@ -242,22 +242,37 @@
                 @if($scheduledDays->isNotEmpty())
                     <div class="app-venue-schedule">
                         @foreach($scheduledDays as $day)
-                            <button type="button" class="app-venue-schedule__day app-venue-schedule__day--interactive"
-                                data-venue-day-open data-day-date="{{ $day['date'] }}"
-                                aria-label="Расписание и бронирование: {{ $day['label'] ?? $day['date'] }}">
-                                <strong>{{ $day['label'] ?? $day['date'] }}</strong>
-                                @if(count($day['intervals'] ?? []))
-                                    <p class="app-venue-schedule__hours" aria-label="Часы работы">
-                                        <svg aria-hidden="true"><use href="#clock"/></svg>
-                                        <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
-                                    </p>
-                                @else
-                                    <p class="app-venue-schedule__closed">Не работает</p>
-                                @endif
-                                @if(!empty($day['isException']))
-                                    <span class="app-venue-schedule__exception">{{ !empty($day['isClosed']) ? 'Исключение: выходной' : 'Исключение: изменённые часы' }}</span>
-                                @endif
-                            </button>
+                            @php
+                                $occupancy = $day['occupancyPercent'] ?? null;
+                                $isWeekend = in_array($day['weekday'] ?? '', ['Сб', 'Вс'], true);
+                            @endphp
+                            <div class="app-venue-schedule__entry" data-venue-day-entry data-day-date="{{ $day['date'] }}">
+                                <button type="button" class="app-venue-schedule__day app-venue-schedule__day--interactive"
+                                    data-venue-day-open data-day-date="{{ $day['date'] }}"
+                                    aria-label="Расписание и бронирование: {{ $day['label'] ?? $day['date'] }}">
+                                    <strong @class(['app-venue-schedule__date', 'is-weekend' => $isWeekend])>{{ $day['label'] ?? $day['date'] }}</strong>
+                                    @if(count($day['intervals'] ?? []))
+                                        <p class="app-venue-schedule__hours" aria-label="Часы работы">
+                                            <svg aria-hidden="true"><use href="#clock"/></svg>
+                                            <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] === '23:59' ? '00:00' : $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
+                                        </p>
+                                    @else
+                                        <p class="app-venue-schedule__closed">Не работает</p>
+                                    @endif
+                                    @if(!empty($day['isException']))
+                                        <span class="app-venue-schedule__exception">{{ !empty($day['isClosed']) ? 'Исключение: выходной' : 'Исключение: изменённые часы' }}</span>
+                                    @endif
+                                </button>
+                                <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null])
+                                    data-day-occupancy
+                                    role="img"
+                                    aria-label="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}"
+                                    title="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}">
+                                    <span class="app-venue-schedule__occupancy-booked"
+                                        data-day-occupancy-booked
+                                        style="width: {{ (int) ($occupancy ?? 0) }}%"></span>
+                                </div>
+                            </div>
                         @endforeach
                     </div>
                 @else
@@ -333,10 +348,11 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>
-    <p class="app-venue-day-dialog__status" role="status" aria-live="polite" data-venue-day-status>
-        Загрузка свободного времени…
-    </p>
-    <p class="app-venue-day-dialog__updated" data-venue-day-updated hidden></p>
+    <div class="app-venue-day-dialog__info" data-venue-day-info>
+        {{-- Reserved for a future day-specific announcement or special offer. --}}
+        <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
+            data-venue-day-status hidden></p>
+    </div>
     <div class="app-venue-day-dialog__grid" data-venue-day-slots aria-label="Интервалы бронирования"></div>
     <form method="POST" action="{{ route('venues.rental.quote', $venue->id) }}"
         class="app-venue-day-dialog__footer" data-venue-day-booking-form>
