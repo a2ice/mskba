@@ -4,6 +4,7 @@ namespace App\Modules\VenueIntegration\Domain\Models;
 
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,9 +49,10 @@ final class ExternalAvailabilitySnapshot extends Model
         return $this->hasMany(ExternalAvailabilitySlot::class);
     }
 
-    public function isStale(): bool
+    public function isStale(?CarbonInterface $asOf = null): bool
     {
-        return $this->observed_at->addSeconds($this->freshness_ttl_seconds)->lessThan(now());
+        return $this->observed_at->addSeconds($this->freshness_ttl_seconds)
+            ->lessThan($asOf ?? now());
     }
 
     protected function casts(): array
