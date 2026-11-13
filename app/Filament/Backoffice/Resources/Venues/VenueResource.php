@@ -5,6 +5,7 @@ namespace App\Filament\Backoffice\Resources\Venues;
 use App\Filament\Backoffice\Resources\Venues\Pages\CreateVenue;
 use App\Filament\Backoffice\Resources\Venues\Pages\EditVenue;
 use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
+use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationsRelationManager;
@@ -167,6 +168,93 @@ final class VenueResource extends Resource
                             ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Аренда')->icon('heroicon-o-calendar-days')
+                    ->visible(fn (?Venue $record): bool => $record !== null
+                        && app(VenueRentalPolicyEditor::class)->canManage($record))
+                    ->schema([
+                        Section::make('Доступ и бронирование')
+                            ->description(fn (?Venue $record): string => $record === null
+                                ? '' : app(VenueRentalPolicyEditor::class)->description($record))
+                            ->columns(2)
+                            ->schema([
+                                Toggle::make('rental_policy_enabled')
+                                    ->label('Принимать заявки на аренду')
+                                    ->default(false)->live()
+                                    ->helperText('Общий переключатель для всех залов. При выключении аренда недоступна даже при локальном разрешении зала.'),
+                                Toggle::make('rental_policy_requires_payment')
+                                    ->label('Платная аренда')->default(false)->live()
+                                    ->helperText('Базовое условие площадки. Зал может переопределить его в своих настройках.'),
+                                Toggle::make('rental_policy_allows_whole')
+                                    ->label('Разрешать аренду целиком')->default(true),
+                                Toggle::make('rental_policy_allows_halves')
+                                    ->label('Разрешать аренду половин')->default(false)->live()
+                                    ->helperText('Для конкретного зала дополнительно нужны поддержка половин и их разрешение.'),
+                            ]),
+                        Section::make('Цены площадки')
+                            ->description('Базовая цена за шаг аренды. Зал может наследовать или переопределять её. Для платной аренды цена должна быть больше нуля.')
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('rental_policy_currency')
+                                    ->label('Валюта ISO')->required()->default('RUB')
+                                    ->maxLength(3)->regex('/\A[A-Za-z]{3}\z/D'),
+                                TextInput::make('rental_policy_whole_price_rub')
+                                    ->label('Весь зал — цена за шаг, ₽')
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
+                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
+                                    ->numeric()->minValue(0)->default('0'),
+                                TextInput::make('rental_policy_half_price_rub')
+                                    ->label('Половина — цена за шаг, ₽')
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
+                                        && (bool) $get('rental_policy_allows_halves'))
+                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
+                                    ->numeric()->minValue(0)
+                                    ->helperText('Сумма сохраняется даже при отключённой аренде половин, чтобы не терять настройку.'),
+                            ]),
+                        Section::make('Время и ограничения')
+                            ->columns(3)
+                            ->schema([
+                                TextInput::make('rental_policy_time_step_minutes')
+                                    ->label('Шаг аренды, мин')
+                                    ->integer()->numeric()->required()->minValue(5)->maxValue(240)->default(30),
+                                TextInput::make('rental_policy_minimum_duration_minutes')
+                                    ->label('Минимальная длительность, мин')
+                                    ->integer()->numeric()->required()->minValue(15)->maxValue(1440)->default(60),
+                                TextInput::make('rental_policy_maximum_duration_minutes')
+                                    ->label('Максимальная длительность, мин')
+                                    ->integer()->numeric()->required()->minValue(15)->maxValue(1440)->default(180),
+                                TextInput::make('rental_policy_minimum_lead_time_minutes')
+                                    ->label('Не раньше чем через, мин')
+                                    ->integer()->numeric()->required()->minValue(0)->maxValue(525600)->default(120),
+                                TextInput::make('rental_policy_maximum_advance_days')
+                                    ->label('Бронирование вперёд, дней')
+                                    ->integer()->numeric()->required()->minValue(1)->maxValue(730)->default(90),
+                                TextInput::make('rental_policy_quote_validity_minutes')
+                                    ->label('Срок действия расчёта, мин')
+                                    ->integer()->numeric()->required()->minValue(1)->maxValue(120)->default(15),
+                            ]),
+                        Section::make('Удержание и оплата')
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('rental_policy_hold_duration_minutes')
+                                    ->label('Удержание выбранного слота, мин')
+                                    ->integer()->numeric()->required()->minValue(1)->maxValue(1440)->default(30),
+                                TextInput::make('rental_policy_payment_window_minutes')
+                                    ->label('Окно оплаты, мин')
+                                    ->integer()->numeric()->minValue(1)->maxValue(1440)->default(30)
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
+                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')),
+                                Toggle::make('rental_policy_allows_hold_extension')
+                                    ->label('Разрешать продление удержания')->default(false)->live(),
+                                TextInput::make('rental_policy_maximum_hold_extension_minutes')
+                                    ->label('Максимальное продление, мин')
+                                    ->integer()->numeric()->minValue(1)->maxValue(1440)->default(30)
+                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_allows_hold_extension')),
+                                TextInput::make('rental_policy_cancellation_before_minutes')
+                                    ->label('Отмена не позднее, чем за, мин')
+                                    ->integer()->numeric()->minValue(0)->maxValue(525600)
+                                    ->helperText('Необязательно. Если пусто, действует стандартное правило.'),
+                            ]),
+                    ]),
                 Tab::make('Кешбэк')->icon('heroicon-o-gift')
                     ->visible(fn (?Venue $record): bool => $record !== null
                         && app(VenueRentalCashbackSettings::class)->canManage())
