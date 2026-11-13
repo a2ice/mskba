@@ -55,7 +55,11 @@ final class AppliedImportedCourtAvailability
         }
 
         $snapshot = $import->snapshot;
-        if ($snapshot->isStale($asOf)) {
+        $reference = $asOf ?? now();
+        if ($snapshot->isStale($reference)
+            || (config('venue_integrations.public_schedule_refresh_enabled', false)
+                && $snapshot->observed_at->addSeconds(FindSportOnDemandRefresh::REFRESH_AFTER_SECONDS)
+                    ->lessThan($reference))) {
             throw new InvalidArgumentException('Расписание FindSport устарело: сначала обновите и примените снимок.');
         }
 
