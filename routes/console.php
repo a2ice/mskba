@@ -7,6 +7,8 @@ use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Application\Services\UserFingerprintPruner;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
+use App\Modules\Promotions\Domain\Models\Promotion;
+use App\Modules\Rewards\Application\Services\RewardCatalogManager;
 use App\Modules\Rewards\Application\Services\RewardEngine;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -111,6 +113,52 @@ Artisan::command('privacy:tracking-diagnose {--json}', function (TrackingDataHea
     $this->table(['Metric', 'Value'], collect($snapshot)->map(fn ($value, $key) => [$key, $value])->values()->all());
 })->purpose('Показывает объём и суточный рост tracking-данных без PII');
 
+
+// This command is deliberately operator-only, never part of a normal deploy.
+Artisan::command('rewards:enable-rental-cashback-dev', function (RewardCatalogManager $catalog) {
+    if (! app()->environment('staging') || rtrim((string) config('app.url'), '/') !== 'https://dev.mskba.ru') {
+        $this->error('Команда разрешена только на dev.mskba.ru в APP_ENV=staging.');
+
+        return 1;
+    }
+
+    $reward = Reward::query()->where('code', 'venue_rental_completed')->first();
+    $version = $reward?->currentVersion;
+    $promotion = Promotion::query()->where('code', 'reward_venue_rental_completed')->first();
+
+    if ($reward === null || $version === null || $promotion === null
+        || $version->mechanism_code !== 'venue_rental_completed' || $version->currency !== 'RUB') {
+        $this->error('Кешбэк аренды или его акция не готовы к активации.');
+
+        return 1;
+    }
+
+    if (! $reward->is_enabled) {
+        $catalog->update($reward, [
+            'name' => $reward->name,
+            'description' => $reward->description,
+            'mechanism_code' => $reward->mechanism_code,
+            'is_enabled' => true,
+            'amount_minor' => (int) $version->amount_minor,
+            'currency' => $version->currency,
+            'conditions' => $version->conditions,
+            'recipient_description' => $version->recipient_description,
+            'trigger_description' => $version->trigger_description,
+            'mechanism_parameters' => $version->mechanism_parameters ?? [],
+        ]);
+    }
+
+    if (! $promotion->is_enabled) {
+        $promotion->update(['is_enabled' => true]);
+    }
+
+    $reward->refresh()->load('currentVersion');
+    $this->info('DEV: кешбэк аренды включён, сумма (коп.): '.$reward->currentVersion->amount_minor
+        .'; версия: '.$reward->currentVersion->version_number
+        .'; действует с: '.$reward->currentVersion->valid_from->toIso8601String());
+
+    return 0;
+})->purpose('Явно включает кешбэк аренды только на dev, без ретроспективных начислений');
 
 Artisan::command('rewards:grant-completed-rentals', function (RewardEngine $engine) {
     $reward = Reward::query()
