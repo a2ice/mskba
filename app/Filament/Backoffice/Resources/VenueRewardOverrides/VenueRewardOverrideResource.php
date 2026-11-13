@@ -27,6 +27,10 @@ final class VenueRewardOverrideResource extends Resource
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 11;
 
+    // Cashback overrides are managed in Venues → Edit → Cashback.
+    // Keep existing URLs accessible for bookmarks, but avoid a duplicate menu.
+    public static function shouldRegisterNavigation(): bool { return false; }
+
     public static function getNavigationLabel(): string { return 'Кешбэк по площадкам'; }
     public static function getModelLabel(): string { return 'настройка кешбэка'; }
     public static function getPluralModelLabel(): string { return 'Кешбэк по площадкам'; }

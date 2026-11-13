@@ -13,6 +13,7 @@ use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationAu
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CommissionAgentsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtCommissionsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PhotosRelationManager;
+use App\Modules\Rewards\Application\Services\VenueRentalCashbackSettings;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
@@ -166,6 +167,31 @@ final class VenueResource extends Resource
                             ->columnSpanFull(),
                     ]),
                 ]),
+                Tab::make('Кешбэк')->icon('heroicon-o-gift')
+                    ->visible(fn (?Venue $record): bool => $record !== null
+                        && app(VenueRentalCashbackSettings::class)->canManage())
+                    ->schema([
+                        Section::make('Кешбэк за аренду')
+                            ->description(fn (): string => app(VenueRentalCashbackSettings::class)->globalDescription())
+                            ->columns(2)
+                            ->schema([
+                                Select::make('cashback_mode')
+                                    ->label('Начисление для этой площадки')
+                                    ->options([
+                                        'inherit' => 'Наследовать общую ставку',
+                                        'disabled' => 'Отключить для площадки',
+                                        'custom' => 'Собственная сумма',
+                                    ])
+                                    ->default('inherit')->required()->native(false)->live()
+                                    ->helperText('По умолчанию отдельная запись не создаётся. Глобальное выключение имеет приоритет.'),
+                                TextInput::make('cashback_amount_rub')
+                                    ->label('Сумма бонусов за аренду, ₽')
+                                    ->numeric()->step('0.01')->minValue(0)->maxValue(10000000)
+                                    ->required(fn (Get $get): bool => $get('cashback_mode') === 'custom')
+                                    ->visible(fn (Get $get): bool => $get('cashback_mode') === 'custom')
+                                    ->helperText('0 ₽ — начисление отсутствует; пустое значение не означает наследование.'),
+                            ]),
+                    ]),
                 Tab::make('Контракты')->icon('heroicon-o-document-text')
                     ->visible(fn (?Venue $record): bool => $record !== null
                         && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
