@@ -55,7 +55,7 @@
                 </span>
                 @error('homepage_preference') <p class="error" role="alert">{{ $message }}</p> @enderror
                 <button class="button primary" type="submit">Сохранить</button>
-                <p class="muted">Для просмотра обычной главной: <a href="{{ route('homepage.original') }}">Главная MSKBA</a>.</p>
+                <p class="muted">Обычную главную можно открыть в любое время: <a href="{{ route('homepage.original') }}">Посмотреть главную MSKBA</a>.</p>
             </form>
 
             <form action="{{ route('account.settings.appearance.update') }}" method="POST"
