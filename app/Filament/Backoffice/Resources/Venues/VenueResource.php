@@ -206,9 +206,9 @@ final class VenueResource extends Resource
                                     ->label('Половина — цена за шаг, ₽')
                                     ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
                                         && (bool) $get('rental_policy_allows_halves'))
-                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
-                                        && (bool) $get('rental_policy_allows_halves'))
-                                    ->numeric()->minValue(0),
+                                    ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
+                                    ->numeric()->minValue(0)
+                                    ->helperText('Сумма сохраняется даже при отключённой аренде половин, чтобы не терять настройку.'),
                             ]),
                         Section::make('Время и ограничения')
                             ->columns(3)
