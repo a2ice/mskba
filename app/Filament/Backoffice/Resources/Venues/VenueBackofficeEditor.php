@@ -10,6 +10,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
+use App\Modules\Rewards\Application\Services\VenueRentalCashbackSettings;
 use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
 use App\Modules\Venue\Application\Services\VenueCourtConfigurator;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
@@ -51,6 +52,7 @@ final class VenueBackofficeEditor
         $schedule = $venue->schedule;
 
         return [
+            ...app(VenueRentalCashbackSettings::class)->formFields($venue),
             'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
             'tags_text' => $venue->tags->pluck('name')->implode(', '),
             'amenity_ids' => $venue->amenities->pluck('id')->all(),
@@ -205,6 +207,7 @@ final class VenueBackofficeEditor
                     'data.amenity_ids' => $exception->getMessage(),
                 ]);
             }
+            app(VenueRentalCashbackSettings::class)->save($venue, $data);
             $this->saveSchedule($venue, $data);
             if ($venue->status !== $status && ! $autoApprove) {
                 $venue = $this->statusTransitions->handle(
