@@ -181,3 +181,23 @@
 @media (prefers-reduced-motion: reduce) {
     .app-venue-page__anchors { transition: none; }
 }
+
+/* FindSport read-only external schedule on staging court pages. */
+.app-venue-external-schedule{display:grid;gap:10px;margin-top:24px}
+.app-venue-external-schedule__intro{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface-raised,#f4f5f7)}
+.app-venue-external-schedule__intro h3{margin:0 0 6px;font-size:16px;color:var(--text)}
+.app-venue-external-schedule__intro p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.app-venue-external-schedule__day{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface,#fff)}
+.app-venue-external-schedule__day>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:13px 16px;list-style:none;color:var(--text)}
+.app-venue-external-schedule__day>summary::-webkit-details-marker{display:none}
+.app-venue-external-schedule__day>summary span{font-size:12px;color:var(--muted)}
+.app-venue-external-schedule__day[open]>summary{border-bottom:1px solid var(--line)}
+.app-venue-external-schedule__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;padding:12px}
+.app-venue-external-schedule__slot{display:grid;gap:5px;align-content:center;padding:10px 12px;border:1px solid var(--line);border-radius:9px;min-height:80px;color:var(--text);background:var(--surface,#fff)}
+.app-venue-external-schedule__slot time{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.app-venue-external-schedule__slot strong{font-size:12px;font-weight:700}
+.app-venue-external-schedule__slot span{font-size:11px;color:var(--muted)}
+.app-venue-external-schedule__slot.is-booked{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface,#fff))}
+.app-venue-external-schedule__slot.is-unknown{border-style:dashed}
+@media(max-width:560px){.app-venue-external-schedule__day>summary{align-items:start;flex-direction:column;gap:4px}.app-venue-external-schedule__grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:9px}.app-venue-external-schedule__slot{min-height:88px;padding:9px}}
+@media(max-width:360px){.app-venue-external-schedule__grid{grid-template-columns:1fr}}
