@@ -7,6 +7,7 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Queries\GetVenueAvailability;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
+use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
@@ -29,6 +30,7 @@ final readonly class PublicVenueDaySchedule
         private GetVenueAvailability $availability,
         private VenuePricingRuleEvaluator $pricingRules,
         private VenueCommissionCalculator $commissions,
+        private VenueSlotPricing $slotPricing,
     ) {}
 
     /** @return array<string, mixed> */
@@ -94,8 +96,14 @@ final readonly class PublicVenueDaySchedule
         $byStart = $sourceSlots->keyBy(fn ($slot): string =>
             $slot->starts_at->setTimezone('Europe/Moscow')->format('H:i'),
         );
-        $priceRows = $court->calendarSlotPrices()->whereDate('date', $date)->get()
-            ->keyBy(fn ($row): string => substr((string) $row->starts_at, 0, 5));
+        // Fetch the whole native day in a single pricing resolution. This
+        // includes inherited weekly and calendar tariff overrides exactly as
+        // the authoritative booking quote does, without N queries per slot.
+        $nativePrices = $snapshot === null && $policy !== null && $supportedStep
+            ? $this->slotPricing->calculate(
+                $venue, $policy, $day, 1440, VenueBookingScopeEnum::WHOLE, $court, $effective,
+            )['prices_per_step_minor']
+            : null;
 
         $minMinute = $openings !== [] ? min(array_map(static fn ($i): int =>
             (int) substr($i['from'], 0, 2) * 60 + (int) substr($i['from'], 3, 2), $openings)) : 7 * 60;
@@ -152,7 +160,7 @@ final readonly class PublicVenueDaySchedule
                     $priceMinor = null;
                 }
             } else {
-                $priceMinor = $priceRows->get($startTime)?->whole_price_per_step_minor
+                $priceMinor = $nativePrices[$index]
                     ?? $court->whole_price_per_step_minor
                     ?? $policy?->whole_price_per_step_minor;
                 $priceMinor = $priceMinor === null ? null : (int) $priceMinor;
