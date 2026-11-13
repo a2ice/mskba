@@ -6,6 +6,8 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
 use App\Modules\VenueIntegration\Application\Services\FindSportPublicCourtSchedule;
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
@@ -232,6 +234,32 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             CarbonImmutable::parse('2026-11-13', 'Europe/Moscow')->startOfDay(),
         );
         $this->assertNull($projection);
+    }
+
+    public function test_public_venue_calendar_uses_external_snapshot_without_adding_fake_events(): void
+    {
+        config()->set('venue_integrations.findsport_public_snapshot_enabled', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+
+        $projection = app(ShowVenueHandler::class)->handle(
+            $venue->routeIdentifier(), null,
+        );
+        $this->assertCount(9, $projection->occupancyDays);
+        $firstDay = $projection->occupancyDays[0];
+        $this->assertSame($snapshot->id, $firstDay['externalSnapshot']['snapshotId']);
+        $this->assertSame('external', $firstDay['timeline'][0]['kind']);
+        $this->assertSame('available', $firstDay['timeline'][0]['status']);
+        $this->assertSame(162500, $firstDay['timeline'][0]['price_minor']);
+        $this->assertSame('booked', $firstDay['timeline'][2]['status']);
+        $this->assertSame(1, $firstDay['externalBusyCount']);
+        // The "Игры и мероприятия" section reads slots; external slots are not events.
+        $this->assertSame([], $firstDay['slots']);
+        $this->assertSame('unknown', $projection->occupancyDays[8]['timeline'][0]['status']);
     }
 
     public function test_public_findsport_projection_does_not_leak_to_other_venue_courts(): void
