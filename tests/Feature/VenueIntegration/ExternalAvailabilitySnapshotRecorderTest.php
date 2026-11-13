@@ -295,6 +295,11 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
     public function test_public_day_modal_reads_applied_native_schedule_and_reuses_recent_snapshot(): void
     {
+        // This scenario tests a real five-minute window. Other snapshots use
+        // a fixed historical fixture date; this one must start at wall time.
+        $this->travelTo(CarbonImmutable::instance(
+            new \DateTimeImmutable('now', new \DateTimeZone('Europe/Moscow')),
+        ));
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
         config()->set('venue_integrations.public_schedule_refresh_enabled', true);
         config()->set('venue_integrations.findsport_preview_enabled', true);
@@ -336,6 +341,11 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
     public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
     {
+        // This scenario tests a real five-minute window. Other snapshots use
+        // a fixed historical fixture date; this one must start at wall time.
+        $this->travelTo(CarbonImmutable::instance(
+            new \DateTimeImmutable('now', new \DateTimeZone('Europe/Moscow')),
+        ));
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
         config()->set('venue_integrations.public_schedule_refresh_enabled', true);
         config()->set('venue_integrations.findsport_preview_enabled', true);
