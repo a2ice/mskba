@@ -17,6 +17,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
+use App\Modules\VenueBooking\Application\UseCases\ToggleVenueBookingPolicyHandler;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
@@ -44,6 +45,40 @@ final class VenueBookingPolicyQuoteTest extends TestCase
     {
         Carbon::setTestNow();
         parent::tearDown();
+    }
+
+    public function test_filament_quick_toggle_publishes_versions_and_preserves_paid_policy(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        $toggle = app(ToggleVenueBookingPolicyHandler::class);
+
+        try {
+            $toggle->handle($venue, $owner, true);
+            $this->fail('Нельзя включать аренду без опубликованных условий.');
+        } catch (VenueBookingPolicyException $exception) {
+            $this->assertStringContainsString('Сначала опубликуйте', $exception->getMessage());
+        }
+
+        $first = app(PublishVenueBookingPolicyHandler::class)->handle(
+            $venue, $owner, $this->policyData(),
+        );
+        $this->assertTrue($first->is_enabled);
+
+        $disabled = $toggle->handle($venue, $owner, false);
+        $this->assertFalse($disabled->is_enabled);
+        $this->assertSame(2, $disabled->version);
+        $this->assertNull($first->fresh()->active_marker);
+        $this->assertTrue($disabled->active_marker);
+        $this->assertTrue($disabled->requires_payment);
+        $this->assertSame($first->whole_price_per_step_minor, $disabled->whole_price_per_step_minor);
+        $this->assertSame($first->time_step_minutes, $disabled->time_step_minutes);
+
+        $enabled = $toggle->handle($venue, $owner, true);
+        $this->assertTrue($enabled->is_enabled);
+        $this->assertSame(3, $enabled->version);
+        $this->assertNull($disabled->fresh()->active_marker);
+        $this->assertSame($enabled->id, $toggle->handle($venue, $owner, true)->id);
+        $this->assertSame(3, $venue->bookingPolicies()->count());
     }
 
     public function test_policy_versions_are_append_only_and_old_quote_keeps_original_snapshot(): void
