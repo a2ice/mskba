@@ -184,7 +184,10 @@ final readonly class VenueIntegrationManager
             $ref = trim((string) ($data['permission_reference'] ?? ''));
             $status = (string) $data['permission_status'];
             $newReview = $status !== $record->permission_status
-                || $ref !== (string) $record->permission_reference;
+                || $ref !== (string) $record->permission_reference
+                || (! $record->access_reviewed_at
+                    && in_array($status, ['mskba_allowed', 'testing_only'], true)
+                    && $ref !== '');
 
             $record->fill([
                 'name' => $data['name'],
