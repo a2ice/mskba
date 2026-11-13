@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\Services\VenueScheduleDayOccupancy;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -226,6 +227,19 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame('08:30', $exceptions[1]['starts_at']);
         $this->assertDatabaseCount('venue_bookings', 0);
 
+        // 1 booked of 34 known 30-minute slots = 3%. Full free is 0%,
+        // while an out-of-coverage day must not masquerade as free.
+        $percentages = app(VenueScheduleDayOccupancy::class)->forDays(
+            $venue, $court, [
+                ['date' => '2026-11-13', 'intervals' => []],
+                ['date' => '2026-11-14', 'intervals' => []],
+                ['date' => '2026-11-20', 'intervals' => []],
+            ], 'Europe/Moscow',
+        );
+        $this->assertSame(3, $percentages['2026-11-13']);
+        $this->assertSame(0, $percentages['2026-11-14']);
+        $this->assertNull($percentages['2026-11-20']);
+
         $projection = app(GetVenueAvailability::class)->handle(
             $venue, CarbonImmutable::parse('2026-11-13 07:00', 'Europe/Moscow')->utc(),
             CarbonImmutable::parse('2026-11-13 10:00', 'Europe/Moscow')->utc(), $court,
@@ -253,6 +267,30 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame($import->id, $same->id);
         $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
         $this->assertSame(238, $court->calendarSlotPrices()->count());
+    }
+
+    public function test_day_occupancy_bar_becomes_fully_red_when_all_slots_are_booked(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create();
+        $source = $this->source($actor, $venue);
+        $report = $this->report($source);
+        foreach ($report['days'][0]['slots'] as &$slot) {
+            $slot['status'] = 'booked';
+        }
+        unset($slot);
+
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)
+            ->record($source, $actor, $report);
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+
+        $summary = app(VenueScheduleDayOccupancy::class)->forDays(
+            $venue, $venue->courts()->firstOrFail(),
+            [['date' => '2026-11-13', 'intervals' => []]], 'Europe/Moscow',
+        );
+
+        $this->assertSame(100, $summary['2026-11-13']);
     }
 
     public function test_native_import_rejects_partial_and_does_not_change_court(): void
