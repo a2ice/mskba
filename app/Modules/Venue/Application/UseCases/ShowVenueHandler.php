@@ -184,7 +184,12 @@ final class ShowVenueHandler
             ->where('active_marker', true)
             ->where('is_enabled', true)
             ->first();
-        $occupancyDays = $this->occupancyDays($venue, $courtIdentifier === null ? null : $selectedCourt, $timezone, $rentalPolicy, $user);
+        // A venue with exactly one physical hall can safely use that hall's
+        // external occupancy on the venue overview as well as the hall page.
+        // Multi-court venue overviews retain their aggregate MSKBA schedule.
+        $occupancyCourt = $courtIdentifier !== null || $courts->count() === 1
+            ? $selectedCourt : null;
+        $occupancyDays = $this->occupancyDays($venue, $occupancyCourt, $timezone, $rentalPolicy, $user);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
