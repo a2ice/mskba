@@ -32,11 +32,33 @@ final class FindSportReadOnlyAdapter
         }
 
         $integration = $source->integration;
-        if ($source->adapter_key !== 'api' || $integration?->mode !== 'test'
-            || ! in_array($source->permission_status, ['testing_only', 'mskba_allowed'], true)
-            || ! $source->access_reviewed_at || blank($source->permission_reference)
-            || $source->courtMappings()->count() !== 1) {
-            throw new RuntimeException('Для предпросмотра требуется API-источник в тестовом режиме, один зал и проверенное основание доступа.');
+        if ($integration === null) {
+            throw new RuntimeException('Не найдена конфигурация интеграции. Откройте вкладку «Настройки» и создайте конфигурацию.');
+        }
+
+        if ($source->adapter_key !== 'api') {
+            throw new RuntimeException('В настройках источника выберите тип адаптера «API».');
+        }
+
+        if ($integration->mode !== 'test') {
+            throw new RuntimeException('В разделе «Интеграции → Настройки» выберите режим «Тестирование».');
+        }
+
+        if (! in_array($source->permission_status, ['testing_only', 'mskba_allowed'], true)) {
+            throw new RuntimeException('В источнике выберите допустимый статус доступа после его проверки. Статус «Не проверено» не допускает обращения к внешнему сайту.');
+        }
+
+        if (blank($source->permission_reference)) {
+            throw new RuntimeException('В настройках источника не заполнено поле «Основание допустимого доступа». Укажите проверенное основание и сохраните источник.');
+        }
+
+        if (! $source->access_reviewed_at) {
+            throw new RuntimeException('Статус доступа источника пока не подтверждён. Откройте «Изменить», проверьте статус и основание доступа, сохраните изменения.');
+        }
+
+        $courtCount = $source->courtMappings()->count();
+        if ($courtCount !== 1) {
+            throw new RuntimeException("Для этого пилота выберите ровно один зал MSKBA в настройках источника. Сейчас привязано: {$courtCount}.");
         }
 
         $url = (string) $source->endpoint_url;
