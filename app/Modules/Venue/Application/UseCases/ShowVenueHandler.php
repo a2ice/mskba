@@ -464,7 +464,6 @@ final class ShowVenueHandler
                 $timeline = [];
                 $externallyBusy = 0;
                 $unconfirmed = 0;
-                $externalCount = 0;
 
                 // Missing dates are unknown, never silently free.
                 if ($sourceSlots === []) {
@@ -495,14 +494,12 @@ final class ShowVenueHandler
                                 fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart)
                             )->values()->all(),
                         ];
-                        $externalCount++;
                         continue;
                     }
 
                     $status = $slot['status'];
                     if ($status === 'booked') {
                         $externallyBusy++;
-                        $externalCount++;
                     } elseif ($status !== 'available') {
                         $unconfirmed++;
                     }
@@ -529,7 +526,12 @@ final class ShowVenueHandler
                     'isToday' => $offset === 0,
                     'state' => $hasConfirmed || $externallyBusy > 0 ? 'confirmed'
                         : (($dayBookings->isNotEmpty() || $unconfirmed > 0 || $external['stale']) ? 'tentative' : 'free'),
-                    'slots' => array_fill(0, $externalCount, ['external' => true]),
+                    // Only MSKBA bookings belong in the "Игры и мероприятия"
+                    // activity feed. External occupancy is a separate schedule.
+                    'slots' => $dayBookings
+                        ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user, $dayStart))
+                        ->all(),
+                    'externalBusyCount' => $externallyBusy,
                     'timeline' => $timeline,
                     'externalSnapshot' => [
                         'provider' => 'FindSport',
