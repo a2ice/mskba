@@ -135,8 +135,9 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertDatabaseCount('external_availability_slots', 238);
         $this->assertDatabaseCount('venue_integration_audit_events', 3);
 
-        // The external observation does not create a working-hours schedule.
-        $this->assertDatabaseCount('venue_court_schedules', 0);
+        // Saving an external observation never mutates the court's configured tariff.
+        $this->assertSame($venue->courts()->firstOrFail()->whole_price_per_step_minor,
+            $venue->courts()->firstOrFail()->fresh()->whole_price_per_step_minor);
     }
 
     public function test_partial_snapshot_cannot_delete_previous_complete_observation(): void
