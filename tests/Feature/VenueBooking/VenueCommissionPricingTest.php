@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\Venue\Application\Services\PublicVenueDaySchedule;
 use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenueCommissionManager;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleManager;
@@ -184,6 +185,54 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertSame(230000, $oldRow->amount_minor);
         $this->assertSame(20000, $oldRow->snapshot['pricing']['commissions']['portal_fee_minor']);
         $this->assertSame(1, $oldRow->snapshot['pricing']['commissions']['portal']['version']);
+    }
+
+    public function test_scoped_zero_is_not_inheritance_and_inherit_restores_global_rate(): void
+    {
+        [$admin, $venue, $court] = $this->scenario();
+        $manager = app(VenueCommissionManager::class);
+        $manager->setPortal($admin, 'percent', '10');
+        $this->assertSame(220000, $this->quote($venue, $court)->amountMinor);
+
+        $scoped = $manager->setScoped($admin, 'venue', 'rental', 'percent', '0');
+        $this->assertSame('percent', $scoped->mode);
+        $this->assertSame(0, $scoped->value);
+        $explicitZero = $this->quote($venue, $court);
+        $this->assertSame(200000, $explicitZero->amountMinor);
+        $this->assertSame('scope', $explicitZero->commissionBreakdown['portal']['source']);
+
+        $inherited = $manager->setScoped($admin, 'venue', 'rental', 'inherit');
+        $this->assertNull($inherited->mode);
+        $this->assertNull($inherited->value);
+        $this->assertSame(220000, $this->quote($venue, $court)->amountMinor);
+    }
+
+    public function test_public_day_prices_include_commissions_and_range_preview_charges_fixed_fee_once(): void
+    {
+        [$admin, $venue, $court] = $this->scenario();
+        $date = CarbonImmutable::now('Europe/Moscow')->addDay()->startOfDay();
+        $venue->schedule()->firstOrFail()->intervals()->create([
+            'day_of_week' => $date->dayOfWeekIso,
+            'starts_at' => '07:00',
+            'ends_at' => '23:59',
+            'sort_order' => 0,
+        ]);
+
+        $manager = app(VenueCommissionManager::class);
+        $manager->setPortal($admin, 'percent', '10');
+        $days = app(PublicVenueDaySchedule::class);
+        $schedule = $days->forDate($venue, $court, $date->toDateString());
+        $slot = collect($schedule['slots'])->firstWhere('starts_at', '12:00');
+        $this->assertSame(50000, $slot['base_price_minor']);
+        $this->assertSame(55000, $slot['price_minor']);
+
+        $manager->setPortal($admin, 'fixed', '50');
+        $schedule = $days->forDate($venue, $court, $date->toDateString(), '12:00', 60);
+        $slot = collect($schedule['slots'])->firstWhere('starts_at', '12:00');
+        $this->assertSame(55000, $slot['price_minor']);
+        $this->assertSame(100000, $schedule['price_preview']['provider_amount_minor']);
+        $this->assertSame(5000, $schedule['price_preview']['portal_fee_minor']);
+        $this->assertSame(105000, $schedule['price_preview']['total_minor']);
     }
 
     public function test_fixed_fees_rounding_and_zero_prices(): void
