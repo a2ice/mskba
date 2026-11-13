@@ -45,7 +45,10 @@ final class RewardsCatalogTest extends TestCase
             ->assertSee('Вознаграждения')
             ->assertSee('Подтверждённый приглашённый пользователь')
             ->assertSee('Подтверждённый пользователь второго уровня')
-            ->assertSee('Первая успешная модерация новой площадки');
+            ->assertSee('Первая успешная модерация новой площадки')
+            ->assertSee('Выплата реальными деньгами')
+            ->assertSee('Пока недоступно. Начисления производятся только бонусными средствами.')
+            ->assertSee('type="checkbox" disabled aria-describedby="reward-real-payment-create-hint"', false);
     }
 
     public function test_superadmin_can_create_reward_and_standard_audit_is_written(): void
