@@ -153,6 +153,14 @@ final class ExternalAvailabilitySnapshotRecorder
                 ];
             }
             $fullyKnown = $dayComplete && $dayCounts['unknown'] === 0;
+            // A malformed occupancy mask can leave isolated unknown slots
+            // despite a provider date key. Mark that entire day's provenance
+            // as incomplete so downstream consumers never assume full coverage.
+            foreach (array_keys($rows) as $rowIndex) {
+                if ($rows[$rowIndex]['local_date'] === $date) {
+                    $rows[$rowIndex]['day_complete'] = $fullyKnown;
+                }
+            }
             $allComplete = $allComplete && $fullyKnown;
             $countsByDay[$date] = ['complete' => $fullyKnown, 'counts' => $dayCounts];
         }
