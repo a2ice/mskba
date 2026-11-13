@@ -63,14 +63,19 @@ final class GetVenueAvailability
             ];
         }
 
+        $bookingVersion = $busy->max('updated_at');
+        $importVersion = $applied?->applied_at;
+        $projectionVersion = $bookingVersion !== null
+            && ($importVersion === null || $bookingVersion->greaterThan($importVersion))
+            ? $bookingVersion : $importVersion;
+
         return [
             'venue_id' => $venue->id,
             'venue_court_id' => $court->id,
             'venue_court_name' => $court->name,
             'from' => $from->utc()->toIso8601String(),
             'to' => $to->utc()->toIso8601String(),
-            'projection_version' => $applied?->applied_at?->utc()->toIso8601String()
-                ?? $busy->max('updated_at')?->utc()->toIso8601String(),
+            'projection_version' => $projectionVersion?->utc()->toIso8601String(),
             'external_snapshot_id' => $applied?->external_availability_snapshot_id,
             'external_stale' => $applied?->snapshot?->isStale() ?? false,
             'busy' => $busyRows,
