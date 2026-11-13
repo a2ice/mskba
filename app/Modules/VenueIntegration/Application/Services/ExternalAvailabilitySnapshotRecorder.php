@@ -131,7 +131,7 @@ final class ExternalAvailabilitySnapshotRecorder
                 if ($start === false || $end === false
                     || $start->format('Y-m-d H:i') !== "{$date} {$time}"
                     || $end->format('Y-m-d H:i') !== "{$endDate} {$slot['ends_at']}"
-                    || $start->diffInMinutes($end) !== 30) {
+                    || $end->getTimestamp() - $start->getTimestamp() !== 1800) {
                     throw new RuntimeException("Снимок {$date}: слот {$time} не соответствует 30 минутам.");
                 }
 
