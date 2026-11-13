@@ -27,3 +27,24 @@
 }
 .app-appearance-settings button { justify-self:start; }
 .app-appearance-settings [role="status"] { color:var(--muted); min-height:20px; font-size:14px; }
+
+
+/* Account settings: compact paired controls, using the shared themed selects. */
+.app-settings-panel.app-appearance-settings { max-width:none; padding:24px; margin-bottom:16px; }
+.app-settings-panel__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+.app-settings-panel.app-appearance-settings form { max-width:none; margin-top:0; }
+.app-settings-panel__field { min-width:0; display:grid; align-content:start; gap:10px; }
+.app-settings-panel .app-settings-panel__field .select-control { min-width:0; width:100%; }
+.app-settings-panel__field > .muted { margin:0; font-size:13px; line-height:1.45; }
+.app-settings-panel__field > button { margin-top:2px; }
+.app-settings-panel__notification-form { display:grid; gap:16px; }
+.app-settings-panel__in-app { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 16px; border:1px solid var(--line); border-radius:var(--radius-control); background:var(--surface-raised); }
+.app-settings-panel__in-app strong { font-size:14px; }
+.app-settings-panel__in-app p { margin:4px 0 0; font-size:13px; }
+.app-settings-panel__enabled { color:var(--accent); font-size:12px; font-weight:700; white-space:nowrap; }
+.app-settings-panel__contact { min-height:38px; overflow-wrap:anywhere; }
+.app-settings-panel__notification-form > button { justify-self:start; }
+@media (max-width:700px) {
+    .app-settings-panel__grid { grid-template-columns:minmax(0,1fr); gap:20px; }
+    .app-settings-panel__in-app { align-items:flex-start; flex-wrap:wrap; }
+}

@@ -63,6 +63,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileControll
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountNotificationSettingsController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ConfirmPlayerProfileController;
@@ -1061,6 +1062,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/settings/transfer-request-privacy', UpdateWalletTransferRequestPrivacyController::class)
             ->middleware('throttle:15,1')
             ->name('account.settings.transfer-request-privacy.update');
+        Route::put('/settings/notifications', UpdateAccountNotificationSettingsController::class)
+            ->middleware('throttle:12,1')
+            ->name('account.settings.notifications.update');
         Route::put('/settings/privacy', UpdateAccountPrivacySettingsController::class)
             ->middleware('throttle:20,1')
             ->name('account.settings.privacy.update');

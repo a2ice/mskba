@@ -1,7 +1,7 @@
 // One realtime unread count for the shared avatar and both account sidebars.
 // The backend is authoritative; the normal sync endpoint heals reconnects,
 // notification reads in other tabs and temporarily unavailable Reverb.
-import { subscribePrivate } from '../../../js/realtime.js';
+import { subscribePrivate, realtimeState } from '../../../js/realtime.js';
 import { createNotificationToastDock } from './notification-toasts.js';
 import { createNotificationPopover, isMessagesPage, isVisibleCurrentThreadToast } from './notification-popover.js';
 
@@ -122,4 +122,16 @@ if (header) {
 
     // Also pick up notifications delivered between HTML rendering and the WS subscription.
     void synchronize();
+
+    // A tab that stays open must still receive toasts if Reverb is unavailable
+    // or a private subscription silently drops events. Keep the server as the
+    // source of truth while avoiding polling background tabs aggressively.
+    let fallbackTick = 0;
+    window.setInterval(() => {
+        if (document.hidden) return;
+        fallbackTick += 1;
+        if (realtimeState() !== 'connected' || fallbackTick % 4 === 0) {
+            void synchronize();
+        }
+    }, 15000);
 }

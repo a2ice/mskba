@@ -54,6 +54,28 @@ final class UserNotificationEmailDeliveryTest extends TestCase
         ]);
     }
 
+    public function test_verified_secondary_email_is_used_when_primary_email_is_unverified(): void
+    {
+        Mail::fake();
+        [$user, $email] = $this->userWithEmail(UserMessengerNotificationPreferenceEnum::ALL);
+        Contact::query()->where('contactable_id', $user->id)->where('value', $email)
+            ->update(['is_primary' => false]);
+        Contact::query()->create([
+            'contactable_type' => 'user',
+            'contactable_id' => $user->id,
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'unverified-'.$user->id.'@example.test',
+            'is_primary' => true,
+            'verified_at' => null,
+        ]);
+        $notification = $this->notification($user);
+
+        (new SendUserNotificationEmailJob($notification->id))->handle();
+
+        Mail::assertSent(UserNotificationMail::class, fn (UserNotificationMail $mail): bool => $mail->hasTo($email));
+        Mail::assertNotSent(UserNotificationMail::class, fn (UserNotificationMail $mail): bool => $mail->hasTo('unverified-'.$user->id.'@example.test'));
+    }
+
     /** @return array{User, string} */
     private function userWithEmail(UserMessengerNotificationPreferenceEnum $preference): array
     {

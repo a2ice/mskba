@@ -202,6 +202,7 @@ final class UserWalletTransferTest extends TestCase
         $this->assertSame(UserNotificationTypeEnum::FINANCE, $notification->type);
         $this->assertStringContainsString('@sender', $notification->body);
         $this->assertStringContainsString('125,50 ₽', $notification->body);
+        $this->assertSame('system', $notification->payload['delivery_category']);
 
         $this->actingAs($sender)
             ->get(route('account.wallet'))
