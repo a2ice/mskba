@@ -6,6 +6,7 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueIntegration\Domain\Models\ExternalAvailabilitySlot;
 use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
@@ -46,6 +47,7 @@ final class AppliedImportedCourtAvailability
         VenueCourt $court,
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
+        ?CarbonInterface $asOf = null,
     ): void {
         $import = $this->activeFor($court);
         if ($import === null) {
@@ -53,7 +55,7 @@ final class AppliedImportedCourtAvailability
         }
 
         $snapshot = $import->snapshot;
-        if ($snapshot->isStale()) {
+        if ($snapshot->isStale($asOf)) {
             throw new InvalidArgumentException('Расписание FindSport устарело: сначала обновите и примените снимок.');
         }
 
