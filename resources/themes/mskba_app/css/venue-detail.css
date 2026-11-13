@@ -273,3 +273,118 @@
     .app-venue-day-dialog__footer{flex-wrap:wrap}
     .app-venue-day-dialog__footer>.button{width:100%}
 }
+
+
+/* Day cards: weekday/weekend distinction and read-only occupancy indicator. */
+.app-venue-schedule__entry{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+}
+.app-venue-schedule__entry>.app-venue-schedule__day{flex:1 1 auto}
+.app-venue-schedule__date.is-weekend{color:var(--slot-booked-color,#d54747)}
+.app-venue-schedule__occupancy{
+    display:block;
+    flex:none;
+    height:3px;
+    width:100%;
+    margin-top:4px;
+    border-radius:999px;
+    overflow:hidden;
+    background:var(--slot-available-color,#2da96a);
+}
+.app-venue-schedule__occupancy-booked{
+    display:block;
+    height:100%;
+    background:var(--slot-booked-color,#d54747);
+    border-radius:inherit;
+    transition:width .18s ease;
+}
+.app-venue-schedule__occupancy.is-unknown{
+    background:var(--line,#c6cbd2);
+}
+.app-venue-schedule__occupancy.is-unknown .app-venue-schedule__occupancy-booked{
+    display:none;
+}
+
+/* The empty info region is reserved for future day offers. Normal refresh
+   diagnostics live in the heading title; only failures are announced here. */
+.app-venue-day-dialog__info{
+    min-height:16px;
+    padding:0 22px 8px;
+    flex:none;
+}
+.app-venue-day-dialog__info .app-venue-day-dialog__status{
+    padding:0;
+    margin:0;
+    font-size:12px;
+    line-height:1.4;
+    color:var(--muted);
+}
+.app-venue-day-dialog__status[hidden]{display:none}
+
+/* One-line intervals flowing in chronological order, wrapping by viewport. */
+.app-venue-day-dialog__grid{
+    display:flex;
+    flex-wrap:wrap;
+    align-content:flex-start;
+    gap:8px;
+}
+.app-venue-day-dialog__slot{
+    flex:1 1 225px;
+    max-width:100%;
+    display:flex;
+    flex-flow:row nowrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:7px;
+    min-height:49px;
+    padding:9px 10px;
+    opacity:1;
+    border:1px solid var(--line);
+    border-radius:10px;
+}
+.app-venue-day-dialog__slot>strong,
+.app-venue-day-dialog__slot>span,
+.app-venue-day-dialog__slot>small{
+    white-space:nowrap;
+    flex:none;
+}
+.app-venue-day-dialog__slot>strong{font-size:12px}
+.app-venue-day-dialog__slot>span{font-size:11px}
+.app-venue-day-dialog__slot>small{font-size:11px}
+.app-venue-day-dialog__slot[data-slot-status="available"],
+.app-venue-day-dialog__slot[data-slot-status="available"]:disabled{
+    border-color:var(--slot-available-color,#2da96a);
+    background:color-mix(in srgb,var(--slot-available-color,#2da96a) 6%,var(--surface,#fff));
+}
+.app-venue-day-dialog__slot[data-slot-status="booked"],
+.app-venue-day-dialog__slot[data-slot-status="booked"]:disabled{
+    border-color:var(--slot-booked-color,#d54747);
+    background:color-mix(in srgb,var(--slot-booked-color,#d54747) 6%,var(--surface,#fff));
+}
+.app-venue-day-dialog__slot[data-slot-status="unavailable"],
+.app-venue-day-dialog__slot[data-slot-status="unknown"],
+.app-venue-day-dialog__slot[data-slot-status="unavailable"]:disabled,
+.app-venue-day-dialog__slot[data-slot-status="unknown"]:disabled{
+    border-color:var(--slot-unavailable-color,#9ba4af);
+    background:color-mix(in srgb,var(--slot-unavailable-color,#9ba4af) 7%,var(--surface,#fff));
+}
+.app-venue-day-dialog__slot:disabled{opacity:1;cursor:not-allowed}
+.app-venue-day-dialog__slot[data-slot-status="available"]:not(:disabled):hover{
+    border-color:var(--slot-available-color,#2da96a);
+    background:color-mix(in srgb,var(--slot-available-color,#2da96a) 13%,var(--surface,#fff));
+}
+.app-venue-day-dialog__slot[data-slot-status="available"].is-selected{
+    border-color:var(--slot-available-color,#2da96a);
+    background:color-mix(in srgb,var(--slot-available-color,#2da96a) 15%,var(--surface,#fff));
+    box-shadow:inset 0 0 0 1px var(--slot-available-color,#2da96a);
+}
+@media(max-width:640px){
+    .app-venue-day-dialog__info{padding:0 14px 8px}
+    .app-venue-day-dialog__grid{display:flex;gap:6px}
+    .app-venue-day-dialog__slot{flex-basis:100%;min-height:47px;padding:8px 11px}
+}
+@media(prefers-reduced-motion:reduce){
+    .app-venue-schedule__occupancy-booked{transition:none}
+}
