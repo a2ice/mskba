@@ -260,3 +260,180 @@ document.addEventListener('click', event => {
     const button = event.target.closest?.('[data-venue-interest-action]');
     if (button && playersDialog?.open) playersDialog.close();
 }, true);
+
+
+// Read-only daily availability with a contiguous selection that proceeds
+// through MSKBA's existing quote/request flow. A server-wide five-minute
+// FindSport cooldown is enforced by the API, never by this browser code.
+const dayBookingDialog = document.querySelector('[data-venue-day-dialog]');
+if (dayBookingDialog) {
+    const status = dayBookingDialog.querySelector('[data-venue-day-status]');
+    const updated = dayBookingDialog.querySelector('[data-venue-day-updated]');
+    const grid = dayBookingDialog.querySelector('[data-venue-day-slots]');
+    const form = dayBookingDialog.querySelector('[data-venue-day-booking-form]');
+    const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
+    const summary = dayBookingDialog.querySelector('[data-venue-day-summary]');
+    const minimum = dayBookingDialog.querySelector('[data-venue-day-minimum]');
+    const currency = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 2});
+    let response = null;
+    let selection = [];
+    let loading = null;
+
+    const selectedIndexesAreContiguous = () => selection.every((index, i) =>
+        i === 0 || index === selection[i - 1] + 1);
+    function redrawSelection() {
+        const step = response?.step_minutes ?? 30;
+        const required = response?.minimum_minutes ?? 60;
+        const duration = selection.length * step;
+        const enough = duration >= required
+            && duration <= (response?.maximum_minutes ?? 0)
+            && selectedIndexesAreContiguous();
+        const canBook = !!response?.booking_enabled && enough;
+        bookingButton.disabled = !canBook;
+        grid.querySelectorAll('button[data-slot-index]').forEach(button => {
+            const active = selection.includes(Number(button.dataset.slotIndex));
+            button.classList.toggle('is-selected', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+        if (selection.length === 0) {
+            summary.textContent = 'Выберите свободные интервалы';
+        } else {
+            const start = response.slots[selection[0]];
+            const end = response.slots[selection.at(-1)];
+            const total = selection.reduce((sum, index) =>
+                sum + (response.slots[index].price_minor || 0), 0);
+            summary.textContent = [start.starts_at, '–', end.ends_at, '·',
+                duration, 'мин ·', currency.format(total / 100), '₽'].join(' ');
+        }
+        minimum.textContent = response?.booking_enabled
+            ? 'Минимум ' + required + ' мин · непрерывные слоты'
+            : 'Бронирование пока не включено для этого зала';
+        if (canBook) {
+            form.querySelector('[data-venue-day-court]').value = String(response.venue_court_id);
+            form.querySelector('[data-venue-day-start]').value =
+                response.date + 'T' + response.slots[selection[0]].starts_at;
+            form.querySelector('[data-venue-day-duration]').value = String(duration);
+        }
+    }
+
+    function renderSlots(data) {
+        response = data;
+        selection = [];
+        grid.replaceChildren();
+        const labels = {
+            available: 'Свободно',
+            booked: 'Занято',
+            unavailable: 'Недоступно',
+            unknown: 'Нет данных',
+        };
+        for (const [index, slot] of data.slots.entries()) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'app-venue-day-dialog__slot';
+            cell.dataset.slotIndex = String(index);
+            cell.dataset.slotStatus = slot.status;
+            cell.disabled = !slot.selectable;
+            cell.setAttribute('aria-pressed', 'false');
+            const times = document.createElement('strong');
+            times.textContent = slot.starts_at + '–' + slot.ends_at;
+            const state = document.createElement('span');
+            state.textContent = labels[slot.status] || 'Неизвестно';
+            const price = document.createElement('small');
+            price.textContent = slot.price_minor === null
+                ? 'Цена не указана'
+                : currency.format(slot.price_minor / 100) + ' ₽';
+            cell.append(times, state, price);
+            grid.appendChild(cell);
+        }
+        updated.hidden = !data.last_updated_at;
+        updated.textContent = data.last_updated_at
+            ? 'Данные FindSport от ' + data.last_updated_at + ' (МСК)'
+                + (data.stale ? ' · данные устарели' : '')
+            : '';
+        const message = data.refresh_message
+            || (data.refresh_state === 'updated' ? 'Расписание обновлено из FindSport.'
+                : data.refresh_state === 'cached' ? 'Используются данные последнего обновления (не чаще раза в 5 минут).'
+                : data.refresh_state === 'updating' ? 'Обновление уже выполняется. Показаны последние данные.'
+                : 'Выберите последовательные свободные интервалы.');
+        status.textContent = message;
+        redrawSelection();
+    }
+
+    grid.addEventListener('click', event => {
+        const button = event.target.closest('button[data-slot-index]');
+        if (!button || button.disabled || !response) return;
+        const index = Number(button.dataset.slotIndex);
+        if (selection.includes(index)) {
+            if (selection.length === 1) selection = [];
+            else if (index === selection[0]) selection.shift();
+            else if (index === selection.at(-1)) selection.pop();
+            else selection = [index];
+        } else if (selection.length && index === selection[0] - 1) {
+            selection.unshift(index);
+        } else if (selection.length && index === selection.at(-1) + 1) {
+            selection.push(index);
+        } else {
+            selection = [index];
+        }
+        if (selection.length * response.step_minutes > response.maximum_minutes) {
+            selection = [index];
+        }
+        redrawSelection();
+    });
+
+    const close = () => {
+        loading?.abort();
+        loading = null;
+        if (dayBookingDialog.open) dayBookingDialog.close();
+    };
+    dayBookingDialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
+        button.addEventListener('click', close));
+    dayBookingDialog.addEventListener('click', event => {
+        if (event.target === dayBookingDialog) close();
+    });
+    dayBookingDialog.addEventListener('close', () => {
+        loading?.abort();
+        loading = null;
+        response = null;
+        selection = [];
+        bookingButton.disabled = true;
+    });
+
+    document.querySelectorAll('[data-venue-day-open]').forEach(button => {
+        button.addEventListener('click', async () => {
+            if (dayBookingDialog.open) close();
+            loading = new AbortController();
+            const signal = loading.signal;
+            response = null;
+            selection = [];
+            bookingButton.disabled = true;
+            grid.replaceChildren();
+            updated.hidden = true;
+            status.textContent = 'Проверяем расписание и актуальность данных…';
+            dayBookingDialog.querySelector('[data-venue-day-title]').textContent =
+                'Расписание · ' + button.querySelector('strong')?.textContent;
+            dayBookingDialog.showModal();
+            try {
+                const url = new URL(dayBookingDialog.dataset.dayUrl, window.location.href);
+                url.searchParams.set('date', button.dataset.dayDate);
+                if (dayBookingDialog.dataset.courtId) {
+                    url.searchParams.set('venue_court_id', dayBookingDialog.dataset.courtId);
+                }
+                const result = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: {'Accept': 'application/json'},
+                    cache: 'no-store',
+                    signal,
+                });
+                const data = await result.json();
+                if (!result.ok) throw new Error(data.message || 'Не удалось загрузить расписание');
+                if (signal.aborted || !dayBookingDialog.open) return;
+                renderSlots(data);
+            } catch (error) {
+                if (signal.aborted || !dayBookingDialog.open) return;
+                status.textContent = error.message || 'Не удалось получить расписание.';
+                bookingButton.disabled = true;
+            }
+        });
+    });
+}
