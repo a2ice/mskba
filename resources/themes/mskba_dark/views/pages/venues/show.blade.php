@@ -262,8 +262,12 @@
                             <div class="venue-occupancy-calendar" aria-label="Занятость площадки на девять дней">
                                 @foreach($venue->occupancyDays as $dayIndex => $day)
                                     @php
-                                        $slotCount = count($day['slots']);
-                                        $dayStateLabel = match ($day['state']) {
+                                        $slotCount = isset($day['externalSnapshot'])
+                                            ? ($day['externalBusyCount'] ?? 0) + count($day['slots'])
+                                            : count($day['slots']);
+                                        $dayStateLabel = isset($day['externalSnapshot'])
+                                            ? 'расписание FindSport: наблюдаемая занятость, не гарантирует свободную бронь'
+                                            : match ($day['state']) {
                                             'confirmed' => 'есть подтверждённые бронирования',
                                             'tentative' => 'есть неподтверждённые бронирования',
                                             default => 'свободно',
@@ -318,6 +322,18 @@
                     <div class="venue-occupancy-modal__days">
                         @foreach($venue->occupancyDays as $dayIndex => $day)
                             <section data-venue-occupancy-panel data-day-index="{{ $dayIndex }}" data-day-date="{{ $day['date'] }}" @if($dayIndex !== 0) hidden @endif>
+                                @if(isset($day['externalSnapshot']))
+                                    <p class="venue-external-snapshot-note" role="status">
+                                        FindSport · снимок #{{ $day['externalSnapshot']['snapshotId'] }}
+                                        от {{ $day['externalSnapshot']['observedAt'] }} (МСК).
+                                        @if($day['externalSnapshot']['stale'])
+                                            Данные устарели. Требуется новое получение расписания.
+                                        @else
+                                            Наблюдаемые данные, не подтверждённая бронь.
+                                        @endif
+                                        Бронирование через этот тестовый календарь пока недоступно.
+                                    </p>
+                                @endif
                                 <div class="venue-rental-timeline" data-venue-rental-timeline>
                                 @forelse($day['timeline'] as $timelineItem)
                                     @if($timelineItem['kind'] === 'occupied')
@@ -344,6 +360,26 @@
                                                         </span>
                                                     </span>
                                                 @endforeach
+                                            </div>
+                                        </article>
+                                    @elseif($timelineItem['kind'] === 'external')
+                                        <article
+                                            @class([
+                                                'venue-occupancy-slot',
+                                                'venue-occupancy-slot--external',
+                                                'is-occupied' => $timelineItem['status'] === 'booked',
+                                                'is-unknown' => $timelineItem['status'] === 'unknown',
+                                            ])
+                                            aria-label="{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}: {{ $timelineItem['statusLabel'] }}"
+                                        >
+                                            <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
+                                            <div class="venue-occupancy-slot__external-details">
+                                                <strong>{{ $timelineItem['statusLabel'] }}</strong>
+                                                @if($timelineItem['price_minor'] !== null)
+                                                    <span>{{ number_format($timelineItem['price_minor'] / 100, 0, ',', ' ') }} ₽ / 30 мин</span>
+                                                @else
+                                                    <span>Цена не определена</span>
+                                                @endif
                                             </div>
                                         </article>
                                     @else
