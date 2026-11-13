@@ -10,12 +10,16 @@ use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
 final class VenueEventAvailability
 {
-    public function __construct(private readonly EffectiveVenueHours $hours) {}
+    public function __construct(
+        private readonly EffectiveVenueHours $hours,
+        private readonly AppliedImportedCourtAvailability $importedAvailability,
+    ) {}
 
     public function resolveEndsAt(
         Venue $venue,
@@ -171,6 +175,10 @@ final class VenueEventAvailability
             if (! $insideWorkingInterval) {
                 throw new InvalidArgumentException('Выбранное время не входит в часы работы площадки.');
             }
+        }
+
+        if ($court !== null) {
+            $this->importedAvailability->assertAvailable($court, $startsAt, $endsAt);
         }
 
         $hasOverlap = $checkBookings && VenueBooking::query()
