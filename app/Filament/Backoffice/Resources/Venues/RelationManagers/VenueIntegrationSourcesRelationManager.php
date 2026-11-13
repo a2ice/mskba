@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permissio
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
 use App\Modules\VenueIntegration\Infrastructure\Adapters\FindSportReadOnlyAdapter;
+use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
+use App\Modules\VenueIntegration\Domain\Models\ExternalAvailabilitySnapshot;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
@@ -184,6 +186,55 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                             'filament.backoffice.venue-integrations.findsport-preview',
                             compact('report', 'error'),
                         );
+                    }),
+                Action::make('saveFindSportSnapshot')->label('Сохранить снимок')
+                    ->icon('heroicon-o-circle-stack')
+                    ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
+                        && $record->adapter_key === 'api'
+                        && str_starts_with((string) $record->endpoint_url, 'https://findsport.ru/playground/'))
+                    ->requiresConfirmation()
+                    ->modalHeading('Сохранить наблюдаемое расписание')
+                    ->modalDescription('Данные FindSport будут сохранены отдельным историческим снимком. Время работы, цены, существующие заявки и бронирования MSKBA не меняются. Автоматический опрос не запускается.')
+                    ->action(function (VenueIntegrationSource $record): void {
+                        abort_unless($this->canExecute(), 403);
+                        try {
+                            $report = app(FindSportReadOnlyAdapter::class)->preview(
+                                $record, auth('web')->user(),
+                            );
+                            $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+                                $record, auth('web')->user(), $report,
+                            );
+                            Notification::make()->success()
+                                ->title("Снимок #{$snapshot->id} сохранён")
+                                ->body($snapshot->complete ? 'Все семь дней полные.' : 'Снимок частичный: неизвестные интервалы сохранены отдельно.')
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            report($exception);
+                            Notification::make()->danger()
+                                ->title('Не удалось сохранить снимок')
+                                ->body($exception->getMessage())->send();
+                        }
+                    }),
+                Action::make('viewFindSportSnapshot')->label('Сохранённые данные')
+                    ->icon('heroicon-o-archive-box')
+                    ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
+                        && ExternalAvailabilitySnapshot::query()
+                            ->where('venue_integration_source_id', $record->id)->exists())
+                    ->modalHeading('История наблюдений FindSport')
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalContent(function (VenueIntegrationSource $record): View {
+                        abort_unless($this->canExecute(), 403);
+
+                        $history = ExternalAvailabilitySnapshot::query()
+                            ->where('venue_integration_source_id', $record->id)
+                            ->orderByDesc('observed_at')->orderByDesc('id')
+                            ->limit(10)->get();
+                        $latest = $history->first();
+                        $latest?->load(['slots' => fn ($query) => $query->orderBy('starts_at')]);
+
+                        return view('filament.backoffice.venue-integrations.findsport-snapshots',
+                            compact('history', 'latest'));
                     }),
                 Action::make('editIntegrationSource')->label('Изменить')
                     ->icon('heroicon-o-pencil-square')
