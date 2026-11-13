@@ -75,8 +75,10 @@ final class PromotionResource extends Resource
                         ->visible(fn (Get $get): bool => $get('type') === PromotionType::REWARDABLE->value)
                         ->helperText('Один Reward на одну акцию. Для нового действия сначала подключить соответствующий механизм Rewards.'),
                     Toggle::make('is_enabled')->label('Акция включена')->default(false),
-                    TextInput::make('title')->label('Заголовок')->required()->maxLength(200)->columnSpanFull(),
-                    Textarea::make('description')->label('Основное описание')->rows(3)->columnSpanFull(),
+                    TextInput::make('title')->label('Заголовок')->required()->maxLength(200)->columnSpanFull()
+                        ->helperText('Можно использовать {amount}, {amount_number} и {currency}. Сумма подставляется из действующего вознаграждения.'),
+                    Textarea::make('description')->label('Основное описание')->rows(3)->columnSpanFull()
+                        ->helperText('Для динамической суммы используйте {amount}, например «Получите {amount} бонусами».')
                     TextInput::make('cta_label')->label('Текст кнопки')->maxLength(120),
                     TextInput::make('cta_url')->label('Внутренняя ссылка')->maxLength(1000)
                         ->regex('/\A\/(?!\/)[^\s]*\z/D')
@@ -105,10 +107,12 @@ final class PromotionResource extends Resource
                                 ])
                                 ->required()->distinct()->native(false),
                             TextInput::make('title_override')->label('Заголовок для этого места')
-                                ->maxLength(200)->placeholder('Наследуется от акции'),
+                                ->maxLength(200)->placeholder('Наследуется от акции')
+                                ->helperText('Допускаются {amount}, {amount_number}, {currency}.'),
                             Textarea::make('description_override')->label('Описание для этого места')
                                 ->rows(2)->columnSpanFull()
-                                ->placeholder('Наследуется от акции'),
+                                ->placeholder('Наследуется от акции')
+                                ->helperText('Можно подставить {amount} для данного места показа.'),
                         ])
                         ->columns(2)->columnSpanFull()->defaultItems(0)->collapsible()
                         ->addActionLabel('Добавить место показа'),
