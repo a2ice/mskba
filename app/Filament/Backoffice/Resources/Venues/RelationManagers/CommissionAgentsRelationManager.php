@@ -7,7 +7,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
+use App\Modules\VenueBooking\Application\Services\PortalCommissionScopes;
 use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
@@ -128,8 +128,8 @@ final class CommissionAgentsRelationManager extends RelationManager
                     ->modalHeading('Комиссия площадки')
                     ->modalDescription(function (): string {
                         $policy = $this->getOwnerRecord()->commissionPolicy;
-                        $global = PortalCommissionPolicy::query()->where('entity_type', 'venue')
-                            ->where('action_key', 'rental')->first();
+                        $resolved = PortalCommissionScopes::resolve('venue', 'rental');
+                        $global = $resolved['policy'];
                         $mode = $policy?->mode_override ?? $global?->mode ?? 'none';
                         $value = $policy?->mode_override !== null
                             ? $policy->value_override : ($global?->value ?? 0);
@@ -138,7 +138,8 @@ final class CommissionAgentsRelationManager extends RelationManager
                             'fixed' => app(MinorAmountParser::class)->format($value, 'RUB').' ₽',
                             default => '0%',
                         };
-                        $source = $policy?->mode_override !== null ? 'площадка' : 'глобальная ставка';
+                        $source = $policy?->mode_override !== null ? 'площадка'
+                            : ($resolved['source'] === 'scope' ? 'ставка для аренды' : 'общая ставка');
                         return 'Текущая комиссия MSKBA: '.$label.' ('.$source.'). Комиссия агента считается отдельно.';
                     })
                     ->modalWidth(Width::Large)
