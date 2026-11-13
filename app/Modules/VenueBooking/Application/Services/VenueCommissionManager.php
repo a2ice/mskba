@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueCourtCommissionPolicy;
+use App\Modules\VenueBooking\Application\Services\PortalCommissionScopes;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,14 +26,35 @@ final readonly class VenueCommissionManager
 
     public function setPortal(User $actor, string $mode, string $input = '0', string $currency = 'RUB'): PortalCommissionPolicy
     {
-        $actor = $this->superadmin($actor);
-        [$mode, $value] = $this->parse($mode, $input, $currency, false);
+        return $this->savePortalPolicy($actor, PortalCommissionScopes::GLOBAL_ENTITY,
+            PortalCommissionScopes::GLOBAL_ACTION, $mode, $input, $currency, false);
+    }
 
-        return DB::transaction(static function () use ($actor, $mode, $value, $currency): PortalCommissionPolicy {
+    public function setScoped(
+        User $actor, string $entityType, string $actionKey,
+        string $mode, string $input = '0', string $currency = 'RUB',
+    ): PortalCommissionPolicy {
+        $known = collect(PortalCommissionScopes::catalog())->contains(
+            static fn (array $scope): bool =>
+                $scope['entity_type'] === $entityType && $scope['action_key'] === $actionKey,
+        );
+        abort_unless($known, 404);
+
+        return $this->savePortalPolicy($actor, $entityType, $actionKey, $mode, $input, $currency, true);
+    }
+
+    private function savePortalPolicy(
+        User $actor, string $entityType, string $actionKey,
+        string $mode, string $input, string $currency, bool $allowInherit,
+    ): PortalCommissionPolicy {
+        $actor = $this->superadmin($actor);
+        [$mode, $value] = $this->parse($mode, $input, $currency, $allowInherit);
+
+        return DB::transaction(static function () use ($actor, $mode, $value, $currency, $entityType, $actionKey): PortalCommissionPolicy {
             $policy = PortalCommissionPolicy::query()
-                ->where('entity_type', 'venue')->where('action_key', 'rental')
+                ->where('entity_type', $entityType)->where('action_key', $actionKey)
                 ->lockForUpdate()->first()
-                ?? new PortalCommissionPolicy(['entity_type' => 'venue', 'action_key' => 'rental']);
+                ?? new PortalCommissionPolicy(['entity_type' => $entityType, 'action_key' => $actionKey]);
 
             $policy->fill([
                 'mode' => $mode,
