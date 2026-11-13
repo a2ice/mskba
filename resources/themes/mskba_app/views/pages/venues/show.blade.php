@@ -154,11 +154,11 @@
     </div>
 
     @foreach($venuePromotions as $promotion)
-        <section class="panel app-venue-block" aria-label="{{ $promotion['title'] }}">
+        <section class="panel app-venue-block app-venue-promotion" aria-label="{{ $promotion['title'] }}">
             <header class="app-venue-block__header"><h2>{{ $promotion['title'] }}</h2></header>
             @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
-            @if($promotion['amount_minor'] !== null)
-                <p>Бонус за выполненное условие: <strong>{{ number_format($promotion['amount_minor'] / 100, 0, ',', ' ') }} ₽</strong></p>
+            @if($promotion['amount_caption'])
+                <p class="app-venue-promotion__amount">{{ $promotion['amount_caption'] }}</p>
             @endif
             @if($promotion['cta_url'])
                 <a class="button secondary" href="{{ $promotion['cta_url'] }}">{{ $promotion['cta_label'] ?: 'Подробнее' }}</a>
@@ -369,8 +369,8 @@
             <div class="app-venue-day-dialog__promotion" aria-label="{{ $promotion['title'] }}">
                 <strong>{{ $promotion['title'] }}</strong>
                 @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
-                @if($promotion['amount_minor'] !== null)
-                    <p>Бонус за выполненное условие: {{ number_format($promotion['amount_minor'] / 100, 0, ',', ' ') }} ₽</p>
+                @if($promotion['amount_caption'])
+                    <p class="app-venue-day-dialog__promotion-amount">{{ $promotion['amount_caption'] }}</p>
                 @endif
             </div>
         @endforeach

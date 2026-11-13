@@ -4,6 +4,7 @@ namespace App\Modules\Promotions\Application\Queries;
 
 use App\Modules\Promotions\Domain\Enums\PromotionType;
 use App\Modules\Promotions\Domain\Models\Promotion;
+use App\Modules\Promotions\Application\Services\PromotionTextRenderer;
 use App\Modules\Rewards\Application\Services\RewardMechanismRegistry;
 use App\Modules\Rewards\Domain\Models\VenueRewardOverride;
 
@@ -44,6 +45,7 @@ final readonly class ResolveActivePromotions
 
             $amountMinor = null;
             $rewardCode = null;
+            $amountCaption = null;
 
             if ($promotion->type === PromotionType::REWARDABLE) {
                 $reward = $promotion->reward;
@@ -60,6 +62,8 @@ final readonly class ResolveActivePromotions
 
                 $amountMinor = (int) $version->amount_minor;
                 $rewardCode = (string) $reward->code;
+                $amountCaption = $reward->amount_caption_template
+                    ?? ($rewardCode === 'venue_rental_completed' ? 'Кешбэк: {amount}' : 'Бонус: {amount}');
 
                 if ($rewardCode === 'venue_rental_completed' && $venueId !== null) {
                     $override = VenueRewardOverride::query()
@@ -90,9 +94,10 @@ final readonly class ResolveActivePromotions
                 'type' => $promotion->type->value,
                 'reward_code' => $rewardCode,
                 'code' => $rewardCode ?? $promotion->code,
-                'title' => $placement?->title_override ?? $promotion->title,
-                'description' => $placement?->description_override ?? $promotion->description,
+                'title' => PromotionTextRenderer::render($placement?->title_override ?? $promotion->title, $amountMinor),
+                'description' => PromotionTextRenderer::render($placement?->description_override ?? $promotion->description, $amountMinor),
                 'amount_minor' => $amountMinor,
+                'amount_caption' => PromotionTextRenderer::render($amountCaption, $amountMinor),
                 'cta_label' => $promotion->cta_label,
                 'cta_url' => $promotion->cta_url,
             ];

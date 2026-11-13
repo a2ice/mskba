@@ -83,6 +83,43 @@ final class PromotionVisibilityTest extends TestCase
         $this->assertNull($find());
     }
 
+    public function test_copy_interpolates_active_amount_and_venue_override_in_every_placement(): void
+    {
+        $reward = Reward::query()->where('code', 'venue_rental_completed')->firstOrFail();
+        $reward->update([
+            'is_enabled' => true,
+            'amount_caption_template' => 'Вернём {amount} бонусами',
+        ]);
+        $venue = Venue::factory()->create();
+        $promotion = Promotion::query()->where('code', 'reward_venue_rental_completed')->firstOrFail();
+        $promotion->update([
+            'title' => 'Арендуй зал — получи {amount}',
+            'description' => 'Возврат {amount_number} {currency} после завершения',
+        ]);
+
+        $find = fn (string $placement) => collect(
+            app(ResolveActivePromotions::class)->forPlacement($placement, (int) $venue->id)
+        )->firstWhere('reward_code', 'venue_rental_completed');
+
+        foreach (['venue_page', 'venue_slots', 'avatar_topup'] as $placement) {
+            $offer = $find($placement);
+            $this->assertSame('Арендуй зал — получи 100 ₽', $offer['title']);
+            $this->assertSame('Возврат 100 ₽ после завершения', $offer['description']);
+            $this->assertSame('Вернём 100 ₽ бонусами', $offer['amount_caption']);
+        }
+
+        VenueRewardOverride::query()->create([
+            'venue_id' => $venue->id,
+            'reward_id' => $reward->id,
+            'mode' => 'custom',
+            'amount_minor' => 20000,
+        ]);
+
+        $this->assertSame('Арендуй зал — получи 200 ₽', $find('venue_page')['title']);
+        $this->assertSame('Вернём 200 ₽ бонусами', $find('venue_slots')['amount_caption']);
+        $this->assertSame('Возврат 200 ₽ после завершения', $find('venue_slots')['description']);
+    }
+
     public function test_rental_bonus_is_hidden_until_enabled_and_venue_overrides_apply(): void
     {
         $reward = Reward::query()->where('code', 'venue_rental_completed')->firstOrFail();
