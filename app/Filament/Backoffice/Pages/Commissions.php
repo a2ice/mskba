@@ -138,8 +138,9 @@ final class Commissions extends Page implements HasTable
                     ->formatStateUsing(fn (PortalCommissionPolicy $record): string =>
                         $this->scopeLabel($record, 'action_label')),
                 TextColumn::make('mode')->label('Настройка')
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        null => 'Наследование',
+                    ->state(fn (PortalCommissionPolicy $record): string => $record->mode ?? 'inherit')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'inherit' => 'Наследование',
                         'percent' => 'Собственная · %',
                         'fixed' => 'Собственная · ₽',
                         default => '0%',
