@@ -660,8 +660,17 @@ jobs:
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
   activate_dev_rental_cashback:
-    needs: test
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.activate_dev_rental_cashback && github.ref == 'refs/heads/dev' }}
+    needs: [test, deploy_dev]
+    # One-time guarded activation on a specially named merge commit; manual dispatch
+    # remains possible only with deploy_dev_now=true. Never before a green dev deploy.
+    if: >-
+      ${{ github.ref == 'refs/heads/dev'
+          && needs.test.result == 'success'
+          && needs.deploy_dev.result == 'success'
+          && (
+            (github.event_name == 'push' && github.event.head_commit.message == 'release(dev): activate rental cashback after PR #707')
+            || (github.event_name == 'workflow_dispatch' && inputs.activate_dev_rental_cashback)
+          ) }}
     runs-on: ubuntu-latest
     environment: development
     timeout-minutes: 10
