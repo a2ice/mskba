@@ -323,15 +323,17 @@
 }
 .app-venue-day-dialog__status[hidden]{display:none}
 
-/* One-line intervals flowing in chronological order, wrapping by viewport. */
+/* One slot per full-width row, in chronological order on every screen.
+   Each row itself contains time, availability and price on one line. */
 .app-venue-day-dialog__grid{
-    display:flex;
-    flex-wrap:wrap;
-    align-content:flex-start;
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    align-content:start;
     gap:8px;
 }
 .app-venue-day-dialog__slot{
-    flex:1 1 225px;
+    width:100%;
+    min-width:0;
     max-width:100%;
     display:flex;
     flex-flow:row nowrap;
@@ -382,8 +384,8 @@
 }
 @media(max-width:640px){
     .app-venue-day-dialog__info{padding:0 14px 8px}
-    .app-venue-day-dialog__grid{display:flex;gap:6px}
-    .app-venue-day-dialog__slot{flex-basis:100%;min-height:47px;padding:8px 11px}
+    .app-venue-day-dialog__grid{grid-template-columns:minmax(0,1fr);gap:6px}
+    .app-venue-day-dialog__slot{min-height:47px;padding:8px 11px}
 }
 @media(prefers-reduced-motion:reduce){
     .app-venue-schedule__occupancy-booked{transition:none}
