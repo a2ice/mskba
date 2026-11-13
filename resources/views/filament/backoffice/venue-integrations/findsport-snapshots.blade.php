@@ -6,6 +6,17 @@
             $grouped = $latest->slots->groupBy(fn ($slot) => $slot->local_date->format('Y-m-d'));
             $diagnostics = $latest->diagnostic['days'] ?? [];
         @endphp
+        @if($appliedImport !== null)
+            <p class="text-sm">
+                <strong>Применено к штатному расписанию MSKBA:</strong>
+                снимок #{{ $appliedImport->external_availability_snapshot_id }},
+                зал #{{ $appliedImport->venue_court_id }},
+                {{ $appliedImport->first_date->format('d.m.Y') }}–{{ $appliedImport->last_date->format('d.m.Y') }}.
+                Внешняя занятость учитывается без создания фиктивных мероприятий.
+            </p>
+        @else
+            <p class="text-sm">Снимки сохранены, но ещё не применены к расписанию MSKBA.</p>
+        @endif
         <div class="space-y-1 text-sm">
             <p><strong>Последний снимок #{{ $latest->id }}</strong> · {{ $latest->provider }} · внешний зал #{{ $latest->external_court_id }}</p>
             <p>Получен {{ $latest->observed_at->setTimezone($latest->timezone)->format('d.m.Y H:i:s') }} ({{ $latest->timezone }})</p>

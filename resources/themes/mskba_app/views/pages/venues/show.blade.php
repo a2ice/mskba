@@ -60,9 +60,6 @@
     $activityDays = collect($venue->occupancyDays)
         ->filter(fn (array $day): bool => count($day['slots'] ?? []) > 0)
         ->values();
-    $externalDays = collect($venue->occupancyDays)
-        ->filter(fn (array $day): bool => isset($day['externalSnapshot']))
-        ->values();
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
@@ -263,57 +260,6 @@
                     </div>
                 @else
                     <p class="muted">Расписание работы площадки ещё не установлено.</p>
-                @endif
-                @if($externalDays->isNotEmpty())
-                    @php
-                        $sourceInfo = $externalDays->first()['externalSnapshot'];
-                    @endphp
-                    <div class="app-venue-external-schedule" data-venue-external-schedule>
-                        <div class="app-venue-external-schedule__intro">
-                            <h3>Занятость и цены · FindSport</h3>
-                            <p>Снимок #{{ $sourceInfo['snapshotId'] }} от {{ $sourceInfo['observedAt'] }} (МСК).
-                                @if($sourceInfo['stale'])
-                                    Данные устарели — требуется обновить снимок в Filament.
-                                @else
-                                    Данные получены недавно.
-                                @endif
-                                Это наблюдаемое расписание, не гарантия свободной брони. Оформление через MSKBA пока не подключено.
-                            </p>
-                        </div>
-                        @foreach($externalDays as $day)
-                            <details class="app-venue-external-schedule__day" @if($loop->first) open @endif>
-                                <summary>
-                                    <strong>{{ $day['label'] ?? $day['date'] }}</strong>
-                                    <span>Занято: {{ $day['externalBusyCount'] ?? 0 }} получасовых интервалов</span>
-                                </summary>
-                                <div class="app-venue-external-schedule__grid">
-                                    @foreach($day['timeline'] as $item)
-                                        @php
-                                            $isExternal = $item['kind'] === 'external';
-                                            $status = $isExternal ? $item['status'] : 'booked';
-                                            $statusLabel = $isExternal ? $item['statusLabel'] : 'Занято (MSKBA)';
-                                        @endphp
-                                        <div @class([
-                                            'app-venue-external-schedule__slot',
-                                            'is-booked' => $status === 'booked',
-                                            'is-available' => $status === 'available',
-                                            'is-unknown' => in_array($status, ['unknown', 'unavailable'], true),
-                                        ])>
-                                            <time>{{ $item['startsAt'] }}–{{ $item['endsAt'] }}</time>
-                                            <strong>{{ $statusLabel }}</strong>
-                                            <span>
-                                                @if($isExternal && $item['price_minor'] !== null)
-                                                    {{ number_format($item['price_minor'] / 100, 0, ',', ' ') }} ₽ / 30 мин
-                                                @else
-                                                    Цена не определена
-                                                @endif
-                                            </span>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </details>
-                        @endforeach
-                    </div>
                 @endif
                 @unless($venue->isFreeAccess)
                     <p class="caption">Часы работы не гарантируют доступность бронирования. Уточни свободное время и стоимость при оформлении.</p>

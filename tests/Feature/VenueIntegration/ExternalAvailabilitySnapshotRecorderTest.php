@@ -6,10 +6,11 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
-use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
-use App\Modules\VenueIntegration\Application\Services\FindSportPublicCourtSchedule;
+use App\Modules\VenueIntegration\Application\Services\ApplyFindSportSnapshotToNativeSchedule;
+use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
+use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
+use App\Modules\VenueBooking\Application\Queries\GetVenueAvailability;
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
 use App\Modules\VenueIntegration\Domain\Models\ExternalAvailabilitySnapshot;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
@@ -190,9 +191,9 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertDatabaseCount('external_availability_slots', 238);
     }
 
-    public function test_public_court_projection_reads_only_saved_findsport_slots_on_staging(): void
+    public function test_native_import_overwrites_hours_prices_and_occupation_without_fake_bookings(): void
     {
-        config()->set('venue_integrations.findsport_public_snapshot_enabled', true);
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
         $actor = $this->actor();
         $venue = Venue::factory()->create();
         $source = $this->source($actor, $venue);
@@ -200,83 +201,93 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             $source, $actor, $this->report($source),
         );
 
-        $court = $venue->courts()->firstOrFail();
-        $projected = app(FindSportPublicCourtSchedule::class)->forCourt(
-            $court, CarbonImmutable::parse('2026-11-13', 'Europe/Moscow')->startOfDay(),
-        );
-        $this->assertNotNull($projected);
-        $this->assertSame($snapshot->id, $projected['snapshot_id']);
-        $this->assertSame($source->id, $projected['source_id']);
-        $this->assertCount(7, $projected['days']);
-        $this->assertCount(34, $projected['days']['2026-11-13']);
-        $this->assertSame('07:00', $projected['days']['2026-11-13'][0]['starts_at']);
-        $this->assertSame('available', $projected['days']['2026-11-13'][0]['status']);
-        $this->assertSame(162500, $projected['days']['2026-11-13'][0]['price_minor']);
-        $this->assertSame('booked', $projected['days']['2026-11-13'][2]['status']);
+        $import = app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        $court = $venue->courts()->firstOrFail()->fresh();
 
-        // Reading the public projection must not mutate booking or tariff state.
-        $this->assertDatabaseCount('external_availability_snapshots', 1);
+        $this->assertSame($snapshot->id, $import->external_availability_snapshot_id);
+        $this->assertSame($court->id, $import->venue_court_id);
+        $this->assertSame(30, $court->time_step_minutes);
+        $this->assertSame(60, $court->minimum_duration_minutes);
+        $this->assertSame(7, $venue->schedule()->firstOrFail()->intervals()->count());
+        $this->assertCount(7, $court->schedule->weekly_intervals);
+        $this->assertSame('07:00', $court->schedule->weekly_intervals[0]['starts_at']);
+        $this->assertSame('23:59', $court->schedule->weekly_intervals[0]['ends_at']);
+        $this->assertSame(238, $court->calendarSlotPrices()->count());
+        $this->assertSame(162500, $court->calendarSlotPrices()
+            ->whereDate('date', '2026-11-13')->where('starts_at', '07:00:00')
+            ->value('whole_price_per_step_minor'));
+        $exceptions = collect($court->schedule->exceptions)
+            ->where('date', '2026-11-13')->values()->all();
+        $this->assertCount(2, $exceptions);
+        $this->assertSame('08:00', $exceptions[0]['ends_at']);
+        $this->assertSame('08:30', $exceptions[1]['starts_at']);
         $this->assertDatabaseCount('venue_bookings', 0);
+
+        $projection = app(GetVenueAvailability::class)->handle(
+            $venue, CarbonImmutable::parse('2026-11-13 07:00', 'Europe/Moscow')->utc(),
+            CarbonImmutable::parse('2026-11-13 10:00', 'Europe/Moscow')->utc(), $court,
+        );
+        $this->assertSame($snapshot->id, $projection['external_snapshot_id']);
+        $this->assertCount(1, $projection['busy']);
+        $this->assertSame('findsport', $projection['busy'][0]['source']);
+
+        $guard = app(AppliedImportedCourtAvailability::class);
+        $guard->assertAvailable($court,
+            CarbonImmutable::parse('2026-11-13 09:00', 'Europe/Moscow'),
+            CarbonImmutable::parse('2026-11-13 10:00', 'Europe/Moscow'),
+            $snapshot->observed_at->addMinutes(1));
+        try {
+            $guard->assertAvailable($court,
+                CarbonImmutable::parse('2026-11-13 08:00', 'Europe/Moscow'),
+                CarbonImmutable::parse('2026-11-13 09:00', 'Europe/Moscow'),
+                $snapshot->observed_at->addMinutes(1));
+            $this->fail('Occupied interval was treated as free.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertStringContainsString('занято или недоступно', $exception->getMessage());
+        }
+
+        $same = app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        $this->assertSame($import->id, $same->id);
+        $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
+        $this->assertSame(238, $court->calendarSlotPrices()->count());
     }
 
-    public function test_public_findsport_projection_is_disabled_without_staging_feature_flag(): void
+    public function test_native_import_rejects_partial_and_does_not_change_court(): void
     {
-        config()->set('venue_integrations.findsport_public_snapshot_enabled', false);
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
         $actor = $this->actor();
         $venue = Venue::factory()->create();
         $source = $this->source($actor, $venue);
-        app(ExternalAvailabilitySnapshotRecorder::class)->record(
-            $source, $actor, $this->report($source),
-        );
+        $report = $this->report($source);
+        $report['days'][1]['complete'] = false;
+        foreach ($report['days'][1]['slots'] as &$slot) {
+            $slot['status'] = 'unknown';
+        }
+        unset($slot);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record($source, $actor, $report);
 
-        $projection = app(FindSportPublicCourtSchedule::class)->forCourt(
-            $venue->courts()->firstOrFail(),
-            CarbonImmutable::parse('2026-11-13', 'Europe/Moscow')->startOfDay(),
-        );
-        $this->assertNull($projection);
+        try {
+            app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+            $this->fail('Incomplete snapshot was applied');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('неполный', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('venue_court_external_schedule_imports', 0);
+        $this->assertDatabaseCount('venue_court_calendar_slot_prices', 0);
     }
 
-    public function test_public_venue_calendar_uses_external_snapshot_without_adding_fake_events(): void
+    public function test_native_import_is_disabled_outside_staging(): void
     {
-        config()->set('venue_integrations.findsport_public_snapshot_enabled', true);
+        config()->set('venue_integrations.apply_findsport_native_enabled', false);
         $actor = $this->actor();
-        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
-        $source = $this->source($actor, $venue);
+        $source = $this->source($actor, Venue::factory()->create());
         $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
             $source, $actor, $this->report($source),
         );
-
-        $projection = app(ShowVenueHandler::class)->handle(
-            $venue->routeIdentifier(), null,
-        );
-        $this->assertCount(9, $projection->occupancyDays);
-        $firstDay = $projection->occupancyDays[0];
-        $this->assertSame($snapshot->id, $firstDay['externalSnapshot']['snapshotId']);
-        $this->assertSame('external', $firstDay['timeline'][0]['kind']);
-        $this->assertSame('available', $firstDay['timeline'][0]['status']);
-        $this->assertSame(162500, $firstDay['timeline'][0]['price_minor']);
-        $this->assertSame('booked', $firstDay['timeline'][2]['status']);
-        $this->assertSame(1, $firstDay['externalBusyCount']);
-        // The "Игры и мероприятия" section reads slots; external slots are not events.
-        $this->assertSame([], $firstDay['slots']);
-        $this->assertSame('unknown', $projection->occupancyDays[8]['timeline'][0]['status']);
-    }
-
-    public function test_public_findsport_projection_does_not_leak_to_other_venue_courts(): void
-    {
-        config()->set('venue_integrations.findsport_public_snapshot_enabled', true);
-        $actor = $this->actor();
-        $venue = Venue::factory()->create();
-        $source = $this->source($actor, $venue);
-        app(ExternalAvailabilitySnapshotRecorder::class)->record(
-            $source, $actor, $this->report($source),
-        );
-        $another = Venue::factory()->create();
-
-        $this->assertNull(app(FindSportPublicCourtSchedule::class)->forCourt(
-            $another->courts()->firstOrFail(),
-            CarbonImmutable::parse('2026-11-13', 'Europe/Moscow')->startOfDay(),
-        ));
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('только на тестовом сервере');
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
     }
 
     public function test_different_sources_for_same_court_are_not_merged(): void
