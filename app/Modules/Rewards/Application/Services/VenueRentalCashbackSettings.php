@@ -15,8 +15,22 @@ use Illuminate\Validation\ValidationException;
  */
 final class VenueRentalCashbackSettings
 {
+    public function canManage(): bool
+    {
+        $actor = auth('web')->user()?->canonical();
+
+        return $actor instanceof User
+            && $actor->isConfirmed()
+            && ! $actor->isBlocked()
+            && $actor->system_role === UserSystemRoleEnum::SUPERADMIN;
+    }
+
     public function formFields(Venue $venue): array
     {
+        if (! $this->canManage()) {
+            return [];
+        }
+
         $reward = $this->rentalReward();
         $override = $reward === null ? null : VenueRewardOverride::query()
             ->where('venue_id', $venue->id)
@@ -61,11 +75,7 @@ final class VenueRentalCashbackSettings
             return;
         }
 
-        $actor = auth('web')->user()?->canonical();
-        abort_unless($actor instanceof User
-            && $actor->isConfirmed()
-            && ! $actor->isBlocked()
-            && $actor->system_role === UserSystemRoleEnum::SUPERADMIN, 403);
+        abort_unless($this->canManage(), 403);
 
         $reward = $this->rentalReward();
         if ($reward === null) {
