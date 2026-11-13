@@ -22,6 +22,8 @@ final class VenueScheduleDayController extends Controller
 
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
+            'preview_start' => ['nullable', 'date_format:H:i', 'required_with:preview_duration_minutes'],
+            'preview_duration_minutes' => ['nullable', 'integer', 'min:30', 'max:1440', 'required_with:preview_start'],
             'venue_court_id' => ['nullable', 'integer',
                 Rule::exists('venue_courts', 'id')->where(fn ($query) =>
                     $query->where('venue_id', $venue->id)->whereNull('deleted_at')),
@@ -33,7 +35,10 @@ final class VenueScheduleDayController extends Controller
             : ($venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail());
 
         try {
-            return response()->json($days->forDate($venue, $court, $data['date']))
+            return response()->json($days->forDate(
+                $venue, $court, $data['date'],
+                $data['preview_start'] ?? null, $data['preview_duration_minutes'] ?? null,
+            ))
                 ->header('Cache-Control', 'private, no-store');
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422)

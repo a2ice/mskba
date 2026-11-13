@@ -2,7 +2,6 @@
 
 namespace App\Modules\VenueBooking\Application\Services;
 
-use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -29,14 +28,14 @@ final class VenueCommissionCalculator
             throw new VenueBookingPolicyException('Некорректная исходная стоимость аренды.');
         }
 
-        $global = PortalCommissionPolicy::query()
-            ->where('entity_type', 'venue')->where('action_key', 'rental')->first();
+        $resolved = PortalCommissionScopes::resolve('venue', 'rental');
+        $global = $resolved['policy'];
         $venuePolicy = VenueCommissionPolicy::query()->where('venue_id', $venue->id)->first();
         $courtPolicy = VenueCourtCommissionPolicy::query()
             ->where('venue_id', $venue->id)->where('venue_court_id', $court->id)->first();
 
         $portal = [
-            'source' => 'global',
+            'source' => $resolved['source'],
             'policy_id' => $global?->id,
             'version' => $global?->version ?? 0,
             'mode' => $global?->mode ?? 'none',

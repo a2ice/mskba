@@ -278,6 +278,7 @@ if (dayBookingDialog) {
     let response = null;
     let selection = [];
     let loading = null;
+    let previewSequence = 0;
 
     const selectedIndexesAreContiguous = () => selection.every((index, i) =>
         i === 0 || index === selection[i - 1] + 1);
@@ -300,10 +301,8 @@ if (dayBookingDialog) {
         } else {
             const start = response.slots[selection[0]];
             const end = response.slots[selection.at(-1)];
-            const total = selection.reduce((sum, index) =>
-                sum + (response.slots[index].price_minor || 0), 0);
             summary.textContent = [start.starts_at, '–', end.ends_at, '·',
-                duration, 'мин ·', currency.format(total / 100), '₽'].join(' ');
+                duration, 'мин ·', canBook ? 'Рассчитываем стоимость…' : 'Выберите доступное время'].join(' ');
         }
         minimum.textContent = response?.booking_enabled
             ? 'Минимум ' + required + ' мин · непрерывные слоты'
@@ -313,6 +312,41 @@ if (dayBookingDialog) {
             form.querySelector('[data-venue-day-start]').value =
                 response.date + 'T' + response.slots[selection[0]].starts_at;
             form.querySelector('[data-venue-day-duration]').value = String(duration);
+            bookingButton.disabled = true;
+            void previewSelection(response.date, start.starts_at, duration, selection.join(','));
+        } else {
+            ++previewSequence;
+        }
+    }
+
+    // The selected range is priced as one rental: fixed commissions are charged
+    // once, and duration-dependent tariff rules apply to the whole range.
+    async function previewSelection(date, startsAt, duration, selectedKey) {
+        const sequence = ++previewSequence;
+        try {
+            const url = new URL(dayBookingDialog.dataset.dayUrl, window.location.href);
+            url.searchParams.set('date', date);
+            url.searchParams.set('venue_court_id', String(response.venue_court_id));
+            url.searchParams.set('preview_start', startsAt);
+            url.searchParams.set('preview_duration_minutes', String(duration));
+            const result = await fetch(url, {
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store',
+            });
+            const data = await result.json();
+            if (!result.ok || !data.price_preview) {
+                throw new Error(data.message || 'Не удалось рассчитать стоимость');
+            }
+            if (sequence !== previewSequence || !dayBookingDialog.open
+                || selection.join(',') !== selectedKey) return;
+            summary.textContent = [startsAt, '–', response.slots[selection.at(-1)].ends_at, '·',
+                duration, 'мин ·', currency.format(data.price_preview.total_minor / 100), '₽'].join(' ');
+            bookingButton.disabled = false;
+        } catch (error) {
+            if (sequence !== previewSequence || !dayBookingDialog.open) return;
+            summary.textContent = error.message || 'Стоимость недоступна';
+            bookingButton.disabled = true;
         }
     }
 
@@ -364,6 +398,9 @@ if (dayBookingDialog) {
             price.textContent = slot.price_minor === null
                 ? 'Цена не указана'
                 : currency.format(slot.price_minor / 100) + ' ₽';
+            if (slot.price_minor !== null) {
+                price.title = 'Цена одного интервала с комиссиями. Итог для нескольких интервалов рассчитывается отдельно.';
+            }
             cell.append(times, state, price);
             grid.appendChild(cell);
         }
@@ -402,6 +439,7 @@ if (dayBookingDialog) {
     });
 
     const close = () => {
+        ++previewSequence;
         loading?.abort();
         loading = null;
         if (dayBookingDialog.open) dayBookingDialog.close();
@@ -416,6 +454,7 @@ if (dayBookingDialog) {
         loading = null;
         response = null;
         selection = [];
+        ++previewSequence;
         bookingButton.disabled = true;
     });
 

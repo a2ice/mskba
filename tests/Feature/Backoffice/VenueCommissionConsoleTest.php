@@ -40,9 +40,11 @@ final class VenueCommissionConsoleTest extends TestCase
             ->assertSee('Комиссия площадки');
 
         Livewire::test(Commissions::class)
-            ->assertSuccessful()->assertSee('Глобальные комиссии')
+            ->assertSuccessful()->assertSee('Общая комиссия')
+            ->assertSee('Мероприятия')
+            ->assertSee('Наследование')
             ->mountAction('editGlobalCommission')
-            ->assertMountedActionModalSee('Глобальная комиссия');
+            ->assertMountedActionModalSee('Общая комиссия MSKBA');
 
         Livewire::test(CommissionAgentsRelationManager::class, [
             'ownerRecord' => $venue, 'pageClass' => EditVenue::class,
@@ -73,11 +75,19 @@ final class VenueCommissionConsoleTest extends TestCase
             ->assertSee('10,00%');
 
         $this->assertDatabaseHas('portal_commission_policies', [
-            'entity_type' => 'venue',
-            'action_key' => 'rental',
+            'entity_type' => 'global',
+            'action_key' => 'default',
             'mode' => 'percent',
             'value' => 1000,
             'version' => 1,
+        ]);
+
+        // A scoped NULL is inheritance, not an explicit zero rate.
+        $this->assertDatabaseHas('portal_commission_policies', [
+            'entity_type' => 'venue',
+            'action_key' => 'rental',
+            'mode' => null,
+            'value' => null,
         ]);
     }
 
