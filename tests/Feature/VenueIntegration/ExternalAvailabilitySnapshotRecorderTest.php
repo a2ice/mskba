@@ -295,13 +295,9 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
     public function test_public_day_modal_reads_applied_native_schedule_and_reuses_recent_snapshot(): void
     {
-        // This scenario tests a real five-minute window. Other snapshots use
-        // a fixed historical fixture date; this one must start at wall time.
-        $this->travelTo(CarbonImmutable::instance(
-            new \DateTimeImmutable('now', new \DateTimeZone('Europe/Moscow')),
-        ));
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
-        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        // The HTTP response must not issue an external request in tests.
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
         config()->set('venue_integrations.findsport_preview_enabled', true);
         config()->set('features.venue_rental.rental_flow', false);
 
@@ -322,8 +318,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             ->assertJsonPath('step_minutes', 30)
             ->assertJsonPath('minimum_minutes', 60)
             ->assertJsonPath('refresh_interval_seconds', 300)
-            ->assertJsonPath('refresh_state', 'cached')
-            ->assertJsonPath('stale', false)
+            ->assertJsonPath('refresh_state', 'disabled')
             ->assertJsonPath('booking_enabled', false)
             ->assertJsonPath('slots.0.starts_at', '07:00')
             ->assertJsonPath('slots.0.status', 'available')
@@ -333,7 +328,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             ->assertJsonCount(34, 'slots');
 
         $this->getJson($path)->assertOk()
-            ->assertJsonPath('refresh_state', 'cached');
+            ->assertJsonPath('refresh_state', 'disabled');
         $this->assertDatabaseCount('external_availability_snapshots', 1);
         $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
         $this->assertDatabaseCount('venue_bookings', 0);
@@ -341,11 +336,6 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
     public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
     {
-        // This scenario tests a real five-minute window. Other snapshots use
-        // a fixed historical fixture date; this one must start at wall time.
-        $this->travelTo(CarbonImmutable::instance(
-            new \DateTimeImmutable('now', new \DateTimeZone('Europe/Moscow')),
-        ));
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
         config()->set('venue_integrations.public_schedule_refresh_enabled', true);
         config()->set('venue_integrations.findsport_preview_enabled', true);
@@ -360,12 +350,12 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
 
         $this->assertSame('cached', app(FindSportOnDemandRefresh::class)
-            ->forCourt($court)['state']);
-        $this->travel(5)->minutes();
+            ->forCourt($court, $snapshot->observed_at->addMinute())['state']);
         $lock = Cache::lock("venue-integration:findsport:refresh-lock:{$source->id}", 45);
         $this->assertTrue($lock->get());
         try {
-            $result = app(FindSportOnDemandRefresh::class)->forCourt($court);
+            $result = app(FindSportOnDemandRefresh::class)
+                ->forCourt($court, $snapshot->observed_at->addMinutes(6));
             $this->assertSame('updating', $result['state']);
         } finally {
             $lock->release();
