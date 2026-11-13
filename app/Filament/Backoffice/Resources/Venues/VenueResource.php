@@ -187,7 +187,7 @@ final class VenueResource extends Resource
                                 Toggle::make('rental_policy_allows_whole')
                                     ->label('Разрешать аренду целиком')->default(true),
                                 Toggle::make('rental_policy_allows_halves')
-                                    ->label('Разрешать аренду половин')->default(false)
+                                    ->label('Разрешать аренду половин')->default(false)->live()
                                     ->helperText('Для конкретного зала дополнительно нужны поддержка половин и их разрешение.'),
                             ]),
                         Section::make('Цены площадки')
@@ -204,6 +204,8 @@ final class VenueResource extends Resource
                                     ->numeric()->minValue(0)->default('0'),
                                 TextInput::make('rental_policy_half_price_rub')
                                     ->label('Половина — цена за шаг, ₽')
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
+                                        && (bool) $get('rental_policy_allows_halves'))
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
                                         && (bool) $get('rental_policy_allows_halves'))
                                     ->numeric()->minValue(0),
