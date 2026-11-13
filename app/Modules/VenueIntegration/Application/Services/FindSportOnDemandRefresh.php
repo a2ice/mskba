@@ -82,7 +82,7 @@ final class FindSportOnDemandRefresh
             $report = $this->adapter->readFromPublicSchedule($source);
             $snapshot = $this->recorder->recordFromPublicSchedule($source, $report);
             if (! $snapshot->complete) {
-                Cache::put($retryKey, true, now()->addMinute());
+                Cache::put($retryKey, true, now()->addSeconds(self::REFRESH_AFTER_SECONDS));
                 return $result('failed', 'FindSport вернул неполное расписание. Бронирование непроверенных слотов недоступно.');
             }
 
@@ -90,7 +90,7 @@ final class FindSportOnDemandRefresh
             return $result('updated');
         } catch (Throwable $exception) {
             report($exception);
-            Cache::put($retryKey, true, now()->addMinute());
+            Cache::put($retryKey, true, now()->addSeconds(self::REFRESH_AFTER_SECONDS));
             return $result('failed', 'Не удалось обновить FindSport. Показаны последние сохранённые данные.');
         } finally {
             $lock->release();
