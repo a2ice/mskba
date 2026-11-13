@@ -9,13 +9,8 @@ use App\Modules\Finance\Application\UseCases\TransferUserWalletBalanceHandler;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
 use App\Modules\Finance\Domain\Exceptions\WalletException;
 use App\Modules\Identity\Domain\Models\User;
-use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
-use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
-use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
-use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Throwable;
 
 final class WalletTransferController extends Controller
 {
@@ -24,7 +19,6 @@ final class WalletTransferController extends Controller
         ResolveWalletTransferRecipient $recipients,
         RubleAmountParser $amounts,
         TransferUserWalletBalanceHandler $transfers,
-        CreateUserNotificationHandler $notifications,
     ): RedirectResponse {
         $validated = $request->validate([
             'recipient_user_id' => ['required', 'integer', 'min:1'],
@@ -53,39 +47,11 @@ final class WalletTransferController extends Controller
                 ->withErrors(['transfer' => $e->getMessage()]);
         }
 
-        $notificationFailed = false;
-
-        if (! $result->replayed) {
-            $senderHandle = $this->handleFor($sender);
-
-            try {
-                $notifications->handle(new CreateUserNotificationDTO(
-                    userId: (int) $recipient->id,
-                    type: UserNotificationTypeEnum::FINANCE,
-                    title: 'Получен перевод',
-                    body: $senderHandle.' перевёл вам '.$this->formatMinor($amountMinor).' бонусами.',
-                    actionUrl: route('account.wallet', [], false),
-                    actionText: 'Открыть кошелёк',
-                    payload: [
-                        'source' => 'finance.wallet.transfer.received',
-                        'delivery_category' => UserNotificationDeliveryCategoryEnum::SYSTEM->value,
-                        'wallet_operation_id' => (int) $result->operation->id,
-                        'sender_user_id' => (int) $sender->id,
-                        'amount_minor' => $amountMinor,
-                        'balance_type' => WalletBalanceTypeEnum::BONUS->value,
-                    ],
-                ));
-            } catch (Throwable $exception) {
-                $notificationFailed = true;
-                report($exception);
-            }
-        }
-
         $response = redirect()
             ->route('account.wallet')
             ->with('status', 'Перевод '.$this->formatMinor($amountMinor).' для '.$this->handleFor($recipient).' выполнен.');
 
-        if ($notificationFailed) {
+        if ($result->notificationFailed) {
             $response->with('warning', 'Перевод выполнен, но уведомление получателю не удалось создать. Повторно переводить сумму не нужно.');
         }
 

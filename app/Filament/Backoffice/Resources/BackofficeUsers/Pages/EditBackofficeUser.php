@@ -187,9 +187,16 @@ final class EditBackofficeUser extends EditRecord
                         throw ValidationException::withMessages(['amount' => $exception->getMessage()]);
                     }
 
-                    Notification::make()->success()
-                        ->title($result->replayed ? 'Этот перевод уже выполнен' : 'Бонусы перечислены пользователю')
-                        ->send();
+                    if ($result->notificationFailed) {
+                        Notification::make()->warning()
+                            ->title('Перевод выполнен, но уведомление получателю не создано')
+                            ->body('Повторный перевод делать не нужно.')
+                            ->send();
+                    } else {
+                        Notification::make()->success()
+                            ->title($result->replayed ? 'Этот перевод уже выполнен' : 'Бонусы перечислены пользователю')
+                            ->send();
+                    }
                 }),
             Action::make('saveGeneralInline')
                 ->label('Сохранить общие данные')
