@@ -22,6 +22,7 @@ use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
 use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Carbon\CarbonImmutable;
@@ -78,7 +79,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         $this->assertSame(3, $enabled->version);
         $this->assertNull($disabled->fresh()->active_marker);
         $this->assertSame($enabled->id, $toggle->handle($venue, $owner, true)->id);
-        $this->assertSame(3, $venue->bookingPolicies()->count());
+        $this->assertSame(3, VenueBookingPolicy::query()->where('venue_id', $venue->id)->count());
     }
 
     public function test_policy_versions_are_append_only_and_old_quote_keeps_original_snapshot(): void
