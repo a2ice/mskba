@@ -35,8 +35,8 @@ final class AppliedImportedCourtAvailability
         CarbonImmutable $endsAt,
     ): Collection {
         return $import->snapshot->slots()
-            ->where('starts_at', '<', $endsAt->utc())
-            ->where('ends_at', '>', $startsAt->utc())
+            ->where('starts_at', '<', $endsAt->utc()->toIso8601String())
+            ->where('ends_at', '>', $startsAt->utc()->toIso8601String())
             ->where('status', '!=', 'available')
             ->orderBy('starts_at')
             ->get();
@@ -60,8 +60,8 @@ final class AppliedImportedCourtAvailability
         $cursor = $startsAt->utc();
         $end = $endsAt->utc();
         $slots = $snapshot->slots()
-            ->where('starts_at', '<', $end)
-            ->where('ends_at', '>', $cursor)
+            ->where('starts_at', '<', $end->toIso8601String())
+            ->where('ends_at', '>', $cursor->toIso8601String())
             ->orderBy('starts_at')
             ->get();
 
