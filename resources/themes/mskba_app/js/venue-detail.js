@@ -268,7 +268,7 @@ document.addEventListener('click', event => {
 const dayBookingDialog = document.querySelector('[data-venue-day-dialog]');
 if (dayBookingDialog) {
     const status = dayBookingDialog.querySelector('[data-venue-day-status]');
-    const updated = dayBookingDialog.querySelector('[data-venue-day-updated]');
+    const heading = dayBookingDialog.querySelector('[data-venue-day-title]');
     const grid = dayBookingDialog.querySelector('[data-venue-day-slots]');
     const form = dayBookingDialog.querySelector('[data-venue-day-booking-form]');
     const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
@@ -316,6 +316,28 @@ if (dayBookingDialog) {
         }
     }
 
+    // Update the clicked card after its on-demand five-minute refresh.
+    function updateDayOccupancy(date, slots) {
+        const card = document.querySelector(
+            '[data-venue-day-entry][data-day-date="' + date + '"]',
+        );
+        const track = card?.querySelector('[data-day-occupancy]');
+        const booked = card?.querySelector('[data-day-occupancy-booked]');
+        if (!track || !booked) return;
+
+        const known = slots.filter(slot =>
+            slot.status === 'available' || slot.status === 'booked');
+        const percentage = known.length
+            ? Math.round(100 * known.filter(slot => slot.status === 'booked').length / known.length)
+            : null;
+        track.classList.toggle('is-unknown', percentage === null);
+        const label = percentage === null
+            ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
+        track.setAttribute('aria-label', label);
+        track.title = label;
+        booked.style.width = (percentage ?? 0) + '%';
+    }
+
     function renderSlots(data) {
         response = data;
         selection = [];
@@ -345,17 +367,15 @@ if (dayBookingDialog) {
             cell.append(times, state, price);
             grid.appendChild(cell);
         }
-        updated.hidden = !data.last_updated_at;
-        updated.textContent = data.last_updated_at
-            ? 'Данные FindSport от ' + data.last_updated_at + ' (МСК)'
-                + (data.stale ? ' · данные устарели' : '')
+        // Keep the update timestamp available on hover/focus, without
+        // taking space from the future day-info / promotion area.
+        heading.title = data.last_updated_at
+            ? 'up: ' + data.last_updated_at.slice(0, 16) + ' (UTC +3)'
             : '';
-        const message = data.refresh_message
-            || (data.refresh_state === 'updated' ? 'Расписание обновлено из FindSport.'
-                : data.refresh_state === 'cached' ? 'Используются данные последнего обновления (не чаще раза в 5 минут).'
-                : data.refresh_state === 'updating' ? 'Обновление уже выполняется. Показаны последние данные.'
-                : 'Выберите последовательные свободные интервалы.');
-        status.textContent = message;
+        const warning = data.refresh_state === 'failed' ? data.refresh_message : null;
+        status.textContent = warning || '';
+        status.hidden = !warning;
+        updateDayOccupancy(data.date, data.slots);
         redrawSelection();
     }
 
@@ -408,10 +428,10 @@ if (dayBookingDialog) {
             selection = [];
             bookingButton.disabled = true;
             grid.replaceChildren();
-            updated.hidden = true;
-            status.textContent = 'Проверяем расписание и актуальность данных…';
-            dayBookingDialog.querySelector('[data-venue-day-title]').textContent =
-                'Расписание · ' + button.querySelector('strong')?.textContent;
+            heading.removeAttribute('title');
+            status.hidden = false;
+            status.textContent = 'Проверяем расписание…';
+            heading.textContent = 'Расписание · ' + button.querySelector('strong')?.textContent;
             dayBookingDialog.showModal();
             try {
                 const url = new URL(dayBookingDialog.dataset.dayUrl, window.location.href);
@@ -432,6 +452,7 @@ if (dayBookingDialog) {
             } catch (error) {
                 if (signal.aborted || !dayBookingDialog.open) return;
                 status.textContent = error.message || 'Не удалось получить расписание.';
+                status.hidden = false;
                 bookingButton.disabled = true;
             }
         });
