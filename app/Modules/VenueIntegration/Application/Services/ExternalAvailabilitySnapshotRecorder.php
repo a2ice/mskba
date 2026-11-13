@@ -29,6 +29,27 @@ final class ExternalAvailabilitySnapshotRecorder
             $actor, Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
         );
 
+        return $this->store($source, $actor, $report);
+    }
+
+    /** Only for validated server-side public refresh, never directly routed. */
+    public function recordFromPublicSchedule(VenueIntegrationSource $source, array $report): ExternalAvailabilitySnapshot
+    {
+        if (! config('venue_integrations.apply_findsport_native_enabled', false)
+            || ! config('venue_integrations.public_schedule_refresh_enabled', false)
+            || $source->external_id !== '4805') {
+            throw new RuntimeException('Публичное сохранение FindSport отключено.');
+        }
+
+        return $this->store($source, null, $report);
+    }
+
+    /** @param array<string, mixed> $report */
+    private function store(
+        VenueIntegrationSource $source,
+        ?User $actor,
+        array $report,
+    ): ExternalAvailabilitySnapshot {
         if ($source->integration?->mode !== 'test' || $source->adapter_key !== 'api') {
             throw new RuntimeException('Снимок пилота можно сохранить только для API-источника в тестовом режиме.');
         }
@@ -184,7 +205,7 @@ final class ExternalAvailabilitySnapshotRecorder
                     'venue_integration_source_id' => $source->id,
                     'venue_id' => $source->integration->venue_id,
                     'venue_court_id' => $mapping->venue_court_id,
-                    'created_by_user_id' => $actor->id,
+                    'created_by_user_id' => $actor?->id,
                     'external_court_id' => (string) $report['external_court_id'],
                     'provider' => 'FindSport',
                     'timezone' => 'Europe/Moscow',
@@ -216,7 +237,7 @@ final class ExternalAvailabilitySnapshotRecorder
             DB::table('venue_integration_audit_events')->insert([
                 'venue_integration_id' => $source->venue_integration_id,
                 'venue_integration_source_id' => $source->id,
-                'actor_user_id' => $actor->id,
+                'actor_user_id' => $actor?->id,
                 'action' => 'source.snapshot_saved',
                 'changes' => json_encode([
                     'snapshot_id' => $snapshot->id,
