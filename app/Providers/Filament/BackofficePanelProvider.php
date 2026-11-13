@@ -22,6 +22,8 @@ use App\Filament\Backoffice\Resources\Leagues\LeagueResource;
 use App\Filament\Backoffice\Resources\ManagerSpecializations\ManagerSpecializationResource;
 use App\Filament\Backoffice\Resources\OperatorConversations\OperatorConversationResource;
 use App\Filament\Backoffice\Resources\OperatorUsers\OperatorUserResource;
+use App\Filament\Backoffice\Resources\Promotions\PromotionResource;
+use App\Filament\Backoffice\Resources\VenueRewardOverrides\VenueRewardOverrideResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderComponentResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderPageResource;
 use App\Filament\Backoffice\Resources\PageBuilder\BuilderTemplateResource;
@@ -118,6 +120,8 @@ final class BackofficePanelProvider extends PanelProvider
                 SupportTicketResource::class,
                 OperatorUserResource::class,
                 OperatorConversationResource::class,
+                PromotionResource::class,
+                VenueRewardOverrideResource::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => request()->routeIs('admin.content', 'admin.content.*')

@@ -6,6 +6,10 @@ use App\Modules\Coordination\Application\UseCases\CloseExpiredVenueBookingAttend
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Application\Services\UserFingerprintPruner;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Rewards\Application\Data\RewardMechanismContext;
+use App\Modules\Rewards\Application\Services\RewardEngine;
+use App\Modules\Rewards\Domain\Models\Reward;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Application\Services\PaymentReconciliationDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingExpiryDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOperationalHealth;
@@ -107,6 +111,48 @@ Artisan::command('privacy:tracking-diagnose {--json}', function (TrackingDataHea
     $this->table(['Metric', 'Value'], collect($snapshot)->map(fn ($value, $key) => [$key, $value])->values()->all());
 })->purpose('Показывает объём и суточный рост tracking-данных без PII');
 
+
+Artisan::command('rewards:grant-completed-rentals', function (RewardEngine $engine) {
+    $reward = Reward::query()
+        ->where('code', 'venue_rental_completed')
+        ->where('is_enabled', true)
+        ->with('currentVersion')
+        ->first();
+
+    $version = $reward?->currentVersion;
+    if ($version === null || $version->mechanism_code !== 'venue_rental_completed') {
+        $this->info('Начисление за аренду отключено.');
+
+        return;
+    }
+
+    $count = 0;
+    VenueBooking::query()
+        ->where('status', 'confirmed')
+        ->where('payment_state', 'confirmed')
+        ->where('ends_at', '<=', now())
+        ->where('confirmed_at', '>=', $version->valid_from)
+        ->whereNotNull('requester_user_id')
+        ->chunkById(100, function ($bookings) use ($engine, &$count): void {
+            foreach ($bookings as $booking) {
+                $grant = $engine->process(
+                    'venue_rental_completed',
+                    new RewardMechanismContext(
+                        businessFactType: 'venue_rental_completed',
+                        businessFactKey: 'booking:'.$booking->id,
+                        payload: ['booking_id' => (int) $booking->id],
+                    ),
+                );
+
+                if ($grant !== null) {
+                    $count++;
+                }
+            }
+        });
+
+    $this->info('Обработано прав по завершённым арендам: '.$count);
+})->purpose('Проверяет завершённые оплаченные аренды и идемпотентно начисляет фиксированные бонусы');
+
 Schedule::command('coordination:close-expired')
     ->everyMinute()
     ->withoutOverlapping();
@@ -135,5 +181,10 @@ Schedule::command('venue-booking:expire-due')
 
 Schedule::command('venue-booking:reconcile-payments')
     ->everyFiveMinutes()
+    ->onOneServer()
+    ->withoutOverlapping();
+
+Schedule::command('rewards:grant-completed-rentals')
+    ->hourly()
     ->onOneServer()
     ->withoutOverlapping();

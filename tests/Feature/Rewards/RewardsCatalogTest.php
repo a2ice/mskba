@@ -12,12 +12,18 @@ use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Data\RewardMechanismDecision;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Tests\TestCase;
 
 final class RewardsCatalogTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTruncation;
+
+    protected function beforeTruncatingDatabase(): void
+    {
+        RefreshDatabaseState::$migrated = false;
+    }
 
     public function test_initial_catalog_contains_implemented_and_enabled_rewards(): void
     {

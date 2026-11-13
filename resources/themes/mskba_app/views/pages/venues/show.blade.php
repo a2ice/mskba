@@ -60,6 +60,9 @@
     $activityDays = collect($venue->occupancyDays)
         ->filter(fn (array $day): bool => count($day['slots'] ?? []) > 0)
         ->values();
+    $venuePromotionResolver = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class);
+    $venuePromotions = $venuePromotionResolver->forPlacement('venue_page', (int) $venue->id);
+    $venueSlotPromotions = $venuePromotionResolver->forPlacement('venue_slots', (int) $venue->id);
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
@@ -149,6 +152,19 @@
             </div>
         </div>
     </div>
+
+    @foreach($venuePromotions as $promotion)
+        <section class="panel app-venue-block" aria-label="{{ $promotion['title'] }}">
+            <header class="app-venue-block__header"><h2>{{ $promotion['title'] }}</h2></header>
+            @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
+            @if($promotion['amount_minor'] !== null)
+                <p>Бонус за выполненное условие: <strong>{{ number_format($promotion['amount_minor'] / 100, 0, ',', ' ') }} ₽</strong></p>
+            @endif
+            @if($promotion['cta_url'])
+                <a class="button secondary" href="{{ $promotion['cta_url'] }}">{{ $promotion['cta_label'] ?: 'Подробнее' }}</a>
+            @endif
+        </section>
+    @endforeach
 
     <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
         <a href="#app-venue-activities">Игры</a>
@@ -349,7 +365,15 @@
         </button>
     </div>
     <div class="app-venue-day-dialog__info" data-venue-day-info>
-        {{-- Reserved for a future day-specific announcement or special offer. --}}
+        @foreach($venueSlotPromotions as $promotion)
+            <div class="app-venue-day-dialog__promotion" aria-label="{{ $promotion['title'] }}">
+                <strong>{{ $promotion['title'] }}</strong>
+                @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
+                @if($promotion['amount_minor'] !== null)
+                    <p>Бонус за выполненное условие: {{ number_format($promotion['amount_minor'] / 100, 0, ',', ' ') }} ₽</p>
+                @endif
+            </div>
+        @endforeach
         <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
             data-venue-day-status hidden></p>
     </div>
