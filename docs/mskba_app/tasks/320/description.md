@@ -11,7 +11,7 @@ In the active `mskba_app` theme, consolidate the two existing account preference
 - Display two settings per row on desktop and one per row for a narrow viewport; avoid fixed desktop widths.
 - Reuse the existing user notification preference enum and server-side validated forms; no duplicate UI settings model.
 - Show confirmed email and Telegram private-chat availability; never claim unconfirmed channels will receive a message.
-- Realtime toast is backed by the existing notification sync endpoint, with no new popup component.
+- Realtime toast is backed by the existing notification sync endpoint, with no new popup component. An incoming live toast preempts an older unpinned toast when three are visible, without marking the displaced notification read.
 
 ## Checks
 

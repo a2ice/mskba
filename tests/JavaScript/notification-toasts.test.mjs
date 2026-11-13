@@ -150,6 +150,20 @@ test('displays only three items and fills the freed slot without reading pending
     assert.equal(dock.size(), 3);
 });
 
+test('new live toast preempts an older unread toast without acknowledging it', () => {
+    const { dock, region, requests } = setup();
+    dock.reconcile([notification(1), notification(2), notification(3)]);
+    dock.add(notification(4, { title: 'Получен перевод' }), true);
+
+    assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['4', '1', '2']);
+    assert.equal(dock.size(), 3);
+    assert.equal(requests.length, 0);
+
+    region.children[0].querySelector('.app-message-toast__close').trigger('click');
+    assert.deepEqual(region.children.map((item) => item.dataset.messageToastId), ['1', '2', '3']);
+    assert.equal(requests.length, 0);
+});
+
 test('clicking an action navigates but does not automatically acknowledge', async () => {
     const { dock, region, requests, visits, counts } = setup();
     dock.add(notification(8));

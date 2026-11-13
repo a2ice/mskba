@@ -192,6 +192,15 @@ export const createNotificationToastDock = (region, onCountChange, options = {})
         const id = String(notification.id);
         if (notifications.has(id)) return;
         notifications.set(id, notification);
+        // A freshly delivered notification must not be hidden behind three
+        // older unread toasts. Make room without marking anything as read.
+        if (live && cards.size >= MAX_VISIBLE_TOASTS && ! dismissed.has(id)) {
+            const displaced = [...cards.keys()].reverse().find((other) => !pinned.has(other));
+            if (displaced) {
+                cards.get(displaced)?.remove();
+                cards.delete(displaced);
+            }
+        }
         if (cards.size < MAX_VISIBLE_TOASTS && ! dismissed.has(id)) {
             const card = create(notification, live);
             cards.set(id, card);
