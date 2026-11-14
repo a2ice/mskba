@@ -43,3 +43,16 @@ test('both slot-picker templates stay compact and venue offer lives in About', (
     }
     assert.equal((calendar.match(/\['23:59', '24:00'\]/g) || []).length, 2);
 });
+
+test('legacy venue schedule normalizes displayed end-of-day while keeping raw interval attributes', () => {
+    const legacy = readFileSync(
+        new URL('../../resources/themes/mskba_dark/views/pages/venues/show.blade.php', import.meta.url), 'utf8',
+    );
+    const legacyJs = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/features/venue-show.js', import.meta.url), 'utf8',
+    );
+    assert.equal((legacy.match(/in_array\(\$timelineItem\['endsAt'\], \['23:59', '24:00'\]/g) || []).length, 2);
+    assert.match(legacy, /in_array\(\$interval\['endsAt'\], \['23:59', '24:00'\]/);
+    assert.match(legacy, /data-end="{{ \$timelineItem\['endsAt'\] }}"/);
+    assert.match(legacyJs, /\['23:59', '24:00'\]\.includes\(interval\.endsAt\)/);
+});
