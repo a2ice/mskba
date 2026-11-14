@@ -203,6 +203,12 @@ class PublicVenueCreateEntryTest extends TestCase
 
     public function test_venue_create_places_address_first_and_shows_eligible_promotion(): void
     {
+        // The default test theme is mskba_dark; this regression covers mskba_app.
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        \Illuminate\Support\Facades\View::getFinder()->flush();
+
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
 
         $this->actingAs($user)
