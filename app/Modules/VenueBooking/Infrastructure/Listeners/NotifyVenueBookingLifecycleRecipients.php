@@ -104,7 +104,8 @@ final readonly class NotifyVenueBookingLifecycleRecipients
                 )
                 : $this->memberships->allowedUserIdsForCourt(
                     $booking->venue->courts()->findOrFail($booking->venue_court_id),
-                    VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
+                    VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
                 ),
             VenueBookingCancelled::class => [
                 $booking->requester_user_id,
