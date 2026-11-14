@@ -23,6 +23,7 @@
     </head>
     <body class="{{ $routeClass }}">
         @include('partials.analytics.yandex-metrika-noscript')
+        @include('partials.privacy.cookie-banner')
 
         <header class="site-frame">
             @include('theme::partials.header')

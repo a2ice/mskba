@@ -1,3 +1,4 @@
 @import 'bootstrap';
 @import './default.css';
+@import '../../mskba_app/css/cookie-consent.css';
 @import './mskba-home.css';

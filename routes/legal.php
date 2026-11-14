@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\CookieConsentController;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
 
 $themeResolver = app(ThemeResolver::class);
+
+Route::post('/cookie-consent', [CookieConsentController::class, 'store'])
+    ->name('cookie-consent.store');
 
 Route::get('/personal-data-consent', function () use ($themeResolver) {
     return $themeResolver->page('legal.personal-data-consent');

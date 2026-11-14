@@ -1,0 +1,118 @@
+/* Global consent control. New MSKBA themes use the same tokens and .container as every page. */
+.mskba-cookie-consent {
+    position:fixed;
+    inset-inline:0;
+    bottom:0;
+    z-index:110;
+    padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));
+    background:var(--surface,#141618);
+    border-top:1px solid var(--line,#30353b);
+    box-shadow:0 -12px 36px var(--ambient-shadow,#0004);
+    color:var(--text,#f5f6f7);
+}
+.mskba-cookie-consent[hidden] {display:none!important}
+.mskba-cookie-consent__inner {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:24px;
+    min-width:0;
+}
+.mskba-cookie-consent__copy {min-width:0;flex:1 1 auto}
+.mskba-cookie-consent__copy strong {display:block;font-size:16px;line-height:24px;font-weight:700;margin-bottom:4px}
+.mskba-cookie-consent__copy p {font-size:13px;line-height:20px;color:var(--muted,#adb3bb);margin:0}
+.mskba-cookie-consent__copy a {color:var(--accent,#ff7900);text-decoration:underline;text-underline-offset:2px}
+.mskba-cookie-consent__copy a:hover {color:var(--accent-hover,#ff922e)}
+.mskba-cookie-consent__copy .mskba-cookie-consent__error {margin-top:8px;color:var(--danger,#ff9398)}
+.mskba-cookie-consent__actions {
+    display:flex;
+    flex:0 0 auto;
+    flex-direction:row;
+    align-items:center;
+    gap:12px;
+    width:auto;
+    margin:0;
+}
+.mskba-cookie-consent__button {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:10px 16px;
+    border:1px solid transparent;
+    border-radius:var(--radius-control,12px);
+    font-size:14px;
+    font-weight:600;
+    line-height:20px;
+    text-align:center;
+    white-space:nowrap;
+    cursor:pointer;
+    transition:background 160ms ease,border-color 160ms ease;
+}
+.mskba-cookie-consent__button--primary {
+    background:var(--accent,#ff7900);
+    color:var(--on-accent,#14100a);
+}
+.mskba-cookie-consent__button--primary:hover:not(:disabled) {background:var(--accent-hover,#ff922e)}
+.mskba-cookie-consent__button--secondary {
+    background:var(--surface-raised,#1d2023);
+    border-color:var(--control-line,#707a86);
+    color:var(--text,#f5f6f7);
+}
+.mskba-cookie-consent__button--secondary:hover:not(:disabled) {border-color:var(--accent,#ff7900)}
+.mskba-cookie-consent__button:disabled {opacity:.6;cursor:wait}
+.mskba-cookie-settings-trigger {
+    display:inline;
+    border:0;
+    border-radius:0;
+    margin:0;
+    padding:0;
+    background:transparent;
+    color:inherit;
+    font:inherit;
+    text-align:left;
+    cursor:pointer;
+}
+.mskba-cookie-settings-trigger:hover {color:var(--accent,#ff7900);text-decoration:underline}
+body.theme-shell .mskba-cookie-consent .container {
+    width:100%;
+    max-width:var(--inner-width,1280px);
+    padding-inline:15px;
+    margin-inline:auto;
+}
+@media(max-width:900px) {
+    .mskba-cookie-consent__inner {align-items:stretch;flex-direction:column;gap:16px}
+    .mskba-cookie-consent__actions {width:100%}
+    .mskba-cookie-consent__button {flex:1 1 0;white-space:normal}
+}
+@media(max-width:540px) {
+    .mskba-cookie-consent {padding-block:16px calc(16px + env(safe-area-inset-bottom,0px))}
+    .mskba-cookie-consent__copy strong {font-size:15px}
+    .mskba-cookie-consent__copy p {font-size:12px;line-height:18px}
+    .mskba-cookie-consent__actions {flex-direction:column;align-items:stretch;gap:8px}
+    .mskba-cookie-consent__button {width:100%}
+}
+
+/* Match existing footer link typography without changing the footer grid. */
+.app-footer__nav .mskba-cookie-settings-trigger,
+.site-footer__nav .mskba-cookie-settings-trigger {
+    display:block;
+    width:max-content;
+    max-width:100%;
+    margin-block:0;
+    padding:0;
+    font-weight:inherit;
+}
+
+.mskba-cookie-settings-footer {
+    padding:16px 0;
+    background:var(--surface,#141618);
+    color:var(--muted,#adb3bb);
+}
+.mskba-cookie-settings-footer .container {
+    width:min(100% - 64px,1280px);
+    margin-inline:auto;
+}
+@media(max-width:540px) {
+    .mskba-cookie-settings-footer .container {width:min(100% - 32px,1280px)}
+}

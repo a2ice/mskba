@@ -58,6 +58,7 @@
                 <a href="{{ route('homepage.original') }}#about">О проекте</a>
                 <a href="{{ route('homepage.original') }}#partners">Партнёрам</a>
                 <a href="{{ route('privacy.policy') }}">Персональные данные</a>
+                @include('partials.privacy.cookie-settings-link')
                 <a href="mailto:{{ config('legal.privacy_email') }}">Связаться с нами</a>
             </nav>
         </div>

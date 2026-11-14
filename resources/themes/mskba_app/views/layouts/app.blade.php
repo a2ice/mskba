@@ -32,6 +32,7 @@
             @yield('content')
         </main>
         @include('theme::partials.footer')
+        @include('partials.privacy.cookie-banner')
         @auth
             <section class="app-message-toast-region" data-message-toast-region hidden
                      role="region" aria-label="Непрочитанные сообщения"></section>

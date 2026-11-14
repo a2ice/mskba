@@ -5,7 +5,8 @@
         : null;
 @endphp
 
-@if ($counterId !== null && $counterId > 0)
+{{-- Analytics is never initialized before an explicit, current-version opt-in. --}}
+@if ($counterId !== null && $counterId > 0 && \App\Support\Privacy\CookieConsent::analyticsAllowed())
     <!-- Yandex.Metrika counter -->
     <script>
         (function(m,e,t,r,i,k,a){
