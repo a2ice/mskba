@@ -498,6 +498,14 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         $this->assertDatabaseHas('venue_calendar_slot_prices', [
             'venue_id' => $venue->id, 'whole_price_per_step_minor' => 120050,
         ]);
+        $this->actingAs($owner)->post(route('account.venues.calendar-prices.store', $venue), [
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step' => '1', 'half_price_per_step' => '',
+        ])->assertRedirect()->assertSessionHasErrors('whole_price_per_step');
+        $this->assertDatabaseHas('venue_calendar_slot_prices', [
+            'venue_id' => $venue->id, 'whole_price_per_step_minor' => 120050,
+        ]);
+
         $this->assertDatabaseHas('venue_court_calendar_slot_prices', [
             'venue_court_id' => $court->id, 'whole_price_per_step_minor' => 120050,
         ]);
