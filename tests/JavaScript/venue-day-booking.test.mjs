@@ -27,6 +27,7 @@ function node() {
         querySelectorAll() { return []; },
         querySelector() { return null; },
         append(...children) { this.children.push(...children); },
+        appendChild(child) { this.children.push(child); return child; },
         replaceChildren(...children) { this.children = children; },
         setAttribute() {},
         removeAttribute() {},
