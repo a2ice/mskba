@@ -15,9 +15,16 @@ function mount() {
     };
     function field(name, tagName = 'INPUT') {
         const attrs = {};
+        const fieldListeners = {};
         const item = {
             name, tagName, dataset: {}, validity: {valueMissing: true},
             validationMessage: '', minLength: 3, focused: false,
+            setCustomValidity(message) {
+                this.validationMessage = message;
+                this.validity.customError = message.length > 0;
+            },
+            addEventListener(type, handler) { fieldListeners[type] = handler; },
+            fire(type) { fieldListeners[type]?.({target: this}); },
             closest() { return host; },
             setAttribute(key, value) { attrs[key] = value; },
             getAttribute(key) { return attrs[key] ?? null; },
@@ -35,6 +42,8 @@ function mount() {
     const type = field('type', 'SELECT');
     const court = field('initial_courts[0][environment]', 'SELECT');
     const selected = { value: '' };
+    const clear = {listeners: {}, addEventListener(type, cb) {this.listeners[type] = cb;},
+        click() {this.listeners.click?.();}};
     const status = { textContent: '' };
     const elements = [address, name, type, court];
     const form = {
@@ -44,6 +53,7 @@ function mount() {
             if (selector === '[data-address-suggest-input]') return address;
             if (selector === '[data-venue-create-status]') return status;
             if (selector === '[data-address-selected]') return selected;
+            if (selector === '[data-address-clear]') return clear;
             if (selector === '[aria-invalid="true"]') return elements.find(item => item.attrs['aria-invalid'] === 'true') || null;
             return null;
         },
@@ -69,7 +79,7 @@ function mount() {
         listeners[type](e);
         return e;
     };
-    return {event, elements, address, name, type, court, selected, nodes, status};
+    return {event, elements, address, name, type, court, selected, clear, nodes, status};
 }
 
 test('required fields get red inline errors, and editing clears just the edited error', () => {
@@ -119,4 +129,53 @@ test('server 422 errors target the exact court fields and address', () => {
     page.event('change', page.court);
     assert.equal(page.court.attrs['aria-invalid'], undefined);
     assert.equal(page.address.attrs['aria-invalid'], 'true');
+});
+
+
+test('unselected address is invalid together with other required fields even without submit', () => {
+    const page = mount();
+    assert.match(page.address.validationMessage, /Выберите точный адрес/);
+    assert.equal(page.address.validity.customError, true);
+    page.address.validity.valueMissing = false; // user typed raw text, not a suggestion
+    page.event('invalid', page.address);
+    page.event('invalid', page.type);
+    page.event('invalid', page.court);
+    assert.equal(page.address.attrs['aria-invalid'], 'true');
+    assert.equal(page.type.attrs['aria-invalid'], 'true');
+    assert.equal(page.court.attrs['aria-invalid'], 'true');
+    assert.match(page.nodes.get(page.address.dataset.venueErrorId).textContent, /Выберите точный адрес/);
+    assert.equal(page.address.focused, true);
+});
+
+test('accepted address becomes valid, and typing or clearing makes it invalid again', () => {
+    const page = mount();
+    page.selected.value = '1';
+    page.event('address-suggest:selected');
+    assert.equal(page.address.validationMessage, '');
+    assert.equal(page.address.validity.customError, false);
+
+    // A keystroke invalidates selection even before the address module clears its hidden field.
+    page.address.fire('input');
+    assert.match(page.address.validationMessage, /Выберите точный адрес/);
+    page.selected.value = '';
+    page.event('invalid', page.address);
+    assert.equal(page.address.attrs['aria-invalid'], 'true');
+    page.selected.value = '1';
+    page.event('address-suggest:selected');
+    assert.equal(page.address.attrs['aria-invalid'], undefined);
+    assert.equal(page.address.validationMessage, '');
+    page.clear.click();
+    assert.match(page.address.validationMessage, /Выберите точный адрес/);
+});
+
+test('app venue and dynamic court selects use the documented UI Kit primitive', () => {
+    const createForm = readFileSync(new URL('../../resources/themes/mskba_app/views/pages/venues/partials/create-form.blade.php', import.meta.url), 'utf8');
+    const courtRow = readFileSync(new URL('../../resources/views/venues/partials/initial-court-row.blade.php', import.meta.url), 'utf8');
+    assert.match(createForm, /class="select-control"[\s\S]*?<select name="type"/);
+    assert.match(createForm, /class="select-control"[\s\S]*?<select name="access_type"/);
+    for (const key of ['environment', 'hoops_count', 'surface_type']) {
+        assert.match(courtRow, new RegExp('class="select-control"[\\s\\S]*?<select name="initial_courts\\[\\{\\{ \\$index \\}\\}\\]\\[' + key + '\\]'));
+    }
+    assert.match(courtRow, /@if\(\$appThemeSelects\)/);
+    assert.match(createForm, /useAppSelects.*true/);
 });

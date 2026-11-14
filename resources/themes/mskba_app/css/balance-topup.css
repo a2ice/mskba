@@ -48,6 +48,7 @@
 .app-venue-create__field{display:grid;gap:6px;font-size:14px;font-weight:600;min-width:0}
 .app-venue-create__field small{font-size:12px;font-weight:400;color:#697b8d}
 .app-venue-create input:not([type=checkbox]):not([type=radio]),.app-venue-create select,.app-venue-create textarea{width:100%;min-width:0;padding:10px;border:1px solid #ccd5df;border-radius:8px;background:white;color:#283a50;font:inherit}
+.app-venue-create .select-control>select{appearance:none;-webkit-appearance:none;min-height:44px;padding-inline-end:48px;cursor:pointer}
 .app-venue-create__address{display:grid;gap:10px;min-width:0;margin:0;padding:12px;border:1px solid #dce3ea;border-radius:10px}
 .app-venue-create__address legend{font-weight:700;padding:0 5px}
 .app-venue-create__address-actions{display:flex;flex-wrap:wrap;gap:8px}

@@ -1,0 +1,16 @@
+# Создание площадки: валидация адреса и соответствие селектов UI Kit — 14.11.2026
+
+## Эталон и UI-контракт
+- docs/specification/ui-design-system.md, разделы «Компоненты и состояния», «Native select» и «Обязательный цикл обновления UI Kit».
+- Примитив .select-control из resources/themes/mskba_app/css/design-system.css: системный список, appearance:none, Tabler chevron-down 20 px, отступ справа 16 px, padding-inline-end:48px, pointer-events:none для SVG.
+- Образцы в темах: resources/themes/mskba_app/views/pages/venues/index.blade.php и resources/themes/mskba_app/views/pages/venues/courts.blade.php. Новые компоненты или токены не вводятся.
+
+## Исправления
+- В mskba_app селекты типа площадки, условий посещения, типа/колец/покрытия зала оформлены по общему .select-control, включая строки, создаваемые динамически. Общий Blade частичного зала сохраняет legacy-разметку для старой темы.
+- В адресе значение location[address_selected] проверяется через setCustomValidity у видимого input, поэтому HTML5 invalid срабатывает независимо от submit и одновременно с пустыми названием/типом. Просто набранный адрес остаётся невалидным.
+- При ручном вводе/очистке ранее выбранного адреса custom validity возвращается; после реального address-suggest:selected снимается. Общий механизм aria-invalid, inline-ошибки, фокуса и очистки ошибки при исправлении сохраняется.
+- Правила backend, геокодер, метро и доступы не меняются.
+
+## Проверки
+- JS: незаполненная форма, ручной адрес и другие обязательные ошибки одновременно, выбранная подсказка, сброс выбора при редактировании, UI Kit в шаблонах.
+- CI, PHP lint, Vite build, затем merge в dev и автодеплой. Ручная приёмка desktop/mobile — после деплоя.
