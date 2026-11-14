@@ -16,6 +16,9 @@
 @endphp
 
 @if($event->booking_deferred && !($isEmbeddedGame ?? false))
+    @if(($canManage ?? false) && ($interestThread = $event->venueInterests->sortByDesc('revision')->first()))
+        <p class="mb-3"><a class="fc-link" href="{{ route('events.interests.show', ['event' => $event->routeIdentifier(), 'interest' => $interestThread->id]) }}">Переписка с площадкой по предзаявке</a></p>
+    @endif
     @if($sourceBooking?->status === VenueBookingStatusEnum::CONFIRMED)
         <div class="alert alert-success mb-3"><strong>Зал забронирован.</strong> Бронь подтверждена площадкой.
             <a href="{{ route('account.venue-bookings.show', $sourceBooking) }}">Детали бронирования</a>

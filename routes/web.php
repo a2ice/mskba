@@ -38,6 +38,7 @@ use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardCon
 use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventVenueBookingController;
+use App\Modules\Event\Presentation\Http\Controllers\EventVenueInterestConversationController;
 use App\Modules\Event\Presentation\Http\Controllers\VenueEventInterestController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
@@ -761,6 +762,16 @@ Route::prefix('events')->group(function () {
             ->name('events.edit')
             ->defaults('breadcrumb', 'Редактирование мероприятия');
         Route::put('/{event}', [EventController::class, 'update'])->name('events.update');
+        Route::get('/{event}/interests/{interest}', [EventVenueInterestConversationController::class, 'show'])
+            ->whereNumber('interest')->name('events.interests.show');
+        Route::get('/{event}/interests/{interest}/messages', [EventVenueInterestConversationController::class, 'messages'])
+            ->whereNumber('interest')->name('events.interests.messages');
+        Route::post('/{event}/interests/{interest}/messages', [EventVenueInterestConversationController::class, 'send'])
+            ->whereNumber('interest')->middleware('throttle:20,1')->name('events.interests.messages.store');
+        Route::post('/{event}/interests/{interest}/proposals', [EventVenueInterestConversationController::class, 'propose'])
+            ->whereNumber('interest')->middleware('throttle:10,1')->name('events.interests.proposals.store');
+        Route::post('/{event}/interests/{interest}/proposals/{proposal}/decline', [EventVenueInterestConversationController::class, 'decline'])
+            ->whereNumber('interest')->whereNumber('proposal')->name('events.interests.proposals.decline');
         Route::post('/{event}/booking/quote', [EventVenueBookingController::class, 'quote'])
             ->middleware('throttle:20,1')->name('events.booking.quote');
         Route::post('/{event}/booking', [EventVenueBookingController::class, 'store'])
