@@ -22,7 +22,6 @@ use RuntimeException;
  */
 final class ApplyFindSportSnapshotToNativeSchedule
 {
-    private const OPEN = '07:00';
     // Current HTML time controls cannot edit 24:00: 23:59 is their closing
     // boundary; a booking crossing midnight is separately unsupported.
     private const CLOSE = '23:59';
@@ -81,7 +80,9 @@ final class ApplyFindSportSnapshotToNativeSchedule
             || $snapshot->timezone !== 'Europe/Moscow'
             || $snapshot->currency !== 'RUB'
             || ! $snapshot->complete
-            || $snapshot->step_minutes !== 30 || $snapshot->minimum_minutes !== 60) {
+            || $snapshot->step_minutes !== 30
+            || $snapshot->minimum_minutes < 60
+            || $snapshot->minimum_minutes % 30 !== 0) {
             throw new RuntimeException('Снимок неполный либо не соответствует источнику, залу или формату FindSport.');
         }
 
@@ -89,9 +90,15 @@ final class ApplyFindSportSnapshotToNativeSchedule
         $dates = array_keys($days);
         $firstDate = $dates[0];
         $lastDate = $dates[6];
+        $firstSlot = $days[$firstDate]->first();
+        $lastSlot = $days[$firstDate]->last();
+        $openTime = $firstSlot->starts_at->setTimezone('Europe/Moscow')->format('H:i');
+        $sourceCloseTime = $lastSlot->ends_at->setTimezone('Europe/Moscow')->format('H:i');
+        $closeTime = $sourceCloseTime === '00:00' ? self::CLOSE : $sourceCloseTime;
 
         return DB::transaction(function () use (
             $source, $snapshot, $actor, $mapping, $days, $dates, $firstDate, $lastDate,
+            $openTime, $closeTime,
         ): VenueCourtExternalScheduleImport {
             $court = VenueCourt::query()->whereKey($mapping->venue_court_id)
                 ->lockForUpdate()->firstOrFail();
@@ -101,8 +108,23 @@ final class ApplyFindSportSnapshotToNativeSchedule
             if ((int) $court->venue_id !== (int) $venue->id || $court->trashed()) {
                 throw new RuntimeException('Зал больше не принадлежит выбранной площадке.');
             }
-            if ($venue->courts()->count() !== 1) {
-                throw new RuntimeException('Пилот изменяет часы площадки только при одном зале, чтобы не затронуть другие залы.');
+            $onlyCourt = $venue->courts()->count() === 1;
+            if (! $onlyCourt) {
+                // Multiple halls: keep the parent venue schedule unchanged.
+                // An explicitly closed / exceptional parent date would still
+                // override this court, so do not silently claim it is available.
+                $parent = $venue->schedule()->with('exceptions')->first();
+                foreach ($dates as $date) {
+                    $parentException = $parent?->exceptions->first(
+                        fn ($row): bool => $row->date->toDateString() === $date,
+                    );
+                    if ($parentException !== null
+                        && $days[$date]->contains(fn ($slot): bool => $slot->status === 'available')) {
+                        throw new RuntimeException(
+                            "У площадки есть исключение расписания на {$date}. Проверьте его, прежде чем импортировать свободные слоты одного из залов."
+                        );
+                    }
+                }
             }
 
             $previous = VenueCourtExternalScheduleImport::query()
@@ -122,20 +144,22 @@ final class ApplyFindSportSnapshotToNativeSchedule
                 );
             }
 
-            // The 10:00–23:00 parent hours must not clip imported 07:00–24:00
-            // court hours. This pilot only touches single-court venues.
-            $schedule = $venue->schedule()->firstOrCreate(
-                ['venue_id' => $venue->id], ['timezone' => 'Europe/Moscow'],
-            );
-            $schedule->update(['timezone' => 'Europe/Moscow']);
-            $schedule->intervals()->delete();
-            for ($isoDay = 1; $isoDay <= 7; $isoDay++) {
-                $schedule->intervals()->create([
-                    'day_of_week' => $isoDay,
-                    'starts_at' => self::OPEN,
-                    'ends_at' => self::CLOSE,
-                    'sort_order' => 0,
-                ]);
+            // For single-court venues also update the parent working hours;
+            // for multi-court venues only the mapped hall is changed.
+            if ($onlyCourt) {
+                $schedule = $venue->schedule()->firstOrCreate(
+                    ['venue_id' => $venue->id], ['timezone' => 'Europe/Moscow'],
+                );
+                $schedule->update(['timezone' => 'Europe/Moscow']);
+                $schedule->intervals()->delete();
+                for ($isoDay = 1; $isoDay <= 7; $isoDay++) {
+                    $schedule->intervals()->create([
+                        'day_of_week' => $isoDay,
+                        'starts_at' => $openTime,
+                        'ends_at' => $closeTime,
+                        'sort_order' => 0,
+                    ]);
+                }
             }
 
             $affectedDates = $dates;
@@ -147,14 +171,16 @@ final class ApplyFindSportSnapshotToNativeSchedule
                 }
             }
             $affectedDates = array_values(array_unique($affectedDates));
-            $schedule->exceptions()->whereIn('date', $affectedDates)->delete();
+            if ($onlyCourt) {
+                $schedule->exceptions()->whereIn('date', $affectedDates)->delete();
+            }
 
             $weekly = [];
             for ($isoDay = 1; $isoDay <= 7; $isoDay++) {
                 $weekly[] = [
                     'day_of_week' => $isoDay,
-                    'starts_at' => self::OPEN,
-                    'ends_at' => self::CLOSE,
+                    'starts_at' => $openTime,
+                    'ends_at' => $closeTime,
                 ];
             }
 
@@ -204,7 +230,7 @@ final class ApplyFindSportSnapshotToNativeSchedule
                 'requires_payment' => true,
                 'requires_booking' => true,
                 'time_step_minutes' => 30,
-                'minimum_duration_minutes' => 60,
+                'minimum_duration_minutes' => $snapshot->minimum_minutes,
             ])->save();
 
             $court->calendarSlotPrices()->whereIn('date', $affectedDates)->delete();
@@ -253,9 +279,11 @@ final class ApplyFindSportSnapshotToNativeSchedule
     private function validatedDays(ExternalAvailabilitySnapshot $snapshot): array
     {
         $slots = $snapshot->slots()->orderBy('starts_at')->get();
-        if ($slots->count() !== 238) {
-            throw new RuntimeException('Снимок должен содержать ровно 238 получасовых интервалов.');
+        if ($slots->count() < 7 || $slots->count() > 7 * 48
+            || $slots->count() % 7 !== 0) {
+            throw new RuntimeException('Снимок содержит недопустимое количество получасовых интервалов.');
         }
+        $slotsPerDay = intdiv($slots->count(), 7);
         $days = [];
         foreach ($slots as $slot) {
             $date = $slot->local_date->toDateString();
@@ -266,13 +294,18 @@ final class ApplyFindSportSnapshotToNativeSchedule
         if (count($dates) !== 7) {
             throw new RuntimeException('Снимок должен охватывать ровно семь дней.');
         }
+        $gridStart = $days[$dates[0]]->first()->starts_at
+            ->setTimezone('Europe/Moscow')->format('H:i');
         foreach ($dates as $i => $date) {
             if ($date !== CarbonImmutable::parse($dates[0], 'Europe/Moscow')->addDays($i)->toDateString()
-                || $days[$date]->count() !== 34) {
+                || $days[$date]->count() !== $slotsPerDay) {
                 throw new RuntimeException('Обнаружен разрыв в недельной сетке FindSport.');
             }
             foreach ($days[$date]->values() as $j => $slot) {
-                $expected = CarbonImmutable::parse($date.' 07:00', 'Europe/Moscow')->addMinutes($j * 30);
+                $expected = CarbonImmutable::parse($date.' '.$gridStart, 'Europe/Moscow')->addMinutes($j * 30);
+                if ($expected->toDateString() !== $date) {
+                    throw new RuntimeException("Снимок {$date}: интервалы выходят за границы суток.");
+                }
                 $actual = $slot->starts_at->setTimezone('Europe/Moscow');
                 if ($actual->toIso8601String() !== $expected->toIso8601String()
                     || $slot->ends_at->getTimestamp() - $slot->starts_at->getTimestamp() !== 1800
