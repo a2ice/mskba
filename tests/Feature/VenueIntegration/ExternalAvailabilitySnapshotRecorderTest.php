@@ -421,13 +421,15 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         config()->set('features.venue_rental.rental_flow', true);
         $previewPath = route('venues.schedule.day', [
             'venue' => $venue->id,
-            'date' => '2026-11-14',
+            'date' => '2026-11-13',
             'venue_court_id' => $court->id,
             'preview_start' => '13:00',
             'preview_duration_minutes' => 60,
         ]);
-        $this->getJson($previewPath)->assertOk()
-            ->assertJsonPath('price_preview.base_amount_minor', 400000);
+        $validPreview = $this->getJson($previewPath);
+        $this->assertSame(200, $validPreview->status(),
+            'Fresh snapshot preview response: '.json_encode($validPreview->json(), JSON_UNESCAPED_UNICODE));
+        $validPreview->assertJsonPath('price_preview.base_amount_minor', 400000);
 
         $snapshot->update(['observed_at' => now()->subMinutes(20)]);
         $this->getJson($previewPath)->assertUnprocessable()
