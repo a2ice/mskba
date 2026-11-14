@@ -3,6 +3,7 @@
 namespace App\Modules\VenueBooking\Application\UseCases;
 
 use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
@@ -44,6 +45,7 @@ final readonly class ExpireVenueBookingHandler
                 $this->outbox->record($booking->id, VenueBookingPaymentExpired::class, ['payment_attempt_id' => $paymentAttempt->id]);
             }
             $this->lifecycle->expire($booking, $systemActor, CarbonImmutable::now(), $expectedVersion);
+            app(EventVenueInterestService::class)->releaseLinkedBooking($booking);
             $this->outbox->record($booking->id, VenueBookingExpired::class);
 
             return $booking->fresh('transitions');

@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
@@ -80,6 +81,7 @@ final class CancelEventHandler
                 'cancelled_by_actor_id' => $actor->id,
                 'cancellation_reason' => $reason ?: null,
             ])->save();
+            app(EventVenueInterestService::class)->withdraw($event);
 
             return $event->refresh()->load('booking');
         });

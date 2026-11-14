@@ -5,6 +5,8 @@ namespace App\Modules\Event\Application\Services;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventVenueInterest;
+use App\Modules\Event\Domain\Events\EventChanged;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
@@ -95,6 +97,20 @@ final readonly class EventVenueInterestService
     public function withdraw(Event $event): void
     {
         $event->venueInterests()->whereIn('status', ['open', 'booking_requested'])->update(['status' => 'withdrawn']);
+    }
+
+    /** An unsuccessful or cancelled rental request must not cancel a previously created event. */
+    public function releaseLinkedBooking(VenueBooking $booking): void
+    {
+        $event = Event::query()->where('booking_id', $booking->id)->lockForUpdate()->first();
+        if ($event === null || ! $event->booking_deferred) {
+            return;
+        }
+
+        $event->forceFill(['booking_id' => null, 'booking_snapshot' => null])->save();
+        $booking->forceFill(['event_id' => null])->save();
+        $this->reopen($event);
+        DB::afterCommit(static fn () => event(new EventChanged($event->id)));
     }
 
     private function notifyRecipients(int $interestId): void
