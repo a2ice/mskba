@@ -191,7 +191,7 @@ final class VenueBookingLifecycleTest extends TestCase
         [$owner, , $venue] = $this->ownedVenue();
         [$applicant, $actor] = $this->userAndActor();
         $booking = $this->request($venue, $owner, $applicant, $actor, false);
-        $owner->update(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        $owner->forceFill(['system_role' => UserSystemRoleEnum::SUPERADMIN])->save();
         config(['themes.active' => 'mskba_app', 'features.venue_rental.portal' => true]);
         $this->app->forgetInstance(ThemeResolver::class);
         View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
