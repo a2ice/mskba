@@ -701,8 +701,10 @@ jobs:
             echo 'Staging cashback activated; production untouched'
 
   enable_dev_rental_flow:
-    needs: test
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.enable_dev_rental_flow && needs.test.result == 'success' }}
+    # The exact deployed SHA was previously verified by the dev push CI.
+    # Run this isolated, manual job immediately rather than repeating the
+    # entire test suite merely to change one staging-only environment flag.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.enable_dev_rental_flow }}
     runs-on: ubuntu-latest
     environment: development
     timeout-minutes: 10
@@ -738,8 +740,14 @@ jobs:
               if [ "$status" -ne 0 ]; then
                 echo 'DEV rental flag activation failed; restoring prior staging environment'
                 cp -p "$backup" .env
-                $COMPOSE exec -T phpfpm php artisan config:clear || true
-                $COMPOSE restart phpfpm queue || true
+                # cp -p may restore an unreadable deploy:deploy group.
+                # Keep the dev .env readable by PHP-FPM, even after rollback.
+                if [ "$(stat -c '%U:%G:%a' .env)" = 'deploy:deploy:640' ]; then
+                  chgrp www-data .env || $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env || true
+                fi
+                $COMPOSE exec -T phpfpm php artisan optimize:clear || true
+                $COMPOSE exec -T phpfpm php artisan config:cache || true
+                $COMPOSE restart phpfpm queue nginx || true
               else
                 rm -f "$backup"
               fi
@@ -769,8 +777,10 @@ jobs:
             test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
             grep -qx 'FEATURE_VENUE_RENTAL_FLOW=true' .env
             $COMPOSE exec -T phpfpm php artisan config:clear
-            # The queue is a long-lived Laravel process and must pick up the flag.
-            $COMPOSE restart phpfpm queue
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            # Queue is long-lived; Nginx can retain a stale PHP-FPM upstream
+            # across service restarts (observed 502 on the first activation).
+            $COMPOSE restart phpfpm queue nginx
             $COMPOSE exec -T phpfpm php -r '
               require "vendor/autoload.php";
               $app = require "bootstrap/app.php";
