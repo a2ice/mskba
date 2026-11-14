@@ -114,8 +114,8 @@ final readonly class RequestVenueBookingHandler
                     try {
                         $this->availability->assertAvailable(
                             $venue,
-                            CarbonImmutable::instance($quote->starts_at)->utc(),
-                            CarbonImmutable::instance($quote->ends_at)->utc(),
+                            CarbonImmutable::instance($quote->starts_at)->setTimezone((string) config('app.timezone', 'UTC')),
+                            CarbonImmutable::instance($quote->ends_at)->setTimezone((string) config('app.timezone', 'UTC')),
                             scope: $quote->scope,
                             court: $court,
                         );
