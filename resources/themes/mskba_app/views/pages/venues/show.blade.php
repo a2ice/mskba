@@ -364,6 +364,7 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>
+    @include('theme::pages.venues.partials.day-calendar')
     <div class="app-venue-day-dialog__info" data-venue-day-info>
         @foreach($venueSlotPromotions as $promotion)
             <div class="app-venue-day-dialog__promotion" aria-label="{{ $promotion['title'] }}">
