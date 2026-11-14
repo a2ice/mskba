@@ -136,11 +136,40 @@
         </section>
     @endif
 
-    @if(config('features.venue_rental.conversations') && $conversation)
+    @if(config('features.venue_rental.conversations'))
         <section class="panel app-rental-inbox__summary" aria-labelledby="rental-booking-chat-title">
             <h2 id="rental-booking-chat-title">Переписка по заявке</h2>
-            <p class="app-rental-inbox__muted">Сообщения остаются внутри заявки и доступны только её участникам.</p>
-            <a class="button secondary" href="{{ route('account.venue-bookings.conversation.index', $booking) }}">Открыть переписку</a>
+            <p class="app-rental-inbox__muted">Сообщения не подтверждают и не отменяют аренду. Решения оформляются отдельными действиями выше.</p>
+            <div class="app-rental-inbox__messages" aria-live="polite" id="booking-conversation-messages"
+                data-poll-url="{{ route('account.venue-bookings.conversation.index', $booking) }}"
+                data-read-url-base="{{ url('/account/venue-bookings/'.$booking->public_id.'/conversation') }}"
+                data-attachment-url-base="{{ url('/account/venue-bookings/'.$booking->public_id.'/conversation/messages') }}"
+                data-conversation-id="{{ $conversation?->public_id }}">
+                @forelse($conversation?->messages?->sortBy('id') ?? [] as $message)
+                    <article class="app-rental-inbox__message" data-message-id="{{ $message->id }}"
+                        data-message-public-id="{{ $message->public_id }}">
+                        <div class="app-rental-inbox__entry-head">
+                            <strong>{{ $message->authorActor->user?->username ?? 'Система' }}</strong>
+                            <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->setTimezone($timezone)->format('d.m.Y H:i') }}</time>
+                        </div>
+                        <p>{{ $message->body }}</p>
+                        @if($message->attachment_path)
+                            <a href="{{ route('account.venue-bookings.conversation.attachment', [$booking, $message]) }}">Скачать: {{ $message->attachment_name }}</a>
+                        @endif
+                    </article>
+                @empty
+                    <p class="app-rental-inbox__muted" data-booking-conversation-empty>Сообщений пока нет.</p>
+                @endforelse
+            </div>
+            <form id="booking-conversation-form" class="app-rental-inbox__fields" method="POST"
+                action="{{ route('account.venue-bookings.conversation.store', $booking) }}">
+                @csrf
+                <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                <label for="booking-message-body">Сообщение
+                    <textarea id="booking-message-body" name="body" maxlength="4000" rows="3" required></textarea>
+                </label>
+                <button class="button primary" type="submit">Отправить сообщение</button>
+            </form>
         </section>
     @endif
 </section>
