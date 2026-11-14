@@ -6,7 +6,10 @@ import { runInNewContext } from 'node:vm';
 const script = readFileSync(
     new URL('../../resources/themes/mskba_app/js/venue-create-validation.js', import.meta.url), 'utf8',
 );
-function mount() {
+const nameAutofillScript = readFileSync(
+    new URL('../../resources/themes/mskba_app/js/venue-create-name.js', import.meta.url), 'utf8',
+);
+function mount({ withAutofill = false } = {}) {
     const listeners = {};
     const nodes = new Map();
     const host = {
@@ -17,7 +20,7 @@ function mount() {
         const attrs = {};
         const fieldListeners = {};
         const item = {
-            name, tagName, dataset: {}, validity: {valueMissing: true},
+            name, tagName, value: '', maxLength: 255, dataset: {}, validity: {valueMissing: true},
             validationMessage: '', minLength: 3, focused: false,
             setCustomValidity(message) {
                 this.validationMessage = message;
@@ -25,6 +28,10 @@ function mount() {
             },
             addEventListener(type, handler) { fieldListeners[type] = handler; },
             fire(type) { fieldListeners[type]?.({target: this}); },
+            dispatchEvent(event) {
+                if (event.bubbles) (listeners[event.type] || []).forEach(callback => callback({target: item}));
+                return true;
+            },
             closest() { return host; },
             setAttribute(key, value) { attrs[key] = value; },
             getAttribute(key) { return attrs[key] ?? null; },
@@ -48,12 +55,13 @@ function mount() {
     const elements = [address, name, type, court];
     const form = {
         elements,
-        addEventListener(type, fn) { listeners[type] = fn; },
+        addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
         querySelector(selector) {
             if (selector === '[data-address-suggest-input]') return address;
             if (selector === '[data-venue-create-status]') return status;
             if (selector === '[data-address-selected]') return selected;
             if (selector === '[data-address-clear]') return clear;
+            if (selector === '[name="name"]') return name;
             if (selector === '[aria-invalid="true"]') return elements.find(item => item.attrs['aria-invalid'] === 'true') || null;
             return null;
         },
@@ -69,14 +77,25 @@ function mount() {
             };
         },
     };
-    runInNewContext(script, {document, requestAnimationFrame: fn => fn()});
+    const context = {
+        document,
+        requestAnimationFrame: fn => fn(),
+        Event: class {
+            constructor(type, options = {}) {
+                this.type = type;
+                this.bubbles = Boolean(options.bubbles);
+            }
+        },
+    };
+    runInNewContext(script, context);
+    if (withAutofill) runInNewContext(nameAutofillScript, context);
     const event = (type, target, detail) => {
         const e = {
             target, detail, prevented: false, stopped: false,
             preventDefault() { this.prevented = true; },
             stopImmediatePropagation() { this.stopped = true; },
         };
-        listeners[type](e);
+        for (const callback of listeners[type] || []) callback(e);
         return e;
     };
     return {event, elements, address, name, type, court, selected, clear, nodes, status};
@@ -178,4 +197,37 @@ test('app venue and dynamic court selects use the documented UI Kit primitive', 
     }
     assert.match(courtRow, /@if\(\$appThemeSelects\)/);
     assert.match(createForm, /useAppSelects.*true/);
+});
+
+
+test('real validation error clears when address selection programmatically autofills venue name', () => {
+    const page = mount({withAutofill: true});
+    page.event('invalid', page.name);
+    page.event('invalid', page.type);
+    const previousErrorId = page.name.dataset.venueErrorId;
+    assert.equal(page.name.attrs['aria-invalid'], 'true');
+    assert.equal(page.type.attrs['aria-invalid'], 'true');
+
+    page.selected.value = '1';
+    page.event('address-suggest:selected', null, {
+        street: 'Керамический проезд', building: '49Б',
+    });
+    assert.equal(page.name.value, 'Керамический проезд, 49Б');
+    assert.equal(page.name.attrs['aria-invalid'], undefined);
+    assert.equal(page.nodes.has(previousErrorId), false);
+    assert.equal(page.type.attrs['aria-invalid'], 'true');
+
+    // Automatic names can still follow later address selections.
+    page.event('address-suggest:selected', null, {
+        street: 'Керамический проезд', building: '51',
+    });
+    assert.equal(page.name.value, 'Керамический проезд, 51');
+
+    // Manually edited names are never overwritten.
+    page.name.value = 'Корт на улице';
+    page.name.fire('input');
+    page.event('address-suggest:selected', null, {
+        street: 'Керамический проезд', building: '53',
+    });
+    assert.equal(page.name.value, 'Корт на улице');
 });
