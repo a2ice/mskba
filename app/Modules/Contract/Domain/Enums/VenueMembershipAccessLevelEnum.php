@@ -41,6 +41,8 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::EDIT_SCHEDULE,
             ],
             self::MANAGER => [
+                VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::EDIT_SCHEDULE,
                 VenuePermissionEnum::MANAGE_BOOKING_POLICY,
@@ -48,11 +50,16 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
                 VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
             ],
-            self::STAFF,
-            self::AGENT => [
+            self::STAFF => [
                 VenuePermissionEnum::VIEW,
             ],
+            self::AGENT => [
+                VenuePermissionEnum::VIEW,
+                VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+            ],
             self::BOOKING_OPERATOR => [
+                VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
                 VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
@@ -83,7 +90,12 @@ enum VenueMembershipAccessLevelEnum: string
                 ...$this->defaultPermissions(),
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
             ],
-            self::ADMIN, self::STAFF, self::AGENT => $this->defaultPermissions(),
+            self::ADMIN => $this->defaultPermissions(),
+            self::STAFF, self::AGENT => array_values(array_unique([
+                ...$this->defaultPermissions(),
+                VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
+            ])),
         };
     }
 
@@ -94,6 +106,8 @@ enum VenueMembershipAccessLevelEnum: string
             self::MANAGER,
             self::BOOKING_OPERATOR,
             self::FINANCE_VIEWER,
+            self::STAFF,
+            self::AGENT,
         ], true);
     }
 }

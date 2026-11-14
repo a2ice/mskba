@@ -48,6 +48,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'cancelled_by_actor_id',
     'cancellation_reason',
     'participation_confirmation_version',
+    'planned_booking_scope',
+    'booking_deferred',
+    'creation_key',
 ])]
 class Event extends Model
 {
@@ -135,6 +138,16 @@ class Event extends Model
         return $this->hasOne(VenueBooking::class);
     }
 
+    public function venueInterests(): HasMany
+    {
+        return $this->hasMany(EventVenueInterest::class);
+    }
+
+    public function venueRevisions(): HasMany
+    {
+        return $this->hasMany(EventVenueRevision::class)->orderBy('revision');
+    }
+
     public function sourceBooking(): BelongsTo
     {
         return $this->belongsTo(RentalVenueBooking::class, 'booking_id');
@@ -184,6 +197,8 @@ class Event extends Model
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
             'participation_confirmation_version' => 'integer',
+            'planned_booking_scope' => \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::class,
+            'booking_deferred' => 'boolean',
         ];
     }
 }

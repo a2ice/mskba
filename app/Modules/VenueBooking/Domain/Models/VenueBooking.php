@@ -25,6 +25,7 @@ use LogicException;
     'payment_state', 'payment_window_expires_at', 'status', 'scope', 'starts_at', 'ends_at',
     'hold_expires_at', 'effective_protection_until', 'optimistic_version',
     'requested_at', 'held_at', 'confirmed_at', 'terminal_at',
+    'event_venue_interest_id', 'interest_booking_initiator',
 ])]
 class VenueBooking extends Model
 {
@@ -50,6 +51,11 @@ class VenueBooking extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function venueInterest(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Event\Domain\Models\EventVenueInterest::class, 'event_venue_interest_id');
     }
 
     public function eventIntent(): HasOne

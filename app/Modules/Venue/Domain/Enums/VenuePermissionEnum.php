@@ -13,6 +13,8 @@ enum VenuePermissionEnum: string
     case MANAGE_CONTRACTS = 'venue.contracts.manage';
     case MANAGE_BOOKING_POLICY = 'rental.policy.manage';
     case MANAGE_GROUP_OFFERS = 'venue.group-offers.manage';
+    case VIEW_EVENT_INTERESTS = 'rental.interests.view';
+    case PROPOSE_EVENT_BOOKING = 'rental.interests.propose-booking';
     case VIEW_BOOKING_REQUESTS = 'rental.bookings.view';
     // Three independent capabilities: receive/read + converse, approve, reject.
     // The former combined 'rental.bookings.decide' is migrated to both actions.
@@ -34,6 +36,8 @@ enum VenuePermissionEnum: string
             self::MANAGE_CONTRACTS => 'Назначение контрактов площадки',
             self::MANAGE_BOOKING_POLICY => 'Управление условиями аренды',
             self::MANAGE_GROUP_OFFERS => 'Управление промокодами площадки',
+            self::VIEW_EVENT_INTERESTS => 'Просмотр предварительного интереса к аренде',
+            self::PROPOSE_EVENT_BOOKING => 'Предложить бронирование по предзаявке',
             self::VIEW_BOOKING_REQUESTS => 'Получение заявок, просмотр и переписка',
             self::CONFIRM_BOOKING_REQUESTS => 'Принятие и подтверждение заявок',
             self::REJECT_BOOKING_REQUESTS => 'Отклонение и отмена заявок',

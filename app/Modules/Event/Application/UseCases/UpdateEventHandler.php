@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -95,7 +96,10 @@ final class UpdateEventHandler
             $booking = VenueBooking::query()
                 ->where('event_id', $event->id)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+            if ($booking === null && ! $event->booking_deferred) {
+                throw new InvalidArgumentException('Бронирование мероприятия не найдено.');
+            }
             $currentVenue = $venues->get($event->venue_id);
             $targetVenue = $venues->get($requestedVenueId);
 
@@ -138,11 +142,11 @@ final class UpdateEventHandler
             }
 
             $currentDuration = (int) $event->starts_at->diffInMinutes($event->ends_at);
-            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? $booking->scope?->value ?? VenueBookingScopeEnum::WHOLE->value);
+            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? $booking?->scope?->value ?? $event->planned_booking_scope?->value ?? VenueBookingScopeEnum::WHOLE->value);
             $bookingChanged = $bookingDataProvided && (
                 $targetVenue->id !== $event->venue_id
-                || $targetCourt?->id !== ($booking->venue_court_id ?? $event->venue_court_id)
-                || $bookingScope !== ($booking->scope ?? VenueBookingScopeEnum::WHOLE)
+                || $targetCourt?->id !== ($booking?->venue_court_id ?? $event->venue_court_id)
+                || $bookingScope !== ($booking?->scope ?? $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE)
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
             );
@@ -159,7 +163,7 @@ final class UpdateEventHandler
                 if ($event->booking_id !== null) {
                     throw new InvalidArgumentException('Время, площадка и зал связанного мероприятия меняются только через перенос брони.');
                 }
-                if (! $currentVenue->hasFreeAccess() || ! $targetVenue->hasFreeAccess()) {
+                if ($booking !== null && (! $currentVenue->hasFreeAccess() || ! $targetVenue->hasFreeAccess())) {
                     throw new InvalidArgumentException(
                         'Площадку, зал и время пока можно менять только для мероприятий на свободных площадках.'
                     );
@@ -175,7 +179,7 @@ final class UpdateEventHandler
                     $targetVenue,
                     $startsAt,
                     $endsAt,
-                    $booking->id,
+                    $booking?->id,
                     scope: $bookingScope,
                     court: $targetCourt,
                 );
@@ -190,6 +194,12 @@ final class UpdateEventHandler
                 throw new InvalidArgumentException('Лимит участников не может быть меньше числа уже записавшихся.');
             }
 
+            $previousVenue = $event->venue_id;
+            $previousCourt = $event->venue_court_id;
+            $previousStart = $event->starts_at;
+            $previousEnd = $event->ends_at;
+            $previousScope = $booking?->scope?->value ?? $event->planned_booking_scope?->value;
+
             $event->forceFill([
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
@@ -199,6 +209,7 @@ final class UpdateEventHandler
                 'max_participants' => $maxParticipants,
                 'venue_id' => $targetVenue->id,
                 'venue_court_id' => $bookingDataProvided ? $targetCourt?->id : $event->venue_court_id,
+                'planned_booking_scope' => $bookingScope,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'participation_confirmation_version' => $bookingChanged
@@ -207,15 +218,35 @@ final class UpdateEventHandler
             ])->save();
 
             if ($bookingChanged) {
-                $booking->forceFill([
-                    'venue_id' => $targetVenue->id,
-                    'venue_court_id' => $targetCourt?->id,
-                    'status' => VenueBookingStatusEnum::CONFIRMED,
-                    'scope' => $bookingScope,
-                    'starts_at' => $startsAt,
-                    'ends_at' => $endsAt,
-                ])->save();
-                $event->forceFill(['status' => EventStatusEnum::PUBLISHED])->save();
+                if ($booking !== null) {
+                    $booking->forceFill([
+                        'venue_id' => $targetVenue->id,
+                        'venue_court_id' => $targetCourt?->id,
+                        'status' => VenueBookingStatusEnum::CONFIRMED,
+                        'scope' => $bookingScope,
+                        'starts_at' => $startsAt,
+                        'ends_at' => $endsAt,
+                    ])->save();
+                    $event->forceFill(['status' => EventStatusEnum::PUBLISHED])->save();
+                }
+                $event->venueRevisions()->create([
+                    'revision' => (int) $event->venueRevisions()->max('revision') + 1,
+                    'changed_by_actor_id' => $actor->id,
+                    'previous_venue_id' => $previousVenue,
+                    'next_venue_id' => $targetVenue->id,
+                    'previous_court_id' => $previousCourt,
+                    'next_court_id' => $targetCourt?->id,
+                    'previous_scope' => $previousScope,
+                    'next_scope' => $bookingScope->value,
+                    'previous_starts_at' => $previousStart,
+                    'previous_ends_at' => $previousEnd,
+                    'next_starts_at' => $startsAt,
+                    'next_ends_at' => $endsAt,
+                    'reason' => trim((string) ($data['revision_reason'] ?? '')) ?: null,
+                ]);
+                if ($event->booking_deferred) {
+                    app(EventVenueInterestService::class)->revise($event, $actor);
+                }
                 $event->participants()
                     ->where('role', EventParticipantRoleEnum::ORGANIZER->value)
                     ->update(['confirmation_version' => $event->participation_confirmation_version]);

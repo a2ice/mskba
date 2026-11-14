@@ -72,7 +72,7 @@ final class VenueBookingController extends Controller
         VenueCommercialAccess $commercialAccess,
         VenueUserRestrictionService $restrictions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
+        $venueBooking->load(['venue', 'venueInterest.event', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
 
         try {
@@ -169,6 +169,14 @@ final class VenueBookingController extends Controller
             'conversation' => $conversation,
             'conversationUnread' => $conversationUnread,
             'contributionSummary' => $contributionSummary,
+            'interestLink' => $venueBooking->venueInterest !== null
+                && $currentUser !== null
+                && app(\App\Modules\Event\Application\Services\EventVenueInterestService::class)
+                    ->canParticipateInThread($currentUser, $venueBooking->venueInterest)
+                ? route('events.interests.show', [
+                    'event' => $venueBooking->venueInterest->event->routeIdentifier(),
+                    'interest' => $venueBooking->venueInterest->id,
+                ]) : null,
         ]);
     }
 

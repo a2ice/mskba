@@ -1,0 +1,266 @@
+<?php
+
+namespace App\Modules\Event\Presentation\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
+use App\Modules\Event\Application\Services\EventVenueInterestChat;
+use App\Modules\Event\Application\Services\EventVenueBookingProposals;
+use App\Modules\Event\Domain\Models\EventVenueInterest;
+use App\Modules\Event\Domain\Models\EventVenueBookingProposal;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
+use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
+use App\Presentation\Theming\ThemeResolver;
+use App\Support\Features\FeatureDisabledException;
+use Carbon\CarbonImmutable;
+use DomainException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
+
+final class EventVenueBookingController extends Controller
+{
+    public function quote(
+        Request $request,
+        string $event,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        QuoteVenueBookingHandler $quotes,
+        EventVenueBookingProposals $proposals,
+    ): Response|RedirectResponse {
+        $validated = $request->validate([
+            'expected_version' => ['required', 'integer', 'min:1'],
+            'interest_id' => ['nullable', 'integer', 'min:1'],
+            'proposal_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $item = Event::query()->whereRouteIdentifier($event)->with(['venue', 'court'])->firstOrFail();
+
+        try {
+            $this->assertCanRequest($item, $actor, $access, (int) $validated['expected_version']);
+            $interest = isset($validated['interest_id'])
+                ? $item->venueInterests()->findOrFail($validated['interest_id']) : null;
+            if ($interest !== null && ($interest->status !== 'open'
+                || $interest->revision !== $item->participation_confirmation_version)) {
+                throw new InvalidArgumentException('Предзаявка устарела. Выберите актуальную версию мероприятия.');
+            }
+            if (isset($validated['proposal_id'])) {
+                if ($interest === null) {
+                    throw new InvalidArgumentException('Для предложения необходимо указать предзаявку.');
+                }
+                $proposal = EventVenueBookingProposal::query()
+                    ->where('event_venue_interest_id', $interest->id)
+                    ->findOrFail($validated['proposal_id']);
+                $proposals->assertPendingForOrganizer($proposal, $actor);
+            }
+
+            $venue = $item->venue;
+            $scope = $item->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
+            $quote = $quotes->handle(
+                $venue,
+                CarbonImmutable::instance($item->starts_at),
+                (int) $item->starts_at->diffInMinutes($item->ends_at),
+                $scope,
+                $actor->user,
+                $item->court,
+            );
+
+            return ThemeResolver::page('events.booking-quote', [
+                'event' => $item,
+                'quote' => $quote,
+                'expectedVersion' => $item->participation_confirmation_version,
+                'interestId' => $interest?->id,
+                'proposalId' => $proposal->id ?? null,
+            ]);
+        } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            return redirect()->route('events.show', $item->routeIdentifier())
+                ->with('error', $exception instanceof FeatureDisabledException
+                    ? 'Онлайн-бронирование временно недоступно.'
+                    : $exception->getMessage().' Измените время или площадку мероприятия и повторите расчёт.');
+        }
+    }
+
+    public function store(
+        Request $request,
+        string $event,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        EventVenueInterestService $interests,
+        VenueEventAvailability $availability,
+        RequestVenueBookingHandler $bookings,
+        EventVenueBookingProposals $proposals,
+        EventVenueInterestChat $chat,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'expected_version' => ['required', 'integer', 'min:1'],
+            'quote_id' => ['nullable', 'uuid'],
+            'interest_id' => ['nullable', 'integer', 'min:1'],
+            'proposal_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $reference = Event::query()->whereRouteIdentifier($event)->firstOrFail();
+
+        try {
+            $result = DB::transaction(function () use ($reference, $actor, $access, $validated, $interests, $availability, $bookings, $proposals, $chat): array {
+                // Lock order is venue -> event -> quote/booking.
+                $venue = Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
+                $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
+                if ($event->venue_id !== $venue->id) {
+                    throw new InvalidArgumentException('Место мероприятия изменилось. Повторите расчёт.');
+                }
+                $this->assertCanRequest($event, $actor, $access, (int) $validated['expected_version']);
+
+                $interest = isset($validated['interest_id'])
+                    ? $event->venueInterests()->lockForUpdate()->findOrFail($validated['interest_id'])
+                    : $event->venueInterests()->where('status', 'open')->latest('revision')->lockForUpdate()->first();
+                if ($interest !== null && ($interest->status !== 'open'
+                    || $interest->revision !== $event->participation_confirmation_version
+                    || $interest->venue_id !== $event->venue_id
+                    || ! $interest->starts_at->equalTo($event->starts_at)
+                    || ! $interest->ends_at->equalTo($event->ends_at))) {
+                    throw new InvalidArgumentException('Предзаявка больше не соответствует мероприятию.');
+                }
+                $proposal = null;
+                if (isset($validated['proposal_id'])) {
+                    if ($interest === null) {
+                        throw new InvalidArgumentException('Не указана исходная предзаявка.');
+                    }
+                    $proposal = EventVenueBookingProposal::query()
+                        ->where('event_venue_interest_id', $interest->id)
+                        ->lockForUpdate()->findOrFail($validated['proposal_id']);
+                    $proposals->assertPendingForOrganizer($proposal, $actor);
+                }
+
+                $quoteId = $validated['quote_id'] ?? null;
+                if ($quoteId === null && $venue->hasFreeAccess()) {
+                    $court = $event->court;
+                    $scope = $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
+                    $availability->assertAvailable($venue, $event->starts_at, $event->ends_at, scope: $scope, court: $court);
+                    $event->booking()->create([
+                        'venue_id' => $venue->id,
+                        'venue_court_id' => $court?->id,
+                        'created_by_actor_id' => $actor->id,
+                        'status' => VenueBookingStatusEnum::CONFIRMED,
+                        'scope' => $scope,
+                        'starts_at' => $event->starts_at,
+                        'ends_at' => $event->ends_at,
+                    ]);
+                    $event->forceFill(['booking_deferred' => false])->save();
+                    $interests->markBookingRequested($event);
+                    DB::afterCommit(static fn () => event(new EventChanged($event->id)));
+
+                    return ['event' => $event, 'booking' => null];
+                }
+
+                if ($quoteId === null) {
+                    throw new InvalidArgumentException('Сначала получите актуальный расчёт аренды.');
+                }
+                $quote = VenueBookingQuote::query()->where('public_id', $quoteId)->firstOrFail();
+                $scope = $event->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
+                if ($quote->venue_id !== $event->venue_id
+                    || ($event->venue_court_id !== null && $quote->venue_court_id !== $event->venue_court_id)
+                    || $quote->scope !== $scope
+                    || ! $quote->starts_at->equalTo($event->starts_at)
+                    || ! $quote->ends_at->equalTo($event->ends_at)
+                    || $quote->quoted_for_user_id !== $actor->user?->canonical()->id) {
+                    throw new InvalidArgumentException('Расчёт больше не соответствует мероприятию. Обновите его.');
+                }
+
+                $booking = $bookings->handle($actor, $quoteId, (string) Str::uuid(), (string) Str::uuid());
+                $booking->forceFill([
+                    'event_id' => $event->id,
+                    'event_venue_interest_id' => $interest?->id,
+                    'interest_booking_initiator' => $proposal !== null ? 'venue' : 'organizer',
+                ])->save();
+                if ($interest !== null) {
+                    $conversation = VenueBookingConversation::query()
+                        ->where('event_venue_interest_id', $interest->id)
+                        ->lockForUpdate()->first();
+                    if ($conversation !== null) {
+                        $conversation->forceFill(['venue_booking_id' => $booking->id])->save();
+                    }
+                    $chat->system($interest, $actor, $proposal !== null
+                        ? 'Организатор принял предложение площадки и отправил заявку на аренду. Инициатор предложения — представитель площадки.'
+                        : 'Организатор самостоятельно отправил заявку на аренду по предзаявке.');
+                }
+                if ($proposal !== null) {
+                    $proposal->forceFill([
+                        'status' => 'accepted', 'booking_id' => $booking->id, 'responded_at' => now(),
+                    ])->save();
+                }
+                $event->forceFill([
+                    'booking_id' => $booking->id,
+                    'booking_snapshot' => [
+                        'booking_public_id' => $booking->public_id,
+                        'scope' => $booking->scope?->value,
+                        'starts_at' => $booking->starts_at->toIso8601String(),
+                        'ends_at' => $booking->ends_at->toIso8601String(),
+                        'pricing' => data_get($booking->quote_snapshot, 'pricing'),
+                        'policy_version' => data_get($booking->quote_snapshot, 'policy.version'),
+                    ],
+                ])->save();
+                $interests->markBookingRequested($event);
+                if ($interest !== null) {
+                    DB::afterCommit(fn () => $chat->notify($interest, $actor,
+                        'Заявка на аренду создана', 'По мероприятию «'.$event->title.'» создана заявка на бронь. Статус и действия доступны в переписке.'));
+                }
+                DB::afterCommit(static fn () => event(new EventChanged($event->id)));
+
+                return ['event' => $event, 'booking' => $booking];
+            }, 3);
+        } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            return redirect()->route('events.show', $reference->routeIdentifier())
+                ->with('error', $exception instanceof FeatureDisabledException
+                    ? 'Онлайн-бронирование временно недоступно.'
+                    : $exception->getMessage().' При необходимости согласуйте другое время или площадку.');
+        }
+
+        return $result['booking'] === null
+            ? redirect()->route('events.show', $result['event']->routeIdentifier())
+                ->with('status', 'Свободная площадка забронирована для мероприятия.')
+            : redirect()->route('account.venue-bookings.show', $result['booking'])
+                ->with('status', 'Заявка на аренду отправлена и привязана к мероприятию. До подтверждения зал не забронирован.');
+    }
+
+    private function assertCanRequest(
+        Event $event,
+        Actor $actor,
+        EventManagementAccess $access,
+        int $expectedVersion,
+    ): void {
+        $access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT);
+        if (! $event->booking_deferred || $event->booking_id !== null || $event->booking()->exists()) {
+            throw new InvalidArgumentException('Для этого мероприятия уже создана бронь или заявка.');
+        }
+        if ($event->status !== EventStatusEnum::PUBLISHED || $event->ends_at->lessThanOrEqualTo(now())) {
+            throw new InvalidArgumentException('Нельзя забронировать завершённое или не опубликованное мероприятие.');
+        }
+        if ($event->participation_confirmation_version !== $expectedVersion) {
+            throw new InvalidArgumentException('Площадка или время мероприятия изменились. Обновите страницу.');
+        }
+        if ($actor->user === null || ! $actor->user->canonical()->isConfirmed()) {
+            throw new InvalidArgumentException('Для бронирования нужен подтверждённый пользователь.');
+        }
+    }
+}

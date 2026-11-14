@@ -36,7 +36,7 @@ use Illuminate\Validation\ValidationException;
 
 final class EventWizardController extends Controller
 {
-    public function show(Request $request, TelegramChatRegistry $telegramChats): Response
+    public function show(Request $request, TelegramChatRegistry $telegramChats): Response|\Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
@@ -44,6 +44,10 @@ final class EventWizardController extends Controller
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $defaultStartsAt = $now->ceilMinute();
+
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            return redirect()->route('events.create', ['type' => $selectedType->value]);
+        }
 
         return ThemeResolver::page('events.wizard', [
             'types' => EventTypeEnum::cases(),
