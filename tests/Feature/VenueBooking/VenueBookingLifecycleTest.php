@@ -144,6 +144,51 @@ final class VenueBookingLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_live_quote_status_invalidates_an_occupied_slot_and_request_is_rejected(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$firstUser, $firstActor] = $this->userAndActor();
+        [$secondUser, $secondActor] = $this->userAndActor();
+        $firstQuote = $this->quote($venue, $owner, $firstUser, false);
+        $secondQuote = $this->quote($venue, $owner, $secondUser, false);
+
+        $statusUrl = route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $secondQuote,
+        ]);
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', true);
+
+        $first = app(RequestVenueBookingHandler::class)->handle($firstActor, $firstQuote);
+        app(AcceptVenueBookingHandler::class)->handle($first->id, $ownerActor);
+
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'unavailable');
+
+        try {
+            app(RequestVenueBookingHandler::class)->handle($secondActor, $secondQuote);
+            $this->fail('Occupied quote must not create another booking.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('BOOKING_CONFLICT', $exception->errorCode);
+        }
+        $this->assertDatabaseCount('venue_bookings', 1);
+        $this->assertDatabaseCount('venue_booking_quotes', 2);
+    }
+
+    public function test_live_quote_status_marks_expired_without_creating_a_booking(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$user] = $this->userAndActor();
+        $quoteId = $this->quote($venue, $owner, $user, false);
+        Carbon::setTestNow(CarbonImmutable::parse('2026-08-25 10:20:00', 'Europe/Moscow'));
+
+        $this->getJson(route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $quoteId,
+        ]))->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'expired');
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
     public function test_free_booking_follows_requested_held_confirmed_history(): void
     {
         [$owner, $ownerActor, $venue] = $this->ownedVenue();
