@@ -612,6 +612,10 @@ Route::prefix('venues')->group(function () {
         Route::post('/{venue}/rental/quote', [VenueRentalQuoteController::class, 'quote'])
             ->whereNumber('venue')
             ->name('venues.rental.quote');
+        Route::get('/{venue}/rental/quote/status', [VenueRentalQuoteController::class, 'status'])
+            ->whereNumber('venue')
+            ->middleware('throttle:60,1')
+            ->name('venues.rental.quote.status');
         Route::get('/{venue}/rental/availability', [VenueBookingProjectionController::class, 'availability'])
             ->middleware('venue-rental-feature:portal')
             ->whereNumber('venue')
