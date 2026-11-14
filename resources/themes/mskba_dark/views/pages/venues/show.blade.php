@@ -327,7 +327,7 @@
                                                 ->join('; ');
                                         @endphp
                                         <article class="venue-occupancy-slot is-occupied" aria-label="{{ $timelineAriaLabel }}" data-venue-occupied-slot>
-                                            <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
+                                            <time>{{ $timelineItem['startsAt'] === '24:00' ? '00:00' : $timelineItem['startsAt'] }}–{{ in_array($timelineItem['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $timelineItem['endsAt'] }}</time>
                                             <div>
                                                 @foreach($timelineItem['slots'] as $slot)
                                                     <span class="venue-occupancy-slot__booking">
@@ -349,7 +349,7 @@
                                     @else
                                         <article @class(['venue-rental-cell', 'is-disabled' => ! $timelineItem['bookable']]) data-venue-rental-cell data-start="{{ $timelineItem['startsAt'] }}" data-end="{{ $timelineItem['endsAt'] }}" data-available-minutes="{{ $timelineItem['availableMinutes'] }}">
                                             <button type="button" data-venue-rental-cell-open aria-expanded="false" @disabled(! $timelineItem['bookable'] || ! $venue->rental)>
-                                                <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
+                                                <time>{{ $timelineItem['startsAt'] === '24:00' ? '00:00' : $timelineItem['startsAt'] }}–{{ in_array($timelineItem['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $timelineItem['endsAt'] }}</time>
                                                 <span>{{ $timelineItem['bookable'] && $venue->rental ? 'Забронировать' : 'Недоступно' }}</span>
                                             </button>
                                         </article>
@@ -633,7 +633,7 @@
                                 @else
                                     <div class="venue-schedule-preview__intervals">
                                         @foreach($day['intervals'] as $interval)
-                                            <strong>{{ $interval['startsAt'] }}-{{ $interval['endsAt'] }}</strong>
+                                            <strong>{{ $interval['startsAt'] === '24:00' ? '00:00' : $interval['startsAt'] }}-{{ in_array($interval['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $interval['endsAt'] }}</strong>
                                         @endforeach
                                     </div>
                                 @endif

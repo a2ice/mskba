@@ -76,10 +76,14 @@
 .app-play-dialog__public-intent{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised);align-items:start}
 .app-play-dialog__public-intent input{flex:none;margin-top:3px}
 
-/* Public promotion panels are direct siblings of the gallery's hero grid.
- * Keep the standard 20px section rhythm; they must never touch the gallery. */
-.app-venue-page > .app-venue-promotion { margin-top:20px; }
-.app-venue-promotion__amount, .app-venue-day-dialog__promotion-amount { font-weight:650; }
+/* Promotions belong in About: no extra panel or day-picker height. */
+#app-venue-about .app-venue-court-overview{margin:0}
+.app-venue-about__promotions{display:grid;gap:10px;width:100%;min-width:0}
+.app-venue-about__promotion{display:grid;justify-items:start;gap:7px;width:100%;min-width:0;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised)}
+.app-venue-about__promotion>strong{font-size:15px;color:var(--text)}
+.app-venue-about__promotion>p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.app-venue-about__promotion>.button{margin-top:2px}
+.app-venue-promotion__amount{font-weight:650;font-size:13px;color:var(--text)}
 
 /* Anchors follow the site header and breadcrumb bar while a venue is in view. */
 .app-venue-page__anchors{
@@ -312,15 +316,10 @@
     display:none;
 }
 
-/* The empty info region is reserved for future day offers. Normal refresh
-   diagnostics live in the heading title; only failures are announced here. */
-.app-venue-day-dialog__info{
-    min-height:16px;
-    padding:0 22px 8px;
+/* Only real schedule errors take space; no reserved offer strip above slots. */
+.app-venue-day-dialog>.app-venue-day-dialog__status{
     flex:none;
-}
-.app-venue-day-dialog__info .app-venue-day-dialog__status{
-    padding:0;
+    padding:0 22px 10px;
     margin:0;
     font-size:12px;
     line-height:1.4;
@@ -388,7 +387,7 @@
     box-shadow:inset 0 0 0 1px var(--slot-available-color,#2da96a);
 }
 @media(max-width:640px){
-    .app-venue-day-dialog__info{padding:0 14px 8px}
+    .app-venue-day-dialog>.app-venue-day-dialog__status{padding:0 14px 8px}
     .app-venue-day-dialog__grid{grid-template-columns:minmax(0,1fr);gap:6px}
     .app-venue-day-dialog__slot{min-height:47px;padding:8px 11px}
 }

@@ -1,3 +1,5 @@
+import { displayClock } from './venue-time-label.js';
+
 /* Venue gallery, accessible local dialogs and attendance controls.
  * The gallery is static before hydration and respects reduced motion. */
 document.querySelectorAll('[data-venue-gallery]').forEach(gallery => {
@@ -305,7 +307,7 @@ if (dayBookingDialog) {
         } else {
             const start = response.slots[selection[0]];
             const end = response.slots[selection.at(-1)];
-            summary.textContent = [start.starts_at, '–', end.ends_at, '·',
+            summary.textContent = [displayClock(start.starts_at), '–', displayClock(end.ends_at), '·',
                 duration, 'мин ·', canBook ? 'Рассчитываем стоимость…' : 'Выберите доступное время'].join(' ');
         }
         minimum.textContent = response?.booking_enabled
@@ -349,7 +351,7 @@ if (dayBookingDialog) {
             }
             if (sequence !== previewSequence || !dayBookingDialog.open
                 || selection.join(',') !== selectedKey) return;
-            summary.textContent = [startsAt, '–', response.slots[selection.at(-1)].ends_at, '·',
+            summary.textContent = [displayClock(startsAt), '–', displayClock(response.slots[selection.at(-1)].ends_at), '·',
                 duration, 'мин ·', currency.format(data.price_preview.total_minor / 100), '₽'].join(' ');
             bookingButton.disabled = false;
         } catch (error) {
@@ -402,7 +404,7 @@ if (dayBookingDialog) {
             cell.disabled = !slot.selectable;
             cell.setAttribute('aria-pressed', 'false');
             const times = document.createElement('strong');
-            times.textContent = slot.starts_at + '–' + slot.ends_at;
+            times.textContent = displayClock(slot.starts_at) + '–' + displayClock(slot.ends_at);
             const state = document.createElement('span');
             state.textContent = labels[slot.status] || 'Неизвестно';
             const price = document.createElement('small');
@@ -428,7 +430,7 @@ if (dayBookingDialog) {
         const hours = selectedDateButton?.querySelector('.app-venue-day-dialog__date-hours');
         if (hours && data.slots.length) {
             const last = data.slots.at(-1).ends_at;
-            hours.textContent = data.slots[0].starts_at + '–' + (last === '24:00' ? '00:00' : last);
+            hours.textContent = displayClock(data.slots[0].starts_at) + '–' + displayClock(last);
         }
         redrawSelection();
     }

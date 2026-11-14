@@ -869,8 +869,8 @@ function renderIntervals(intervals, isClosed) {
 
     const items = intervals
         .map((interval) => {
-            const startsAt = escapeHtml(interval.startsAt || '');
-            const endsAt = escapeHtml(interval.endsAt || '');
+            const startsAt = escapeHtml(['23:59', '24:00'].includes(interval.startsAt) ? '00:00' : (interval.startsAt || ''));
+            const endsAt = escapeHtml(['23:59', '24:00'].includes(interval.endsAt) ? '00:00' : (interval.endsAt || ''));
 
             return `<div class="venue-day-modal__interval"><span>${startsAt}</span><span>${endsAt}</span></div>`;
         })

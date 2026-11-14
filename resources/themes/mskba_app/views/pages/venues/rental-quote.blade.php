@@ -13,8 +13,6 @@
         ->where('public_id', $quote->publicId)->first() : null;
     $discountMinor = max(0, (int) data_get($savedQuote?->snapshot, 'pricing.base_amount_minor', 0)
         - (int) data_get($savedQuote?->snapshot, 'pricing.subtotal_after_rules_minor', 0));
-    $venueSlotPromotions = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class)
-        ->forPlacement('venue_slots', (int) $venue->id);
 @endphp
 @extends('theme::layouts.app', ['title' => $title])
 
@@ -142,18 +140,8 @@
         </button>
     </div>
     @include('theme::pages.venues.partials.day-calendar')
-    <div class="app-venue-day-dialog__info" data-venue-day-info>
-        @foreach($venueSlotPromotions as $promotion)
-            <div class="app-venue-day-dialog__promotion" aria-label="{{ $promotion['title'] }}">
-                <strong>{{ $promotion['title'] }}</strong>
-                @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
-                @if($promotion['amount_caption'])
-                    <p class="app-venue-day-dialog__promotion-amount">{{ $promotion['amount_caption'] }}</p>
-                @endif
-            </div>
-        @endforeach
-        <p class="app-venue-day-dialog__status" role="status" aria-live="polite" data-venue-day-status hidden></p>
-    </div>
+    <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
+        data-venue-day-status hidden></p>
     <div class="app-venue-day-dialog__grid" data-venue-day-slots aria-label="Интервалы бронирования"></div>
     <form method="POST" action="{{ route('venues.rental.quote', $venue->id) }}"
         class="app-venue-day-dialog__footer" data-venue-day-booking-form>

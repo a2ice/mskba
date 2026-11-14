@@ -7,7 +7,7 @@
         foreach ($scheduledDays as $listed) {
             $dayCalendarInfo[$listed['date']] = [
                 'hours' => collect($listed['intervals'] ?? [])->map(
-                    fn ($hours) => $hours['startsAt'].'–'.($hours['endsAt'] === '23:59' ? '00:00' : $hours['endsAt'])
+                    fn ($hours) => $hours['startsAt'].'–'.(in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'])
                 )->implode(', '),
                 'occupancy' => $listed['occupancyPercent'] ?? null,
             ];
@@ -40,7 +40,7 @@
             $occupationRows[] = ['date' => $optionDate->toDateString(), 'intervals' => $timeRanges];
             $dayCalendarInfo[$optionDate->toDateString()] = [
                 'hours' => collect($timeRanges)->map(
-                    fn ($hours) => $hours['startsAt'].'–'.($hours['endsAt'] === '23:59' ? '00:00' : $hours['endsAt'])
+                    fn ($hours) => $hours['startsAt'].'–'.(in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'])
                 )->implode(', '),
                 'occupancy' => null,
             ];

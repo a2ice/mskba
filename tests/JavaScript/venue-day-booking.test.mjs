@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { displayClock } from '../../resources/themes/mskba_app/js/venue-time-label.js';
 
 const source = readFileSync(
     new URL('../../resources/themes/mskba_app/js/venue-detail.js', import.meta.url),
@@ -40,7 +41,7 @@ function node() {
     };
 }
 
-function mountDayBooking({ previewFails = false } = {}) {
+function mountDayBooking({ previewFails = false, customSlots = null } = {}) {
     const status = node();
     const heading = node();
     const grid = node();
@@ -90,7 +91,7 @@ function mountDayBooking({ previewFails = false } = {}) {
     opener.dataset.dayDate = '2026-11-15';
     opener.querySelector = () => ({ textContent: '15 ноя' });
     const requests = [];
-    const slots = [
+    const slots = customSlots || [
         { starts_at: '21:00', ends_at: '21:30', selectable: true, status: 'available', price_minor: 357500 },
         { starts_at: '21:30', ends_at: '22:00', selectable: true, status: 'available', price_minor: 357500 },
     ];
@@ -124,7 +125,7 @@ function mountDayBooking({ previewFails = false } = {}) {
     runInNewContext(dayBookingModule, {
         document,
         window: { location: { href: 'https://dev.mskba.ru/venues/26-basketpoint-na-dubinskoy' } },
-        AbortController, URL, fetch,
+        AbortController, URL, fetch, displayClock,
     }, { filename: 'venue-detail.js' });
     return {
         dialog, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
@@ -199,4 +200,19 @@ test('При переключении зала открывается тот ж�
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(page.requests.at(-1).searchParams.get('venue_court_id'), '99');
     assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
+});
+
+test('midnight slot labels render 00:00 while quote submission keeps original start date', async () => {
+    const page = mountDayBooking({customSlots: [
+        {starts_at: '23:00', ends_at: '23:30', selectable: true, status: 'available', price_minor: 357500},
+        {starts_at: '23:30', ends_at: '24:00', selectable: true, status: 'available', price_minor: 357500},
+    ]});
+    await page.open();
+    assert.equal(page.grid.children[1].children[0].textContent, '23:30–00:00');
+    page.clickSlot(0);
+    page.clickSlot(1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.match(page.summary.textContent, /23:00\s+–\s+00:00/);
+    assert.equal(page.inputs['[data-venue-day-start]'].value, '2026-11-15T23:00');
+    assert.equal(page.inputs['[data-venue-day-duration]'].value, '60');
 });
