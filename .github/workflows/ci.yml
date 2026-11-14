@@ -910,7 +910,7 @@ jobs:
                   ->where("venue_id", $venue->id)->where("active_marker", true)->first();
               $effective = app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
                   ->resolve($venue, $court, $policy);
-              $permission = \App\Modules\Venue\Domain\Enums\VenuePermissionEnum::DECIDE_BOOKING_REQUESTS;
+              $permission = \App\Modules\Venue\Domain\Enums\VenuePermissionEnum::VIEW_BOOKING_REQUESTS;
               $ids = app(\App\Modules\Venue\Application\Services\VenueMembershipAccess::class)
                   ->allowedUserIdsForCourt($court, $permission);
               $emailOk = 0;
@@ -931,13 +931,14 @@ jobs:
                   "environment" => config("app.env"),
                   "rental_flow" => config("features.venue_rental.rental_flow"),
                   "rental_portal" => config("features.venue_rental.portal"),
+                  "rental_conversations" => config("features.venue_rental.conversations"),
                   "rollout_mode" => config("features.venue_rental_rollout.mode"),
                   "venue_id" => $venue->id,
                   "court_id" => $court->id,
                   "active_policy" => $policy !== null,
                   "accepts_rental" => (bool) ($policy?->is_enabled && ($effective["rental_enabled"] ?? false)),
                   "requires_approval" => $effective["requires_booking_approval"] ?? null,
-                  "responsible_with_decision_permission" => count($ids),
+                  "responsible_with_view_permission" => count($ids),
                   "responsible_verified_emails" => $emailOk,
                   "responsible_email_request_opt_in" => $emailOptIn,
                   "mail_transport" => config("mail.default"),
