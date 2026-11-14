@@ -223,7 +223,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                     ->visible(fn (VenueIntegrationSource $record): bool => $this->canExecute()
                         && config('venue_integrations.apply_findsport_native_enabled', false)
                         && $record->adapter_key === 'api'
-                        && $record->external_id === '4805'
+                        && \App\Modules\VenueIntegration\Application\Services\FindSportSourceIdentity::matches($record)
                         && ExternalAvailabilitySnapshot::query()
                             ->where('venue_integration_source_id', $record->id)->exists())
                     ->requiresConfirmation()
