@@ -47,7 +47,7 @@ final class CreateEventHandler
         if (! empty($data['event_request_id'])) {
             $existing = Event::query()->where('creation_key', $data['event_request_id'])->first();
             if ($existing !== null) {
-                if ($existing->organizer_actor_id !== $actor->id) {
+                if ($existing->organizerActor?->user?->canonical()->id !== $actor->user?->canonical()->id) {
                     throw new InvalidArgumentException('Идентификатор создания уже использован другим организатором.');
                 }
                 return $existing->load(['venue', 'court', 'booking', 'participants.user']);

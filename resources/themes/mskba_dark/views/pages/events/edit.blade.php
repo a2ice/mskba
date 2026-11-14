@@ -73,7 +73,7 @@
             @endif
         @else
             <div class="alert alert-info mb-3">
-                После подачи заявки на аренду время и площадку можно изменить только через отмену или согласованный перенос брони.
+                Для площадок с оплатой или подтверждением бронирования после подачи заявки изменение места и времени доступно только через отмену или согласованный перенос брони.
             </div>
             <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
             <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
