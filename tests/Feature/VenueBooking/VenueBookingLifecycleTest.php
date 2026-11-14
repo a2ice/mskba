@@ -43,6 +43,7 @@ use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingIdempotencyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
+use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -50,6 +51,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event as EventFacade;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\View;
 use LogicException;
 use RuntimeException;
 use Tests\TestCase;
@@ -142,6 +144,77 @@ final class VenueBookingLifecycleTest extends TestCase
             'channel' => 'email',
             'status' => 'sent',
         ]);
+    }
+
+    public function test_app_theme_rental_quote_page_prefills_fields_and_hides_undiscounted_commissions(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant] = $this->userAndActor();
+        $this->quote($venue, $owner, $applicant, false);
+
+        config(['themes.active' => 'mskba_app']);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($applicant)->post(route('venues.rental.quote', $venue->id), [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
+            'starts_at' => '2026-08-26T12:00',
+            'duration_minutes' => 60,
+            'scope' => 'whole',
+        ])->assertOk()
+            ->assertSee('value="2026-08-26T12:00"', false)
+            ->assertSee('data-rental-court', false)
+            ->assertSee('data-venue-day-date=', false)
+            ->assertSee('data-quote-status-url=', false)
+            ->assertSee('Итого:')
+            ->assertDontSee('Комиссия MSKBA')
+            ->assertDontSee('Аренда после скидок')
+            ->assertDontSee('app-rental-pricing__discount');
+    }
+
+    public function test_live_quote_status_invalidates_an_occupied_slot_and_request_is_rejected(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$firstUser, $firstActor] = $this->userAndActor();
+        [$secondUser, $secondActor] = $this->userAndActor();
+        $firstQuote = $this->quote($venue, $owner, $firstUser, false);
+        $secondQuote = $this->quote($venue, $owner, $secondUser, false);
+
+        $statusUrl = route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $secondQuote,
+        ]);
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', true);
+
+        $first = app(RequestVenueBookingHandler::class)->handle($firstActor, $firstQuote);
+        app(AcceptVenueBookingHandler::class)->handle($first->id, $ownerActor);
+
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'unavailable');
+
+        try {
+            app(RequestVenueBookingHandler::class)->handle($secondActor, $secondQuote);
+            $this->fail('Occupied quote must not create another booking.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('BOOKING_CONFLICT', $exception->errorCode);
+        }
+        $this->assertDatabaseCount('venue_bookings', 1);
+        $this->assertDatabaseCount('venue_booking_quotes', 2);
+    }
+
+    public function test_live_quote_status_marks_expired_without_creating_a_booking(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$user] = $this->userAndActor();
+        $quoteId = $this->quote($venue, $owner, $user, false);
+        Carbon::setTestNow(CarbonImmutable::parse('2026-08-25 10:20:00', 'Europe/Moscow'));
+
+        $this->getJson(route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $quoteId,
+        ]))->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'expired');
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 
     public function test_free_booking_follows_requested_held_confirmed_history(): void

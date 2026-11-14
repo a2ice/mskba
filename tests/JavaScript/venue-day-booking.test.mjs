@@ -23,6 +23,7 @@ function node() {
         hidden: false,
         textContent: '',
         classList: { toggle() {} },
+        scrollIntoView() {},
         addEventListener(type, listener) { this.listeners[type] = listener; },
         querySelectorAll() { return []; },
         querySelector() { return null; },
@@ -71,6 +72,19 @@ function mountDayBooking({ previewFails = false } = {}) {
         '[data-venue-day-minimum]': minimum,
     };
     dialog.querySelector = selector => fields[selector] || null;
+    const dates = ['2026-11-15', '2026-11-16', '2026-11-17'].map(date => {
+        const button = node();
+        button.dataset.venueDayDate = date;
+        button.querySelector = selector => selector === 'strong'
+            ? {textContent: date} : null;
+        return button;
+    });
+    const previous = node();
+    previous.dataset.venueDayNav = '-1';
+    const next = node();
+    next.dataset.venueDayNav = '1';
+    dialog.querySelectorAll = selector => selector === '[data-venue-day-date]'
+        ? dates : (selector === '[data-venue-day-nav]' ? [previous, next] : []);
 
     const opener = node();
     opener.dataset.dayDate = '2026-11-15';
@@ -92,8 +106,8 @@ function mountDayBooking({ previewFails = false } = {}) {
             }) };
         }
         return { ok: true, json: async () => ({
-            date: '2026-11-15',
-            venue_court_id: 13,
+            date: url.searchParams.get('date') || '2026-11-15',
+            venue_court_id: Number(url.searchParams.get('venue_court_id') || 13),
             slots,
             booking_enabled: true,
             step_minutes: 30,
@@ -113,7 +127,7 @@ function mountDayBooking({ previewFails = false } = {}) {
         AbortController, URL, fetch,
     }, { filename: 'venue-detail.js' });
     return {
-        dialog, opener, grid, bookingButton, summary, minimum, inputs, requests,
+        dialog, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
         async open() {
             await opener.listeners.click();
             assert.equal(grid.children.length, 2);
@@ -156,4 +170,33 @@ test('при ошибке расчёта показывается объясне
 
     assert.equal(page.bookingButton.disabled, true);
     assert.match(page.summary.textContent, /Стоимость временно недоступна/);
+});
+
+test('Стрелки и даты изменяют день в пределах доступных девяти суток', async () => {
+    const page = mountDayBooking();
+    await page.open();
+    assert.equal(page.previous.disabled, true);
+    assert.equal(page.next.disabled, false);
+    page.next.listeners.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
+    assert.equal(page.previous.disabled, false);
+    page.next.listeners.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-17');
+    assert.equal(page.next.disabled, true);
+    page.previous.listeners.click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
+});
+
+test('При переключении зала открывается тот же календарь с выбранным hall id', async () => {
+    const page = mountDayBooking();
+    await page.open();
+    await page.dialog.listeners['mskba:choose-court']({
+        detail: {courtId: 99, date: '2026-11-16'},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('venue_court_id'), '99');
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
 });

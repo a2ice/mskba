@@ -2,6 +2,7 @@
 
 namespace App\Modules\VenueBooking\Application\UseCases;
 
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -23,6 +24,7 @@ use App\Support\Features\VenueRentalFeature;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 final readonly class RequestVenueBookingHandler
 {
@@ -32,6 +34,7 @@ final readonly class RequestVenueBookingHandler
         private IdempotentVenueBookingCommand $commands,
         private VenueBookingOutbox $outbox,
         private VenueUserRestrictionService $restrictions,
+        private VenueEventAvailability $availability,
     ) {}
 
     public function handle(
@@ -101,6 +104,25 @@ final readonly class RequestVenueBookingHandler
                         throw new VenueBookingTransitionException(
                             'Выбранный вариант аренды этого зала больше недоступен.',
                             'BOOKING_SCOPE_UNAVAILABLE',
+                        );
+                    }
+
+                    // A quote is a price offer, not a time hold. Another
+                    // booking may have occupied the slot while the requester
+                    // was reviewing the price. Recheck inside the venue lock,
+                    // before persisting any requested booking or outbox event.
+                    try {
+                        $this->availability->assertAvailable(
+                            $venue,
+                            CarbonImmutable::instance($quote->starts_at)->setTimezone((string) config('app.timezone', 'UTC')),
+                            CarbonImmutable::instance($quote->ends_at)->setTimezone((string) config('app.timezone', 'UTC')),
+                            scope: $quote->scope,
+                            court: $court,
+                        );
+                    } catch (InvalidArgumentException $exception) {
+                        throw new VenueBookingTransitionException(
+                            'Выбранное время больше недоступно. Выберите новый интервал.',
+                            'BOOKING_CONFLICT',
                         );
                     }
 

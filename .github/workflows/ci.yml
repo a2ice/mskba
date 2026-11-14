@@ -217,7 +217,7 @@ jobs:
 
       - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
         if: steps.change_scope.outputs.full_suite == 'true'
-        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
 
       - name: Validate dynamic Page Builder and theme-owned JavaScript syntax
         if: steps.change_scope.outputs.full_suite == 'true'
@@ -766,13 +766,16 @@ jobs:
             target = Path('.env')
             with target.open('r+', encoding='utf-8') as stream:
                 lines = stream.read().splitlines()
-                matches = [i for i, line in enumerate(lines) if re.match(r'^FEATURE_VENUE_RENTAL_FLOW=', line)]
-                if len(matches) > 1:
-                    raise SystemExit('Duplicate rental flow flags in staging .env')
-                if matches:
-                    lines[matches[0]] = 'FEATURE_VENUE_RENTAL_FLOW=true'
-                else:
-                    lines.append('FEATURE_VENUE_RENTAL_FLOW=true')
+                # The requester and the responsible venue managers must be
+                # able to access both sides of the rental workflow on DEV.
+                for flag in ('FEATURE_VENUE_RENTAL_FLOW', 'FEATURE_VENUE_RENTAL_PORTAL'):
+                    matches = [i for i, line in enumerate(lines) if re.match(r'^' + flag + '=', line)]
+                    if len(matches) > 1:
+                        raise SystemExit('Duplicate ' + flag + ' flags in staging .env')
+                    if matches:
+                        lines[matches[0]] = flag + '=true'
+                    else:
+                        lines.append(flag + '=true')
                 stream.seek(0)
                 stream.write('\n'.join(lines) + '\n')
                 stream.truncate()
@@ -781,6 +784,7 @@ jobs:
             PY
             test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
             grep -qx 'FEATURE_VENUE_RENTAL_FLOW=true' .env
+            grep -qx 'FEATURE_VENUE_RENTAL_PORTAL=true' .env
             $COMPOSE exec -T phpfpm php artisan config:clear
             $COMPOSE exec -T phpfpm php artisan config:cache
             # Queue is long-lived; Nginx can retain a stale PHP-FPM upstream
@@ -794,11 +798,11 @@ jobs:
                   fwrite(STDERR, "Unexpected Laravel environment; abort.\n");
                   exit(1);
               }
-              if (config("features.venue_rental.rental_flow") !== true) {
+              if (config("features.venue_rental.rental_flow") !== true || config("features.venue_rental.portal") !== true) {
                   fwrite(STDERR, "Venue rental flow flag is not active in Laravel runtime.\n");
                   exit(1);
               }
-              echo "DEV rental flow flag ENABLED; rollout mode: ".config("features.venue_rental_rollout.mode").PHP_EOL;
+              echo "DEV rental flow and incoming portal flags ENABLED; rollout mode: ".config("features.venue_rental_rollout.mode").PHP_EOL;
             '
             for attempt in $(seq 1 15); do
               if curl --fail --silent --show-error --output /dev/null --max-time 8 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then

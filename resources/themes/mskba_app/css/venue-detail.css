@@ -395,3 +395,58 @@
 @media(prefers-reduced-motion:reduce){
     .app-venue-schedule__occupancy-booked{transition:none}
 }
+
+
+/* Shared nine-day picker: reuses venue schedule cards in both booking modals. */
+.app-venue-day-dialog__calendar{
+    flex:none;min-width:0;display:grid;grid-template-columns:34px minmax(0,1fr) 34px;
+    align-items:stretch;gap:8px;padding:0 20px 12px;
+}
+.app-venue-day-dialog__dates{
+    min-width:0;display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;
+    scrollbar-width:thin;scroll-snap-type:x proximity;padding:2px;
+}
+.app-venue-day-dialog__date{
+    flex:0 0 105px;min-width:0;min-height:60px;scroll-snap-align:start;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+    gap:4px;padding:9px 11px;text-align:left;
+}
+.app-venue-day-dialog__date-hours{
+    font-size:11px;color:var(--muted);white-space:nowrap;
+}
+.app-venue-day-dialog__date[aria-pressed="true"]{
+    border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--surface,#fff));
+    box-shadow:inset 0 0 0 1px var(--accent);
+}
+.app-venue-day-dialog__nav{
+    display:flex;align-items:center;justify-content:center;min-width:0;
+    color:var(--text);background:var(--surface,#fff);
+    border:1px solid var(--line);border-radius:10px;cursor:pointer;
+}
+.app-venue-day-dialog__nav svg{
+    width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+}
+.app-venue-day-dialog__nav:disabled{opacity:.35;cursor:not-allowed}
+.app-venue-day-dialog__nav:not(:disabled):hover{border-color:var(--accent)}
+.app-venue-day-dialog__nav:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:640px){
+    .app-venue-day-dialog__calendar{padding:0 12px 10px;grid-template-columns:30px minmax(0,1fr) 30px;gap:5px}
+    .app-venue-day-dialog__date{flex-basis:96px;min-height:57px;padding:7px 9px}
+}
+
+/* Card width includes the same small occupancy track as on the venue page. */
+.app-venue-day-dialog__date-item{
+    flex:0 0 116px;min-width:0;display:flex;flex-direction:column;
+}
+.app-venue-day-dialog__date-item>.app-venue-day-dialog__date{
+    flex:1 1 auto;width:100%;min-height:61px;
+}
+.app-venue-day-dialog__date-item .app-venue-schedule__occupancy{flex:0 0 3px}
+.app-venue-day-dialog__date-hours{
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+}
+@media(max-width:640px){
+    .app-venue-day-dialog__date-item{flex-basis:108px}
+}

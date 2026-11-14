@@ -341,8 +341,8 @@ final class VenueCommissionPricingTest extends TestCase
             'venue_court_id' => $court->id, 'starts_at' => '2026-08-26T12:00',
             'duration_minutes' => 120, 'scope' => 'whole',
         ])->assertOk()
-            ->assertSeeText('Комиссия MSKBA')
-            ->assertSeeText('Комиссия агента')
+            ->assertDontSeeText('Комиссия MSKBA')
+            ->assertDontSeeText('Комиссия агента')
             ->assertSeeText('Итого: 2300');
     }
 

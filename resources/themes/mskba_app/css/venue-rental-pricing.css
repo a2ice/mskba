@@ -30,3 +30,62 @@
 .app-rental-pricing__form :is(input,select,textarea){font-size:16px}
 @media(max-width:1023px){.app-rental-pricing__grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:679px){.app-rental-pricing__panel{padding:20px}.app-rental-pricing__grid,.app-rental-pricing__grid--two{grid-template-columns:minmax(0,1fr)}.app-rental-pricing__entry{align-items:flex-start}.app-rental-pricing__actions>.button{width:100%}}
+
+
+/* Booking review uses the theme's surface, border, focus and accent tokens. */
+.app-rental-pricing__field{min-width:0}
+.app-rental-pricing__field>span:first-child{display:block;margin-bottom:8px}
+.app-rental-pricing__field>input,
+.app-rental-pricing__field>.app-rental-pricing__select-wrap{width:100%;min-width:0}
+.app-rental-pricing__field>input{
+    min-height:48px;padding:10px 14px;background:var(--surface,#fff);color:var(--text);
+    border:1px solid var(--line);border-radius:12px;
+}
+.app-rental-pricing__select-wrap{position:relative;display:block}
+.app-rental-pricing__select-wrap::after{
+    content:'';position:absolute;right:17px;top:50%;width:8px;height:8px;
+    border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+    transform:translateY(-65%) rotate(45deg);pointer-events:none;color:var(--muted);
+}
+.app-rental-pricing__select{
+    appearance:none;-webkit-appearance:none;display:block;width:100%;
+    min-height:48px;padding:10px 40px 10px 14px;
+    border:1px solid var(--line);border-radius:12px;
+    background:var(--surface,#fff);color:var(--text);font:inherit;cursor:pointer;
+}
+.app-rental-pricing__select:hover,
+.app-rental-pricing__field>input:hover{border-color:var(--accent)}
+.app-rental-pricing__select:focus-visible,
+.app-rental-pricing__field>input:focus-visible{
+    border-color:var(--accent);outline:2px solid var(--accent);outline-offset:2px;
+}
+.app-rental-pricing__summary{font-size:14px;color:var(--muted)}
+.app-rental-pricing__summary strong{color:var(--text)}
+.app-rental-pricing__discount{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-size:14px;color:var(--success);border-bottom:1px solid var(--line);padding-bottom:12px;
+}
+.app-rental-pricing__confirm{
+    display:flex;align-items:center;justify-content:space-between;gap:24px;min-width:0;
+}
+.app-rental-pricing__confirm .app-rental-pricing__total{margin:0;flex:1 1 auto}
+.app-rental-pricing__confirm form{flex:0 0 auto;width:min(200px,100%)}
+.app-rental-pricing__confirm .button{
+    width:200px;max-width:100%;min-height:46px;display:inline-flex;
+    justify-content:center;align-items:center;white-space:normal;text-align:center;
+}
+.app-rental-pricing__availability-message{
+    padding:10px 13px;border:1px solid var(--line);border-radius:10px;
+    font-size:13px;color:var(--muted);
+}
+.app-rental-pricing__availability-message[hidden]{display:none}
+.app-rental-pricing__availability-message.is-unavailable{color:var(--danger)}
+.app-rental-pricing__conflict-dialog{width:min(460px,calc(100vw - 24px));max-width:100%}
+.app-rental-pricing__conflict-body{padding:0 24px 24px;display:grid;gap:18px}
+.app-rental-pricing__conflict-body .button{justify-self:end}
+@media(max-width:679px){
+    .app-rental-pricing__confirm{flex-wrap:wrap;align-items:center;gap:16px}
+    .app-rental-pricing__confirm .app-rental-pricing__total{font-size:27px;line-height:34px}
+    .app-rental-pricing__confirm form{width:100%}
+    .app-rental-pricing__confirm .button{width:100%}
+}

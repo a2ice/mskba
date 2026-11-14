@@ -274,6 +274,10 @@ if (dayBookingDialog) {
     const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
     const summary = dayBookingDialog.querySelector('[data-venue-day-summary]');
     const minimum = dayBookingDialog.querySelector('[data-venue-day-minimum]');
+    const dateButtons = Array.from(dayBookingDialog.querySelectorAll('[data-venue-day-date]'));
+    const dateValues = dateButtons.map(button => button.dataset.venueDayDate);
+    const dateNav = Array.from(dayBookingDialog.querySelectorAll('[data-venue-day-nav]'));
+    let activeDate = null;
     const currency = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 2});
     let response = null;
     let selection = [];
@@ -357,24 +361,26 @@ if (dayBookingDialog) {
 
     // Update the clicked card after its on-demand five-minute refresh.
     function updateDayOccupancy(date, slots) {
-        const card = document.querySelector(
-            '[data-venue-day-entry][data-day-date="' + date + '"]',
-        );
-        const track = card?.querySelector('[data-day-occupancy]');
-        const booked = card?.querySelector('[data-day-occupancy-booked]');
-        if (!track || !booked) return;
-
+        const cards = [
+            document.querySelector('[data-venue-day-entry][data-day-date="' + date + '"]'),
+            dateButtons.find(button => button.dataset.venueDayDate === date)?.parentElement,
+        ];
         const known = slots.filter(slot =>
             slot.status === 'available' || slot.status === 'booked');
         const percentage = known.length
             ? Math.round(100 * known.filter(slot => slot.status === 'booked').length / known.length)
             : null;
-        track.classList.toggle('is-unknown', percentage === null);
-        const label = percentage === null
-            ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
-        track.setAttribute('aria-label', label);
-        track.title = label;
-        booked.style.width = (percentage ?? 0) + '%';
+        for (const card of cards) {
+            const track = card?.querySelector('[data-day-occupancy]');
+            const booked = card?.querySelector('[data-day-occupancy-booked]');
+            if (!track || !booked) continue;
+            track.classList.toggle('is-unknown', percentage === null);
+            const label = percentage === null
+                ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
+            track.setAttribute('aria-label', label);
+            track.title = label;
+            booked.style.width = (percentage ?? 0) + '%';
+        }
     }
 
     function renderSlots(data) {
@@ -418,6 +424,12 @@ if (dayBookingDialog) {
         status.textContent = warning || '';
         status.hidden = !warning;
         updateDayOccupancy(data.date, data.slots);
+        const selectedDateButton = dateButtons.find(button => button.dataset.venueDayDate === data.date);
+        const hours = selectedDateButton?.querySelector('.app-venue-day-dialog__date-hours');
+        if (hours && data.slots.length) {
+            const last = data.slots.at(-1).ends_at;
+            hours.textContent = data.slots[0].starts_at + '–' + (last === '24:00' ? '00:00' : last);
+        }
         redrawSelection();
     }
 
@@ -463,42 +475,83 @@ if (dayBookingDialog) {
         bookingButton.disabled = true;
     });
 
-    document.querySelectorAll('[data-venue-day-open]').forEach(button => {
-        button.addEventListener('click', async () => {
-            if (dayBookingDialog.open) close();
-            loading = new AbortController();
-            const signal = loading.signal;
-            response = null;
-            selection = [];
-            bookingButton.disabled = true;
-            grid.replaceChildren();
-            heading.removeAttribute('title');
-            status.hidden = false;
-            status.textContent = 'Проверяем расписание…';
-            heading.textContent = 'Расписание · ' + button.querySelector('strong')?.textContent;
-            dayBookingDialog.showModal();
-            try {
-                const url = new URL(dayBookingDialog.dataset.dayUrl, window.location.href);
-                url.searchParams.set('date', button.dataset.dayDate);
-                if (dayBookingDialog.dataset.courtId) {
-                    url.searchParams.set('venue_court_id', dayBookingDialog.dataset.courtId);
-                }
-                const result = await fetch(url, {
-                    credentials: 'same-origin',
-                    headers: {'Accept': 'application/json'},
-                    cache: 'no-store',
-                    signal,
-                });
-                const data = await result.json();
-                if (!result.ok) throw new Error(data.message || 'Не удалось загрузить расписание');
-                if (signal.aborted || !dayBookingDialog.open) return;
-                renderSlots(data);
-            } catch (error) {
-                if (signal.aborted || !dayBookingDialog.open) return;
-                status.textContent = error.message || 'Не удалось получить расписание.';
-                status.hidden = false;
-                bookingButton.disabled = true;
-            }
+    function setActiveDate(date) {
+        activeDate = date;
+        const index = dateValues.indexOf(date);
+        dateButtons.forEach(button => {
+            const selected = button.dataset.venueDayDate === date;
+            button.setAttribute('aria-pressed', String(selected));
+            if (selected) button.scrollIntoView?.({block: 'nearest', inline: 'nearest'});
         });
+        dateNav.forEach(button => {
+            const offset = Number(button.dataset.venueDayNav);
+            button.disabled = index < 0 || index + offset < 0 || index + offset >= dateValues.length;
+        });
+    }
+
+    async function showDay(date) {
+        if (!date) return;
+        ++previewSequence;
+        loading?.abort();
+        loading = new AbortController();
+        const signal = loading.signal;
+        response = null;
+        selection = [];
+        bookingButton.disabled = true;
+        grid.replaceChildren();
+        heading.removeAttribute('title');
+        setActiveDate(date);
+        const label = dateButtons.find(button => button.dataset.venueDayDate === date)
+            ?.querySelector('strong')?.textContent || date;
+        heading.textContent = 'Расписание · ' + label;
+        status.hidden = false;
+        status.textContent = 'Проверяем расписание…';
+        if (!dayBookingDialog.open) dayBookingDialog.showModal();
+        try {
+            const url = new URL(dayBookingDialog.dataset.dayUrl, window.location.href);
+            url.searchParams.set('date', date);
+            if (dayBookingDialog.dataset.courtId) {
+                url.searchParams.set('venue_court_id', dayBookingDialog.dataset.courtId);
+            }
+            const result = await fetch(url, {
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store',
+                signal,
+            });
+            const data = await result.json();
+            if (!result.ok) throw new Error(data.message || 'Не удалось загрузить расписание');
+            if (signal.aborted || !dayBookingDialog.open) return;
+            renderSlots(data);
+        } catch (error) {
+            if (signal.aborted || !dayBookingDialog.open) return;
+            status.textContent = error.message || 'Не удалось получить расписание.';
+            status.hidden = false;
+            bookingButton.disabled = true;
+        }
+    }
+
+    document.querySelectorAll('[data-venue-day-open]').forEach(button => {
+        button.addEventListener('click', () => showDay(button.dataset.dayDate));
+    });
+    dateButtons.forEach(button => {
+        button.addEventListener('click', () => void showDay(button.dataset.venueDayDate));
+    });
+    dateNav.forEach(button => {
+        button.addEventListener('click', () => {
+            const nextIndex = dateValues.indexOf(activeDate) + Number(button.dataset.venueDayNav);
+            if (nextIndex >= 0 && nextIndex < dateValues.length) void showDay(dateValues[nextIndex]);
+        });
+    });
+    // The review page opens the same dialog after a court change. The
+    // original priced quote is not replaced until the visitor confirms slots.
+    dayBookingDialog.addEventListener('mskba:choose-court', event => {
+        const nextCourt = Number(event.detail?.courtId);
+        if (Number.isInteger(nextCourt) && nextCourt > 0) {
+            dayBookingDialog.dataset.courtId = String(nextCourt);
+        }
+        const preferredDate = event.detail?.date;
+        void showDay(dateValues.includes(preferredDate) ? preferredDate
+            : (dateValues.includes(activeDate) ? activeDate : dateValues[0]));
     });
 }
