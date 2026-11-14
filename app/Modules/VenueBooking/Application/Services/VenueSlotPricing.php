@@ -51,6 +51,9 @@ final class VenueSlotPricing
 
         $courtBase = $court?->{$column};
         $venueBase = (int) $policy->{$column};
+        // The venue-level tariff is a minimum for each payable policy step.
+        // Individual court and calendar tariffs may increase it, never lower it.
+        $minimumCourtStep = max(0, $venueBase) * intdiv($courtStep, $venueStep);
         $paid = (bool) ($effective['requires_payment'] ?? $policy->requires_payment);
         $prices = [];
         $usesCustomPrices = false;
@@ -67,7 +70,7 @@ final class VenueSlotPricing
                 ?? $courtBase;
 
             if ($courtCustom !== null) {
-                $prices[] = $paid ? (int) $courtCustom : 0;
+                $prices[] = $paid ? max((int) $courtCustom, $minimumCourtStep) : 0;
                 $usesCustomPrices = $usesCustomPrices || $paid;
                 continue;
             }
@@ -82,7 +85,7 @@ final class VenueSlotPricing
                 if ($override !== null) {
                     $usesCustomPrices = $usesCustomPrices || $paid;
                 }
-                $amount += $override === null ? $venueBase : (int) $override;
+                $amount += $override === null ? $venueBase : max($venueBase, (int) $override);
             }
             $prices[] = $paid ? $amount : 0;
         }
