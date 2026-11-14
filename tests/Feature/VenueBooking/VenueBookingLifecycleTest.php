@@ -3,6 +3,8 @@
 namespace Tests\Feature\VenueBooking;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
@@ -21,6 +23,10 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
+use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Jobs\SendUserNotificationEmailJob;
+use App\Modules\Notification\Presentation\Mail\UserNotificationMail;
 use App\Modules\VenueBooking\Application\Services\VenueBookingEventConsumer;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -42,6 +48,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use LogicException;
 use RuntimeException;
 use Tests\TestCase;
@@ -85,6 +93,54 @@ final class VenueBookingLifecycleTest extends TestCase
             'venue_booking_id' => $booking->id,
             'user_id' => $applicant->id,
             'role' => 'applicant',
+        ]);
+    }
+
+    public function test_new_booking_request_creates_owner_in_app_notification_and_verified_email(): void
+    {
+        Queue::fake();
+        Mail::fake();
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $email = 'owner-booking-'.$owner->id.'@example.test';
+        Contact::query()->create([
+            'contactable_type' => 'user',
+            'contactable_id' => $owner->id,
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => $email,
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, false);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+
+        // Queue workers publish the outbox in production. Dispatch it here
+        // deliberately to exercise the real permission-filtered recipients.
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $notification = UserNotification::query()
+            ->where('user_id', $owner->id)
+            ->where('payload->source', UserNotificationSourceEnum::VENUE_BOOKING_REQUESTED->value)
+            ->firstOrFail();
+        $this->assertSame('Новая заявка на аренду', $notification->title);
+        $this->assertSame('Открыть заявку', $notification->action_text);
+        $this->assertStringContainsString((string) $booking->public_id, (string) $notification->action_url);
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $applicant->id,
+            'title' => 'Новая заявка на аренду',
+        ]);
+
+        // Sending the queued mail uses the recipient's confirmed email,
+        // subject to their selected request-notification preferences.
+        (new SendUserNotificationEmailJob($notification->id))->handle();
+        Mail::assertSent(UserNotificationMail::class,
+            fn (UserNotificationMail $message): bool => $message->hasTo($email));
+        $this->assertDatabaseHas('user_notification_deliveries', [
+            'user_notification_id' => $notification->id,
+            'channel' => 'email',
+            'status' => 'sent',
         ]);
     }
 
