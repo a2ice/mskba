@@ -219,6 +219,11 @@ document.querySelectorAll('[data-mskba-venue-create]').forEach(form => {
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
+                if (payload.errors && typeof payload.errors === 'object') {
+                    form.dispatchEvent(new CustomEvent('venue-create:server-errors', {
+                        detail: {errors: payload.errors},
+                    }));
+                }
                 const messages = Object.values(payload.errors || {}).flat();
                 throw new Error(messages.slice(0, 3).join(' ') || payload.message || 'Не удалось сохранить площадку.');
             }

@@ -34,14 +34,14 @@
             <button type="button" class="app-player-workspace__secondary" data-venue-address-manual>Ввести адрес</button>
         </div>
         <div class="address-suggest__input-wrap">
-            <input name="location[raw_address]" type="search" data-address-suggest-input
+            <input name="location[raw_address]" type="search" data-address-suggest-input data-validation-label="Адрес площадки"
                 data-address-suggest-url="{{ route('integrations.address-suggest') }}"
                 value="{{ old('location.raw_address') }}" autocomplete="off" required
                 placeholder="Начните вводить адрес и выберите вариант из подсказок">
             <button type="button" class="address-suggest__control" aria-label="Очистить адрес" data-address-clear hidden>×</button>
             <div data-address-suggest-list class="address-suggest__list d-none" role="listbox"></div>
         </div>
-        <span class="app-venue-create__metro">Ближайшее метро: <strong data-address-metro-summary>Подставится после выбора адреса</strong></span>
+        <div class="app-venue-create__metro">Ближайшее метро: <span class="app-venue-create__metro-chips" data-address-metro-summary data-address-metro-badges>Подставится после выбора адреса</span></div>
         <span class="app-venue-create__warning" data-address-proximity-warning role="status" hidden></span>
         <span class="app-venue-create__error d-none" data-address-suggest-error role="alert"></span>
         <input type="hidden" name="location[address_selected]" value="" data-address-selected>
@@ -56,7 +56,7 @@
     </fieldset>
     <select class="app-venue-create__hidden-metro" name="location[metro_station_ids][]" multiple data-address-metro-select tabindex="-1" aria-hidden="true">
         @foreach($metros as $metro)
-            <option value="{{ $metro->id }}">{{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }}) @endif</option>
+            <option value="{{ $metro->id }}" data-line-color="{{ preg_match('/\A#?[0-9A-Fa-f]{6}\z/D', (string) $metro->lineColor) ? '#'.ltrim((string) $metro->lineColor, '#') : '#64748b' }}">{{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }}) @endif</option>
         @endforeach
     </select>
     <div class="app-venue-create__grid">

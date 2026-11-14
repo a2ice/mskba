@@ -51,6 +51,7 @@ import './player-generation-options.js';
 // Reusable Git-owned studio: lazy interactive modal + resume after auth/onboarding.
 import './uniforms/bootstrap.js';
 import '../css/player-generation-options.css';
+import './venue-create-validation.js';
 import './balance-topup.js';
 import './venue-create-name.js';
 // Reuse the production location suggestion and reverse-geolocation adapter.
