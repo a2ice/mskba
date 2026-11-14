@@ -14,9 +14,10 @@
     $categoryItemsClass = 'app-venues-catalog__items';
     $categoryItemsListClass = 'app-venues-catalog__items--list';
     $categoryView = $currentView;
+    $categoryHasMap = true;
     $categoryBaseUrl = route('venues');
     $categoryViewQuery = request()->except(['view', 'page', 'fragment']);
-    $categoryResetUrl = route('venues', $currentView === 'list' ? ['view' => 'list'] : []);
+    $categoryResetUrl = route('venues', in_array($currentView, ['list', 'map'], true) ? ['view' => $currentView] : []);
     $categoryEnableSorting = true;
     $categorySortValue = $filters['sort'] ?? '';
     $categorySortChoices = [
@@ -35,7 +36,7 @@
 @section('category-sidebar')
             <h2>Поиск площадок</h2>
             <form method="GET" action="{{ route('venues') }}" class="app-venues-catalog__filters">
-                @if($currentView === 'list')<input type="hidden" name="view" value="list">@endif
+                @if(in_array($currentView, ['list', 'map'], true))<input type="hidden" name="view" value="{{ $currentView }}">@endif
                 @if(filled($filters['sort'] ?? null))<input type="hidden" name="sort" value="{{ $filters['sort'] }}">@endif
                 <label><span>Поиск площадки</span>
                     <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
@@ -70,7 +71,7 @@
 @endsection
 
 @section('category-toolbar-count')
-    <span role="status" aria-live="polite">Показано <b data-venue-visible-count>{{ count($venues) }}</b> из {{ $total }} площадок</span>
+    <span role="status" aria-live="polite">Показано <b data-venue-visible-count>{{ $currentView === 'map' ? count($mapPoints) : count($venues) }}</b> из {{ $total }} площадок</span>
 @endsection
 
 @section('category-items')
@@ -88,4 +89,20 @@
             </div>
             <div class="app-venues-catalog__sentinel" data-venue-sentinel aria-hidden="true"></div>
 
+@endsection
+
+@section('category-map')
+    <section class="app-venues-catalog__map panel" data-venue-catalog-map-frame aria-label="Карта площадок">
+        @if($mapPoints !== [])
+            <div class="app-venues-catalog__map-canvas" data-venue-catalog-map
+                 data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"></div>
+            <p class="app-venues-catalog__map-status" data-venue-catalog-map-status role="status">Загружаем карту…</p>
+            <script type="application/json" data-venue-catalog-map-points>@json($mapPoints)</script>
+        @else
+            <div class="app-venues-catalog__map-empty">
+                <strong>Нет площадок с координатами</strong>
+                <span>Попробуйте изменить условия поиска или переключиться на карточки.</span>
+            </div>
+        @endif
+    </section>
 @endsection

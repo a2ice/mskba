@@ -96,9 +96,34 @@ class VenueController extends Controller
         $total = count($venues);
         $page = (int) ($filters['page'] ?? 1);
         $perPage = 4;
+        $currentView = in_array($filters['view'] ?? null, ['list', 'map'], true)
+            ? $filters['view'] : 'cards';
+
+        // The map must show every matching venue, not only the four cards on
+        // the current infinite-scroll page. Reuse the same access-aware query.
+        $mapPoints = [];
+        if ($currentView === 'map') {
+            foreach ($venues as $venue) {
+                if ($venue->latitude === null || $venue->longitude === null) {
+                    continue;
+                }
+                $mapPoints[] = [
+                    'id' => $venue->id,
+                    'name' => $venue->name,
+                    'address' => $venue->displayAddress,
+                    'latitude' => $venue->latitude,
+                    'longitude' => $venue->longitude,
+                    'url' => $venue->matchedCourtUrl ?: route('venues.show', $venue->routeIdentifier()),
+                    'matched_court' => $venue->matchedCourtName,
+                    'free_courts' => count($venue->courtAccessSummary['free'] ?? []),
+                    'paid_courts' => count($venue->courtAccessSummary['paid'] ?? []),
+                    'approval_courts' => count($venue->courtAccessSummary['approval'] ?? []),
+                ];
+            }
+        }
+
         $venues = array_slice($venues, ($page - 1) * $perPage, $perPage);
         $hasMore = $page * $perPage < $total;
-        $currentView = ($filters['view'] ?? null) === 'list' ? 'list' : 'cards';
 
         if (($filters['fragment'] ?? null) === 'items') {
             return response()->json([
@@ -110,7 +135,7 @@ class VenueController extends Controller
         }
 
         return ThemeResolver::page('venues.index', compact(
-            'venues', 'filters', 'total', 'page', 'hasMore', 'currentView',
+            'venues', 'filters', 'total', 'page', 'hasMore', 'currentView', 'mapPoints',
         ) + [
             'types' => VenueTypeEnum::cases(),
             'operationalStatuses' => VenueOperationalStatusEnum::cases(),

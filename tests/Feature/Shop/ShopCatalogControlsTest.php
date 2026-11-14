@@ -67,7 +67,8 @@ final class ShopCatalogControlsTest extends TestCase
             ->assertOk()->assertSee('app-catalog-tools__views')
             ->assertSee('app-venues-catalog__items--list')
             ->assertSee('class="select-control"', false)
-            ->assertSee('aria-label="Списком"', false)
+            ->assertSee('aria-label="На карте"', false)
+            ->assertDontSee('aria-label="Списком"', false)
             ->assertDontSee('>Карточки</a>', false);
     }
 }

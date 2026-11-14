@@ -1,6 +1,7 @@
 @php
     $cardsUrl = $baseUrl.(count($viewQuery) ? '?'.http_build_query($viewQuery) : '');
     $listUrl = $baseUrl.'?'.http_build_query(array_merge($viewQuery, ['view' => 'list']));
+    $mapUrl = $baseUrl.'?'.http_build_query(array_merge($viewQuery, ['view' => 'map']));
     $sortQuery = request()->except(['sort', 'page', 'fragment']);
     $sortChoices = $sortChoices ?? [
         '' => 'По порядку',
@@ -44,10 +45,18 @@
            @if($currentView === 'cards') aria-current="page" @endif>
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </a>
-        <a @class(['app-catalog-tools__icon', 'is-active' => $currentView === 'list'])
-           href="{{ $listUrl }}" aria-label="Списком" title="Списком"
-           @if($currentView === 'list') aria-current="page" @endif>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
-        </a>
+        @if($enableMapView ?? false)
+            <a @class(['app-catalog-tools__icon', 'is-active' => $currentView === 'map'])
+               href="{{ $mapUrl }}" aria-label="На карте" title="На карте"
+               @if($currentView === 'map') aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg>
+            </a>
+        @else
+            <a @class(['app-catalog-tools__icon', 'is-active' => $currentView === 'list'])
+               href="{{ $listUrl }}" aria-label="Списком" title="Списком"
+               @if($currentView === 'list') aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </a>
+        @endif
     </nav>
 </div>

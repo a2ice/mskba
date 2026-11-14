@@ -25,7 +25,7 @@
 @section('content')
 <section class="container {{ $categoryRootClass }}" id="{{ $categoryRootId }}"
     data-default-category data-default-category-view="{{ $categoryView }}"
-    @if($categoryRootId === 'venues-catalog') data-venue-infinite-catalog data-next-page="{{ $hasMore ? $page + 1 : '' }}" @endif
+    @if($categoryRootId === 'venues-catalog' && $categoryView !== 'map') data-venue-infinite-catalog data-next-page="{{ $hasMore ? $page + 1 : '' }}" @endif
     aria-labelledby="{{ $categoryHeadingId }}">
     <header class="{{ $categoryHeaderClass }}">
         <div>
@@ -49,6 +49,7 @@
                     'baseUrl' => $categoryBaseUrl,
                     'viewQuery' => $categoryViewQuery,
                     'currentView' => $categoryView,
+                    'enableMapView' => $categoryHasMap ?? false,
                     'resetUrl' => $categoryResetUrl,
                     'enableSorting' => $categoryEnableSorting ?? false,
                     'sortValue' => $categorySortValue ?? '',
@@ -57,12 +58,16 @@
                 @yield('category-toolbar-extra')
             </div>
             @yield('category-before-items')
-            <div class="{{ $categoryItemsClass }}{{ $categoryView === 'list' ? ' '.$categoryItemsListClass : '' }}"
-                data-default-category-results="{{ $categoryView }}"
-                @if($categoryRootId === 'venues-catalog') data-venue-items @endif>
-                @yield('category-items')
-            </div>
-            @yield('category-after-items')
+            @if($categoryView === 'map' && ($categoryHasMap ?? false))
+                @yield('category-map')
+            @else
+                <div class="{{ $categoryItemsClass }}{{ $categoryView === 'list' ? ' '.$categoryItemsListClass : '' }}"
+                    data-default-category-results="{{ $categoryView }}"
+                    @if($categoryRootId === 'venues-catalog') data-venue-items @endif>
+                    @yield('category-items')
+                </div>
+                @yield('category-after-items')
+            @endif
         </main>
     </div>
 </section>

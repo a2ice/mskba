@@ -3,6 +3,8 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,6 +23,50 @@ final class VenueCatalogInfiniteTest extends TestCase
         $this->app->forgetInstance(ThemeResolver::class);
         View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
     }
+
+    public function test_map_shows_all_matching_points_and_preserves_filtered_map_view(): void
+    {
+        foreach (range(1, 6) as $i) {
+            $address = Address::factory()->create([
+                'latitude' => 55.75 + $i / 1000,
+                'longitude' => 37.61 + $i / 1000,
+            ]);
+            $location = Location::factory()->create(['address_id' => $address->id]);
+            Venue::factory()->create([
+                'name' => sprintf('Карта %02d', $i),
+                'location_id' => $location->id,
+                'status' => VenueStatusEnum::CONFIRMED,
+            ]);
+        }
+        Venue::factory()->create([
+            'name' => 'Неподходящая площадка',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        // Cards still load in chunks of four, while map mode displays all
+        // filtered coordinates and no infinite-scroll sentinel.
+        $this->get('/venues?search=Карта')->assertOk()
+            ->assertSee('Карта 01')
+            ->assertDontSee('Карта 06')
+            ->assertSee('aria-label="На карте"', false)
+            ->assertDontSee('aria-label="Списком"', false);
+
+        $this->get('/venues?view=map&search=Карта')
+            ->assertOk()
+            ->assertSee('data-venue-catalog-map-frame', false)
+            ->assertSee('data-venue-catalog-map-points', false)
+            ->assertSee('data-venue-catalog-map', false)
+            ->assertSee('name="view" value="map"', false)
+            ->assertSee('data-default-category-view="map"', false)
+            ->assertSee('Показано')
+            ->assertSee('Карта 01')
+            ->assertSee('Карта 06')
+            ->assertDontSee('Неподходящая площадка')
+            ->assertDontSee('data-venue-infinite-catalog', false)
+            ->assertDontSee('data-venue-sentinel', false)
+            ->assertDontSee('aria-label="Списком"', false);
+    }
+
 
     public function test_app_catalog_uses_infinite_chucks_and_stable_list_view(): void
     {
