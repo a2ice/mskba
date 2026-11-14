@@ -32,7 +32,7 @@ final class ListAccountVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $bookingRequestCounts = $user === null ? [] : $this->bookingRequests->byVenueFor($user);
         $decidableVenueIds = $user === null ? [] : $this->memberships
-            ->allowedVenueIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS);
+            ->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW_BOOKING_REQUESTS);
         $isSuperadmin = $user?->canonical()->hasSystemRole(UserSystemRoleEnum::SUPERADMIN) ?? false;
 
         return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds, $bootstrapOwnedVenueIds): void {
