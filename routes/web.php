@@ -37,6 +37,8 @@ use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardPreferen
 use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
 use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
+use App\Modules\Event\Presentation\Http\Controllers\EventVenueBookingController;
+use App\Modules\Event\Presentation\Http\Controllers\VenueEventInterestController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
@@ -759,6 +761,10 @@ Route::prefix('events')->group(function () {
             ->name('events.edit')
             ->defaults('breadcrumb', 'Редактирование мероприятия');
         Route::put('/{event}', [EventController::class, 'update'])->name('events.update');
+        Route::post('/{event}/booking/quote', [EventVenueBookingController::class, 'quote'])
+            ->middleware('throttle:20,1')->name('events.booking.quote');
+        Route::post('/{event}/booking', [EventVenueBookingController::class, 'store'])
+            ->middleware('throttle:10,1')->name('events.booking.store');
         Route::post('/{event}/participants', [EventController::class, 'join'])
             ->name('events.join');
         Route::delete('/{event}/participants/me', [EventController::class, 'leave'])
@@ -1237,6 +1243,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/venues', fn () => redirect()->route('account.contracts.venues', request()->query(), 302))
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/venues/{venue}/event-interests', [VenueEventInterestController::class, 'index'])
+            ->whereNumber('venue')->middleware('auth')->name('account.venues.interests.index');
+
         Route::prefix('venues/{venue}/commercial-memberships')
             ->middleware('venue-rental-feature:rental_flow')
             ->whereNumber('venue')

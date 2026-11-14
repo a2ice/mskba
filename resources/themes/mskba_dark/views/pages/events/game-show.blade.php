@@ -92,13 +92,14 @@
             @if(session('photo_status')) <div class="alert alert-success">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
             @include('theme::pages.events.partials.pending-booking-publication-notice')
+            @include('theme::pages.events.partials.venue-interest-status')
 
             <a class="game-control__back" href="{{ $tournament ? route('tournaments.show', $tournament->routeIdentifier()) : route('events.show', $event->routeIdentifier()) }}"><i class="ti ti-arrow-left"></i>{{ $tournament ? 'Назад к турниру' : 'Назад к мероприятию' }}</a>
 
             <header class="game-control__header">
                 <div class="game-control__identity"><span class="eyebrow">{{ $tournament ? 'Игра турнира' : ($isEmbeddedGame ? 'Мини-игра' : 'Игра') }}</span><div class="game-control__title-row"><h1>{{ $title }}</h1>@if($canManage && ! $managementMode && ($canUpdate || $canManageRoster || $canManageScore || $canManageStatistics || $allows(EventResponsibilityPermissionEnum::UPDATE_EVENT)))@include('theme::partials.entity-edit-link', ['url' => route('events.games.manage', $gameRouteParameters)])@endif</div>@if($tournament)<p>Турнир «<a href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">{{ $tournament->title }}</a>»</p>@elseif($isEmbeddedGame)<p>В рамках «<a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a>»</p>@endif</div>
                 <div class="game-control__chips"><span>{{ $game->format?->label() ?? $game->formatLabel() }}</span><span>{{ $game->scoring_type->label() }} · {{ $game->timing_mode->label() }}@if($game->periods_count) · {{ $game->periods_count }}@endif</span><span class="{{ $gameState[1] }}"><i class="ti ti-point-filled"></i>{{ $gameState[0] }}</span><span title="{{ $formationTooltip }}" data-tooltip-variant="title"><i class="ti ti-users"></i>{{ $formationLabel }}</span></div>
-                <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}@if($event->booking?->scope) · {{ $event->booking->scope->label() }}@endif</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
+                <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}@if($event->booking?->scope || $event->planned_booking_scope) · {{ ($event->booking?->scope ?? $event->planned_booking_scope)->label() }}@endif</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
             </header>
 
             @if($game->status_comment)

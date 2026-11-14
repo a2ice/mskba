@@ -110,7 +110,7 @@
         })
         ->values();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
-    $bookingScopeLabel = $event->booking?->scope?->label();
+    $bookingScopeLabel = $event->booking?->scope?->label() ?? $event->planned_booking_scope?->label();
     $locationName = $event->venue->name.($bookingScopeLabel ? ' · '.$bookingScopeLabel : '');
     $coordinates = $event->venue->location?->address;
     $mapUrl = $coordinates?->latitude !== null && $coordinates?->longitude !== null
@@ -124,7 +124,9 @@
             || str_contains($haystack, 'паркет');
     });
     $surface = $surfaceAmenity?->pivot?->note ?: $surfaceAmenity?->name ?: 'Не указано';
-    $bookingLabel = $event->booking?->status?->label() ?: 'Не указано';
+    $bookingLabel = $event->booking?->status?->label()
+        ?: $event->sourceBooking?->status?->label()
+        ?: ($event->booking_deferred ? 'Не забронировано' : 'Не указано');
     $organizer = $event->organizerActor?->user;
     $organizerProfile = $organizer?->profile;
     $organizerName = trim(implode(' ', array_filter([
@@ -173,7 +175,8 @@
             @if(session('photo_status')) <div class="alert alert-success event-show__alert">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger event-show__alert">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
             @include('theme::pages.events.partials.pending-booking-publication-notice')
-            @if($event->sourceBooking)
+            @include('theme::pages.events.partials.venue-interest-status')
+            @if($event->sourceBooking && ! $event->booking_deferred)
                 <div class="alert alert-info event-show__alert">Площадка, зона и время управляются связанной бронью. Статус брони: {{ $event->sourceBooking->status->label() }}.</div>
             @endif
 

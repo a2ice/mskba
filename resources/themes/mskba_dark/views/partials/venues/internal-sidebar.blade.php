@@ -55,6 +55,13 @@
             >Коммерческие роли</a>
         @endif
 
+        @if(auth()->check() && app(\App\Modules\Event\Application\Services\EventVenueInterestService::class)->canView(auth()->user(), $venue))
+            <a href="{{ route('account.venues.interests.index', $venue) }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'event-interests'])
+                @if(($venueSidebarActive ?? null) === 'event-interests') aria-current="page" @endif
+            >Предварительный интерес</a>
+        @endif
+
         @if($venueBookingInboxUrl ?? null)
             <a href="{{ $venueBookingInboxUrl }}" class="venue-side-nav__link">
                 <span>Заявки на аренду</span>
