@@ -37,10 +37,17 @@
 .app-player-workspace__topup-body form button[type=submit]{justify-self:start}
 .app-venue-create{display:grid;gap:17px;color:#2c3d52}
 .app-venue-create__help{margin:0;color:#68788b;font-size:14px}
+.app-venue-create__notice{display:grid;gap:10px}
+.app-venue-create__promotion{display:grid;gap:5px;padding:12px 14px;border:1px solid var(--line,#dce3ea);border-radius:10px;background:var(--surface-raised,#f8fafc);font-size:14px;line-height:1.5}
+.app-venue-create__promotion strong{font-weight:700;color:var(--text,#293b50)}
+.app-venue-create__promotion span{color:var(--muted,#68788b)}
+.app-venue-create__promotion .app-venue-create__promotion-amount{font-weight:700;color:var(--text,#293b50)}
+.app-venue-create .venue-court-entry__choices label{justify-content:flex-start;min-width:0;text-align:left;cursor:pointer;gap:9px}
+.app-venue-create .venue-court-entry__choices input[type=checkbox]{width:18px;min-width:18px;height:18px;margin:0;padding:0;flex:0 0 18px;accent-color:var(--accent,#cc5400)}
 .app-venue-create__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .app-venue-create__field{display:grid;gap:6px;font-size:14px;font-weight:600;min-width:0}
 .app-venue-create__field small{font-size:12px;font-weight:400;color:#697b8d}
-.app-venue-create input,.app-venue-create select,.app-venue-create textarea{width:100%;min-width:0;padding:10px;border:1px solid #ccd5df;border-radius:8px;background:white;color:#283a50;font:inherit}
+.app-venue-create input:not([type=checkbox]):not([type=radio]),.app-venue-create select,.app-venue-create textarea{width:100%;min-width:0;padding:10px;border:1px solid #ccd5df;border-radius:8px;background:white;color:#283a50;font:inherit}
 .app-venue-create__address{display:grid;gap:10px;min-width:0;margin:0;padding:12px;border:1px solid #dce3ea;border-radius:10px}
 .app-venue-create__address legend{font-weight:700;padding:0 5px}
 .app-venue-create__address-actions{display:flex;flex-wrap:wrap;gap:8px}

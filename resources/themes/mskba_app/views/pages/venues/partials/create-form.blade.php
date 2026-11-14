@@ -6,22 +6,26 @@
 <form method="POST" action="{{ route('venues.store') }}" enctype="multipart/form-data"
     class="app-venue-create" data-mskba-venue-create data-success-url="{{ route('account.venues') }}">
     @csrf
-    <p class="app-venue-create__help">Поля со звёздочкой обязательны. После добавления площадку можно дополнить и отправить на модерацию.</p>
-    <input type="hidden" name="creation_role" value="contributor">
-    <div class="app-venue-create__grid">
-        <label class="app-venue-create__field">Название *
-            <input name="name" type="text" maxlength="255" minlength="3" required placeholder="Название площадки" value="{{ old('name') }}">
-        </label>
-        <label class="app-venue-create__field">Тип *
-            <select name="type" required>
-                <option value="">Выберите тип</option>
-                @foreach($types as $type)
-                    <option value="{{ $type->value }}" @selected(old('type') === $type->value)>{{ $type->label() }}</option>
-                @endforeach
-            </select>
-        </label>
+    @php
+        $venueCreationPromotions = collect(app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class)
+            ->forPlacement('venue_create'))
+            ->where('reward_code', 'venue_first_approval');
+    @endphp
+    <div class="app-venue-create__notice">
+        <p class="app-venue-create__help">Поля со звёздочкой обязательны. После добавления площадку можно дополнить и отправить на модерацию.</p>
+        @foreach($venueCreationPromotions as $promotion)
+            <div class="app-venue-create__promotion">
+                <strong>{{ $promotion['title'] }}</strong>
+                @if($promotion['description'])
+                    <span>{{ $promotion['description'] }}</span>
+                @endif
+                @if($promotion['amount_caption'])
+                    <span class="app-venue-create__promotion-amount">{{ $promotion['amount_caption'] }}</span>
+                @endif
+            </div>
+        @endforeach
     </div>
-    @include('venues.partials.initial-courts')
+    <input type="hidden" name="creation_role" value="contributor">
     <fieldset class="app-venue-create__address" data-address-suggest data-address-proximity-url="{{ route('venues.proximity-check') }}">
         <legend>Адрес площадки *</legend>
         <div class="app-venue-create__address-actions">
@@ -55,6 +59,20 @@
             <option value="{{ $metro->id }}">{{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }}) @endif</option>
         @endforeach
     </select>
+    <div class="app-venue-create__grid">
+        <label class="app-venue-create__field">Название *
+            <input name="name" type="text" maxlength="255" minlength="3" required placeholder="Название площадки" value="{{ old('name') }}">
+        </label>
+        <label class="app-venue-create__field">Тип *
+            <select name="type" required>
+                <option value="">Выберите тип</option>
+                @foreach($types as $type)
+                    <option value="{{ $type->value }}" @selected(old('type') === $type->value)>{{ $type->label() }}</option>
+                @endforeach
+            </select>
+        </label>
+    </div>
+    @include('venues.partials.initial-courts')
     <div class="app-venue-create__grid">
         <label class="app-venue-create__field">Условия посещения
             <select name="access_type">

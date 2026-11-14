@@ -102,6 +102,7 @@ final class PromotionResource extends Resource
                                 ->options([
                                     'avatar_topup' => 'Генерация аватара: Как пополнить баланс',
                                     'account_wallet' => 'Личный кабинет: Кошелёк',
+                                    'venue_create' => 'Форма добавления площадки',
                                     'venue_page' => 'Страница площадки',
                                     'venue_slots' => 'Попап выбора слотов',
                                 ])
