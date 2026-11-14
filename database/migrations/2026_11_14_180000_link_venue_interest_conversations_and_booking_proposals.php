@@ -15,6 +15,12 @@ return new class extends Migration
                 ->constrained('event_venue_interests')->nullOnDelete();
         });
 
+        Schema::table('venue_bookings', function (Blueprint $table): void {
+            $table->foreignId('event_venue_interest_id')->nullable()
+                ->constrained('event_venue_interests')->nullOnDelete();
+            $table->string('interest_booking_initiator', 16)->nullable();
+        });
+
         Schema::create('event_venue_booking_proposals', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('event_venue_interest_id')->constrained('event_venue_interests')->cascadeOnDelete();
@@ -34,6 +40,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('event_venue_booking_proposals');
+        Schema::table('venue_bookings', function (Blueprint $table): void {
+            $table->dropConstrainedForeignId('event_venue_interest_id');
+            $table->dropColumn('interest_booking_initiator');
+        });
         Schema::table('venue_booking_conversations', function (Blueprint $table): void {
             $table->dropConstrainedForeignId('event_venue_interest_id');
             $table->foreignId('venue_booking_id')->nullable(false)->change();

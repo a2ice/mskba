@@ -9,6 +9,9 @@ use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
+use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
@@ -53,6 +56,32 @@ final readonly class EventVenueInterestService
             || $this->isSelectedAgent($user, $venue);
     }
 
+    public function canParticipateInThread(User $user, EventVenueInterest $interest): bool
+    {
+        $user = $user->canonical();
+        $organizer = $interest->event?->organizerActor?->user?->canonical();
+        if ($organizer?->id === $user->id && $user->isConfirmed() && ! $user->isBlocked()) {
+            return true;
+        }
+
+        return $this->canView($user, $interest->venue, $interest->court);
+    }
+
+    public function canPropose(User $user, EventVenueInterest $interest): bool
+    {
+        $user = $user->canonical();
+        if (! $this->canView($user, $interest->venue, $interest->court)) {
+            return false;
+        }
+        if ($interest->court !== null
+            && $this->commercial->allowsForCourt($user, $interest->court, VenuePermissionEnum::PROPOSE_EVENT_BOOKING)) {
+            return true;
+        }
+
+        return $this->commercial->allows($user, $interest->venue, VenuePermissionEnum::PROPOSE_EVENT_BOOKING)
+            || $this->memberships->hasActiveVenueManagementRole($user, $interest->venue);
+    }
+
     public function createFor(Event $event, Actor $actor): EventVenueInterest
     {
         $interest = EventVenueInterest::query()->firstOrCreate(
@@ -68,6 +97,10 @@ final readonly class EventVenueInterestService
             ],
         );
         if ($interest->wasRecentlyCreated) {
+            VenueBookingConversation::query()->firstOrCreate(
+                ['event_venue_interest_id' => $interest->id],
+                ['public_id' => (string) \Illuminate\Support\Str::uuid()],
+            );
             DB::afterCommit(fn () => $this->notifyRecipients($interest->id));
         }
 
@@ -134,7 +167,7 @@ final readonly class EventVenueInterestService
             $ids[] = $agent->id;
         }
 
-        $url = route('account.venues.interests.index', $venue);
+        $url = route('events.interests.show', ['event' => $event->routeIdentifier(), 'interest' => $interest->id]);
         $event = $interest->event;
         $start = $interest->starts_at->setTimezone(
             $venue->schedule()->value('timezone') ?: 'Europe/Moscow',
