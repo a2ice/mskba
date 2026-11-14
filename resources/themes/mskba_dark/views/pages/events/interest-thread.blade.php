@@ -48,10 +48,25 @@
         } }}</strong></p>
         @if($booking)
             <p class="mt-2 mb-0">Заявка на бронь: <strong>{{ $bookingStatus }}</strong>.
-                @if($isOrganizer)
-                    <a class="fc-link" href="{{ route('account.venue-bookings.show', $booking) }}">Открыть заявку и стандартные действия</a>
+                @if($canViewBooking)
+                    <a class="fc-link" href="{{ route('account.venue-bookings.show', $booking) }}">Открыть полную заявку</a>
                 @endif
             </p>
+        @endif
+        @if($booking && $canViewBooking)
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @foreach(['accept' => 'Принять', 'confirm' => 'Подтвердить', 'reject' => 'Отклонить', 'cancel' => 'Отменить'] as $action => $caption)
+                    @if($bookingActions[$action]['allowed'] ?? false)
+                        <form method="POST" action="{{ route('account.venue-bookings.'.$action, $booking) }}">
+                            @csrf
+                            <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
+                            <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                            <button type="submit" class="btn btn--{{ in_array($action, ['accept', 'confirm']) ? 'primary' : 'secondary' }} btn--sm">{{ $caption }} заявку</button>
+                        </form>
+                    @endif
+                @endforeach
+            </div>
+            <small class="text-muted mt-2 d-block">Действия применяют стандартные проверки и правила аренды.</small>
         @endif
     </div></article>
 

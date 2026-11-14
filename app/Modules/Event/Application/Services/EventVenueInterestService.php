@@ -57,7 +57,7 @@ final readonly class EventVenueInterestService
     {
         $user = $user->canonical();
         $organizer = $interest->event?->organizerActor?->user?->canonical();
-        if ($organizer?->id === $user->id && $user->isConfirmed() && ! $user->isBlocked()) {
+        if ($organizer?->id === $user->id && ! $user->isBlocked() && ! $user->trashed()) {
             return true;
         }
 

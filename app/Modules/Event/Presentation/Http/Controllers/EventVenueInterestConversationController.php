@@ -11,6 +11,9 @@ use App\Modules\Event\Domain\Models\EventVenueBookingProposal;
 use App\Modules\Event\Domain\Models\EventVenueInterest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
+use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingConversationRead;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingMessage;
@@ -39,6 +42,7 @@ final class EventVenueInterestConversationController extends Controller
     public function show(
         Request $request, string $event, int $interest,
         CurrentActorResolver $actors, EventVenueInterestChat $chat, EventVenueInterestService $access,
+        VenueBookingAuthorization $bookingAccess, VenueBookingActionState $bookingActions,
     ): Response {
         $thread = $this->interest($event, $interest);
         $actor = $actors->resolveForRequest($request);
@@ -59,6 +63,18 @@ final class EventVenueInterestConversationController extends Controller
         }
 
         $isOrganizer = $chat->isOrganizer($thread, $actor);
+        $booking = $thread->event->sourceBooking;
+        $canViewBooking = false;
+        $actions = [];
+        if ($booking !== null) {
+            try {
+                $bookingAccess->assertCanView($actor, $booking, $thread->venue);
+                $canViewBooking = true;
+                $actions = $bookingActions->for($booking, $actor);
+            } catch (VenueBookingTransitionException) {
+                // Access to a nonbinding interest does not grant financial booking access.
+            }
+        }
 
         return ThemeResolver::page('events.interest-thread', [
             'interest' => $thread,
@@ -67,6 +83,8 @@ final class EventVenueInterestConversationController extends Controller
             'isOrganizer' => $isOrganizer,
             'canPropose' => ! $isOrganizer && $actor->user !== null
                 && $access->canPropose($actor->user, $thread),
+            'canViewBooking' => $canViewBooking,
+            'bookingActions' => $actions,
             'canAct' => $thread->status === 'open'
                 && $thread->event->booking_id === null
                 && $thread->event->participation_confirmation_version === $thread->revision,
