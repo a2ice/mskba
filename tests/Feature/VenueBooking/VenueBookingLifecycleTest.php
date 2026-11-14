@@ -228,6 +228,85 @@ final class VenueBookingLifecycleTest extends TestCase
         app(AcceptVenueBookingHandler::class)->handle($booking->id, $viewerActor);
     }
 
+    public function test_approval_and_rejection_are_independent_delegated_actions(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$approver, $approverActor] = $this->userAndActor();
+        [$rejector, $rejectorActor] = $this->userAndActor();
+        [$applicant, $actor] = $this->userAndActor();
+
+        foreach ([
+            [$approver, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS],
+            [$rejector, VenuePermissionEnum::REJECT_BOOKING_REQUESTS],
+        ] as [$delegate, $right]) {
+            $contract = Contract::query()->create([
+                'family' => ContractFamilyEnum::MEMBERSHIP,
+                'status' => ContractStatusEnum::ACTIVE,
+                'starts_at' => now()->subMinute(),
+                'assigner' => UserParticipationRoleAssignerEnum::OTHER,
+            ]);
+            $contract->membership()->create([
+                'scope_type' => ContractMembershipScopeTypeEnum::VENUE,
+                'scope_id' => $venue->id,
+                'user_id' => $delegate->id,
+                'access_level' => 'responsible',
+            ]);
+            $contract->permissions()->createMany([
+                ['permission' => VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value],
+                ['permission' => $right->value],
+            ]);
+        }
+
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $approverActions = app(VenueBookingActionState::class)->for($booking, $approverActor);
+        $rejectorActions = app(VenueBookingActionState::class)->for($booking, $rejectorActor);
+        $this->assertTrue($approverActions['accept']['allowed']);
+        $this->assertFalse($approverActions['reject']['allowed']);
+        $this->assertFalse($approverActions['cancel']['allowed']);
+        $this->assertFalse($rejectorActions['accept']['allowed']);
+        $this->assertTrue($rejectorActions['reject']['allowed']);
+        $this->assertTrue($rejectorActions['cancel']['allowed']);
+
+        $rejected = app(RejectVenueBookingHandler::class)
+            ->handle($booking->id, $rejectorActor, 'Нет свободного зала');
+        $this->assertSame(VenueBookingStatusEnum::REJECTED, $rejected->status);
+    }
+
+    public function test_existing_five_permission_primary_manager_contract_is_upgraded(): void
+    {
+        [$user] = $this->userAndActor();
+        $venue = Venue::factory()->create();
+        $membership = app(EntityContractManager::class)->grantOwner(
+            ContractMembershipScopeTypeEnum::VENUE, $venue->id, $user, $user,
+        );
+        $membership->contract->permissions()->whereIn('permission', [
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS->value,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS->value,
+        ])->delete();
+
+        $this->assertFalse(app(VenueMembershipAccess::class)->allows(
+            $user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+        ));
+        $migration = require database_path('migrations/2026_11_14_171500_split_venue_booking_contract_permissions.php');
+        $migration->up();
+        foreach ([
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
+        ] as $right) {
+            $this->assertTrue(app(VenueMembershipAccess::class)->allows($user, $venue, $right));
+        }
+        // Idempotent when deploy reruns a migration.
+        $migration->up();
+        $this->assertSame(3, $membership->contract->permissions()
+            ->whereIn('permission', [
+                VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+                VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS->value,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS->value,
+            ])->count());
+    }
+
     public function test_app_theme_incoming_list_and_booking_detail_render_for_superadmin(): void
     {
         [$owner, , $venue] = $this->ownedVenue();
