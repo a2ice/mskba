@@ -52,6 +52,7 @@ import './player-generation-options.js';
 import './uniforms/bootstrap.js';
 import '../css/player-generation-options.css';
 import './balance-topup.js';
+import './venue-create-name.js';
 // Reuse the production location suggestion and reverse-geolocation adapter.
 import '../../mskba_dark/js/features/address-suggest.js';
 import '../css/player-profile-workspace.css';
