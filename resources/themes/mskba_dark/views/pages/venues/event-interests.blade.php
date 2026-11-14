@@ -40,6 +40,9 @@
                 {{ $interest->ends_at->setTimezone($timezone)->format('H:i') }}
                 · версия {{ $interest->revision }}
             </p>
+            @if($interest->event)
+                <a href="{{ route('events.interests.show', ['event' => $interest->event->routeIdentifier(), 'interest' => $interest->id]) }}" class="fc-link me-3">Открыть переписку и действия</a>
+            @endif
             @if($interest->event && $interest->event->visibility->value === 'public')
                 <a href="{{ route('events.show', $interest->event->routeIdentifier()) }}" class="fc-link">Мероприятие</a>
             @endif

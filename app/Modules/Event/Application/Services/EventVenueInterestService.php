@@ -2,7 +2,6 @@
 
 namespace App\Modules\Event\Application\Services;
 
-use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventVenueInterest;
 use App\Modules\Event\Domain\Events\EventChanged;
@@ -10,8 +9,6 @@ use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
-use App\Modules\Event\Application\Services\EventManagementAccess;
-use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
@@ -167,8 +164,8 @@ final readonly class EventVenueInterestService
             $ids[] = $agent->id;
         }
 
-        $url = route('events.interests.show', ['event' => $event->routeIdentifier(), 'interest' => $interest->id]);
         $event = $interest->event;
+        $url = route('events.interests.show', ['event' => $event->routeIdentifier(), 'interest' => $interest->id]);
         $start = $interest->starts_at->setTimezone(
             $venue->schedule()->value('timezone') ?: 'Europe/Moscow',
         )->format('d.m.Y H:i');
