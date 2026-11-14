@@ -40,6 +40,11 @@ on:
         type: boolean
         required: false
         default: false
+      diagnose_dev_venue_booking:
+        description: "Read-only audit of Basketpoint rental/owner notifications on staging"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -864,6 +869,85 @@ jobs:
             curl -fsS -o /dev/null --max-time 10 https://dev.mskba.ru/
             curl -fsS -o /dev/null --max-time 10 https://mskba.ru/
             echo 'READ-ONLY DEV PREFLIGHT PASSED'
+
+  diagnose_dev_venue_booking:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.diagnose_dev_venue_booking }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 8
+    steps:
+      - name: Inspect venue 26 rental, responsible recipients and notification readiness
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = deploy
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f .dev-bootstrap-complete
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            printf 'services_running='
+            $COMPOSE ps --status running --services | tr '\n' ' '
+            printf '\n'
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $venue = \App\Modules\Venue\Domain\Models\Venue::query()->findOrFail(26);
+              $court = $venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail();
+              $policy = \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+                  ->where("venue_id", $venue->id)->where("active_marker", true)->first();
+              $effective = app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+                  ->resolve($venue, $court, $policy);
+              $permission = \App\Modules\Venue\Domain\Enums\VenuePermissionEnum::DECIDE_BOOKING_REQUESTS;
+              $ids = app(\App\Modules\Venue\Application\Services\VenueMembershipAccess::class)
+                  ->allowedUserIdsForCourt($court, $permission);
+              $emailOk = 0;
+              $emailOptIn = 0;
+              foreach (\App\Modules\Identity\Domain\Models\User::query()->whereIn("id", $ids)->get() as $u) {
+                  $u = $u->canonical();
+                  if ($u->identityContactsQuery()->where("type", "email")->whereNotNull("verified_at")->exists()) {
+                      $emailOk++;
+                  }
+                  $pref = \App\Modules\Identity\Domain\Models\UserNotificationSetting::query()
+                      ->where("user_id", $u->id)->first()?->email_notifications
+                      ?? \App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum::ALL;
+                  if ($pref->allows(\App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum::REQUEST)) {
+                      $emailOptIn++;
+                  }
+              }
+              $summary = [
+                  "environment" => config("app.env"),
+                  "rental_flow" => config("features.venue_rental.rental_flow"),
+                  "rental_portal" => config("features.venue_rental.portal"),
+                  "rollout_mode" => config("features.venue_rental_rollout.mode"),
+                  "venue_id" => $venue->id,
+                  "court_id" => $court->id,
+                  "active_policy" => $policy !== null,
+                  "accepts_rental" => (bool) ($policy?->is_enabled && ($effective["rental_enabled"] ?? false)),
+                  "requires_approval" => $effective["requires_booking_approval"] ?? null,
+                  "responsible_with_decision_permission" => count($ids),
+                  "responsible_verified_emails" => $emailOk,
+                  "responsible_email_request_opt_in" => $emailOptIn,
+                  "mail_transport" => config("mail.default"),
+                  "queue_transport" => config("queue.default"),
+                  "recent_booking_requests_count" => \App\Modules\VenueBooking\Domain\Models\VenueBooking::query()
+                      ->where("venue_id", 26)->where("flow", "rental")->where("created_at", ">=", now()->subDays(2))->count(),
+                  "pending_booking_outbox" => \App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage::query()
+                      ->where("status", "pending")->count(),
+              ];
+              echo json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR).PHP_EOL;
+            '
+            $COMPOSE exec -T phpfpm php artisan venue-booking:diagnose --json
+            curl --fail --silent --show-error --output /dev/null --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/
+            echo 'DEV venue booking QA read-only completed; no booking or email was created'
+
 
   diagnose_ssh:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnose_ssh && github.ref == 'refs/heads/dev' }}
