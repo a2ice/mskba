@@ -9,6 +9,7 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -16,12 +17,15 @@ use App\Modules\Event\Domain\Models\VenueBooking as LegacyVenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
 use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
@@ -146,44 +150,82 @@ final class VenueBookingLifecycleTest extends TestCase
         ]);
     }
 
-    public function test_unassigned_venue_request_falls_back_to_confirmed_superadmin_notification(): void
+    public function test_primary_manager_contract_receives_requests_and_unrelated_superadmin_does_not(): void
     {
         Queue::fake();
         Mail::fake();
-        $superadmin = User::factory()->create([
+        [$owner, , $venue] = $this->ownedVenue();
+        [$mainResponsible] = $this->userAndActor();
+        $unrelatedAdmin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
-        $email = 'booking-superadmin-'.$superadmin->id.'@example.test';
-        Contact::query()->create([
-            'contactable_type' => 'user',
-            'contactable_id' => $superadmin->id,
-            'type' => ContactTypeEnum::EMAIL,
-            'value' => $email,
-            'is_primary' => true,
-            'verified_at' => now(),
-        ]);
-        $venue = Venue::factory()->create([
-            'status' => VenueStatusEnum::CONFIRMED,
-            'operational_status' => VenueOperationalStatusEnum::ACTIVE,
-        ]);
-        $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        $membership = app(EntityContractManager::class)->grantOwner(
+            ContractMembershipScopeTypeEnum::VENUE, $venue->id, $mainResponsible, $mainResponsible,
+        );
+        $this->assertSame('primary_manager', $membership->access_level);
+        foreach ([
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
+        ] as $permission) {
+            $this->assertTrue($membership->contract->permissions->contains('permission', $permission->value));
+        }
+        $this->assertContains($mainResponsible->id, app(VenueMembershipAccess::class)
+            ->allowedUserIdsForCourt($venue->primaryCourt()->firstOrFail(), VenuePermissionEnum::VIEW_BOOKING_REQUESTS));
+
         [$applicant, $actor] = $this->userAndActor();
-        $quote = $this->quote($venue, $superadmin, $applicant, false);
-        $booking = app(RequestVenueBookingHandler::class)->handle($actor, $quote);
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
         $outbox = VenueBookingOutboxMessage::query()
             ->where('venue_booking_id', $booking->id)
             ->where('event_type', VenueBookingRequested::class)->firstOrFail();
-
         $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
-        $notification = UserNotification::query()
-            ->where('user_id', $superadmin->id)
-            ->where('payload->source', UserNotificationSourceEnum::VENUE_BOOKING_REQUESTED->value)
-            ->firstOrFail();
-        $this->assertStringContainsString($booking->public_id, $notification->action_url);
-        (new SendUserNotificationEmailJob($notification->id))->handle();
-        Mail::assertSent(UserNotificationMail::class,
-            fn (UserNotificationMail $mail): bool => $mail->hasTo($email));
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $mainResponsible->id, 'title' => 'Новая заявка на аренду',
+        ]);
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $unrelatedAdmin->id, 'title' => 'Новая заявка на аренду',
+        ]);
+    }
+
+    public function test_viewing_delegate_gets_notification_and_dialogue_but_cannot_approve_or_reject(): void
+    {
+        Queue::fake();
+        [$owner, , $venue] = $this->ownedVenue();
+        [$viewer, $viewerActor] = $this->userAndActor();
+        [$applicant, $actor] = $this->userAndActor();
+        $delegation = Contract::query()->create([
+            'family' => ContractFamilyEnum::MEMBERSHIP,
+            'status' => ContractStatusEnum::ACTIVE,
+            'starts_at' => now()->subMinute(),
+            'assigner' => UserParticipationRoleAssignerEnum::OTHER,
+        ]);
+        $delegation->membership()->create([
+            'scope_type' => ContractMembershipScopeTypeEnum::VENUE,
+            'scope_id' => $venue->id,
+            'user_id' => $viewer->id,
+            'access_level' => 'responsible',
+        ]);
+        $delegation->permissions()->create([
+            'permission' => VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+        ]);
+
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $viewer->id, 'title' => 'Новая заявка на аренду',
+        ]);
+        $actions = app(VenueBookingActionState::class)->for($booking, $viewerActor);
+        $this->assertFalse($actions['accept']['allowed']);
+        $this->assertFalse($actions['reject']['allowed']);
+        $this->assertFalse($actions['confirm']['allowed']);
+        $this->assertFalse($actions['cancel']['allowed']);
+
+        $this->expectException(VenueBookingTransitionException::class);
+        app(AcceptVenueBookingHandler::class)->handle($booking->id, $viewerActor);
     }
 
     public function test_app_theme_incoming_list_and_booking_detail_render_for_superadmin(): void
