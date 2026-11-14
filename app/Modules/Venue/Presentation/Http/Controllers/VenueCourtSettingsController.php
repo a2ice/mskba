@@ -98,6 +98,8 @@ final class VenueCourtSettingsController extends Controller
             if ($minimum > $maximum || $minimum % $step !== 0) {
                 throw ValidationException::withMessages(['minimum_duration_minutes' => 'Минимальная длительность должна быть кратна шагу и не больше максимальной.']);
             }
+            $this->assertVenueMinimumPrice($policy, $courtModel, $values, $step,
+                $values['requires_payment'] ?? $courtModel->requires_payment ?? $policy->requires_payment);
         }
         $courtModel->update($values);
 
@@ -138,6 +140,9 @@ final class VenueCourtSettingsController extends Controller
         }
         if ($values['whole_price_per_step_minor'] === null && $values['half_price_per_step_minor'] === null) {
             throw ValidationException::withMessages(['whole_price_per_step' => 'Укажите хотя бы одну цену.']);
+        }
+        if ($policy !== null) {
+            $this->assertVenueMinimumPrice($policy, $courtModel, $values, $step);
         }
         $courtModel->slotPrices()->updateOrCreate([
             'day_of_week' => (int) $data['day_of_week'],
@@ -187,6 +192,7 @@ final class VenueCourtSettingsController extends Controller
         if ($values['whole_price_per_step_minor'] === null && $values['half_price_per_step_minor'] === null) {
             throw ValidationException::withMessages(['whole_price_per_step' => 'Укажите хотя бы одну цену.']);
         }
+        $this->assertVenueMinimumPrice($policy, $courtModel, $values, $step);
         $courtModel->calendarSlotPrices()->updateOrCreate([
             'date' => $data['date'],
             'starts_at' => $data['starts_at'].':00',
@@ -271,6 +277,40 @@ final class VenueCourtSettingsController extends Controller
         );
 
         return back()->with('status', 'Индивидуальный график сохранён.');
+    }
+
+
+    /**
+     * Manual prices have an explicit floor inherited from the venue booking policy.
+     * Imported source prices remain immutable, but the public booking calculator
+     * also applies the same floor to imported and previously saved values.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function assertVenueMinimumPrice(
+        VenueBookingPolicy $policy, VenueCourt $court, array $values, int $courtStep,
+        ?bool $paid = null,
+    ): void {
+        if (! ($paid ?? $court->requires_payment ?? $policy->requires_payment)) {
+            return;
+        }
+        $venueStep = (int) $policy->time_step_minutes;
+        if ($venueStep < 1 || $courtStep < 1 || $courtStep % $venueStep !== 0) {
+            throw ValidationException::withMessages([
+                'starts_at' => 'Шаг зала должен быть кратен шагу площадки.',
+            ]);
+        }
+        foreach (['whole', 'half'] as $scope) {
+            $field = $scope.'_price_per_step_minor';
+            $amount = $values[$field] ?? null;
+            $minimum = (int) ($policy->{$field} ?? 0) * intdiv($courtStep, $venueStep);
+            if ($amount !== null && (int) $amount < $minimum) {
+                throw ValidationException::withMessages([
+                    $scope.'_price_per_step' => 'Цена ниже минимума площадки за шаг зала. Укажите не менее '
+                        .number_format($minimum / 100, 2, ',', ' ').' ₽.',
+                ]);
+            }
+        }
     }
 
     /** @return array{Venue, VenueCourt} */
