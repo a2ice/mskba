@@ -63,6 +63,12 @@
     $venuePromotionResolver = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class);
     $venuePromotions = $venuePromotionResolver->forPlacement('venue_page', (int) $venue->id);
     $venueSlotPromotions = $venuePromotionResolver->forPlacement('venue_slots', (int) $venue->id);
+    // Show each active offer once, inside the venue details rather than the
+    // compact day picker. Prefer venue-page copy over slot-specific copy.
+    $venueAboutPromotions = collect($venuePromotions)
+        ->concat($venueSlotPromotions)
+        ->unique('promotion_code')
+        ->values();
 @endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
@@ -153,19 +159,6 @@
         </div>
     </div>
 
-    @foreach($venuePromotions as $promotion)
-        <section class="panel app-venue-block app-venue-promotion" aria-label="{{ $promotion['title'] }}">
-            <header class="app-venue-block__header"><h2>{{ $promotion['title'] }}</h2></header>
-            @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
-            @if($promotion['amount_caption'])
-                <p class="app-venue-promotion__amount">{{ $promotion['amount_caption'] }}</p>
-            @endif
-            @if($promotion['cta_url'])
-                <a class="button secondary" href="{{ $promotion['cta_url'] }}">{{ $promotion['cta_label'] ?: 'Подробнее' }}</a>
-            @endif
-        </section>
-    @endforeach
-
     <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
         <a href="#app-venue-activities">Игры</a>
         <a href="#app-venue-interest">Подписки игроков</a>
@@ -254,7 +247,6 @@
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2></header>
-                <p class="muted">Рабочие часы площадки и исключения из обычного графика.</p>
                 @if($scheduledDays->isNotEmpty())
                     <div class="app-venue-schedule">
                         @foreach($scheduledDays as $day)
@@ -270,7 +262,7 @@
                                     @if(count($day['intervals'] ?? []))
                                         <p class="app-venue-schedule__hours" aria-label="Часы работы">
                                             <svg aria-hidden="true"><use href="#clock"/></svg>
-                                            <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ $hours['endsAt'] === '23:59' ? '00:00' : $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
+                                            <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
                                         </p>
                                     @else
                                         <p class="app-venue-schedule__closed">Не работает</p>
@@ -294,9 +286,6 @@
                 @else
                     <p class="muted">Расписание работы площадки ещё не установлено.</p>
                 @endif
-                @unless($venue->isFreeAccess)
-                    <p class="caption">Часы работы не гарантируют доступность бронирования. Уточни свободное время и стоимость при оформлении.</p>
-                @endunless
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</h2></header>
@@ -326,7 +315,23 @@
                 @else
                     <p class="app-venue-court-overview"><strong>Залов и кортов:</strong> {{ count($venue->courts) }}</p>
                 @endif
-                @if($venue->fullDescription)<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
+                @if(trim((string) $venue->fullDescription) !== '')<p class="app-venue-block__description">{{ $venue->fullDescription }}</p>@endif
+                @if($venueAboutPromotions->isNotEmpty())
+                    <div class="app-venue-about__promotions" aria-label="Акции площадки">
+                        @foreach($venueAboutPromotions as $promotion)
+                            <div class="app-venue-about__promotion" aria-label="{{ $promotion['title'] }}">
+                                <strong>{{ $promotion['title'] }}</strong>
+                                @if($promotion['description'])<p>{{ $promotion['description'] }}</p>@endif
+                                @if($promotion['amount_caption'])
+                                    <span class="app-venue-promotion__amount">{{ $promotion['amount_caption'] }}</span>
+                                @endif
+                                @if($promotion['cta_url'])
+                                    <a href="{{ $promotion['cta_url'] }}" class="button secondary">{{ $promotion['cta_label'] ?: 'Подробнее' }}</a>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
                 @if(count($venue->amenities))
                     <h3>Удобства</h3>
                     <div class="app-venue-block__amenities">
@@ -365,19 +370,8 @@
         </button>
     </div>
     @include('theme::pages.venues.partials.day-calendar')
-    <div class="app-venue-day-dialog__info" data-venue-day-info>
-        @foreach($venueSlotPromotions as $promotion)
-            <div class="app-venue-day-dialog__promotion" aria-label="{{ $promotion['title'] }}">
-                <strong>{{ $promotion['title'] }}</strong>
-                @if($promotion['description'])<p class="muted">{{ $promotion['description'] }}</p>@endif
-                @if($promotion['amount_caption'])
-                    <p class="app-venue-day-dialog__promotion-amount">{{ $promotion['amount_caption'] }}</p>
-                @endif
-            </div>
-        @endforeach
-        <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
-            data-venue-day-status hidden></p>
-    </div>
+    <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
+        data-venue-day-status hidden></p>
     <div class="app-venue-day-dialog__grid" data-venue-day-slots aria-label="Интервалы бронирования"></div>
     <form method="POST" action="{{ route('venues.rental.quote', $venue->id) }}"
         class="app-venue-day-dialog__footer" data-venue-day-booking-form>

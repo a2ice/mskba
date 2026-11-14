@@ -13,6 +13,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -166,6 +167,39 @@ final class VenueAppScheduleActivitiesTest extends TestCase
             ->assertDontSee('Закрытое содержание')
             ->assertDontSee('Подтвердили:')
             ->assertDontSee('Думают:');
+    }
+
+    public function test_cashback_is_in_about_section_not_day_dialog_and_respects_reward_toggle(): void
+    {
+        [$venue] = $this->venueAndBooking();
+
+        $url = route('venues.show', $venue->routeIdentifier());
+        $before = $this->get($url)->assertOk()->getContent();
+        $this->assertStringNotContainsString('app-venue-about__promotions', $before);
+
+        $reward = Reward::query()->where('code', 'venue_rental_completed')->firstOrFail();
+        // This suite freezes time before the seed migration's default valid_from.
+        $reward->currentVersion()->firstOrFail()->update(['valid_from' => Carbon::now()->subDay()]);
+        $reward->update(['is_enabled' => true]);
+        $html = $this->get($url)->assertOk()->getContent();
+        $about = explode('<section class="panel app-venue-block" id="app-venue-about">', $html, 2)[1] ?? '';
+        $about = explode('</section>', $about, 2)[0];
+        $dialog = explode('<dialog class="app-venue-overlay app-venue-day-dialog"', $html, 2)[1] ?? '';
+        $dialog = explode('</dialog>', $dialog, 2)[0];
+
+        $this->assertStringContainsString('app-venue-about__promotions', $about);
+        $this->assertSame(1, substr_count($about, '<strong>Арендуй зал — получи бонусы</strong>'));
+        $this->assertStringContainsString('Кешбэк: 100 ₽', $about);
+        $this->assertStringNotContainsString('app-venue-day-dialog__promotion', $dialog);
+        $this->assertStringNotContainsString('app-venue-day-dialog__info', $dialog);
+        $this->assertStringContainsString('data-venue-day-status hidden', $dialog);
+        $this->assertStringNotContainsString('<section class="panel app-venue-block app-venue-promotion"', $html);
+        $this->assertStringNotContainsString('Рабочие часы площадки и исключения из обычного графика.', $html);
+        $this->assertStringNotContainsString('Часы работы не гарантируют доступность бронирования.', $html);
+
+        $reward->update(['is_enabled' => false]);
+        $after = $this->get($url)->assertOk()->getContent();
+        $this->assertStringNotContainsString('app-venue-about__promotions', $after);
     }
 
     /** @return array{0: Venue, 1: VenueBooking, 2: int} */

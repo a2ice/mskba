@@ -784,7 +784,9 @@ final class ShowVenueHandler
 
         return [
             'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE && $isWithinWorkingHours,
-            'todayHours' => $hours,
+            // Only the displayed label changes. Keep 24:00 in interval math,
+            // where it represents the exclusive upper bound of the day.
+            'todayHours' => str_replace(['23:59', '24:00'], '00:00', $hours),
         ];
     }
 
