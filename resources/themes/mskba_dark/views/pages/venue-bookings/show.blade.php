@@ -197,10 +197,11 @@
                     @if($extension->decision_reason)<p class="text-muted">Комментарий: {{ $extension->decision_reason }}</p>@endif
                     @if($extension->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingExtensionStatus::PENDING)
                         <div class="venue-management-actions">
-                            @if($canDecideExtensions)
-                                @foreach(['approve' => 'Одобрить', 'reject' => 'Отклонить'] as $decision => $label)
-                                    <form method="POST" action="{{ route('account.venue-bookings.extensions.'.$decision, [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button></form>
-                                @endforeach
+                            @if($canApproveExtensions)
+                                <form method="POST" action="{{ route('account.venue-bookings.extensions.approve', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Одобрить</button></form>
+                            @endif
+                            @if($canRejectExtensions)
+                                <form method="POST" action="{{ route('account.venue-bookings.extensions.reject', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Отклонить</button></form>
                             @endif
                             @if($isRequester)<form method="POST" action="{{ route('account.venue-bookings.extensions.cancel', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Отменить запрос</button></form>@endif
                         </div>
