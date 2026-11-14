@@ -67,9 +67,13 @@
                     @error('duration_minutes') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
             </div>
+            @if($event->booking_deferred)
+                <div class="alert alert-info mb-3">Изменение площадки или времени создаст новую ревизию мероприятия. Участникам потребуется заново подтвердить участие. Время не резервируется до подачи заявки на бронь.</div>
+                <div class="form-group field mb-3"><label class="form-label" for="revisionReason">Причина изменения (необязательно)</label><input id="revisionReason" class="form-control" name="revision_reason" value="{{ old('revision_reason') }}" maxlength="255"></div>
+            @endif
         @else
             <div class="alert alert-info mb-3">
-                Для площадок с оплатой или подтверждением бронирования изменение места и времени будет доступно в отдельном сценарии.
+                После подачи заявки на аренду время и площадку можно изменить только через отмену или согласованный перенос брони.
             </div>
             <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
             <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
