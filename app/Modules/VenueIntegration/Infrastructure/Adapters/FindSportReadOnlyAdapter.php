@@ -5,6 +5,7 @@ namespace App\Modules\VenueIntegration\Infrastructure\Adapters;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
+use App\Modules\VenueIntegration\Application\Services\FindSportSourceIdentity;
 use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -38,7 +39,7 @@ final class FindSportReadOnlyAdapter
     {
         if (! config('venue_integrations.apply_findsport_native_enabled', false)
             || ! config('venue_integrations.public_schedule_refresh_enabled', false)
-            || $source->external_id !== '4805') {
+            || ! FindSportSourceIdentity::matches($source)) {
             throw new RuntimeException('Публичное обновление FindSport отключено.');
         }
 
