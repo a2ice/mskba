@@ -530,7 +530,7 @@ if (dayBookingDialog) {
     }
 
     document.querySelectorAll('[data-venue-day-open]').forEach(button => {
-        button.addEventListener('click', () => void showDay(button.dataset.dayDate));
+        button.addEventListener('click', () => showDay(button.dataset.dayDate));
     });
     dateButtons.forEach(button => {
         button.addEventListener('click', () => void showDay(button.dataset.venueDayDate));
