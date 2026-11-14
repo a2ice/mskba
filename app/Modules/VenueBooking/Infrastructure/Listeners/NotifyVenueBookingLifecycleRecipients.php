@@ -2,6 +2,8 @@
 
 namespace App\Modules\VenueBooking\Infrastructure\Listeners;
 
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
@@ -115,6 +117,17 @@ final readonly class NotifyVenueBookingLifecycleRecipients
             ],
             default => [$booking->requester_user_id],
         };
+
+        // Unclaimed venues are still bookable on the public portal. If they
+        // have no contracted decision-makers, route the request to confirmed
+        // superadmins, whose inbox already has cross-venue access. Never
+        // send this fallback when a responsible venue manager exists.
+        if ($event instanceof VenueBookingRequested && $ids === []) {
+            $ids = User::query()
+                ->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
+                ->where('status', UserStatusEnum::CONFIRMED->value)
+                ->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        }
 
         return User::query()
             ->whereIn('id', collect($ids)->filter()->map(fn ($id) => (int) $id)->unique()->all())
