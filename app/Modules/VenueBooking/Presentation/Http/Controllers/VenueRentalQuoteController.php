@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -40,6 +41,7 @@ final class VenueRentalQuoteController extends Controller
         Request $request,
         Venue $venue,
         QuoteVenueBookingHandler $quotes,
+        FindSportOnDemandRefresh $refresh,
     ): JsonResponse|Response {
         $validated = $request->validate([
             'venue_court_id' => [
@@ -58,6 +60,11 @@ final class VenueRentalQuoteController extends Controller
             : $this->resolveCourt($venue, '');
 
         try {
+            // An open day dialog can cross FindSport's 5-minute freshness
+            // boundary before the visitor submits. Recheck/refresh through
+            // the same guarded source lock as the day API, then let the
+            // canonical quote availability service make the final decision.
+            $refresh->forCourt($court);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $quote = $quotes->handle(
                 $venue,
