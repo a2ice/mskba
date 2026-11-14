@@ -149,7 +149,7 @@ final class EventController extends Controller
         $defaultStartsAt = $now->ceilMinute();
 
         return ThemeResolver::page('events.create', [
-            'venues' => $venues->handle(),
+            'venues' => $venues->handle()->load('courts'),
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
