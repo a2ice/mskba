@@ -17,8 +17,17 @@
         // venue DTO. Resolve exactly the same effective hours/occupancy here.
         $calendarVenue = $venue instanceof \App\Modules\Venue\Domain\Models\Venue
             ? $venue : \App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id);
-        $calendarCourt = isset($court) ? $court
-            : ($calendarVenue->primaryCourt()->first() ?? $calendarVenue->courts()->first());
+        // Public venue DTOs expose courts as arrays, while quote pages pass
+        // Eloquent models. Resolve a real court model before querying hours.
+        $calendarCourt = isset($court) && $court instanceof \App\Modules\Venue\Domain\Models\VenueCourt
+            ? $court : null;
+        $selectedCourtId = $calendarCourt?->id
+            ?? data_get($court ?? null, 'id')
+            ?? data_get($venue->selectedCourt ?? null, 'id');
+        if ($calendarCourt === null && $selectedCourtId) {
+            $calendarCourt = $calendarVenue->courts()->find((int) $selectedCourtId);
+        }
+        $calendarCourt ??= $calendarVenue->primaryCourt()->first() ?? $calendarVenue->courts()->first();
         $effectiveHours = app(\App\Modules\Venue\Application\Services\EffectiveVenueHours::class);
         $occupationRows = [];
         foreach ($dayCalendarDates as $optionDate) {
