@@ -289,10 +289,12 @@ final class SyncVenueCourtSchedule
             $datePrice = $calendar[$day->toDateString().'|'.$time] ?? null;
             foreach (['whole', 'half'] as $scope) {
                 $column = $scope.'_price_per_step_minor';
-                $value[$scope] += (int) ($datePrice?->{$column}
+                // Materialized court prices may not fall below the venue
+                // minimum for an individual source-policy step.
+                $minimum = (int) ($policy->{$column} ?? 0);
+                $value[$scope] += max($minimum, (int) ($datePrice?->{$column}
                     ?? $weekPrice?->{$column}
-                    ?? $policy->{$column}
-                    ?? 0);
+                    ?? $minimum));
                 if ($weekPrice?->{$column} !== null) {
                     $value['weekly_override'] = true;
                 }
