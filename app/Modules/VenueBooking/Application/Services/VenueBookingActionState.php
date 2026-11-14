@@ -15,17 +15,11 @@ final readonly class VenueBookingActionState
     public function __construct(private VenueCommercialAccess $commercialAccess) {}
 
     /** @return array<string, array{allowed: bool, reason: string|null}> */
-    public function for(VenueBooking $booking, Actor $actor, ?bool $canDecideOverride = null): array
+    public function for(VenueBooking $booking, Actor $actor): array
     {
         $isRequester = $actor->user_id === $booking->requester_user_id;
-        $canDecide = $canDecideOverride ?? ($actor->user !== null
-            && ($this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS)
-                || ($booking->venue_court_id !== null
-                    && ($court = \App\Modules\Venue\Domain\Models\VenueCourt::query()
-                        ->where('venue_id', $booking->venue_id)->find($booking->venue_court_id)) !== null
-                    && $this->commercialAccess->allowsForCourt(
-                        $actor->user, $court, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS
-                    ))));
+        $canConfirm = $this->allows($booking, $actor, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS);
+        $canReject = $this->allows($booking, $actor, VenuePermissionEnum::REJECT_BOOKING_REQUESTS);
         $now = CarbonImmutable::now();
         $heldActive = $booking->effective_protection_until !== null
             && $now->lessThan($booking->effective_protection_until);
@@ -44,22 +38,36 @@ final readonly class VenueBookingActionState
 
         return [
             'accept' => $this->state(
-                $canDecide && $booking->status === VenueBookingStatusEnum::REQUESTED,
-                $canDecide ? 'STATUS_NOT_REQUESTED' : 'BOOKING_FORBIDDEN',
+                $canConfirm && $booking->status === VenueBookingStatusEnum::REQUESTED,
+                $canConfirm ? 'STATUS_NOT_REQUESTED' : 'BOOKING_FORBIDDEN',
             ),
             'reject' => $this->state(
-                $canDecide && $booking->status === VenueBookingStatusEnum::REQUESTED,
-                $canDecide ? 'STATUS_NOT_REQUESTED' : 'BOOKING_FORBIDDEN',
+                $canReject && $booking->status === VenueBookingStatusEnum::REQUESTED,
+                $canReject ? 'STATUS_NOT_REQUESTED' : 'BOOKING_FORBIDDEN',
             ),
             'cancel' => $this->state(
-                ($isRequester || $canDecide) && $cancellable,
-                ! ($isRequester || $canDecide) ? 'BOOKING_FORBIDDEN' : 'CANCELLATION_UNAVAILABLE',
+                ($isRequester || $canReject) && $cancellable,
+                ! ($isRequester || $canReject) ? 'BOOKING_FORBIDDEN' : 'CANCELLATION_UNAVAILABLE',
             ),
             'confirm' => $this->state(
-                $canDecide && $booking->status === VenueBookingStatusEnum::HELD && $heldActive && $paymentReady,
-                $this->confirmReason($canDecide, $booking, $heldActive, $paymentReady),
+                $canConfirm && $booking->status === VenueBookingStatusEnum::HELD && $heldActive && $paymentReady,
+                $this->confirmReason($canConfirm, $booking, $heldActive, $paymentReady),
             ),
         ];
+    }
+
+    private function allows(VenueBooking $booking, Actor $actor, VenuePermissionEnum $permission): bool
+    {
+        if ($actor->user === null) return false;
+        if ($this->commercialAccess->allows($actor->user, $booking->venue, $permission)) return true;
+        if ($booking->venue_court_id === null) return false;
+
+        $court = \App\Modules\Venue\Domain\Models\VenueCourt::query()
+            ->where('venue_id', $booking->venue_id)->find($booking->venue_court_id);
+
+        return $court !== null && $this->commercialAccess->allowsForCourt(
+            $actor->user, $court, $permission
+        );
     }
 
     /** @return array{allowed: bool, reason: string|null} */
@@ -68,9 +76,9 @@ final readonly class VenueBookingActionState
         return ['allowed' => $allowed, 'reason' => $allowed ? null : $reason];
     }
 
-    private function confirmReason(bool $canDecide, VenueBooking $booking, bool $heldActive, bool $paymentReady): string
+    private function confirmReason(bool $canConfirm, VenueBooking $booking, bool $heldActive, bool $paymentReady): string
     {
-        if (! $canDecide) {
+        if (! $canConfirm) {
             return 'BOOKING_FORBIDDEN';
         }
 
