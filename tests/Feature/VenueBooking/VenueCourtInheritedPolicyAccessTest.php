@@ -71,11 +71,11 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
 
         $actor = app(CurrentActorResolver::class)->resolve($operator, null);
         $authorize = app(VenueBookingAuthorization::class);
-        $authorize->assertCommercialDecision($actor, $venue, new VenueBooking([
+        $authorize->assertCanConfirmBooking($actor, $venue, new VenueBooking([
             'venue_id' => $venue->id, 'venue_court_id' => $first->id,
         ]));
         try {
-            $authorize->assertCommercialDecision($actor, $venue, new VenueBooking([
+            $authorize->assertCanConfirmBooking($actor, $venue, new VenueBooking([
                 'venue_id' => $venue->id, 'venue_court_id' => $second->id,
             ]));
             $this->fail('Court operator must not decide other court booking.');
