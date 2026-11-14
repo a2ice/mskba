@@ -142,6 +142,8 @@ final class VenueRentalPolicyEditorTest extends TestCase
         $this->get(EditVenue::getUrl(['record' => $venue]))
             ->assertOk()
             ->assertSee('Принимать заявки на аренду')
+            ->assertSee('Минимальные цены площадки')
+            ->assertSee('Минимальное время до начала')
             ->assertDontSee('Аренда: не настроена');
     }
     public function test_livewire_edit_save_returns_form_validation_for_paid_zero_price(): void

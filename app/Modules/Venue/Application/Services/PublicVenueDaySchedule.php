@@ -99,7 +99,7 @@ final readonly class PublicVenueDaySchedule
         // Fetch the whole native day in a single pricing resolution. This
         // includes inherited weekly and calendar tariff overrides exactly as
         // the authoritative booking quote does, without N queries per slot.
-        $nativePrices = $snapshot === null && $policy !== null && $supportedStep
+        $nativePrices = $policy !== null && $supportedStep
             ? $this->slotPricing->calculate(
                 $venue, $policy, $day, 1440, VenueBookingScopeEnum::WHOLE, $court, $effective,
             )['prices_per_step_minor']
@@ -155,7 +155,10 @@ final readonly class PublicVenueDaySchedule
                     $status = 'unavailable';
                 }
                 if (collect($parts)->every(fn ($part): bool => $part !== null && $part->price_minor !== null)) {
-                    $priceMinor = (int) collect($parts)->sum('price_minor');
+                    // The native court calendar is authoritative after an import.
+                    // It includes later manual edits and the venue minimum price,
+                    // matching the booking quote instead of stale source prices.
+                    $priceMinor = $nativePrices[$index] ?? (int) collect($parts)->sum('price_minor');
                 } else {
                     $priceMinor = null;
                 }

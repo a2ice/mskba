@@ -179,57 +179,70 @@ final class VenueResource extends Resource
                             ->schema([
                                 Toggle::make('rental_policy_enabled')
                                     ->label('Принимать заявки на аренду')
-                                    ->default(false)->live()
-                                    ->helperText('Общий переключатель для всех залов. При выключении аренда недоступна даже при локальном разрешении зала.'),
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Включает приём заявок на аренду всех залов площадки, если разрешён общий механизм аренды. Выключение площадки имеет приоритет над залами.')
+                                    ->default(false)->live(),
                                 Toggle::make('rental_policy_requires_payment')
-                                    ->label('Платная аренда')->default(false)->live()
-                                    ->helperText('Базовое условие площадки. Зал может переопределить его в своих настройках.'),
+                                    ->label('Платная аренда')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Если включено, для каждого оплачиваемого слота применяется тариф. Зал может иметь собственное условие оплаты.')
+                                    ->default(false)->live(),
                                 Toggle::make('rental_policy_allows_whole')
-                                    ->label('Разрешать аренду целиком')->default(true),
+                                    ->label('Разрешать аренду целиком')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Разрешает бронировать зал целиком. Фактическая доступность зависит от настроек выбранного зала.')
+                                    ->default(true),
                                 Toggle::make('rental_policy_allows_halves')
-                                    ->label('Разрешать аренду половин')->default(false)->live()
-                                    ->helperText('Для конкретного зала дополнительно нужны поддержка половин и их разрешение.'),
+                                    ->label('Разрешать аренду половин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Разрешает раздельную аренду половин там, где зал физически поддерживает это и разрешил в своих настройках.')
+                                    ->default(false)->live(),
                             ]),
-                        Section::make('Цены площадки')
-                            ->description('Базовая цена за шаг аренды. Зал может наследовать или переопределять её. Для платной аренды цена должна быть больше нуля.')
+                        Section::make('Минимальные цены площадки')
+                            ->description('Сумма указана за один шаг аренды, а не за день. Это нижняя граница цены каждого платного интервала и резервный тариф, если у слота нет собственной цены. Индивидуальные цены задаются для зала, дня недели или конкретной даты вручную либо при синхронизации. К комиссии и скидкам применяется итоговый тариф.')
                             ->columns(2)
                             ->schema([
                                 TextInput::make('rental_policy_currency')
-                                    ->label('Валюта ISO')->required()->default('RUB')
+                                    ->label('Валюта (ISO)')->required()->default('RUB')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Трёхбуквенный код валюты. RUB — российский рубль. Все цены на площадке и в залах используют эту валюту.')
                                     ->maxLength(3)->regex('/\A[A-Za-z]{3}\z/D'),
                                 TextInput::make('rental_policy_whole_price_rub')
-                                    ->label('Весь зал — цена за шаг, ₽')
+                                    ->label('Весь зал — минимум за шаг, ₽')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Например, 500 ₽ при шаге 30 минут — минимум 500 ₽ за каждый получасовой слот; за 60 минут минимум 1000 ₽. Цена отдельного слота может быть выше.')
                                     ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
                                     ->numeric()->minValue(0)->default('0'),
                                 TextInput::make('rental_policy_half_price_rub')
-                                    ->label('Половина — цена за шаг, ₽')
+                                    ->label('Половина зала — минимум за шаг, ₽')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Независимый минимальный тариф за аренду одной половины зала. Задайте его, если хотя бы один зал допускает аренду половин.')
                                     ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')
                                         && (bool) $get('rental_policy_allows_halves'))
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
                                     ->numeric()->minValue(0)
-                                    ->helperText('Сумма сохраняется даже при отключённой аренде половин, чтобы не терять настройку.'),
+                                    ->helperText('Тариф сохраняется и при временном отключении аренды половин.'),
                             ]),
                         Section::make('Время и ограничения')
                             ->columns(3)
                             ->schema([
                                 TextInput::make('rental_policy_time_step_minutes')
                                     ->label('Шаг аренды, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Минимальная единица тарификации и времени начала: например, при шаге 30 минут возможны слоты 10:00–10:30, 10:30–11:00.')
                                     ->integer()->numeric()->required()->minValue(5)->maxValue(240)->default(30),
                                 TextInput::make('rental_policy_minimum_duration_minutes')
                                     ->label('Минимальная длительность, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'На сколько минут минимум можно забронировать зал за одну заявку. Например, 60 минут — минимум два слота по 30 минут.')
                                     ->integer()->numeric()->required()->minValue(15)->maxValue(1440)->default(60),
                                 TextInput::make('rental_policy_maximum_duration_minutes')
                                     ->label('Максимальная длительность, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'На сколько минут максимум разрешено забронировать зал одной заявкой. 180 минут — три часа.')
                                     ->integer()->numeric()->required()->minValue(15)->maxValue(1440)->default(180),
                                 TextInput::make('rental_policy_minimum_lead_time_minutes')
-                                    ->label('Не раньше чем через, мин')
+                                    ->label('Минимальное время до начала, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'За сколько минут до начала аренды нужно подать заявку. При 120 минутах в 12:00 можно бронировать начало не раньше 14:00. Поставьте 0, чтобы разрешить ближайшие слоты.')
                                     ->integer()->numeric()->required()->minValue(0)->maxValue(525600)->default(120),
                                 TextInput::make('rental_policy_maximum_advance_days')
-                                    ->label('Бронирование вперёд, дней')
+                                    ->label('Горизонт бронирования, дней')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Насколько далеко вперёд можно арендовать зал: 90 дней означает возможность выбирать даты в ближайшие 90 дней.')
                                     ->integer()->numeric()->required()->minValue(1)->maxValue(730)->default(90),
                                 TextInput::make('rental_policy_quote_validity_minutes')
                                     ->label('Срок действия расчёта, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'На сколько минут фиксируется рассчитанная сервером цена и условия заявки. После истечения срока стоимость нужно пересчитать. Это не удержание свободного слота.')
                                     ->integer()->numeric()->required()->minValue(1)->maxValue(120)->default(15),
                             ]),
                         Section::make('Удержание и оплата')
@@ -237,22 +250,28 @@ final class VenueResource extends Resource
                             ->schema([
                                 TextInput::make('rental_policy_hold_duration_minutes')
                                     ->label('Удержание выбранного слота, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Сколько минут слот временно резервируется после создания заявки, прежде чем незавершённое удержание истечёт. Это не срок действия расчёта цены.')
                                     ->integer()->numeric()->required()->minValue(1)->maxValue(1440)->default(30),
                                 TextInput::make('rental_policy_payment_window_minutes')
                                     ->label('Окно оплаты, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Сколько минут выделяется на оплату платной аренды после открытия платёжного окна. При истечении окна неоплаченная заявка больше не считается оплаченной.')
                                     ->integer()->numeric()->minValue(1)->maxValue(1440)->default(30)
                                     ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')),
                                 Toggle::make('rental_policy_allows_hold_extension')
-                                    ->label('Разрешать продление удержания')->default(false)->live(),
+                                    ->label('Разрешать продление удержания')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Разрешает одобренное продление временной резервации слота до её истечения.')
+                                    ->default(false)->live(),
                                 TextInput::make('rental_policy_maximum_hold_extension_minutes')
                                     ->label('Максимальное продление, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'На сколько минут максимум можно дополнительно продлить удержание одной заявки. Поле доступно при разрешённом продлении.')
                                     ->integer()->numeric()->minValue(1)->maxValue(1440)->default(30)
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_allows_hold_extension')),
                                 TextInput::make('rental_policy_cancellation_before_minutes')
                                     ->label('Отмена не позднее, чем за, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Минимальный интервал между отменой и началом аренды. Например, 1440 минут — отменить можно не позднее чем за сутки. Пусто — стандартное правило.')
                                     ->integer()->numeric()->minValue(0)->maxValue(525600)
-                                    ->helperText('Необязательно. Если пусто, действует стандартное правило.'),
+                                    ->helperText('Необязательно; пустое значение означает стандартное правило.'),
                             ]),
                     ]),
                 Tab::make('Кешбэк')->icon('heroicon-o-gift')

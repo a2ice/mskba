@@ -70,6 +70,16 @@ final class VenueBookingPolicyController extends Controller
         if ($values['whole_price_per_step_minor'] === null && $values['half_price_per_step_minor'] === null) {
             throw ValidationException::withMessages(['whole_price_per_step' => 'Укажите хотя бы одну цену.']);
         }
+        if ($policy->requires_payment) {
+            foreach (['whole', 'half'] as $scope) {
+                $field = $scope.'_price_per_step_minor';
+                if ($values[$field] !== null && (int) $values[$field] < (int) ($policy->{$field} ?? 0)) {
+                    throw ValidationException::withMessages([
+                        $scope.'_price_per_step' => 'Цена ниже минимальной стоимости площадки за шаг аренды.',
+                    ]);
+                }
+            }
+        }
         $venue->calendarSlotPrices()->updateOrCreate([
             'date' => $data['date'],
             'starts_at' => $data['starts_at'].':00',
