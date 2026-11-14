@@ -14,7 +14,10 @@ enum VenuePermissionEnum: string
     case MANAGE_BOOKING_POLICY = 'rental.policy.manage';
     case MANAGE_GROUP_OFFERS = 'venue.group-offers.manage';
     case VIEW_BOOKING_REQUESTS = 'rental.bookings.view';
-    case DECIDE_BOOKING_REQUESTS = 'rental.bookings.decide';
+    // Three independent capabilities: receive/read + converse, approve, reject.
+    // The former combined 'rental.bookings.decide' is migrated to both actions.
+    case CONFIRM_BOOKING_REQUESTS = 'rental.bookings.confirm';
+    case REJECT_BOOKING_REQUESTS = 'rental.bookings.reject';
     case VIEW_PAYMENTS = 'rental.payments.view';
     case CONFIRM_PAYMENTS = 'rental.payments.confirm';
     case MANAGE_FUNDS = 'venue.wallet.manage';
@@ -31,8 +34,9 @@ enum VenuePermissionEnum: string
             self::MANAGE_CONTRACTS => 'Назначение контрактов площадки',
             self::MANAGE_BOOKING_POLICY => 'Управление условиями аренды',
             self::MANAGE_GROUP_OFFERS => 'Управление промокодами площадки',
-            self::VIEW_BOOKING_REQUESTS => 'Просмотр заявок на аренду',
-            self::DECIDE_BOOKING_REQUESTS => 'Решения по заявкам на аренду',
+            self::VIEW_BOOKING_REQUESTS => 'Получение заявок, просмотр и переписка',
+            self::CONFIRM_BOOKING_REQUESTS => 'Принятие и подтверждение заявок',
+            self::REJECT_BOOKING_REQUESTS => 'Отклонение и отмена заявок',
             self::VIEW_PAYMENTS => 'Просмотр оплат',
             self::CONFIRM_PAYMENTS => 'Подтверждение оплат',
             self::MANAGE_FUNDS => 'Распоряжаться средствами площадки',

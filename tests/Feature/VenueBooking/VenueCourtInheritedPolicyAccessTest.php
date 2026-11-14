@@ -64,18 +64,18 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         );
         $access = app(VenueCommercialAccess::class);
         $this->assertSame(ContractMembershipScopeTypeEnum::VENUE_COURT, $membership->scope_type);
-        $this->assertTrue($access->allowsForCourt($operator, $first, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
-        $this->assertFalse($access->allowsForCourt($operator, $second, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
-        $this->assertFalse($access->allows($operator, $venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
-        $this->assertTrue($access->allowsForCourt($owner, $second, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+        $this->assertTrue($access->allowsForCourt($operator, $first, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
+        $this->assertFalse($access->allowsForCourt($operator, $second, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
+        $this->assertFalse($access->allows($operator, $venue, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
+        $this->assertTrue($access->allowsForCourt($owner, $second, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
 
         $actor = app(CurrentActorResolver::class)->resolve($operator, null);
         $authorize = app(VenueBookingAuthorization::class);
-        $authorize->assertCommercialDecision($actor, $venue, new VenueBooking([
+        $authorize->assertCanConfirmBooking($actor, $venue, new VenueBooking([
             'venue_id' => $venue->id, 'venue_court_id' => $first->id,
         ]));
         try {
-            $authorize->assertCommercialDecision($actor, $venue, new VenueBooking([
+            $authorize->assertCanConfirmBooking($actor, $venue, new VenueBooking([
                 'venue_id' => $venue->id, 'venue_court_id' => $second->id,
             ]));
             $this->fail('Court operator must not decide other court booking.');
@@ -84,7 +84,7 @@ final class VenueCourtInheritedPolicyAccessTest extends TestCase
         }
 
         $handler->revoke($venue, $membership, $owner);
-        $this->assertFalse($access->allowsForCourt($operator, $first, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+        $this->assertFalse($access->allowsForCourt($operator, $first, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
     }
 
     public function test_court_scoped_pricing_manager_cannot_modify_sibling_court(): void

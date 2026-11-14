@@ -52,15 +52,18 @@ final class EntityContractManager
             Scope::TEAM => TeamPermissionEnum::cases(),
             Scope::EVENT => EventResponsibilityPermissionEnum::cases(),
             Scope::SPORTS_SECTION => SportsSectionPermissionEnum::cases(),
-            // Ordinary public contracts may manage venue catalogue data only.
-            // Commercial rental permissions are delegated through the verified
-            // venue ownership/commercial roles workflow, never this editor.
+            // Catalogue responsibility includes scoped booking notifications,
+            // communication and independent decisions. This does not grant
+            // property ownership, payment control or rental tariff management.
             Scope::VENUE => [
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::EDIT,
                 VenuePermissionEnum::EDIT_SCHEDULE,
                 VenuePermissionEnum::REMOVE,
                 VenuePermissionEnum::MANAGE_CONTRACTS,
+                VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+                VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
             ],
             default => [],
         };
