@@ -201,6 +201,35 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee(route('venues.store', [], false));
     }
 
+    public function test_venue_create_places_address_first_and_shows_eligible_promotion(): void
+    {
+        // The default test theme is mskba_dark; this regression covers mskba_app.
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        \Illuminate\Support\Facades\View::getFinder()->flush();
+
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+
+        $this->actingAs($user)
+            ->get(route('venues.create'))
+            ->assertOk()
+            ->assertSeeInOrder(['app-venue-create__address', 'name="name"', 'venue-court-creator'], false)
+            ->assertSee('Добавь площадку — получи бонусы')
+            ->assertSee('после её первой успешной модерации')
+            ->assertSee('Общие удобства площадки');
+
+        \App\Modules\Promotions\Domain\Models\Promotion::query()
+            ->where('code', 'reward_venue_first_approval')
+            ->firstOrFail()
+            ->update(['is_enabled' => false]);
+
+        $this->actingAs($user)
+            ->get(route('venues.create'))
+            ->assertOk()
+            ->assertDontSee('Добавь площадку — получи бонусы');
+    }
+
     public function test_proximity_check_warns_only_for_confirmed_venue_of_same_type_within_strong_radius(): void
     {
         $address = Address::factory()->create([

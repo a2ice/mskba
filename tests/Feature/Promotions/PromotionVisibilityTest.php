@@ -65,6 +65,26 @@ final class PromotionVisibilityTest extends TestCase
         $this->assertFalse($offered());
     }
 
+    public function test_venue_create_shows_only_active_first_approval_promotion(): void
+    {
+        $promotion = Promotion::query()->where('code', 'reward_venue_first_approval')->firstOrFail();
+        $reward = Reward::query()->where('code', 'venue_first_approval')->firstOrFail();
+        $offers = fn (): array => app(ResolveActivePromotions::class)->forPlacement('venue_create');
+
+        $this->assertCount(1, $offers());
+        $this->assertSame('venue_first_approval', $offers()[0]['reward_code']);
+        $this->assertStringContainsString('после её первой успешной модерации', $offers()[0]['description']);
+
+        $promotion->update(['is_enabled' => false]);
+        $this->assertSame([], $offers());
+        $promotion->update(['is_enabled' => true, 'starts_at' => now()->addDay()]);
+        $this->assertSame([], $offers());
+        $promotion->update(['starts_at' => null]);
+
+        $reward->update(['is_enabled' => false]);
+        $this->assertSame([], $offers());
+    }
+
     public function test_simple_offer_is_public_without_reward_and_multi_is_reserved(): void
     {
         $simple = Promotion::query()->create([
