@@ -361,24 +361,26 @@ if (dayBookingDialog) {
 
     // Update the clicked card after its on-demand five-minute refresh.
     function updateDayOccupancy(date, slots) {
-        const card = document.querySelector(
-            '[data-venue-day-entry][data-day-date="' + date + '"]',
-        );
-        const track = card?.querySelector('[data-day-occupancy]');
-        const booked = card?.querySelector('[data-day-occupancy-booked]');
-        if (!track || !booked) return;
-
+        const cards = [
+            document.querySelector('[data-venue-day-entry][data-day-date="' + date + '"]'),
+            dateButtons.find(button => button.dataset.venueDayDate === date)?.parentElement,
+        ];
         const known = slots.filter(slot =>
             slot.status === 'available' || slot.status === 'booked');
         const percentage = known.length
             ? Math.round(100 * known.filter(slot => slot.status === 'booked').length / known.length)
             : null;
-        track.classList.toggle('is-unknown', percentage === null);
-        const label = percentage === null
-            ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
-        track.setAttribute('aria-label', label);
-        track.title = label;
-        booked.style.width = (percentage ?? 0) + '%';
+        for (const card of cards) {
+            const track = card?.querySelector('[data-day-occupancy]');
+            const booked = card?.querySelector('[data-day-occupancy-booked]');
+            if (!track || !booked) continue;
+            track.classList.toggle('is-unknown', percentage === null);
+            const label = percentage === null
+                ? 'Нет данных о занятости' : 'Занято ' + percentage + '%';
+            track.setAttribute('aria-label', label);
+            track.title = label;
+            booked.style.width = (percentage ?? 0) + '%';
+        }
     }
 
     function renderSlots(data) {
