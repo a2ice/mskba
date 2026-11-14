@@ -45,7 +45,7 @@ final class ApplyFindSportSnapshotToNativeSchedule
         ExternalAvailabilitySnapshot $snapshot,
     ): VenueCourtExternalScheduleImport {
         if (! config('venue_integrations.public_schedule_refresh_enabled', false)
-            || $source->external_id !== '4805') {
+            || ! FindSportSourceIdentity::matches($source)) {
             throw new RuntimeException('Автоматическое применение FindSport отключено.');
         }
 
@@ -61,14 +61,14 @@ final class ApplyFindSportSnapshotToNativeSchedule
             throw new RuntimeException('Импорт в штатное расписание разрешён только на тестовом сервере.');
         }
 
-        if ($source->adapter_key !== 'api' || $source->external_id !== '4805'
+        if (! FindSportSourceIdentity::matches($source)
             || $source->integration?->mode !== 'test'
             || ! in_array($source->permission_status, ['testing_only', 'mskba_allowed'], true)
             || ! $source->access_reviewed_at || blank($source->permission_reference)
             || $source->courtMappings()->count() !== 1
             || ! in_array('availability', $source->capabilities ?? [], true)
             || ! in_array('pricing', $source->capabilities ?? [], true)) {
-            throw new RuntimeException('Нужен проверенный тестовый API-источник FindSport с ценами, занятостью и ровно одним залом.');
+            throw new RuntimeException('Нужен проверенный тестовый API-источник FindSport с совпадающими ID/URL, ценами, занятостью и ровно одним залом.');
         }
 
         $mapping = $source->courtMappings()->firstOrFail();
@@ -82,7 +82,7 @@ final class ApplyFindSportSnapshotToNativeSchedule
             || $snapshot->currency !== 'RUB'
             || ! $snapshot->complete
             || $snapshot->step_minutes !== 30 || $snapshot->minimum_minutes !== 60) {
-            throw new RuntimeException('Снимок неполный либо не соответствует источнику, залу или формату Basketpoint.');
+            throw new RuntimeException('Снимок неполный либо не соответствует источнику, залу или формату FindSport.');
         }
 
         $days = $this->validatedDays($snapshot);
