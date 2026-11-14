@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Venue\Application\Services\VenueScheduleDayOccupancy;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
@@ -370,6 +371,49 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertDatabaseCount('external_availability_snapshots', 1);
         $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
         $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
+    public function test_public_imported_prices_use_native_manual_overrides_and_venue_minimum(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+        config()->set('features.venue_rental.rental_flow', false);
+
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+        $court = $venue->courts()->firstOrFail();
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        VenueBookingPolicy::query()->create([
+            'venue_id' => $venue->id, 'version' => 1, 'is_enabled' => true,
+            'allows_whole' => true, 'allows_halves' => false,
+            'minimum_duration_minutes' => 60, 'maximum_duration_minutes' => 180,
+            'time_step_minutes' => 30, 'minimum_lead_time_minutes' => 0,
+            'maximum_advance_days' => 90, 'currency' => 'RUB',
+            'whole_price_per_step_minor' => 200000, 'half_price_per_step_minor' => null,
+            'hold_duration_minutes' => 30, 'requires_payment' => true,
+            'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+            'published_by_user_id' => $actor->id, 'published_at' => now(),
+            'active_marker' => true,
+        ]);
+
+        $path = route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-11-13', 'venue_court_id' => $court->id,
+        ]);
+        // FindSport reports 1625 ₽, but the venue's minimum is 2000 ₽.
+        $this->getJson($path)->assertOk()->assertJsonPath('slots.0.base_price_minor', 200000);
+        $court->calendarSlotPrices()->whereDate('date', '2026-11-13')
+            ->where('starts_at', '07:00:00')
+            ->update(['whole_price_per_step_minor' => 250000]);
+
+        // Local manual price wins over the previously imported tariff.
+        $this->getJson($path)->assertOk()->assertJsonPath('slots.0.base_price_minor', 250000);
+        $this->assertSame(162500, (int) $snapshot->slots()->orderBy('starts_at')
+            ->firstOrFail()->price_minor);
     }
 
     public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
