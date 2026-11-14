@@ -198,7 +198,9 @@ final class EventController extends Controller
 
         return redirect()
             ->route('events.show', $result->event->routeIdentifier())
-            ->with('status', 'Мероприятие создано, площадка забронирована.');
+            ->with('status', $result->event->booking_deferred
+                ? 'Мероприятие создано. Площадка пока не забронирована.'
+                : 'Мероприятие создано, площадка забронирована.');
     }
 
     public function show(
@@ -295,19 +297,21 @@ final class EventController extends Controller
                 ->with('error', 'Завершённое или отменённое мероприятие нельзя редактировать.');
         }
 
-        $freeVenues = $venues->handle(freeOnly: true);
+        $canReschedule = ($item->booking_deferred && $item->booking_id === null)
+            || ($item->booking_id === null && $item->venue->hasFreeAccess());
+        $availableVenues = $venues->handle(freeOnly: ! $item->booking_deferred);
 
-        if ($item->venue->hasFreeAccess() && ! $freeVenues->contains('id', $item->venue_id)) {
-            $freeVenues->push($item->venue);
-            $freeVenues = $freeVenues->sortBy('name')->values();
+        if (! $availableVenues->contains('id', $item->venue_id)) {
+            $availableVenues->push($item->venue);
+            $availableVenues = $availableVenues->sortBy('name')->values();
         }
 
         return ThemeResolver::page('events.edit', [
             'event' => $item,
-            'venues' => $freeVenues,
+            'venues' => $availableVenues,
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
-            'canReschedule' => $item->venue->hasFreeAccess(),
+            'canReschedule' => $canReschedule,
             'durationOptions' => range(30, 480, 30),
             'currentDuration' => (int) $item->starts_at->diffInMinutes($item->ends_at),
         ]);

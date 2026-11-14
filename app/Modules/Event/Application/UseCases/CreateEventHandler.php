@@ -44,6 +44,16 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы создать мероприятие.');
         }
 
+        if (! empty($data['event_request_id'])) {
+            $existing = Event::query()->where('creation_key', $data['event_request_id'])->first();
+            if ($existing !== null) {
+                if ($existing->organizer_actor_id !== $actor->id) {
+                    throw new InvalidArgumentException('Идентификатор создания уже использован другим организатором.');
+                }
+                return $existing->load(['venue', 'court', 'booking', 'participants.user']);
+            }
+        }
+
         // Other creation workflows keep their legacy semantics unless they opt in
         // to an explicit attendance decision. Filament always supplies this flag.
         $explicitChoice = array_key_exists('organizer_participates', $data);
@@ -102,6 +112,7 @@ final class CreateEventHandler
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
             $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
 
+            $bookingDeferred = (bool) ($data['defer_booking'] ?? false);
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
                 : VenueBookingStatusEnum::PENDING;
@@ -111,10 +122,13 @@ final class CreateEventHandler
                 'venue_court_id' => $court?->id,
                 'organizer_actor_id' => $actor->id,
                 'participation_confirmation_version' => 1,
+                'creation_key' => $data['event_request_id'] ?? null,
+                'booking_deferred' => $bookingDeferred,
+                'planned_booking_scope' => $bookingScope,
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
                 'type' => EventTypeEnum::from($data['type']),
-                'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED
+                'status' => $bookingDeferred || $bookingStatus === VenueBookingStatusEnum::CONFIRMED
                     ? EventStatusEnum::PUBLISHED
                     : EventStatusEnum::DRAFT,
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
@@ -124,15 +138,17 @@ final class CreateEventHandler
                 'max_participants' => $data['max_participants'] ?? null,
             ]);
 
-            $event->booking()->create([
-                'venue_id' => $venue->id,
-                'venue_court_id' => $court?->id,
-                'created_by_actor_id' => $actor->id,
-                'status' => $bookingStatus,
-                'scope' => $bookingScope,
-                'starts_at' => $startsAt,
-                'ends_at' => $endsAt,
-            ]);
+            if (! $bookingDeferred) {
+                $event->booking()->create([
+                    'venue_id' => $venue->id,
+                    'venue_court_id' => $court?->id,
+                    'created_by_actor_id' => $actor->id,
+                    'status' => $bookingStatus,
+                    'scope' => $bookingScope,
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                ]);
+            }
 
             $event->participants()->create([
                 'user_id' => $actor->user_id,
