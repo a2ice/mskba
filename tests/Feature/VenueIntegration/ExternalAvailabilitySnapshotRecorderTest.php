@@ -45,7 +45,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         return $actor;
     }
 
-    private function source(User $actor, Venue $venue): VenueIntegrationSource
+    private function source(User $actor, Venue $venue, string $playgroundId = '4805'): VenueIntegrationSource
     {
         $manager = app(VenueIntegrationManager::class);
         $config = $manager->saveConfiguration($venue, $actor, [
@@ -60,10 +60,10 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         ]);
 
         return $manager->saveSource($config, $actor, [
-            'name' => 'FindSport Basketpoint',
+            'name' => 'FindSport '.$playgroundId,
             'adapter_key' => 'api',
-            'external_id' => '4805',
-            'endpoint_url' => 'https://findsport.ru/playground/4805',
+            'external_id' => $playgroundId,
+            'endpoint_url' => 'https://findsport.ru/playground/'.$playgroundId,
             'priority' => 100,
             'capabilities' => ['availability', 'pricing'],
             'permission_status' => 'testing_only',
@@ -73,14 +73,19 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         ]);
     }
 
-    private function report(VenueIntegrationSource $source): array
+    private function report(
+        VenueIntegrationSource $source,
+        string $startTime = '07:00',
+        int $slotsPerDay = 34,
+        string $externalCourtId = '9068',
+    ): array
     {
         $days = [];
         for ($day = 0; $day < 7; $day++) {
             $date = CarbonImmutable::parse('2026-11-13', 'Europe/Moscow')->addDays($day);
             $slots = [];
-            for ($i = 0; $i < 34; $i++) {
-                $start = $date->setTime(7, 0)->addMinutes($i * 30);
+            for ($i = 0; $i < $slotsPerDay; $i++) {
+                $start = $date->setTimeFromTimeString($startTime)->addMinutes($i * 30);
                 $slots[] = [
                     'time' => $start->format('H:i'),
                     'ends_at' => $start->addMinutes(30)->format('H:i'),
@@ -103,8 +108,8 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
         return [
             'provider' => 'FindSport',
-            'external_id' => 4805,
-            'external_court_id' => '9068',
+            'external_id' => (int) $source->external_id,
+            'external_court_id' => $externalCourtId,
             'timezone' => 'Europe/Moscow',
             'step_minutes' => 30,
             'minimum_minutes' => 60,
@@ -194,6 +199,86 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
         $this->assertDatabaseCount('external_availability_snapshots', 1);
         $this->assertDatabaseCount('external_availability_slots', 238);
+    }
+
+    public function test_another_findsport_playground_can_save_and_apply_full_midnight_to_midnight_calendar(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue, '5768');
+        $report = $this->report($source, '00:00', 48, '10997');
+        // Full occupancy on the first date, mixed occupancy on the next.
+        foreach ($report['days'][0]['slots'] as &$slot) {
+            $slot['status'] = 'booked';
+        }
+        unset($slot);
+        $report['days'][0]['counts'] = [
+            'available' => 0, 'booked' => 48, 'unavailable' => 0, 'unknown' => 0,
+        ];
+
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)
+            ->record($source, $actor, $report);
+
+        $this->assertSame('5768', (string) $snapshot->source->external_id);
+        $this->assertSame('10997', $snapshot->external_court_id);
+        $this->assertTrue($snapshot->complete);
+        $this->assertSame(336, $snapshot->slots()->count());
+        $first = $snapshot->slots()->orderBy('starts_at')->firstOrFail();
+        $this->assertSame('2026-11-12 21:00', $first->starts_at->utc()->format('Y-m-d H:i'));
+        $last = $snapshot->slots()->orderByDesc('starts_at')->firstOrFail();
+        $this->assertSame('00:00', $last->ends_at->setTimezone('Europe/Moscow')->format('H:i'));
+
+        $applied = app(ApplyFindSportSnapshotToNativeSchedule::class)
+            ->apply($source, $snapshot, $actor);
+        $court = $venue->courts()->firstOrFail()->fresh();
+
+        $this->assertSame($snapshot->id, $applied->external_availability_snapshot_id);
+        $this->assertSame('00:00', $court->schedule->weekly_intervals[0]['starts_at']);
+        $this->assertSame('23:59', $court->schedule->weekly_intervals[0]['ends_at']);
+        $this->assertSame('00:00', substr(
+            $venue->schedule()->firstOrFail()->intervals()->firstOrFail()->starts_at, 0, 5,
+        ));
+        $this->assertSame(336, $court->calendarSlotPrices()->count());
+        $this->assertTrue(collect($court->schedule->exceptions)->contains(
+            fn (array $row): bool => $row['date'] === '2026-11-13' && ($row['is_closed'] ?? false) === true,
+        ));
+        $this->assertDatabaseCount('venue_bookings', 0);
+        $this->assertSame(100, app(VenueScheduleDayOccupancy::class)->forDays(
+            $venue, $court, [['date' => '2026-11-13', 'intervals' => []]], 'Europe/Moscow',
+        )['2026-11-13']);
+
+        // With the refresh switch off this endpoint uses only the applied
+        // snapshot and shows all 48 cells, including the booked night.
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-11-13', 'venue_court_id' => $court->id,
+        ]))->assertOk()
+            ->assertJsonCount(48, 'slots')
+            ->assertJsonPath('slots.0.starts_at', '00:00')
+            ->assertJsonPath('slots.0.status', 'booked')
+            ->assertJsonPath('slots.47.starts_at', '23:30');
+
+        $again = app(ApplyFindSportSnapshotToNativeSchedule::class)
+            ->apply($source, $snapshot, $actor);
+        $this->assertSame($applied->id, $again->id);
+        $this->assertDatabaseCount('external_availability_snapshots', 1);
+        $this->assertDatabaseCount('external_availability_slots', 336);
+    }
+
+    public function test_full_day_snapshot_rejects_missing_interval_and_never_applies_it(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create();
+        $source = $this->source($actor, $venue, '5768');
+        $report = $this->report($source, '00:00', 48, '10997');
+        array_splice($report['days'][2]['slots'], 20, 1);
+        $report['days'][2]['slot_count'] = 47;
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('непоследовательная');
+        app(ExternalAvailabilitySnapshotRecorder::class)->record($source, $actor, $report);
     }
 
     public function test_native_import_overwrites_hours_prices_and_occupation_without_fake_bookings(): void
