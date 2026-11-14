@@ -94,6 +94,29 @@ final class VenueCourtManualSyncTest extends TestCase
             ->whereDate('date', '2026-11-16')->firstOrFail()->whole_price_per_step_minor);
     }
 
+    public function test_synced_court_slot_prices_respect_venue_minimum(): void
+    {
+        $venue = $this->venueWithSchedule();
+        $user = User::factory()->create();
+        $this->policy($venue, $user);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $venue->scheduleSlotPrices()->create([
+            'day_of_week' => 1,
+            'starts_at' => '10:00',
+            'whole_price_per_step_minor' => 100,
+        ]);
+
+        app(SyncVenueCourtSchedule::class)->handle($venue, [$court->id], 'day', '2026-11-09');
+        $price = $court->calendarSlotPrices()->whereDate('date', '2026-11-09')
+            ->where('starts_at', '10:00:00')->firstOrFail();
+        $this->assertSame(500, $price->whole_price_per_step_minor);
+        $this->assertSame(300, $price->half_price_per_step_minor);
+
+        // Source overrides remain unchanged; only the published court
+        // snapshot uses the venue's lower bound.
+        $this->assertSame(100, $venue->scheduleSlotPrices()->firstOrFail()->whole_price_per_step_minor);
+    }
+
     public function test_period_sync_preserves_prices_when_checkbox_is_off(): void
     {
         $venue = $this->venueWithSchedule();
