@@ -32,7 +32,12 @@
             @csrf
             <input type="hidden" name="expected_version" value="{{ $expectedVersion }}">
             <input type="hidden" name="quote_id" value="{{ $quote->publicId }}">
-            <button type="submit" class="btn btn--primary">Отправить заявку на аренду</button>
+            @if($interestId)<input type="hidden" name="interest_id" value="{{ $interestId }}">@endif
+            @if($proposalId)<input type="hidden" name="proposal_id" value="{{ $proposalId }}">@endif
+            @if($proposalId)
+                <p class="alert alert-info mt-3">После отправки заявки предложение представителя площадки будет отмечено как принято. Окончательная цена указана выше и может отличаться от предварительной.</p>
+            @endif
+            <button type="submit" class="btn btn--primary">{{ $proposalId ? 'Принять предложение и отправить заявку' : 'Отправить заявку на аренду' }}</button>
             <a href="{{ route('events.edit', $event->routeIdentifier()) }}" class="btn btn--secondary">Изменить место или время</a>
         </form>
     </div></article>

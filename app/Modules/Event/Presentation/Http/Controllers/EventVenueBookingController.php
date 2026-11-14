@@ -5,6 +5,11 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\EventVenueInterestService;
+use App\Modules\Event\Application\Services\EventVenueInterestChat;
+use App\Modules\Event\Application\Services\EventVenueBookingProposals;
+use App\Modules\Event\Domain\Models\EventVenueInterest;
+use App\Modules\Event\Domain\Models\EventVenueBookingProposal;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -40,14 +45,34 @@ final class EventVenueBookingController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         QuoteVenueBookingHandler $quotes,
+        EventVenueBookingProposals $proposals,
     ): Response|RedirectResponse {
-        $validated = $request->validate(['expected_version' => ['required', 'integer', 'min:1']]);
+        $validated = $request->validate([
+            'expected_version' => ['required', 'integer', 'min:1'],
+            'interest_id' => ['nullable', 'integer', 'min:1'],
+            'proposal_id' => ['nullable', 'integer', 'min:1'],
+        ]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $item = Event::query()->whereRouteIdentifier($event)->with(['venue', 'court'])->firstOrFail();
 
         try {
             $this->assertCanRequest($item, $actor, $access, (int) $validated['expected_version']);
+            $interest = isset($validated['interest_id'])
+                ? $item->venueInterests()->findOrFail($validated['interest_id']) : null;
+            if ($interest !== null && ($interest->status !== 'open'
+                || $interest->revision !== $item->participation_confirmation_version)) {
+                throw new InvalidArgumentException('Предзаявка устарела. Выберите актуальную версию мероприятия.');
+            }
+            if (isset($validated['proposal_id'])) {
+                if ($interest === null) {
+                    throw new InvalidArgumentException('Для предложения необходимо указать предзаявку.');
+                }
+                $proposal = EventVenueBookingProposal::query()
+                    ->where('event_venue_interest_id', $interest->id)
+                    ->findOrFail($validated['proposal_id']);
+                $proposals->assertPendingForOrganizer($proposal, $actor);
+            }
 
             $venue = $item->venue;
             $scope = $item->planned_booking_scope ?? VenueBookingScopeEnum::WHOLE;
@@ -64,6 +89,8 @@ final class EventVenueBookingController extends Controller
                 'event' => $item,
                 'quote' => $quote,
                 'expectedVersion' => $item->participation_confirmation_version,
+                'interestId' => $interest?->id,
+                'proposalId' => $proposal->id ?? null,
             ]);
         } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
             return redirect()->route('events.show', $item->routeIdentifier())
@@ -81,17 +108,21 @@ final class EventVenueBookingController extends Controller
         EventVenueInterestService $interests,
         VenueEventAvailability $availability,
         RequestVenueBookingHandler $bookings,
+        EventVenueBookingProposals $proposals,
+        EventVenueInterestChat $chat,
     ): RedirectResponse {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'quote_id' => ['nullable', 'uuid'],
+            'interest_id' => ['nullable', 'integer', 'min:1'],
+            'proposal_id' => ['nullable', 'integer', 'min:1'],
         ]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $reference = Event::query()->whereRouteIdentifier($event)->firstOrFail();
 
         try {
-            $result = DB::transaction(function () use ($reference, $actor, $access, $validated, $interests, $availability, $bookings): array {
+            $result = DB::transaction(function () use ($reference, $actor, $access, $validated, $interests, $availability, $bookings, $proposals, $chat): array {
                 // Lock order is venue -> event -> quote/booking.
                 $venue = Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
                 $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
@@ -99,6 +130,27 @@ final class EventVenueBookingController extends Controller
                     throw new InvalidArgumentException('Место мероприятия изменилось. Повторите расчёт.');
                 }
                 $this->assertCanRequest($event, $actor, $access, (int) $validated['expected_version']);
+
+                $interest = isset($validated['interest_id'])
+                    ? $event->venueInterests()->lockForUpdate()->findOrFail($validated['interest_id'])
+                    : $event->venueInterests()->where('status', 'open')->latest('revision')->lockForUpdate()->first();
+                if ($interest !== null && ($interest->status !== 'open'
+                    || $interest->revision !== $event->participation_confirmation_version
+                    || $interest->venue_id !== $event->venue_id
+                    || ! $interest->starts_at->equalTo($event->starts_at)
+                    || ! $interest->ends_at->equalTo($event->ends_at))) {
+                    throw new InvalidArgumentException('Предзаявка больше не соответствует мероприятию.');
+                }
+                $proposal = null;
+                if (isset($validated['proposal_id'])) {
+                    if ($interest === null) {
+                        throw new InvalidArgumentException('Не указана исходная предзаявка.');
+                    }
+                    $proposal = EventVenueBookingProposal::query()
+                        ->where('event_venue_interest_id', $interest->id)
+                        ->lockForUpdate()->findOrFail($validated['proposal_id']);
+                    $proposals->assertPendingForOrganizer($proposal, $actor);
+                }
 
                 $quoteId = $validated['quote_id'] ?? null;
                 if ($quoteId === null && $venue->hasFreeAccess()) {
@@ -136,7 +188,27 @@ final class EventVenueBookingController extends Controller
                 }
 
                 $booking = $bookings->handle($actor, $quoteId, (string) Str::uuid(), (string) Str::uuid());
-                $booking->forceFill(['event_id' => $event->id])->save();
+                $booking->forceFill([
+                    'event_id' => $event->id,
+                    'event_venue_interest_id' => $interest?->id,
+                    'interest_booking_initiator' => $proposal !== null ? 'venue' : 'organizer',
+                ])->save();
+                if ($interest !== null) {
+                    $conversation = VenueBookingConversation::query()
+                        ->where('event_venue_interest_id', $interest->id)
+                        ->lockForUpdate()->first();
+                    if ($conversation !== null) {
+                        $conversation->forceFill(['venue_booking_id' => $booking->id])->save();
+                    }
+                    $chat->system($interest, $actor, $proposal !== null
+                        ? 'Организатор принял предложение площадки и отправил заявку на аренду. Инициатор предложения — представитель площадки.'
+                        : 'Организатор самостоятельно отправил заявку на аренду по предзаявке.');
+                }
+                if ($proposal !== null) {
+                    $proposal->forceFill([
+                        'status' => 'accepted', 'booking_id' => $booking->id, 'responded_at' => now(),
+                    ])->save();
+                }
                 $event->forceFill([
                     'booking_id' => $booking->id,
                     'booking_snapshot' => [
@@ -149,6 +221,10 @@ final class EventVenueBookingController extends Controller
                     ],
                 ])->save();
                 $interests->markBookingRequested($event);
+                if ($interest !== null) {
+                    DB::afterCommit(fn () => $chat->notify($interest, $actor,
+                        'Заявка на аренду создана', 'По мероприятию «'.$event->title.'» создана заявка на бронь. Статус и действия доступны в переписке.'));
+                }
                 DB::afterCommit(static fn () => event(new EventChanged($event->id)));
 
                 return ['event' => $event, 'booking' => $booking];
