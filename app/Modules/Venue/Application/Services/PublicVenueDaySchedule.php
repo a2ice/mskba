@@ -230,7 +230,8 @@ final readonly class PublicVenueDaySchedule
             $selected = $first === false ? [] : array_slice($slots, $first, $count);
             if (count($selected) !== $count || collect($selected)->contains(
                 static fn (array $slot): bool =>
-                    $slot['status'] !== 'available' || $slot['base_price_minor'] === null,
+                    ! $slot['selectable'] || $slot['status'] !== 'available'
+                    || $slot['base_price_minor'] === null,
             )) {
                 throw new InvalidArgumentException('Выбранные интервалы недоступны для расчёта.');
             }

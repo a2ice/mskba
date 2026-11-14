@@ -313,7 +313,12 @@ if (dayBookingDialog) {
                 response.date + 'T' + response.slots[selection[0]].starts_at;
             form.querySelector('[data-venue-day-duration]').value = String(duration);
             bookingButton.disabled = true;
-            void previewSelection(response.date, start.starts_at, duration, selection.join(','));
+            // The previous 'start' variable belonged to the summary's else block.
+            // Use the selected slot from the current response; otherwise the
+            // ReferenceError leaves the booking button disabled indefinitely.
+            void previewSelection(
+                response.date, response.slots[selection[0]].starts_at, duration, selection.join(','),
+            );
         } else {
             ++previewSequence;
         }

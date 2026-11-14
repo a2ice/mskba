@@ -414,6 +414,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->getJson($path)->assertOk()->assertJsonPath('slots.0.base_price_minor', 250000);
         $this->assertSame(162500, (int) $snapshot->slots()->orderBy('starts_at')
             ->firstOrFail()->price_minor);
+
     }
 
     public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
