@@ -434,3 +434,19 @@
     .app-venue-day-dialog__calendar{padding:0 12px 10px;grid-template-columns:30px minmax(0,1fr) 30px;gap:5px}
     .app-venue-day-dialog__date{flex-basis:96px;min-height:57px;padding:7px 9px}
 }
+
+/* Card width includes the same small occupancy track as on the venue page. */
+.app-venue-day-dialog__date-item{
+    flex:0 0 116px;min-width:0;display:flex;flex-direction:column;
+}
+.app-venue-day-dialog__date-item>.app-venue-day-dialog__date{
+    flex:1 1 auto;width:100%;min-height:61px;
+}
+.app-venue-day-dialog__date-item .app-venue-schedule__occupancy{flex:0 0 3px}
+.app-venue-day-dialog__date-hours{
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+}
+@media(max-width:640px){
+    .app-venue-day-dialog__date-item{flex-basis:108px}
+}
