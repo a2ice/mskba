@@ -219,7 +219,9 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('после её первой успешной модерации')
             ->assertSee('Общие удобства площадки')
             ->assertSee('data-address-metro-badges', false)
-            ->assertSee('data-validation-label="Адрес площадки"', false);
+            ->assertSee('data-validation-label="Адрес площадки"', false)
+            ->assertSee('class="select-control"', false)
+            ->assertSee('name="initial_courts[0][environment]"', false);
 
         \App\Modules\Promotions\Domain\Models\Promotion::query()
             ->where('code', 'reward_venue_first_approval')

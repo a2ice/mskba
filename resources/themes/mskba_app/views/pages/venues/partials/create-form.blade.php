@@ -64,22 +64,28 @@
             <input name="name" type="text" maxlength="255" minlength="3" required placeholder="Название площадки" value="{{ old('name') }}">
         </label>
         <label class="app-venue-create__field">Тип *
-            <select name="type" required>
+            <span class="select-control">
+                <select name="type" required>
                 <option value="">Выберите тип</option>
                 @foreach($types as $type)
                     <option value="{{ $type->value }}" @selected(old('type') === $type->value)>{{ $type->label() }}</option>
                 @endforeach
-            </select>
+                </select>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
         </label>
     </div>
-    @include('venues.partials.initial-courts')
+    @include('venues.partials.initial-courts', ['useAppSelects' => true])
     <div class="app-venue-create__grid">
         <label class="app-venue-create__field">Условия посещения
-            <select name="access_type">
+            <span class="select-control">
+                <select name="access_type">
                 <option value="unknown">Не знаю</option>
                 <option value="free">Бесплатно</option>
                 <option value="paid">Платно</option>
-            </select>
+                </select>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
         </label>
     </div>
     <label class="app-venue-create__field">Фото площадки (необязательно)

@@ -4,6 +4,26 @@ document.querySelectorAll('[data-mskba-venue-create]').forEach(form => {
     let focusScheduled = false;
     const addressField = () => form.querySelector('[data-address-suggest-input]');
     const status = form.querySelector('[data-venue-create-status]');
+    const address = addressField();
+    const unselectedAddressMessage = 'Выберите точный адрес из подсказок или воспользуйтесь геолокацией.';
+
+    // HTML5 blocks submit if another required field is invalid. Mark the
+    // visible address input invalid independently of submit.
+    const syncAddressValidity = () => {
+        if (!address) return;
+        address.setCustomValidity(form.querySelector('[data-address-selected]')?.value === '1'
+            ? '' : unselectedAddressMessage);
+    };
+    syncAddressValidity();
+    address?.addEventListener('input', () => {
+        // Any keystroke invalidates the prior suggestion, even before its
+        // handler clears the hidden address-selected flag.
+        address.setCustomValidity(unselectedAddressMessage);
+    });
+    form.querySelector('[data-address-clear]')?.addEventListener('click', () => {
+        address?.setCustomValidity(unselectedAddressMessage);
+    });
+    address?.addEventListener('address-suggest:sync', syncAddressValidity);
 
     const labelFor = field => String(field.dataset.validationLabel
         || field.closest('label')?.firstChild?.textContent || 'Поле').trim().replace(/\s*\*$/, '');
@@ -78,14 +98,17 @@ document.querySelectorAll('[data-mskba-venue-create]').forEach(form => {
     form.addEventListener('change', event => {
         if (event.target?.matches('input, select, textarea')) clearError(event.target);
     }, true);
-    form.addEventListener('address-suggest:selected', () => clearError(addressField()));
+    form.addEventListener('address-suggest:selected', () => {
+        syncAddressValidity();
+        clearError(addressField());
+    });
 
     // A typed string does not count as an accepted suggestion.
     form.addEventListener('submit', event => {
         if (form.querySelector('[data-address-selected]')?.value === '1') return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        showError(addressField(), 'Выберите точный адрес из подсказок или воспользуйтесь геолокацией.');
+        showError(addressField(), unselectedAddressMessage);
         if (status) status.textContent = '';
         focusFirstError();
     }, true);
