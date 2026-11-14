@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Components\Attributes\Unexposed;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 final class EditVenue extends EditRecord
 {
@@ -48,7 +49,15 @@ final class EditVenue extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         /** @var Venue $record */
-        return app(VenueBackofficeEditor::class)->save($data, $record);
+        try {
+            return app(VenueBackofficeEditor::class)->save($data, $record);
+        } catch (ValidationException $exception) {
+            // Domain-level validation runs after Filament's form validation.
+            // Convert it to the same actionable UI error as CreateVenue.
+            $this->onValidationError($exception);
+
+            throw $exception;
+        }
     }
 
     protected function getHeaderActions(): array

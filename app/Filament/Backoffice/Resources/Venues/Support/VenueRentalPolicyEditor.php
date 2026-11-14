@@ -11,6 +11,7 @@ use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandl
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
+use App\Support\Features\FeatureDisabledException;
 use Illuminate\Validation\ValidationException;
 
 final class VenueRentalPolicyEditor
@@ -189,6 +190,12 @@ final class VenueRentalPolicyEditor
 
         try {
             app(PublishVenueBookingPolicyHandler::class)->handle($venue, $actor, $values);
+        } catch (FeatureDisabledException) {
+            // Rental activation is separately controlled by deployment flags.
+            // An administrator should see a form error, not a Livewire 500.
+            throw ValidationException::withMessages([
+                'data.rental_policy_enabled' => 'Функция аренды отключена в настройках окружения. Включение аренды требует разрешения администратора.',
+            ]);
         } catch (VenueBookingPolicyException $exception) {
             throw ValidationException::withMessages([
                 'data.rental_policy_enabled' => $exception->getMessage(),

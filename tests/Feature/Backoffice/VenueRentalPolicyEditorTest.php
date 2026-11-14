@@ -13,6 +13,7 @@ use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -143,4 +144,59 @@ final class VenueRentalPolicyEditorTest extends TestCase
             ->assertSee('Принимать заявки на аренду')
             ->assertDontSee('Аренда: не настроена');
     }
+    public function test_livewire_edit_save_returns_form_validation_for_paid_zero_price(): void
+    {
+        $this->superadmin();
+        $venue = Venue::factory()->create(['requires_payment' => true]);
+
+        Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
+            ->fillForm([
+                'rental_policy_enabled' => true,
+                'rental_policy_requires_payment' => true,
+                'rental_policy_whole_price_rub' => '0',
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['rental_policy_enabled']);
+
+        $this->assertSame(0, VenueBookingPolicy::query()->where('venue_id', $venue->id)->count());
+    }
+
+    public function test_livewire_edit_save_returns_form_validation_when_rental_feature_disabled(): void
+    {
+        $this->superadmin();
+        config()->set('features.venue_rental.rental_flow', false);
+        $venue = Venue::factory()->create(['requires_payment' => false]);
+
+        Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
+            ->fillForm([
+                'rental_policy_enabled' => true,
+                'rental_policy_requires_payment' => false,
+            ])
+            ->call('save')
+            ->assertHasFormErrors(['rental_policy_enabled']);
+
+        $this->assertSame(0, VenueBookingPolicy::query()->where('venue_id', $venue->id)->count());
+    }
+
+    public function test_livewire_edit_save_publishes_valid_paid_rental_policy(): void
+    {
+        $this->superadmin();
+        $venue = Venue::factory()->create(['requires_payment' => true]);
+
+        Livewire::test(EditVenue::class, ['record' => $venue->getRouteKey()])
+            ->fillForm([
+                'rental_policy_enabled' => true,
+                'rental_policy_requires_payment' => true,
+                'rental_policy_whole_price_rub' => '1500',
+                'rental_policy_minimum_lead_time_minutes' => 0,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $policy = VenueBookingPolicy::query()
+            ->where('venue_id', $venue->id)->where('active_marker', true)->firstOrFail();
+        $this->assertTrue($policy->is_enabled);
+        $this->assertSame(150000, $policy->whole_price_per_step_minor);
+    }
+
 }
