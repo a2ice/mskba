@@ -138,7 +138,7 @@ final class VenueBookingController extends Controller
         $canDecideExtensions = false;
         $canConfirmPayment = false;
         try {
-            $authorization->assertCommercialDecision($actor, $venueBooking->venue, $venueBooking);
+            $authorization->assertCanConfirmBooking($actor, $venueBooking->venue, $venueBooking);
             $canDecideExtensions = true;
         } catch (VenueBookingTransitionException) {
         }
