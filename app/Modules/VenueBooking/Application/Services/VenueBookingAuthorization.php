@@ -15,11 +15,25 @@ final readonly class VenueBookingAuthorization
 {
     public function __construct(private VenueCommercialAccess $commercialAccess) {}
 
-    public function assertCommercialDecision(Actor $actor, Venue $venue, ?VenueBooking $booking = null): void
+    public function assertCanConfirmBooking(Actor $actor, Venue $venue, ?VenueBooking $booking = null): void
     {
+        $this->assertBookingPermission($actor, $venue, $booking,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS, 'Недостаточно прав для принятия или подтверждения заявки.');
+    }
+
+    public function assertCanRejectBooking(Actor $actor, Venue $venue, ?VenueBooking $booking = null): void
+    {
+        $this->assertBookingPermission($actor, $venue, $booking,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS, 'Недостаточно прав для отклонения заявки.');
+    }
+
+    private function assertBookingPermission(
+        Actor $actor, Venue $venue, ?VenueBooking $booking,
+        VenuePermissionEnum $permission, string $message,
+    ): void {
         $user = $actor->user;
-        if ($user === null || ! $this->allowsBooking($user, $venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS, $booking)) {
-            throw new VenueBookingTransitionException('Недостаточно прав для решения по заявке.', 'BOOKING_FORBIDDEN');
+        if ($user === null || ! $this->allowsBooking($user, $venue, $permission, $booking)) {
+            throw new VenueBookingTransitionException($message, 'BOOKING_FORBIDDEN');
         }
     }
 
@@ -49,7 +63,7 @@ final readonly class VenueBookingAuthorization
             return;
         }
 
-        $this->assertCommercialDecision($actor, $venue, $booking);
+        $this->assertCanRejectBooking($actor, $venue, $booking);
     }
 
     private function allowsBooking(User $user, Venue $venue, VenuePermissionEnum $permission, ?VenueBooking $booking): bool
