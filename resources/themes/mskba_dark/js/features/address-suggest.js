@@ -150,6 +150,11 @@ function initAddressSuggest(container) {
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
         updateMetroSummary(metroSelect, metroSummary);
         setAddressControlState(clearButton, 'clear');
+        // Only accepted suggestion/reverse-geocode emits this event.
+        container.dispatchEvent(new CustomEvent('address-suggest:selected', {
+            bubbles: true,
+            detail: { street: suggestion.street || '', building: suggestion.building || '' },
+        }));
         checkProximity();
     }
 

@@ -510,6 +510,27 @@ class PublicVenueCreateEntryTest extends TestCase
         $this->assertDatabaseMissing('venues', ['name' => 'Площадка с неверным сценарием']);
     }
 
+    public function test_manual_address_without_suggestion_selection_is_rejected(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $location = $this->locationPayload('Москва, Керамический проезд, 49Б');
+        $location['address_selected'] = '';
+
+        $this->actingAs($user)->post(route('venues.store'), [
+            'name' => 'Проверка ручного адреса',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'creation_role' => 'contributor',
+            'initial_courts' => [[
+                'name' => 'Корт 1',
+                'environment' => 'outdoor',
+                'hoops_count' => 2,
+            ]],
+            'location' => $location,
+        ])->assertSessionHasErrors('location.address_selected');
+
+        $this->assertDatabaseMissing('venues', ['name' => 'Проверка ручного адреса']);
+    }
+
     private function locationPayload(string $rawAddress): array
     {
         $offset = (abs(crc32($rawAddress)) % 10_000) / 1_000_000;
