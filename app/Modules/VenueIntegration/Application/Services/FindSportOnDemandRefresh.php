@@ -11,7 +11,7 @@ use Throwable;
 /**
  * Public day-modal refresh. At most one new source read per five minutes
  * per source, shared across visitors. Only an ALREADY APPLIED, verified
- * Basketpoint source can be refreshed; arbitrary public URLs are forbidden.
+ * FindSport source can be refreshed; arbitrary public URLs are forbidden.
  */
 final class FindSportOnDemandRefresh
 {
@@ -42,7 +42,7 @@ final class FindSportOnDemandRefresh
         }
 
         $source = $current->source;
-        if ($source === null || $source->external_id !== '4805'
+        if ($source === null || ! FindSportSourceIdentity::matches($source)
             || $source->adapter_key !== 'api'
             || $source->integration?->mode !== 'test'
             || ! in_array($source->permission_status, ['testing_only', 'mskba_allowed'], true)

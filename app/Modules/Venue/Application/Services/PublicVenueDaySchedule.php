@@ -109,11 +109,19 @@ final readonly class PublicVenueDaySchedule
             (int) substr($i['from'], 0, 2) * 60 + (int) substr($i['from'], 3, 2), $openings)) : 7 * 60;
         $maxMinute = $openings !== [] ? max(array_map(static fn ($i): int =>
             (int) substr($i['to'], 0, 2) * 60 + (int) substr($i['to'], 3, 2), $openings)) : 24 * 60;
-        // A current pilot snapshot may contain a booked interval outside
-        // today's free-runs; include the whole source coverage in the modal.
-        if ($snapshot !== null) {
-            $minMinute = min($minMinute, 7 * 60);
-            $maxMinute = max($maxMinute, 24 * 60);
+        // Use the actual imported FindSport source coverage, not Basketpoint's
+        // former 07:00–24:00 grid. Fully booked days can have no open runs:
+        // their earlier booked slots must still be shown from 00:00 onwards.
+        if ($sourceSlots->isNotEmpty()) {
+            $firstSourceTime = $sourceSlots->first()->starts_at
+                ->setTimezone('Europe/Moscow');
+            $lastSourceEnd = $sourceSlots->last()->ends_at
+                ->setTimezone('Europe/Moscow');
+            $firstMinute = $firstSourceTime->hour * 60 + $firstSourceTime->minute;
+            $lastMinute = $lastSourceEnd->toDateString() !== $date
+                ? 1440 : $lastSourceEnd->hour * 60 + $lastSourceEnd->minute;
+            $minMinute = min($minMinute, $firstMinute);
+            $maxMinute = max($maxMinute, $lastMinute);
         }
 
         $startIndex = intdiv($minMinute, $step);
