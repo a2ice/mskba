@@ -37,7 +37,7 @@ final class ExternalAvailabilitySnapshotRecorder
     {
         if (! config('venue_integrations.apply_findsport_native_enabled', false)
             || ! config('venue_integrations.public_schedule_refresh_enabled', false)
-            || $source->external_id !== '4805') {
+            || ! FindSportSourceIdentity::matches($source)) {
             throw new RuntimeException('Публичное сохранение FindSport отключено.');
         }
 
