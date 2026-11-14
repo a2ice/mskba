@@ -96,6 +96,8 @@ final class ExternalAvailabilitySnapshotRecorder
         $coverageEnd = null;
         $allComplete = true;
         $previousDate = null;
+        $expectedSlotsPerDay = null;
+        $firstStartMinute = null;
 
         foreach ($days as $day) {
             if (! is_array($day) || ! is_string($day['date'] ?? null)
@@ -113,9 +115,26 @@ final class ExternalAvailabilitySnapshotRecorder
             }
 
             $slots = $day['slots'] ?? null;
-            if (! is_array($slots) || ! array_is_list($slots) || count($slots) !== 34) {
-                throw new RuntimeException("Для {$date} ожидалось 34 получасовых интервала.");
+            if (! is_array($slots) || ! array_is_list($slots) || count($slots) < 1 || count($slots) > 48) {
+                throw new RuntimeException("Снимок {$date}: ожидается от 1 до 48 получасовых интервалов.");
             }
+
+            // Provider hours are specific to the venue: Basketpoint has
+            // 07:00–24:00 (34 cells), while other courts can have 00:00–24:00
+            // (48 cells). All seven days must have the same contiguous grid.
+            $firstTime = $slots[0]['time'] ?? null;
+            if (! is_string($firstTime) || ! preg_match('/^([01]\d|2[0-3]):(00|30)$/D', $firstTime, $firstMatch)) {
+                throw new RuntimeException("Снимок {$date}: неверное начало сетки времени.");
+            }
+            $startMinute = (int) $firstMatch[1] * 60 + (int) $firstMatch[2];
+            if (count($slots) > (1440 - $startMinute) / 30
+                || ($expectedSlotsPerDay !== null && ($expectedSlotsPerDay !== count($slots)
+                    || $firstStartMinute !== $startMinute))
+                || (isset($day['slot_count']) && (int) $day['slot_count'] !== count($slots))) {
+                throw new RuntimeException("Снимок {$date}: непоследовательная или выходящая за сутки сетка.");
+            }
+            $expectedSlotsPerDay ??= count($slots);
+            $firstStartMinute ??= $startMinute;
 
             $dayComplete = ($day['complete'] ?? false) === true;
             $dayCounts = array_fill_keys(self::ALLOWED_STATUSES, 0);
@@ -130,7 +149,7 @@ final class ExternalAvailabilitySnapshotRecorder
                     throw new RuntimeException("Снимок {$date}: неверный временной интервал или статус.");
                 }
                 $time = $slot['time'];
-                $expectedTime = gmdate('H:i', 25200 + count($seen) * 1800);
+                $expectedTime = gmdate('H:i', ($firstStartMinute + count($seen) * 30) * 60);
                 if ($time !== $expectedTime) {
                     throw new RuntimeException("Снимок {$date}: нарушена последовательность интервалов, ожидалось {$expectedTime}.");
                 }
@@ -186,7 +205,8 @@ final class ExternalAvailabilitySnapshotRecorder
             $countsByDay[$date] = ['complete' => $fullyKnown, 'counts' => $dayCounts];
         }
 
-        if ($coverageStart === null || $coverageEnd === null || count($rows) !== 238) {
+        if ($coverageStart === null || $coverageEnd === null
+            || count($rows) !== 7 * $expectedSlotsPerDay) {
             throw new RuntimeException('Снимок не покрывает ожидаемую недельную сетку.');
         }
 
