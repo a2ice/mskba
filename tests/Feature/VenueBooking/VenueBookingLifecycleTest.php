@@ -146,6 +146,68 @@ final class VenueBookingLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_unassigned_venue_request_falls_back_to_confirmed_superadmin_notification(): void
+    {
+        Queue::fake();
+        Mail::fake();
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $email = 'booking-superadmin-'.$superadmin->id.'@example.test';
+        Contact::query()->create([
+            'contactable_type' => 'user',
+            'contactable_id' => $superadmin->id,
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => $email,
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE,
+        ]);
+        $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        [$applicant, $actor] = $this->userAndActor();
+        $quote = $this->quote($venue, $superadmin, $applicant, false);
+        $booking = app(RequestVenueBookingHandler::class)->handle($actor, $quote);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $notification = UserNotification::query()
+            ->where('user_id', $superadmin->id)
+            ->where('payload->source', UserNotificationSourceEnum::VENUE_BOOKING_REQUESTED->value)
+            ->firstOrFail();
+        $this->assertStringContainsString($booking->public_id, $notification->action_url);
+        (new SendUserNotificationEmailJob($notification->id))->handle();
+        Mail::assertSent(UserNotificationMail::class,
+            fn (UserNotificationMail $mail): bool => $mail->hasTo($email));
+    }
+
+    public function test_app_theme_incoming_list_and_booking_detail_render_for_superadmin(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant, $actor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $owner->update(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        config(['themes.active' => 'mskba_app', 'features.venue_rental.portal' => true]);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($owner)->get(route('account.venue-bookings.inbox'))
+            ->assertOk()->assertSee('Входящие заявки на аренду')
+            ->assertSee($booking->public_id);
+        $this->get(route('account.venue-bookings.show', $booking))
+            ->assertOk()->assertSee('Детали бронирования')
+            ->assertSee('Принять заявку')
+            ->assertSee('data-booking-id="'.$booking->public_id.'"', false);
+        $this->actingAs($applicant)->get(route('account.venue-bookings.index'))
+            ->assertOk()->assertSee('Мои бронирования')
+            ->assertSee($booking->public_id);
+    }
+
     public function test_app_theme_rental_quote_page_prefills_fields_and_hides_undiscounted_commissions(): void
     {
         [$owner, , $venue] = $this->ownedVenue();
