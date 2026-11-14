@@ -89,3 +89,67 @@
     .app-rental-pricing__confirm form{width:100%}
     .app-rental-pricing__confirm .button{width:100%}
 }
+
+
+/* Native theme booking inbox & role-gated decision screen. */
+.app-rental-inbox{display:grid;gap:18px;padding-bottom:44px}
+.app-rental-inbox__tabs,.app-rental-inbox__actions,.app-rental-inbox__pages{
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px
+}
+.app-rental-inbox__list{display:grid;gap:14px}
+.app-rental-inbox__entry,.app-rental-inbox__summary,.app-rental-inbox__empty{padding:22px 24px}
+.app-rental-inbox__entry-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+.app-rental-inbox__entry-head h2,.app-rental-inbox__summary h2{
+    font-size:19px;font-weight:700;line-height:1.35;margin:0 0 10px;
+}
+.app-rental-inbox__status{
+    display:inline-flex;align-items:center;min-height:30px;max-width:100%;
+    padding:5px 10px;border:1px solid var(--line);border-radius:999px;
+    color:var(--text);background:var(--surface,#fff);font-size:12px;font-weight:600;
+}
+.app-rental-inbox__status[data-status="requested"]{border-color:var(--accent)}
+.app-rental-inbox__status[data-status="confirmed"]{border-color:var(--success);color:var(--success)}
+.app-rental-inbox__status[data-status="cancelled"],
+.app-rental-inbox__status[data-status="rejected"],
+.app-rental-inbox__status[data-status="expired"]{color:var(--muted)}
+.app-rental-inbox__date{font-size:15px;font-weight:600;margin:8px 0}
+.app-rental-inbox__muted{color:var(--muted);font-size:13px}
+.app-rental-inbox__entry-bottom{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+    gap:12px;margin-top:16px;
+}
+.app-rental-inbox__empty{display:grid;gap:12px}
+.app-rental-inbox__empty p{margin:0}
+.app-rental-inbox__empty .button{justify-self:start}
+.app-rental-inbox__facts{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;
+    margin:14px 0 22px;
+}
+.app-rental-inbox__facts>div{display:grid;gap:5px}
+.app-rental-inbox__facts dt{font-size:12px;color:var(--muted)}
+.app-rental-inbox__facts dd{font-size:14px;margin:0;font-weight:600}
+.app-rental-inbox__decision{max-width:340px}
+.app-rental-inbox__decision>summary{cursor:pointer;list-style:none}
+.app-rental-inbox__decision>summary::-webkit-details-marker{display:none}
+.app-rental-inbox__decision>form,.app-rental-inbox__fields{
+    display:grid;gap:12px;margin-top:12px;
+}
+.app-rental-inbox__decision label,.app-rental-inbox__fields label{
+    display:grid;gap:7px;font-weight:600;font-size:13px;
+}
+.app-rental-inbox__decision textarea,.app-rental-inbox__fields textarea,
+.app-rental-inbox__fields input,.app-rental-inbox__fields select{
+    width:100%;min-height:42px;border-radius:10px;border:1px solid var(--line);
+    padding:10px;background:var(--surface,#fff);color:var(--text);font:inherit;
+}
+.app-rental-inbox__notice{padding:12px 14px;border:1px solid var(--line);border-radius:10px}
+.app-rental-inbox__notice.is-error{color:var(--danger);border-color:var(--danger)}
+@media(max-width:700px){
+    .app-rental-inbox__facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .app-rental-inbox__entry,.app-rental-inbox__summary,.app-rental-inbox__empty{padding:16px}
+}
+@media(max-width:430px){
+    .app-rental-inbox__facts{grid-template-columns:minmax(0,1fr)}
+}
