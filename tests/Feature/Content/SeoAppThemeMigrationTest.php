@@ -3,8 +3,10 @@
 namespace Tests\Feature\Content;
 
 use App\Presentation\Theming\ThemeResolver;
+use App\Support\Privacy\CookieConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class SeoAppThemeMigrationTest extends TestCase
@@ -66,11 +68,19 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertDontSee('mc.yandex.ru/watch/12345678', false);
     }
 
-    public function test_production_host_uses_same_metrika_id_once(): void
+    public function test_production_host_uses_same_metrika_id_once_only_after_consent(): void
     {
         config(['services.yandex_metrika.id' => '12345678']);
 
-        $response = $this->get('https://mskba.ru/venues')
+        $this->get('https://mskba.ru/venues')
+            ->assertOk()
+            ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
+            ->assertDontSee('mc.yandex.ru/watch/12345678', false);
+
+        $response = $this->withCookie(
+            CookieConsent::COOKIE_NAME,
+            CookieConsent::version().'|accepted|'.Str::uuid(),
+        )->get('https://mskba.ru/venues')
             ->assertOk()
             ->assertSee('ym(12345678, "init"', false)
             ->assertSee('https://mc.yandex.ru/watch/12345678', false);

@@ -11,7 +11,6 @@
         <meta name="mskba-reverb-app-key" content="{{ config('broadcasting.connections.reverb.key') }}">
         @include('partials.seo.app-head')
         @stack('meta')
-        @include('partials.analytics.yandex-metrika')
         <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
         @vite(['resources/themes/mskba_app/css/app.css', 'resources/themes/mskba_app/js/app.js'])
         <link id="mskba-appearance-css" rel="stylesheet" href="{{ app(\App\Presentation\Theming\DesignThemeManager::class)->cssUrl($appearanceTheme) }}">
