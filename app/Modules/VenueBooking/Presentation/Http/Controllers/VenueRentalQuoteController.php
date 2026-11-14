@@ -3,7 +3,10 @@
 namespace App\Modules\VenueBooking\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
+use InvalidArgumentException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
@@ -121,6 +124,48 @@ final class VenueRentalQuoteController extends Controller
             'courts' => $venue->courts()->get(),
             'quote' => $quote,
         ]);
+    }
+
+    /**
+     * Read-only status for an existing price quote. The random quote UUID is
+     * the capability; only availability and expiration are returned. No
+     * applicant, payment, or other booking details are disclosed.
+     */
+    public function status(
+        Request $request,
+        Venue $venue,
+        VenueEventAvailability $availability,
+        FindSportOnDemandRefresh $refresh,
+    ): JsonResponse {
+        $input = $request->validate(['quote_id' => ['required', 'uuid']]);
+        $quote = VenueBookingQuote::query()
+            ->where('venue_id', $venue->id)->where('public_id', $input['quote_id'])
+            ->firstOrFail();
+        $court = $venue->courts()->find($quote->venue_court_id);
+        if ($court === null || $court->trashed()) {
+            return response()->json(['available' => false, 'reason' => 'unavailable']);
+        }
+        if (! $quote->valid_until->isFuture()) {
+            return response()->json(['available' => false, 'reason' => 'expired']);
+        }
+
+        // Refresh the approved source through the same guarded, shared
+        // FindSport lock. A failed refresh never turns a stale slot into free.
+        $refresh->forCourt($court);
+
+        try {
+            $availability->assertAvailable(
+                $venue,
+                CarbonImmutable::instance($quote->starts_at)->utc(),
+                CarbonImmutable::instance($quote->ends_at)->utc(),
+                scope: $quote->scope,
+                court: $court,
+            );
+        } catch (InvalidArgumentException) {
+            return response()->json(['available' => false, 'reason' => 'unavailable']);
+        }
+
+        return response()->json(['available' => true, 'reason' => null]);
     }
 
     private function resolveCourt(Venue $venue, string $identifier): VenueCourt
