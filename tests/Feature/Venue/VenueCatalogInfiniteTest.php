@@ -59,9 +59,10 @@ final class VenueCatalogInfiniteTest extends TestCase
             ->assertSee('name="view" value="map"', false)
             ->assertSee('data-default-category-view="map"', false)
             ->assertSee('Показано')
-            ->assertSee('Карта 01')
-            ->assertSee('Карта 06')
-            ->assertDontSee('Неподходящая площадка')
+            // The map payload is embedded as @json, so Cyrillic is Unicode-escaped.
+            ->assertSee(json_encode('Карта 01'), false)
+            ->assertSee(json_encode('Карта 06'), false)
+            ->assertDontSee(json_encode('Неподходящая площадка'), false)
             ->assertDontSee('data-venue-infinite-catalog', false)
             ->assertDontSee('data-venue-sentinel', false)
             ->assertDontSee('aria-label="Списком"', false);
