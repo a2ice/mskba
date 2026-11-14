@@ -6,6 +6,7 @@
 @import './header.css';
 @import './context-bar.css';
 @import './footer.css';
+@import './cookie-consent.css';
 @import './context-dialogs.css';
 @import './auth-dialog.css';
 @import './legal-dialog.css';

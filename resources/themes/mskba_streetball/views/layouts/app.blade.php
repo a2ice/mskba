@@ -22,12 +22,17 @@
     </head>
     <body>
         @include('partials.analytics.yandex-metrika-noscript')
+        @include('partials.privacy.cookie-banner')
 
         @include('theme::partials.header')
 
         <main class="site-content">
             @yield('content')
         </main>
+
+        <footer class="mskba-cookie-settings-footer">
+            <div class="container">@include('partials.privacy.cookie-settings-link')</div>
+        </footer>
 
     </body>
 </html>

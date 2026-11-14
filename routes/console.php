@@ -19,6 +19,7 @@ use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Support\Privacy\TrackingDataHealth;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
@@ -212,6 +213,12 @@ Schedule::command('venue-booking:close-expired-attendance')
 Schedule::command('identity:scan-user-duplicates')
     ->dailyAt('03:15')
     ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    DB::table('cookie_consent_events')
+        ->where('created_at', '<', now()->subMonths(13))
+        ->delete();
+})->name('privacy:prune-cookie-consents')->dailyAt('04:05')->onOneServer()->withoutOverlapping();
 
 Schedule::command('privacy:prune-tracking')
     ->dailyAt('03:45')

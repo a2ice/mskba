@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import '../../mskba_app/js/cookie-consent.js';
 import { initModalDragging } from '../../mskba_app/js/modal-dragging.js';
 initModalDragging();
 import '../css/pages/team-roster-save.css';
