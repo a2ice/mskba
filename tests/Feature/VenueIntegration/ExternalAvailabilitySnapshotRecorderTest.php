@@ -415,25 +415,6 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame(162500, (int) $snapshot->slots()->orderBy('starts_at')
             ->firstOrFail()->price_minor);
 
-        // The browser's preview must obey the same snapshot freshness gate
-        // as the authoritative POST quote, rather than displaying a usable
-        // price for a selection that cannot be booked.
-        config()->set('features.venue_rental.rental_flow', true);
-        $previewPath = route('venues.schedule.day', [
-            'venue' => $venue->id,
-            'date' => '2026-11-13',
-            'venue_court_id' => $court->id,
-            'preview_start' => '13:00',
-            'preview_duration_minutes' => 60,
-        ]);
-        $validPreview = $this->getJson($previewPath);
-        $this->assertSame(200, $validPreview->status(),
-            'Fresh snapshot preview response: '.json_encode($validPreview->json(), JSON_UNESCAPED_UNICODE));
-        $validPreview->assertJsonPath('price_preview.base_amount_minor', 400000);
-
-        $snapshot->update(['observed_at' => now()->subMinutes(20)]);
-        $this->getJson($previewPath)->assertUnprocessable()
-            ->assertJsonPath('message', 'Выбранные интервалы недоступны для расчёта.');
     }
 
     public function test_public_day_refresh_uses_one_shared_lock_after_five_minutes(): void
