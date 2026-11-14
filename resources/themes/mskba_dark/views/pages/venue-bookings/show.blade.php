@@ -81,6 +81,13 @@
             </div>
         </div></div>
 
+        @if($interestLink)
+            <div class="alert alert-info mb-3">
+                Эта заявка связана с предварительным интересом к аренде.
+                Инициатор оформления: <strong>{{ $booking->interest_booking_initiator === 'venue' ? 'представитель площадки (предложение принял организатор)' : 'организатор' }}</strong>.
+                <a href="{{ $interestLink }}" class="fc-link">Открыть общую переписку и историю</a>
+            </div>
+        @endif
         @if($isRequester && config('features.venue_rental.conversations'))
             <button
                 class="venue-booking-message-notice {{ $conversationUnread ? 'is-unread' : '' }}"
