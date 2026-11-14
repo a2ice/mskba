@@ -42,6 +42,7 @@ enum VenueMembershipAccessLevelEnum: string
             ],
             self::MANAGER => [
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::EDIT_SCHEDULE,
                 VenuePermissionEnum::MANAGE_BOOKING_POLICY,
@@ -56,6 +57,7 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
             ],
             self::BOOKING_OPERATOR => [
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
@@ -78,6 +80,7 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::MANAGE_MEMBERSHIPS,
                 VenuePermissionEnum::MANAGE_GROUP_OFFERS,
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW_PAYMENTS,
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
                 VenuePermissionEnum::MANAGE_FUNDS,
@@ -91,6 +94,7 @@ enum VenueMembershipAccessLevelEnum: string
             self::STAFF, self::AGENT => array_values(array_unique([
                 ...$this->defaultPermissions(),
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
             ])),
         };
     }

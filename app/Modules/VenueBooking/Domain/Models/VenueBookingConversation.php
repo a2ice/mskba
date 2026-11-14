@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['public_id', 'venue_booking_id'])]
+#[Fillable(['public_id', 'venue_booking_id', 'event_venue_interest_id'])]
 class VenueBookingConversation extends Model
 {
     public function getRouteKeyName(): string
@@ -18,6 +18,11 @@ class VenueBookingConversation extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(VenueBooking::class, 'venue_booking_id');
+    }
+
+    public function interest(): BelongsTo
+    {
+        return $this->belongsTo(\App\Modules\Event\Domain\Models\EventVenueInterest::class, 'event_venue_interest_id');
     }
 
     public function messages(): HasMany

@@ -14,6 +14,7 @@ enum VenuePermissionEnum: string
     case MANAGE_BOOKING_POLICY = 'rental.policy.manage';
     case MANAGE_GROUP_OFFERS = 'venue.group-offers.manage';
     case VIEW_EVENT_INTERESTS = 'rental.interests.view';
+    case PROPOSE_EVENT_BOOKING = 'rental.interests.propose-booking';
     case VIEW_BOOKING_REQUESTS = 'rental.bookings.view';
     case DECIDE_BOOKING_REQUESTS = 'rental.bookings.decide';
     case VIEW_PAYMENTS = 'rental.payments.view';
@@ -33,6 +34,7 @@ enum VenuePermissionEnum: string
             self::MANAGE_BOOKING_POLICY => 'Управление условиями аренды',
             self::MANAGE_GROUP_OFFERS => 'Управление промокодами площадки',
             self::VIEW_EVENT_INTERESTS => 'Просмотр предварительного интереса к аренде',
+            self::PROPOSE_EVENT_BOOKING => 'Предложить бронирование по предзаявке',
             self::VIEW_BOOKING_REQUESTS => 'Просмотр заявок на аренду',
             self::DECIDE_BOOKING_REQUESTS => 'Решения по заявкам на аренду',
             self::VIEW_PAYMENTS => 'Просмотр оплат',

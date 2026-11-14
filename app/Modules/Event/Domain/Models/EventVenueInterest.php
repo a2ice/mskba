@@ -7,6 +7,8 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'event_id', 'venue_id', 'venue_court_id', 'created_by_actor_id',
@@ -22,6 +24,16 @@ final class EventVenueInterest extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(EventVenueBookingProposal::class)->latest();
+    }
+
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(\App\Modules\VenueBooking\Domain\Models\VenueBookingConversation::class);
     }
 
     public function court(): BelongsTo
