@@ -47,7 +47,8 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::EDIT_SCHEDULE,
                 VenuePermissionEnum::MANAGE_BOOKING_POLICY,
                 VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
-                VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
+                VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
             ],
             self::STAFF => [
                 VenuePermissionEnum::VIEW,
@@ -57,11 +58,12 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
             ],
             self::BOOKING_OPERATOR => [
-                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
+                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW,
                 VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
-                VenuePermissionEnum::DECIDE_BOOKING_REQUESTS,
+                VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
             ],
             self::FINANCE_VIEWER => [
                 VenuePermissionEnum::VIEW,
@@ -79,8 +81,6 @@ enum VenueMembershipAccessLevelEnum: string
                 ...$this->defaultPermissions(),
                 VenuePermissionEnum::MANAGE_MEMBERSHIPS,
                 VenuePermissionEnum::MANAGE_GROUP_OFFERS,
-                VenuePermissionEnum::VIEW_EVENT_INTERESTS,
-                VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW_PAYMENTS,
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
                 VenuePermissionEnum::MANAGE_FUNDS,

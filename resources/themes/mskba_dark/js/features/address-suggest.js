@@ -231,7 +231,31 @@ function updateMetroSummary(select, summary) {
         .map((option) => option.textContent.trim())
         .filter(Boolean);
 
-    summary.textContent = labels.length ? labels.join(', ') : 'Метро рядом не найдено';
+    if (!summary.hasAttribute('data-address-metro-badges')) {
+        summary.textContent = labels.length ? labels.join(', ') : 'Метро рядом не найдено';
+        return;
+    }
+
+    // MSKBA App uses the same metro-line badges as the account venue editor.
+    summary.replaceChildren();
+    const selected = Array.from(select?.selectedOptions || []);
+    if (selected.length === 0) {
+        summary.textContent = 'Метро рядом не найдено';
+        return;
+    }
+    selected.forEach(option => {
+        const chip = document.createElement('span');
+        chip.className = 'app-venue-metro__chip';
+        const dot = document.createElement('span');
+        dot.className = 'app-venue-metro__dot';
+        dot.style.setProperty('--metro-dot', /^#[0-9a-fA-F]{6}$/.test(option.dataset.lineColor || '')
+            ? option.dataset.lineColor : '#64748b');
+        dot.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = option.textContent.trim();
+        chip.append(dot, label);
+        summary.append(chip);
+    });
 }
 
 function resetMetroSummary(summary) {

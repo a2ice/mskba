@@ -45,7 +45,7 @@ final class VenueCommercialMembershipTest extends TestCase
         $access = app(VenueCommercialAccess::class);
 
         $this->assertTrue($access->allows($owner, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS));
-        $this->assertTrue($access->allows($operator, $venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+        $this->assertTrue($access->allows($operator, $venue, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
         $this->assertFalse($access->allows($operator, $venue, VenuePermissionEnum::VIEW_PAYMENTS));
         $this->assertTrue($access->allows($finance, $venue, VenuePermissionEnum::VIEW_PAYMENTS));
         $this->assertFalse($access->allows($finance, $venue, VenuePermissionEnum::CONFIRM_PAYMENTS));
@@ -82,11 +82,11 @@ final class VenueCommercialMembershipTest extends TestCase
         $this->assertTrue(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::CONFIRM_PAYMENTS));
 
         $membership = $handler->change($venue, $membership, VenueMembershipAccessLevelEnum::BOOKING_OPERATOR, $owner);
-        $this->assertTrue(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+        $this->assertTrue(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
         $this->assertFalse(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::VIEW_PAYMENTS));
 
         $handler->revoke($venue, $membership, $owner);
-        $this->assertFalse(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
+        $this->assertFalse(app(VenueCommercialAccess::class)->allows($target, $venue, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS));
         $this->assertSame(ContractStatusEnum::INACTIVE, $membership->contract->refresh()->status);
     }
 
