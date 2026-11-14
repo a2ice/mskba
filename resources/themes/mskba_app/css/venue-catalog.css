@@ -43,3 +43,13 @@
 @media(max-width:1000px){.app-venues-catalog__layout{grid-template-columns:220px minmax(0,1fr);gap:16px}.app-venues-catalog__sidebar{padding:16px}}
 @media(max-width:850px){.app-venues-catalog__layout{grid-template-columns:1fr}.app-venues-catalog__sidebar{position:static;max-height:none}}
 @media(max-width:570px){.app-venues-catalog{padding-top:24px}.app-venues-catalog__header{flex-wrap:wrap}.app-venues-catalog__items{grid-template-columns:1fr}.app-venues-catalog__items--list .app-venues-catalog__photo{flex-basis:35%}.app-venues-catalog__toolbar{flex-wrap:wrap}.app-venues-catalog__view-switch{margin-left:auto}}
+
+/* Map mode follows the same light-theme container and design tokens as cards. */
+.app-venues-catalog__map{position:relative;min-width:0;overflow:hidden}
+.app-venues-catalog__map-canvas{width:100%;height:clamp(460px,65dvh,720px);min-height:460px}
+.app-venues-catalog__map-status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-control);padding:10px 16px;text-align:center;color:var(--muted);font-size:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);pointer-events:none}
+.app-venues-catalog__map-status[hidden]{display:none!important}
+.app-venues-catalog__map-empty{min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:36px;text-align:center}
+.app-venues-catalog__map-empty strong{font-size:20px;color:var(--text)}
+.app-venues-catalog__map-empty span{font-size:14px;color:var(--muted)}
+@media(max-width:590px){.app-venues-catalog__map-canvas{height:clamp(420px,62dvh,600px);min-height:420px}}
