@@ -40,6 +40,7 @@ final readonly class EventVenueInterestChat
     public function send(EventVenueInterest $interest, Actor $actor, string $clientId, string $body): VenueBookingMessage
     {
         $this->assertView($interest, $actor);
+        abort_unless($actor->user !== null && $this->access->canWriteThread($actor->user, $interest), 403);
         $body = trim($body);
         if ($body === '') {
             throw new InvalidArgumentException('Сообщение не может быть пустым.');
