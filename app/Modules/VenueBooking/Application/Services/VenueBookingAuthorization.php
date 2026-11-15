@@ -13,7 +13,10 @@ use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 
 final readonly class VenueBookingAuthorization
 {
-    public function __construct(private VenueCommercialAccess $commercialAccess) {}
+    public function __construct(
+        private VenueCommercialAccess $commercialAccess,
+        private VenueBookingBackofficeAccess $backoffice,
+    ) {}
 
     public function assertCanConfirmBooking(Actor $actor, Venue $venue, ?VenueBooking $booking = null): void
     {
@@ -32,7 +35,8 @@ final readonly class VenueBookingAuthorization
         VenuePermissionEnum $permission, string $message,
     ): void {
         $user = $actor->user;
-        if ($user === null || ! $this->allowsBooking($user, $venue, $permission, $booking)) {
+        if ($user === null || (! $this->allowsBooking($user, $venue, $permission, $booking)
+            && ! $this->backoffice->canManage($user))) {
             throw new VenueBookingTransitionException($message, 'BOOKING_FORBIDDEN');
         }
     }
@@ -52,9 +56,24 @@ final readonly class VenueBookingAuthorization
         }
 
         $user = $actor->user;
-        if ($user === null || ! $this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)) {
+        if ($user === null || (! $this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
+            && ! $this->backoffice->canView($user))) {
             throw new VenueBookingTransitionException('Недостаточно прав для просмотра заявки.', 'BOOKING_FORBIDDEN');
         }
+    }
+
+    /** Read-only support may inspect conversations, but cannot post as a participant. */
+    public function assertCanWriteConversation(Actor $actor, VenueBooking $booking, Venue $venue): void
+    {
+        if ($actor->user_id === $booking->requester_user_id) {
+            return;
+        }
+        $user = $actor->user;
+        if ($user !== null && ($this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
+            || $this->backoffice->canManage($user))) {
+            return;
+        }
+        throw new VenueBookingTransitionException('Недостаточно прав для переписки по заявке.', 'BOOKING_FORBIDDEN');
     }
 
     public function assertCanCancel(Actor $actor, VenueBooking $booking, Venue $venue): void
