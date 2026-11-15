@@ -119,6 +119,8 @@ final class StaffPermissionProfiles
                 Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW,
                 Permission::BACKOFFICE_WIDGET_CREATE, Permission::BACKOFFICE_WIDGET_EDIT,
                 Permission::BACKOFFICE_STYLE_MANAGE, Permission::BACKOFFICE_VENUE_MANAGE,
+                Permission::BACKOFFICE_VENUE_BOOKINGS_VIEW,
+                Permission::BACKOFFICE_VENUE_BOOKINGS_MANAGE,
                 Permission::BACKOFFICE_VENUE_INTEGRATIONS_VIEW,
                 Permission::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE,
                 Permission::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
