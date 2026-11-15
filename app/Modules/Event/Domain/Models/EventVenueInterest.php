@@ -36,6 +36,11 @@ final class EventVenueInterest extends Model
         return $this->hasOne(\App\Modules\VenueBooking\Domain\Models\VenueBookingConversation::class);
     }
 
+    public function booking(): HasOne
+    {
+        return $this->hasOne(\App\Modules\VenueBooking\Domain\Models\VenueBooking::class, 'event_venue_interest_id');
+    }
+
     public function court(): BelongsTo
     {
         return $this->belongsTo(VenueCourt::class, 'venue_court_id');

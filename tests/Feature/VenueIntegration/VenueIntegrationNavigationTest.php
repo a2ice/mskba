@@ -25,8 +25,10 @@ final class VenueIntegrationNavigationTest extends TestCase
     {
         $relations = VenueResource::getRelations();
 
-        $this->assertCount(6, $relations);
-        $this->assertCount(1, array_filter($relations, fn ($relation): bool => $relation instanceof RelationGroup));
+        $this->assertCount(7, $relations);
+        $this->assertCount(2, array_filter($relations, fn ($relation): bool => $relation instanceof RelationGroup));
+        $this->assertInstanceOf(RelationGroup::class, $relations[3]);
+        $this->assertSame('Заявки', $relations[3]->getLabel());
 
         $group = $relations[2];
         $this->assertInstanceOf(RelationGroup::class, $group);

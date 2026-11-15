@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
+use App\Modules\VenueBooking\Application\Services\VenueBookingBackofficeAccess;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPartyRole;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
@@ -27,11 +28,12 @@ final readonly class SendVenueBookingMessageHandler
         $this->features->ensureEnabled(VenueRentalFeature::CONVERSATIONS);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $clientId, $body): VenueBookingMessage {
-            $this->authorization->assertCanView($actor, $booking, $venue);
+            $this->authorization->assertCanWriteConversation($actor, $booking, $venue);
             if ($booking->flow !== 'rental') {
                 throw new VenueBookingTransitionException('Переписка доступна только для заявок нового flow.', 'CONVERSATION_UNAVAILABLE');
             }
-            if ($actor->user_id !== null && $actor->user_id !== $booking->requester_user_id && ! $actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+            if ($actor->user_id !== null && $actor->user_id !== $booking->requester_user_id && ! $actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+                && ! app(VenueBookingBackofficeAccess::class)->canManage($actor->user)) {
                 $booking->parties()->firstOrCreate(['user_id' => $actor->user_id, 'role' => VenueBookingPartyRole::VENUE_REPRESENTATIVE]);
             }
 

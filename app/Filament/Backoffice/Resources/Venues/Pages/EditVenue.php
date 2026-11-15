@@ -7,6 +7,8 @@ use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationSourcesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationAuditRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalBookingsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalInterestsRelationManager;
 use App\Modules\Venue\Domain\Models\Venue;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -78,22 +80,25 @@ final class EditVenue extends EditRecord
     {
         $group = $this->getCachedRelationManagers()[$key] ?? null;
 
-        if (! ($group instanceof RelationGroup) || ($group->getLabel() !== 'Интеграции')) {
+        if (! ($group instanceof RelationGroup) || ! in_array($group->getLabel(), ['Интеграции', 'Заявки'], true)) {
             return parent::getRelationManagerTabComponent($key);
         }
 
+        $isIntegration = $group->getLabel() === 'Интеграции';
         $group->ownerRecord($this->getRecord())->pageClass(static::class);
 
         return $group->getTabComponent()
             ->schema(fn (): array => [
-                Tabs::make('Разделы интеграции')
-                    ->key('venueIntegrationSections')
-                    ->persistTabInQueryString('integration-section')
+                Tabs::make($isIntegration ? 'Разделы интеграции' : 'Разделы заявок')
+                    ->key($isIntegration ? 'venueIntegrationSections' : 'venueRentalRequestsSections')
+                    ->persistTabInQueryString($isIntegration ? 'integration-section' : 'requests-section')
                     ->tabs(collect($group->getManagers())->map(function (string $manager): Tab {
                         [$label, $icon] = match ($manager) {
                             VenueIntegrationsRelationManager::class => ['Настройки', 'heroicon-o-cog-6-tooth'],
                             VenueIntegrationSourcesRelationManager::class => ['Источники и залы', 'heroicon-o-circle-stack'],
                             VenueIntegrationAuditRelationManager::class => ['Журнал изменений', 'heroicon-o-clock'],
+                            VenueRentalBookingsRelationManager::class => ['Заявки', 'heroicon-o-document-text'],
+                            VenueRentalInterestsRelationManager::class => ['Предзаявки', 'heroicon-o-chat-bubble-left-right'],
                             default => [$manager::getTitle($this->getRecord(), static::class), 'heroicon-o-list-bullet'],
                         };
 
@@ -103,7 +108,7 @@ final class EditVenue extends EditRecord
                                 LivewireSchema::make($manager, [
                                     ...$this->getRelationManagerLivewireData(),
                                     ...$manager::getDefaultProperties(),
-                                ])->key('venue-integration-manager-'.class_basename($manager)),
+                                ])->key('venue-rental-section-'.class_basename($manager)),
                             ]);
                     })->values()->all()),
             ]);
