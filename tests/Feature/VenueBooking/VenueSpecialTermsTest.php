@@ -395,9 +395,12 @@ final class VenueSpecialTermsTest extends TestCase
     {
         [$admin, $venue, $court] = $this->scenario();
         $client = $this->activeUser();
-        $this->offer($admin, $venue, $client, ['valid_until' => now()->addMinute()->toIso8601String()]);
+        // Issue a legitimate quote while terms are active, then expire that
+        // offer before redemption. Avoid a publish-time expiry race with the
+        // clock manipulated by other classes in the full feature suite.
+        $offer = $this->offer($admin, $venue, $client);
         $quote = $this->quoteFor($venue, $court, $client);
-        $this->travelTo(now()->addMinutes(2));
+        $offer->forceFill(['valid_until' => now()->subSecond()])->save();
         try {
             $this->requestQuote($client, $quote->publicId);
             $this->fail('Expired offer must reject redemption.');
