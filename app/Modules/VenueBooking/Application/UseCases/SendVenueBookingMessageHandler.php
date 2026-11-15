@@ -27,7 +27,7 @@ final readonly class SendVenueBookingMessageHandler
         $this->features->ensureEnabled(VenueRentalFeature::CONVERSATIONS);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $clientId, $body): VenueBookingMessage {
-            $this->authorization->assertCanView($actor, $booking, $venue);
+            $this->authorization->assertCanWriteConversation($actor, $booking, $venue);
             if ($booking->flow !== 'rental') {
                 throw new VenueBookingTransitionException('Переписка доступна только для заявок нового flow.', 'CONVERSATION_UNAVAILABLE');
             }
