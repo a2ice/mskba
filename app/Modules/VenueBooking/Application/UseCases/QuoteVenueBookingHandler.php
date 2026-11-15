@@ -110,6 +110,7 @@ final readonly class QuoteVenueBookingHandler
                 $endsAt->setTimezone($databaseTimezone),
                 scope: $scope,
                 court: $court,
+                allowEndAtMidnight: true,
             );
         } catch (InvalidArgumentException $exception) {
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);

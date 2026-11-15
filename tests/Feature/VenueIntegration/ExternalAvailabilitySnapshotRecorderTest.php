@@ -8,6 +8,13 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Venue\Application\Services\VenueScheduleDayOccupancy;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
+use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
+use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueIntegration\Application\Services\ExternalAvailabilitySnapshotRecorder;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -277,6 +284,80 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame($applied->id, $again->id);
         $this->assertDatabaseCount('external_availability_snapshots', 1);
         $this->assertDatabaseCount('external_availability_slots', 336);
+    }
+
+    public function test_findsport_rental_can_end_exactly_at_midnight_and_create_a_request(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+        config()->set('features.venue_rental.rental_flow', true);
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+        app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+        $court = $venue->courts()->firstOrFail()->fresh();
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $actor, [
+            'is_enabled' => true,
+            'allows_whole' => true,
+            'allows_halves' => false,
+            'minimum_duration_minutes' => 60,
+            'maximum_duration_minutes' => 180,
+            'time_step_minutes' => 30,
+            'minimum_lead_time_minutes' => 0,
+            'maximum_advance_days' => 90,
+            'currency' => 'RUB',
+            'whole_price_per_step_minor' => 50000,
+            'half_price_per_step_minor' => null,
+            'hold_duration_minutes' => 30,
+            'requires_payment' => true,
+            'payment_window_minutes' => 30,
+            'quote_validity_minutes' => 15,
+            'cancellation_before_minutes' => 1440,
+        ]);
+        // Anchor the test clock to the immutable observation; never bypass
+        // the real 15-minute freshness guard for the imported schedule.
+        $this->travelTo($snapshot->observed_at->addMinute());
+        $this->assertFalse($snapshot->isStale());
+        $start = CarbonImmutable::parse('2026-11-14 23:00:00', 'Europe/Moscow');
+        $end = $start->addHour();
+
+        // Creation of ordinary events still uses the existing no-cross-day rule.
+        try {
+            app(VenueEventAvailability::class)->assertAvailable($venue, $start, $end, court: $court);
+            $this->fail('An event unexpectedly accepted a next-day end.');
+        } catch (\InvalidArgumentException $exception) {
+            $this->assertStringContainsString('мероприятие должно завершаться', $exception->getMessage());
+        }
+
+        $quotes = app(QuoteVenueBookingHandler::class);
+        $quote = $quotes->handle($venue, $start, 60, VenueBookingScopeEnum::WHOLE, $actor, $court);
+        $this->assertSame('2026-11-15 00:00', $quote->endsAt->setTimezone('Europe/Moscow')->format('Y-m-d H:i'));
+        $this->getJson(route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $quote->publicId,
+        ]))->assertOk()->assertJsonPath('available', true);
+        $booking = app(RequestVenueBookingHandler::class)->handle(
+            app(CurrentActorResolver::class)->resolve($actor, null), $quote->publicId,
+        );
+        $this->assertSame('2026-11-15 00:00', $booking->ends_at->setTimezone('Europe/Moscow')->format('Y-m-d H:i'));
+        $this->assertDatabaseCount('venue_bookings', 1);
+
+        // Thirty minutes cannot bypass the imported one-hour minimum.
+        try {
+            $quotes->handle($venue, $start->addMinutes(30), 30, VenueBookingScopeEnum::WHOLE, $actor, $court);
+            $this->fail('Minimum duration must remain enforced.');
+        } catch (VenueBookingPolicyException $exception) {
+            $this->assertStringContainsString('Длительность не соответствует', $exception->getMessage());
+        }
+        // 23:30 + 60 really runs into the next day and remains forbidden.
+        try {
+            $quotes->handle($venue, $start->addMinutes(30), 60, VenueBookingScopeEnum::WHOLE, $actor, $court);
+            $this->fail('An overnight rental unexpectedly passed the midnight guard.');
+        } catch (VenueBookingPolicyException $exception) {
+            $this->assertStringContainsString('не позднее 00:00', $exception->getMessage());
+        }
     }
 
     public function test_full_day_snapshot_rejects_missing_interval_and_never_applies_it(): void

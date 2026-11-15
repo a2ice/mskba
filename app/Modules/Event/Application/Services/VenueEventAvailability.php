@@ -111,6 +111,7 @@ final class VenueEventAvailability
         bool $checkBookings = true,
         VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
         ?VenueCourt $court = null,
+        bool $allowEndAtMidnight = false,
     ): void {
         $court = $this->resolveCourt($venue, $court);
 
@@ -154,8 +155,15 @@ final class VenueEventAvailability
         $localStart = $startsAt->setTimezone($timezone);
         $localEnd = $endsAt->setTimezone($timezone);
 
-        if (! $localStart->isSameDay($localEnd)) {
-            throw new InvalidArgumentException('В первой версии мероприятие должно завершаться в тот же день.');
+        // 00:00 on the following day is the exclusive end of the starting
+        // date, not an overnight stay. Rental requests may finish exactly
+        // here; event creation retains its existing same-day restriction.
+        $endsAtMidnight = $localEnd->equalTo($localStart->startOfDay()->addDay());
+        if (! $localStart->isSameDay($localEnd)
+            && ! ($allowEndAtMidnight && $endsAtMidnight)) {
+            throw new InvalidArgumentException($allowEndAtMidnight
+                ? 'Аренда должна завершаться не позднее 00:00 следующих суток.'
+                : 'В первой версии мероприятие должно завершаться в тот же день.');
         }
 
         $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
@@ -166,10 +174,26 @@ final class VenueEventAvailability
 
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
-            $endTime = $localEnd->format('H:i:s');
+            $endTime = $allowEndAtMidnight && $endsAtMidnight
+                ? '24:00:00' : $localEnd->format('H:i:s');
+            // The native FindSport importer stores 23:59 in HTML time
+            // fields as a sentinel for an actual midnight close. Only when
+            // checking a rental that ends exactly at midnight, interpret
+            // that sentinel as the exclusive 24:00 boundary. An ordinary
+            // manually configured 23:59 closing time is not extended.
+            $importedMidnight = $allowEndAtMidnight && $endsAtMidnight
+                && $court !== null
+                && $this->importedAvailability->activeFor($court) !== null;
             $insideWorkingInterval = $applicableIntervals->contains(
-                fn ($interval): bool => $startTime >= $this->normalizeTime((string) $interval->starts_at)
-                    && $endTime <= $this->normalizeTime((string) $interval->ends_at)
+                function ($interval) use ($startTime, $endTime, $importedMidnight): bool {
+                    $endBoundary = $this->normalizeTime((string) $interval->ends_at);
+                    if ($importedMidnight && $endBoundary === '23:59:00') {
+                        $endBoundary = '24:00:00';
+                    }
+
+                    return $startTime >= $this->normalizeTime((string) $interval->starts_at)
+                        && $endTime <= $endBoundary;
+                }
             );
 
             if (! $insideWorkingInterval) {

@@ -88,6 +88,7 @@ final class VenueRentalQuoteController extends Controller
                 'court' => $court,
                 'courts' => $venue->courts()->get(),
                 'quote' => null,
+                'submitted' => $validated,
                 'error' => ['code' => 422, 'message' => $exception->getMessage()],
             ]);
         }
@@ -160,6 +161,7 @@ final class VenueRentalQuoteController extends Controller
                 CarbonImmutable::instance($quote->ends_at)->setTimezone((string) config('app.timezone', 'UTC')),
                 scope: $quote->scope,
                 court: $court,
+                allowEndAtMidnight: true,
             );
         } catch (InvalidArgumentException) {
             return response()->json(['available' => false, 'reason' => 'unavailable']);
