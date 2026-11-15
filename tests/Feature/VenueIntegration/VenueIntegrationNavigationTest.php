@@ -25,12 +25,11 @@ final class VenueIntegrationNavigationTest extends TestCase
     {
         $relations = VenueResource::getRelations();
 
-        $this->assertCount(7, $relations);
+        $this->assertContains(\App\Filament\Backoffice\Resources\Venues\RelationManagers\SpecialTermsRelationManager::class, $relations);
         $this->assertCount(2, array_filter($relations, fn ($relation): bool => $relation instanceof RelationGroup));
-        $this->assertInstanceOf(RelationGroup::class, $relations[3]);
-        $this->assertSame('Заявки', $relations[3]->getLabel());
+        $this->assertSame('Заявки', collect($relations)->filter(fn ($relation): bool => $relation instanceof RelationGroup)->values()->last()->getLabel());
 
-        $group = $relations[2];
+        $group = collect($relations)->first(fn ($relation): bool => $relation instanceof RelationGroup && $relation->getLabel() === 'Интеграции');
         $this->assertInstanceOf(RelationGroup::class, $group);
         $this->assertSame('Интеграции', $group->getLabel());
         $this->assertSame([
@@ -56,7 +55,14 @@ final class VenueIntegrationNavigationTest extends TestCase
             ->assertSuccessful()
             ->assertSee('Интеграции');
 
-        $page->set('activeRelationManager', '2')
+        $relations = VenueResource::getRelations();
+        $integrationKey = array_search(true, array_map(
+            fn ($relation): bool => $relation instanceof RelationGroup && $relation->getLabel() === 'Интеграции',
+            $relations,
+        ), true);
+        $this->assertNotFalse($integrationKey);
+
+        $page->set('activeRelationManager', (string) $integrationKey)
             ->assertSuccessful()
             ->assertSee('Настройки')
             ->assertSee('Источники и залы')

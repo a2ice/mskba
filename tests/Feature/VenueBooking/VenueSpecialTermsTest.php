@@ -32,7 +32,6 @@ use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -46,12 +45,12 @@ final class VenueSpecialTermsTest extends TestCase
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
         config()->set('features.venue_rental.special_terms', true);
-        Carbon::setTestNow(CarbonImmutable::parse('2026-08-25 10:00:00', 'Europe/Moscow'));
+        $this->travelTo(CarbonImmutable::parse('2026-08-25 10:00:00', 'Europe/Moscow'));
     }
 
     protected function tearDown(): void
     {
-        Carbon::setTestNow();
+        $this->travelBack();
         parent::tearDown();
     }
 
@@ -398,7 +397,7 @@ final class VenueSpecialTermsTest extends TestCase
         $client = $this->activeUser();
         $this->offer($admin, $venue, $client, ['valid_until' => now()->addMinute()->toIso8601String()]);
         $quote = $this->quoteFor($venue, $court, $client);
-        Carbon::setTestNow(now()->addMinutes(2));
+        $this->travelTo(now()->addMinutes(2));
         try {
             $this->requestQuote($client, $quote->publicId);
             $this->fail('Expired offer must reject redemption.');
