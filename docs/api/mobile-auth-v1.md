@@ -12,7 +12,7 @@ The website login continues to use the normal secure browser session.
 
 ### 1. Register a new account
 
-\`\`\`http
+```http
 POST /api/v1/auth/register
 Accept: application/json
 Content-Type: application/json
@@ -27,31 +27,31 @@ Content-Type: application/json
   "last_name": "Игроков",
   "device_name": "ios-iphone"
 }
-\`\`\`
+```
 
-- **Required:** \`username\` (3–32 Latin letters/digits/period/underscore/hyphen,
-  beginning and ending with a letter/digit; normalized to lowercase), \`password\`
+- **Required:** `username` (3–32 Latin letters/digits/period/underscore/hyphen,
+  beginning and ending with a letter/digit; normalized to lowercase), `password`
   (6–255 chars, uppercase, lowercase, digit, special character, no outer spaces),
-  \`password_confirmation\` (exact match), and \`privacy_consent: true\`.
+  `password_confirmation` (exact match), and `privacy_consent: true`.
   Display the current [personal-data processing consent](https://dev.mskba.ru/personal-data-consent)
   before sending the explicit acceptance; the server stores its version, IP,
   user-agent and timestamp as auditable evidence.
-- **Optional:** \`device_name\` (1–80 chars, defaults to \`mobile\`),
-  \`role\` (\`player\`, \`coach\`, \`referee\`, \`statistician\`,
-  \`media\`, \`venue_related\`, \`organizer\`), \`first_name\`, \`last_name\`,
-  \`middle_name\`, \`gender\` (\`male\`/\`female\`), \`birth_date\` (\`YYYY-MM-DD\`,
-  in the past). The legacy input alias \`participantRole\` is also accepted.
-- **Optional player-only data:** \`height_cm\` (150–220), \`weight_kg\` (40–140),
-  \`body_type\` (\`slim\`, \`normal\`, \`large\`, \`athletic\`, \`muscular\`,
-  \`stocky\`), \`position\` (\`point_guard\`, \`shooting_guard\`,
-  \`small_forward\`, \`power_forward\`, \`center\`),
-  \`experience_started_year\` (current year minus 50 to minus 10).
-  These are persisted only when \`role=player\`.
+- **Optional:** `device_name` (1–80 chars, defaults to `mobile`),
+  `role` (`player`, `coach`, `referee`, `statistician`,
+  `media`, `venue_related`, `organizer`), `first_name`, `last_name`,
+  `middle_name`, `gender` (`male`/`female`), `birth_date` (`YYYY-MM-DD`,
+  in the past). The legacy input alias `participantRole` is also accepted.
+- **Optional player-only data:** `height_cm` (150–220), `weight_kg` (40–140),
+  `body_type` (`slim`, `normal`, `large`, `athletic`, `muscular`,
+  `stocky`), `position` (`point_guard`, `shooting_guard`,
+  `small_forward`, `power_forward`, `center`),
+  `experience_started_year` (current year minus 50 to minus 10).
+  These are persisted only when `role=player`.
 - **HTTP 201:** identical token/profile envelope to login HTTP 200 below,
-  with \`requires_password_change: false\`, new \`user.status: "unconfirmed"\`,
+  with `requires_password_change: false`, new `user.status: "unconfirmed"`,
   and a 30-day scoped Sanctum Bearer token. Store the token securely and use
-  it immediately for \`GET /api/v1/me\`; do not call login again.
-- **HTTP 422:** \`{"message":"...","errors":{"username":["..."]}}\` for
+  it immediately for `GET /api/v1/me`; do not call login again.
+- **HTTP 422:** `{"message":"...","errors":{"username":["..."]}}` for
   duplicate or invalid username, weak/mismatched passwords, missing consent,
   invalid role or invalid player attributes. **HTTP 429:** rate limit
   5/minute. No authenticated browser session or CSRF cookie is established.
