@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
+use App\Modules\VenueBooking\Application\Services\VenueBookingBackofficeAccess;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPartyRole;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
@@ -41,7 +42,8 @@ final readonly class AttachVenueBookingConversationFileHandler
         try {
             return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $clientId, $contents, $name, $mime, $size, $body, $path, &$stored): VenueBookingMessage {
                 $this->authorization->assertCanWriteConversation($actor, $booking, $venue);
-                if ($actor->user_id !== null && $actor->user_id !== $booking->requester_user_id && ! $actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+                if ($actor->user_id !== null && $actor->user_id !== $booking->requester_user_id && ! $actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+                && ! app(VenueBookingBackofficeAccess::class)->canManage($actor->user)) {
                     $booking->parties()->firstOrCreate(['user_id' => $actor->user_id, 'role' => VenueBookingPartyRole::VENUE_REPRESENTATIVE]);
                 }
                 $conversation = VenueBookingConversation::query()->firstOrCreate(['venue_booking_id' => $booking->id], ['public_id' => (string) Str::uuid()]);
