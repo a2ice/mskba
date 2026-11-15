@@ -118,6 +118,7 @@ final readonly class RequestVenueBookingHandler
                             CarbonImmutable::instance($quote->ends_at)->setTimezone((string) config('app.timezone', 'UTC')),
                             scope: $quote->scope,
                             court: $court,
+                            allowEndAtMidnight: true,
                         );
                     } catch (InvalidArgumentException $exception) {
                         throw new VenueBookingTransitionException(

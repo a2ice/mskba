@@ -355,6 +355,27 @@ final class VenueBookingLifecycleTest extends TestCase
             ->assertDontSee('app-rental-pricing__discount');
     }
 
+    public function test_rental_quote_form_preserves_selected_time_after_overnight_rejection(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant] = $this->userAndActor();
+        $this->quote($venue, $owner, $applicant, false);
+
+        config(['themes.active' => 'mskba_app']);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($applicant)->post(route('venues.rental.quote', $venue->id), [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
+            'starts_at' => '2026-08-26T23:30',
+            'duration_minutes' => 60,
+            'scope' => 'whole',
+        ])->assertOk()
+            ->assertSee('Аренда должна завершаться не позднее 00:00 следующих суток.')
+            ->assertSee('value="2026-08-26T23:30"', false)
+            ->assertSee('value="60"', false);
+    }
+
     public function test_live_quote_status_invalidates_an_occupied_slot_and_request_is_rejected(): void
     {
         [$owner, $ownerActor, $venue] = $this->ownedVenue();

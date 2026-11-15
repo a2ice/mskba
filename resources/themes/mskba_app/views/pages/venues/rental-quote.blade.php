@@ -5,10 +5,15 @@
     $quoteStartsLocal = $quote?->startsAt->setTimezone($timezone);
     $quoteEndsLocal = $quote?->endsAt->setTimezone($timezone);
     $quoteDuration = $quote ? (int) $quote->startsAt->diffInMinutes($quote->endsAt) : null;
-    $formStarts = old('starts_at', $quoteStartsLocal?->format('Y-m-d\TH:i') ?? '');
-    $formDuration = old('duration_minutes', $quoteDuration ?? ($court->minimum_duration_minutes ?? $policy?->minimum_duration_minutes ?? 60));
-    $formScope = old('scope', $quote?->scope->value ?? 'whole');
-    $formCourt = (int) old('venue_court_id', $court->id);
+    $submittedStarts = isset($submitted['starts_at'])
+        ? \Carbon\CarbonImmutable::parse((string) $submitted['starts_at'], $timezone)
+            ->setTimezone($timezone)->format('Y-m-d\TH:i')
+        : '';
+    $formStarts = old('starts_at', $quoteStartsLocal?->format('Y-m-d\TH:i') ?? $submittedStarts);
+    $formDuration = old('duration_minutes', $quoteDuration ?? ($submitted['duration_minutes']
+        ?? ($court->minimum_duration_minutes ?? $policy?->minimum_duration_minutes ?? 60)));
+    $formScope = old('scope', $quote?->scope->value ?? ($submitted['scope'] ?? 'whole'));
+    $formCourt = (int) old('venue_court_id', $submitted['venue_court_id'] ?? $court->id);
     $savedQuote = $quote ? \App\Modules\VenueBooking\Domain\Models\VenueBookingQuote::query()
         ->where('public_id', $quote->publicId)->first() : null;
     $discountMinor = max(0, (int) data_get($savedQuote?->snapshot, 'pricing.base_amount_minor', 0)
@@ -99,7 +104,8 @@
             <h2 id="rental-quote-result-heading">Стоимость аренды</h2>
             <p class="app-rental-pricing__summary">
                 <strong>{{ $court->publicName() }}</strong> ·
-                {{ $quoteStartsLocal->format('d.m.Y H:i') }}–{{ $quoteEndsLocal->format('H:i') }}
+                {{ $quoteStartsLocal->format('d.m.Y H:i') }}–{{ $quoteStartsLocal->isSameDay($quoteEndsLocal)
+                    ? $quoteEndsLocal->format('H:i') : $quoteEndsLocal->format('d.m.Y H:i') }}
             </p>
             @if($discountMinor > 0)
                 <p class="app-rental-pricing__discount">
