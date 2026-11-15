@@ -370,7 +370,7 @@ final class VenueBookingLifecycleTest extends TestCase
             'starts_at' => '2026-08-26T23:30',
             'duration_minutes' => 60,
             'scope' => 'whole',
-        ])->assertOk()
+        ])->assertUnprocessable()
             ->assertSee('Аренда должна завершаться не позднее 00:00 следующих суток.')
             ->assertSee('value="2026-08-26T23:30"', false)
             ->assertSee('value="60"', false);

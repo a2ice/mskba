@@ -317,6 +317,10 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             'quote_validity_minutes' => 15,
             'cancellation_before_minutes' => 1440,
         ]);
+        // Anchor the test clock to the immutable observation; never bypass
+        // the real 15-minute freshness guard for the imported schedule.
+        $this->travelTo($snapshot->observed_at->addMinute());
+        $this->assertFalse($snapshot->isStale());
         $start = CarbonImmutable::parse('2026-11-14 23:00:00', 'Europe/Moscow');
         $end = $start->addHour();
 
