@@ -1996,6 +1996,23 @@
               "null"
             ],
             "description": "Used only for role=player; server allows between current year minus 50 and current year minus 10."
+          },
+          "participantRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "player",
+              "coach",
+              "referee",
+              "statistician",
+              "media",
+              "venue_related",
+              "organizer",
+              null
+            ],
+            "description": "Optional backwards-compatible alias for role; role wins if both nonempty."
           }
         },
         "required": [
