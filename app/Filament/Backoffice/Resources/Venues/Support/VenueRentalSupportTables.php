@@ -2,7 +2,6 @@
 
 namespace App\Filament\Backoffice\Resources\Venues\Support;
 
-use App\Modules\Coordination\Domain\Models\VenueRentalCoordination;
 use App\Modules\Event\Application\Services\EventVenueBookingProposals;
 use App\Modules\Event\Application\Services\EventVenueInterestChat;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum as Status;
@@ -14,6 +13,8 @@ use App\Modules\VenueBooking\Application\UseCases\ConfirmVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\SendVenueBookingMessageHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
+use App\Support\Features\FeatureDisabledException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
@@ -52,9 +53,9 @@ final class VenueRentalSupportTables
         try {
             $command();
             Notification::make()->success()->title($success)->send();
-        } catch (VenueBookingTransitionException|InvalidArgumentException $error) {
+        } catch (VenueBookingTransitionException|VenueBookingPolicyException|FeatureDisabledException|InvalidArgumentException $error) {
             Notification::make()->danger()->title('Действие не выполнено')
-                ->body($error->getMessage())->persistent()->send();
+                ->body($error instanceof FeatureDisabledException ? 'Аренда временно отключена.' : $error->getMessage())->persistent()->send();
         }
     }
 
