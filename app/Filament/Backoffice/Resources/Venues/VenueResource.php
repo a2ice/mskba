@@ -555,10 +555,6 @@ final class VenueResource extends Resource
         return [
             CourtsRelationManager::class,
             PricingRulesRelationManager::class,
-            RelationGroup::make('Заявки', [
-                VenueRentalBookingsRelationManager::class,
-                VenueRentalInterestsRelationManager::class,
-            ])->icon('heroicon-o-chat-bubble-left-right'),
             // A single first-level tab. EditVenue renders its three members
             // as native Filament second-level tabs (like Users → Roles & Rights).
             RelationGroup::make('Интеграции', [
@@ -566,6 +562,10 @@ final class VenueResource extends Resource
                 VenueIntegrationSourcesRelationManager::class,
                 VenueIntegrationAuditRelationManager::class,
             ])->icon('heroicon-o-arrow-path'),
+            RelationGroup::make('Заявки', [
+                VenueRentalBookingsRelationManager::class,
+                VenueRentalInterestsRelationManager::class,
+            ])->icon('heroicon-o-chat-bubble-left-right'),
             CommissionAgentsRelationManager::class,
             CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
