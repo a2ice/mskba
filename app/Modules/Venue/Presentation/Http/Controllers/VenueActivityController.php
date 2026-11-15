@@ -29,7 +29,7 @@ final class VenueActivityController extends Controller
         $venueModel = Venue::query()
             ->whereRouteIdentifier($venue)
             ->firstOrFail();
-        abort_unless($venueModel->isPubliclyVisible()
+        abort_unless($venueModel->is_published
             || app(VenueAccessResolver::class)->canManage(
                 $request->user(), $venueModel,
                 app(CurrentActorResolver::class)->resolveForRequest($request),

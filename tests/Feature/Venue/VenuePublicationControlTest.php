@@ -93,6 +93,9 @@ final class VenuePublicationControlTest extends TestCase
         $super = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN, 'status' => UserStatusEnum::CONFIRMED]);
         $super->createProfile([]);
         $this->actingAs($super);
+        // Direct service invocation must carry the same request actor context
+        // as a real authenticated Filament POST.
+        request()->setUserResolver(fn () => $super);
 
         $data = array_replace([
             'name' => $venue->name, 'type' => $venue->type->value,
@@ -108,6 +111,7 @@ final class VenuePublicationControlTest extends TestCase
         $this->assertSame(VenueStatusEnum::CONFIRMED, $saved->status);
         $publicationAudit = AuditLog::query()
             ->where('auditable_type', Venue::class)->where('auditable_id', $venue->id)
+            ->where('event', 'updated')
             ->get()->first(fn (AuditLog $audit): bool => array_key_exists('is_published', $audit->new_values ?? []));
         $this->assertNotNull($publicationAudit);
         $this->assertNotNull($publicationAudit->actor_id);

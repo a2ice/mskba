@@ -28,7 +28,8 @@ final class UpdateVenueStatusHandler
             $changes = ['status' => $status];
             // The comment belongs to the administrative history, not only
             // to a blocked status. Preserve it if the caller omitted a note.
-            if ($statusInfo !== null) {
+            if ($statusInfo !== null && (trim($statusInfo) !== ''
+                || $status === VenueStatusEnum::BLOCKED)) {
                 $changes['status_info'] = trim($statusInfo) ?: null;
             }
             $venue->forceFill($changes)->save();
