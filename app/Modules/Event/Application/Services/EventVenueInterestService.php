@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventVenueInterest;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Application\Services\VenueBookingBackofficeAccess;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
@@ -31,6 +32,7 @@ final readonly class EventVenueInterestService
         private VenueMembershipAccess $memberships,
         private VenueCommercialAccess $commercial,
         private CreateUserNotificationHandler $notifications,
+        private VenueBookingBackofficeAccess $backoffice,
     ) {}
 
     public function canView(User $user, Venue $venue, ?VenueCourt $court = null): bool
@@ -50,7 +52,8 @@ final readonly class EventVenueInterestService
         }
 
         return $this->commercial->allows($user, $venue, VenuePermissionEnum::VIEW_EVENT_INTERESTS)
-            || $this->isSelectedAgent($user, $venue);
+            || $this->isSelectedAgent($user, $venue)
+            || $this->backoffice->canView($user);
     }
 
     public function canParticipateInThread(User $user, EventVenueInterest $interest): bool
@@ -64,11 +67,32 @@ final readonly class EventVenueInterestService
         return $this->canView($user, $interest->venue, $interest->court);
     }
 
+    public function canWriteThread(User $user, EventVenueInterest $interest): bool
+    {
+        $user = $user->canonical();
+        $organizer = $interest->event?->organizerActor?->user?->canonical();
+        if ($organizer?->id === $user->id && ! $user->isBlocked() && ! $user->trashed()) {
+            return true;
+        }
+        if ($this->backoffice->canManage($user)) {
+            return true;
+        }
+        // Ordinary venue representatives retain their existing chat rights.
+        return $this->memberships->hasActiveVenueManagementRole($user, $interest->venue)
+            || ($interest->court !== null && $this->commercial->allowsForCourt(
+                $user, $interest->court, VenuePermissionEnum::VIEW_EVENT_INTERESTS))
+            || $this->commercial->allows($user, $interest->venue, VenuePermissionEnum::VIEW_EVENT_INTERESTS)
+            || $this->isSelectedAgent($user, $interest->venue);
+    }
+
     public function canPropose(User $user, EventVenueInterest $interest): bool
     {
         $user = $user->canonical();
         if (! $this->canView($user, $interest->venue, $interest->court)) {
             return false;
+        }
+        if ($this->backoffice->canManage($user)) {
+            return true;
         }
         if ($interest->court !== null
             && $this->commercial->allowsForCourt($user, $interest->court, VenuePermissionEnum::PROPOSE_EVENT_BOOKING)) {
