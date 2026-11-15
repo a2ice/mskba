@@ -112,6 +112,29 @@ final class OpenApiContractTest extends TestCase
         $this->assertContains('has_free_access', $spec['components']['schemas']['Venue']['required']);
     }
 
+    public function test_mobile_registration_has_explicit_public_security_and_contract(): void
+    {
+        $spec = json_decode(file_get_contents(base_path('docs/api/openapi-v1.json')), true, 512, JSON_THROW_ON_ERROR);
+        $operation = $spec['paths']['/api/v1/auth/register']['post'];
+
+        $this->assertSame([], $operation['security']);
+        $this->assertSame('registerMobileAccount', $operation['operationId']);
+        $this->assertSame('#/components/schemas/MobileRegisterRequest',
+            $operation['requestBody']['content']['application/json']['schema']['$ref']);
+        $this->assertSame('#/components/schemas/LoginResponse',
+            $operation['responses']['201']['content']['application/json']['schema']['$ref']);
+        $this->assertArrayHasKey('422', $operation['responses']);
+        $this->assertArrayHasKey('429', $operation['responses']);
+
+        $request = $spec['components']['schemas']['MobileRegisterRequest'];
+        foreach (['username', 'password', 'password_confirmation', 'privacy_consent'] as $key) {
+            $this->assertContains($key, $request['required']);
+        }
+        $this->assertTrue($request['properties']['password']['writeOnly']);
+        $this->assertTrue($request['properties']['password_confirmation']['writeOnly']);
+        $this->assertTrue($request['properties']['privacy_consent']['const']);
+    }
+
     public function test_login_request_and_me_bearer_access_are_described(): void
     {
         $spec = json_decode(file_get_contents(base_path('docs/api/openapi-v1.json')), true, 512, JSON_THROW_ON_ERROR);

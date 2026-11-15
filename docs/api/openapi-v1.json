@@ -103,6 +103,69 @@
         }
       }
     },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Register a new MSKBA mobile account",
+        "operationId": "registerMobileAccount",
+        "description": "Stateless first-party registration using the same rules as website sign-up. Explicit consent to personal-data processing is mandatory (https://dev.mskba.ru/personal-data-consent); the consent is audited. Username is trimmed and lowercased. Creates an unconfirmed account (contact confirmation and privacy-distribution setup happen separately) and immediately returns a 30-day scoped Sanctum Bearer token. Rate limit 5/minute; no cookie or CSRF token required. Do not use this operation to register a second account for an existing user.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileRegisterRequest"
+              },
+              "example": {
+                "username": "new_player_123",
+                "password": "StrongPass1!",
+                "password_confirmation": "StrongPass1!",
+                "privacy_consent": true,
+                "role": "player",
+                "first_name": "Алексей",
+                "last_name": "Игроков",
+                "device_name": "ios-iphone"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; token issued, same structure as login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -1781,6 +1844,182 @@
           "field",
           "expected_published_sha256",
           "reason"
+        ]
+      },
+      "MobileRegisterRequest": {
+        "type": "object",
+        "description": "Mandatory consent and username/password follow the web registration rules. Non-player roles cannot save player-only fields; unrelated fields are ignored. No email or phone number required at registration.",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$",
+            "description": "Unique username; case-insensitive, trimmed and stored lowercase.",
+            "example": "new_player_123"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "writeOnly": true,
+            "minLength": 6,
+            "maxLength": 255,
+            "description": "Requires uppercase and lowercase Latin letters, a digit and a special character; no leading/trailing whitespace."
+          },
+          "password_confirmation": {
+            "type": "string",
+            "format": "password",
+            "writeOnly": true,
+            "description": "Must match password."
+          },
+          "privacy_consent": {
+            "type": "boolean",
+            "const": true,
+            "description": "Explicit agreement to the current personal-data processing consent; required true."
+          },
+          "device_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Optional device label for the token; default mobile. Do not use hardware serial numbers.",
+            "example": "ios-iphone"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "player",
+              "coach",
+              "referee",
+              "statistician",
+              "media",
+              "venue_related",
+              "organizer",
+              null
+            ],
+            "description": "Optional participation role (alias participantRole also accepted)."
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "middle_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "male",
+              "female",
+              null
+            ]
+          },
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "YYYY-MM-DD, before current date."
+          },
+          "height_cm": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 150,
+            "maximum": 220,
+            "description": "Used only for role=player."
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 40,
+            "maximum": 140,
+            "description": "Used only for role=player."
+          },
+          "body_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "slim",
+              "normal",
+              "large",
+              "athletic",
+              "muscular",
+              "stocky",
+              null
+            ],
+            "description": "Used only for role=player."
+          },
+          "position": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "point_guard",
+              "shooting_guard",
+              "small_forward",
+              "power_forward",
+              "center",
+              null
+            ],
+            "description": "Used only for role=player."
+          },
+          "experience_started_year": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Used only for role=player; server allows between current year minus 50 and current year minus 10."
+          },
+          "participantRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "player",
+              "coach",
+              "referee",
+              "statistician",
+              "media",
+              "venue_related",
+              "organizer",
+              null
+            ],
+            "description": "Optional backwards-compatible alias for role; role wins if both nonempty."
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "password_confirmation",
+          "privacy_consent"
         ]
       }
     }

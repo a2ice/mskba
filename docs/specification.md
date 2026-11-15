@@ -102,7 +102,7 @@
 
 ## Аутентификация
 
-Технический flow установки пароля и разрешения единого идентификатора входа описан в [Identity Authentication](specification/identity-authentication.md).
+Технический flow установки пароля и разрешения единого идентификатора входа описан в [Identity Authentication](specification/identity-authentication.md). Мобильный stateless REST API регистрации, входа и Sanctum-токенов описан в [Mobile Auth API v1](api/mobile-auth-v1.md) и в [OpenAPI](api/openapi-v1.json).
 
 ## Согласия на обработку персональных данных
 

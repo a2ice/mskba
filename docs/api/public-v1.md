@@ -184,7 +184,7 @@ and credentialed cookies simultaneously.
 
 The public venue endpoints remain available without a token. Authenticated
 REST operations use Laravel Sanctum: `POST /api/v1/auth/login`,
-`GET /api/v1/me`, `POST /api/v1/auth/logout`. See
+`POST /api/v1/auth/register`, `GET /api/v1/me`, `POST /api/v1/auth/logout`. See
 [mobile-auth-v1.md](mobile-auth-v1.md). The versioned OpenAPI contract
 [openapi-v1.json](openapi-v1.json) is exposed through the permission-gated
 Swagger UI in Filament on DEV.
