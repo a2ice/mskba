@@ -149,7 +149,11 @@ final class VenueResource extends Resource
                             })
                             ->default(VenueStatusEnum::UNCONFIRMED->value)
                             ->helperText('Superadmin может выбрать «Подтверждён»: заявка и её одобрение будут записаны автоматически.'),
-                        Textarea::make('status_info')->label('Комментарий к статусу (причина блокировки)')
+                        Toggle::make('is_published')->label('Показывать на сайте')
+                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Управляет публикацией независимо от модерации и состояния работы. Выключение скрывает площадку из публичного каталога, карты, поиска и API. Данные и статус подтверждения сохраняются. Просмотр и управление доступны уполномоченным пользователям.')
+                            ->default(true)->columnSpanFull(),
+                        Textarea::make('status_info')->label('Комментарий к статусу и публикации')
+                            ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Внутреннее пояснение для ответственных: почему площадка скрыта, ожидает уточнения данных, закрыта или заблокирована, а также основание смены статуса. История правок, автор и время фиксируются в журнале аудита. Комментарий не предназначен для публичного показа.')
                             ->maxLength(5000)->columnSpanFull(),
                         Select::make('operational_status')->label('Состояние работы')->required()
                             ->options(self::options(VenueOperationalStatusEnum::class))
@@ -459,11 +463,17 @@ final class VenueResource extends Resource
                 fn ($state): string => $state instanceof VenueTypeEnum ? $state->label() : (VenueTypeEnum::tryFrom((string) $state)?->label() ?? '—')),
             TextColumn::make('status')->label('Статус')->badge()->formatStateUsing(
                 fn ($state): string => $state instanceof VenueStatusEnum ? $state->label() : (VenueStatusEnum::tryFrom((string) $state)?->label() ?? '—')),
+            TextColumn::make('is_published')->label('Публикация')->badge()
+                ->formatStateUsing(fn ($state): string => $state ? 'Опубликована' : 'Скрыта')
+                ->color(fn ($state): string => $state ? 'success' : 'gray'),
             TextColumn::make('raw_address')->label('Адрес')->limit(65)->searchable(),
             TextColumn::make('updated_at')->label('Изменена')->dateTime('d.m.Y H:i')->sortable(),
         ])->filters([
             SelectFilter::make('type')->label('Тип')->options(self::options(VenueTypeEnum::class)),
             SelectFilter::make('status')->label('Статус')->options(self::options(VenueStatusEnum::class)),
+            SelectFilter::make('is_published')->label('Публикация')->options([
+                '1' => 'Опубликованные', '0' => 'Скрытые',
+            ]),
             TrashedFilter::make()->label('Удалённые'),
             Filter::make('pending_moderation')->label('На модерации')
                 ->query(fn (Builder $query): Builder => $query->whereHas('moderationRequests',

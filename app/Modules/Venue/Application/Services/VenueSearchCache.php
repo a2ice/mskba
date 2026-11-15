@@ -61,6 +61,7 @@ final class VenueSearchCache
                         'type_slug' => $venue->type->value,
                         'status' => $venue->status->label(),
                         'status_slug' => $venue->status->value,
+                        'is_published' => $venue->is_published,
                         'operational_status' => $venue->operational_status->value,
                         'requires_payment' => $venue->requires_payment,
                         'requires_booking_approval' => $venue->requires_booking_approval,

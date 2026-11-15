@@ -50,6 +50,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'status',
     'operational_status',
     'status_info',
+    'is_published',
     'short_description',
     'full_description',
     'raw_address',
@@ -66,6 +67,7 @@ class Venue extends Model
         'requires_payment' => null,
         'requires_booking_approval' => false,
         'content_version' => 0,
+        'is_published' => true,
         'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
     ];
 
@@ -92,6 +94,11 @@ class Venue extends Model
                 'allows_halves' => false,
             ]);
         });
+    }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this->is_published && $this->status->isPubliclyVisible();
     }
 
     public function allowsDetailsEditing(): bool
@@ -389,6 +396,7 @@ class Venue extends Model
             'requires_booking' => 'boolean',
             'status' => VenueStatusEnum::class,
             'operational_status' => VenueOperationalStatusEnum::class,
+            'is_published' => 'boolean',
             'canonical_venue_id' => 'integer',
             'content_version' => 'integer',
         ];

@@ -32,7 +32,9 @@ final class ListVenuesHandler
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
         $venues = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
-            $query->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
+            // Hidden venues are managed through Filament/account rather than
+            // published in cards, map pins or search, even for their owners.
+            $query->where('is_published', true)->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
                 $visible->where('status', VenueStatusEnum::CONFIRMED->value)
                     ->orWhereIn('id', $contractViewableVenueIds)
                     ->orWhereIn('id', $bootstrapOwnedVenueIds)

@@ -30,6 +30,7 @@ final class HomeTodayEventMapController extends Controller
             ->where('ends_at', '>', $now)
             ->whereHas('venue', fn ($venues) => $venues
                 ->where('status', VenueStatusEnum::CONFIRMED->value)
+                ->where('is_published', true)
                 ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
                 ->whereHas('location.address', fn ($addresses) => $addresses
                     ->whereNotNull('latitude')->whereNotNull('longitude')))

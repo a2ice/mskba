@@ -28,6 +28,7 @@ final readonly class FindNearbyVenuesHandler
             return collect($this->cache->documents())
                 ->filter(static fn (array $venue): bool => (int) $venue['id'] !== $venueId
                     && ($venue['status_slug'] ?? null) === VenueStatusEnum::CONFIRMED->value
+                    && ($venue['is_published'] ?? false)
                     && is_numeric($venue['latitude'] ?? null)
                     && is_numeric($venue['longitude'] ?? null))
                 ->map(function (array $venue) use ($latitude, $longitude): array {

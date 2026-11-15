@@ -52,6 +52,7 @@ final class SeoSitemapController extends Controller
             'venues',
             Venue::query()
                 ->where('status', VenueStatusEnum::CONFIRMED->value)
+                ->where('is_published', true)
                 ->whereNull('canonical_venue_id')
                 ->select(['id', 'alias', 'updated_at'])
                 ->orderBy('id'),

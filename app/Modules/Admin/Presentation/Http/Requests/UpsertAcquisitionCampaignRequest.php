@@ -36,7 +36,7 @@ final class UpsertAcquisitionCampaignRequest extends FormRequest
         ];
 
         $landingTargetRule = match ($landingType) {
-            AcquisitionLandingTypeEnum::VENUE => Rule::exists('venues', 'id')->where('status', 'confirmed'),
+            AcquisitionLandingTypeEnum::VENUE => Rule::exists('venues', 'id')->where('status', 'confirmed')->where('is_published', true),
             AcquisitionLandingTypeEnum::EVENT => Rule::exists('events', 'id')
                 ->where('visibility', 'public')
                 ->whereIn('status', ['published', 'completed']),

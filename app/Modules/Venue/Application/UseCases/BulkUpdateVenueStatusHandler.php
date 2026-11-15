@@ -37,7 +37,10 @@ final class BulkUpdateVenueStatusHandler
             $venues->each(function (Venue $venue) use ($status, $message): void {
                 $venue->forceFill([
                     'status' => $status,
-                    'status_info' => $status === VenueStatusEnum::BLOCKED ? trim((string) $message) : null,
+                    // Restoring a venue does not erase the administrative
+                    // explanation; the audited history remains readable.
+                    ...($status === VenueStatusEnum::BLOCKED
+                        ? ['status_info' => trim((string) $message)] : []),
                 ])->save();
             });
 

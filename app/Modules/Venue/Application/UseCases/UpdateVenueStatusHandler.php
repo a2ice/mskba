@@ -25,16 +25,13 @@ final class UpdateVenueStatusHandler
                 throw new InvalidArgumentException('Подтвержденную площадку нельзя вернуть в статус "не подтверждена".');
             }
 
-            if ($venue->status === $status) {
-                return $venue;
+            $changes = ['status' => $status];
+            // The comment belongs to the administrative history, not only
+            // to a blocked status. Preserve it if the caller omitted a note.
+            if ($statusInfo !== null) {
+                $changes['status_info'] = trim($statusInfo) ?: null;
             }
-
-            $message = trim((string) $statusInfo);
-
-            $venue->forceFill([
-                'status' => $status,
-                'status_info' => $status === VenueStatusEnum::BLOCKED ? $message : null,
-            ])->save();
+            $venue->forceFill($changes)->save();
 
             return $venue->refresh();
         });

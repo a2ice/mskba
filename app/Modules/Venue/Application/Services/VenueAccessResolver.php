@@ -18,6 +18,11 @@ final class VenueAccessResolver
 
     public function canView(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
+        if (! $venue->is_published) {
+            // A hidden venue can still be previewed by an administrator or
+            // authorized manager, never by an ordinary public viewer.
+            return $this->canManage($user, $venue, $actor);
+        }
         if ($venue->status->isPubliclyVisible() || $this->isSuperadmin($user)) {
             return true;
         }

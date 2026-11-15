@@ -11,6 +11,8 @@ use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Application\Services\VenueInformationTrustResolver;
+use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Carbon\CarbonImmutable;
@@ -27,6 +29,11 @@ final class VenueActivityController extends Controller
         $venueModel = Venue::query()
             ->whereRouteIdentifier($venue)
             ->firstOrFail();
+        abort_unless($venueModel->isPubliclyVisible()
+            || app(VenueAccessResolver::class)->canManage(
+                $request->user(), $venueModel,
+                app(CurrentActorResolver::class)->resolveForRequest($request),
+            ), 404);
         $court = $this->resolveCourt($venueModel, trim((string) $request->query('court', '')));
         $timezone = (string) config('app.timezone', 'Europe/Moscow');
         $now = CarbonImmutable::now($timezone);

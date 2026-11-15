@@ -110,7 +110,8 @@ final readonly class SearchVenuesHandler
         $venues = collect($this->cache->documents());
 
         if ($parameters['confirmed_only']) {
-            $venues = $venues->where('status_slug', VenueStatusEnum::CONFIRMED->value);
+            $venues = $venues->where('status_slug', VenueStatusEnum::CONFIRMED->value)
+                ->where('is_published', true);
         } else {
             $visibleIds = collect($this->listVenues->handle($user, $actor))->pluck('id')->all();
             $venues = $venues->whereIn('id', $visibleIds);

@@ -5,6 +5,8 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Venue\Application\Services\PublicVenueDaySchedule;
+use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -18,7 +20,11 @@ final class VenueScheduleDayController extends Controller
     public function __invoke(Request $request, Venue $venue, PublicVenueDaySchedule $days): JsonResponse
     {
         $isAdmin = $request->user()?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN) ?? false;
-        abort_unless($venue->status === VenueStatusEnum::CONFIRMED || $isAdmin, 404);
+        $mayPreview = app(VenueAccessResolver::class)->canManage(
+            $request->user(), $venue, app(CurrentActorResolver::class)->resolveForRequest($request),
+        );
+        abort_unless($venue->isPubliclyVisible() || $mayPreview
+            || ($venue->is_published && $isAdmin), 404);
 
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],

@@ -113,7 +113,7 @@ final class AcquisitionLandingResolver
     private function target(AcquisitionLandingTypeEnum $type, int $id): ?Model
     {
         return match ($type) {
-            AcquisitionLandingTypeEnum::VENUE => Venue::query()->where('status', 'confirmed')->find($id),
+            AcquisitionLandingTypeEnum::VENUE => Venue::query()->where('status', 'confirmed')->where('is_published', true)->find($id),
             AcquisitionLandingTypeEnum::EVENT => Event::query()
                 ->where('visibility', 'public')
                 ->whereIn('status', ['published', 'completed'])
