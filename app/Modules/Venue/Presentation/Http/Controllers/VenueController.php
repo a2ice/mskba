@@ -432,7 +432,7 @@ class VenueController extends Controller
                 'general', 'address', 'facilities', 'courts', 'schedule',
                 'photos', 'contracts', 'rental',
             ], true), 404);
-            $tabPermission = $tab === 'rental' ? ($editor['rental'] || $editor['offers'] || $editor['memberships'])
+            $tabPermission = $tab === 'rental' ? ($editor['rental'] || $editor['offers'] || $editor['memberships'] || $editor['special_terms'])
                 : $editor[$tab];
             abort_unless($tabPermission, 403);
         } else {

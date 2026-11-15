@@ -12,6 +12,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
+use App\Modules\VenueBooking\Application\Services\VenuePersonalPricing;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPartyRole;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingRequested;
@@ -35,6 +36,7 @@ final readonly class RequestVenueBookingHandler
         private VenueBookingOutbox $outbox,
         private VenueUserRestrictionService $restrictions,
         private VenueEventAvailability $availability,
+        private VenuePersonalPricing $personalPricing,
     ) {}
 
     public function handle(
@@ -149,6 +151,7 @@ final readonly class RequestVenueBookingHandler
                         'optimistic_version' => 1,
                         'requested_at' => $now,
                     ]);
+                    $this->personalPricing->redeem($quote, $booking, $user);
                     $booking->parties()->create([
                         'user_id' => $user->id,
                         'role' => VenueBookingPartyRole::APPLICANT,

@@ -323,7 +323,7 @@ final class VenueCommissionPricingTest extends TestCase
         $manager->setPortal($user, 'percent', '10');
     }
 
-    public function test_json_quote_and_html_quote_expose_same_final_amount_and_fee_breakdown(): void
+    public function test_json_quote_and_html_quote_expose_same_final_amount_without_fee_breakdown(): void
     {
         [$admin, $venue, $court] = $this->scenario();
         $manager = app(VenueCommissionManager::class);
@@ -335,10 +335,7 @@ final class VenueCommissionPricingTest extends TestCase
             'duration_minutes' => 120, 'scope' => 'whole',
         ])->assertOk()
             ->assertJsonPath('amount_minor', 230000)
-            ->assertJsonPath('pricing_breakdown.provider_amount_minor', 200000)
-            ->assertJsonPath('pricing_breakdown.portal_fee_minor', 20000)
-            ->assertJsonPath('pricing_breakdown.agent_fee_minor', 10000)
-            ->assertJsonPath('pricing_breakdown.total_minor', 230000);
+            ->assertJsonMissingPath('pricing_breakdown');
 
         \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
         $this->actingAs($admin)->post(route('venues.rental.quote', $venue->id), [

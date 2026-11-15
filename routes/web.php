@@ -139,6 +139,7 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentCo
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueSpecialTermsController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\DesignThemePreviewController;
 use App\Presentation\Theming\DesignThemeScriptController;
@@ -1280,6 +1281,15 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::delete('/venues/{venue}/calendar-prices/{price}', [VenueBookingPolicyController::class, 'destroyCalendarPrice'])
                 ->whereNumber('venue')->whereNumber('price')
                 ->name('account.venues.calendar-prices.destroy');
+            Route::get('/venues/{venue}/special-terms', [VenueSpecialTermsController::class, 'index'])
+                ->whereNumber('venue')->name('account.venues.special-terms.index');
+            Route::post('/venues/{venue}/special-terms', [VenueSpecialTermsController::class, 'store'])
+                ->whereNumber('venue')->name('account.venues.special-terms.store');
+            Route::post('/venues/{venue}/special-terms/preview', [VenueSpecialTermsController::class, 'preview'])
+                ->whereNumber('venue')->name('account.venues.special-terms.preview');
+            Route::post('/venues/{venue}/special-terms/{offer}/{action}', [VenueSpecialTermsController::class, 'transition'])
+                ->whereNumber('venue')->whereNumber('offer')->whereIn('action', ['publish', 'pause', 'revoke'])
+                ->name('account.venues.special-terms.transition');
             Route::get('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'index'])
                 ->whereNumber('venue')->name('account.venues.pricing-rules.index');
             Route::post('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'save'])

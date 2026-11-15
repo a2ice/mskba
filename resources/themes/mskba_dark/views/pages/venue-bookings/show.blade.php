@@ -22,6 +22,10 @@
         <div class="card mb-4 venue-booking-summary"><div class="card-body">
             <div class="venue-booking-summary__header">
                 <div>
+                    @if($special = data_get($booking->quote_snapshot, 'pricing.personal_discount'))
+                        <p><del>{{ number_format($special['original_amount_minor'] / 100, 2, ',', ' ') }}</del>
+                        <strong title="{{ $special['reason'] }}" tabindex="0">{{ number_format($special['final_amount_minor'] / 100, 2, ',', ' ') }} {{ data_get($booking->quote_snapshot, 'pricing.currency') }}</strong></p>
+                    @endif
                     <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
                     @if($statusReason)<p class="venue-booking-status-reason"><strong>Причина:</strong> {{ $statusReason }}</p>@endif
                     <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>

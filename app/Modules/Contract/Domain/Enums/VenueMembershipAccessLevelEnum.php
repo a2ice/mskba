@@ -79,6 +79,7 @@ enum VenueMembershipAccessLevelEnum: string
             self::OWNER => VenuePermissionEnum::cases(),
             self::MANAGER => [
                 ...$this->defaultPermissions(),
+                VenuePermissionEnum::MANAGE_SPECIAL_TERMS,
                 VenuePermissionEnum::MANAGE_MEMBERSHIPS,
                 VenuePermissionEnum::MANAGE_GROUP_OFFERS,
                 VenuePermissionEnum::VIEW_PAYMENTS,
@@ -90,9 +91,10 @@ enum VenueMembershipAccessLevelEnum: string
                 ...$this->defaultPermissions(),
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
             ],
-            self::ADMIN => $this->defaultPermissions(),
+            self::ADMIN => [...$this->defaultPermissions(), VenuePermissionEnum::MANAGE_SPECIAL_TERMS],
             self::STAFF, self::AGENT => array_values(array_unique([
                 ...$this->defaultPermissions(),
+                VenuePermissionEnum::MANAGE_SPECIAL_TERMS,
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
                 VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
             ])),

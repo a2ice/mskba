@@ -45,6 +45,9 @@
                     </div>
                 </div>
                 <div class="text-muted small mt-2" data-venue-rental-scope-empty hidden>Для выбранного зала аренда сейчас отключена.</div>
+                @if(config('features.venue_rental.special_terms'))
+                    <label class="form-label">Промокод <input class="form-control" name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
+                @endif
                 <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>Рассчитать</button>
             </form>
         </div></div>
@@ -53,12 +56,9 @@
             <div class="card"><div class="card-body">
                 <h2 class="h4">Итог предложения</h2>
                 <p><strong>{{ $court->name }}</strong></p>
-                @if($quote->commissionBreakdown)
-                    <p>Аренда после скидок: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['provider_amount_minor'], $quote->currency) }} {{ $quote->currency }}</p>
-                    <p>Комиссия MSKBA: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['portal_fee_minor'], $quote->currency) }} {{ $quote->currency }}</p>
-                    @if($quote->commissionBreakdown['agent_fee_minor'] > 0)
-                        <p>Комиссия агента: {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->format($quote->commissionBreakdown['agent_fee_minor'], $quote->currency) }} {{ $quote->currency }}</p>
-                    @endif
+                @if($quote->personalDiscount)
+                    <p><del>{{ number_format($quote->personalDiscount['original_amount_minor'] / 100, 2, ',', ' ') }} {{ $quote->currency }}</del>
+                    <span title="{{ $quote->personalDiscount['reason'] }}" tabindex="0">{{ $quote->personalDiscount['title'] }}</span></p>
                 @endif
                 <p><strong>Итого: {{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($quote->currency) }}</strong></p>
                 <p>{{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('d.m.Y H:i') }}–{{ $quote->endsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('H:i') }}</p>

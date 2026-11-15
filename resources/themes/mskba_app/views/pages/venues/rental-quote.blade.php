@@ -14,10 +14,6 @@
         ?? ($court->minimum_duration_minutes ?? $policy?->minimum_duration_minutes ?? 60)));
     $formScope = old('scope', $quote?->scope->value ?? ($submitted['scope'] ?? 'whole'));
     $formCourt = (int) old('venue_court_id', $submitted['venue_court_id'] ?? $court->id);
-    $savedQuote = $quote ? \App\Modules\VenueBooking\Domain\Models\VenueBookingQuote::query()
-        ->where('public_id', $quote->publicId)->first() : null;
-    $discountMinor = max(0, (int) data_get($savedQuote?->snapshot, 'pricing.base_amount_minor', 0)
-        - (int) data_get($savedQuote?->snapshot, 'pricing.subtotal_after_rules_minor', 0));
 @endphp
 @extends('theme::layouts.app', ['title' => $title])
 
@@ -88,6 +84,9 @@
                     </span>
                 </label>
             </div>
+            @if(config('features.venue_rental.special_terms'))
+                <label class="field-group">Промокод <input name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
+            @endif
             <div class="app-rental-pricing__actions">
                 <button class="button primary" type="submit" data-rental-submit>Рассчитать</button>
                 <button class="button secondary" type="button" data-rental-open-calendar>Выбрать время</button>
@@ -107,15 +106,13 @@
                 {{ $quoteStartsLocal->format('d.m.Y H:i') }}–{{ $quoteStartsLocal->isSameDay($quoteEndsLocal)
                     ? $quoteEndsLocal->format('H:i') : $quoteEndsLocal->format('d.m.Y H:i') }}
             </p>
-            @if($discountMinor > 0)
-                <p class="app-rental-pricing__discount">
-                    <span>Скидка</span>
-                    <strong>−{{ $formatter->format($discountMinor, $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</strong>
-                </p>
-            @endif
             <p class="app-rental-pricing__availability-message" data-rental-live-message aria-live="polite" hidden></p>
             <div class="app-rental-pricing__confirm">
                 <p class="app-rental-pricing__total">
+                    @if($quote->personalDiscount)
+                        <del>{{ $formatter->format($quote->personalDiscount['original_amount_minor'], $quote->currency) }} {{ $formatter->currencyLabel($quote->currency) }}</del>
+                        <span title="{{ $quote->personalDiscount['reason'] }}" tabindex="0">{{ $quote->personalDiscount['title'] }}</span>
+                    @endif
                     Итого: {{ $formatter->format($quote->amountMinor, $quote->currency) }}
                     {{ $formatter->currencyLabel($quote->currency) }}
                 </p>

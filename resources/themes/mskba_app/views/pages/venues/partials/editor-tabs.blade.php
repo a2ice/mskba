@@ -10,7 +10,7 @@
         'contracts' => 'Контракты',
         'rental' => 'Аренда',
     ];
-    $canRentalTab = ($editor['rental'] ?? false) || ($editor['offers'] ?? false) || ($editor['memberships'] ?? false);
+    $canRentalTab = ($editor['special_terms'] ?? false) || ($editor['rental'] ?? false) || ($editor['offers'] ?? false) || ($editor['memberships'] ?? false);
 @endphp
 <nav class="app-venue-editor__tabs" aria-label="Разделы редактирования площадки">
     @foreach($tabs as $key => $label)

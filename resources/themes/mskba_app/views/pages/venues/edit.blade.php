@@ -296,11 +296,12 @@
             <div class="app-venue-editor__feature-list">
                 @foreach([
                     ['rental', 'Условия аренды', route('account.venues.booking-policy.edit', $venue->id)],
+                    ['special_terms', 'Специальные условия', route('account.venues.special-terms.index', $venue->id)],
                     ['rental', 'Тарифные условия', route('account.venues.pricing-rules.index', $venue->id)],
                     ['offers', 'Промокоды', route('account.venues.group-offers.index', $venue->id)],
                     ['memberships', 'Коммерческие роли', route('account.venues.commercial-memberships.index', $venue->id)],
                 ] as [$permission, $label, $url])
-                    @if($editor[$permission])
+                    @if($editor[$permission] ?? false)
                         <a class="app-venue-editor__feature" href="{{ $url }}"><span>{{ $label }}</span><span aria-hidden="true">→</span></a>
                     @else
                         <span class="app-venue-editor__feature is-disabled" aria-disabled="true">{{ $label }} <small>Нет доступа</small></span>

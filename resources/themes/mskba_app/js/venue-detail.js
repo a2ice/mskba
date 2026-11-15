@@ -353,6 +353,16 @@ if (dayBookingDialog) {
                 || selection.join(',') !== selectedKey) return;
             summary.textContent = [displayClock(startsAt), '–', displayClock(response.slots[selection.at(-1)].ends_at), '·',
                 duration, 'мин ·', currency.format(data.price_preview.total_minor / 100), '₽'].join(' ');
+            if (data.price_preview.personal_discount) {
+                const original = document.createElement('del');
+                original.textContent = currency.format(data.price_preview.personal_discount.original_amount_minor / 100) + ' ₽';
+                const reason = document.createElement('span');
+                reason.textContent = ' Специальные условия';
+                reason.title = data.price_preview.personal_discount.reason;
+                reason.tabIndex = 0;
+                summary.prepend(original, document.createTextNode(' '));
+                summary.append(reason);
+            }
             bookingButton.disabled = false;
         } catch (error) {
             if (sequence !== previewSequence || !dayBookingDialog.open) return;

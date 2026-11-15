@@ -29,6 +29,9 @@
 @endsection
 
 @section('account-content')
+    @if(app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage(auth()->user(), $venue))
+        <p><a href="{{ route('account.venues.special-terms.index', $venue->id) }}">Специальные условия</a></p>
+    @endif
 <div class="app-venue-editor" data-venue-editor>
     @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
     <div class="app-rental-pricing">

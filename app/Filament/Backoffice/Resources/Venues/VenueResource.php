@@ -10,6 +10,7 @@ use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationMana
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalBookingsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalInterestsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\SpecialTermsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationSourcesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationAuditRelationManager;
@@ -565,6 +566,7 @@ final class VenueResource extends Resource
         return [
             CourtsRelationManager::class,
             PricingRulesRelationManager::class,
+            SpecialTermsRelationManager::class,
             // A single first-level tab. EditVenue renders its three members
             // as native Filament second-level tabs (like Users → Roles & Rights).
             RelationGroup::make('Интеграции', [
