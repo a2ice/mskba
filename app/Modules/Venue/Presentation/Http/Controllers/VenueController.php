@@ -238,7 +238,13 @@ class VenueController extends Controller
             'radius_km' => ['required', 'integer', 'between:1,10'],
         ]);
         $venue = Venue::query()->whereRouteIdentifier($alias)
-            ->where('status', VenueStatusEnum::CONFIRMED)->with('location.address')->firstOrFail();
+            ->where('status', VenueStatusEnum::CONFIRMED)
+            ->with('location.address')->firstOrFail();
+        $canPreview = app(\App\Modules\Venue\Application\Services\VenueAccessResolver::class)->canManage(
+            $request->user(), $venue,
+            app(CurrentActorResolver::class)->resolveForRequest($request),
+        );
+        abort_unless($venue->is_published || $canPreview, 404);
         $address = $venue->location?->address;
         abort_unless($address?->latitude !== null && $address?->longitude !== null, 404);
 
@@ -370,10 +376,13 @@ class VenueController extends Controller
         try {
             $venue = $useCase->handle($alias, $request->user(), $actors->resolveForRequest($request));
         } catch (\Exception $e) {
+            $status = in_array((int) $e->getCode(), [403, 404], true)
+                ? (int) $e->getCode() : 404;
+
             return ThemeResolver::page('venues.show', ['error' => [
                 'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-            ]]);
+                'code' => $status,
+            ]])->setStatusCode($status);
         }
 
         $nearbyVenues = $venue->address?->latitude !== null && $venue->address?->longitude !== null

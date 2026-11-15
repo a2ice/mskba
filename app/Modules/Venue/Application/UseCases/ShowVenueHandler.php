@@ -99,7 +99,12 @@ final class ShowVenueHandler
             ->orderBy('id')
             ->get();
 
+        $venues = $venues->reject(fn (Venue $venue): bool => ! $venue->is_published
+            && ! $this->access->canManage($user, $venue, $actor));
+
         if ($venues->isEmpty()) {
+            // Do not disclose the existence of unpublished locations to the
+            // public. Authorized managers retain a direct preview URL.
             throw new VenueNotFoundException;
         }
 

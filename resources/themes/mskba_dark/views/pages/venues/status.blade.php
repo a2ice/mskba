@@ -47,9 +47,6 @@
             @if($venue->canonicalVenue)
                 <br>Эта запись связана с главной площадкой: #{{ $venue->canonicalVenue->id }} {{ $venue->canonicalVenue->name }}
             @endif
-            @if($venue->status_info)
-                <br>{{ $venue->status_info }}
-            @endif
         </div>
 
         @if($latestModerationRequest)

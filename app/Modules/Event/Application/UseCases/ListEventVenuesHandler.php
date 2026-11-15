@@ -15,6 +15,7 @@ final class ListEventVenuesHandler
         return Venue::query()
             ->with('location.address')
             ->where('status', VenueStatusEnum::CONFIRMED->value)
+            ->where('is_published', true)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
             ->when($freeOnly, fn ($query) => $query->where(fn ($query) => $query
                 ->where(fn ($parent) => $parent->where('requires_payment', false)

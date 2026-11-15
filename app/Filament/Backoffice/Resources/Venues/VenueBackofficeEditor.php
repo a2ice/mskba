@@ -181,6 +181,15 @@ final class VenueBackofficeEditor
                 'raw_address' => $rawAddress !== '' ? $rawAddress : null,
                 'location_id' => $location?->id,
             ];
+            // Avoid changing publication or the internal note when a caller
+            // submits only the fields it knows about.
+            if (array_key_exists('is_published', $data)) {
+                $attributes['is_published'] = (bool) $data['is_published'];
+            }
+            $statusChanges = $venue !== null && $venue->status !== $status && ! $autoApprove;
+            if (array_key_exists('status_info', $data) && ! $statusChanges) {
+                $attributes['status_info'] = trim((string) $data['status_info']) ?: null;
+            }
 
             if ($venue === null) {
                 $attributes['status'] = VenueStatusEnum::UNCONFIRMED->value;
@@ -214,7 +223,8 @@ final class VenueBackofficeEditor
             $this->saveSchedule($venue, $data);
             if ($venue->status !== $status && ! $autoApprove) {
                 $venue = $this->statusTransitions->handle(
-                    $venue, $status, isset($data['status_info']) ? (string) $data['status_info'] : null,
+                    $venue, $status, array_key_exists('status_info', $data)
+                        ? (string) $data['status_info'] : null,
                 );
             }
             $venue->increment('content_version');

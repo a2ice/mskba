@@ -24,6 +24,7 @@ final class VenueRentalQuoteController extends Controller
 {
     public function show(Request $request, Venue $venue): Response
     {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $policy = VenueBookingPolicy::query()
             ->where('venue_id', $venue->id)
             ->where('active_marker', true)
@@ -46,6 +47,7 @@ final class VenueRentalQuoteController extends Controller
         QuoteVenueBookingHandler $quotes,
         FindSportOnDemandRefresh $refresh,
     ): JsonResponse|Response {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $validated = $request->validate([
             'venue_court_id' => [
                 'nullable',
@@ -138,6 +140,7 @@ final class VenueRentalQuoteController extends Controller
         VenueEventAvailability $availability,
         FindSportOnDemandRefresh $refresh,
     ): JsonResponse {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $input = $request->validate(['quote_id' => ['required', 'uuid']]);
         $quote = VenueBookingQuote::query()
             ->where('venue_id', $venue->id)->where('public_id', $input['quote_id'])

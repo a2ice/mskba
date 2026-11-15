@@ -131,7 +131,6 @@ final class ReviewModerationRequestHandler
             if ($status === ModerationRequestStatusEnum::APPROVED && $venue !== null) {
                 $venue->forceFill([
                     'status' => VenueStatusEnum::CONFIRMED,
-                    'status_info' => null,
                 ])->save();
             }
 

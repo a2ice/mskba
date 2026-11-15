@@ -25,6 +25,7 @@ final class VenueBookingProjectionController extends Controller
 {
     public function availability(Request $request, Venue $venue, GetVenueAvailability $query): JsonResponse
     {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $validated = $request->validate([
             'from' => ['required', 'date'],
             'to' => ['required', 'date'],

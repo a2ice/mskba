@@ -69,6 +69,7 @@ final class ListPublicVenuesHandler
     {
         return Venue::query()
             ->where('status', VenueStatusEnum::CONFIRMED->value)
+            ->where('is_published', true)
             ->with([
                 'location.address',
                 'courts',
