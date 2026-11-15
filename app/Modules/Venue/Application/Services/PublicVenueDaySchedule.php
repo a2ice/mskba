@@ -86,10 +86,22 @@ final readonly class PublicVenueDaySchedule
             && $step % (int) $policy->time_step_minutes === 0;
 
         $intervals = $this->hours->intervals($venue, $court, $day);
-        $openings = ($intervals ?? collect())->map(static fn (object $row): array => [
-            'from' => substr((string) $row->starts_at, 0, 5),
-            'to' => substr((string) $row->ends_at, 0, 5),
-        ])->values()->all();
+        $openings = ($intervals ?? collect())->map(static function (object $row) use ($snapshot): array {
+            $endsAt = substr((string) $row->ends_at, 0, 5);
+            // FindSport's native importer stores 23:59 as the HTML-time-safe
+            // sentinel for an actual midnight close (24:00). Its last source
+            // cell is 23:30–next-day 00:00, not 23:30–23:59.
+            // Apply this only while an imported snapshot is active: ordinary
+            // manually configured 23:59 closing times remain unchanged.
+            if ($snapshot !== null && $endsAt === '23:59') {
+                $endsAt = '24:00';
+            }
+
+            return [
+                'from' => substr((string) $row->starts_at, 0, 5),
+                'to' => $endsAt,
+            ];
+        })->values()->all();
 
         $sourceSlots = $snapshot === null ? collect() : $snapshot->slots()
             ->whereDate('local_date', $date)->orderBy('starts_at')->get();

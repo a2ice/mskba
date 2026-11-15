@@ -257,7 +257,20 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             ->assertJsonCount(48, 'slots')
             ->assertJsonPath('slots.0.starts_at', '00:00')
             ->assertJsonPath('slots.0.status', 'booked')
-            ->assertJsonPath('slots.47.starts_at', '23:30');
+            ->assertJsonPath('slots.47.starts_at', '23:30')
+            ->assertJsonPath('slots.47.status', 'booked');
+
+        // The following day's final FindSport cell is available up to actual
+        // midnight. Imported native hours use 23:59 as an HTML-time sentinel.
+        // That sentinel must not discard the 23:30–00:00 cell.
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-11-14', 'venue_court_id' => $court->id,
+        ]))->assertOk()
+            ->assertJsonCount(48, 'slots')
+            ->assertJsonPath('slots.46.status', 'available')
+            ->assertJsonPath('slots.47.starts_at', '23:30')
+            ->assertJsonPath('slots.47.ends_at', '24:00')
+            ->assertJsonPath('slots.47.status', 'available');
 
         $again = app(ApplyFindSportSnapshotToNativeSchedule::class)
             ->apply($source, $snapshot, $actor);
@@ -285,7 +298,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
     {
         config()->set('venue_integrations.apply_findsport_native_enabled', true);
         $actor = $this->actor();
-        $venue = Venue::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
         $source = $this->source($actor, $venue);
         $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
             $source, $actor, $this->report($source),
@@ -303,6 +316,14 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertSame('07:00', $court->schedule->weekly_intervals[0]['starts_at']);
         $this->assertSame('23:59', $court->schedule->weekly_intervals[0]['ends_at']);
         $this->assertSame(238, $court->calendarSlotPrices()->count());
+        // A 07:00–midnight FindSport schedule must also expose its last cell.
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'date' => '2026-11-14', 'venue_court_id' => $court->id,
+        ]))->assertOk()
+            ->assertJsonCount(34, 'slots')
+            ->assertJsonPath('slots.33.starts_at', '23:30')
+            ->assertJsonPath('slots.33.ends_at', '24:00')
+            ->assertJsonPath('slots.33.status', 'available');
         $this->assertSame(162500, $court->calendarSlotPrices()
             ->whereDate('date', '2026-11-13')->where('starts_at', '07:00:00')
             ->value('whole_price_per_step_minor'));

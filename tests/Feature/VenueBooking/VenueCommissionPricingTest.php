@@ -223,6 +223,10 @@ final class VenueCommissionPricingTest extends TestCase
         $days = app(PublicVenueDaySchedule::class);
         $schedule = $days->forDate($venue, $court, $date->toDateString());
         $slot = collect($schedule['slots'])->firstWhere('starts_at', '12:00');
+        // A manually configured 23:59 close is not silently extended: only
+        // FindSport's imported 23:59 end-of-day sentinel maps to midnight.
+        $lastSlot = collect($schedule['slots'])->firstWhere('starts_at', '23:30');
+        $this->assertSame('unavailable', $lastSlot['status']);
         $this->assertSame(50000, $slot['base_price_minor']);
         $this->assertSame(55000, $slot['price_minor']);
 
