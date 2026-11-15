@@ -3,6 +3,7 @@
 namespace Tests\Feature\Backoffice;
 
 use App\Filament\Backoffice\Resources\VenueRentalBookings\VenueRentalBookingResource;
+use Filament\Facades\Filament;
 use App\Filament\Backoffice\Resources\VenueRentalInterests\VenueRentalInterestResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
@@ -44,6 +45,7 @@ final class VenueRentalSupportPermissionsTest extends TestCase
             Permission::BACKOFFICE_VENUE_BOOKINGS_VIEW->value,
         ], true);
         $this->actingAs($viewer);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
         $access = app(VenueBookingBackofficeAccess::class);
         $this->assertTrue($access->canView($viewer));
         $this->assertFalse($access->canManage($viewer));
@@ -78,6 +80,7 @@ final class VenueRentalSupportPermissionsTest extends TestCase
             Permission::BACKOFFICE_VENUE_BOOKINGS_MANAGE->value,
         ], true);
         $this->actingAs($manager);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
         $this->assertTrue(app(VenueBookingBackofficeAccess::class)->canManage($manager));
         $venue = Venue::factory()->create();
         $booking = new VenueBooking(['requester_user_id' => $requester->id, 'venue_id' => $venue->id]);
