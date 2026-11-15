@@ -31,12 +31,13 @@ final class RegisterUserHandler
         ?ProfileDTO $profile = null,
         ?PrivacyConsentDTO $privacyConsent = null,
         array $playerData = [],
+        UserRegistrationChannelEnum $registrationChannel = UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
     ): User {
-        $user = DB::transaction(function () use ($username, $password, $participantRole, $profile, $privacyConsent, $playerData): User {
+        $user = DB::transaction(function () use ($username, $password, $participantRole, $profile, $privacyConsent, $playerData, $registrationChannel): User {
             $user = $this->createUserAccount->handle(
                 username: $username,
                 password: $password,
-                registrationChannel: UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
+                registrationChannel: $registrationChannel,
                 systemRole: UserSystemRoleEnum::USER,
                 status: UserStatusEnum::UNCONFIRMED,
                 isTemporaryPassword: false,

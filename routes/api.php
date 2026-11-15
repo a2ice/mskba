@@ -65,6 +65,10 @@ Route::post('/v1/auth/login', [MobileAuthController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('api.v1.auth.login');
 
+Route::post('/v1/auth/register', [MobileAuthController::class, 'register'])
+    ->middleware('throttle:5,1')
+    ->name('api.v1.auth.register');
+
 Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(function (): void {
     Route::get('/v1/me', [MobileAuthController::class, 'me'])
         ->middleware('throttle:60,1')

@@ -9,7 +9,7 @@ are not expanded or changed by this feature.
 1. Sign in to `https://dev.mskba.ru/backoffice` with a confirmed staff account.
 2. Open **Разработка → REST API · Swagger** or
    `/backoffice/rest-api-explorer`.
-3. Expand an endpoint, click **Try it out**, enter parameters, then
+3. Expand an endpoint (including `POST /api/v1/auth/register` for mobile sign-up), click **Try it out**, enter parameters, then
    **Execute** to run a real request against DEV.
 4. For `GET /api/v1/me` and `POST /api/v1/auth/logout`, click
    **Authorize** and paste only your DEV Sanctum Bearer token.
@@ -34,7 +34,7 @@ POST publish and POST CSS/JS rollback. Those operations are not mobile API
 features: they require a separate one-day Page Builder agent Sanctum token
 for a confirmed superadmin with the relevant backoffice permissions.
 
-The spec includes the currently implemented REST v1 routes, including
+The spec includes the currently implemented REST v1 routes, including mobile registration (`POST /api/v1/auth/register`) and
 `GET /api/v1/venues/{venue}` for one confirmed venue by numeric ID.
 The deprecated `/api/get_venues` alias was removed from DEV. It does **not**
 expose nonexistent `/users`, `/teams`, or write endpoints. Adding new
