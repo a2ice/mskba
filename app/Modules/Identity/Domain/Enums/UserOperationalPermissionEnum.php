@@ -33,6 +33,8 @@ enum UserOperationalPermissionEnum: string
     case BACKOFFICE_THEME_VIEW = 'backoffice.theme.view';
     case BACKOFFICE_THEME_MANAGE = 'backoffice.theme.manage';
     case BACKOFFICE_VENUE_MANAGE = 'backoffice.venue.manage';
+    case BACKOFFICE_VENUE_BOOKINGS_VIEW = 'backoffice.venue.bookings.view';
+    case BACKOFFICE_VENUE_BOOKINGS_MANAGE = 'backoffice.venue.bookings.manage';
     case BACKOFFICE_VENUE_INTEGRATIONS_VIEW = 'backoffice.venue.integrations.view';
     case BACKOFFICE_VENUE_INTEGRATIONS_MANAGE = 'backoffice.venue.integrations.manage';
     case BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE = 'backoffice.venue.integrations.execute';
@@ -89,6 +91,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_VIEW,
             self::BACKOFFICE_THEME_MANAGE,
             self::BACKOFFICE_VENUE_MANAGE,
+            self::BACKOFFICE_VENUE_BOOKINGS_VIEW,
+            self::BACKOFFICE_VENUE_BOOKINGS_MANAGE,
             self::BACKOFFICE_VENUE_INTEGRATIONS_VIEW,
             self::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE,
             self::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE,
@@ -169,6 +173,8 @@ enum UserOperationalPermissionEnum: string
             self::BACKOFFICE_THEME_VIEW => 'Просмотр тем оформления',
             self::BACKOFFICE_THEME_MANAGE => 'Создание, публикация и настройка тем оформления',
             self::BACKOFFICE_VENUE_MANAGE => 'Создание, изменение и удаление площадок и справочников в Filament',
+            self::BACKOFFICE_VENUE_BOOKINGS_VIEW => 'Просмотр всех заявок, предзаявок, переписки и истории аренды в Filament',
+            self::BACKOFFICE_VENUE_BOOKINGS_MANAGE => 'Участие поддержки в заявках: сообщения, решения и предложения аренды',
             self::BACKOFFICE_VENUE_INTEGRATIONS_VIEW => 'Просмотр настроек интеграций площадок',
             self::BACKOFFICE_VENUE_INTEGRATIONS_MANAGE => 'Настройка и активация источников интеграций площадок',
             self::BACKOFFICE_VENUE_INTEGRATIONS_EXECUTE => 'Ручной запуск разрешённых интеграций площадок',
