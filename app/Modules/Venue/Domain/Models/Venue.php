@@ -365,6 +365,17 @@ class Venue extends Model
         return $this->hasMany(VenueBooking::class);
     }
 
+    /** New rental-flow requests (the legacy Event booking relation is separate). */
+    public function rentalBookings(): HasMany
+    {
+        return $this->hasMany(\App\Modules\VenueBooking\Domain\Models\VenueBooking::class);
+    }
+
+    public function venueInterests(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Event\Domain\Models\EventVenueInterest::class);
+    }
+
     public function ownershipClaims(): HasMany
     {
         return $this->hasMany(VenueOwnershipClaim::class);
