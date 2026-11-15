@@ -40,7 +40,7 @@ final readonly class AttachVenueBookingConversationFileHandler
 
         try {
             return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $clientId, $contents, $name, $mime, $size, $body, $path, &$stored): VenueBookingMessage {
-                $this->authorization->assertCanView($actor, $booking, $venue);
+                $this->authorization->assertCanWriteConversation($actor, $booking, $venue);
                 if ($actor->user_id !== null && $actor->user_id !== $booking->requester_user_id && ! $actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
                     $booking->parties()->firstOrCreate(['user_id' => $actor->user_id, 'role' => VenueBookingPartyRole::VENUE_REPRESENTATIVE]);
                 }
