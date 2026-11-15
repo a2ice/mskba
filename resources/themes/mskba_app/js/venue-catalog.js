@@ -141,7 +141,10 @@ import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
         } else {
             Promise.resolve(map.setBounds(bounds, {
                 checkZoomRange: true,
-                zoomMargin: [48, 48, 48, 48],
+                // Fractional zoom prevents an extra full zoom level of empty
+                // space around the outermost venue pins.
+                preciseZoom: true,
+                zoomMargin: 28,
             })).then(() => {
                 if (map.getZoom() > 16) map.setZoom(16);
             }).catch(() => {});
@@ -191,7 +194,7 @@ import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
             map.geoObjects.add(clusterer);
             status.hidden = true;
             afterPaint(() => fitPoints(map));
-            window.addEventListener('resize', () => map.container.fitToViewport(), { passive: true });
+            window.addEventListener('resize', () => afterPaint(() => fitPoints(map)), { passive: true });
         })
         .catch(() => {
             status.hidden = false;
