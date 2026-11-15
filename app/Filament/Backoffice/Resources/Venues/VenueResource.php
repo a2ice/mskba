@@ -8,6 +8,8 @@ use App\Filament\Backoffice\Resources\Venues\Pages\ListVenues;
 use App\Filament\Backoffice\Resources\Venues\Support\VenueRentalPolicyEditor;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PricingRulesRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalBookingsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalInterestsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationSourcesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationAuditRelationManager;
@@ -553,6 +555,10 @@ final class VenueResource extends Resource
         return [
             CourtsRelationManager::class,
             PricingRulesRelationManager::class,
+            RelationGroup::make('Заявки', [
+                VenueRentalBookingsRelationManager::class,
+                VenueRentalInterestsRelationManager::class,
+            ])->icon('heroicon-o-chat-bubble-left-right'),
             // A single first-level tab. EditVenue renders its three members
             // as native Filament second-level tabs (like Users → Roles & Rights).
             RelationGroup::make('Интеграции', [
