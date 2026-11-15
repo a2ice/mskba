@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Carbon\CarbonImmutable;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\Services\CredentialAuthenticationService;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
@@ -13,7 +14,6 @@ use App\Modules\Identity\Presentation\Http\Resources\Api\V1\OwnUserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
-use Carbon\CarbonImmutable;
 
 final class MobileAuthController extends Controller
 {
