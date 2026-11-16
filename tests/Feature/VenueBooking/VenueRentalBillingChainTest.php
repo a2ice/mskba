@@ -204,6 +204,9 @@ final class VenueRentalBillingChainTest extends TestCase
             ->handle($booking->id, $adminActor)->status);
 
         // Postpaid invoice remains a real debt after the booking is confirmed.
+        // Repayment must stay possible after both the former hold and planned settlement dates.
+        $this->travel(2)->hours();
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $booking->fresh()->status);
         $invoices->settle($booking->id, $provider->id, $adminActor, 'received', 'Площадка подтвердила перевод');
         $this->assertSame('paid', $provider->fresh()->status);
         $this->assertDatabaseCount('venue_rental_invoice_payments', 2);
@@ -258,6 +261,42 @@ final class VenueRentalBillingChainTest extends TestCase
         $this->assertTrue($invoices->isReady($booking));
         $this->assertSame(VenueBookingStatusEnum::CONFIRMED,
             app(ConfirmVenueBookingHandler::class)->handle($booking->id, $adminActor)->status);
+    }
+
+    public function test_invoice_deadlines_are_distinct_and_late_internal_due_does_not_extend_hold(): void
+    {
+        [, $adminActor, $venue, $client, $clientActor] = $this->scenario();
+        $booking = $this->requested($venue, $client, $clientActor);
+        app(VenueExternalHoldManager::class)->confirm(
+            $booking->id, $adminActor, CarbonImmutable::now()->addMinutes(12),
+            'phone', null, 'Подтверждено на 12 минут',
+        );
+        $invoices = app(VenueRentalInvoiceManager::class);
+        $buyer = $invoices->issueBuyer($booking->id, $adminActor);
+
+        // A buyer's payment deadline is capped by the hold, even if the template/window allows more.
+        $this->assertEquals(
+            $booking->fresh()->effective_protection_until->getTimestamp(),
+            $buyer->due_at->getTimestamp(),
+        );
+
+        $invoices->settle($booking->id, $buyer->id, $adminActor, 'received', 'Поступление проверено');
+        $provider = $booking->invoices()->where('kind', 'portal_venue')->firstOrFail();
+
+        // The internal settlement deadline can outlive the hold, but cannot extend the booking decision.
+        $this->assertGreaterThan(
+            $booking->fresh()->effective_protection_until->getTimestamp(),
+            $provider->due_at->getTimestamp(),
+        );
+        $this->travel(13)->minutes();
+        $this->assertFalse(app(VenueBookingActionState::class)->for($booking->fresh(), $adminActor)['confirm']['allowed']);
+
+        try {
+            app(ConfirmVenueBookingHandler::class)->handle($booking->id, $adminActor);
+            $this->fail('Internal settlement due time must not extend the booking hold.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('HOLD_EXPIRED', $exception->errorCode);
+        }
     }
 
     public function test_invoice_automatic_issuance_requires_eligible_template_and_actual_hold(): void

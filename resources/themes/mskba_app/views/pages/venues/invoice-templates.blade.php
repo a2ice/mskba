@@ -31,7 +31,8 @@
                 <label><input type="checkbox" name="payment_methods[]" value="{{ $method }}" @checked($method === 'bank_transfer')>{{ $label }}</label>
             @endforeach
             <label>Инструкция по оплате<textarea name="payment_instructions" maxlength="4000" rows="3"></textarea></label>
-            <label>Срок оплаты (мин)<input type="number" name="due_minutes" value="30" min="1" max="1440" required></label>
+            <label>Окно оплаты покупателем (мин)<input type="number" name="due_minutes" value="30" min="1" max="1440" required></label>
+            <p>Фактический срок оплаты не выходит за пределы холда. Сроки последующих расчётов агента с MSKBA и MSKBA с площадкой независимы от этого шаблона и не продлевают удержание слота.</p>
             <label>Приоритет<input type="number" name="priority" value="100" min="0" max="1000" required></label>
             <label><input type="checkbox" name="auto_send" value="1">Выставлять автоматически после подтверждения холда</label>
             <input type="hidden" name="enabled" value="1">

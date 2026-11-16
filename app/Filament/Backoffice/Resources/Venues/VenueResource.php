@@ -261,8 +261,8 @@ final class VenueResource extends Resource
                                     ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Единый максимальный срок по условиям площадки. Для внешнего агрегатора внутренний холд MSKBA начинается только после фактического подтверждения и не длится дольше внешнего.')
                                     ->integer()->numeric()->required()->minValue(1)->maxValue(1440)->default(30),
                                 TextInput::make('rental_policy_payment_window_minutes')
-                                    ->label('Окно оплаты, мин')
-                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Сколько минут выделяется на оплату платной аренды после открытия платёжного окна. При истечении окна неоплаченная заявка больше не считается оплаченной.')
+                                    ->label('Окно оплаты покупателем, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Сколько минут даётся покупателю на оплату после выставления счёта, но не дольше подтверждённого холда. Это не срок расчётов агента с MSKBA или MSKBA с площадкой; внутренние платежи не продлевают холд.')
                                     ->integer()->numeric()->minValue(1)->maxValue(1440)->default(30)
                                     ->required(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment'))
                                     ->visible(fn (Get $get): bool => (bool) $get('rental_policy_requires_payment')),

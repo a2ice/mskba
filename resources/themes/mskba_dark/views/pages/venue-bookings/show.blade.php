@@ -59,8 +59,8 @@
                     </div>
                 @endif
             </div>
-            @if($booking->hold_expires_at)<p>Удержание до {{ $booking->hold_expires_at->format('d.m.Y H:i') }}</p>@endif
-            @if($booking->effective_protection_until)<p>Текущий срок защиты слота: {{ $booking->effective_protection_until->format('d.m.Y H:i') }}</p>@endif
+            @if($booking->hold_expires_at)<p>Подтвердить бронь до (холд): {{ $booking->hold_expires_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>@endif
+            @if($booking->effective_protection_until)<p>Крайний срок подтверждения брони: {{ $booking->effective_protection_until->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>@endif
             <p class="text-muted">Серверное время: {{ now()->format('d.m.Y H:i:s') }}</p>
             <p class="text-muted">Версия состояния: {{ $booking->optimistic_version }}</p>
 
@@ -235,7 +235,10 @@
         <section class="card mb-4" aria-labelledby="external-hold-title">
             <h2 id="external-hold-title">Удержание на стороне площадки</h2>
             @if($booking->externalHold)
-                <p>Подтверждено: {{ $booking->externalHold->method }} · до {{ $booking->externalHold->expires_at->setTimezone($timezone)->format('d.m.Y H:i') }}.</p>
+                <p>{{ $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED ? 'Ранее подтверждённый внешний холд' : 'Подтверждённый внешний холд' }}: {{ $booking->externalHold->method }} · до {{ $booking->externalHold->expires_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки).</p>
+                @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                    <p>Это история удержания; аренда уже подтверждена, срок холда больше не является дедлайном бронирования.</p>
+                @endif
                 @if($booking->externalHold->note)<p>{{ $booking->externalHold->note }}</p>@endif
             @elseif($canConfirmExternalHold)
                 <p>MSKBA создаст внутренний холд только после реального подтверждения.</p>
@@ -267,7 +270,12 @@
     @if($usesInvoices)
         <section class="card mb-4" aria-labelledby="invoice-chain-title">
             <h2 id="invoice-chain-title">Счета и расчёты</h2>
-            <p>Оплата и постоплата учитываются отдельно. Постоплата не означает получение денег.</p>
+            <p><strong>Срок удержания слота и сроки финансовых расчётов — разные вещи.</strong> Плановая дата внутреннего счёта не продлевает удержание и не разрешает подтверждение брони после его окончания.</p>
+            @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD && $booking->effective_protection_until)
+                <p><strong>Подтвердить бронирование необходимо до {{ $booking->effective_protection_until->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки).</strong> До этого момента все обязательные счета должны быть оплачены или переведены в разрешённую постоплату. После истечения холда бронь подтвердить нельзя.</p>
+            @elseif($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                <p><strong>Бронирование подтверждено.</strong> Срок удержания больше не ограничивает погашение уже согласованной постоплаты; задолженность сохраняется до фактического расчёта.</p>
+            @endif
             @if($canIssueBuyerInvoice && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD
                 && ! $booking->invoices->contains('kind', 'buyer'))
                 <form class="app-rental-inbox__fields" method="POST" action="{{ route('account.venue-bookings.invoices.issue', $booking) }}">
@@ -302,7 +310,14 @@
                     <p>{{ $invoiceStatuses[$invoice->status] ?? $invoice->status }} ·
                         <strong>{{ $money->format($invoice->amount_minor, $invoice->currency) }} {{ $money->currencyLabel($invoice->currency) }}</strong>
                     </p>
-                    @if($invoice->due_at)<p>Срок: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
+                    @if($invoice->due_at)
+                        <p>{{ $invoice->kind === 'buyer' ? 'Срок оплаты покупателем (в пределах холда)' : 'Плановый срок взаиморасчёта (не продлевает холд)' }}: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>
+                    @endif
+                    @if($invoice->status === 'postpay')
+                        <p><strong>Открытая задолженность.</strong> Постоплата согласована, но средства ещё не получены. После подтверждения аренды погасить этот долг можно отдельно.</p>
+                    @elseif($invoice->kind !== 'buyer' && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD)
+                        <p>Для подтверждения аренды этот счёт нужно оплатить либо согласовать разрешённую постоплату до окончания холда, независимо от планового срока расчёта.</p>
+                    @endif
                     @if($invoice->payment_instructions)<p>{{ $invoice->payment_instructions }}</p>@endif
                     @if($invoice->settlement_note)<p>Основание: {{ $invoice->settlement_note }}</p>@endif
                     @if($invoice->status === 'issued' && (($invoice->kind === 'buyer' && $isRequester)
@@ -326,7 +341,7 @@
                             <label>Решение по счёту
                                 <select name="decision" required>
                                     @if($canSettleInvoice)
-                                        <option value="received">Подтверждаю получение оплаты</option>
+                                        <option value="received">{{ $invoice->kind === 'portal_venue' ? 'Подтверждаю получение средств площадкой' : 'Подтверждаю получение оплаты' }}</option>
                                         @if($invoice->status !== 'postpay')
                                             <option value="postpay">Согласована постоплата</option>
                                         @endif

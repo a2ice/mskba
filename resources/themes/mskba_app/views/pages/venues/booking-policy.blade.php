@@ -67,10 +67,10 @@
                     'time_step_minutes' => ['Шаг аренды, мин', 30, 5, 240],
                     'minimum_lead_time_minutes' => ['Минимум до начала, мин', 120, 0, 525600],
                     'maximum_advance_days' => ['На сколько дней вперёд', 90, 1, 730],
-                    'hold_duration_minutes' => ['Срок удержания слота, мин', 30, 1, 1440],
+                    'hold_duration_minutes' => ['Максимальный срок удержания слота, мин', 30, 1, 1440],
                     'maximum_hold_extension_minutes' => ['Продление удержания, мин', 30, 1, 1440],
-                    'payment_window_minutes' => ['Окно оплаты, мин', 30, 1, 1440],
-                    'quote_validity_minutes' => ['Срок расчёта, мин', 15, 1, 120],
+                    'payment_window_minutes' => ['Окно оплаты покупателем, мин', 30, 1, 1440],
+                    'quote_validity_minutes' => ['Срок действия расчёта цены, мин', 15, 1, 120],
                     'cancellation_before_minutes' => ['Отмена не позднее, мин', null, 0, 525600],
                 ] as $key => [$label, $default, $min, $max])
                     <label class="field-group" for="venue-policy-{{ $key }}">
