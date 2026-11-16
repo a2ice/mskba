@@ -10,54 +10,48 @@ const uuid = '60d4d65b-308c-40aa-8466-158466632107';
 const full = '/media/site/' + uuid;
 const mini = full + '/lqip';
 
-function scene({ known = true, cached = false, dynamic = false, picture = false, legacySource = false } = {}) {
+function scene({ known = true, dynamic = false, picture = false, lazy = false } = {}) {
     const downloads = [];
     let notify = null;
+    let domReady = null;
+    let pageLoad = null;
+    let upgradeTimer = null;
+    let imageLoaded = null;
     const attrs = new Map([
-        ['src', full],
-        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini],
-            ['data-mskba-lqip-added-background', '1']] : []),
+        ['src', known ? mini : full],
+        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
     ]);
-    let onLoad = null;
     const style = {
-        backgroundImage: known ? 'url(' + mini + ')' : '',
-        backgroundSize: known ? 'contain' : '',
-        backgroundPosition: known ? 'center' : '',
-        backgroundRepeat: known ? 'no-repeat' : '',
-        removeProperty(name) {
-            const key = name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-            this[key] = '';
-        },
+        backgroundImage: '', backgroundSize: '', backgroundPosition: '', backgroundRepeat: '',
+        removeProperty(name) { this[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase()] = ''; },
     };
-    const img = {
-        tagName: 'IMG', nodeType: 1, loading: 'eager', isConnected: true,
-        complete: cached, naturalWidth: cached ? 320 : 0, style,
-        getAttribute: name => attrs.get(name) || null,
-        setAttribute(name, value) { attrs.set(name, value); },
-        removeAttribute(name) { attrs.delete(name); },
-        hasAttribute: name => attrs.has(name),
-        closest: selector => selector === 'picture' && picture ? wrapper : null,
-        set src(value) { attrs.set('src', value); },
-        get src() { return attrs.get('src'); },
-        decode: () => Promise.resolve(),
-        addEventListener(type, cb) { if (type === 'load') onLoad = cb; },
-        loaded() {
-            this.complete = true;
-            this.naturalWidth = 320;
-            onLoad?.();
-        },
-    };
-    const sourceAttrs = new Map(legacySource ? [['data-mskba-lqip-full-srcset', full]] : []);
+    const sourceAttrs = new Map(picture && known
+        ? [['data-mskba-lqip-full-srcset', full]] : []);
     const source = {
         tagName: 'SOURCE', nodeType: 1, isConnected: true,
-        media: '(max-width: 640px)', srcset: legacySource ? mini : full,
-        hasAttribute: name => sourceAttrs.has(name),
+        media: '(max-width: 640px)', srcset: known ? mini : full,
         getAttribute: name => sourceAttrs.get(name) || null,
+        removeAttribute: name => sourceAttrs.delete(name),
         closest: () => null,
     };
     const wrapper = {
         querySelectorAll: selector => selector.startsWith('source') ? [source] : [],
         querySelector: selector => selector.startsWith('img') ? img : null,
+    };
+    const img = {
+        tagName: 'IMG', nodeType: 1, loading: lazy ? 'lazy' : 'eager',
+        isConnected: true, complete: true, naturalWidth: 16, style,
+        getAttribute: name => attrs.get(name) || null,
+        setAttribute(name, value) { attrs.set(name, value); },
+        removeAttribute(name) { attrs.delete(name); },
+        hasAttribute: name => attrs.has(name),
+        closest: selector => selector === 'picture' && picture ? wrapper : null,
+        set src(value) { attrs.set('src', value); this.complete = false; },
+        get src() { return attrs.get('src'); },
+        set srcset(value) { attrs.set('srcset', value); },
+        decode: () => Promise.resolve(),
+        addEventListener(type, cb) { if (type === 'load') imageLoaded = cb; },
+        loaded() { this.complete = true; this.naturalWidth = 320; imageLoaded?.(); },
     };
     const bg = {
         nodeType: 1, tagName: 'DIV', id: 'tournaments-background',
@@ -70,17 +64,15 @@ function scene({ known = true, cached = false, dynamic = false, picture = false,
         closest: () => null,
         querySelectorAll(selector) {
             if (selector.startsWith('img')) return [img];
-            if (selector.startsWith('source')) return picture ? [source] : [];
             if (selector.startsWith('[style')) return dynamic ? [bg] : [];
             return [];
         },
     };
-    const css = {
-        textContent: '.court { background-image: url("' + full + '"), url("' + mini + '"); }',
-    };
+    const css = { textContent: '.court { background-image: url("' + mini + '"); }' };
     const manifest = { textContent: JSON.stringify(known ? { [uuid]: mini } : {}) };
     const document = {
-        readyState: 'complete',
+        readyState: 'loading',
+        addEventListener(type, cb) { if (type === 'DOMContentLoaded') domReady = cb; },
         querySelector(selector) {
             if (selector === '.mskba-page-builder') return canvas;
             if (selector === '[data-page-builder-lqip-manifest]') return manifest;
@@ -105,12 +97,18 @@ function scene({ known = true, cached = false, dynamic = false, picture = false,
     const window = {
         location: { href: 'https://dev.mskba.ru/#venues', origin: 'https://dev.mskba.ru' },
         matchMedia: () => ({ matches: true }),
-        addEventListener() {},
+        addEventListener(type, cb) { if (type === 'load') pageLoad = cb; },
+        setTimeout(cb) { upgradeTimer = cb; },
     };
     runInNewContext(script, { document, window, URL, Image: ImageMock,
         MutationObserver: MutationObserverMock, console });
+    domReady();
     return {
         img, bg, css, source, downloads,
+        initialLoad() {
+            pageLoad();
+            upgradeTimer();
+        },
         setLateBackground(value) {
             bg.style.backgroundImage = value;
             notify([{ type: 'attributes', target: bg }]);
@@ -118,67 +116,79 @@ function scene({ known = true, cached = false, dynamic = false, picture = false,
     };
 }
 
-test('server-native image starts with full src and a CSS-only LQIP underneath', async () => {
-    const s = scene();
-    assert.equal(s.img.src, full);
-    assert.match(s.img.style.backgroundImage, /\/lqip/);
-    assert.equal(s.downloads.length, 0, 'do not make a second Image() request for the same image');
-    s.img.loaded();
-    await Promise.resolve();
-    assert.equal(s.img.src, full);
-    assert.equal(s.img.style.backgroundImage, '');
-    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
-});
-
-test('cached full image wins immediately instead of reverting to an LQIP on refresh', async () => {
-    const s = scene({ cached: true });
-    await Promise.resolve();
-    assert.equal(s.img.src, full);
-    assert.equal(s.img.style.backgroundImage, '');
-    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
+test('first paint uses LQIP and does not request originals before page load', () => {
+    const s = scene({ picture: true });
+    assert.equal(s.img.src, mini);
+    assert.equal(s.source.srcset, mini);
+    assert.match(s.css.textContent, /\/lqip/);
+    assert.doesNotMatch(s.css.textContent, new RegExp('url\\("' + full + '"\\)'));
     assert.equal(s.downloads.length, 0);
-});
-
-test('failed full image does not prematurely remove a working preview', async () => {
-    const s = scene();
-    await Promise.resolve();
-    assert.match(s.img.style.backgroundImage, /\/lqip/);
     assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), null);
 });
 
-test('without a known preview the browser loads original without extra requests', () => {
-    const s = scene({ known: false });
-    assert.equal(s.img.src, full);
-    assert.equal(s.img.style.backgroundImage, '');
-    assert.equal(s.downloads.length, 0);
-});
-
-test('authored CSS background is never replaced by JS during page refresh', () => {
-    const s = scene({ cached: true });
-    assert.match(s.css.textContent, /url\("[^"]+"\), url\("[^"]+\/lqip"\)/);
-    assert.equal(s.downloads.length, 0);
-});
-
-test('late API-provided background keeps full URL first and miniature behind', async () => {
-    const s = scene({ dynamic: true });
-    const original = 'linear-gradient(#000,#fff), url("' + full + '")';
-    assert.match(s.bg.style.backgroundImage, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
+test('original downloads after initial load and replaces miniature only after decoding', async () => {
+    const s = scene({ picture: true });
+    s.initialLoad();
     assert.equal(s.downloads.length, 1);
+    assert.equal(s.downloads[0].src, full);
+    assert.equal(s.img.src, mini);
+    assert.equal(s.source.srcset, mini);
+
     s.downloads[0].succeed();
     await Promise.resolve();
     await Promise.resolve();
-    assert.equal(s.bg.style.backgroundImage, original);
-});
-
-test('native picture source stays on original srcset without extra downloads', async () => {
-    const s = scene({ picture: true, cached: true });
-    await Promise.resolve();
     assert.equal(s.img.src, full);
     assert.equal(s.source.srcset, full);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), null);
+    s.img.loaded();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), '1');
+});
+
+test('failed original leaves working LQIP in place', () => {
+    const s = scene();
+    s.initialLoad();
+    s.downloads[0].fail();
+    assert.equal(s.img.src, mini);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), null);
+});
+
+test('without a known preview original loads normally', () => {
+    const s = scene({ known: false });
+    s.initialLoad();
+    assert.equal(s.img.src, full);
     assert.equal(s.downloads.length, 0);
 });
 
-test('legacy mobile source placeholder upgrades to original URL', () => {
-    const s = scene({ picture: true, legacySource: true });
-    assert.equal(s.source.srcset, full);
+test('published CSS background upgrades only after loading layer can finish', () => {
+    const s = scene();
+    assert.equal(s.css.textContent, '.court { background-image: url("' + mini + '"); }');
+    s.initialLoad();
+    assert.match(s.css.textContent, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
+});
+
+test('late API background upgrades after load without a premature network request', async () => {
+    const s = scene({ dynamic: true });
+    assert.equal(s.downloads.length, 0);
+    s.initialLoad();
+    assert.equal(s.downloads.length, 2, 'one img and one dynamic background upgrade');
+    assert.match(s.bg.style.backgroundImage, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
+    s.downloads[1].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.bg.style.backgroundImage, 'linear-gradient(#000,#fff), url("' + full + '")');
+});
+
+test('a dynamic original image with no generated miniature is untouched', () => {
+    const s = scene({ known: false });
+    s.initialLoad();
+    assert.equal(s.img.src, full);
+});
+
+test('initial load callback cannot start originals until its deferred handoff', () => {
+    const s = scene();
+    assert.equal(s.downloads.length, 0);
+    s.initialLoad();
+    assert.equal(s.downloads.length, 1);
 });
