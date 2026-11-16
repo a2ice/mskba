@@ -1,4 +1,8 @@
-@php $title = 'Заявка на аренду · '.$booking->venue->name; @endphp
+@php
+    $title = 'Заявка на аренду · '.$booking->venue->name;
+    $timezone = $booking->venue->schedule()->value('timezone') ?: 'Europe/Moscow';
+    $money = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
+@endphp
 
 @extends('theme::layouts.app', ['title' => $title])
 
