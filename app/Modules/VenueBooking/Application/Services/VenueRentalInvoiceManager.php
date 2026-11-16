@@ -9,6 +9,11 @@ use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueRentalInvoice;
 use App\Modules\VenueBooking\Domain\Models\VenueRentalInvoiceTemplate;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingMessage;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
+use App\Modules\VenueBooking\Infrastructure\Broadcasting\VenueBookingMessageSentBroadcast;
+use Illuminate\Support\Facades\DB;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
@@ -236,8 +241,41 @@ final readonly class VenueRentalInvoiceManager
             'quote_snapshot' => $booking->quote_snapshot,
         ]);
         $this->event($invoice, $actor, 'issue', null, $amount === 0 ? 'paid' : 'issued');
+        if ($kind === 'buyer') {
+            $this->announceBuyerInvoice($booking, $actor, $invoice);
+        }
 
         return $invoice;
+    }
+
+    /** Only the customer-facing invoice is announced in the shared conversation. */
+    private function announceBuyerInvoice(VenueBooking $booking, Actor $actor, VenueRentalInvoice $invoice): void
+    {
+        if (! config('features.venue_rental.conversations', false)) {
+            return;
+        }
+        $conversation = VenueBookingConversation::query()->firstOrCreate(
+            $booking->conversationLookup(),
+            ['public_id' => (string) Str::uuid()],
+        );
+        $minor = (int) $invoice->amount_minor;
+        $amount = number_format($minor / 100, 2, ',', ' ');
+        $message = VenueBookingMessage::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'conversation_id' => $conversation->id,
+            'author_actor_id' => $actor->id,
+            'client_id' => (string) Str::uuid(),
+            'type' => 'text',
+            'body' => "Выставлен счёт {$invoice->number} на {$amount} {$invoice->currency}. "
+                ."Срок до {$invoice->due_at->setTimezone('Europe/Moscow')->format('d.m.Y H:i')} (МСК). "
+                .'Оплата и её статус доступны в карточке заявки.',
+        ]);
+        DB::afterCommit(static function () use ($booking, $conversation, $message): void {
+            event(new VenueBookingMessageSent($booking->id, $conversation->id, $message->id));
+            broadcast(new VenueBookingMessageSentBroadcast(
+                $booking->public_id, $conversation->public_id, $message->public_id,
+            ))->toOthers();
+        });
     }
 
     /** Buyer or agent reports transfer. This is not evidence that funds were received. */
