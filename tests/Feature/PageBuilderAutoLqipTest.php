@@ -191,7 +191,7 @@ final class PageBuilderAutoLqipTest extends TestCase
         }
         $this->assertSame(2, substr_count($result, 'loading="eager" fetchpriority="high"'));
         $this->assertSame(2, substr_count($result, 'data-mskba-lqip-venue-player="1"'));
-        $this->assertStringContainsString('src="'.$hidden->publicUrl().'"', $result);
+        $this->assertStringContainsString('src="'.$hidden->lqipUrl().'"', $result);
         $this->assertStringContainsString('data-mskba-lqip-preview-src="'.$hidden->lqipUrl().'"', $result);
         $this->assertStringNotContainsString('<noscript>', $result);
     }
