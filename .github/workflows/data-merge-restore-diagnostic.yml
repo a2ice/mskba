@@ -1,0 +1,50 @@
+name: MSKBA dev restore error category (read-only)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-restore-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dev_restore_diagnostic:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Classify private dev pg_restore errors without exporting data
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            python3 - <<'PY'
+            import re
+            from pathlib import Path
+            p = Path('/home/deploy/mskba-data-merge-backups/43972177123/dev/restore.log')
+            if not p.is_file():
+                raise SystemExit('Private restore log missing')
+            lines = p.read_text(encoding='utf-8', errors='replace').splitlines()
+            errors = [line for line in lines if 'ERROR:' in line or 'FATAL:' in line or 'pg_restore: error:' in line]
+            print('restore_log_present=true')
+            print(f'error_line_count={len(errors)}')
+            for index, line in enumerate(errors[:8], 1):
+                # Mask every quoted identifier/literal and any contact or numeric
+                # data. Only the technical error family may leave the server.
+                if 'ERROR:' in line:
+                    line = line.split('ERROR:', 1)[1]
+                elif 'FATAL:' in line:
+                    line = line.split('FATAL:', 1)[1]
+                line = re.sub(r'"[^"]*"', '<quoted-object>', line)
+                line = re.sub(r"'[^']*'", '<quoted-literal>', line)
+                line = re.sub(r'[\w.+-]+@[\w.-]+', '<email>', line)
+                line = re.sub(r'https?://\S+', '<url>', line)
+                line = re.sub(r'\d+', '#', line)
+                print(f'error_family_{index}={line.strip()[:240]}')
+            PY
