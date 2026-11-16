@@ -98,7 +98,8 @@ final class RentalInvoiceTemplateResource extends Resource
                     ])->default(['bank_transfer'])->required()->columns(3)->columnSpanFull(),
                 Textarea::make('payment_instructions')->label('Инструкция по оплате')
                     ->rows(3)->maxLength(4000)->columnSpanFull(),
-                TextInput::make('due_minutes')->label('Срок оплаты, мин')
+                TextInput::make('due_minutes')->label('Окно оплаты покупателем, мин')
+                    ->helperText('Срок оплаты первого счёта. Фактический дедлайн автоматически ограничивается концом холда. Сроки расчётов агента с MSKBA и MSKBA с площадкой отдельные и не продлевают бронь.')
                     ->numeric()->integer()->minValue(1)->maxValue(1440)
                     ->default(30)->required(),
                 TextInput::make('priority')->label('Приоритет выбора')
