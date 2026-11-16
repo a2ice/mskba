@@ -29,7 +29,7 @@ final class RentalInvoiceTemplateResource extends Resource
 {
     protected static ?string $model = VenueRentalInvoiceTemplate::class;
     protected static string|\UnitEnum|null $navigationGroup = 'Контент';
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-currency-dollar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 11;
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -43,6 +43,8 @@ final class RentalInvoiceTemplateResource extends Resource
 
         return $user && $user->isConfirmed()
             && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+            && app(\App\Modules\Identity\Application\Services\BackofficePermissionManager::class)
+                ->allows($user, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::BACKOFFICE_ACCESS)
             && (bool) config('features.venue_rental.invoices', false);
     }
 
@@ -72,8 +74,8 @@ final class RentalInvoiceTemplateResource extends Resource
                         ->whereLike('name', '%'.$search.'%')
                         ->orderBy('name')->limit(30)->pluck('name', 'id')->all())
                     ->getOptionLabelUsing(fn ($value): ?string => Venue::query()->find($value)?->name)
-                    ->visible(fn (Get $get): bool => $get('scope') !== 'global')
-                    ->required(fn (Get $get): bool => $get('scope') !== 'global'),
+                    ->visible(fn (Get $get): bool => in_array($get('scope'), ['venue', 'agent'], true))
+                    ->required(fn (Get $get): bool => in_array($get('scope'), ['venue', 'agent'], true)),
                 Select::make('owner_user_id')->label('Владелец агентского шаблона')
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search): array => User::query()
