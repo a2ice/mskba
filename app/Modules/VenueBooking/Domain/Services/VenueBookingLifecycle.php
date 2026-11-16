@@ -27,7 +27,7 @@ final class VenueBookingLifecycle
         ]);
     }
 
-    public function hold(VenueBooking $booking, Actor $actor, CarbonImmutable $now, ?int $expectedVersion = null): void
+    public function hold(VenueBooking $booking, Actor $actor, CarbonImmutable $now, ?int $expectedVersion = null, ?CarbonImmutable $externalUntil = null): void
     {
         $this->assertVersion($booking, $expectedVersion);
         $this->assertStatus($booking, VenueBookingStatusEnum::REQUESTED);
@@ -38,6 +38,12 @@ final class VenueBookingLifecycle
         }
 
         $deadline = $now->addMinutes($holdMinutes);
+        if ((bool) data_get($booking->quote_snapshot, 'policy.external_hold_required', false)) {
+            if ($externalUntil === null || ! $now->lessThan($externalUntil)) {
+                throw new VenueBookingTransitionException('Сначала необходимо подтвердить реальный холд.', 'EXTERNAL_HOLD_REQUIRED');
+            }
+            if ($externalUntil->lessThan($deadline)) $deadline = $externalUntil;
+        }
         $this->transition($booking, VenueBookingStatusEnum::HELD, $actor, null, [
             'held_at' => $now,
             'hold_expires_at' => $deadline,
@@ -88,6 +94,12 @@ final class VenueBookingLifecycle
             throw new VenueBookingTransitionException('Срок удержания истёк.', 'HOLD_EXPIRED');
         }
 
+        if ((bool) data_get($booking->quote_snapshot, 'policy.external_hold_required', false)) {
+            app(\App\Modules\VenueBooking\Application\Services\VenueExternalHoldManager::class)->assertActive($booking);
+        }
+        if ((bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)) {
+            app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceManager::class)->assertCanConfirm($booking);
+        }
         $requiresPayment = (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false);
         if ($requiresPayment && $booking->payment_state !== VenueBookingPaymentState::CONFIRMED) {
             throw new VenueBookingTransitionException('Оплата ещё не подтверждена.', 'PAYMENT_NOT_CONFIRMED');
