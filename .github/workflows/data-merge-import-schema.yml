@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
-      - name: Summarize staging table shape and foreign keys without row data
+      - name: Inspect staging table columns and foreign keys, never row data
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
@@ -25,20 +25,17 @@ jobs:
             set -euo pipefail
             cd /var/www/mskba-dev-next
             grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
-            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db sh -ceu '
-              export PGPASSWORD="$POSTGRES_PASSWORD"
-              export PGOPTIONS="-c default_transaction_read_only=on"
-              psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<SQL
-            SELECT table_name || chr(124) || string_agg(column_name || chr(58) || udt_name || CASE WHEN is_nullable = '''NO''' THEN chr(33) ELSE chr(63) END, chr(44) ORDER BY ordinal_position)
-            FROM information_schema.columns WHERE table_schema = '''public'''
-              AND (table_name LIKE '''page_builder_%''' OR table_name LIKE '''design_theme%''' OR table_name LIKE '''site_media_%''' OR table_name LIKE '''venue_%''' OR table_name IN
-                ('''users''','''profiles''','''player_profiles''','''contacts''','''telegram_accounts''','''actors''','''media''','''venues''','''locations''','''teams''','''contracts''','''contract_memberships''','''events''','''games''','''tournaments'''))
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db \
+              sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+            SELECT table_name || '|' || string_agg(column_name || ':' || udt_name || CASE WHEN is_nullable = 'NO' THEN '!' ELSE '?' END, ',' ORDER BY ordinal_position)
+            FROM information_schema.columns WHERE table_schema = 'public'
+              AND (table_name LIKE 'page_builder_%' OR table_name LIKE 'design_theme%' OR table_name LIKE 'site_media_%' OR table_name LIKE 'venue_%' OR table_name IN
+                ('users','profiles','player_profiles','contacts','telegram_accounts','actors','media','venues','locations','teams','contracts','contract_memberships','events','games','tournaments'))
             GROUP BY table_name ORDER BY table_name;
-            SELECT c.conrelid::regclass::text || chr(124) || pg_get_constraintdef(c.oid)
+            SELECT c.conrelid::regclass::text || '|' || pg_get_constraintdef(c.oid)
             FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
-            WHERE n.nspname = '''public''' AND c.contype = '''f'''
-              AND (c.conrelid::regclass::text LIKE '''page_builder_%''' OR c.conrelid::regclass::text LIKE '''design_theme%''' OR c.conrelid::regclass::text LIKE '''site_media_%''' OR c.conrelid::regclass::text LIKE '''venue_%''' OR c.conrelid::regclass::text IN
-                ('''users''','''profiles''','''player_profiles''','''contacts''','''telegram_accounts''','''actors''','''media''','''venues''','''locations''','''teams''','''contracts''','''contract_memberships''','''events''','''games''','''tournaments'''))
+            WHERE n.nspname = 'public' AND c.contype = 'f'
+              AND (c.conrelid::regclass::text LIKE 'page_builder_%' OR c.conrelid::regclass::text LIKE 'design_theme%' OR c.conrelid::regclass::text LIKE 'site_media_%' OR c.conrelid::regclass::text LIKE 'venue_%' OR c.conrelid::regclass::text IN
+                ('users','profiles','player_profiles','contacts','telegram_accounts','actors','media','venues','locations','teams','contracts','contract_memberships','events','games','tournaments'))
             ORDER BY 1;
             SQL
-            '
