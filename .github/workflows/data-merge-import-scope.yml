@@ -1,0 +1,41 @@
+name: MSKBA offline import scope and venue geography
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-import-scope.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-import-scope
+  cancel-in-progress: false
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check offline scope auditor
+        run: bash -n scripts/data-merge/isolated-import-scope-audit.sh
+      - name: Stage offline scope auditor
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/isolated-import-scope-audit.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Inventory table counts and venue geometry only inside restored copies
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-import-scope-audit.sh ${{ github.run_id }}
