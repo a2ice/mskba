@@ -27,6 +27,13 @@ final class VenueRentalPolicyEditor
         'maximum_advance_days' => 'rental_policy_maximum_advance_days',
         'currency' => 'rental_policy_currency',
         'hold_duration_minutes' => 'rental_policy_hold_duration_minutes',
+        'external_hold_required' => 'rental_policy_external_hold_required',
+        'hold_verification_method' => 'rental_policy_hold_verification_method',
+        'hold_verification_note' => 'rental_policy_hold_verification_note',
+        'buyer_postpay_allowed' => 'rental_policy_buyer_postpay_allowed',
+        'agent_portal_postpay_allowed' => 'rental_policy_agent_portal_postpay_allowed',
+        'portal_venue_postpay_allowed' => 'rental_policy_portal_venue_postpay_allowed',
+        'agent_portal_self_attestation_allowed' => 'rental_policy_agent_portal_self_attestation_allowed',
         'allows_hold_extension' => 'rental_policy_allows_hold_extension',
         'maximum_hold_extension_minutes' => 'rental_policy_maximum_hold_extension_minutes',
         'requires_payment' => 'rental_policy_requires_payment',
@@ -46,6 +53,13 @@ final class VenueRentalPolicyEditor
         'maximum_advance_days' => 90,
         'currency' => 'RUB',
         'hold_duration_minutes' => 30,
+        'external_hold_required' => false,
+        'hold_verification_method' => null,
+        'hold_verification_note' => null,
+        'buyer_postpay_allowed' => false,
+        'agent_portal_postpay_allowed' => false,
+        'portal_venue_postpay_allowed' => false,
+        'agent_portal_self_attestation_allowed' => false,
         'allows_hold_extension' => false,
         'maximum_hold_extension_minutes' => null,
         'requires_payment' => false,
@@ -130,7 +144,12 @@ final class VenueRentalPolicyEditor
             $values[$source] = $data[$target] ?? self::DEFAULTS[$source];
         }
 
-        foreach (['is_enabled', 'allows_whole', 'allows_halves', 'allows_hold_extension', 'requires_payment'] as $key) {
+        foreach ([
+            'is_enabled', 'allows_whole', 'allows_halves', 'allows_hold_extension',
+            'requires_payment', 'external_hold_required', 'buyer_postpay_allowed',
+            'agent_portal_postpay_allowed', 'portal_venue_postpay_allowed',
+            'agent_portal_self_attestation_allowed',
+        ] as $key) {
             $values[$key] = filter_var($values[$key], FILTER_VALIDATE_BOOLEAN);
         }
 
@@ -148,6 +167,10 @@ final class VenueRentalPolicyEditor
         }
 
         $values['currency'] = strtoupper(trim((string) $values['currency']));
+        $values['hold_verification_method'] = filled($values['hold_verification_method'])
+            ? (string) $values['hold_verification_method'] : null;
+        $values['hold_verification_note'] = filled($values['hold_verification_note'])
+            ? trim((string) $values['hold_verification_note']) : null;
         if (! $values['requires_payment']) {
             $values['whole_price_per_step_minor'] = 0;
             // Existing free policies may store 0 rather than NULL; preserve
