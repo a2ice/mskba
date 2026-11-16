@@ -29,11 +29,12 @@ jobs:
           print('HTML length:',len(body))
           class Scanner(html.parser.HTMLParser):
               def __init__(self):
-                  super().__init__();self.scripts=[];self.hot=[];self.images=[];self.manifest=False
+                  super().__init__();self.scripts=[];self.hot=[];self.images=[];self.actors=[];self.manifest=False
               def handle_starttag(self,tag,attrs):
                   a=dict(attrs);name=' '.join(str(a.get(k,'')) for k in ('class','id','data-loading','data-preloader','data-page-loader'))
                   if any(x in name.lower() for x in ('loading','preload','loader','splash','overlay','ready')):
                       self.hot.append((tag,{k:v for k,v in a.items() if k in ('id','class','style','aria-hidden','hidden') or k.startswith('data-')}))
+                  if tag=='a' and 'mskba-v3-actor-source' in a.get('class',''): self.actors.append({k:a.get(k) for k in ('class','href')})
                   if tag=='script' and a.get('src'):self.scripts.append(a['src'])
                   if tag=='script' and 'data-page-builder-lqip-manifest' in a:self.manifest=True
                   if tag=='img':
@@ -41,6 +42,7 @@ jobs:
           s=Scanner();s.feed(body)
           print('LOADING-RELATED HTML:',s.hot[:45])
           print('IMAGES:',s.images[:20])
+          print('ACTOR SOURCES:',s.actors[:30])
           print('MANIFEST:',s.manifest)
           print('SCRIPTS:',s.scripts[:50])
           pattern=re.compile(r'(?:load(?:ing|er)?[\s_-]*layer|preloader|page[\s_-]*loader|imagesLoaded|Promise\.all|window\.addEventListener\([\x27\x22]load|document\.readyState|decode\(|document\.images|querySelectorAll\([\x27\x22]img|mskba:lqip|data-mskba-lqip)',re.I)
