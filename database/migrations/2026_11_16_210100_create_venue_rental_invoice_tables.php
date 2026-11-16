@@ -32,8 +32,10 @@ return new class extends Migration
             $table->string('number', 40)->unique();
             $table->foreignId('venue_booking_id')->constrained('venue_bookings')->cascadeOnDelete();
             $table->foreignId('template_id')->nullable()->constrained('venue_rental_invoice_templates')->nullOnDelete();
-            $table->string('kind', 16); // buyer, provider
-            $table->string('issuer_kind', 16); // agent, venue
+            $table->string('kind', 24); // buyer, agent_portal, portal_venue
+            $table->string('issuer_kind', 16); // agent, portal, venue
+            $table->string('payer_kind', 16); // buyer, agent, portal
+            $table->string('document_kind', 24)->default('invoice'); // invoice or internal_settlement
             $table->foreignId('issuer_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('payer_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('issued_by_actor_id')->nullable()->constrained('actors')->nullOnDelete();
