@@ -209,6 +209,24 @@ final class PageBuilderAutoLqipTest extends TestCase
         $this->assertStringNotContainsString('data-mskba-lqip-added-background', $result);
     }
 
+    public function test_filament_actor_source_links_start_with_lqip_without_changing_unrelated_links(): void
+    {
+        $id = 'cd8a2947-1626-461f-a1ca-35350078fa0c';
+        $original = '/media/site/'.$id;
+        $lqip = $original.'/lqip';
+        $markup = '<section class="mskba-v2-stage"><a class="mskba-v3-actor-source participant-shadow" '
+            .'href="'.$original.'">Атлет</a>'
+            .'<a class="unrelated" href="'.$original.'">Открыть оригинал</a>'
+            .'<a class="mskba-v3-actor-source" href="/media/site/00000000-0000-4000-8000-000000000000">'
+            .'Без LQIP</a></section>';
+
+        $rendered = app(PageBuilderFirstPaintLqip::class)->apply($markup, [$id => $lqip]);
+
+        $this->assertStringContainsString('class="mskba-v3-actor-source participant-shadow" href="'.$lqip.'"', $rendered);
+        $this->assertStringContainsString('class="unrelated" href="'.$original.'"', $rendered);
+        $this->assertStringContainsString('href="/media/site/00000000-0000-4000-8000-000000000000"', $rendered);
+    }
+
     public function test_unsupported_or_missing_preview_preserves_original_src(): void
     {
         $generator = app(PageBuilderFirstPaintLqip::class);

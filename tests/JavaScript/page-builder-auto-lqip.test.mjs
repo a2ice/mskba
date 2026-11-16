@@ -10,16 +10,19 @@ const uuid = '60d4d65b-308c-40aa-8466-158466632107';
 const full = '/media/site/' + uuid;
 const mini = full + '/lqip';
 
-function scene({ known = true, dynamic = false, picture = false, lazy = false } = {}) {
+function scene({ known = true, dynamic = false, picture = false, lazy = false, withPreloader = false, actorPreview = false } = {}) {
     const downloads = [];
     let notify = null;
     let domReady = null;
     let pageLoad = null;
     let upgradeTimer = null;
     let imageLoaded = null;
+    let layerNotify = null;
+    const layerParent = {};
+    const layer = { isConnected: true, parentElement: layerParent };
     const attrs = new Map([
-        ['src', known ? mini : full],
-        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
+        ['src', actorPreview ? 'https://dev.mskba.ru' + mini : known ? mini : full],
+        ...(known && !actorPreview ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
     ]);
     const style = {
         backgroundImage: '', backgroundSize: '', backgroundPosition: '', backgroundRepeat: '',
@@ -77,6 +80,7 @@ function scene({ known = true, dynamic = false, picture = false, lazy = false } 
             if (selector === '.mskba-page-builder') return canvas;
             if (selector === '[data-page-builder-lqip-manifest]') return manifest;
             if (selector === 'style[data-mskba-lqip-css]') return css;
+            if (selector === '.mskba-v2-stage__loading') return withPreloader ? layer : null;
             return null;
         },
     };
@@ -90,15 +94,16 @@ function scene({ known = true, dynamic = false, picture = false, lazy = false } 
         fail() { this.onerror?.(); }
     }
     class MutationObserverMock {
-        constructor(callback) { notify = callback; }
-        observe() {}
+        constructor(callback) { this.callback = callback; notify = callback; }
+        observe(target) { if (target === layerParent) layerNotify = this.callback; }
         disconnect() {}
     }
     const window = {
         location: { href: 'https://dev.mskba.ru/#venues', origin: 'https://dev.mskba.ru' },
         matchMedia: () => ({ matches: true }),
         addEventListener(type, cb) { if (type === 'load') pageLoad = cb; },
-        setTimeout(cb) { upgradeTimer = cb; },
+        setTimeout(cb) { upgradeTimer = cb; return 1; },
+        clearTimeout() {},
     };
     runInNewContext(script, { document, window, URL, Image: ImageMock,
         MutationObserver: MutationObserverMock, console });
@@ -107,6 +112,11 @@ function scene({ known = true, dynamic = false, picture = false, lazy = false } 
         img, bg, css, source, downloads,
         initialLoad() {
             pageLoad();
+            if (!withPreloader) upgradeTimer();
+        },
+        dismissLayer() {
+            layer.isConnected = false;
+            layerNotify?.([]);
             upgradeTimer();
         },
         setLateBackground(value) {
@@ -195,4 +205,24 @@ test('initial load callback cannot start originals until its deferred handoff', 
     assert.equal(s.downloads.length, 0);
     s.initialLoad();
     assert.equal(s.downloads.length, 2);
+});
+
+test('full-resolution assets do not start until the real homepage layer is removed', () => {
+    const s = scene({ withPreloader: true });
+    s.initialLoad();
+    assert.equal(s.downloads.length, 0, 'window.load alone does not start originals');
+    s.dismissLayer();
+    assert.equal(s.downloads.length, 2, 'full images start after removing the stage layer');
+});
+
+test('Filament actor created from an absolute LQIP href is promoted only after first paint', async () => {
+    const s = scene({ actorPreview: true });
+    assert.equal(s.img.src, 'https://dev.mskba.ru' + mini);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-full-src'), full);
+    assert.equal(s.downloads.length, 0);
+    s.initialLoad();
+    s.downloads[1].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.img.src, full);
 });
