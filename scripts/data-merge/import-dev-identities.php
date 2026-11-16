@@ -58,7 +58,16 @@ function insertRow(PDO $db, string $table, array $data): int
     $quoted = array_map(static fn (string $f): string => '"'.$f.'"', $fields);
     $placeholders = implode(',', array_fill(0, count($fields), '?'));
     $s = $db->prepare('INSERT INTO "'.$table.'" ('.implode(',', $quoted).') VALUES ('.$placeholders.') RETURNING id');
-    $s->execute(array_values($data));
+    foreach (array_values($data) as $i => $value) {
+        $type = match (true) {
+            $value === null => PDO::PARAM_NULL,
+            is_bool($value) => PDO::PARAM_BOOL,
+            is_int($value) => PDO::PARAM_INT,
+            default => PDO::PARAM_STR,
+        };
+        $s->bindValue($i + 1, $value, $type);
+    }
+    $s->execute();
 
     return (int) $s->fetchColumn();
 }
