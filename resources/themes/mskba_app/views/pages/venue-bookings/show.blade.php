@@ -179,7 +179,7 @@
                         <strong>{{ $money->format($invoice->amount_minor, $invoice->currency) }} {{ $money->currencyLabel($invoice->currency) }}</strong>
                     </p>
                     @if($invoice->due_at)
-                        <p>{{ $invoice->kind === 'buyer' ? 'Оплатить покупателю до' : 'Плановый срок взаиморасчёта (не продлевает холд)' }}: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>
+                        <p>{{ $invoice->kind === 'buyer' ? 'Срок оплаты покупателем (в пределах холда)' : 'Плановый срок взаиморасчёта (не продлевает холд)' }}: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>
                     @endif
                     @if($invoice->status === 'postpay')
                         <p><strong>Открытая задолженность.</strong> Постоплата согласована, но средства ещё не получены. После подтверждения аренды погасить этот долг можно отдельно.</p>
