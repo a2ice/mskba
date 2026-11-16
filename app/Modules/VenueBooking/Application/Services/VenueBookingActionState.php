@@ -27,8 +27,11 @@ final readonly class VenueBookingActionState
         $now = CarbonImmutable::now();
         $heldActive = $booking->effective_protection_until !== null
             && $now->lessThan($booking->effective_protection_until);
-        $paymentReady = ! (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false)
-            || $booking->payment_state === VenueBookingPaymentState::CONFIRMED;
+        $invoiceWorkflow = (bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false);
+        $paymentReady = $invoiceWorkflow
+            ? app(VenueRentalInvoiceManager::class)->isReady($booking)
+            : (! (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false)
+                || $booking->payment_state === VenueBookingPaymentState::CONFIRMED);
         $cancellable = in_array($booking->status, [
             VenueBookingStatusEnum::REQUESTED,
             VenueBookingStatusEnum::HELD,
@@ -42,8 +45,11 @@ final readonly class VenueBookingActionState
 
         return [
             'accept' => $this->state(
-                $canConfirm && $booking->status === VenueBookingStatusEnum::REQUESTED,
-                $canConfirm ? 'STATUS_NOT_REQUESTED' : 'BOOKING_FORBIDDEN',
+                $canConfirm && $booking->status === VenueBookingStatusEnum::REQUESTED
+                    && ! (bool) data_get($booking->quote_snapshot, 'policy.external_hold_required', false),
+                ! $canConfirm ? 'BOOKING_FORBIDDEN'
+                    : ((bool) data_get($booking->quote_snapshot, 'policy.external_hold_required', false)
+                        ? 'EXTERNAL_HOLD_REQUIRED' : 'STATUS_NOT_REQUESTED'),
             ),
             'reject' => $this->state(
                 $canReject && $booking->status === VenueBookingStatusEnum::REQUESTED,
