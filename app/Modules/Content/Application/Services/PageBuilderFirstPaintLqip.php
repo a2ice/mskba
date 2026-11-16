@@ -164,7 +164,7 @@ final class PageBuilderFirstPaintLqip
         // During initial load, CSS only references LQIPs. The client restores
         // full-resolution URLs above the previews AFTER the load event, so
         // CSS background originals do not hold the homepage loading layer.
-        return preg_replace_callback('~\bbackground-image\s*:\s*([^;}]+)~i', static function (array $declaration) use ($previews): string {
+        return preg_replace_callback('~\bbackground(?:-image)?\s*:\s*([^;}]+)~i', static function (array $declaration) use ($previews): string {
             $new = preg_replace_callback(
                 '~url\(\s*(["\']?)(/media/site/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}))\1\s*\)~i',
                 static function (array $url) use ($previews): string {
