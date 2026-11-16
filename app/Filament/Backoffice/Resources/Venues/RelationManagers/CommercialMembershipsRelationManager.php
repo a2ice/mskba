@@ -98,9 +98,10 @@ final class CommercialMembershipsRelationManager extends RelationManager
             TextColumn::make('user.username')->label('Пользователь')->searchable(),
             TextColumn::make('access_level')->label('Роль')
                 ->formatStateUsing(fn (string $state): string => Role::tryFrom($state)?->label() ?? $state),
-            TextColumn::make('contract.permissions.permission')->label('Права')
-                ->formatStateUsing(fn ($state): string => is_string($state) ? $state : '')
-                ->listWithLineBreaks(),
+            TextColumn::make('permissions_summary')->label('Права')
+                ->state(fn (ContractMembership $record): string => $record->contract?->permissions
+                    ->map(fn ($p) => VenuePermissionEnum::tryFrom($p->permission)?->label() ?? $p->permission)
+                    ->join(', ') ?: 'Нет'),
             TextColumn::make('contract.expires_at')->label('Действует до')
                 ->dateTime('d.m.Y H:i')->placeholder('Бессрочно'),
         ])
