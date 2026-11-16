@@ -254,7 +254,7 @@ if (canvas && manifestNode) {
     // full actor images and document.fonts.ready. Release the existing layer
     // once its actual LQIP thumbnails are ready, without creating a new UI.
     function releaseStageAfterPreviews() {
-        const stage = canvas.querySelector('.mskba-v2-stage');
+        const stage = canvas.querySelector?.('.mskba-v2-stage');
         const layer = stage?.querySelector('.mskba-v2-stage__loading');
         if (!layer || layer.isConnected === false) return;
 
@@ -315,7 +315,7 @@ if (canvas && manifestNode) {
 
         // The published page script mounts actors during DOMContentLoaded.
         // Schedule readiness inspection in the next task so those nodes exist.
-        if (canvas.querySelector('.mskba-v2-stage__loading')) {
+        if (canvas.querySelector?.('.mskba-v2-stage__loading')) {
             window.setTimeout(releaseStageAfterPreviews, 0);
         }
 
