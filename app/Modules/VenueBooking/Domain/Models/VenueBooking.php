@@ -114,6 +114,16 @@ class VenueBooking extends Model
         return $this->hasMany(VenueBookingExtensionRequest::class)->orderByDesc('requested_at');
     }
 
+    public function externalHold(): HasOne
+    {
+        return $this->hasOne(VenueBookingExternalHold::class, 'venue_booking_id');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(VenueRentalInvoice::class, 'venue_booking_id');
+    }
+
     public function paymentAttempt(): HasOne
     {
         return $this->hasOne(VenueBookingPaymentAttempt::class);

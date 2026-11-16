@@ -122,6 +122,13 @@ final class VenueBookingPolicyController extends Controller
             'whole_price_per_step' => ['required', 'string', 'max:32'],
             'half_price_per_step' => ['nullable', 'string', 'max:32'],
             'hold_duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            'external_hold_required' => ['nullable', 'boolean'],
+            'hold_verification_method' => ['nullable', 'in:phone,messenger,provider,contract,other'],
+            'hold_verification_note' => ['nullable', 'string', 'max:2000'],
+            'buyer_postpay_allowed' => ['nullable', 'boolean'],
+            'agent_portal_postpay_allowed' => ['nullable', 'boolean'],
+            'portal_venue_postpay_allowed' => ['nullable', 'boolean'],
+            'agent_portal_self_attestation_allowed' => ['nullable', 'boolean'],
             'allows_hold_extension' => ['nullable', 'boolean'],
             'maximum_hold_extension_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
             'requires_payment' => ['nullable', 'boolean'],
@@ -130,7 +137,9 @@ final class VenueBookingPolicyController extends Controller
             'cancellation_before_minutes' => ['nullable', 'integer', 'min:0', 'max:525600'],
         ]);
 
-        foreach (['is_enabled', 'allows_whole', 'allows_halves', 'requires_payment', 'allows_hold_extension'] as $boolean) {
+        foreach (['is_enabled', 'allows_whole', 'allows_halves', 'requires_payment', 'allows_hold_extension',
+            'external_hold_required', 'buyer_postpay_allowed', 'agent_portal_postpay_allowed',
+            'portal_venue_postpay_allowed', 'agent_portal_self_attestation_allowed'] as $boolean) {
             $validated[$boolean] = $request->boolean($boolean);
         }
 

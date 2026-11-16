@@ -37,6 +37,10 @@ final readonly class AcceptVenueBookingHandler
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $expectedVersion): VenueBooking {
             $this->authorization->assertCanConfirmBooking($actor, $venue, $booking);
             $this->lifecycle->hold($booking, $actor, CarbonImmutable::now(), $expectedVersion);
+            if ((bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)) {
+                app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceManager::class)
+                    ->autoIssueBuyerWithinLock($booking, $actor);
+            }
             if (! app(VenueBookingBackofficeAccess::class)->canManage($actor->user)) {
                 $booking->parties()->firstOrCreate([
                     'user_id' => $actor->user_id,

@@ -98,7 +98,134 @@
         </div>
     @endif
 
-    @if(config('features.venue_rental.external_payment') && $canViewPayment && data_get($booking->quote_snapshot, 'policy.requires_payment'))
+    
+    @if($usesExternalHold)
+        <section class="panel app-rental-inbox__summary" aria-labelledby="external-hold-title">
+            <h2 id="external-hold-title">Удержание на стороне площадки</h2>
+            @if($booking->externalHold)
+                <p>Подтверждено: {{ $booking->externalHold->method }} · до {{ $booking->externalHold->expires_at->setTimezone($timezone)->format('d.m.Y H:i') }}.</p>
+                @if($booking->externalHold->note)<p>{{ $booking->externalHold->note }}</p>@endif
+            @elseif($canConfirmExternalHold)
+                <p>MSKBA создаст внутренний холд только после реального подтверждения.</p>
+                <form class="app-rental-inbox__fields" method="POST" action="{{ route('account.venue-bookings.external-hold.confirm', $booking) }}">
+                    @csrf
+                    <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
+                    <label>Способ подтверждения
+                        <select name="method" required>
+                            <option value="phone">Телефон</option>
+                            <option value="messenger">Мессенджер</option>
+                            <option value="aggregator">Агрегатор</option>
+                            <option value="other">Другой способ</option>
+                        </select>
+                    </label>
+                    <label>Внешний холд действителен до
+                        <input type="datetime-local" name="expires_at" required
+                            value="{{ now()->addMinutes(min((int) data_get($booking->quote_snapshot, 'policy.hold_duration_minutes', 30), 30))->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
+                    </label>
+                    <label>Номер брони (если есть)<input name="reference" maxlength="190"></label>
+                    <label>Кто и как подтвердил удержание<textarea name="note" maxlength="2000" rows="2" required></textarea></label>
+                    <button class="button primary" type="submit">Подтвердить внешний холд</button>
+                </form>
+            @else
+                <p>Ожидается подтверждение реального удержания слота.</p>
+            @endif
+        </section>
+    @endif
+
+    @if($usesInvoices)
+        <section class="panel app-rental-inbox__summary" aria-labelledby="invoice-chain-title">
+            <h2 id="invoice-chain-title">Счета и расчёты</h2>
+            <p>Оплата и постоплата учитываются отдельно. Постоплата не означает получение денег.</p>
+            @if($canIssueBuyerInvoice && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD
+                && ! $booking->invoices->contains('kind', 'buyer'))
+                <form class="app-rental-inbox__fields" method="POST" action="{{ route('account.venue-bookings.invoices.issue', $booking) }}">
+                    @csrf
+                    <label>Шаблон счёта
+                        <select name="template_id">
+                            <option value="">Стандартный счёт</option>
+                            @foreach($invoiceTemplates as $template)
+                                <option value="{{ $template->id }}">{{ $template->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <button class="button primary" type="submit">Выставить счёт покупателю</button>
+                </form>
+            @endif
+            @php
+                $invoiceLabels = [
+                    'buyer' => 'Счёт покупателю',
+                    'agent_portal' => 'Агент → MSKBA',
+                    'portal_venue' => 'MSKBA → площадка',
+                ];
+                $invoiceStatuses = [
+                    'issued' => 'Выставлен', 'claimed' => 'Оплата заявлена',
+                    'paid' => 'Оплачен', 'postpay' => 'Постоплата согласована',
+                    'void' => 'Отменён',
+                ];
+                $invoiceAgentId = data_get($booking->quote_snapshot, 'pricing.commissions.agent.user_id');
+            @endphp
+            @forelse($visibleInvoices as $invoice)
+                <article class="app-rental-inbox__summary" style="margin-top:1rem;padding:1rem;border:1px solid var(--color-border, #ddd);border-radius:8px">
+                    <h3>{{ $invoiceLabels[$invoice->kind] ?? 'Счёт' }} · {{ $invoice->number }}</h3>
+                    <p>{{ $invoiceStatuses[$invoice->status] ?? $invoice->status }} ·
+                        <strong>{{ $money->format($invoice->amount_minor, $invoice->currency) }} {{ $money->currencyLabel($invoice->currency) }}</strong>
+                    </p>
+                    @if($invoice->due_at)<p>Срок: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
+                    @if($invoice->payment_instructions)<p>{{ $invoice->payment_instructions }}</p>@endif
+                    @if($invoice->settlement_note)<p>Основание: {{ $invoice->settlement_note }}</p>@endif
+                    @if($invoice->status === 'issued' && (($invoice->kind === 'buyer' && $isRequester)
+                        || ($invoice->kind === 'agent_portal' && $invoiceAgentId !== null && (int) $invoiceAgentId === (int) auth()->id())))
+                        <form method="POST" action="{{ route('account.venue-bookings.invoices.claim', [$booking, $invoice]) }}" class="app-rental-inbox__fields">
+                            @csrf
+                            <label>Комментарий об оплате<input name="note" maxlength="2000"></label>
+                            <button class="button secondary" type="submit">Сообщить об оплате</button>
+                        </form>
+                    @endif
+                    @php
+                        $canSettleInvoice = ($invoice->kind === 'buyer' && $canIssueBuyerInvoice)
+                            || ($invoice->kind !== 'buyer' && $canInvoicePortal);
+                        $canAgentAttest = $invoice->kind === 'agent_portal'
+                            && (bool) data_get($booking->quote_snapshot, 'policy.agent_portal_self_attestation_allowed', false)
+                            && $invoiceAgentId !== null && (int) $invoiceAgentId === (int) auth()->id();
+                    @endphp
+                    @if(($canSettleInvoice || $canAgentAttest) && in_array($invoice->status, ['issued', 'claimed', 'postpay'], true))
+                        <form method="POST" action="{{ route('account.venue-bookings.invoices.settle', [$booking, $invoice]) }}" class="app-rental-inbox__fields">
+                            @csrf
+                            <label>Решение по счёту
+                                <select name="decision" required>
+                                    @if($canSettleInvoice)
+                                        <option value="received">Подтверждаю получение оплаты</option>
+                                        @if($invoice->status !== 'postpay')
+                                            <option value="postpay">Согласована постоплата</option>
+                                        @endif
+                                    @endif
+                                    @if($canAgentAttest)
+                                        <option value="self_attested">Доверенное подтверждение агента</option>
+                                    @endif
+                                </select>
+                            </label>
+                            <label>Способ оплаты
+                                <select name="method">
+                                    <option value="bank_transfer">Перевод</option>
+                                    <option value="cash">Наличные</option>
+                                    <option value="other">Другое</option>
+                                </select>
+                            </label>
+                            <label>Основание решения<textarea name="note" maxlength="2000" rows="2" required></textarea></label>
+                            <button class="button primary" type="submit">Сохранить решение</button>
+                        </form>
+                    @endif
+                </article>
+            @empty
+                <p>Счета ещё не выставлены. После подтверждения удержания будет доступно выставление счёта покупателю.</p>
+            @endforelse
+            @if($canIssueBuyerInvoice || $canInvoicePortal)
+                <p><a href="{{ route('account.venues.invoice-templates.index', $booking->venue_id) }}">Настроить шаблоны счетов</a></p>
+            @endif
+        </section>
+    @endif
+
+    @if(! $usesInvoices && config('features.venue_rental.external_payment') && $canViewPayment && data_get($booking->quote_snapshot, 'policy.requires_payment'))
         <section class="panel app-rental-inbox__summary" aria-labelledby="rental-booking-payment-title">
             <h2 id="rental-booking-payment-title">Оплата</h2>
             <p>Текущее состояние: <strong>{{ $booking->payment_state->value }}</strong></p>

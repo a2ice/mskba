@@ -15,6 +15,11 @@ return [
     'venue_rental' => [
         // Enable only after the special terms regression suite and review.
         'special_terms' => (bool) env('FEATURE_VENUE_RENTAL_SPECIAL_TERMS', false),
+        // New contracts only; enabled on staging for acceptance, never on production by default.
+        'external_holds' => (bool) env('FEATURE_VENUE_RENTAL_EXTERNAL_HOLDS',
+            parse_url((string) env('APP_URL', ''), PHP_URL_HOST) === 'dev.mskba.ru'),
+        'invoices' => (bool) env('FEATURE_VENUE_RENTAL_INVOICES',
+            parse_url((string) env('APP_URL', ''), PHP_URL_HOST) === 'dev.mskba.ru'),
         'rental_flow' => (bool) env('FEATURE_VENUE_RENTAL_FLOW', false),
         'coordination' => (bool) env('FEATURE_VENUE_RENTAL_COORDINATION', false),
         'external_payment' => (bool) env('FEATURE_VENUE_RENTAL_EXTERNAL_PAYMENT', false),

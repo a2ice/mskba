@@ -61,6 +61,7 @@ final readonly class PublishVenueBookingPolicyHandler
                 'venue_id' => $venue->id,
                 'version' => $latestVersion + 1,
                 'published_by_user_id' => $publisher->id,
+                'hold_verified_by_user_id' => $publisher->id,
                 'published_at' => now(),
                 'active_marker' => true,
             ]);
@@ -91,6 +92,14 @@ final readonly class PublishVenueBookingPolicyHandler
                 ? (int) $data['half_price_per_step_minor']
                 : null,
             'hold_duration_minutes' => (int) ($data['hold_duration_minutes'] ?? 0),
+            'external_hold_required' => (bool) ($data['external_hold_required'] ?? false),
+            'hold_verification_method' => $data['hold_verification_method'] ?? null,
+            'hold_verification_note' => $data['hold_verification_note'] ?? null,
+            'hold_verified_at' => now(),
+            'buyer_postpay_allowed' => (bool) ($data['buyer_postpay_allowed'] ?? false),
+            'agent_portal_postpay_allowed' => (bool) ($data['agent_portal_postpay_allowed'] ?? false),
+            'portal_venue_postpay_allowed' => (bool) ($data['portal_venue_postpay_allowed'] ?? false),
+            'agent_portal_self_attestation_allowed' => (bool) ($data['agent_portal_self_attestation_allowed'] ?? false),
             'allows_hold_extension' => (bool) ($data['allows_hold_extension'] ?? false),
             'maximum_hold_extension_minutes' => isset($data['maximum_hold_extension_minutes'])
                 ? (int) $data['maximum_hold_extension_minutes']
@@ -132,6 +141,15 @@ final readonly class PublishVenueBookingPolicyHandler
         if ($normalized['whole_price_per_step_minor'] < 0
             || ($normalized['half_price_per_step_minor'] !== null && $normalized['half_price_per_step_minor'] < 0)) {
             throw new VenueBookingPolicyException('Цена не может быть отрицательной.');
+        }
+
+        if (! in_array($normalized['hold_verification_method'], [null, 'phone', 'messenger', 'provider', 'contract', 'other'], true)
+            || mb_strlen((string) $normalized['hold_verification_note']) > 2000) {
+            throw new VenueBookingPolicyException('Некорректные сведения об источнике срока холда.');
+        }
+        if ($normalized['external_hold_required'] && ($normalized['hold_verification_method'] === null
+            || trim((string) $normalized['hold_verification_note']) === '')) {
+            throw new VenueBookingPolicyException('Для внешнего холда необходимо указать способ и основание проверки.');
         }
 
         if ($normalized['hold_duration_minutes'] < 1 || $normalized['hold_duration_minutes'] > 1440) {

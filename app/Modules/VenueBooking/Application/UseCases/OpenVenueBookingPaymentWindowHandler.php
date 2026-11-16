@@ -32,6 +32,9 @@ final readonly class OpenVenueBookingPaymentWindowHandler
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $method, $instructions): VenueBookingPaymentAttempt {
             $this->authorization->assertCanConfirmPayment($actor, $venue, $booking);
+            if ((bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)) {
+                throw new VenueBookingTransitionException('Для заявки используется выставление счетов.', 'INVOICE_WORKFLOW_ACTIVE');
+            }
             if ($booking->status !== VenueBookingStatusEnum::HELD || $booking->effective_protection_until === null || ! now()->lessThan($booking->effective_protection_until)) {
                 throw new VenueBookingTransitionException('Платёжное окно доступно только во время действующего удержания.', 'HOLD_EXPIRED');
             }
