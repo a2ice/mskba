@@ -129,12 +129,12 @@ test('first paint uses LQIP and does not request originals before page load', ()
 test('original downloads after initial load and replaces miniature only after decoding', async () => {
     const s = scene({ picture: true });
     s.initialLoad();
-    assert.equal(s.downloads.length, 1);
-    assert.equal(s.downloads[0].src, full);
+    assert.equal(s.downloads.length, 2, 'CSS and img originals are fetched after load');
+    assert.equal(s.downloads[1].src, full);
     assert.equal(s.img.src, mini);
     assert.equal(s.source.srcset, mini);
 
-    s.downloads[0].succeed();
+    s.downloads[1].succeed();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(s.img.src, full);
@@ -149,7 +149,7 @@ test('original downloads after initial load and replaces miniature only after de
 test('failed original leaves working LQIP in place', () => {
     const s = scene();
     s.initialLoad();
-    s.downloads[0].fail();
+    s.downloads[1].fail();
     assert.equal(s.img.src, mini);
     assert.equal(s.img.getAttribute('data-mskba-lqip-ready'), null);
 });
@@ -172,9 +172,9 @@ test('late API background upgrades after load without a premature network reques
     const s = scene({ dynamic: true });
     assert.equal(s.downloads.length, 0);
     s.initialLoad();
-    assert.equal(s.downloads.length, 2, 'one img and one dynamic background upgrade');
+    assert.equal(s.downloads.length, 3, 'CSS, img and dynamic background upgrades');
     assert.match(s.bg.style.backgroundImage, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
-    s.downloads[1].succeed();
+    s.downloads[2].succeed();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(s.bg.style.backgroundImage, 'linear-gradient(#000,#fff), url("' + full + '")');
@@ -190,5 +190,5 @@ test('initial load callback cannot start originals until its deferred handoff', 
     const s = scene();
     assert.equal(s.downloads.length, 0);
     s.initialLoad();
-    assert.equal(s.downloads.length, 1);
+    assert.equal(s.downloads.length, 2);
 });
