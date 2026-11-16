@@ -161,11 +161,15 @@ test('without a known preview original loads normally', () => {
     assert.equal(s.downloads.length, 0);
 });
 
-test('published CSS background upgrades only after loading layer can finish', () => {
+test('published CSS background upgrades only after loading layer can finish', async () => {
     const s = scene();
     assert.equal(s.css.textContent, '.court { background-image: url("' + mini + '"); }');
     s.initialLoad();
-    assert.match(s.css.textContent, new RegExp('url\\("' + full + '"\\),url\\("' + mini + '"\\)'));
+    assert.equal(s.css.textContent, '.court { background-image: url("' + mini + '"); }');
+    s.downloads[0].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.css.textContent, '.court { background-image: url("' + full + '"); }');
 });
 
 test('late API background upgrades after load without a premature network request', async () => {
