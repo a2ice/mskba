@@ -65,7 +65,14 @@ trap cleanup EXIT
 docker run --rm -d --network none --name "$CONTAINER" -e POSTGRES_DB=mskba_restore -e POSTGRES_PASSWORD="$(openssl rand -hex 32)" postgres:17-alpine > /dev/null
 ready=false
 for _attempt in $(seq 1 45); do
-  if docker exec "$CONTAINER" pg_isready -q -U postgres -d mskba_restore; then ready=true; break; fi
+  # Official postgres entrypoint starts a temporary postmaster to initialize
+  # the DB, then stops it before exec'ing the final server as PID 1.
+  # pg_isready alone can return true during that temporary phase.
+  if docker exec "$CONTAINER" sh -c 'test "$(cat /proc/1/comm)" = postgres' \
+      && docker exec "$CONTAINER" pg_isready -q -U postgres -d mskba_restore; then
+    ready=true
+    break
+  fi
   sleep 1
 done
 [[ "$ready" == true ]] || { echo 'Restore container failed to start' >&2; exit 4; }
