@@ -137,6 +137,7 @@ final readonly class VenueIntegrationManager
             'adapter_key' => ['required', Rule::in(['manual', 'api', 'browser'])],
             'endpoint_url' => ['nullable', 'string', 'max:2048'],
             'priority' => ['required', 'integer', 'min:0', 'max:1000'],
+            'max_hold_duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:10080'],
             'capabilities' => ['nullable', 'array', 'max:5'],
             'capabilities.*' => [Rule::in(['availability', 'pricing'])],
             'permission_status' => ['required', Rule::in([
@@ -195,6 +196,8 @@ final readonly class VenueIntegrationManager
                 'adapter_key' => $data['adapter_key'],
                 'endpoint_url' => $url !== '' ? $url : null,
                 'priority' => $data['priority'],
+                'max_hold_duration_minutes' => array_key_exists('max_hold_duration_minutes', $data)
+                    ? $data['max_hold_duration_minutes'] : $record->max_hold_duration_minutes,
                 'capabilities' => array_values(array_unique($data['capabilities'] ?? [])),
                 'permission_status' => $status,
                 'permission_reference' => $ref !== '' ? $ref : null,
@@ -304,6 +307,7 @@ final readonly class VenueIntegrationManager
             'adapter_key' => $record->adapter_key,
             'endpoint_host' => parse_url((string) $record->endpoint_url, PHP_URL_HOST) ?: null,
             'priority' => $record->priority,
+            'max_hold_duration_minutes' => $record->max_hold_duration_minutes,
             'capabilities' => $record->capabilities,
             'permission_status' => $record->permission_status,
             'enabled' => $record->enabled,
