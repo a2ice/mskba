@@ -30,6 +30,8 @@ jobs:
             set -euo pipefail
             cd /var/www/mskba
             test -f .env
+            grep -qx 'APP_URL=https://mskba.ru' .env
+            grep -qx 'APP_ENV=production' .env
             echo "PRODUCTION_INVENTORY"
             printf 'git_commit='
             git rev-parse --short HEAD
@@ -46,7 +48,7 @@ jobs:
             echo 'AGGREGATE_BEGIN prod'
             printf 'postgres_version=%s\n' "$(sql "SHOW server_version")"
             printf 'public_tables=%s\n' "$(sql "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public'")"
-            printf 'schema_sha256=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
+            printf 'schema_md5=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
             for name in migrations users profiles player_profiles contacts actors contracts contract_memberships contract_relations contract_permissions teams team_invitations team_join_requests events event_participants games game_sides game_roster_entries game_player_statistics tournaments tournament_admissions tournament_entries tournament_entry_members tournament_matches venues venue_courts venue_bookings venue_ownerships media site_media page_builder_pages content_items; do
               case "$name" in *[!a-z0-9_]*|'') exit 5;; esac
               exists="$(sql "SELECT to_regclass('public.$name') IS NOT NULL")"
@@ -80,6 +82,8 @@ jobs:
             set -euo pipefail
             cd /var/www/mskba-dev-next
             test -f .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_ENV=staging' .env
             test -f compose.dev.local.yaml
             echo 'DEVELOPMENT_INVENTORY'
             printf 'git_commit='
@@ -92,7 +96,7 @@ jobs:
             echo 'AGGREGATE_BEGIN dev'
             printf 'postgres_version=%s\n' "$(sql "SHOW server_version")"
             printf 'public_tables=%s\n' "$(sql "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public'")"
-            printf 'schema_sha256=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
+            printf 'schema_md5=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
             for name in migrations users profiles player_profiles contacts actors contracts contract_memberships contract_relations contract_permissions teams team_invitations team_join_requests events event_participants games game_sides game_roster_entries game_player_statistics tournaments tournament_admissions tournament_entries tournament_entry_members tournament_matches venues venue_courts venue_bookings venue_ownerships media site_media page_builder_pages content_items; do
               case "$name" in *[!a-z0-9_]*|'') exit 5;; esac
               exists="$(sql "SELECT to_regclass('public.$name') IS NOT NULL")"
