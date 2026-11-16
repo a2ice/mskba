@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use JsonException;
 use Throwable;
 
 /**
@@ -195,7 +194,7 @@ final class AuditDataMergeCommand extends Command
             }
 
             return self::SUCCESS;
-        } catch (JsonException | Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->error('Inventory failed; no data was changed: '.$exception->getMessage());
 
             return self::FAILURE;
