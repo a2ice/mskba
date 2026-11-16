@@ -252,3 +252,25 @@ deploy ограничен). Нельзя считать dev media backup усп�
 Даже успешно восстановленные raw backups пока не являются финальным
 релизным backup: потребуется off-host encrypted copy, media-path audit
 и повторный cutover snapshot после остановки записей.
+
+## Повторная dev-репетиция и исправление readiness race
+
+Run backup/restore #749: https://github.com/a2ice/mskba/actions/runs/43972177123
+Диагностика #750: https://github.com/a2ice/mskba/actions/runs/43973670435
+
+Private media теперь успешно упаковываются из phpfpm, без изменения
+прав на исходных каталогах. Второй dev full restore остановился с
+сообщением о недоступном Unix socket Postgres. Диагностика private
+restore.log классифицировала ровно одну ошибку:
+«connection to server on socket ... failed: No such file or directory».
+Это случилось **до** начала восстановления SQL, поэтому не является
+свидетельством повреждения dev dump.
+
+Причина — pg_isready мог принять временный сервер, запускаемый
+docker-entrypoint при initdb. После начальной инициализации этот сервер
+останавливается и заменяется основным postgres process (PID 1).
+Readiness gate дополнен требованием финального PID 1 == postgres
+и повторным pg_isready. До успешной повторной репетиции dev backup
+нельзя считать проверенно восстановимым.
+
+Продовые проверки уже успешно завершались; источник prod не менялся.
