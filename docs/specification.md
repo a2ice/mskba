@@ -1210,7 +1210,7 @@ Resolver может использовать:
 
 Локальный compose остается DB-only: `postgres` и `adminer`.
 
-Production compose добавлен отдельно и содержит `phpfpm`, `nginx`, `db`, `redis` и build-only сервис `node`. Старую версию проекта можно полностью удалять вместе с БД, контейнерами, volume и другими артефактами, если они мешают новой production-схеме.
+Production compose добавлен отдельно и содержит `phpfpm`, `nginx`, `db`, `redis` и build-only сервис `node`. Исторические production-БД, Docker volumes и медиа запрещено удалять до проверки восстановимости и завершения объединения данных. Текущий контур подготовки: [задача 325 — объединение production/dev](tasks/325/description.md), зависимый контур URL и SEO: [задача 316](tasks/316/description.md).
 
 ## Базовый сидер
 
