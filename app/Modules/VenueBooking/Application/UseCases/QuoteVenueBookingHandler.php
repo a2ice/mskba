@@ -180,8 +180,9 @@ final readonly class QuoteVenueBookingHandler
                 'invoice_workflow' => (bool) config('features.venue_rental.invoices', false)
                     && (bool) $effective['requires_payment'],
                 'buyer_postpay_allowed' => $policy->buyer_postpay_allowed,
-                'agent_provider_postpay_allowed' => $policy->agent_provider_postpay_allowed,
-                'agent_provider_self_attestation_allowed' => $policy->agent_provider_self_attestation_allowed,
+                'agent_portal_postpay_allowed' => $policy->agent_portal_postpay_allowed,
+                'portal_venue_postpay_allowed' => $policy->portal_venue_postpay_allowed,
+                'agent_portal_self_attestation_allowed' => $policy->agent_portal_self_attestation_allowed,
                 'allows_hold_extension' => $policy->allows_hold_extension,
                 'maximum_hold_extension_minutes' => $policy->maximum_hold_extension_minutes,
                 'payment_window_minutes' => $paymentWindow,
