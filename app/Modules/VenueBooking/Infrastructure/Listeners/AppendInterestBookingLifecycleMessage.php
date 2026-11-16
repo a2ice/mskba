@@ -22,11 +22,12 @@ final readonly class AppendInterestBookingLifecycleMessage
     ): void {
         $booking = VenueBooking::query()->with('latestTransition')
             ->find($event->bookingId);
-        if ($booking?->event_venue_interest_id === null || $booking->latestTransition?->actor_id === null) {
+        if ($booking === null || ($booking->event_venue_interest_id === null && $booking->pre_request_id === null) || $booking->latestTransition?->actor_id === null) {
             return;
         }
         $conversation = VenueBookingConversation::query()
-            ->where('event_venue_interest_id', $booking->event_venue_interest_id)->first();
+            ->where($booking->pre_request_id !== null ? ['pre_request_id' => $booking->pre_request_id]
+                : ['event_venue_interest_id' => $booking->event_venue_interest_id])->first();
         if ($conversation === null) {
             return;
         }

@@ -251,3 +251,4 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 - [ ] 321 - Единое уведомление о переводах и пополнении через Filament ([описание](tasks/321/description.md))
 
 - [ ] 322 - Персональные условия аренды и PUBLIC/USER_BOUND купоны ([описание](tasks/322/description.md))
+- [ ] 323 - Самостоятельная предзаявка аренды без мероприятия ([описание](tasks/323/description.md))

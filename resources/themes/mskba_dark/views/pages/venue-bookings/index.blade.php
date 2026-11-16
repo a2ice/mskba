@@ -5,6 +5,7 @@
 <section class="first-screen"><div class="inner">
     @include('theme::partials.breadcrumbs')
     <h1 class="section-title mb-4">{{ $title }}</h1>
+    <p><a class="btn btn--secondary btn--sm" href="{{ route('account.venue-pre-requests.index') }}">Предзаявки</a></p>
     <div aria-live="polite">
         @forelse($projection['data'] as $booking)
             @php

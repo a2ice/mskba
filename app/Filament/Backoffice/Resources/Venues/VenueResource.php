@@ -577,6 +577,7 @@ final class VenueResource extends Resource
             RelationGroup::make('Заявки', [
                 VenueRentalBookingsRelationManager::class,
                 VenueRentalInterestsRelationManager::class,
+                \App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalPreRequestsRelationManager::class,
             ])->icon('heroicon-o-chat-bubble-left-right'),
             CommissionAgentsRelationManager::class,
             CourtCommissionsRelationManager::class,

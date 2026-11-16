@@ -38,7 +38,7 @@ final readonly class SendVenueBookingMessageHandler
             }
 
             $conversation = VenueBookingConversation::query()->firstOrCreate(
-                ['venue_booking_id' => $booking->id],
+                $booking->conversationLookup(),
                 ['public_id' => (string) Str::uuid()],
             );
             $existing = VenueBookingMessage::query()

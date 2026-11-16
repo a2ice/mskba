@@ -94,6 +94,7 @@ final class VenueRentalSupportTables
                         $record->load([
                             'venue', 'requester', 'court', 'venueInterest.event',
                             'transitions.actor.user', 'conversation.messages.authorActor.user',
+                            'preRequestConversation.messages.authorActor.user',
                         ]);
 
                         return view('filament.backoffice.venue-rental-booking-history', ['booking' => $record]);
@@ -101,7 +102,9 @@ final class VenueRentalSupportTables
                     ->modalSubmitAction(false)->modalCancelActionLabel('Закрыть'),
                 Action::make('reply')->label('Написать')
                     ->icon('heroicon-o-pencil-square')
-                    ->visible(fn (VenueBooking $record): bool => self::managing() && $record->flow === 'rental')
+                    ->visible(fn (VenueBooking $record): bool => self::managing() && $record->flow === 'rental'
+                        && ($record->pre_request_id === null || app(\App\Modules\VenueBooking\Application\Services\VenueRentalPreRequests::class)
+                            ->can(auth('web')->user(), $record->preRequest, 'write')))
                     ->schema([Textarea::make('body')->label('Сообщение участникам заявки')->required()->maxLength(4000)])
                     ->modalSubmitActionLabel('Отправить')
                     ->action(function (VenueBooking $record, array $data): void {
@@ -113,7 +116,8 @@ final class VenueRentalSupportTables
                 Action::make('accept')->label('Принять')
                     ->icon('heroicon-o-check')
                     ->visible(fn (VenueBooking $record): bool => self::managing()
-                        && $record->flow === 'rental' && $record->status === Status::REQUESTED)
+                        && $record->flow === 'rental' && $record->status === Status::REQUESTED
+                        && ($record->pre_request_id === null || $record->proposal_accepted_at !== null))
                     ->requiresConfirmation()
                     ->action(function (VenueBooking $record): void {
                         self::guard($record);

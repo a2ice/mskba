@@ -29,7 +29,7 @@ final readonly class MarkVenueBookingConversationReadHandler
                 throw new VenueBookingTransitionException('Для отметки прочтения нужен пользователь.', 'BOOKING_FORBIDDEN');
             }
             $conversation = VenueBookingConversation::query()->lockForUpdate()->findOrFail($conversationId);
-            if ($conversation->venue_booking_id !== $booking->id) {
+            if (! $conversation->belongsToBooking($booking)) {
                 throw new VenueBookingTransitionException('Переписка не относится к этой брони.', 'CONVERSATION_BOOKING_MISMATCH');
             }
             $message = $messageId === null ? null : VenueBookingMessage::query()->where('conversation_id', $conversation->id)->findOrFail($messageId);

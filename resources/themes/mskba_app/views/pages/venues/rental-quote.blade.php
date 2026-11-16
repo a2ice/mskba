@@ -31,6 +31,7 @@
         <p class="app-rental-pricing__error" role="alert">{{ $error['message'] }}</p>
     @endif
     @if($errors->any())<p class="app-rental-pricing__error" role="alert">{{ $errors->first() }}</p>@endif
+    @if(session('error'))<p class="app-rental-pricing__error" role="alert">{{ session('error') }}</p>@endif
 
     <section class="panel app-rental-pricing__panel" aria-labelledby="rental-quote-form-heading">
         <h2 id="rental-quote-form-heading">Параметры аренды</h2>
@@ -89,9 +90,19 @@
             @endif
             <div class="app-rental-pricing__actions">
                 <button class="button primary" type="submit" data-rental-submit>Рассчитать</button>
+                @auth
+                    <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
+                    <button class="button secondary" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">Предзаявка</button>
+                @else
+                    <a class="button secondary" href="{{ route('login') }}">Предзаявка · войти</a>
+                @endauth
                 <button class="button secondary" type="button" data-rental-open-calendar>Выбрать время</button>
                 <a class="button secondary" href="{{ route('venues.show', $venue->routeIdentifier()) }}">К площадке</a>
             </div>
+            @auth
+                <label class="field-group">Комментарий к предзаявке (необязательно)<textarea name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
+                <p>Предзаявка открывает переписку с площадкой. Время не резервируется, оплата не требуется.</p>
+            @endauth
         </form>
     </section>
 

@@ -13,6 +13,7 @@
     </header>
 
     <nav class="app-rental-inbox__tabs" aria-label="Заявки на аренду">
+        <a class="button secondary" href="{{ route('account.venue-pre-requests.index') }}">Предзаявки</a>
         <a class="button {{ $ownerInbox ? 'primary' : 'secondary' }}"
            @if($ownerInbox) aria-current="page" @endif
            href="{{ route('account.venue-bookings.inbox') }}">Входящие</a>

@@ -646,6 +646,20 @@ Route::prefix('account/venue-ownership-claims')
             ->name('account.venue-ownership-claims.cancel');
     });
 
+Route::middleware(['venue-rental-feature:rental_flow', 'auth'])->group(function (): void {
+    $controller = \App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalPreRequestController::class;
+    Route::post('/venues/{venue}/pre-requests', [$controller, 'store'])->middleware('throttle:20,1')->name('venues.pre-requests.store');
+    Route::get('/account/venue-pre-requests', [$controller, 'index'])->name('account.venue-pre-requests.index');
+    Route::get('/account/venue-pre-requests/{preRequest}', [$controller, 'show'])->name('account.venue-pre-requests.show');
+    Route::post('/account/venue-pre-requests/{preRequest}/offer', [$controller, 'offer'])->middleware('throttle:20,1')->name('account.venue-pre-requests.offer');
+    Route::post('/account/venue-pre-requests/{preRequest}/respond', [$controller, 'respond'])->name('account.venue-pre-requests.respond');
+    Route::post('/account/venue-pre-requests/{preRequest}/withdraw', [$controller, 'withdraw'])->name('account.venue-pre-requests.withdraw');
+    Route::middleware('venue-rental-feature:conversations')->group(function () use ($controller): void {
+        Route::post('/account/venue-pre-requests/{preRequest}/messages', [$controller, 'send'])->middleware('throttle:20,1')->name('account.venue-pre-requests.send');
+        Route::get('/account/venue-pre-requests/{preRequest}/files/{message}', [$controller, 'download'])->name('account.venue-pre-requests.download');
+    });
+});
+
 Route::prefix('account/venue-bookings')
     ->middleware(['venue-rental-feature:rental_flow', 'auth'])
     ->group(function () {

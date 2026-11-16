@@ -389,6 +389,11 @@ class Venue extends Model
         return $this->hasMany(\App\Modules\Event\Domain\Models\EventVenueInterest::class);
     }
 
+    public function rentalPreRequests(): HasMany
+    {
+        return $this->hasMany(\App\Modules\VenueBooking\Domain\Models\VenueRentalPreRequest::class);
+    }
+
     public function ownershipClaims(): HasMany
     {
         return $this->hasMany(VenueOwnershipClaim::class);

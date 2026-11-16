@@ -44,8 +44,11 @@ final readonly class RequestVenueBookingHandler
         string $quotePublicId,
         ?string $idempotencyKey = null,
         ?string $correlationId = null,
+        ?\App\Modules\VenueBooking\Domain\Models\VenueRentalPreRequest $preRequest = null,
+        ?Actor $representative = null,
     ): VenueBooking {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        abort_unless(($preRequest === null) === ($representative === null), 409);
         $user = $actor->user?->canonical();
 
         if ($user === null || ! $user->isConfirmed()) {
@@ -57,11 +60,23 @@ final readonly class RequestVenueBookingHandler
         $booking = $this->commands->execute(
             'venue_booking.request',
             $actor,
-            ['quote_id' => $quotePublicId],
-            function () use ($actor, $user, $quote): VenueBooking {
-                return DB::transaction(function () use ($actor, $user, $quote): VenueBooking {
+            $preRequest === null ? ['quote_id' => $quotePublicId]
+                : ['quote_id' => $quotePublicId, 'pre_request_id' => $preRequest->id, 'representative_id' => $representative?->id],
+            function () use ($actor, $user, $quote, $preRequest, $representative): VenueBooking {
+                return DB::transaction(function () use ($actor, $user, $quote, $preRequest, $representative): VenueBooking {
                     $venue = Venue::query()->lockForUpdate()->findOrFail($quote->venue_id);
                     $quote = VenueBookingQuote::query()->lockForUpdate()->findOrFail($quote->id);
+                    if ($preRequest !== null) {
+                        $preRequest = $preRequest->newQuery()->lockForUpdate()->findOrFail($preRequest->id);
+                        abort_unless($representative !== null && $preRequest->requester_user_id === $user->id
+                            && $preRequest->venue_id === $quote->venue_id && $preRequest->venue_court_id === $quote->venue_court_id
+                            && $preRequest->status === \App\Modules\VenueBooking\Domain\Enums\VenueRentalPreRequestStatus::ACTIVE
+                            && $preRequest->scope === $quote->scope && $preRequest->starts_at->equalTo($quote->starts_at)
+                            && $preRequest->ends_at->equalTo($quote->ends_at), 409);
+                        app(\App\Modules\VenueBooking\Application\Services\VenueRentalPreRequests::class)->assertCan($representative, $preRequest, 'offer');
+                        abort_if($preRequest->bookings()->where('quote_id', '!=', $quote->id)
+                            ->whereIn('status', [VenueBookingStatusEnum::REQUESTED->value, VenueBookingStatusEnum::HELD->value, VenueBookingStatusEnum::CONFIRMED->value])->exists(), 409, 'По предзаявке уже есть предложение.');
+                    }
                     $existing = VenueBooking::query()->where('quote_id', $quote->id)->first();
 
                     if ($existing !== null) {
@@ -136,7 +151,10 @@ final readonly class RequestVenueBookingHandler
                         'venue_id' => $quote->venue_id,
                         'venue_court_id' => $quote->venue_court_id,
                         'event_id' => null,
-                        'created_by_actor_id' => $actor->id,
+                        'created_by_actor_id' => $representative?->id ?? $actor->id,
+                        'pre_request_id' => $preRequest?->id,
+                        'created_by_representative_id' => $representative?->id,
+                        'proposal_expires_at' => $preRequest === null ? null : $quote->valid_until,
                         'requester_user_id' => $user->id,
                         'policy_version_id' => $quote->policy_version_id,
                         'quote_id' => $quote->id,
@@ -156,7 +174,7 @@ final readonly class RequestVenueBookingHandler
                         'user_id' => $user->id,
                         'role' => VenueBookingPartyRole::APPLICANT,
                     ]);
-                    $this->lifecycle->recordRequested($booking, $actor);
+                    $this->lifecycle->recordRequested($booking, $representative ?? $actor);
 
                     $this->outbox->record($booking->id, VenueBookingRequested::class);
 

@@ -46,7 +46,7 @@ final readonly class AttachVenueBookingConversationFileHandler
                 && ! app(VenueBookingBackofficeAccess::class)->canManage($actor->user)) {
                     $booking->parties()->firstOrCreate(['user_id' => $actor->user_id, 'role' => VenueBookingPartyRole::VENUE_REPRESENTATIVE]);
                 }
-                $conversation = VenueBookingConversation::query()->firstOrCreate(['venue_booking_id' => $booking->id], ['public_id' => (string) Str::uuid()]);
+                $conversation = VenueBookingConversation::query()->firstOrCreate($booking->conversationLookup(), ['public_id' => (string) Str::uuid()]);
                 $existing = VenueBookingMessage::query()->where('conversation_id', $conversation->id)->where('author_actor_id', $actor->id)->where('client_id', $clientId)->first();
                 if ($existing !== null) {
                     return $existing;

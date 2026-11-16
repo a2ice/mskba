@@ -49,6 +49,8 @@ final class VenueBookingServiceProvider extends ServiceProvider
         Event::listen(VenueBookingPolicyPublished::class, InvalidateVenueSearchAfterPolicyPublished::class);
         Event::listen(VenueBookingConfirmed::class, CreateEventFromConfirmedBookingIntent::class);
         Event::listen(VenueBookingMessageSent::class, NotifyVenueBookingMessageRecipients::class);
+        Event::listen(\App\Modules\VenueBooking\Domain\Events\VenueRentalPreRequestMessageSent::class,
+            \App\Modules\VenueBooking\Infrastructure\Listeners\NotifyVenueRentalPreRequestMessageRecipients::class);
         Event::listen(VenueBookingRequested::class, NotifyVenueBookingLifecycleRecipients::class);
         Event::listen(VenueBookingRequested::class, AppendInterestBookingLifecycleMessage::class);
         Event::listen(VenueBookingHeld::class, AppendInterestBookingLifecycleMessage::class);
