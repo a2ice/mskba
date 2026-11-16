@@ -229,3 +229,26 @@ PostgreSQL 17 запускается без сети, полностью вос�
 До cutover требуется отдельный аудит всех путей пользовательских медиа
 в public/* и проверка полноты файловых ссылок. Серверные локальные
 копии не заменяют обязательный шифрованный off-host backup перед релизом.
+
+## Первая репетиция backup/restore — реальные результаты
+
+Run: https://github.com/a2ice/mskba/actions/runs/43970685665
+
+**Prod: успех.** Созданы приватные server-side database.pgdump
+(4 568 960 B) и storage-app.tar.gz (30 939 145 B), archive integrity
+проверена. Полный pg_restore в сетево-изолированном одноразовом Postgres 17
+контейнере завершён успешно: migrations=170, users=46, teams=13,
+tournaments=2, games=12, venues=14, venue_courts=17.
+Источник production DB не изменялся.
+
+**Dev: первая попытка неполная.** Custom pg_dump создан, но обычный
+host-side tar не смог прочесть private originals (доступ пользователя
+deploy ограничен). Нельзя считать dev media backup успешным. В fix PR
+архивация заменена на read-only streaming tar от root внутри
+существующего phpfpm-контейнера, без chmod/chown источников.
+Повторная репетиция обязательна. Неполный старый tar.part подлежит
+удалению после подтверждённой успешной новой dev-репетиции.
+
+Даже успешно восстановленные raw backups пока не являются финальным
+релизным backup: потребуется off-host encrypted copy, media-path audit
+и повторный cutover snapshot после остановки записей.
