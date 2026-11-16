@@ -255,16 +255,46 @@ if (canvas && manifestNode) {
         }
 
         const upgradeAfterInitialPaint = () => {
-            // The loading layer's load handler gets its chance to close first.
-            // Neither image preloads nor full CSS backgrounds start before it.
-            window.setTimeout(() => {
-                firstPaintReady = true;
-                hydrateStaticCss();
-                for (const image of pendingImages) scheduleOriginal(image);
-                pendingImages.clear();
-                for (const element of pendingBackgrounds) hydrateDynamicBackground(element);
-                pendingBackgrounds.clear();
-            }, 80);
+            let started = false;
+            const begin = () => {
+                if (started) return;
+                started = true;
+                window.setTimeout(() => {
+                    firstPaintReady = true;
+                    hydrateStaticCss();
+                    for (const image of pendingImages) scheduleOriginal(image);
+                    pendingImages.clear();
+                    for (const element of pendingBackgrounds) hydrateDynamicBackground(element);
+                    pendingBackgrounds.clear();
+                }, 80);
+            };
+
+            // The homepage's Filament-owned stage preloader is dismissed after
+            // its first-paint previews settle. Do not promote originals while
+            // that layer still masks the previews, even if window.load fires.
+            const layer = document.querySelector('.mskba-v2-stage__loading');
+            if (!layer || layer.isConnected === false) {
+                begin();
+                return;
+            }
+            if (typeof MutationObserver === 'undefined' || !layer.parentElement) {
+                // Progressively enhance even on browsers without observers.
+                window.setTimeout(begin, 4500);
+                return;
+            }
+            const observer = new MutationObserver(() => {
+                if (layer.isConnected !== false) return;
+                observer.disconnect();
+                window.clearTimeout?.(timeout);
+                begin();
+            });
+            observer.observe(layer.parentElement, { childList: true });
+            // A broken/disabled Filament preloader must not prevent upgrading
+            // images indefinitely. The page still has its own safe timeout.
+            const timeout = window.setTimeout(() => {
+                observer.disconnect();
+                begin();
+            }, 4500);
         };
         if (document.readyState === 'complete') upgradeAfterInitialPaint();
         else window.addEventListener('load', upgradeAfterInitialPaint, { once: true });
