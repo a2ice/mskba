@@ -27,6 +27,19 @@ if (canvas && manifestNode) {
         } catch { return null; }
     };
 
+    // Materialized Venues actors receive an absolute /lqip URL from the
+    // Filament-owned script. Recover the original from the verified manifest,
+    // rather than forcing an original request during initial page loading.
+    const originalForPreview = value => {
+        try {
+            const url = new URL(value, window.location.href);
+            if (url.origin !== origin) return null;
+            const match = url.pathname.match(/^\/media\/site\/([a-f0-9-]{36})\/lqip$/i);
+            if (!match) return null;
+            return imageVersion('/media/site/' + match[1])?.original || null;
+        } catch { return null; }
+    };
+
     const hydrated = new WeakSet();
     const pendingImages = new Set();
     const pendingBackgrounds = new Set();
@@ -130,7 +143,11 @@ if (canvas && manifestNode) {
 
     function hydrateImage(image) {
         if (hydrated.has(image) || image.closest('[data-site-media-progressive]')) return;
-        const full = image.getAttribute('data-mskba-lqip-full-src');
+        let full = image.getAttribute('data-mskba-lqip-full-src');
+        if (!full) {
+            full = originalForPreview(image.getAttribute('src'));
+            if (full) image.setAttribute('data-mskba-lqip-full-src', full);
+        }
         const entry = imageVersion(full || image.getAttribute('src'));
         if (!entry) return;
         hydrated.add(image);
@@ -228,9 +245,51 @@ if (canvas && manifestNode) {
             || node.closest?.('#mskba-venues-map-canvas')) return;
         if (node.tagName === 'IMG') hydrateImage(node);
         else hydrateDynamicBackground(node);
-        node.querySelectorAll?.('img[data-mskba-lqip-full-src], img[src^="/media/site/"]')
+        node.querySelectorAll?.('img[data-mskba-lqip-full-src], img[src*="/media/site/"]')
             .forEach(hydrateImage);
         node.querySelectorAll?.('[style*="background-image"]').forEach(hydrateDynamicBackground);
+    }
+
+    // Independent first-paint readiness: old Filament JS still waits for
+    // full actor images and document.fonts.ready. Release the existing layer
+    // once its actual LQIP thumbnails are ready, without creating a new UI.
+    function releaseStageAfterPreviews() {
+        const stage = canvas.querySelector('.mskba-v2-stage');
+        const layer = stage?.querySelector('.mskba-v2-stage__loading');
+        if (!layer || layer.isConnected === false) return;
+
+        const candidates = [...stage.querySelectorAll(
+            '.mskba-v2-stage__background-image, '
+            + '#venues-scene .participant-wrapper > img, '
+            + '.mskba-hero-slide.is-active img',
+        )];
+        const previews = candidates.filter(image =>
+            image.hasAttribute('data-mskba-lqip-full-src')
+            || Boolean(originalForPreview(image.getAttribute('src')))
+        );
+
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            layer.classList.add('is-ready');
+            window.setTimeout(() => layer.remove(), 250);
+        };
+        // Avoid holding the page on a bad/missing thumbnail.
+        const safety = window.setTimeout(finish, 4500);
+        const loaded = image => new Promise(resolve => {
+            image.loading = 'eager';
+            if (image.complete) {
+                resolve();
+                return;
+            }
+            image.addEventListener('load', resolve, { once: true });
+            image.addEventListener('error', resolve, { once: true });
+        });
+        Promise.all(previews.map(loaded)).then(() => {
+            window.clearTimeout?.(safety);
+            window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+        }, finish);
     }
 
     function start() {
@@ -252,6 +311,12 @@ if (canvas && manifestNode) {
                 attributeFilter: ['style', 'src', 'srcset'],
             });
             window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
+        }
+
+        // The published page script mounts actors during DOMContentLoaded.
+        // Schedule readiness inspection in the next task so those nodes exist.
+        if (canvas.querySelector('.mskba-v2-stage__loading')) {
+            window.setTimeout(releaseStageAfterPreviews, 0);
         }
 
         const upgradeAfterInitialPaint = () => {
