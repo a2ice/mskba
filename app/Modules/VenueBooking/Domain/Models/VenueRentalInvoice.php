@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'public_id', 'number', 'venue_booking_id', 'template_id', 'kind',
-    'issuer_kind', 'issuer_user_id', 'payer_user_id', 'issued_by_actor_id',
+    'issuer_kind', 'payer_kind', 'document_kind', 'issuer_user_id', 'payer_user_id', 'issued_by_actor_id',
     'reviewed_by_actor_id', 'status', 'currency', 'amount_minor', 'title',
     'description', 'payment_methods', 'payment_instructions', 'settlement_basis',
     'settlement_note', 'issued_at', 'due_at', 'settled_at', 'quote_snapshot',
