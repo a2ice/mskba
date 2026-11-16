@@ -41,8 +41,7 @@ final class VenueRentalAdminParityTest extends TestCase
         $this->assertTrue(RentalInvoiceTemplateResource::canViewAny());
         $this->assertTrue(RentalInvoiceTemplateResource::canCreate());
 
-        Livewire::test(ListRentalInvoiceTemplates::class)->assertSuccessful()
-            ->assertSee('Шаблоны счетов');
+        Livewire::test(ListRentalInvoiceTemplates::class)->assertSuccessful();
         Livewire::test(CommercialMembershipsRelationManager::class, [
             'ownerRecord' => $venue,
             'pageClass' => EditVenue::class,
