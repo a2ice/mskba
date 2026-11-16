@@ -1,0 +1,42 @@
+name: MSKBA isolated identity and venue collision audit
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-collision-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-collision-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate offline collision script
+        run: bash -n scripts/data-merge/isolated-collision-audit.sh
+      - name: Stage offline collision script
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/isolated-collision-audit.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Compare identities inside ephemeral PostgreSQL without revealing PII
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-collision-audit.sh ${{ github.run_id }}
