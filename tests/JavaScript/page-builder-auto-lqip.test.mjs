@@ -23,7 +23,7 @@ function scene({ known = true, dynamic = false, picture = false, lazy = false } 
     ]);
     const style = {
         backgroundImage: '', backgroundSize: '', backgroundPosition: '', backgroundRepeat: '',
-        removeProperty(name) { this[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase()] = ''; },
+        removeProperty(name) { this[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = ''; },
     };
     const sourceAttrs = new Map(picture && known
         ? [['data-mskba-lqip-full-srcset', full]] : []);
