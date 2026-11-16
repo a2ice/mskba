@@ -97,8 +97,9 @@ final readonly class PublishVenueBookingPolicyHandler
             'hold_verification_note' => $data['hold_verification_note'] ?? null,
             'hold_verified_at' => now(),
             'buyer_postpay_allowed' => (bool) ($data['buyer_postpay_allowed'] ?? false),
-            'agent_provider_postpay_allowed' => (bool) ($data['agent_provider_postpay_allowed'] ?? false),
-            'agent_provider_self_attestation_allowed' => (bool) ($data['agent_provider_self_attestation_allowed'] ?? false),
+            'agent_portal_postpay_allowed' => (bool) ($data['agent_portal_postpay_allowed'] ?? false),
+            'portal_venue_postpay_allowed' => (bool) ($data['portal_venue_postpay_allowed'] ?? false),
+            'agent_portal_self_attestation_allowed' => (bool) ($data['agent_portal_self_attestation_allowed'] ?? false),
             'allows_hold_extension' => (bool) ($data['allows_hold_extension'] ?? false),
             'maximum_hold_extension_minutes' => isset($data['maximum_hold_extension_minutes'])
                 ? (int) $data['maximum_hold_extension_minutes']
