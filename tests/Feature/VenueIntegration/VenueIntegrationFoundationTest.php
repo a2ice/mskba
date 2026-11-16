@@ -100,6 +100,49 @@ final class VenueIntegrationFoundationTest extends TestCase
         $this->assertDatabaseCount('venue_integration_audit_events', 4);
     }
 
+
+    public function test_external_hold_limit_is_scoped_to_source_validated_and_audited(): void
+    {
+        $manager = app(VenueIntegrationManager::class);
+        $venue = Venue::factory()->create();
+        $courtId = $venue->courts()->firstOrFail()->id;
+        $actor = $this->superadmin();
+        $config = $manager->saveConfiguration($venue, $actor, $this->settings());
+
+        $source = $manager->saveSource($config, $actor, $this->source($courtId));
+        $this->assertNull($source->max_hold_duration_minutes); // Unknown is not unlimited.
+
+        $source = $manager->saveSource($config, $actor, $this->source($courtId, [
+            'max_hold_duration_minutes' => 45,
+        ]), $source);
+        $this->assertSame(45, $source->max_hold_duration_minutes);
+        $this->assertDatabaseHas('venue_integration_sources', [
+            'id' => $source->id, 'max_hold_duration_minutes' => 45,
+        ]);
+        $lastAudit = json_decode((string) DB::table('venue_integration_audit_events')
+            ->orderByDesc('id')->value('changes'), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(45, $lastAudit['after']['max_hold_duration_minutes']);
+
+        // Older callers that do not send this new optional field preserve the value.
+        $source = $manager->saveSource($config, $actor, $this->source($courtId), $source);
+        $this->assertSame(45, $source->max_hold_duration_minutes);
+
+        $source = $manager->saveSource($config, $actor, $this->source($courtId, [
+            'max_hold_duration_minutes' => 0,
+        ]), $source);
+        $this->assertSame(0, $source->max_hold_duration_minutes); // No external hold.
+
+        $source = $manager->saveSource($config, $actor, $this->source($courtId, [
+            'max_hold_duration_minutes' => null,
+        ]), $source);
+        $this->assertNull($source->max_hold_duration_minutes);
+
+        $this->expectException(ValidationException::class);
+        $manager->saveSource($config, $actor, $this->source($courtId, [
+            'max_hold_duration_minutes' => 10081,
+        ]), $source);
+    }
+
     public function test_external_source_credentials_are_encrypted_and_never_in_audit_or_serialized_output(): void
     {
         $manager = app(VenueIntegrationManager::class);
