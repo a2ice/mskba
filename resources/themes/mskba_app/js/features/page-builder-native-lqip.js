@@ -1,8 +1,10 @@
 /*
- * Cache-first progressive media for Page Builder.
- * The server renders original URLs in <img src>, <picture><source> and
- * CSS backgrounds. Lightweight LQIP thumbnails are background fallbacks,
- * never a substitute src that flashes again on every reload.
+ * LQIP-first progressive media for Page Builder.
+ *
+ * The initial HTML/CSS references only tiny previews, so window.load (and
+ * the homepage loading layer) is not held by large originals. The originals
+ * begin loading asynchronously AFTER that event, then replace thumbnails
+ * only after a successful decode. Missing previews retain their normal URL.
  */
 const canvas = document.querySelector('.mskba-page-builder');
 const manifestNode = document.querySelector('[data-page-builder-lqip-manifest]');
@@ -26,12 +28,14 @@ if (canvas && manifestNode) {
     };
 
     const hydrated = new WeakSet();
+    const pendingImages = new Set();
+    const pendingBackgrounds = new Set();
     const dynamicBackgrounds = new WeakMap();
+    let firstPaintReady = false;
 
     function finishImage(image) {
         const finish = () => {
             if (!image.isConnected || image.naturalWidth <= 0) return;
-            // Remove only the preview CSS installed by Page Builder.
             if (image.hasAttribute('data-mskba-lqip-added-background')) {
                 image.style.removeProperty('background-image');
                 image.style.removeProperty('background-size');
@@ -42,24 +46,103 @@ if (canvas && manifestNode) {
             image.setAttribute('data-mskba-lqip-ready', '1');
         };
         const decode = () => {
-            if (typeof image.decode === 'function') image.decode().then(finish, finish);
-            else finish();
+            if (typeof image.decode === 'function') {
+                image.decode().then(finish, () => {
+                    if (image.naturalWidth > 0) finish();
+                });
+            } else finish();
         };
         if (image.complete && image.naturalWidth > 0) decode();
         else image.addEventListener('load', decode, { once: true });
     }
 
+    function originalFromSrcset(srcset) {
+        return srcset?.trim().split(/\s+/)[0] || null;
+    }
+
+    function preloadOriginal(image) {
+        if (!image.isConnected) return;
+        const full = image.getAttribute('data-mskba-lqip-full-src');
+        if (!full || image.getAttribute('src') === full) {
+            finishImage(image);
+            return;
+        }
+
+        const picture = image.closest('picture');
+        const sources = [...(picture?.querySelectorAll('source[data-mskba-lqip-full-srcset]') || [])];
+        const activeSource = sources.find(source =>
+            !source.media || window.matchMedia(source.media).matches);
+        const selected = originalFromSrcset(activeSource?.getAttribute('data-mskba-lqip-full-srcset')) || full;
+        const original = new Image();
+        original.decoding = 'async';
+
+        const promote = () => {
+            if (!image.isConnected || original.naturalWidth <= 0) return;
+            sources.forEach(source => {
+                const srcset = source.getAttribute('data-mskba-lqip-full-srcset');
+                if (srcset) {
+                    source.srcset = srcset;
+                    source.removeAttribute('data-mskba-lqip-full-srcset');
+                }
+            });
+            const imgSrcset = image.getAttribute('data-mskba-lqip-full-srcset');
+            if (imgSrcset) {
+                image.srcset = imgSrcset;
+                image.removeAttribute('data-mskba-lqip-full-srcset');
+            }
+            // Only promote once the selected original has usable pixels.
+            image.src = full;
+            finishImage(image);
+        };
+        original.onload = () => {
+            if (typeof original.decode === 'function') {
+                original.decode().then(promote, () => {
+                    if (original.naturalWidth > 0) promote();
+                });
+            } else promote();
+        };
+        // A failed original must never replace a working LQIP.
+        original.onerror = () => {};
+        original.src = selected;
+        if (original.complete && original.naturalWidth > 0) original.onload();
+    }
+
+    const originalObserver = typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                originalObserver.unobserve(entry.target);
+                preloadOriginal(entry.target);
+            }
+        }, { rootMargin: '400px' }) : null;
+
+    function scheduleOriginal(image) {
+        if (!firstPaintReady) {
+            pendingImages.add(image);
+            return;
+        }
+        if (image.loading === 'lazy' && originalObserver) {
+            originalObserver.observe(image);
+        } else {
+            preloadOriginal(image);
+        }
+    }
+
     function hydrateImage(image) {
         if (hydrated.has(image) || image.closest('[data-site-media-progressive]')) return;
-        const authoredOriginal = image.getAttribute('data-mskba-lqip-full-src');
-        const entry = authoredOriginal ? imageVersion(authoredOriginal)
-            : imageVersion(image.getAttribute('src'));
+        const full = image.getAttribute('data-mskba-lqip-full-src');
+        const entry = imageVersion(full || image.getAttribute('src'));
         if (!entry) return;
         hydrated.add(image);
 
-        // Dynamic API images that were not processed on the server still get
-        // a fallback if loading is cold. A warm image is never changed.
-        if (!authoredOriginal && !(image.complete && image.naturalWidth > 0)
+        if (full && image.getAttribute('src') !== full) {
+            scheduleOriginal(image);
+            return;
+        }
+
+        // Backward compatibility for dynamic API images that already have the
+        // original src. They may still use a CSS fallback during decoding.
+        if (!(image.complete && image.naturalWidth > 0)
             && image.style && !image.style.backgroundImage) {
             image.style.backgroundImage = 'url("' + entry.preview + '")';
             image.style.backgroundSize = 'contain';
@@ -70,16 +153,27 @@ if (canvas && manifestNode) {
         finishImage(image);
     }
 
-    function hydrateSource(source) {
-        // Backward compatibility with older server markup only. New markup
-        // keeps responsive source URLs pointed at original assets from HTML.
-        const full = source.getAttribute('data-mskba-lqip-full-srcset');
-        if (full && source.srcset !== full) source.srcset = full;
+    function hydrateStaticCss() {
+        const css = document.querySelector('style[data-mskba-lqip-css]');
+        if (!css) return;
+        // A background keeps its miniature as a fallback underneath the full
+        // image, so no blank frame can appear while the original downloads.
+        css.textContent = css.textContent.replace(
+            /url\(\s*(["']?)(\/media\/site\/([a-f0-9-]{36})\/lqip)\1\s*\)/gi,
+            (match, _quote, _url, uuid) => {
+                const entry = imageVersion('/media/site/' + uuid);
+                return entry ? 'url("' + entry.original + '"),url("' + entry.preview + '")' : match;
+            },
+        );
     }
 
     function hydrateDynamicBackground(element) {
-        if (element.nodeType !== 1 || !element.style) return;
-        if (element.closest('#mskba-venues-map-canvas')) return;
+        if (element.nodeType !== 1 || !element.style
+            || element.closest?.('#mskba-venues-map-canvas')) return;
+        if (!firstPaintReady) {
+            pendingBackgrounds.add(element);
+            return;
+        }
         const background = element.style.backgroundImage;
         if (!background || background === 'none') return;
         const matches = [...background.matchAll(/url\(\s*["']?([^"'()]+)["']?\s*\)/gi)];
@@ -88,8 +182,6 @@ if (canvas && manifestNode) {
         if (!entry || dynamicBackgrounds.get(element) === entry.original) return;
         dynamicBackgrounds.set(element, entry.original);
 
-        // Original on top of the preview, with no replacement of a painted
-        // background during a warm-cache navigation.
         const both = background.replace(matches[0][0],
             'url("' + matches[0][1] + '"),url("' + entry.preview + '")');
         element.style.backgroundImage = both;
@@ -103,6 +195,7 @@ if (canvas && manifestNode) {
             if (typeof full.decode === 'function') full.decode().then(reveal, reveal);
             else reveal();
         };
+        full.onerror = () => {};
         full.src = entry.original;
         if (full.complete && full.naturalWidth > 0) full.onload();
     }
@@ -114,8 +207,6 @@ if (canvas && manifestNode) {
         else hydrateDynamicBackground(node);
         node.querySelectorAll?.('img[data-mskba-lqip-full-src], img[src^="/media/site/"]')
             .forEach(hydrateImage);
-        if (node.tagName === 'SOURCE') hydrateSource(node);
-        node.querySelectorAll?.('source[data-mskba-lqip-full-srcset]').forEach(hydrateSource);
         node.querySelectorAll?.('[style*="background-image"]').forEach(hydrateDynamicBackground);
     }
 
@@ -139,6 +230,21 @@ if (canvas && manifestNode) {
             });
             window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
         }
+
+        const upgradeAfterInitialPaint = () => {
+            // The loading layer's load handler gets its chance to close first.
+            // Neither image preloads nor full CSS backgrounds start before it.
+            window.setTimeout(() => {
+                firstPaintReady = true;
+                hydrateStaticCss();
+                for (const image of pendingImages) scheduleOriginal(image);
+                pendingImages.clear();
+                for (const element of pendingBackgrounds) hydrateDynamicBackground(element);
+                pendingBackgrounds.clear();
+            }, 80);
+        };
+        if (document.readyState === 'complete') upgradeAfterInitialPaint();
+        else window.addEventListener('load', upgradeAfterInitialPaint, { once: true });
     }
 
     if (document.readyState === 'loading') {
