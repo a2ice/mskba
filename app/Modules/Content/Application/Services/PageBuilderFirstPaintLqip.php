@@ -19,50 +19,51 @@ final class PageBuilderFirstPaintLqip
             return $html;
         }
 
-        // Critical first-viewport arena art must be paintable on the first HTML
-        // frame, even when PHP media routes have a slow cold response. Use only
-        // already-generated, bounded WebP thumbnails; never inline originals.
+        // The first HTML paint must request only the tiny image. Full images
+        // are upgraded asynchronously after the page's initial load event.
+        // This lets the homepage loader complete without waiting for originals.
         $inlined = $this->inlineCriticalPreviews($html, $previews);
-
-        // Browser-first progressive rendering: start every image with its
-        // ORIGINAL URL. An LQIP is only a CSS background underneath the same
-        // image while it is pending. When the original is in HTTP cache, the
-        // browser paints it directly on refresh; it never swaps src to LQIP.
-        // <picture><source> keeps the real responsive srcset throughout.
-        return preg_replace_callback('~<img\b[^>]*>~i', static function (array $found) use ($previews, $inlined): string {
+        $images = preg_replace_callback('~<img\b[^>]*>~i', static function (array $found) use ($previews, $inlined): string {
             $tag = $found[0];
-            if (! preg_match('~\bsrc\s*=\s*(["\'])([^"\']*)\1~i', $tag, $match)) {
+            if (! preg_match('~(?<![\w-])src\s*=\s*(["\'])([^"\']*)\1~i', $tag, $match)) {
                 return $tag;
             }
             $url = $match[2];
             if (! preg_match('~^/media/site/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$~i', $url, $uuid)) {
                 return $tag;
             }
-            $preview = $previews[strtolower($uuid[1])] ?? null;
-            if (! is_string($preview) || $preview !== '/media/site/'.strtolower($uuid[1]).'/lqip') {
+            $id = strtolower($uuid[1]);
+            $preview = $previews[$id] ?? null;
+            if (! is_string($preview) || $preview !== '/media/site/'.$id.'/lqip') {
                 return $tag;
             }
 
-            // Native background-only preview: preserve element geometry and
-            // author style, remove legacy clone-based enhancer metadata.
-            $initial = preg_replace('~\sdata-site-media-lqip(?:-mobile)?\s*=\s*(["\']).*?\1~i', '', $tag);
             $isCritical = self::isCriticalImage($tag);
-            $firstPaintPreview = $isCritical ? ($inlined[strtolower($uuid[1])] ?? $preview) : $preview;
-            $backgroundSize = preg_match('~\bclass\s*=\s*(["\'])[^"\']*\b(?:mskba-v3-venues__arena|mskba-hero-slide__background)\b[^"\']*\1~i', $tag)
-                ? 'cover' : 'contain';
-            $style = 'background-image:url('.$firstPaintPreview.');background-size:'.$backgroundSize.';background-position:center;background-repeat:no-repeat;';
-            $hasStyle = preg_match('~\bstyle\s*=\s*(["\'])(.*?)\1~is', $initial, $existingStyle);
-            $hasAuthoredBackground = $hasStyle && preg_match('/\bbackground(?:-[a-z-]+)?\s*:/i', $existingStyle[2]);
+            $initialSrc = $isCritical ? ($inlined[$id] ?? $preview) : $preview;
+            $initial = preg_replace('~\sdata-site-media-lqip(?:-mobile)?\s*=\s*(["\']).*?\1~i', '', $tag);
+            $initial = preg_replace_callback('~(?<![\w-])src\s*=\s*(["\'])([^"\']*)\1~i',
+                static fn (array $src): string => 'src='.$src[1].e($initialSrc).$src[1], $initial, 1);
+
+            // Avoid an original being eagerly downloaded through an img srcset
+            // while its ordinary src is still displaying a thumbnail.
+            $originalSrcset = null;
+            $initial = preg_replace_callback('~(?<![\w-])srcset\s*=\s*(["\'])([^"\']*)\1~i',
+                static function (array $srcset) use ($previews, &$originalSrcset): string {
+                    $candidate = trim($srcset[2]);
+                    if (! preg_match('~^/media/site/([0-9a-f-]{36})(\s+\d+[wx])?$~i', $candidate, $matched)) {
+                        return $srcset[0];
+                    }
+                    $preview = $previews[strtolower($matched[1])] ?? null;
+                    if ($preview === null) {
+                        return $srcset[0];
+                    }
+                    $originalSrcset = $srcset[2];
+                    return 'srcset='.$srcset[1].e($preview.($matched[2] ?? '')).$srcset[1];
+                }, $initial, 1);
+
             $extra = ' data-mskba-lqip-full-src="'.e($url).'" data-mskba-lqip-preview-src="'.e($preview).'"';
-            if (! $hasAuthoredBackground) {
-                if ($hasStyle) {
-                    $initial = preg_replace_callback('~\bstyle\s*=\s*(["\'])(.*?)\1~is', static function (array $existing) use ($style): string {
-                        return 'style='.$existing[1].rtrim($existing[2], ';').';'.$style.$existing[1];
-                    }, $initial, 1);
-                } else {
-                    $initial = preg_replace('~\s*/?>$~', ' style="'.e($style).'">', $initial, 1);
-                }
-                $extra .= ' data-mskba-lqip-added-background="1"';
+            if ($originalSrcset !== null) {
+                $extra .= ' data-mskba-lqip-full-srcset="'.e($originalSrcset).'"';
             }
             if ($isCritical || preg_match('~\bclass\s*=\s*(["\'])[^"\']*\bmskba-v2-venues__player\b[^"\']*\1~i', $tag)) {
                 $initial = preg_replace('~\s(?:loading|fetchpriority)\s*=\s*(["\']).*?\1~i', '', $initial);
@@ -71,6 +72,26 @@ final class PageBuilderFirstPaintLqip
 
             return preg_replace('~\s*/?>$~', $extra.'>', $initial, 1);
         }, $html) ?? $html;
+
+        // A <picture> source must also begin with the LQIP; otherwise the
+        // browser selects its original srcset ahead of the preview img.
+        return preg_replace_callback('~<source\b[^>]*>~i', static function (array $found) use ($previews): string {
+            $tag = $found[0];
+            if (! preg_match('~(?<![\w-])srcset\s*=\s*(["\'])([^"\']*)\1~i', $tag, $match)) {
+                return $tag;
+            }
+            $srcset = trim($match[2]);
+            if (! preg_match('~^/media/site/([0-9a-f-]{36})(\s+\d+[wx])?$~i', $srcset, $source)) {
+                return $tag;
+            }
+            $preview = $previews[strtolower($source[1])] ?? null;
+            if (! $preview) {
+                return $tag;
+            }
+            $initial = preg_replace_callback('~(?<![\w-])srcset\s*=\s*(["\'])([^"\']*)\1~i',
+                static fn (array $value): string => 'srcset='.$value[1].e($preview.($source[2] ?? '')).$value[1], $tag, 1);
+            return preg_replace('~\s*/?>$~', ' data-mskba-lqip-full-srcset="'.e($match[2]).'">', $initial, 1);
+        }, $images) ?? $images;
     }
 
     /**
@@ -140,18 +161,16 @@ final class PageBuilderFirstPaintLqip
             return $css;
         }
 
-        // Paint the original CSS background ABOVE its tiny LQIP. The browser
-        // displays the miniature only if the original has not arrived yet.
-        // A cache-warm original paints immediately on refresh with no JS
-        // replacement or placeholder-first phase. Keep other CSS properties,
-        // masks and multi-image gradients unchanged.
+        // During initial load, CSS only references LQIPs. The client restores
+        // full-resolution URLs above the previews AFTER the load event, so
+        // CSS background originals do not hold the homepage loading layer.
         return preg_replace_callback('~\bbackground-image\s*:\s*([^;}]+)~i', static function (array $declaration) use ($previews): string {
             $new = preg_replace_callback(
                 '~url\(\s*(["\']?)(/media/site/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}))\1\s*\)~i',
                 static function (array $url) use ($previews): string {
                     $preview = $previews[strtolower($url[3])] ?? null;
                     return $preview
-                        ? 'url("'.e($url[2]).'"),url("'.e($preview).'")'
+                        ? 'url("'.e($preview).'")'
                         : $url[0];
                 },
                 $declaration[1],
