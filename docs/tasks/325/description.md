@@ -158,3 +158,45 @@ workflow_dispatch; production deploy workflow не запускается.
 Результат этого SSH-аудита не заменяет проверку настоящих резервных копий.
 Реальное объединение на isolated candidate, импорт, smoke и cutover
 остаются заблокированы до подтверждённого доступа к копиям данных.
+
+## Фактическая read-only инвентаризация 17.11.2026
+
+GitHub Actions run: https://github.com/a2ice/mskba/actions/runs/43967488475
+Успешно отработали отдельные SSH jobs prod/dev в режиме
+PostgreSQL default_transaction_read_only=on. Исходные БД не изменялись.
+
+| Объект | prod | dev |
+|---|---:|---:|
+| PostgreSQL version | 17.9 | 17.9 |
+| Таблицы public | 153 | 247 |
+| Применённые миграции | 170 | 285 |
+| users | 46 | 10 |
+| profiles | 46 | 10 |
+| player_profiles | 13 | 6 |
+| teams | 13 | 1 |
+| tournaments | 2 | 0 |
+| games | 12 | 0 |
+| events | 21 | 3 |
+| venues | 14 | 9 |
+| venue_courts | 17 | 10 |
+| venue_bookings | 23 | 6 |
+| media | 95 | 109 |
+| contracts | 26 | 13 |
+| event_participants | 60 | 5 |
+| actors | 10321 | 253 |
+
+Код на хостах в момент аудита: prod cc33a60b, dev d637bd84.
+Исторический Docker volume mskba_postgres_data на prod обнаружен;
+его содержимое и восстановимость ещё НЕ проверены.
+
+**Обязательная проверка перед миграциями:** реальный prod ledger
+содержит 170 записей, а сравнение файлов main/dev ранее показывало
+169 общих миграций. Нужно вычислить точное расхождение имён, а не
+предполагать, что это безопасная лишняя запись. Для этого следующий
+read-only workflow дополнен полным migration ledger, проверкой pg_dump/
+pg_restore и доступного места под бэкапы.
+
+Поскольку prod хранит основные пользователи, команды, турниры и игры,
+а dev — расширенную схему и новые площадки, кандидат
+prod-copy + dev schema + whitelist dev-data остаётся предпочтительным.
+Но никакой import/restore/cutover ещё не проводился.
