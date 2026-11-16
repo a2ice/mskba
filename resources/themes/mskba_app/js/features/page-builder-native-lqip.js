@@ -156,15 +156,38 @@ if (canvas && manifestNode) {
     function hydrateStaticCss() {
         const css = document.querySelector('style[data-mskba-lqip-css]');
         if (!css) return;
-        // A background keeps its miniature as a fallback underneath the full
-        // image, so no blank frame can appear while the original downloads.
-        css.textContent = css.textContent.replace(
-            /url\(\s*(["']?)(\/media\/site\/([a-f0-9-]{36})\/lqip)\1\s*\)/gi,
-            (match, _quote, _url, uuid) => {
-                const entry = imageVersion('/media/site/' + uuid);
-                return entry ? 'url("' + entry.original + '"),url("' + entry.preview + '")' : match;
-            },
-        );
+
+        // Decode originals off-DOM before replacing URLs. This preserves
+        // authored background layers, shorthand sizing, gradients and masks:
+        // no duplicate background layer or blank frame is introduced.
+        const known = new Set();
+        const pattern = /url\(\s*["']?\/media\/site\/([a-f0-9-]{36})\/lqip["']?\s*\)/gi;
+        for (const match of css.textContent.matchAll(pattern)) {
+            const uuid = match[1].toLowerCase();
+            if (known.has(uuid)) continue;
+            known.add(uuid);
+            const entry = imageVersion('/media/site/' + uuid);
+            if (!entry) continue;
+            const full = new Image();
+            full.decoding = 'async';
+            const promote = () => {
+                if (full.naturalWidth <= 0) return;
+                css.textContent = css.textContent.replace(
+                    new RegExp('url\\(\\s*["\\u0027]?/media/site/' + uuid + '/lqip["\\u0027]?\\s*\\)', 'gi'),
+                    'url("' + entry.original + '")',
+                );
+            };
+            full.onload = () => {
+                if (typeof full.decode === 'function') {
+                    full.decode().then(promote, () => {
+                        if (full.naturalWidth > 0) promote();
+                    });
+                } else promote();
+            };
+            full.onerror = () => {};
+            full.src = entry.original;
+            if (full.complete && full.naturalWidth > 0) full.onload();
+        }
     }
 
     function hydrateDynamicBackground(element) {
