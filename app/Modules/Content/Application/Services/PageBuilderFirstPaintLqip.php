@@ -19,6 +19,28 @@ final class PageBuilderFirstPaintLqip
             return $html;
         }
 
+        // Filament's Venues V3 runtime materializes its actor <img> elements
+        // from hidden <a class="mskba-v3-actor-source" href="/media/site/...">.
+        // Without rewriting those carriers the browser starts N full-size
+        // downloads before the regular img LQIP enhancer can see them.
+        $html = preg_replace_callback('~<a\b[^>]*>~i', static function (array $found) use ($previews): string {
+            $tag = $found[0];
+            if (! preg_match('~\bclass\s*=\s*(["\'])(.*?)\1~is', $tag, $classes)
+                || ! preg_match('~(?:^|\s)mskba-v3-actor-source(?:\s|$)~', $classes[2])) {
+                return $tag;
+            }
+            if (! preg_match('~(?<![\w-])href\s*=\s*(["\'])(/media/site/([a-f0-9-]{36}))\1~i', $tag, $href)) {
+                return $tag;
+            }
+            $uuid = strtolower($href[3]);
+            $preview = $previews[$uuid] ?? null;
+            if ($preview !== '/media/site/'.$uuid.'/lqip') {
+                return $tag;
+            }
+            return preg_replace_callback('~(?<![\w-])href\s*=\s*(["\'])([^"\']*)\1~i',
+                static fn (array $attr): string => 'href='.$attr[1].e($preview).$attr[1], $tag, 1) ?? $tag;
+        }, $html) ?? $html;
+
         // The first HTML paint must request only the tiny image. Full images
         // are upgraded asynchronously after the page's initial load event.
         // This lets the homepage loader complete without waiting for originals.
