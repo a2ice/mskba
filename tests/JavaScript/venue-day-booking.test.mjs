@@ -28,6 +28,7 @@ function node() {
         addEventListener(type, listener) { this.listeners[type] = listener; },
         querySelectorAll() { return []; },
         querySelector() { return null; },
+        prepend(...children) { this.children.unshift(...children); },
         append(...children) { this.children.push(...children); },
         appendChild(child) { this.children.push(child); return child; },
         replaceChildren(...children) { this.children = children; },
@@ -41,7 +42,7 @@ function node() {
     };
 }
 
-function mountDayBooking({ previewFails = false, customSlots = null } = {}) {
+function mountDayBooking({ previewFails = false, customSlots = null, personalDiscount = null } = {}) {
     const status = node();
     const heading = node();
     const grid = node();
@@ -103,7 +104,7 @@ function mountDayBooking({ previewFails = false, customSlots = null } = {}) {
                 return { ok: false, json: async () => ({ message: 'Стоимость временно недоступна' }) };
             }
             return { ok: true, json: async () => ({
-                price_preview: { total_minor: 715000 },
+                price_preview: { total_minor: 715000, personal_discount: personalDiscount },
             }) };
         }
         return { ok: true, json: async () => ({
@@ -120,7 +121,8 @@ function mountDayBooking({ previewFails = false, customSlots = null } = {}) {
     const document = {
         querySelector: selector => selector === '[data-venue-day-dialog]' ? dialog : null,
         querySelectorAll: selector => selector === '[data-venue-day-open]' ? [opener] : [],
-        createElement: node,
+        createElement: tag => ({...node(), tagName: tag}),
+        createTextNode: text => ({textContent: text}),
     };
     runInNewContext(dayBookingModule, {
         document,
@@ -215,4 +217,19 @@ test('midnight slot labels render 00:00 while quote submission keeps original st
     assert.match(page.summary.textContent, /23:00\s+–\s+00:00/);
     assert.equal(page.inputs['[data-venue-day-start]'].value, '2026-11-15T23:00');
     assert.equal(page.inputs['[data-venue-day-duration]'].value, '60');
+});
+
+test('персональная цена показывает зачёркнутую сумму и безопасную причину', async () => {
+    const reason = '<img src=x onerror=alert(1)>';
+    const page = mountDayBooking({personalDiscount: {original_amount_minor: 800000, reason}});
+    await page.open();
+    page.clickSlot(0);
+    page.clickSlot(1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.bookingButton.disabled, false);
+    assert.equal(page.summary.children[0].tagName, 'del');
+    assert.match(page.summary.children[0].textContent, /8\s*000/);
+    assert.equal(page.summary.children.at(-1).title, reason);
+    assert.equal(page.summary.children.at(-1).tabIndex, 0);
+    assert.equal(page.summary.children.at(-1).innerHTML, undefined);
 });

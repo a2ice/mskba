@@ -30,6 +30,9 @@
 @endsection
 
 @section('section-content')
+    @if(app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage(auth()->user(), $venue))
+        <p><a href="{{ route('account.venues.special-terms.index', $venue->id) }}">Специальные условия</a></p>
+    @endif
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
         @if($policy)<p class="text-muted mb-3">Активная версия: №{{ $policy->version }}, опубликована {{ $policy->published_at->format('d.m.Y H:i') }}. Сохранение создаст новую версию.</p>@endif

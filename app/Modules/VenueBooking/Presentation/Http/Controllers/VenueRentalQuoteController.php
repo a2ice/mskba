@@ -56,6 +56,7 @@ final class VenueRentalQuoteController extends Controller
                     ->where('venue_id', $venue->id)
                     ->whereNull('deleted_at')),
             ],
+            'coupon_code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9_-]+$/'],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'scope' => ['required', Rule::enum(VenueBookingScopeEnum::class)],
@@ -78,6 +79,7 @@ final class VenueRentalQuoteController extends Controller
                 VenueBookingScopeEnum::from($validated['scope']),
                 $request->user(),
                 $court,
+                $validated['coupon_code'] ?? null,
             );
         } catch (VenueBookingPolicyException $exception) {
             if ($request->expectsJson()) {
@@ -106,18 +108,18 @@ final class VenueRentalQuoteController extends Controller
                 'starts_at' => $quote->startsAt->toIso8601String(),
                 'ends_at' => $quote->endsAt->toIso8601String(),
                 'amount_minor' => $quote->amountMinor,
-                'pricing_breakdown' => [
-                    'provider_amount_minor' => $quote->commissionBreakdown['provider_amount_minor'] ?? $quote->amountMinor,
-                    'portal_fee_minor' => $quote->commissionBreakdown['portal_fee_minor'] ?? 0,
-                    'agent_fee_minor' => $quote->commissionBreakdown['agent_fee_minor'] ?? 0,
-                    'total_minor' => $quote->amountMinor,
+                'personal_discount' => $quote->personalDiscount === null ? null : [
+                    'original_amount_minor' => $quote->personalDiscount['original_amount_minor'],
+                    'discount_minor' => $quote->personalDiscount['discount_minor'],
+                    'final_amount_minor' => $quote->amountMinor,
+                    'reason' => $quote->personalDiscount['reason'],
                 ],
                 'currency' => $quote->currency,
                 'requires_payment' => $quote->requiresPayment,
                 'hold_duration_minutes' => $quote->holdDurationMinutes,
                 'payment_window_minutes' => $quote->paymentWindowMinutes,
                 'valid_until' => $quote->validUntil->toIso8601String(),
-            ]);
+            ])->header('Cache-Control', 'private, no-store');
         }
 
         return ThemeResolver::page('venues.rental-quote', [
@@ -126,7 +128,7 @@ final class VenueRentalQuoteController extends Controller
             'court' => $court,
             'courts' => $venue->courts()->get(),
             'quote' => $quote,
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     /**

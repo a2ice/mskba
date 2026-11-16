@@ -22,5 +22,6 @@ final readonly class VenueBookingQuoteDTO
         public CarbonImmutable $validUntil,
         /** @var array<string,mixed>|null */
         public ?array $commissionBreakdown = null,
+        public ?array $personalDiscount = null,
     ) {}
 }

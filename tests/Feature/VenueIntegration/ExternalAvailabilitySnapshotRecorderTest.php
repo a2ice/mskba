@@ -592,13 +592,13 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             'venue' => $venue->id, 'date' => '2026-11-13', 'venue_court_id' => $court->id,
         ]);
         // FindSport reports 1625 ₽, but the venue's minimum is 2000 ₽.
-        $this->getJson($path)->assertOk()->assertJsonPath('slots.0.base_price_minor', 200000);
+        $this->getJson($path)->assertOk()->assertJsonMissingPath('slots.0.pricing_breakdown')->assertJsonPath('slots.0.price_minor', 200000);
         $court->calendarSlotPrices()->whereDate('date', '2026-11-13')
             ->where('starts_at', '07:00:00')
             ->update(['whole_price_per_step_minor' => 250000]);
 
         // Local manual price wins over the previously imported tariff.
-        $this->getJson($path)->assertOk()->assertJsonPath('slots.0.base_price_minor', 250000);
+        $this->getJson($path)->assertOk()->assertJsonMissingPath('slots.0.pricing_breakdown')->assertJsonPath('slots.0.price_minor', 250000);
         $this->assertSame(162500, (int) $snapshot->slots()->orderBy('starts_at')
             ->firstOrFail()->price_minor);
 

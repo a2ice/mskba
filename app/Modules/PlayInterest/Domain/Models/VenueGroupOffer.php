@@ -15,7 +15,7 @@ final class VenueGroupOffer extends Model
         'code_ciphertext', 'code_hash', 'status', 'discount_type', 'discount_value',
         'currency', 'scope', 'venue_court_id', 'minimum_amount_minor',
         'valid_from', 'valid_until', 'max_total_uses', 'max_uses_per_account',
-        'terms_version',
+        'terms_version', 'audience', 'auto_apply', 'booking_conditions',
     ];
 
     protected $hidden = ['code_ciphertext', 'code_hash'];
@@ -24,6 +24,8 @@ final class VenueGroupOffer extends Model
     {
         return [
             'code_ciphertext' => 'encrypted',
+            'auto_apply' => 'boolean',
+            'booking_conditions' => 'array',
             'valid_from' => 'immutable_datetime',
             'valid_until' => 'immutable_datetime',
             'discount_value' => 'integer',
@@ -43,6 +45,11 @@ final class VenueGroupOffer extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function recipients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'venue_offer_recipients', 'offer_id', 'user_id');
     }
 
     public function creator(): BelongsTo

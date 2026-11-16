@@ -27,7 +27,7 @@ final readonly class AccountVenueEditorAccess
     {
         $empty = array_fill_keys([
             'general', 'address', 'facilities', 'photos', 'courts',
-            'schedule', 'contracts', 'rental', 'offers', 'memberships',
+            'schedule', 'contracts', 'rental', 'offers', 'memberships', 'special_terms',
         ], false);
 
         if ($user === null || $user->isBlocked() || $user->trashed() || $venue->trashed()) {
@@ -56,6 +56,7 @@ final readonly class AccountVenueEditorAccess
                 $user, ContractMembershipScopeTypeEnum::VENUE, $venue->id,
                 VenuePermissionEnum::MANAGE_CONTRACTS->value,
             ),
+            'special_terms' => app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage($user, $venue),
             'rental' => $managed(VenuePermissionEnum::MANAGE_BOOKING_POLICY),
             'offers' => $managed(VenuePermissionEnum::MANAGE_GROUP_OFFERS),
             'memberships' => $managed(VenuePermissionEnum::MANAGE_MEMBERSHIPS),

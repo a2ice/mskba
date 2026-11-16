@@ -10,6 +10,7 @@ use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
+use App\Modules\VenueBooking\Application\Services\VenuePersonalPricing;
 use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
@@ -30,6 +31,7 @@ final readonly class QuoteVenueBookingHandler
         private VenuePricingRuleEvaluator $rules,
         private VenueCommissionCalculator $commissions,
         private EffectiveCourtPolicy $effectivePolicies,
+        private VenuePersonalPricing $personalPricing,
     ) {}
 
     public function handle(
@@ -39,6 +41,7 @@ final readonly class QuoteVenueBookingHandler
         VenueBookingScopeEnum $scope,
         ?User $user = null,
         ?VenueCourt $court = null,
+        ?string $couponCode = null,
     ): VenueBookingQuoteDTO {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $court ??= $venue->primaryCourt()->first() ?? $venue->courts()->first();
@@ -141,11 +144,16 @@ final readonly class QuoteVenueBookingHandler
         if ($effective['requires_payment'] && $amountMinor <= 0) {
             throw new VenueBookingPolicyException('Тарифное условие не может обнулить обязательную оплату.');
         }
+        $personalDiscount = $this->personalPricing->evaluate(
+            $venue, $court, $user, $localStart, $durationMinutes, $scope,
+            $amountMinor, $policy->currency, $couponCode,
+        );
+        $amountMinor = $personalDiscount['final_amount_minor'] ?? $amountMinor;
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
         $publicId = (string) Str::uuid();
         $snapshot = [
-            'schema_version' => 4,
+            'schema_version' => $personalDiscount === null ? 4 : 5,
             'policy' => [
                 'id' => $policy->id,
                 'version' => $policy->version,
@@ -193,6 +201,7 @@ final readonly class QuoteVenueBookingHandler
                 'base_amount_minor' => $price['amount_minor'],
                 'subtotal_after_rules_minor' => $rulePricing['total_minor'],
                 'commissions' => $commissionBreakdown,
+                ...($personalDiscount === null ? [] : ['personal_discount' => $personalDiscount]),
                 'rule_adjustments' => $rulePricing['adjustments'],
                 'currency' => $policy->currency,
                 'court_id' => $court->id,
@@ -235,6 +244,7 @@ final readonly class QuoteVenueBookingHandler
             paymentWindowMinutes: $paymentWindow,
             validUntil: $validUntil,
             commissionBreakdown: $commissionBreakdown,
+            personalDiscount: $personalDiscount,
         );
     }
 }

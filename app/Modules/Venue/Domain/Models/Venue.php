@@ -299,6 +299,12 @@ class Venue extends Model
         return $this->hasMany(VenueCourtCommissionPolicy::class);
     }
 
+    public function specialTerms(): HasMany
+    {
+        return $this->hasMany(\App\Modules\PlayInterest\Domain\Models\VenueGroupOffer::class)
+            ->whereIn('audience', ['PUBLIC', 'USER_BOUND']);
+    }
+
     public function pricingRules(): HasMany
     {
         return $this->hasMany(VenuePricingRule::class);

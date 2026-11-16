@@ -47,7 +47,7 @@
             @unless($isRequester)
                 <div><dt>Заявитель</dt><dd>{{ $booking->requester?->username ?: 'Пользователь' }}</dd></div>
             @endunless
-            <div><dt>Стоимость</dt><dd><strong>{{ $money->format($amountMinor, $currency) }} {{ $money->currencyLabel($currency) }}</strong></dd></div>
+            <div><dt>Стоимость</dt><dd>@if($special = data_get($booking->quote_snapshot, 'pricing.personal_discount'))<del>{{ $money->format($special['original_amount_minor'], $currency) }}</del> <span title="{{ $special['reason'] }}" tabindex="0">{{ $special['title'] }}</span> @endif<strong>{{ $money->format($amountMinor, $currency) }} {{ $money->currencyLabel($currency) }}</strong></dd></div>
             @if($booking->hold_expires_at)
                 <div><dt>Удержание до</dt><dd>{{ $booking->hold_expires_at->setTimezone($timezone)->format('d.m.Y H:i') }}</dd></div>
             @endif
