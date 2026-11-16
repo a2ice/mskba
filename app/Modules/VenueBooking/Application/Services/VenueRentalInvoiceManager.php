@@ -139,7 +139,8 @@ final readonly class VenueRentalInvoiceManager
     /** Called inside the booking's locked transaction, after the slot becomes HELD. */
     public function autoIssueBuyerWithinLock(VenueBooking $booking, Actor $actor): ?VenueRentalInvoice
     {
-        if (! (bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)) {
+        if (! (bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)
+            || ! $this->canReceiveBuyer($booking, $actor)) {
             return null;
         }
         $template = $this->applicableTemplates($booking, $actor)->first(
