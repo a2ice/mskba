@@ -15,6 +15,7 @@ use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationsR
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationSourcesRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueIntegrationAuditRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CommissionAgentsRelationManager;
+use App\Filament\Backoffice\Resources\Venues\RelationManagers\CommercialMembershipsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\CourtCommissionsRelationManager;
 use App\Filament\Backoffice\Resources\Venues\RelationManagers\PhotosRelationManager;
 use App\Modules\Rewards\Application\Services\VenueRentalCashbackSettings;
@@ -618,6 +619,7 @@ final class VenueResource extends Resource
                 \App\Filament\Backoffice\Resources\Venues\RelationManagers\VenueRentalPreRequestsRelationManager::class,
             ])->icon('heroicon-o-chat-bubble-left-right'),
             CommissionAgentsRelationManager::class,
+            CommercialMembershipsRelationManager::class,
             CourtCommissionsRelationManager::class,
             PhotosRelationManager::class,
         ];
