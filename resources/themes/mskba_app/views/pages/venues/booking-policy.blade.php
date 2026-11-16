@@ -97,6 +97,11 @@
             @foreach([
                 'requires_payment' => ['Требуется оплата', true],
                 'allows_hold_extension' => ['Разрешить продление удержания', false],
+                'external_hold_required' => ['Холд требует подтверждения реальной площадкой / агрегатором', false],
+                'buyer_postpay_allowed' => ['Разрешить постоплату покупателя', false],
+                'agent_portal_postpay_allowed' => ['Разрешить постоплату агента перед MSKBA', false],
+                'portal_venue_postpay_allowed' => ['Разрешить постоплату MSKBA площадке', false],
+                'agent_portal_self_attestation_allowed' => ['Разрешить доверенное подтверждение агента перед MSKBA', false],
             ] as $name => [$label, $default])
                 <label class="check-label">
                     <input type="hidden" name="{{ $name }}" value="0">
@@ -104,6 +109,23 @@
                     <span>{{ $label }}</span>
                 </label>
             @endforeach
+            <div class="app-rental-pricing__grid">
+                <label class="field-group">Источник сведений о максимальном сроке холда
+                    <select name="hold_verification_method">
+                        <option value="">Не уточнено</option>
+                        @foreach(['phone'=>'Телефон', 'messenger'=>'Мессенджер', 'provider'=>'Агрегатор', 'contract'=>'Контракт', 'other'=>'Другое'] as $value=>$label)
+                            <option value="{{ $value }}" @selected($field('hold_verification_method') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="field-group">Кто подтвердил и когда
+                    <textarea name="hold_verification_note" maxlength="2000" rows="2">{{ $field('hold_verification_note') }}</textarea>
+                </label>
+            </div>
+            @if($policy?->hold_verified_at)
+                <p>Последняя проверка: {{ $policy->hold_verified_at->format('d.m.Y H:i') }} · значение: {{ $policy->hold_duration_minutes }} мин</p>
+            @endif
+            <p><a href="{{ route('account.venues.invoice-templates.index', $venue->id) }}">Шаблоны счетов аренды</a></p>
             <div class="app-rental-pricing__actions"><button class="button primary" type="submit">Опубликовать условия</button></div>
         </form>
     </section>
