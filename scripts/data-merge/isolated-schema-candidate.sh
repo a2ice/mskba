@@ -143,7 +143,7 @@ fi
 test -s "$DEST/candidate-migrated.pgdump.part"
 mv "$DEST/candidate-migrated.pgdump.part" "$DEST/candidate-migrated.pgdump"
 sha256sum "$DEST/candidate-migrated.pgdump" > "$DEST/candidate-sha256.txt"
-chmod 600 "$DEST"/* 2>/dev/null || true
+find "$DEST" -maxdepth 1 -type f -exec chmod 600 {} +
 
 echo 'CANDIDATE_SCHEMA_PASS=true'
 echo "dev_source_commit=$(git -C "$DEV_ROOT" rev-parse --short HEAD)"
