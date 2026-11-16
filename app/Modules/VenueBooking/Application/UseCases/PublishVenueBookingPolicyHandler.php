@@ -51,6 +51,26 @@ final readonly class PublishVenueBookingPolicyHandler
                 ->where('venue_id', $venue->id)
                 ->max('version');
 
+            // A change to pricing or other rules must not manufacture a fresh
+            // hold verification. It remains current only when checked manually.
+            $previous = VenueBookingPolicy::query()
+                ->where('venue_id', $venue->id)
+                ->where('active_marker', true)
+                ->first();
+            $verificationChanged = $previous === null
+                || (int) $previous->hold_duration_minutes !== $normalized['hold_duration_minutes']
+                || $previous->hold_verification_method !== $normalized['hold_verification_method']
+                || $previous->hold_verification_note !== $normalized['hold_verification_note'];
+            if ($verificationChanged) {
+                $hasEvidence = $normalized['hold_verification_method'] !== null
+                    && trim((string) $normalized['hold_verification_note']) !== '';
+                $normalized['hold_verified_at'] = $hasEvidence ? now() : null;
+                $verifiedByUserId = $hasEvidence ? $publisher->id : null;
+            } else {
+                $normalized['hold_verified_at'] = $previous->hold_verified_at;
+                $verifiedByUserId = $previous->hold_verified_by_user_id;
+            }
+
             VenueBookingPolicy::query()
                 ->where('venue_id', $venue->id)
                 ->where('active_marker', true)
@@ -61,7 +81,7 @@ final readonly class PublishVenueBookingPolicyHandler
                 'venue_id' => $venue->id,
                 'version' => $latestVersion + 1,
                 'published_by_user_id' => $publisher->id,
-                'hold_verified_by_user_id' => $publisher->id,
+                'hold_verified_by_user_id' => $verifiedByUserId,
                 'published_at' => now(),
                 'active_marker' => true,
             ]);
@@ -95,7 +115,7 @@ final readonly class PublishVenueBookingPolicyHandler
             'external_hold_required' => (bool) ($data['external_hold_required'] ?? false),
             'hold_verification_method' => $data['hold_verification_method'] ?? null,
             'hold_verification_note' => $data['hold_verification_note'] ?? null,
-            'hold_verified_at' => now(),
+            'hold_verified_at' => null,
             'buyer_postpay_allowed' => (bool) ($data['buyer_postpay_allowed'] ?? false),
             'agent_portal_postpay_allowed' => (bool) ($data['agent_portal_postpay_allowed'] ?? false),
             'portal_venue_postpay_allowed' => (bool) ($data['portal_venue_postpay_allowed'] ?? false),

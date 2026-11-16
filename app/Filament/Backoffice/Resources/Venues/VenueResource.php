@@ -256,8 +256,8 @@ final class VenueResource extends Resource
                             ->columns(2)
                             ->schema([
                                 TextInput::make('rental_policy_hold_duration_minutes')
-                                    ->label('Удержание выбранного слота, мин')
-                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Сколько минут слот временно резервируется после создания заявки, прежде чем незавершённое удержание истечёт. Это не срок действия расчёта цены.')
+                                    ->label('Максимальный срок удержания слота, мин')
+                                    ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Единый максимальный срок по условиям площадки. Для внешнего агрегатора внутренний холд MSKBA начинается только после фактического подтверждения и не длится дольше внешнего.')
                                     ->integer()->numeric()->required()->minValue(1)->maxValue(1440)->default(30),
                                 TextInput::make('rental_policy_payment_window_minutes')
                                     ->label('Окно оплаты, мин')
@@ -279,6 +279,44 @@ final class VenueResource extends Resource
                                     ->hintIcon('heroicon-o-question-mark-circle', tooltip: 'Минимальный интервал между отменой и началом аренды. Например, 1440 минут — отменить можно не позднее чем за сутки. Пусто — стандартное правило.')
                                     ->integer()->numeric()->minValue(0)->maxValue(525600)
                                     ->helperText('Необязательно; пустое значение означает стандартное правило.'),
+                            ]),
+                        Section::make('Подтверждение внешнего холда и взаиморасчёты')
+                            ->description('Для площадок с внешним расписанием подтверждение реального удержания обязательно перед внутренним холдом MSKBA и выставлением счёта. Срок задаётся одним полем выше.')
+                            ->columns(2)
+                            ->schema([
+                                Toggle::make('rental_policy_external_hold_required')
+                                    ->label('Требовать подтверждение внешнего холда')
+                                    ->helperText('Счёт покупателю только после подтверждения слота агентом или через интеграцию.')
+                                    ->default(false)->live(),
+                                Select::make('rental_policy_hold_verification_method')
+                                    ->label('Как проверен максимальный срок холда')
+                                    ->options([
+                                        'phone' => 'Телефон',
+                                        'messenger' => 'Мессенджер',
+                                        'provider' => 'Агрегатор',
+                                        'contract' => 'Контракт',
+                                        'other' => 'Другое',
+                                    ])
+                                    ->placeholder('Не уточнено')
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_external_hold_required')),
+                                Textarea::make('rental_policy_hold_verification_note')
+                                    ->label('Основание и контакт проверки')
+                                    ->helperText('Кто подтвердил максимальный срок и на каком основании. Дата и автор сохраняются автоматически при изменении.')
+                                    ->rows(2)->maxLength(2000)->columnSpanFull()
+                                    ->required(fn (Get $get): bool => (bool) $get('rental_policy_external_hold_required')),
+                                Toggle::make('rental_policy_buyer_postpay_allowed')
+                                    ->label('Разрешить постоплату покупателя')
+                                    ->default(false),
+                                Toggle::make('rental_policy_agent_portal_postpay_allowed')
+                                    ->label('Разрешить постоплату агента перед MSKBA')
+                                    ->default(false),
+                                Toggle::make('rental_policy_portal_venue_postpay_allowed')
+                                    ->label('Разрешить постоплату MSKBA площадке')
+                                    ->default(false),
+                                Toggle::make('rental_policy_agent_portal_self_attestation_allowed')
+                                    ->label('Доверенное подтверждение оплаты агентом для MSKBA')
+                                    ->helperText('Даёт агенту право подтверждать расчёт по согласованным условиям. По умолчанию выключено.')
+                                    ->default(false),
                             ]),
                     ]),
                 Tab::make('Кешбэк')->icon('heroicon-o-gift')
