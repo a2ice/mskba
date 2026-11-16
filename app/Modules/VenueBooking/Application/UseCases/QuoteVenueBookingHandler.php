@@ -170,6 +170,18 @@ final readonly class QuoteVenueBookingHandler
                 'requires_booking_approval' => $effective['requires_booking_approval'],
                 'court_rental_enabled' => $effective['rental_enabled'],
                 'hold_duration_minutes' => $policy->hold_duration_minutes,
+                // One authoritative policy value; external provider is merely the evidence source.
+                'external_hold_required' => (bool) config('features.venue_rental.external_holds', false)
+                    && ($policy->external_hold_required
+                        || \App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport::query()
+                            ->where('venue_court_id', $court->id)->exists()),
+                'hold_verification_method' => $policy->hold_verification_method,
+                'hold_verified_at' => $policy->hold_verified_at?->toIso8601String(),
+                'invoice_workflow' => (bool) config('features.venue_rental.invoices', false)
+                    && (bool) $effective['requires_payment'],
+                'buyer_postpay_allowed' => $policy->buyer_postpay_allowed,
+                'agent_provider_postpay_allowed' => $policy->agent_provider_postpay_allowed,
+                'agent_provider_self_attestation_allowed' => $policy->agent_provider_self_attestation_allowed,
                 'allows_hold_extension' => $policy->allows_hold_extension,
                 'maximum_hold_extension_minutes' => $policy->maximum_hold_extension_minutes,
                 'payment_window_minutes' => $paymentWindow,
