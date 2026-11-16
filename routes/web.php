@@ -136,6 +136,9 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversat
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueExternalHoldController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalInvoiceController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalInvoiceTemplateController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
@@ -660,6 +663,15 @@ Route::middleware(['venue-rental-feature:rental_flow', 'auth'])->group(function 
     });
 });
 
+Route::prefix('account/venues/{venue}/invoice-templates')
+    ->middleware(['venue-rental-feature:invoices', 'auth'])
+    ->group(function (): void {
+        Route::get('/', [VenueRentalInvoiceTemplateController::class, 'index'])->name('account.venues.invoice-templates.index');
+        Route::post('/', [VenueRentalInvoiceTemplateController::class, 'store'])->name('account.venues.invoice-templates.store');
+        Route::put('/{template}', [VenueRentalInvoiceTemplateController::class, 'update'])->name('account.venues.invoice-templates.update');
+        Route::delete('/{template}', [VenueRentalInvoiceTemplateController::class, 'destroy'])->name('account.venues.invoice-templates.destroy');
+    });
+
 Route::prefix('account/venue-bookings')
     ->middleware(['venue-rental-feature:rental_flow', 'auth'])
     ->group(function () {
@@ -682,6 +694,15 @@ Route::prefix('account/venue-bookings')
             ->name('account.venue-bookings.show')
             ->defaults('breadcrumb', 'Заявка на аренду');
         Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
+        Route::middleware('venue-rental-feature:external_holds')->group(function (): void {
+            Route::post('/{venueBooking}/external-hold/confirm', [VenueExternalHoldController::class, 'confirm'])
+                ->name('account.venue-bookings.external-hold.confirm');
+        });
+        Route::middleware('venue-rental-feature:invoices')->group(function (): void {
+            Route::post('/{venueBooking}/invoices', [VenueRentalInvoiceController::class, 'issue'])->name('account.venue-bookings.invoices.issue');
+            Route::post('/{venueBooking}/invoices/{invoice}/claim', [VenueRentalInvoiceController::class, 'claim'])->name('account.venue-bookings.invoices.claim');
+            Route::post('/{venueBooking}/invoices/{invoice}/settle', [VenueRentalInvoiceController::class, 'settle'])->name('account.venue-bookings.invoices.settle');
+        });
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
         Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
