@@ -15,8 +15,9 @@ return new class extends Migration
             $table->timestamp('hold_verified_at')->nullable();
             $table->foreignId('hold_verified_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->boolean('buyer_postpay_allowed')->default(false);
-            $table->boolean('agent_provider_postpay_allowed')->default(false);
-            $table->boolean('agent_provider_self_attestation_allowed')->default(false);
+            $table->boolean('agent_portal_postpay_allowed')->default(false);
+            $table->boolean('portal_venue_postpay_allowed')->default(false);
+            $table->boolean('agent_portal_self_attestation_allowed')->default(false);
         });
 
         Schema::create('venue_booking_external_holds', function (Blueprint $table): void {
@@ -42,8 +43,8 @@ return new class extends Migration
             $table->dropColumn([
                 'external_hold_required', 'hold_verification_method',
                 'hold_verification_note', 'hold_verified_at',
-                'buyer_postpay_allowed', 'agent_provider_postpay_allowed',
-                'agent_provider_self_attestation_allowed',
+                'buyer_postpay_allowed', 'agent_portal_postpay_allowed',
+                'portal_venue_postpay_allowed', 'agent_portal_self_attestation_allowed',
             ]);
         });
     }
