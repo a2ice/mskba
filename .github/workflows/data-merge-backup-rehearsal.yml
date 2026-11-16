@@ -5,6 +5,7 @@ on:
     branches: [dev]
     paths:
       - .github/workflows/data-merge-backup-rehearsal.yml
+      - scripts/data-merge/backup-restore-rehearsal.sh
   workflow_dispatch:
 
 permissions:
