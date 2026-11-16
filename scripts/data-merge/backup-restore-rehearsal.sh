@@ -44,7 +44,9 @@ $COMPOSE exec -T db sh -ceu 'exec env PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --
 test -s "$DUMP.part"
 mv "$DUMP.part" "$DUMP"
 test -d storage/app
-tar -czf "$MEDIA.part" -C "$WORKTREE" storage/app
+# The deploy host user cannot read all private originals. Stream the tar from
+# the existing PHP container as root, without chmod/chown or webroot writes.
+$COMPOSE exec -T --user 0:0 phpfpm sh -ceu 'cd /var/www/html && exec tar -czf - storage/app' > "$MEDIA.part"
 test -s "$MEDIA.part"
 mv "$MEDIA.part" "$MEDIA"
 tar -tzf "$MEDIA" > /dev/null
