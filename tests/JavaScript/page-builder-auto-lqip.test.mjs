@@ -10,7 +10,7 @@ const uuid = '60d4d65b-308c-40aa-8466-158466632107';
 const full = '/media/site/' + uuid;
 const mini = full + '/lqip';
 
-function scene({ known = true, dynamic = false, picture = false, lazy = false, withPreloader = false } = {}) {
+function scene({ known = true, dynamic = false, picture = false, lazy = false, withPreloader = false, actorPreview = false } = {}) {
     const downloads = [];
     let notify = null;
     let domReady = null;
@@ -21,8 +21,8 @@ function scene({ known = true, dynamic = false, picture = false, lazy = false, w
     const layerParent = {};
     const layer = { isConnected: true, parentElement: layerParent };
     const attrs = new Map([
-        ['src', known ? mini : full],
-        ...(known ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
+        ['src', actorPreview ? 'https://dev.mskba.ru' + mini : known ? mini : full],
+        ...(known && !actorPreview ? [['data-mskba-lqip-full-src', full], ['data-mskba-lqip-preview-src', mini]] : []),
     ]);
     const style = {
         backgroundImage: '', backgroundSize: '', backgroundPosition: '', backgroundRepeat: '',
@@ -213,4 +213,16 @@ test('full-resolution assets do not start until the real homepage layer is remov
     assert.equal(s.downloads.length, 0, 'window.load alone does not start originals');
     s.dismissLayer();
     assert.equal(s.downloads.length, 2, 'full images start after removing the stage layer');
+});
+
+test('Filament actor created from an absolute LQIP href is promoted only after first paint', async () => {
+    const s = scene({ actorPreview: true });
+    assert.equal(s.img.src, 'https://dev.mskba.ru' + mini);
+    assert.equal(s.img.getAttribute('data-mskba-lqip-full-src'), full);
+    assert.equal(s.downloads.length, 0);
+    s.initialLoad();
+    s.downloads[1].succeed();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(s.img.src, full);
 });
