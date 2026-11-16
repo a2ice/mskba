@@ -77,6 +77,9 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                 ->maxLength(2048)->helperText('Ручная проверка доступна для тестового FindSport API-источника. Автоматическая синхронизация остаётся отключённой. Секреты в URL запрещены.'),
             TextInput::make('priority')->label('Приоритет')->numeric()->integer()
                 ->minValue(0)->maxValue(1000)->default(100)->required(),
+            TextInput::make('max_hold_duration_minutes')->label('Максимальный срок внешнего холда, мин')
+                ->numeric()->integer()->minValue(0)->maxValue(10080)
+                ->helperText('Пусто — срок неизвестен, 0 — холд не поддерживается, число — максимальная длительность в минутах. Настройка не создаёт внешнюю бронь.'),
             CheckboxList::make('capabilities')->label('Данные источника')
                 ->options(['availability' => 'Занятость', 'pricing' => 'Цены'])
                 ->columns(2)->default([]),
@@ -123,6 +126,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
             'external_id' => $source->external_id,
             'endpoint_url' => $source->endpoint_url,
             'priority' => $source->priority,
+            'max_hold_duration_minutes' => $source->max_hold_duration_minutes,
             'capabilities' => $source->capabilities ?? [],
             'court_ids' => $source->courtMappings()->pluck('venue_court_id')->all(),
             'permission_status' => $source->permission_status,
@@ -141,6 +145,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                 TextColumn::make('permission_status')->label('Доступ')->badge(),
                 IconColumn::make('enabled')->label('Включён')->boolean(),
                 TextColumn::make('priority')->label('Приоритет'),
+                TextColumn::make('max_hold_duration_minutes')->label('Холд, мин')->placeholder('Не задан'),
                 TextColumn::make('version')->label('Версия'),
             ])
             ->emptyStateHeading('Источников нет')
