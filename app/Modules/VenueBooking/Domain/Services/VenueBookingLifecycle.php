@@ -101,7 +101,9 @@ final class VenueBookingLifecycle
             app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceManager::class)->assertCanConfirm($booking);
         }
         $requiresPayment = (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false);
-        if ($requiresPayment && $booking->payment_state !== VenueBookingPaymentState::CONFIRMED) {
+        if ($requiresPayment
+            && ! (bool) data_get($booking->quote_snapshot, 'policy.invoice_workflow', false)
+            && $booking->payment_state !== VenueBookingPaymentState::CONFIRMED) {
             throw new VenueBookingTransitionException('Оплата ещё не подтверждена.', 'PAYMENT_NOT_CONFIRMED');
         }
 
