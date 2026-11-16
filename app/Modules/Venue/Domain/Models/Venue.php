@@ -284,6 +284,15 @@ class Venue extends Model
         return $this->hasOne(VenueSchedule::class);
     }
 
+    /** Venue-wide commercial role contracts; court-scoped delegates remain separate. */
+    public function commercialMemberships(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Contract\Domain\Models\ContractMembership::class, 'scope_id')
+            ->where('scope_type', \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE->value));
+    }
+
     public function commissionPolicy(): HasOne
     {
         return $this->hasOne(VenueCommissionPolicy::class);

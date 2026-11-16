@@ -45,6 +45,7 @@ use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
 use App\Filament\Backoffice\Resources\Venues\VenueModerationResource;
 use App\Filament\Backoffice\Resources\Venues\VenueResource;
 use App\Filament\Backoffice\Resources\VenueRentalBookings\VenueRentalBookingResource;
+use App\Filament\Backoffice\Resources\RentalInvoiceTemplates\RentalInvoiceTemplateResource;
 use App\Filament\Backoffice\Resources\VenueRentalInterests\VenueRentalInterestResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
 use Filament\Http\Middleware\Authenticate;
@@ -98,6 +99,7 @@ final class BackofficePanelProvider extends PanelProvider
                 SiteMediaFolderResource::class,
                 VenueResource::class,
                 VenueRentalBookingResource::class,
+                RentalInvoiceTemplateResource::class,
                 VenueRentalInterestResource::class,
                 EventResource::class,
                 FaqSectionResource::class,
