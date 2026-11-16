@@ -14,6 +14,7 @@
     @include('theme::pages.venues.partials.editor-tabs', ['activeTab' => 'rental', 'editor' => $editor])
     <section class="panel" aria-labelledby="interest-heading">
         <h2 id="interest-heading">Предварительные заявки</h2>
+        <p><a class="button secondary" href="{{ route('account.venue-pre-requests.index', ['venue_id' => $venue->id]) }}">Предзаявки без мероприятия</a></p>
         <p>Это только информация для планирования. Предзаявки не резервируют время и не создают обязательств.</p>
         <p>Открытые: <strong>{{ $totals['open'] ?? 0 }}</strong> ·
             Изменённые: <strong>{{ $totals['revised'] ?? 0 }}</strong> ·

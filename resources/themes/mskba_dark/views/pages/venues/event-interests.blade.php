@@ -13,6 +13,7 @@
     @include('theme::partials.venues.internal-sidebar')
 @endsection
 @section('section-content')
+<p><a class="btn btn--secondary btn--sm" href="{{ route('account.venue-pre-requests.index', ['venue_id' => $venue->id]) }}">Предзаявки без мероприятия</a></p>
     <div class="alert alert-info mb-3">
         Предзаявки — только сигнал спроса для планирования. Они не блокируют время, не фиксируют стоимость,
         не обязывают площадку предоставлять зал и не подтверждают бронь.

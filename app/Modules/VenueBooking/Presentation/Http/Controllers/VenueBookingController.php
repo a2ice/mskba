@@ -105,7 +105,7 @@ final class VenueBookingController extends Controller
         if (config('features.venue_rental.conversations')) {
             $conversation = VenueBookingConversation::query()
                 ->with(['messages' => fn ($query) => $query->with('authorActor.user')->latest('id')->limit(30), 'readMarkers'])
-                ->where('venue_booking_id', $venueBooking->id)
+                ->where($venueBooking->conversationLookup())
                 ->first();
             if ($actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
                 AuditLog::query()->create([

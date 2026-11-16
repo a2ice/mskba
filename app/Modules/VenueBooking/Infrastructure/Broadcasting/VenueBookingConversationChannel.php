@@ -20,6 +20,10 @@ final readonly class VenueBookingConversationChannel
             return false;
         }
 
+        if ($conversation->pre_request_id !== null) {
+            return app(\App\Modules\VenueBooking\Application\Services\VenueRentalPreRequests::class)->can($user, $conversation->preRequest);
+        }
+
         if ($conversation->interest !== null && app(EventVenueInterestService::class)->canParticipateInThread($user, $conversation->interest)) {
             return true;
         }

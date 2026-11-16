@@ -7,6 +7,8 @@
         @include('theme::partials.breadcrumbs')
         <h1 class="section-title mb-4">{{ $title }}</h1>
         @if(isset($error))<div class="alert alert-danger">{{ $error['message'] }}</div>@endif
+        @if(session('error'))<div class="alert alert-danger" role="alert">{{ session('error') }}</div>@endif
+        @if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
         <div class="card mb-4"><div class="card-body">
             <p>Расчёт выполняется по версии условий №{{ $policy->version }}. Он не резервирует зал.</p>
             <form method="POST" action="{{ route('venues.rental.quote', $venue) }}" data-venue-rental-court-form>
@@ -49,6 +51,14 @@
                     <label class="form-label">Промокод <input class="form-control" name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
                 @endif
                 <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>Рассчитать</button>
+                @auth
+                    <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
+                    <label class="form-label">Комментарий к предзаявке (необязательно)<textarea class="form-control" name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
+                    <button class="btn btn--secondary btn--sm" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">Предзаявка</button>
+                    <p>Предзаявка открывает переписку. Время не резервируется, оплата не требуется.</p>
+                @else
+                    <a class="btn btn--secondary btn--sm" href="{{ route('login') }}">Предзаявка · войти</a>
+                @endauth
             </form>
         </div></div>
 

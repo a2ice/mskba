@@ -36,7 +36,7 @@ final class VenueBookingConversationController extends Controller
         $venueBooking->load('venue');
         $actor = $actors->resolveForRequest($request);
         $this->authorizeConversation($actor, $venueBooking, $authorization);
-        $conversation = VenueBookingConversation::query()->where('venue_booking_id', $venueBooking->id)->first();
+        $conversation = VenueBookingConversation::query()->where($venueBooking->conversationLookup())->first();
         if ($conversation === null) {
             return response()->json([
                 'conversation_id' => null,
@@ -125,7 +125,7 @@ final class VenueBookingConversationController extends Controller
         $venueBooking->load('venue');
         $this->authorizeConversation($actors->resolveForRequest($request), $venueBooking, $authorization);
         $message->load('conversation');
-        abort_unless($message->conversation->venue_booking_id === $venueBooking->id && $message->attachment_disk === 'local' && $message->attachment_path !== null, 404);
+        abort_unless($message->conversation->belongsToBooking($venueBooking) && $message->attachment_disk === 'local' && $message->attachment_path !== null, 404);
 
         return response()->streamDownload(
             static fn () => print Storage::disk($message->attachment_disk)->get($message->attachment_path),

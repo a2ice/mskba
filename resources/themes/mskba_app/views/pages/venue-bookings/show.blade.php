@@ -23,6 +23,10 @@
         <h1 id="rental-booking-title">Заявка на аренду</h1>
         <p>{{ $booking->venue->name }} · {{ $booking->court?->publicName() ?? 'Зал' }}</p>
     </header>
+    @if($booking->pre_request_id)
+        <p>Создано представителем по предзаявке.
+            <a href="{{ route('account.venue-pre-requests.show', $booking->preRequest) }}">Переписка и согласование предложения</a></p>
+    @endif
 
     <nav class="app-rental-inbox__tabs" aria-label="Навигация по заявке">
         <a class="button secondary" href="{{ $backUrl }}">{{ $isRequester ? 'Мои бронирования' : 'Входящие заявки' }}</a>

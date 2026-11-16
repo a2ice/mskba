@@ -234,6 +234,17 @@ Schedule::command('venue-booking:expire-due')
     ->onOneServer()
     ->withoutOverlapping();
 
+Schedule::call(static function (): void {
+    if (! config('features.venue_rental.rental_flow')) { return; }
+    \App\Modules\VenueBooking\Domain\Models\VenueBooking::query()
+        ->whereNotNull('pre_request_id')->where('status', 'requested')->whereNull('proposal_accepted_at')
+        ->where('proposal_expires_at', '<=', now())->chunkById(100, static function ($bookings): void {
+            foreach ($bookings as $booking) {
+                app(\App\Modules\VenueBooking\Application\Services\VenueRentalPreRequests::class)->expireProposal($booking);
+            }
+        });
+})->name('venue-pre-requests:expire-proposals')->everyMinute()->onOneServer()->withoutOverlapping();
+
 Schedule::command('venue-booking:reconcile-payments')
     ->everyFiveMinutes()
     ->onOneServer()

@@ -19,6 +19,10 @@ final readonly class VenueBookingActionState
     {
         $isRequester = $actor->user_id === $booking->requester_user_id;
         $canConfirm = $this->allows($booking, $actor, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS);
+        if ($booking->pre_request_id !== null) {
+            $canConfirm = $booking->proposal_accepted_at !== null && ($canConfirm || ($actor->user !== null
+                && app(VenueRentalPreRequests::class)->can($actor->user, $booking->preRequest, 'offer')));
+        }
         $canReject = $this->allows($booking, $actor, VenuePermissionEnum::REJECT_BOOKING_REQUESTS);
         $now = CarbonImmutable::now();
         $heldActive = $booking->effective_protection_until !== null

@@ -9,6 +9,12 @@
             @if($booking->venueInterest)
                 <div><dt class="text-gray-500">Создана из предзаявки</dt><dd>#{{ $booking->venueInterest->id }} · {{ $booking->venueInterest->event?->title }}</dd></div>
             @endif
+            @if($booking->pre_request_id)
+                <div><dt class="text-gray-500">Самостоятельная предзаявка</dt><dd>
+                    <a href="{{ route('account.venue-pre-requests.show', $booking->preRequest) }}">#{{ $booking->pre_request_id }}</a>
+                    · представитель Actor #{{ $booking->created_by_representative_id }}
+                </dd></div>
+            @endif
             <div><dt class="text-gray-500">Создана</dt><dd>{{ $booking->created_at?->format('d.m.Y H:i:s') }}</dd></div>
         </dl>
     </section>
@@ -33,7 +39,7 @@
     <section>
         <h3 class="mb-3 font-semibold">Переписка (полная история)</h3>
         <div class="max-h-96 space-y-2 overflow-y-auto">
-            @forelse($booking->conversation?->messages?->sortBy('id') ?? [] as $message)
+            @forelse(($booking->preRequestConversation ?? $booking->conversation)?->messages?->sortBy('id') ?? [] as $message)
                 <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                     <div class="mb-1 text-xs text-gray-500">{{ $message->authorActor?->user?->username ?? 'Система' }} · {{ $message->created_at?->format('d.m.Y H:i:s') }}</div>
                     <div class="whitespace-pre-wrap break-words">{{ $message->body }}</div>

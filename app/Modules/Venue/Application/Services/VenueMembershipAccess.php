@@ -32,6 +32,24 @@ final class VenueMembershipAccess
             ])->exists();
     }
 
+    /** Management contracts may predate explicit rental permission snapshots. */
+    public function activeVenueManagementUserIds(Venue $venue): array
+    {
+        $now = now();
+
+        return ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('scope_id', $venue->id)
+            ->whereIn('access_level', [VenueMembershipAccessLevelEnum::OWNER->value, VenueMembershipAccessLevelEnum::ADMIN->value])
+            ->whereHas('contract', fn (Builder $query) => $query
+                ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
+                ->where(fn (Builder $q) => $q->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now)))
+            ->pluck('user_id')->map(fn ($id): int => (int) $id)->unique()->values()->all();
+    }
+
     public function allows(User $user, Venue $venue, VenuePermissionEnum $permission): bool
     {
         return $this->baseQuery($user, $permission)

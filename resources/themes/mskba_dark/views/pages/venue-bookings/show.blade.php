@@ -12,6 +12,10 @@
     ><div class="inner">
         @include('theme::partials.breadcrumbs')
         <h1 class="section-title mb-4">{{ $title }}</h1>
+        @if($booking->pre_request_id)
+            <p>Создано представителем по предзаявке.
+                <a href="{{ route('account.venue-pre-requests.show', $booking->preRequest) }}">Переписка и согласование предложения</a></p>
+        @endif
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 

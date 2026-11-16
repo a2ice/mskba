@@ -26,6 +26,7 @@ use LogicException;
     'hold_expires_at', 'effective_protection_until', 'optimistic_version',
     'requested_at', 'held_at', 'confirmed_at', 'terminal_at',
     'event_venue_interest_id', 'interest_booking_initiator',
+    'pre_request_id', 'created_by_representative_id', 'proposal_expires_at', 'proposal_accepted_at',
 ])]
 class VenueBooking extends Model
 {
@@ -56,6 +57,11 @@ class VenueBooking extends Model
     public function venueInterest(): BelongsTo
     {
         return $this->belongsTo(\App\Modules\Event\Domain\Models\EventVenueInterest::class, 'event_venue_interest_id');
+    }
+
+    public function preRequest(): BelongsTo
+    {
+        return $this->belongsTo(VenueRentalPreRequest::class, 'pre_request_id');
     }
 
     public function eventIntent(): HasOne
@@ -118,6 +124,16 @@ class VenueBooking extends Model
         return $this->hasOne(VenueBookingConversation::class);
     }
 
+    public function preRequestConversation(): HasOne
+    {
+        return $this->hasOne(VenueBookingConversation::class, 'pre_request_id', 'pre_request_id');
+    }
+
+    public function conversationLookup(): array
+    {
+        return $this->pre_request_id === null ? ['venue_booking_id' => $this->id] : ['pre_request_id' => $this->pre_request_id];
+    }
+
     public function contributionCommitments(): HasMany
     {
         return $this->hasMany(BookingContributionCommitment::class);
@@ -148,6 +164,10 @@ class VenueBooking extends Model
     {
         return [
             'venue_court_id' => 'integer',
+            'pre_request_id' => 'integer',
+            'created_by_representative_id' => 'integer',
+            'proposal_expires_at' => 'immutable_datetime',
+            'proposal_accepted_at' => 'immutable_datetime',
             'quote_snapshot' => 'array',
             'payment_state' => VenueBookingPaymentState::class,
             'payment_window_expires_at' => 'immutable_datetime',

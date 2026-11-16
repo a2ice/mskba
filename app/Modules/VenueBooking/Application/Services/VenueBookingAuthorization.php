@@ -20,6 +20,14 @@ final readonly class VenueBookingAuthorization
 
     public function assertCanConfirmBooking(Actor $actor, Venue $venue, ?VenueBooking $booking = null): void
     {
+        if ($booking?->pre_request_id !== null) {
+            if ($booking->proposal_accepted_at === null) {
+                throw new VenueBookingTransitionException('Сначала клиент должен принять предложение в переписке.', 'PROPOSAL_NOT_ACCEPTED');
+            }
+            if ($actor->user !== null && app(VenueRentalPreRequests::class)->can($actor->user, $booking->preRequest, 'offer')) {
+                return;
+            }
+        }
         $this->assertBookingPermission($actor, $venue, $booking,
             VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS, 'Недостаточно прав для принятия или подтверждения заявки.');
     }
@@ -51,6 +59,10 @@ final readonly class VenueBookingAuthorization
 
     public function assertCanView(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
+        if ($booking->pre_request_id !== null) {
+            app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest);
+            return;
+        }
         if ($actor->user_id === $booking->requester_user_id) {
             return;
         }
@@ -65,6 +77,10 @@ final readonly class VenueBookingAuthorization
     /** Read-only support may inspect conversations, but cannot post as a participant. */
     public function assertCanWriteConversation(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
+        if ($booking->pre_request_id !== null) {
+            app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest, 'write');
+            return;
+        }
         if ($actor->user_id === $booking->requester_user_id) {
             return;
         }
