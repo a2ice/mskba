@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'venue_integration_id', 'name', 'external_id', 'adapter_key', 'endpoint_url',
-    'priority', 'capabilities', 'permission_status', 'permission_reference',
+    'priority', 'max_hold_duration_minutes', 'capabilities', 'permission_status', 'permission_reference',
     'access_reviewed_at', 'credentials', 'enabled', 'version', 'updated_by_user_id',
 ])]
 final class VenueIntegrationSource extends Model
@@ -30,6 +30,7 @@ final class VenueIntegrationSource extends Model
     {
         return [
             'priority' => 'integer',
+            'max_hold_duration_minutes' => 'integer',
             'capabilities' => 'array',
             'access_reviewed_at' => 'immutable_datetime',
             'credentials' => 'encrypted:array',
