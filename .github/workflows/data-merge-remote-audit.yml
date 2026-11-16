@@ -35,6 +35,10 @@ jobs:
             echo "PRODUCTION_INVENTORY"
             printf 'git_commit='
             git rev-parse --short HEAD
+            printf 'workspace_free_kb='
+            df -Pk . | awk 'END {print $4}'
+            printf 'media_disk_kb='
+            if [ -d storage/app/public ]; then du -sk storage/app/public | awk '{print $1}'; else echo ABSENT; fi
             if docker volume ls --format '{{.Name}}' | grep -qx mskba_postgres_data; then
               echo 'historical_postgres_volume=present'
             else
@@ -47,6 +51,11 @@ jobs:
             sql() { psql -X -A -t -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"; }
             echo 'AGGREGATE_BEGIN prod'
             printf 'postgres_version=%s\n' "$(sql "SHOW server_version")"
+            printf 'database_size_bytes=%s\n' "$(sql "SELECT pg_database_size(current_database())")"
+            printf 'pg_dump_version='
+            pg_dump --version
+            printf 'pg_restore_version='
+            pg_restore --version
             printf 'public_tables=%s\n' "$(sql "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public'")"
             printf 'schema_md5=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
             for name in migrations users profiles player_profiles contacts actors contracts contract_memberships contract_relations contract_permissions teams team_invitations team_join_requests events event_participants games game_sides game_roster_entries game_player_statistics tournaments tournament_admissions tournament_entries tournament_entry_members tournament_matches venues venue_courts venue_bookings venue_ownerships media site_media page_builder_pages content_items; do
@@ -63,6 +72,9 @@ jobs:
             if [ "$(sql "SELECT to_regclass('public.migrations') IS NOT NULL")" = t ]; then
               sql "SELECT migration FROM migrations ORDER BY migration DESC LIMIT 5"
             fi
+            echo 'MIGRATION_LEDGER_BEGIN prod'
+            sql "SELECT migration FROM migrations ORDER BY migration"
+            echo 'MIGRATION_LEDGER_END prod'
             echo 'AGGREGATE_END prod'
             DB_SCRIPT
 
@@ -88,6 +100,10 @@ jobs:
             echo 'DEVELOPMENT_INVENTORY'
             printf 'git_commit='
             git rev-parse --short HEAD
+            printf 'workspace_free_kb='
+            df -Pk . | awk 'END {print $4}'
+            printf 'media_disk_kb='
+            if [ -d storage/app/public ]; then du -sk storage/app/public | awk '{print $1}'; else echo ABSENT; fi
             docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db sh -s <<'DB_SCRIPT'
             set -eu
             export PGPASSWORD="$POSTGRES_PASSWORD"
@@ -95,6 +111,11 @@ jobs:
             sql() { psql -X -A -t -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"; }
             echo 'AGGREGATE_BEGIN dev'
             printf 'postgres_version=%s\n' "$(sql "SHOW server_version")"
+            printf 'database_size_bytes=%s\n' "$(sql "SELECT pg_database_size(current_database())")"
+            printf 'pg_dump_version='
+            pg_dump --version
+            printf 'pg_restore_version='
+            pg_restore --version
             printf 'public_tables=%s\n' "$(sql "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public'")"
             printf 'schema_md5=%s\n' "$(sql "SELECT md5(COALESCE(string_agg(table_name || ':' || column_name || ':' || udt_name, ',' ORDER BY table_name, ordinal_position), '')) FROM information_schema.columns WHERE table_schema='public'")"
             for name in migrations users profiles player_profiles contacts actors contracts contract_memberships contract_relations contract_permissions teams team_invitations team_join_requests events event_participants games game_sides game_roster_entries game_player_statistics tournaments tournament_admissions tournament_entries tournament_entry_members tournament_matches venues venue_courts venue_bookings venue_ownerships media site_media page_builder_pages content_items; do
@@ -111,5 +132,8 @@ jobs:
             if [ "$(sql "SELECT to_regclass('public.migrations') IS NOT NULL")" = t ]; then
               sql "SELECT migration FROM migrations ORDER BY migration DESC LIMIT 5"
             fi
+            echo 'MIGRATION_LEDGER_BEGIN dev'
+            sql "SELECT migration FROM migrations ORDER BY migration"
+            echo 'MIGRATION_LEDGER_END dev'
             echo 'AGGREGATE_END dev'
             DB_SCRIPT
