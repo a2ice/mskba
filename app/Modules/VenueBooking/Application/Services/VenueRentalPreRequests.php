@@ -288,7 +288,7 @@ final readonly class VenueRentalPreRequests
                     app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
                         userId: $user->id, type: UserNotificationTypeEnum::MESSAGE,
                         title: 'Предзаявка на аренду', body: 'Обновление переписки по площадке «'.$pre->venue->name.'».',
-                        actionUrl: route('account.venue-pre-requests.show', $pre, false), actionText: 'Переписка',
+                        actionUrl: route('account.notifications.threads.pre-request', $pre, false), actionText: 'Переписка',
                         payload: ['source' => 'venue.rental.pre-request', 'delivery_category' => 'request', 'pre_request_id' => $pre->id, 'venue_id' => $pre->venue_id],
                     ));
                     DB::table('venue_booking_message_deliveries')->where('message_id', $message->id)

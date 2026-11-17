@@ -81,7 +81,9 @@ final readonly class NotifyVenueBookingLifecycleRecipients
                 type: UserNotificationTypeEnum::SYSTEM,
                 title: $title,
                 body: $body,
-                actionUrl: route('account.venue-bookings.show', $booking, false),
+                actionUrl: $booking->preRequest !== null
+                    ? route('account.notifications.threads.pre-request', $booking->preRequest, false)
+                    : route('account.notifications.threads.booking', $booking, false),
                 actionText: 'Открыть заявку',
                 payload: [
                     'source' => $source->value,
