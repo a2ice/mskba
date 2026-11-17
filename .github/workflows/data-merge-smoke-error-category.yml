@@ -2,7 +2,8 @@ name: MSKBA isolated preview HTTP error category
 on:
   push:
     branches: [dev]
-    paths: [.github/workflows/data-merge-smoke-error-category.yml]
+    paths:
+      - .github/workflows/data-merge-smoke-error-category.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,9 +37,29 @@ jobs:
                 raise SystemExit(0)
             last=errors[-1]
             kinds=re.findall(r'[A-Za-z_]+(?:Exception|Error)',last)
-            states=['sqlstate_present'] if 'SQLSTATE[' in last else []
+            states=re.findall(r'SQLSTATE\\[([A-Z0-9]{5})\\]',last)
             print('error_classes='+(','.join(sorted(set(kinds))[:5]) if kinds else 'not_classified'))
-            print('sqlstates='+(','.join(sorted(set(states))[:3]) if states else 'none'))
+            print('sqlstate_codes='+(','.join(sorted(set(states))[:3]) if states else 'none'))
+            # Only print schema identifiers in canonical PostgreSQL error forms.
+            # Never print SQL queries, values, identities, contacts or raw logs.
+            for hint,pat in [
+                ('missing_relation',r'(?i)relation "([a-z_][a-z0-9_]{1,70})" does not exist'),
+                ('missing_column',r'(?i)column "([a-z_][a-z0-9_]{1,70})" does not exist'),
+                ('missing_table_alias',r'(?i)missing FROM-clause entry for table "([a-z_][a-z0-9_]{1,70})"'),
+                ('missing_function',r'(?i)function ([a-z_][a-z0-9_]{1,70})\\('),
+                ('missing_operator',r'(?i)operator does not exist: ([a-z_][a-z0-9_]{1,70})'),
+            ]:
+                m=re.search(pat,last)
+                if m:
+                    print(hint+'='+m.group(1))
+            if '42P01' in states or '42703' in states:
+                print('classification=missing_db_relation_or_column')
+            elif '23502' in states or '23503' in states or '23505' in states:
+                print('classification=integrity_constraint')
+            elif '22P02' in states:
+                print('classification=invalid_cast')
+            elif '08006' in states or '08001' in states:
+                print('classification=db_connection')
             tags={
              'database_connection':'could not connect|connection refused|Name or service not known',
              'redis':'RedisException|Redis connection|redis',
