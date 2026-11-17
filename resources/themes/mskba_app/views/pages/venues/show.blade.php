@@ -57,8 +57,17 @@
         'venue_court_id' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null,
     ]));
     $scheduledDays = collect($venue->about->scheduleDays)->take(9);
+    // The event area is not the booking-occupancy feed. Only
+    // bookings with an actual attached event belong here.
     $activityDays = collect($venue->occupancyDays)
-        ->filter(fn (array $day): bool => count($day['slots'] ?? []) > 0)
+        ->map(function (array $day): array {
+            $day['slots'] = collect($day['slots'] ?? [])
+                ->filter(fn (array $slot): bool => !empty($slot['hasEvent']))
+                ->values()
+                ->all();
+            return $day;
+        })
+        ->filter(fn (array $day): bool => count($day['slots']) > 0)
         ->values();
     $venuePromotionResolver = app(\App\Modules\Promotions\Application\Queries\ResolveActivePromotions::class);
     $venuePromotions = $venuePromotionResolver->forPlacement('venue_page', (int) $venue->id);
@@ -160,7 +169,9 @@
     </div>
 
     <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
-        <a href="#app-venue-activities">Игры</a>
+        @if($activityDays->isNotEmpty())
+            <a href="#app-venue-activities">Игры</a>
+        @endif
         <a href="#app-venue-interest">Подписки игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
@@ -168,10 +179,10 @@
 
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
+            @if($activityDays->isNotEmpty())
             <section class="panel app-venue-block" id="app-venue-activities">
                 <header class="app-venue-block__header"><h2>Игры и мероприятия</h2></header>
-                <p class="muted">Запланированные события и занятые интервалы на ближайшие девять дней.</p>
-                @if($activityDays->isNotEmpty())
+                <p class="muted">Мероприятия на площадке в ближайшие девять дней.</p>
                     <div class="app-venue-activities__days">
                         @foreach($activityDays as $day)
                             <div class="app-venue-activities__day">
@@ -187,7 +198,7 @@
                                                 @if($isPastEvent) data-event-past="true" @endif
                                                 data-slot-day="{{ $day['label'] ?? $day['date'] }}"
                                                 data-slot-time="{{ $slot['timeLabel'] ?? '' }}"
-                                                data-event-type="{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}"
+                                                data-has-event="true" data-event-type="{{ $slot['eventTypeLabel'] ?? 'Мероприятие' }}"
                                                 data-event-title="{{ $slot['eventTitle'] ?? '' }}"
                                                 data-event-url="{{ $slot['eventUrl'] ?? '' }}"
                                                 data-event-join-url="{{ $slot['eventJoinUrl'] ?? '' }}"
@@ -195,12 +206,12 @@
                                                 data-can-join="{{ !empty($slot['canJoin']) ? 'true' : 'false' }}"
                                                 data-join-state="{{ $slot['joinState'] ?? 'unavailable' }}"
                                                 data-can-respond-tentative="{{ !empty($slot['canRespondTentative']) ? 'true' : 'false' }}"
-                                                aria-label="Подробнее: {{ $isPublicEvent ? ($slot['eventTitle'] ?: $slot['eventTypeLabel']) : 'Занятое время' }}, {{ $day['label'] ?? $day['date'] }}, {{ $slot['timeLabel'] ?? '' }}">
+                                                aria-label="Подробнее: {{ $isPublicEvent ? ($slot['eventTitle'] ?: $slot['eventTypeLabel']) : 'Мероприятие по приглашению' }}, {{ $day['label'] ?? $day['date'] }}, {{ $slot['timeLabel'] ?? '' }}">
                                                 <span class="app-venue-activity__meta">
                                                     <span>{{ $slot['timeLabel'] ?? '' }}</span>
-                                                    <span class="app-venue-activity__type">{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'Занятое время' }}</span>
+                                                    <span class="app-venue-activity__type">{{ $isPublicEvent ? ($slot['eventTypeLabel'] ?? 'Мероприятие') : 'По приглашению' }}</span>
                                                 </span>
-                                                <strong class="app-venue-activity__title">{{ $isPublicEvent ? ($slot['eventTitle'] ?: 'Мероприятие') : 'Время занято' }}</strong>
+                                                <strong class="app-venue-activity__title">{{ $isPublicEvent ? ($slot['eventTitle'] ?: 'Мероприятие') : 'Мероприятие' }}</strong>
                                                 @if($isPastEvent)<span class="sr-only">Мероприятие завершилось.</span>@endif
                                                 @if($isPublicEvent && !empty($slot['eventDescription']))
                                                     <span class="app-venue-activity__description">{{ $slot['eventDescription'] }}</span>
@@ -218,11 +229,9 @@
                             </div>
                         @endforeach
                     </div>
-                @else
-                    <p class="muted">Запланированных занятых слотов на ближайшие девять дней пока нет.</p>
-                @endif
                 <a href="{{ route('events.index') }}" class="button secondary app-venue-activities__all">Смотреть мероприятия <svg aria-hidden="true"><use href="#arrow"/></svg></a>
             </section>
+            @endif
             <section class="panel app-venue-block" id="app-venue-interest">
                 <header class="app-venue-block__header"><h2>Площадкой интересуются</h2></header>
                 <div class="app-venue-interest-summary" data-play-venue-interest-summary>
