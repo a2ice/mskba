@@ -607,6 +607,13 @@ if (dayBookingDialog) {
                         else guestLink.removeAttribute('href');
                     }
                     eventInfoDialog.showModal();
+                    // The shared draggable-header controller adds tabindex=0.
+                    // Safari otherwise auto-focuses the header and draws a
+                    // full rectangular focus ring across the modal title.
+                    // Focus the real close control; retain keyboard focus
+                    // indications on interactive elements.
+                    eventInfoDialog.querySelector('[data-venue-overlay-close]')
+                        ?.focus?.({ preventScroll: true });
                 });
             }
             cell.append(times, state, price);
