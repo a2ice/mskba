@@ -155,16 +155,6 @@ function isBlockLike(element) {
     return ['block', 'list-item', 'flex', 'grid'].includes(element.css('display'));
 }
 
-function isFocusable(element) {
-    if (element.is('a[href], button, input, select, textarea, summary')) {
-        return true;
-    }
-
-    const tabindex = element.attr('tabindex');
-
-    return tabindex !== undefined && Number(tabindex) >= 0;
-}
-
 $(function() {
     initTooltips();
     bindFloatingTooltips();
