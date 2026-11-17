@@ -18,14 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate shell syntax
-        run: bash -n scripts/data-merge/smoke-merged-site.sh
+        run: |
+          bash -n scripts/data-merge/smoke-merged-site.sh
+          php -l scripts/data-merge/restore-imported-managers.php
       - name: Upload script outside both live sites
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: deploy
           key: ${{ secrets.DEV_SERVER_SSH_KEY }}
-          source: scripts/data-merge/smoke-merged-site.sh
+          source: scripts/data-merge/smoke-merged-site.sh,scripts/data-merge/restore-imported-managers.php
           target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
       - name: Smoke isolated final candidate and media bundle
         uses: appleboy/ssh-action@v1.2.0
