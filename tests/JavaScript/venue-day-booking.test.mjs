@@ -199,6 +199,7 @@ test('occupied imported interval opens generic details but not a fabricated even
     assert.equal(page.eventDialog.open, true);
     assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent,
         'Занято по расписанию площадки');
+    assert.equal(page.eventFields['[data-venue-day-event-type]'].textContent, 'Занятый интервал');
     assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
 });
 
