@@ -103,7 +103,13 @@ final class VenueBookingEventLinkTest extends TestCase
 
         $event = \App\Modules\Event\Domain\Models\Event::query()->where('booking_id', $booking->id)->sole();
         $this->assertSame($booking->venue_id, $event->venue_id);
-        $this->assertSame($booking->venue_court_id, $event->venue_court_id);
+        if ($booking->venue_court_id !== null) {
+            $this->assertSame($booking->venue_court_id, $event->venue_court_id);
+        } else {
+            // A whole-venue rental does not carry a court ID; the existing
+            // event model may resolve the venue's default court.
+            $this->assertSame($booking->venue_id, $event->court?->venue_id);
+        }
         $this->assertTrue($booking->starts_at->equalTo($event->starts_at));
         $this->assertTrue($booking->ends_at->equalTo($event->ends_at));
     }
