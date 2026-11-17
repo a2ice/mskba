@@ -156,7 +156,7 @@ test('global focus rings only target interactive controls; static tooltips canno
     const tournament=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/tournaments/show.blade.php',import.meta.url),'utf8');
     const venue=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/venues/show.blade.php',import.meta.url),'utf8');
     const event=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/events/show.blade.php',import.meta.url),'utf8');
-    assert.doesNotMatch(lightBase,/:focus-visible\{outline:2px solid var\(--accent\);outline-offset:3px\}/);
+    assert.doesNotMatch(lightBase,/(?:^|\})\s*:focus-visible\s*\{/m);
     assert.doesNotMatch(darkBase,/^:focus-visible\s*\{/m);
     for (const css of [lightBase,darkBase]) {
         assert.match(css,/\[role="button"\][^}]*:focus-visible/s);
