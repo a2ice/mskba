@@ -39,7 +39,7 @@ jobs:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: deploy
           key: ${{ secrets.DEV_SERVER_SSH_KEY }}
-          command_timeout: 25m
+          command_timeout: 40m
           script: |
             set -euo pipefail
-            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217 ${{ github.sha }}
