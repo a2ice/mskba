@@ -92,6 +92,23 @@ class CookieConsentTest extends TestCase
         ]);
     }
 
+    public function test_merged_alias_uses_the_canonical_account_consent(): void
+    {
+        config(['services.yandex_metrika.id' => '12345678']);
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create();
+        $alias->forceFill(['canonical_user_id' => $canonical->id])->save();
+
+        $this->actingAs($alias)->postJson(route('cookie-consent.store'), ['analytics' => 'accepted'])
+            ->assertOk();
+        $this->assertDatabaseHas('user_cookie_consent_preferences', [
+            'user_id' => $canonical->id,
+            'analytics_choice' => 'accepted',
+        ]);
+        $this->actingAs($canonical)->get(route('welcome'))
+            ->assertSee('mc.yandex.ru/metrika/tag.js', false);
+    }
+
     public function test_preference_isolation_and_rejection_are_respected_across_sessions(): void
     {
         config(['services.yandex_metrika.id' => '12345678']);
