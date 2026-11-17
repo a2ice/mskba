@@ -49,6 +49,7 @@ final class VenueScheduleDayController extends Controller
             $result = $days->forDate(
                 $venue, $court, $data['date'],
                 $data['preview_start'] ?? null, $data['preview_duration_minutes'] ?? null,
+                $request->user(),
             );
             if ($result['price_preview'] !== null) {
                 $baseline = $result['price_preview']['total_minor'];
