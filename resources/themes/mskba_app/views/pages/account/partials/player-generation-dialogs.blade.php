@@ -3,7 +3,7 @@
     data-upload-url="{{ route('account.player-character.logos.store') }}"
     aria-labelledby="app-player-logo-title">
     <div class="mskba-modal__header app-profile__request-header">
-        <h2 id="app-player-logo-title" tabindex="-1">Выбрать логотип</h2>
+        <h2 id="app-player-logo-title">Выбрать логотип</h2>
         <button type="button" class="app-profile__dialog-close" data-player-logo-close
             aria-label="Закрыть">×</button>
     </div>
@@ -21,7 +21,7 @@
 <dialog id="app-player-logo-view-dialog" class="mskba-modal app-player-workspace__logo-view-dialog"
     data-player-logo-view-dialog aria-labelledby="app-player-logo-view-title">
     <div class="mskba-modal__header app-profile__request-header">
-        <h2 id="app-player-logo-view-title" tabindex="-1">Логотип команды</h2>
+        <h2 id="app-player-logo-view-title">Логотип команды</h2>
         <button type="button" class="app-profile__dialog-close" data-player-logo-view-close
             aria-label="Закрыть">×</button>
     </div>
