@@ -37,6 +37,8 @@ jobs:
             test -f "$RELEASE/CUTOVER_STATE"
             test -f "$RELEASE/RELEASE_COMPLETE"
             test ! -f "$RELEASE/ROLLED_BACK"
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
             grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
 
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
@@ -73,8 +75,8 @@ jobs:
             # Real guest HTML, not a simulated test: CSS and public markup must use the light theme.
             VERIFIED=0
             for ATTEMPT in 1 2 3 4 5; do
-              if curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/?theme_verify=$ATTEMPT-$(date +%s)" \
-                | grep -Eq 'data-design-theme="court_day"[^>]*data-appearance-mode="light"'; then
+              HTML="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/?theme_verify=$ATTEMPT-$(date +%s)" || true)"
+              if [[ "$HTML" == *'data-design-theme="court_day"'* && "$HTML" == *'data-appearance-mode="light"'* ]]; then
                 VERIFIED=1
                 break
               fi
