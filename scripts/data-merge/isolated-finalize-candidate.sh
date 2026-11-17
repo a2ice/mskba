@@ -57,14 +57,18 @@ run_stage(){
   -e MSKBA_MERGE_ISOLATED=YES -e MSKBA_MERGE_DB_HOST=candidate-db \
   -e MSKBA_MERGE_DB_USER=postgres -e MSKBA_MERGE_DB_PASSWORD="$PW" \
   --entrypoint php mskbanew-phpfpm:latest /tmp/task.php > "$DEST/$name-dry-run.log" 2>&1 || {
-   echo "FINALIZED_BLOCKED $name dry-run";exit 6;
+   echo "FINALIZED_BLOCKED $name dry-run"
+   grep -E '^MEDIA_RELATIONS_BLOCKED phase=' "$DEST/$name-dry-run.log" || true
+   exit 6;
   }
  docker run --rm --network "$NET" \
   -v "$STAGE/$file:/tmp/task.php:ro" \
   -e MSKBA_MERGE_ISOLATED=YES -e MSKBA_MERGE_DB_HOST=candidate-db \
   -e MSKBA_MERGE_DB_USER=postgres -e MSKBA_MERGE_DB_PASSWORD="$PW" \
   --entrypoint php mskbanew-phpfpm:latest /tmp/task.php --apply > "$DEST/$name-apply.log" 2>&1 || {
-   echo "FINALIZED_BLOCKED $name apply";exit 7;
+   echo "FINALIZED_BLOCKED $name apply"
+   grep -E '^MEDIA_RELATIONS_BLOCKED phase=' "$DEST/$name-apply.log" || true
+   exit 7;
   }
 }
 run_stage quarantine quarantine-unmatched-identities.php
