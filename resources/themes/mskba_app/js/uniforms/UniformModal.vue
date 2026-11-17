@@ -41,7 +41,7 @@ function backdrop(event) {
   <dialog id="mskba-uniform-dialog" ref="dialog" class="mskba-modal mskba-uniform-dialog" aria-labelledby="mskba-uniform-modal-title"
     @click="backdrop" @close="close(false)">
     <header class="mskba-modal__header app-profile__request-header">
-      <h2 id="mskba-uniform-modal-title" tabindex="-1">Мастерская формы</h2>
+      <h2 id="mskba-uniform-modal-title">Мастерская формы</h2>
       <button type="button" class="app-profile__dialog-close" aria-label="Закрыть" @click="close(false)">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll mskba-uniform-dialog__body">
