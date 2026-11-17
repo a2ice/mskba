@@ -172,7 +172,7 @@ while(($record=fgetcsv($csv))!==false){
     if(!is_string($path)||!str_starts_with($path,'/')||str_starts_with($path,'//'))continue;
     $ctx=stream_context_create(['http'=>[
         'ignore_errors'=>true,'timeout'=>20,'follow_location'=>0,
-        'header'=>"User-Agent: MSKBA-Legacy-Cutover-Smoke/1.0\\r\\n",
+        'header'=>"User-Agent: MSKBA-Legacy-Cutover-Smoke/1.0\r\n",
     ]]);
     $body=@file_get_contents('http://127.0.0.1:8000'.$path,false,$ctx);
     $line=$http_response_header[0]??'NO_RESPONSE';
