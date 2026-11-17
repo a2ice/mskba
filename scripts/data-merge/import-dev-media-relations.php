@@ -42,7 +42,7 @@ function required(array $map,int $sourceId,string $type):int {
 }
 function mapRows(PDO $db,string $table,string $old,string $new):array {
  $map=[];
- foreach(rows($db,'SELECT '.key($old).','.key($new).' FROM '.sqlIdent($table)) as $r){
+ foreach(rows($db,'SELECT '.sqlIdent($old).','.sqlIdent($new).' FROM '.sqlIdent($table)) as $r){
   if($r[$new]!==null)$map[(int)$r[$old]]=(int)$r[$new];
  }
  return $map;
