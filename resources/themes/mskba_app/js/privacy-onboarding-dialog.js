@@ -43,7 +43,7 @@ if (root) {
         dialog.innerHTML =
             '<header class="mskba-modal__header mskba-onboarding-dialog__header">' +
             '  <div><p class="eyebrow accent">MSKBA / ПОСЛЕДНИЙ ШАГ</p>' +
-            '  <h2 id="mskba-onboarding-dialog-title" tabindex="-1">Завершите регистрацию</h2></div>' +
+            '  <h2 id="mskba-onboarding-dialog-title">Завершите регистрацию</h2></div>' +
             '  <button type="button" class="icon-button" data-onboarding-close aria-label="Закрыть настройку">' +
             '    <svg aria-hidden="true"><use href="#close"/></svg></button>' +
             '</header>' +
@@ -68,7 +68,6 @@ if (root) {
             currentError = document.createElement('p');
             currentError.className = 'mskba-onboarding-dialog__error';
             currentError.setAttribute('role', 'alert');
-            currentError.tabIndex = -1;
             body.prepend(currentError);
         }
         currentError.textContent = message;
@@ -140,7 +139,7 @@ if (root) {
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
-        dialog.querySelector('#mskba-onboarding-dialog-title')?.focus({ preventScroll: true });
+        dialog.querySelector('[data-onboarding-close]')?.focus({ preventScroll: true });
         if (!form) loadForm();
     }
 
@@ -194,7 +193,6 @@ if (root) {
             if (!response.ok) {
                 const issues = Object.values(result.errors || {}).flat().filter(Boolean);
                 showError(issues.join(' ') || result.message || 'Не удалось сохранить настройки.');
-                currentError.focus({ preventScroll: true });
                 body.scrollTo({ top: 0 });
                 return;
             }
