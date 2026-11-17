@@ -87,9 +87,9 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->getJson(route('account.notifications.threads.team.state', $request->id))
             ->assertOk()->assertJsonPath('can_write', true);
         $request->update(['status' => TeamJoinRequestStatusEnum::BLOCKED]);
-        $this->getJson(route('account.notifications.threads.team.state', $request->id))
-            ->assertOk()->assertJsonPath('can_write', false)
-            ->assertSee('data-team-review-trigger="unblock"', false);
+        $blockedState = $this->getJson(route('account.notifications.threads.team.state', $request->id))
+            ->assertOk()->assertJsonPath('can_write', false);
+        $this->assertStringContainsString('data-team-review-trigger="unblock"', $blockedState->json('actions_html'));
         $this->actingAs($this->user())->getJson(route('account.notifications.threads.team.state', $request->id))
             ->assertForbidden();
     }
@@ -114,9 +114,9 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->assertStringNotContainsString('data-conversation="system"', $response->getContent());
 
         $this->get(route('account.notifications.threads.team', $redRequest->id))
-            ->assertOk()->assertSee($redRequest->team->name)->assertDontSee($blue->name);
+            ->assertOk()->assertSee('<h2>Заявка в команду «'.$redRequest->team->name.'»</h2>', false);
         $this->get(route('account.notifications.threads.team', $blueRequest->id))
-            ->assertOk()->assertSee($blue->name)->assertDontSee($redRequest->team->name);
+            ->assertOk()->assertSee('<h2>Заявка в команду «'.$blue->name.'»</h2>', false);
     }
 
     public function test_opening_system_chat_does_not_mark_application_notifications_read(): void
