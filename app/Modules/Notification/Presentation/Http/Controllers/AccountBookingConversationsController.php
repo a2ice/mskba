@@ -4,6 +4,9 @@ namespace App\Modules\Notification\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\VenueBooking\Application\Services\VenueBookingBackofficeAccess;
 use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
@@ -46,6 +49,14 @@ final class AccountBookingConversationsController extends Controller
         } catch (VenueBookingTransitionException) {
             abort(403);
         }
+        if ($actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+            AuditLog::query()->create([
+                'actor_id' => $actor->id, 'auditable_type' => VenueBooking::class,
+                'auditable_id' => $venueBooking->id, 'event' => 'conversation_viewed_for_support',
+                'old_values' => [], 'new_values' => [],
+                'metadata' => ['route' => $request->route()?->getName()],
+            ]);
+        }
         $canWrite = true;
         try {
             $authorization->assertCanWriteConversation($actor, $venueBooking, $venueBooking->venue);
@@ -81,6 +92,14 @@ final class AccountBookingConversationsController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $service->assertCan($actor, $preRequest);
+        if (app(VenueBookingBackofficeAccess::class)->canView($request->user())) {
+            AuditLog::query()->create([
+                'actor_id' => $actor->id, 'auditable_type' => VenueRentalPreRequest::class,
+                'auditable_id' => $preRequest->id, 'event' => 'rental_support_conversation_viewed',
+                'old_values' => [], 'new_values' => [],
+                'metadata' => ['route' => $request->route()?->getName(), 'venue_id' => $preRequest->venue_id],
+            ]);
+        }
         $preRequest->loadMissing(['venue', 'court', 'requester']);
         $conversation = $preRequest->conversation;
         [$messages, $hasMore] = $this->recent($conversation);
