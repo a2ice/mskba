@@ -456,8 +456,9 @@ if (dayBookingDialog) {
                     info('[data-venue-day-event-access]').textContent = hasEvent
                         ? (eventInfo.visibility || 'Подробности не опубликованы')
                         : (slot.booking_group ? 'Бронирование MSKBA' : 'Занято по расписанию площадки');
-                    info('[data-venue-day-event-type]').textContent =
-                        hasEvent ? (eventInfo.type || 'Не указан') : 'Бронирование';
+                    info('[data-venue-day-event-type]').textContent = hasEvent
+                        ? (eventInfo.type || 'Не указан')
+                        : (slot.booking_group ? 'Бронирование' : 'Занятый интервал');
 
                     const description = info('[data-venue-day-event-description]');
                     description.textContent = isPublic ? (eventInfo.description || '') : '';
