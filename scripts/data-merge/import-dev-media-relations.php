@@ -148,8 +148,8 @@ try{
   if(!in_array((string)$m['disk'],['public','local'],true)){
     throw new RuntimeException('External media disk not in protected storage archive');
   }
-  if($m['original_path']!==null &&
-    !in_array((string)($m['original_disk']??''),['public','local'],true)){
+  if($m['original_path']!==null && $m['original_disk']!==null &&
+    !in_array((string)$m['original_disk'],['public','local'],true)){
     throw new RuntimeException('External original media source unavailable');
   }
   $m['mediable_id']=$targetOwner;
