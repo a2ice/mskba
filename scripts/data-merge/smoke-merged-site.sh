@@ -62,22 +62,53 @@ run_rights > "$DEST/rights-dry-run.log" 2>&1 || {
 run_rights --apply > "$DEST/rights-apply.log" 2>&1 || {
  echo 'SMOKE_BLOCKED manager-rights apply';exit 5;
 }
+# artisan serve spawns a child process and can reload the deployed dev
+# .env, overriding this isolated candidate's DB_HOST. Run PHP's built-in
+# server directly so Docker's explicit DB environment remains authoritative.
+cat > "$DEST/serve-router.php" <<'PHP'
+<?php
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+if ($path !== '/' && is_file('/var/www/html/public'.$path)) {
+    return false;
+}
+require '/var/www/html/public/index.php';
+PHP
+chmod 600 "$DEST/serve-router.php"
 docker run --rm -d --network "$NET" --network-alias preview-app --name "$APP" \
  --user 0:0 --workdir /var/www/html \
  -v "$DEV_ROOT:/var/www/html:ro" \
  -v "$DEST/storage:/var/www/html/storage:rw" \
  -v "$DEST/bootstrap-cache:/var/www/html/bootstrap/cache:rw" \
+ -v "$DEST/serve-router.php:/tmp/serve-router.php:ro" \
  -e APP_ENV=testing -e APP_DEBUG=false -e APP_KEY="$KEY" \
  -e APP_URL=http://preview.invalid \
  -e DB_CONNECTION=pgsql -e DB_URL= -e DB_HOST=candidate-db \
  -e DB_PORT=5432 -e DB_DATABASE=candidate -e DB_USERNAME=postgres \
- -e DB_PASSWORD="$PW" \
+ -e DB_PASSWORD="$PW" -e DB_SSLMODE=disable \
+ -e DB_TIMEZONE=Europe/Moscow -e APP_TIMEZONE=Europe/Moscow \
  -e CACHE_STORE=array -e SESSION_DRIVER=array -e QUEUE_CONNECTION=sync \
  -e MAIL_MAILER=log -e BROADCAST_CONNECTION=log -e LOG_CHANNEL=single \
  -e TELEGRAM_UPDATES_TRANSPORT=disabled -e OPENAI_API_KEY= \
  -e GITHUB_AI_TOKEN= -e YANDEX_AI_API_KEY= \
- --entrypoint php mskbanew-phpfpm:latest artisan serve --host=0.0.0.0 --port=8000 \
+ --entrypoint php mskbanew-phpfpm:latest -S 0.0.0.0:8000 \
+ -t /var/www/html/public /tmp/serve-router.php \
  > "$DEST/app-container-id" 2>&1
+
+# Fail early on a wrong Laravel DB host or unavailable candidate connection.
+# The direct PDO rights importer already proved that the Docker network works.
+if ! docker exec "$APP" php -r '
+require "/var/www/html/vendor/autoload.php";
+$app = require "/var/www/html/bootstrap/app.php";
+$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+if (config("database.default") !== "pgsql" ||
+    config("database.connections.pgsql.host") !== "candidate-db" ||
+    config("database.connections.pgsql.database") !== "candidate") exit(2);
+try { Illuminate\\Support\\Facades\\DB::select("SELECT 1"); }
+catch (Throwable $e) { exit(3); }
+' >/dev/null 2>&1; then
+ echo 'SMOKE_BLOCKED isolated Laravel DB environment or reachability'
+ exit 5
+fi
 started=false
 for _ in $(seq 1 45); do
  if docker exec "$APP" php -r '
