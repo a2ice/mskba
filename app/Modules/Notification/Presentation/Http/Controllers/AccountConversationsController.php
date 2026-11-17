@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\SystemNotificationTimeline;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\UseCases\BuildTeamRequestTimelineHandler;
 use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
@@ -19,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\View;
 
 final class AccountConversationsController extends Controller
 {
@@ -41,9 +43,10 @@ final class AccountConversationsController extends Controller
     public function team(Request $request, TeamJoinRequest $joinRequest,
         CurrentActorResolver $actors, TeamManagementAccess $permissions,
         TeamNotificationService $notifications,
-        BuildTeamRequestTimelineHandler $timeline): Response
+        BuildTeamRequestTimelineHandler $timeline, AccountConversationRail $rail): Response
     {
-        [$user] = $this->authorizeTeamRequest($request, $joinRequest, $actors, $permissions);
+        [$user, $isApplicant] = $this->authorizeTeamRequest($request, $joinRequest, $actors, $permissions);
+        $isManager = ! $isApplicant;
         $canWrite = ! in_array($joinRequest->status, [
             TeamJoinRequestStatusEnum::ACCEPTED, TeamJoinRequestStatusEnum::BLOCKED,
         ], true);
@@ -56,12 +59,37 @@ final class AccountConversationsController extends Controller
 
         return ThemeResolver::page('account.team-request-conversation', [
             'joinRequest' => $joinRequest,
-            // Reverse only for presentation: preserve canonical chronological
-            // timeline construction and its original application event.
-            'timeline' => $timeline->handle($joinRequest, $user)->reverse()->values(),
+            'timeline' => $timeline->handle($joinRequest, $user),
+            'isManager' => $isManager,
+            'conversationCards' => $rail->items($user, $request),
+            'activeConversationId' => 'team-'.$joinRequest->id,
             'canWrite' => $canWrite,
             'viewer' => $user,
             'participants' => $participants,
+        ]);
+    }
+
+    public function stateTeam(Request $request, TeamJoinRequest $joinRequest,
+        CurrentActorResolver $actors, TeamManagementAccess $permissions,
+        BuildTeamRequestTimelineHandler $timeline): JsonResponse
+    {
+        [$user, $isApplicant] = $this->authorizeTeamRequest($request, $joinRequest, $actors, $permissions);
+        $joinRequest->refresh();
+        $joinRequest->loadMissing(['team', 'messages.sender.profile']);
+        $canWrite = ! in_array($joinRequest->status, [
+            TeamJoinRequestStatusEnum::ACCEPTED, TeamJoinRequestStatusEnum::BLOCKED,
+        ], true);
+        $entries = $timeline->handle($joinRequest, $user);
+
+        return response()->json([
+            'status' => $joinRequest->status->label(),
+            'can_write' => $canWrite,
+            'html' => View::make('theme::pages.account.partials.team-request-timeline', [
+                'timeline' => $entries,
+            ])->render(),
+            'actions_html' => View::make('theme::pages.account.partials.team-request-actions', [
+                'joinRequest' => $joinRequest, 'isManager' => ! $isApplicant,
+            ])->render(),
         ]);
     }
 
