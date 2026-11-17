@@ -46,6 +46,22 @@ docker exec -i "$DB" pg_restore -U postgres -d candidate \
  --no-owner --no-acl --exit-on-error < "$SOURCE" > "$DEST/restore.log" 2>&1 || {
  echo 'SMOKE_BLOCKED database restore';exit 4;
 }
+# Recreate the catalogue rights from the same idempotent policy as the
+# historical owner backfill; do not grant commercial rental ownership.
+RIGHTS_SCRIPT="/home/deploy/mskba-data-merge-tools/$RUN/scripts/data-merge/restore-imported-managers.php"
+test -r "$RIGHTS_SCRIPT"
+run_rights() {
+ docker run --rm --network "$NET" -v "$RIGHTS_SCRIPT:/tmp/rights.php:ro" \
+  -e MSKBA_MERGE_ISOLATED=YES -e MSKBA_MERGE_DB_HOST=candidate-db \
+  -e MSKBA_MERGE_DB_USER=postgres -e MSKBA_MERGE_DB_PASSWORD="$PW" \
+  --entrypoint php mskbanew-phpfpm:latest /tmp/rights.php "$@"
+}
+run_rights > "$DEST/rights-dry-run.log" 2>&1 || {
+ echo 'SMOKE_BLOCKED manager-rights dry-run';exit 5;
+}
+run_rights --apply > "$DEST/rights-apply.log" 2>&1 || {
+ echo 'SMOKE_BLOCKED manager-rights apply';exit 5;
+}
 docker run --rm -d --network "$NET" --network-alias preview-app --name "$APP" \
  --user 0:0 --workdir /var/www/html \
  -v "$DEV_ROOT:/var/www/html:ro" \
@@ -126,8 +142,20 @@ PHP
  echo 'SMOKE_BLOCKED media/contract integrity';cat "$DEST/domain-smoke.log";exit 7
 fi
 
+# Verified DB checkpoint includes the repaired noncommercial catalogue
+# rights, preserving all previous prod users and historical bookings.
+if ! docker exec "$DB" pg_dump -U postgres -d candidate --format=custom \
+  --no-owner --no-acl > "$DEST/web-approved-candidate.pgdump.part"; then
+ echo 'SMOKE_BLOCKED checkpoint creation';exit 8
+fi
+test -s "$DEST/web-approved-candidate.pgdump.part"
+mv "$DEST/web-approved-candidate.pgdump.part" "$DEST/web-approved-candidate.pgdump"
+sha256sum "$DEST/web-approved-candidate.pgdump" > "$DEST/SHA256SUMS"
+find "$DEST" -maxdepth 1 -type f -exec chmod 600 {} +
+cat "$DEST/rights-apply.log"
 cat "$DEST/http-smoke.log"
 cat "$DEST/domain-smoke.log"
+echo "approved_checkpoint_bytes=$(stat -c %s "$DEST/web-approved-candidate.pgdump")"
 echo "candidate_dev_code_sha=$(git -C "$DEV_ROOT" rev-parse --short HEAD)"
 echo 'WEB_SMOKE_PASS=true'
 echo 'PRODUCTION_AND_DEV_UNCHANGED=true'
