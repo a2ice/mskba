@@ -1,4 +1,5 @@
 import { displayClock } from './venue-time-label.js';
+import { groupDayBookingSlots } from './venue-day-booking-groups.js';
 
 /* Venue gallery, accessible local dialogs and attendance controls.
  * The gallery is static before hydration and respects reduced motion. */
@@ -272,6 +273,7 @@ if (dayBookingDialog) {
     const status = dayBookingDialog.querySelector('[data-venue-day-status]');
     const heading = dayBookingDialog.querySelector('[data-venue-day-title]');
     const grid = dayBookingDialog.querySelector('[data-venue-day-slots]');
+    const eventInfoDialog = document.querySelector('[data-venue-day-event-dialog]');
     const form = dayBookingDialog.querySelector('[data-venue-day-booking-form]');
     const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
     const summary = dayBookingDialog.querySelector('[data-venue-day-summary]');
@@ -405,24 +407,66 @@ if (dayBookingDialog) {
             unavailable: 'Недоступно',
             unknown: 'Нет данных',
         };
-        for (const [index, slot] of data.slots.entries()) {
+        for (const group of groupDayBookingSlots(data.slots)) {
+            const slot = group.first;
+            const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'app-venue-day-dialog__slot';
-            cell.dataset.slotIndex = String(index);
+            if (slot.selectable) cell.dataset.slotIndex = String(group.firstIndex);
+            if (group.count > 1) cell.classList.add('is-booking-group');
+            if (eventInfo) cell.classList.add('is-public-event');
             cell.dataset.slotStatus = slot.status;
-            cell.disabled = !slot.selectable;
+            cell.disabled = !slot.selectable && !eventInfo;
             cell.setAttribute('aria-pressed', 'false');
             const times = document.createElement('strong');
-            times.textContent = displayClock(slot.starts_at) + '–' + displayClock(slot.ends_at);
+            times.textContent = displayClock(slot.starts_at) + '–' + displayClock(group.last.ends_at);
             const state = document.createElement('span');
-            state.textContent = labels[slot.status] || 'Неизвестно';
+            const marker = slot.booking_group
+                ? ' (m' + (slot.booking_group.has_event ? ', e' : '') + ')' : '';
+            state.textContent = (labels[slot.status] || 'Неизвестно') + marker;
             const price = document.createElement('small');
-            price.textContent = slot.price_minor === null
-                ? 'Цена не указана'
-                : currency.format(slot.price_minor / 100) + ' ₽';
-            if (slot.price_minor !== null) {
+            price.textContent = group.count > 1
+                ? (group.count * data.step_minutes) + ' мин'
+                : slot.price_minor === null
+                    ? 'Цена не указана'
+                    : currency.format(slot.price_minor / 100) + ' ₽';
+            if (group.count === 1 && slot.price_minor !== null) {
                 price.title = 'Цена одного интервала с комиссиями. Итог для нескольких интервалов рассчитывается отдельно.';
+            }
+            if (eventInfo) {
+                cell.setAttribute('aria-label', times.textContent + ' · Занято (m, e) · '
+                    + eventInfo.title + '. Открыть мероприятие');
+                cell.addEventListener('click', () => {
+                    if (!eventInfoDialog) return;
+                    const info = (selector) => eventInfoDialog.querySelector(selector);
+                    info('[data-venue-day-event-title]').textContent = eventInfo.title || 'Мероприятие';
+                    info('[data-venue-day-event-time]').textContent = times.textContent;
+                    info('[data-venue-day-event-description]').textContent = eventInfo.description || '';
+                    info('[data-venue-day-event-description]').hidden = !eventInfo.description;
+                    info('[data-venue-day-event-type]').textContent = eventInfo.type || 'Не указан';
+                    info('[data-venue-day-event-status]').textContent = eventInfo.status || 'Не указан';
+                    info('[data-venue-day-event-count]').textContent =
+                        String(eventInfo.confirmed_count ?? 0) + (eventInfo.max_participants
+                            ? ' из ' + eventInfo.max_participants : '') + ' · думают: '
+                        + String(eventInfo.tentative_count ?? 0);
+                    const organizer = info('[data-venue-day-event-organizer]');
+                    organizer.textContent = eventInfo.organizer_name || 'Организатор';
+                    const message = info('[data-venue-day-event-message]');
+                    const canMessage = !!eventInfo.organizer_user_id
+                        && !!document.querySelector('[data-direct-message-dialog]');
+                    message.hidden = !canMessage;
+                    if (canMessage) {
+                        message.dataset.recipientId = String(eventInfo.organizer_user_id);
+                        message.dataset.recipientName = eventInfo.organizer_name || 'Организатор';
+                    } else {
+                        delete message.dataset.recipientId;
+                        delete message.dataset.recipientName;
+                    }
+                    const link = info('[data-venue-day-event-link]');
+                    link.href = eventInfo.url || '#';
+                    eventInfoDialog.showModal();
+                });
             }
             cell.append(times, state, price);
             grid.appendChild(cell);
@@ -467,7 +511,17 @@ if (dayBookingDialog) {
         redrawSelection();
     });
 
+    eventInfoDialog?.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
+        button.addEventListener('click', () => eventInfoDialog.close()));
+    eventInfoDialog?.addEventListener('click', event => {
+        if (event.target === eventInfoDialog) eventInfoDialog.close();
+    });
+    eventInfoDialog?.querySelector('[data-venue-day-event-message]')?.addEventListener('click', () => {
+        if (eventInfoDialog.open) eventInfoDialog.close();
+    });
+
     const close = () => {
+        if (eventInfoDialog?.open) eventInfoDialog.close();
         ++previewSequence;
         loading?.abort();
         loading = null;
