@@ -534,6 +534,9 @@ dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
 .app-venue-day-event-dialog__body dl>div.app-venue-day-event-dialog__type-row{
     display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;
 }
+.app-venue-day-event-dialog__body dl>div.app-venue-day-event-dialog__requester-row{
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;
+}
 .app-venue-day-event-dialog__booking-actions{
     display:grid;gap:12px;justify-items:start;
 }
