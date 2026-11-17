@@ -490,7 +490,6 @@
                                             title="{{ $station->lineName }}"
                                             data-tooltip-variant="title"
                                             data-tooltip-icon
-                                            tabindex="0"
                                         @else
                                             aria-hidden="true"
                                         @endif
