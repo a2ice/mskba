@@ -269,7 +269,9 @@ final readonly class PublicVenueDaySchedule
             } elseif (! $inHours && $status === 'available') {
                 $status = 'unavailable';
             }
-            if ($snapshot === null && $intervals === null) {
+            // A confirmed MSKBA booking is authoritative occupancy even if
+            // the venue has no weekly opening-hours template yet.
+            if ($snapshot === null && $intervals === null && ! $isBusy) {
                 $status = 'unknown';
             }
 
