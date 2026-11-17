@@ -139,13 +139,13 @@ test('both themes avoid focus outlines on inert modal headers and do not tab-sto
     const location=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/home-event-location-v2.js',import.meta.url),'utf8');
     const handlers=readFileSync(new URL('../../resources/themes/mskba_dark/js/core/ui-handlers.js',import.meta.url),'utf8');
     const dragging=readFileSync(new URL('../../resources/themes/mskba_app/js/modal-dragging.js',import.meta.url),'utf8');
-    assert.doesNotMatch(light,/data-mskba-drag-handle\\]:focus-visible/);
-    assert.doesNotMatch(dark,/data-mskba-drag-handle\\]:focus-visible/);
+    assert.doesNotMatch(light,/data-mskba-drag-handle\]:focus-visible/);
+    assert.doesNotMatch(dark,/data-mskba-drag-handle\]:focus-visible/);
     assert.doesNotMatch(template,/data-modal-body tabindex="0"/);
     assert.doesNotMatch(location,/data-modal-body tabindex="0"/);
-    assert.doesNotMatch(dragging,/handle\\.tabIndex\\s*=\\s*0/);
-    assert.doesNotMatch(handlers,/\\[tabindex\\]:not\\(\\[tabindex="-1"\\]\\)/);
-    assert.match(handlers,/\\(autofocus \\|\\| control\\)\\?\\.focus/);
+    assert.doesNotMatch(dragging,/handle\.tabIndex\s*=\s*0/);
+    assert.doesNotMatch(handlers,/\[tabindex\]:not\(\[tabindex="-1"\]\)/);
+    assert.match(handlers,/\(autofocus \|\| control\)\?\.focus/);
 });
 
 test('both themes and native map/price overlays import the shared controller and backdrop CSS',()=>{
