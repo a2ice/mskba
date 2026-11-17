@@ -166,6 +166,58 @@ test('event details stay hidden outside an explicitly opened event modal', () =>
     assert.match(dayBookingModule, /eventInfoDialog\.showModal\(\);/);
 });
 
+test('occupied MSKBA booking without event opens truthful booking details', async () => {
+    const page = mountDayBooking({ customSlots: [
+        { starts_at: '07:00', ends_at: '07:30', status: 'booked', selectable: false,
+          booking_group: { key: 'one-booking', has_event: false, event: null }, price_minor: 181500 },
+        { starts_at: '07:30', ends_at: '08:00', status: 'booked', selectable: false,
+          booking_group: { key: 'one-booking', has_event: false, event: null }, price_minor: 181500 },
+    ] });
+    await page.open(1);
+    assert.equal(page.grid.children[0].disabled, false, 'An occupied booking must open its details');
+    assert.equal(page.grid.children[0].children[1].textContent, 'Занято (m)');
+    page.grid.children[0].listeners.click();
+    assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-day-event-title]'].textContent, 'Занятое время');
+    assert.equal(page.eventFields['[data-venue-day-event-time]'].textContent, '07:00–08:00');
+    assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent, 'Бронирование MSKBA');
+    assert.equal(page.eventFields['[data-venue-day-event-type]'].textContent, 'Бронирование');
+    assert.match(page.eventFields['[data-venue-day-event-private-note]'].textContent,
+        /мероприятие не прикреплено/);
+    assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, true);
+});
+
+test('occupied imported interval opens generic details but not a fabricated event', async () => {
+    const page = mountDayBooking({ customSlots: [
+        { starts_at: '08:00', ends_at: '08:30', status: 'booked', selectable: false,
+          booking_group: null, price_minor: 181500 },
+    ] });
+    await page.open(1);
+    assert.equal(page.grid.children[0].disabled, false);
+    page.grid.children[0].listeners.click();
+    assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent,
+        'Занято по расписанию площадки');
+    assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
+});
+
+test('venue event section excludes booking-only days and disappears without linked events', () => {
+    const page = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/show.blade.php', import.meta.url), 'utf8',
+    );
+    const handler = readFileSync(
+        new URL('../../app/Modules/Venue/Application/UseCases/ShowVenueHandler.php', import.meta.url), 'utf8',
+    );
+    const styles = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/venue-detail.css', import.meta.url), 'utf8',
+    );
+    assert.match(handler, /'hasEvent'\s*=>\s*\$event\s*!==\s*null/);
+    assert.match(page, /->filter\(fn \(array \$slot\): bool => !empty\(\$slot\['hasEvent'\]\)\)/);
+    assert.match(page, /@if\(\$activityDays->isNotEmpty\(\)\)[\s\S]*?<section class="panel app-venue-block" id="app-venue-activities">/);
+    assert.match(styles, /\.app-venue-day-dialog__calendar\s*\{[^}]*padding-top:5px/s);
+});
+
 test('private attached event opens minimal popup without leaking details or actions', async () => {
     const event = {
         public: false, visibility: 'По приглашению', type: 'Игра',
