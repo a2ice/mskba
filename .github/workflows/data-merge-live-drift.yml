@@ -1,4 +1,5 @@
 name: MSKBA live data drift preflight
+# Final cutover refresh — 2026-11-17, read-only source checks.
 on:
   push:
     branches: [dev]
