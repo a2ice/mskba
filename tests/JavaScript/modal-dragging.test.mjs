@@ -99,12 +99,19 @@ test('pointercancel and Escape restore previous position; buttons cannot start d
     h.controller.destroy();
 });
 
-test('keyboard has separate, bounded motion and focused header remains available',()=>{
+test('static modal headers stay out of Tab order; real header actions retain keyboard movement',()=>{
     const h=harness();
-    assert.equal(h.header.tabIndex,0);
-    assert.match(h.header.attrs['aria-keyshortcuts'],/Alt\+ArrowRight/);
-    const key=(key,shiftKey=false)=>({key,altKey:true,shiftKey,target:h.header,
-        preventDefault(){}});
+    assert.equal(h.header.tabIndex,-1, 'static header must not become a focus target');
+    assert.equal(h.header.attrs['aria-keyshortcuts'],undefined);
+    const closeButton = {closest(selector) {
+        return selector.includes('button') ? this
+            : (selector.includes('.mskba-modal__header') ? h.header : null);
+    }};
+    const key=(key,shiftKey=false,target=closeButton)=>({
+        key,altKey:true,shiftKey,target,preventDefault(){},
+    });
+    h.doc.emit('keydown',key('ArrowRight',false,h.header));
+    assert.equal(h.dialog.style.translate,'', 'Alt+arrow on static header has no action');
     h.doc.emit('keydown',key('ArrowRight'));
     assert.equal(h.dialog.style.translate,'10px 0px');
     h.doc.emit('keydown',key('ArrowDown',true));
@@ -123,6 +130,22 @@ test('legacy overlay shell uses the same controller and retains backdrop ownersh
     h.observers.find(x=>x.fn)?.fn(); // lifecycle mutation: minimize/close
     assert.equal(h.dialog.style.translate,'');
     h.controller.destroy();
+});
+
+test('both themes avoid focus outlines on inert modal headers and do not tab-stop static bodies',()=>{
+    const light=readFileSync(new URL('../../resources/themes/mskba_app/css/modal.css',import.meta.url),'utf8');
+    const dark=readFileSync(new URL('../../resources/themes/mskba_dark/css/modal.css',import.meta.url),'utf8');
+    const template=readFileSync(new URL('../../resources/themes/mskba_dark/views/partials/modal/layout.blade.php',import.meta.url),'utf8');
+    const location=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/home-event-location-v2.js',import.meta.url),'utf8');
+    const handlers=readFileSync(new URL('../../resources/themes/mskba_dark/js/core/ui-handlers.js',import.meta.url),'utf8');
+    const dragging=readFileSync(new URL('../../resources/themes/mskba_app/js/modal-dragging.js',import.meta.url),'utf8');
+    assert.doesNotMatch(light,/data-mskba-drag-handle\\]:focus-visible/);
+    assert.doesNotMatch(dark,/data-mskba-drag-handle\\]:focus-visible/);
+    assert.doesNotMatch(template,/data-modal-body tabindex="0"/);
+    assert.doesNotMatch(location,/data-modal-body tabindex="0"/);
+    assert.doesNotMatch(dragging,/handle\\.tabIndex\\s*=\\s*0/);
+    assert.doesNotMatch(handlers,/\\[tabindex\\]:not\\(\\[tabindex="-1"\\]\\)/);
+    assert.match(handlers,/\\(autofocus \\|\\| control\\)\\?\\.focus/);
 });
 
 test('both themes and native map/price overlays import the shared controller and backdrop CSS',()=>{
