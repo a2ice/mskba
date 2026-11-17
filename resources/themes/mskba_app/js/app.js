@@ -23,6 +23,8 @@ import './account-messages.js';
 import './account-dashboard.js';
 import './account-dashboard-reorder.js';
 import './account-thread-chat.js';
+import './account-team-request-chat.js';
+import './account-booking-conversation.js';
 import './account-mobile-sticky.js';
 import './account-direct-messages.js';
 import './account-contacts-add.js';

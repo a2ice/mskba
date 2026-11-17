@@ -16,6 +16,9 @@ final class SystemNotificationTimeline
             ->where(fn ($q) => $q->whereNull('payload->delivery_channels')
                 ->orWhereJsonContains('payload->delivery_channels', 'in_app'))
             ->orderByDesc('id');
+        if (config('features.venue_rental.rental_flow') && config('features.venue_rental.conversations')) {
+            $query->whereNull('payload->booking_id')->whereNull('payload->pre_request_id');
+        }
         if ($before !== null) {
             $query->where('id', '<', $before);
         }
