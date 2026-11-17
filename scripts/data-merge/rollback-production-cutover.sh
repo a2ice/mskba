@@ -35,6 +35,7 @@ if grep -Fxq telegram "$DIR/running-services-before";then
   $COMPOSE --profile polling up -d telegram
 fi
 test "$(grep '^DB_DATABASE=' .env | cut -d= -f2-)" = "$(cat "$DIR/original-db-name")"
+touch "$DIR/ROLLED_BACK"
 echo 'PRODUCTION_ROLLBACK_COMPLETED=true'
 echo 'ORIGINAL_DB_AND_MEDIA_PRESERVED=true'
 echo "restored_git_sha=$(git rev-parse HEAD)"
