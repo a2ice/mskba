@@ -148,6 +148,26 @@ test('both themes avoid focus outlines on inert modal headers and do not tab-sto
     assert.match(handlers,/\(autofocus \|\| control\)\?\.focus/);
 });
 
+test('global focus rings only target interactive controls; static tooltips cannot create tab stops',()=>{
+    const lightBase=readFileSync(new URL('../../resources/themes/mskba_app/css/design-system.css',import.meta.url),'utf8');
+    const darkBase=readFileSync(new URL('../../resources/themes/mskba_dark/css/default.css',import.meta.url),'utf8');
+    const tooltip=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/tooltips.js',import.meta.url),'utf8');
+    const summary=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/site-summary.js',import.meta.url),'utf8');
+    const tournament=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/tournaments/show.blade.php',import.meta.url),'utf8');
+    const venue=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/venues/show.blade.php',import.meta.url),'utf8');
+    const event=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/events/show.blade.php',import.meta.url),'utf8');
+    assert.doesNotMatch(lightBase,/:focus-visible\\{outline:2px solid var\\(--accent\\);outline-offset:3px\\}/);
+    assert.doesNotMatch(darkBase,/^:focus-visible\\s*\\{/m);
+    for (const css of [lightBase,darkBase]) {
+        assert.match(css,/\\[role="button"\\][^}]*:focus-visible/s);
+    }
+    assert.doesNotMatch(tooltip,/\\.attr\\('tabindex',\\s*'0'\\)/);
+    assert.doesNotMatch(summary,/target\\.setAttribute\\('tabindex',\\s*'0'\\)/);
+    assert.doesNotMatch(tournament,/data-tooltip-visual tabindex="0"/);
+    assert.doesNotMatch(venue,/data-tooltip-icon\\s+tabindex="0"/);
+    assert.doesNotMatch(event,/data-tooltip-variant="title"\\s+tabindex="0"/);
+});
+
 test('both themes and native map/price overlays import the shared controller and backdrop CSS',()=>{
     const app=readFileSync(new URL('../../resources/themes/mskba_app/js/app.js',import.meta.url),'utf8');
     const dark=readFileSync(new URL('../../resources/themes/mskba_dark/js/app.js',import.meta.url),'utf8');
