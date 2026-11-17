@@ -484,7 +484,7 @@
         <dialog class="mskba-modal app-profile__request-dialog"
             data-player-change-request-dialog aria-labelledby="player-change-request-heading">
             <div class="mskba-modal__header app-profile__request-header">
-                <h2 id="player-change-request-heading" tabindex="-1">Изменение данных игрока</h2>
+                <h2 id="player-change-request-heading">Изменение данных игрока</h2>
                 <button type="button" class="app-profile__dialog-close" data-player-change-request-close aria-label="Закрыть">×</button>
             </div>
             <div class="mskba-modal__body mskba-scroll app-profile__request-body">
@@ -530,7 +530,7 @@
             id="app-player-equipment-dialog" data-player-equipment-dialog
             aria-labelledby="app-player-equipment-dialog-title">
             <div class="mskba-modal__header app-profile__request-header">
-                <h2 id="app-player-equipment-dialog-title" tabindex="-1" data-player-equipment-title>Выбор стороны</h2>
+                <h2 id="app-player-equipment-dialog-title" data-player-equipment-title>Выбор стороны</h2>
                 <button type="button" class="app-profile__dialog-close"
                     data-player-equipment-cancel aria-label="Закрыть">×</button>
             </div>
@@ -552,7 +552,7 @@
             id="app-player-gender-explanation" data-player-gender-dialog
             aria-labelledby="app-player-gender-explanation-title">
             <div class="mskba-modal__header app-profile__request-header">
-                <h2 id="app-player-gender-explanation-title" tabindex="-1">Пол игрока</h2>
+                <h2 id="app-player-gender-explanation-title">Пол игрока</h2>
                 <button type="button" class="app-profile__dialog-close"
                     data-player-gender-close aria-label="Закрыть">×</button>
             </div>
@@ -571,7 +571,7 @@
             id="app-player-personal-dialog" data-player-personal-dialog
             aria-labelledby="app-player-personal-dialog-title">
             <div class="mskba-modal__header app-profile__request-header">
-                <h2 id="app-player-personal-dialog-title" tabindex="-1">Личные данные</h2>
+                <h2 id="app-player-personal-dialog-title">Личные данные</h2>
                 <button type="button" class="app-profile__dialog-close"
                     data-player-personal-close aria-label="Закрыть">×</button>
             </div>
