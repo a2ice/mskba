@@ -281,7 +281,7 @@ final readonly class PublicVenueDaySchedule
 
             $slots[] = [
                 'booking_group' => $booking === null ? null : [
-                    'key' => $booking->public_id,
+                    'key' => substr(hash_hmac('sha256', $date.'|'.$booking->id, (string) config('app.key')), 0, 24),
                     'has_event' => $event !== null,
                     'event' => $eventDetails,
                 ],
