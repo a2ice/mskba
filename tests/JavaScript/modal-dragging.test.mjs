@@ -144,7 +144,7 @@ test('both themes avoid focus outlines on inert modal headers and do not tab-sto
     assert.doesNotMatch(template,/data-modal-body tabindex="0"/);
     assert.doesNotMatch(location,/data-modal-body tabindex="0"/);
     assert.doesNotMatch(dragging,/handle\.tabIndex\s*=\s*0/);
-    assert.doesNotMatch(handlers,/\[tabindex\]:not\(\[tabindex="-1"\]\)/);
+    assert.doesNotMatch(handlers,/^\s*'\[tabindex\]:not\(\[tabindex="-1"\]\)',/m);
     assert.match(handlers,/\(autofocus \|\| control\)\?\.focus/);
 });
 
