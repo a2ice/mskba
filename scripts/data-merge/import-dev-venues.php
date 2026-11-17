@@ -256,7 +256,18 @@ try {
             $sid=(int)$s['venue_court_id'];
             $tid=$courtMap[$sid]??null;
             if($tid===null)blocked('Orphan court schedule/price');
-            $existingRows=queryRows($target,'SELECT * FROM '.$table.' WHERE venue_court_id=?',[$tid]);
+            $where='venue_court_id=?';
+            $params=[$tid];
+            if($table==='venue_court_calendar_slot_prices'){
+                $where.=' AND date=? AND starts_at=?';
+                $params[]=$s['date'];
+                $params[]=$s['starts_at'];
+            } elseif($table==='venue_court_slot_prices'){
+                $where.=' AND day_of_week=? AND starts_at=?';
+                $params[]=$s['day_of_week'];
+                $params[]=$s['starts_at'];
+            }
+            $existingRows=queryRows($target,'SELECT id FROM '.$table.' WHERE '.$where,$params);
             if($existingRows!==[]){
                 // Production rows take precedence unless no conflicting
                 // catalogue row exists. No silent pricing override.
@@ -267,6 +278,49 @@ try {
             writeRow($target,$table,$s);
             if($table==='venue_court_schedules')$stats['court_schedule']++;
             if($table==='venue_court_calendar_slot_prices')$stats['calendar_prices']++;
+        }
+    }
+
+    // New physical venues get their own conventional schedule and
+    // location metro links; existing production schedules are never replaced.
+    $metroMap=[];
+    foreach(queryRows($target,'SELECT s.id,s.name,l.name AS line_name FROM metro_stations s
+         JOIN metro_lines l ON l.id=s.metro_line_id') as $s) {
+        $metroMap[mb_strtolower(trim($s['line_name'].'|'.$s['name']))]=(int)$s['id'];
+    }
+    $srcMetro=[];
+    foreach(queryRows($source,'SELECT s.id,s.name,l.name AS line_name FROM metro_stations s
+         JOIN metro_lines l ON l.id=s.metro_line_id') as $s) {
+        $srcMetro[(int)$s['id']]=$s['line_name'].'|'.$s['name'];
+    }
+    foreach($sourceVenues as $srcVenue){
+        $oldId=(int)$srcVenue['id'];
+        if(!isset($createdVenue[$oldId]))continue;
+        $newId=$venueMap[$oldId];
+        $oldLoc=$srcVenue['location_id'];
+        $newLoc=queryRows($target,'SELECT location_id FROM venues WHERE id=?',[$newId])[0]['location_id'];
+        if($oldLoc!==null && $newLoc!==null){
+            foreach(queryRows($source,'SELECT * FROM location_metro_station WHERE location_id=?',[(int)$oldLoc]) as $pivot){
+                $stationKey=$srcMetro[(int)$pivot['metro_station_id']]??null;
+                $station=$stationKey===null?null:($metroMap[mb_strtolower(trim($stationKey))]??null);
+                if($station===null)blocked('Cannot map new venue metro station');
+                unset($pivot['id']);
+                $pivot['location_id']=$newLoc;
+                $pivot['metro_station_id']=$station;
+                writeRow($target,'location_metro_station',$pivot);
+            }
+        }
+        foreach(queryRows($source,'SELECT * FROM venue_schedules WHERE venue_id=?',[$oldId]) as $schedule){
+            if(queryRows($target,'SELECT id FROM venue_schedules WHERE venue_id=?',[$newId])!==[])continue;
+            $sourceScheduleId=(int)$schedule['id'];
+            unset($schedule['id']);
+            $schedule['venue_id']=$newId;
+            $scheduleId=writeRow($target,'venue_schedules',$schedule);
+            foreach(queryRows($source,'SELECT * FROM venue_schedule_intervals WHERE venue_schedule_id=?',[$sourceScheduleId]) as $interval){
+                unset($interval['id']);
+                $interval['venue_schedule_id']=$scheduleId;
+                writeRow($target,'venue_schedule_intervals',$interval);
+            }
         }
     }
 
