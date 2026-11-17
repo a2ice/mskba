@@ -395,9 +395,7 @@ final readonly class PublicVenueDaySchedule
                         // would reject after a representative's rights change.
                         $this->bookingAuthorization->assertCanView($viewerActor, $booking, $venue);
                         $bookingUrl = route('account.venue-bookings.show', $booking);
-                        if ($isSuperadmin || $isConfirmingRepresentative) {
-                            $requesterLogin = $booking->requester?->canonical()->username;
-                        }
+                        $requesterLogin = $booking->requester?->canonical()->username;
                     } catch (VenueBookingTransitionException) {
                         // Booking details stay private, even in a public timetable.
                     }
@@ -414,6 +412,7 @@ final readonly class PublicVenueDaySchedule
                         : null,
                     'request_url' => $bookingUrl,
                     'requester_login' => $requesterLogin,
+                    'requester_is_viewer' => $bookingUrl !== null && $isRequester,
                 ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
