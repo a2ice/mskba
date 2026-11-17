@@ -79,9 +79,8 @@ function enhanceVisualTooltip(element, title) {
         element.attr('aria-label', title);
     }
 
-    if (!isFocusable(element)) {
-        element.attr('tabindex', '0');
-    }
+    // A tooltip is not a reason to turn a static label into a focus target.
+    // Interactive help triggers keep their native or explicit button semantics.
 }
 
 function isIconOnlyTooltipSource(element) {
