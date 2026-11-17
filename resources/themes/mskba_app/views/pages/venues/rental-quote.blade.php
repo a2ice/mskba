@@ -171,6 +171,7 @@
         <button type="submit" class="button primary" data-venue-day-book disabled>Выбрать это время</button>
     </form>
 </dialog>
+@include('theme::pages.venues.partials.day-event-dialog')
 @if($quote)
     <dialog class="app-venue-overlay app-rental-pricing__conflict-dialog" data-rental-conflict-dialog
         aria-labelledby="rental-conflict-heading">

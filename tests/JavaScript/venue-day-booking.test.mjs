@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { displayClock } from '../../resources/themes/mskba_app/js/venue-time-label.js';
+import { groupDayBookingSlots } from '../../resources/themes/mskba_app/js/venue-day-booking-groups.js';
 
 const source = readFileSync(
     new URL('../../resources/themes/mskba_app/js/venue-detail.js', import.meta.url),
@@ -127,7 +128,7 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
     runInNewContext(dayBookingModule, {
         document,
         window: { location: { href: 'https://dev.mskba.ru/venues/26-basketpoint-na-dubinskoy' } },
-        AbortController, URL, fetch, displayClock,
+        AbortController, URL, fetch, displayClock, groupDayBookingSlots,
     }, { filename: 'venue-detail.js' });
     return {
         dialog, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,

@@ -9,6 +9,13 @@ use App\Modules\VenueBooking\Application\Services\VenuePricingRuleEvaluator;
 use App\Modules\VenueBooking\Application\Services\VenueCommissionCalculator;
 use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use Illuminate\Support\Str;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
@@ -31,6 +38,7 @@ final readonly class PublicVenueDaySchedule
         private VenuePricingRuleEvaluator $pricingRules,
         private VenueCommissionCalculator $commissions,
         private VenueSlotPricing $slotPricing,
+        private EventIdentityParticipationService $eventParticipation,
     ) {}
 
     /** @return array<string, mixed> */
@@ -66,6 +74,25 @@ final readonly class PublicVenueDaySchedule
             $venue, $rangeStart->utc(), $rangeEnd->utc(), $court,
         );
         $busy = collect($projection['busy'] ?? []);
+        // Group only single, fully covering MSKBA-owned reservations, not
+        // arbitrary adjacent imported busy cells. Never return private data.
+        $bookings = VenueBooking::query()
+            ->where('venue_id', $venue->id)
+            ->where(function ($query) use ($court): void {
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            })
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
+            ->where('starts_at', '<', $rangeEnd->utc())
+            ->where('ends_at', '>', $rangeStart->utc())
+            ->with(['event.organizerActor.user.profile', 'event.participants'])
+            ->orderBy('starts_at')
+            ->limit(500)
+            ->get();
+        $linkedEvents = $bookings->isEmpty() ? collect() : Event::query()
+            ->whereIn('booking_id', $bookings->pluck('id'))
+            ->with(['organizerActor.user.profile', 'participants'])
+            ->get()
+            ->keyBy('booking_id');
         $policy = VenueBookingPolicy::query()->where('venue_id', $venue->id)
             ->where('active_marker', true)->first();
         $effective = $this->policies->resolve($venue, $court, $policy);
@@ -139,6 +166,7 @@ final readonly class PublicVenueDaySchedule
         $startIndex = intdiv($minMinute, $step);
         $endIndex = (int) ceil($maxMinute / $step);
         $slots = [];
+        $publicEventCache = [];
 
         for ($index = $startIndex; $index < $endIndex; $index++) {
             $start = $day->addMinutes($index * $step);
@@ -220,7 +248,48 @@ final readonly class PublicVenueDaySchedule
                 $priceMinor = $priceBreakdown['total_minor'];
             }
 
+            $coveringBookings = $status === 'booked' ? $bookings->filter(
+                static fn (VenueBooking $booking): bool => $booking->starts_at->lessThanOrEqualTo($start)
+                    && $booking->ends_at->greaterThanOrEqualTo($end),
+            ) : collect();
+            $booking = $coveringBookings->count() === 1 ? $coveringBookings->first() : null;
+            $event = $booking === null ? null
+                : ($booking->event ?? $linkedEvents->get($booking->id));
+            $isPublicEvent = $event !== null
+                && $event->visibility === EventVisibilityEnum::PUBLIC
+                && in_array($event->status, [
+                    EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED,
+                    EventStatusEnum::CANCELLED,
+                ], true);
+            $eventDetails = null;
+            if ($isPublicEvent && ! isset($publicEventCache[$event->id])) {
+                $organizer = $event->organizerActor?->user;
+                $organizerName = trim(implode(' ', array_filter([
+                    $organizer?->profile?->first_name,
+                    $organizer?->profile?->last_name,
+                ]))) ?: ($organizer?->username ?: 'Организатор');
+                $counts = $this->eventParticipation->publicStatusCounts($event);
+                $publicEventCache[$event->id] = [
+                    'title' => $event->title,
+                    'description' => Str::limit(trim(strip_tags((string) $event->description)), 500),
+                    'url' => route('events.show', $event->routeIdentifier()),
+                    'type' => $event->type?->label(),
+                    'status' => $event->status?->label(),
+                    'confirmed_count' => $counts['confirmed'],
+                    'tentative_count' => $counts['tentative'],
+                    'max_participants' => $event->max_participants,
+                    'organizer_name' => $organizerName,
+                    'organizer_user_id' => $organizer?->id,
+                ];
+            }
+            $eventDetails = $isPublicEvent ? $publicEventCache[$event->id] : null;
+
             $slots[] = [
+                'booking_group' => $booking === null ? null : [
+                    'key' => substr(hash_hmac('sha256', $date.'|'.$booking->id, (string) config('app.key')), 0, 24),
+                    'has_event' => $event !== null,
+                    'event' => $eventDetails,
+                ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
                 'status' => $status,
