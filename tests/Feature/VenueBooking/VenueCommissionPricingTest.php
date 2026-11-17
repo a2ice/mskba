@@ -3,6 +3,14 @@
 namespace Tests\Feature\VenueBooking;
 
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
+use Illuminate\Support\Str;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -250,6 +258,71 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertSame(65000, $firstSlot['price_minor']);
         $this->assertSame(110000, $withWeeklyOverride['price_preview']['provider_amount_minor']);
         $this->assertSame(115000, $withWeeklyOverride['price_preview']['total_minor']);
+    }
+
+    public function test_day_schedule_groups_one_mskba_booking_and_redacts_private_event(): void
+    {
+        [$admin, $venue, $court] = $this->scenario();
+        $date = CarbonImmutable::now('Europe/Moscow')->addDay()->startOfDay();
+        $venue->schedule()->firstOrFail()->intervals()->create([
+            'day_of_week' => $date->dayOfWeekIso,
+            'starts_at' => '07:00',
+            'ends_at' => '23:59',
+            'sort_order' => 0,
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($admin, null);
+        $booking = VenueBooking::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'flow' => 'rental',
+            'venue_id' => $venue->id,
+            'venue_court_id' => $court->id,
+            'created_by_actor_id' => $actor->id,
+            'requester_user_id' => $admin->id,
+            'quote_snapshot' => ['pricing' => ['amount_minor' => 100000, 'currency' => 'RUB']],
+            'status' => VenueBookingStatusEnum::HELD,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'payment_state' => VenueBookingPaymentState::NOT_STARTED,
+            'optimistic_version' => 1,
+            'starts_at' => $date->setTime(12, 0),
+            'ends_at' => $date->setTime(13, 0),
+            'requested_at' => now(),
+            'hold_expires_at' => now()->addDays(2),
+            'effective_protection_until' => now()->addDays(2),
+        ]);
+        $event = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'venue_court_id' => $court->id,
+            'booking_id' => $booking->id,
+            'organizer_actor_id' => $actor->id,
+            'title' => 'Только для приглашённых',
+            'visibility' => EventVisibilityEnum::PRIVATE,
+            'status' => EventStatusEnum::PUBLISHED,
+            'starts_at' => $booking->starts_at,
+            'ends_at' => $booking->ends_at,
+        ]);
+
+        $days = app(PublicVenueDaySchedule::class);
+        $slots = $days->forDate($venue, $court, $date->toDateString())['slots'];
+        $first = collect($slots)->firstWhere('starts_at', '12:00');
+        $second = collect($slots)->firstWhere('starts_at', '12:30');
+        $this->assertSame('booked', $first['status']);
+        $this->assertSame($booking->public_id, $first['booking_group']['key']);
+        $this->assertSame($first['booking_group']['key'], $second['booking_group']['key']);
+        $this->assertTrue($first['booking_group']['has_event']);
+        $this->assertNull($first['booking_group']['event']);
+        $this->assertStringNotContainsString('Только для приглашённых', json_encode($slots));
+
+        $event->update(['visibility' => EventVisibilityEnum::PUBLIC]);
+        $visible = $days->forDate($venue, $court, $date->toDateString())['slots'];
+        $published = collect($visible)->firstWhere('starts_at', '12:00')['booking_group']['event'];
+        $this->assertSame('Только для приглашённых', $published['title']);
+        $this->assertSame('Игра', $published['type'] ?: 'Игра');
+        $this->assertArrayHasKey('confirmed_count', $published);
+        $this->assertArrayHasKey('organizer_user_id', $published);
+
+        $event->update(['status' => EventStatusEnum::DRAFT]);
+        $unpublished = $days->forDate($venue, $court, $date->toDateString())['slots'];
+        $this->assertNull(collect($unpublished)->firstWhere('starts_at', '12:00')['booking_group']['event']);
     }
 
     public function test_fixed_fees_rounding_and_zero_prices(): void
