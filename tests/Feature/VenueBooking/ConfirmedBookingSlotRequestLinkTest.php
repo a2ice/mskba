@@ -95,11 +95,13 @@ final class ConfirmedBookingSlotRequestLinkTest extends TestCase
         $link = route('account.venue-bookings.show', $booking);
         $clientGroup = $this->slotGroup($venue, $court, $startsAt, $client);
         $this->assertSame($link, $clientGroup['request_url']);
-        $this->assertNull($clientGroup['requester_login']);
+        $this->assertSame($client->username, $clientGroup['requester_login']);
+        $this->assertTrue($clientGroup['requester_is_viewer']);
 
         $staffGroup = $this->slotGroup($venue, $court, $startsAt, $representative);
         $this->assertSame($link, $staffGroup['request_url']);
         $this->assertSame($client->username, $staffGroup['requester_login']);
+        $this->assertFalse($staffGroup['requester_is_viewer']);
 
         $superadmin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -108,15 +110,18 @@ final class ConfirmedBookingSlotRequestLinkTest extends TestCase
         $adminGroup = $this->slotGroup($venue, $court, $startsAt, $superadmin);
         $this->assertSame($link, $adminGroup['request_url']);
         $this->assertSame($client->username, $adminGroup['requester_login']);
+        $this->assertFalse($adminGroup['requester_is_viewer']);
 
         $outsider = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $outsiderGroup = $this->slotGroup($venue, $court, $startsAt, $outsider);
         $this->assertNull($outsiderGroup['request_url']);
         $this->assertNull($outsiderGroup['requester_login']);
+        $this->assertFalse($outsiderGroup['requester_is_viewer']);
 
         $anonymousGroup = $this->slotGroup($venue, $court, $startsAt);
         $this->assertNull($anonymousGroup['request_url']);
         $this->assertNull($anonymousGroup['requester_login']);
+        $this->assertFalse($anonymousGroup['requester_is_viewer']);
     }
 
     /** @return array<string, mixed> */
