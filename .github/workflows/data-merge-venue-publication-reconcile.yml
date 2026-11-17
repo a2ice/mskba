@@ -1,0 +1,175 @@
+name: MSKBA reconcile venue publication after verified cutover
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-venue-publication-reconcile.yml]
+permissions:
+  contents: read
+concurrency:
+  group: mskba-prod-venue-publication-reconcile
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Restore approved source publication state via auditable Eloquent update
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            RELEASE=/home/deploy/mskba-cutover-backups/release-20261117
+            test -f "$RELEASE/RELEASE_COMPLETE"
+            test ! -f "$RELEASE/ROLLED_BACK"
+            test "$(git rev-parse HEAD)" = 101ce9745da4152983143f373eab945b711aa98e
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            grep -Fxq 'APP_THEME=mskba_app' .env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            $COMPOSE exec -T phpfpm php <<'PHP'
+            <?php
+            declare(strict_types=1);
+            use App\Modules\Venue\Domain\Models\Venue;
+            use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+            use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+            use Illuminate\Support\Facades\DB;
+            require '/var/www/html/vendor/autoload.php';
+            $app=require '/var/www/html/bootstrap/app.php';
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (config('app.env') !== 'production' ||
+                config('database.default') !== 'pgsql' ||
+                config('database.connections.pgsql.database') !== 'mskba_unified_20261117_v2' ||
+                config('themes.active') !== 'mskba_app') {
+                throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED wrong release');
+            }
+            config()->set('audit.ignore_console', false);
+            if (!(bool)config('audit.enabled')) {
+                throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED audit disabled');
+            }
+            $changed = false;
+            DB::transaction(function () use (&$changed): void {
+                $map = DB::table('data_merge_venue_map')
+                    ->where('source_venue_id',15)->where('target_venue_id',15)->first();
+                if ($map === null || $map->resolution !== 'strong_geo') {
+                    throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED source mapping');
+                }
+                $venue=Venue::query()->lockForUpdate()->findOrFail(15);
+                if ($venue->alias !== 'ploshchadka-metro-akademicheskaya'
+                    || $venue->status !== VenueStatusEnum::CONFIRMED
+                    || $venue->trashed()) {
+                    throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED venue identity');
+                }
+                // Exact checked 2026-11-17 dev state: confirmed, temporarily_closed, unpublished.
+                if ($venue->operational_status === VenueOperationalStatusEnum::TEMPORARILY_CLOSED
+                    && $venue->is_published === false) {
+                    echo "VENUE_PUBLICATION_ALREADY_ALIGNED=true\n";
+                    return;
+                }
+                if ($venue->operational_status !== VenueOperationalStatusEnum::ACTIVE
+                    || $venue->is_published !== true) {
+                    throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED concurrent change');
+                }
+                $venue->operational_status = VenueOperationalStatusEnum::TEMPORARILY_CLOSED;
+                $venue->is_published = false;
+                $venue->saveOrFail(); // triggers audit + VenueSearchCache invalidation.
+                $changed = true;
+            }, 3);
+            $current=Venue::query()->findOrFail(15);
+            if ($current->status !== VenueStatusEnum::CONFIRMED ||
+                $current->operational_status !== VenueOperationalStatusEnum::TEMPORARILY_CLOSED ||
+                $current->is_published !== false) {
+                throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED postcheck');
+            }
+            if ($changed) {
+                $audit=DB::table('audit_logs')->where('auditable_type',Venue::class)
+                    ->where('auditable_id',15)->orderByDesc('id')->first();
+                $new=$audit?json_decode((string)$audit->new_values,true):null;
+                if (!$audit || !is_array($new)
+                    || ($new['operational_status']??null)!=='temporarily_closed'
+                    || ($new['is_published']??null)!==false) {
+                    throw new RuntimeException('PROD_VENUE_RECONCILE_BLOCKED audit not recorded');
+                }
+            }
+            echo "VENUE_15_STATUS=confirmed\n";
+            echo "VENUE_15_OPERATIONAL=temporarily_closed\n";
+            echo "VENUE_15_PUBLISHED=false\n";
+            echo "VENUE_15_AUDIT_VERIFIED=true\n";
+            PHP
+            RESULT="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 "https://mskba.ru/venues/15-ploshchadka-metro-akademicheskaya" || true)"
+            test "$RESULT" = 404
+            echo 'VENUE_15_HIDDEN_FROM_GUEST_HTTP=true'
+      - name: Audit physical gallery files and court-photo fallback on production
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            $COMPOSE exec -T phpfpm php <<'PHP'
+            <?php
+            declare(strict_types=1);
+            use App\Modules\Venue\Domain\Models\Venue;
+            use App\Modules\Media\Domain\Models\Media;
+            use Illuminate\Support\Facades\DB;
+            use Illuminate\Support\Facades\Storage;
+            require '/var/www/html/vendor/autoload.php';
+            $app=require '/var/www/html/bootstrap/app.php';
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (config('database.connections.pgsql.database') !== 'mskba_unified_20261117_v2') exit(2);
+            $rows=Media::query()->whereIn('mediable_type',['venue','venue_court'])
+                ->where('collection','gallery')->get();
+            $missing=0; $missingOriginals=0; $httpBroken=0; $noPhoto=0;
+            foreach ($rows as $item) {
+                if (!in_array($item->disk,['public','local'],true)
+                    || !Storage::disk($item->disk)->exists($item->path)) {
+                    echo "GALLERY_FILE_MISSING_MEDIA_ID={$item->id}\n";
+                    $missing++;
+                }
+                if ($item->original_path !== null && $item->original_disk !== null
+                    && !Storage::disk($item->original_disk)->exists($item->original_path)) {
+                    echo "GALLERY_ORIGINAL_MISSING_MEDIA_ID={$item->id}\n";
+                    $missingOriginals++;
+                }
+            }
+            $venues=Venue::query()->with(['media','courts.media'])->get();
+            foreach($venues as $venue) {
+                if($venue->trashed()) continue;
+                $photo=$venue->representativePhoto();
+                if($photo===null) {
+                    echo "VENUE_WITHOUT_GALLERY_OR_COURT_PHOTO={$venue->id}:{$venue->alias}\n";
+                    $noPhoto++;
+                    continue;
+                }
+                if($photo->disk !== 'public') continue;
+                $ch=curl_init('http://nginx'.$photo->publicUrl());
+                curl_setopt_array($ch, [
+                    CURLOPT_NOBODY=>true, CURLOPT_RETURNTRANSFER=>true,
+                    CURLOPT_HTTPHEADER=>['Host: mskba.ru'],
+                    CURLOPT_CONNECTTIMEOUT=>3, CURLOPT_TIMEOUT=>8,
+                    CURLOPT_FOLLOWLOCATION=>false,
+                ]);
+                curl_exec($ch);
+                $status=(int)curl_getinfo($ch,CURLINFO_RESPONSE_CODE);
+                curl_close($ch);
+                if($status!==200) {
+                    echo "VENUE_REPRESENTATIVE_HTTP_BAD={$venue->id}:{$venue->alias}:{$status}\n";
+                    $httpBroken++;
+                }
+            }
+            echo "GALLERY_RECORDS_CHECKED=".$rows->count()."\n";
+            echo "GALLERY_FILES_MISSING={$missing}\n";
+            echo "GALLERY_ORIGINALS_MISSING={$missingOriginals}\n";
+            echo "VENUES_WITHOUT_PHOTO={$noPhoto}\n";
+            echo "VENUE_REPRESENTATIVE_HTTP_ERRORS={$httpBroken}\n";
+            if($missing!==0 || $httpBroken!==0) exit(3);
+            PHP
