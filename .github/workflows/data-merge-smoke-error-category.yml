@@ -45,6 +45,12 @@ jobs:
                     state=value
             print('error_classes='+(','.join(sorted(set(kinds))[:5]) if kinds else 'not_classified'))
             print('sqlstate_code='+state)
+            # Sanitized host only: Docker service names are not credentials.
+            m=re.search(r'could not translate host name "([a-zA-Z0-9_.-]{1,80})"',last)
+            if m:
+                print('unresolved_host='+m.group(1))
+            elif 'Name or service not known' in last:
+                print('unresolved_host=unparsed')
             # Print schema identifiers only; never print SQL or row values.
             for hint,keyword in [
                 ('missing_relation','relation "'),
