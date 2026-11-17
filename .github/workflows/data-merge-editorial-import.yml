@@ -1,0 +1,57 @@
+name: MSKBA offline design and Page Builder import rehearsal
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-editorial-import.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-editorial-import
+  cancel-in-progress: false
+
+jobs:
+  editorial:
+    name: Reconcile theme and Page Builder history in isolated candidate
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate import syntax
+        run: |
+          set -euo pipefail
+          php -l scripts/data-merge/import-dev-editorial.php
+          bash -n scripts/data-merge/isolated-editorial-import.sh
+      - name: Read only DEV media owner-type counts (no paths or rows)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT mediable_type, COUNT(*) FROM media GROUP BY mediable_type ORDER BY mediable_type"' 
+      - name: Stage reviewed scripts outside webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/import-dev-editorial.php,scripts/data-merge/isolated-editorial-import.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Dry-run and apply editorial import on disposable candidate
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-editorial-import.sh ${{ github.run_id }} 44030799619 /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/import-dev-editorial.php
