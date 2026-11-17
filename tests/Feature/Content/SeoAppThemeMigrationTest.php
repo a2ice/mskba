@@ -6,7 +6,6 @@ use App\Presentation\Theming\ThemeResolver;
 use App\Support\Privacy\CookieConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class SeoAppThemeMigrationTest extends TestCase
@@ -77,10 +76,12 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
             ->assertDontSee('mc.yandex.ru/watch/12345678', false);
 
-        $response = $this->withCookie(
-            CookieConsent::COOKIE_NAME,
-            CookieConsent::version().'|accepted|'.Str::uuid(),
-        )->get('https://mskba.ru/venues')
+        $response = $this->withSession([
+            CookieConsent::SESSION_CHOICE_KEY => [
+                'version' => CookieConsent::version(),
+                'analytics' => 'accepted',
+            ],
+        ])->get('https://mskba.ru/venues')
             ->assertOk()
             ->assertSee('ym(12345678, "init"', false)
             ->assertSee('https://mc.yandex.ru/watch/12345678', false);
