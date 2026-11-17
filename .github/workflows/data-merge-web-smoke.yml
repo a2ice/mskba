@@ -42,4 +42,7 @@ jobs:
           command_timeout: 40m
           script: |
             set -euo pipefail
-            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217 ${{ github.sha }}
+            DEPLOYED_SHA="$(git -C /var/www/mskba-dev-next rev-parse HEAD)"
+            [[ "$DEPLOYED_SHA" =~ ^[a-f0-9]{40}$ ]]
+            echo "LEGACY_URL_TEST_DEPLOYED_SHA=$DEPLOYED_SHA"
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217 "$DEPLOYED_SHA"
