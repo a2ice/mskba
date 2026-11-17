@@ -89,7 +89,7 @@ final class AccountUnifiedMessagesTest extends TestCase
         $request->update(['status' => TeamJoinRequestStatusEnum::BLOCKED]);
         $this->getJson(route('account.notifications.threads.team.state', $request->id))
             ->assertOk()->assertJsonPath('can_write', false)
-            ->assertSee('data-team-review-trigger=\"unblock\"', false);
+            ->assertSee('data-team-review-trigger="unblock"', false);
         $this->actingAs($this->user())->getJson(route('account.notifications.threads.team.state', $request->id))
             ->assertForbidden();
     }
