@@ -321,7 +321,7 @@ test('booking popup inline type label has a colon and shared row alignment', () 
     const css = readFileSync(
         new URL('../../resources/themes/mskba_app/css/venue-detail.css', import.meta.url), 'utf8',
     );
-    assert.match(template, /class="app-venue-day-event-dialog__type-row"><dt>Тип:<\\/dt>/);
+    assert.match(template, /class="app-venue-day-event-dialog__type-row"><dt>Тип:<\/dt>/);
     assert.match(css, /\.app-venue-day-event-dialog__type-row\s*\{\s*display:flex/);
 });
 
