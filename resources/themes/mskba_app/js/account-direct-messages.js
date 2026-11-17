@@ -84,11 +84,13 @@ if (modalRoot) {
         }
     }
 
-    document.querySelectorAll('[data-direct-message-open]').forEach(button => {
-        button.addEventListener('click', () => {
-            isTestEntry = false;
-            void openRecipient(button.dataset.recipientId, button.dataset.recipientName, button);
-        });
+    // Delegation also handles public-event organizer links rendered after
+    // the venue schedule is fetched; access remains server-authorized.
+    document.addEventListener('click', event => {
+        const button = event.target.closest?.('[data-direct-message-open]');
+        if (!button?.dataset.recipientId) return;
+        isTestEntry = false;
+        void openRecipient(button.dataset.recipientId, button.dataset.recipientName, button);
     });
 
     if (testTrigger && testSearch && modalRoot.dataset.testSearchUrl) {
