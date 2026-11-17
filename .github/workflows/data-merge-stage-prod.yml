@@ -71,6 +71,10 @@ jobs:
               exit 1
             }
           done
+          # Recreate protected checksum manifests beside transferred archives.
+          db_digest="$("${PROD_SSH[@]}" "deploy@$PROD_HOST" "sha256sum '$PROD_SRC/web-approved-candidate.pgdump' | cut -d' ' -f1")"
+          media_digest="$("${PROD_SSH[@]}" "deploy@$PROD_HOST" "sha256sum '$PROD_MEDIA/storage-app-combined.tar.gz' | cut -d' ' -f1")"
+          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; printf '%s  web-approved-candidate.pgdump\n' '$db_digest' > '$PROD_SRC/SHA256SUMS'; printf '%s  storage-app-combined.tar.gz\n' '$media_digest' > '$PROD_MEDIA/SHA256SUMS'"
           echo 'PRIVATE_TRANSFER_VERIFIED=true'
           "${PROD_SCP[@]}" scripts/data-merge/stage-verified-candidate.sh "deploy@$PROD_HOST:/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh"
           "${PROD_SSH[@]}" "deploy@$PROD_HOST" "chmod 700 '/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh' && bash '/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh' '$RUN' '$RELEASE_DB'"
