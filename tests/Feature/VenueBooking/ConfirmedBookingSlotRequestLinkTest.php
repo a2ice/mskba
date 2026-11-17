@@ -21,6 +21,7 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use Carbon\CarbonImmutable;
@@ -62,6 +63,11 @@ final class ConfirmedBookingSlotRequestLinkTest extends TestCase
         $this->grantOwnerPermissions($venue, $representative);
 
         $startsAt = CarbonImmutable::now('Europe/Moscow')->addDay()->setTime(10, 0);
+        VenueScheduleInterval::factory()->for($venue->schedule, 'schedule')->create([
+            'day_of_week' => $startsAt->dayOfWeekIso,
+            'starts_at' => '09:00',
+            'ends_at' => '12:00',
+        ]);
         $booking = VenueBooking::query()->create([
             'public_id' => (string) Str::uuid(),
             'flow' => 'rental',
