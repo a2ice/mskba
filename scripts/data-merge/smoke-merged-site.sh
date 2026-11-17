@@ -99,14 +99,15 @@ docker run --rm -d --network "$NET" --network-alias preview-app --name "$APP" \
 if ! docker exec "$APP" php -r '
 require "/var/www/html/vendor/autoload.php";
 $app = require "/var/www/html/bootstrap/app.php";
-$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+$app->make("Illuminate\\Contracts\\Console\\Kernel")->bootstrap();
 if (config("database.default") !== "pgsql" ||
     config("database.connections.pgsql.host") !== "candidate-db" ||
     config("database.connections.pgsql.database") !== "candidate") exit(2);
 try { $app->make("db")->select("SELECT 1"); }
 catch (Throwable $e) { exit(3); }
 ' >/dev/null 2>&1; then
- echo 'SMOKE_BLOCKED isolated Laravel DB environment or reachability'
+ result=$?
+ echo "SMOKE_BLOCKED isolated Laravel DB preflight exit_code=$result"
  exit 5
 fi
 started=false
