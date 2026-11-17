@@ -214,3 +214,31 @@ test('all draggable modal shells display the same noninteractive grab indicator 
     assert.match(dark, /modal__header::before/);
     assert.match(dark, /account-venue-price-dialog__head::before/);
 });
+
+
+test('native dialog features never focus static headings or alerts when opened', () => {
+    const file = name => readFileSync(new URL('../../resources/themes/mskba_app/' + name, import.meta.url), 'utf8');
+    const auth = file('js/components/AuthDialog.vue');
+    const play = file('js/components/PlayIntentDialog.vue');
+    const onboarding = file('js/privacy-onboarding-dialog.js');
+    const context = file('js/context-dialogs.js');
+    const contextTemplate = file('views/partials/context-action-dialogs.blade.php');
+    const distribution = file('js/distribution-consent-document-dialog.js');
+    const uniform = file('js/uniforms/UniformModal.vue');
+
+    for (const component of [auth, play, onboarding, contextTemplate, distribution, uniform]) {
+        assert.doesNotMatch(component, /<h[1-6][^>]*tabindex=/,
+            'Noninteractive dialog titles must not be programmatically focusable');
+    }
+    assert.doesNotMatch(auth, /dialogHeading\.value\?\.focus/);
+    assert.match(auth, /\.mskba-auth-close:not\(:disabled\)'\)\?\.focus/);
+    assert.doesNotMatch(play, /heading\.value\?\.focus/);
+    assert.match(play, /\.app-play-dialog__header button'\)\?\.focus/);
+    assert.doesNotMatch(onboarding, /#mskba-onboarding-dialog-title'\)\?\.focus/);
+    assert.doesNotMatch(onboarding, /currentError\.focus/);
+    assert.match(onboarding, /\[data-onboarding-close\]'\)\?\.focus/);
+    assert.doesNotMatch(context, /h2\[tabindex/);
+    assert.match(context, /data-context-placeholder-close.*data-context-help-close.*focus\(/);
+    assert.doesNotMatch(distribution, /#mskba-distribution-legal-dialog-title'\)\?\.focus/);
+    assert.match(distribution, /\[data-legal-close\]'\)\?\.focus/);
+});
