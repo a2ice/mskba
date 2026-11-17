@@ -397,3 +397,63 @@ jobs:
           fi
 
           echo "https://mskba.ru/sitemap.xml -> 200 application/xml"
+
+      - name: Verify all 51 historical production URLs after cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, concurrent.futures, urllib.request, urllib.error
+          from pathlib import Path
+          baseline=Path('docs/tasks/316/baseline/production-url-snapshot-2026-11-12.csv')
+          with baseline.open(newline='',encoding='utf8') as f:
+              paths=[r['path'] for r in csv.DictReader(f) if r['source_status']=='200']
+          if len(paths)!=51:
+              raise SystemExit('CUTOVER_BLOCKED unexpected URL baseline size')
+          def check(path):
+              if not path.startswith('/') or path.startswith('//'):
+                  return path,0
+              req=urllib.request.Request('https://mskba.ru'+path,
+                  headers={'User-Agent':'MSKBA-Production-Postcutover-Check/1.0'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      return path,response.status
+              except urllib.error.HTTPError as e:
+                  return path,e.code
+              except Exception:
+                  return path,0
+          with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+              result=list(pool.map(check,paths))
+          bad=[p for p,status in result if status!=200]
+          print('CUTOVER_LEGACY_URLS_CHECKED='+str(len(result)))
+          print('CUTOVER_LEGACY_URLS_FAILED='+str(len(bad)))
+          for path in bad[:8]:
+              print('CUTOVER_URL_FAILED='+path)
+          if bad:
+              raise SystemExit(1)
+          PY
+
+      - name: Mark verified production cutover complete
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            DIR=/home/deploy/mskba-cutover-backups/release-20261117
+            if [ ! -f "$DIR/CUTOVER_STATE" ]; then
+              echo 'NO_ACTIVE_CUTOVER_MARKER=true'
+              exit 0
+            fi
+            test -f "$DIR/SHA256SUMS"
+            ( cd "$DIR" && sha256sum -c --status SHA256SUMS )
+            cd /var/www/mskba
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            test ! -f "$DIR/ROLLED_BACK"
+            test "$(git rev-parse HEAD)" != cc33a60b7791d1038ca1db0417c1be14aae7a651
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm php artisan migrate:status >/dev/null
+            touch "$DIR/RELEASE_COMPLETE"
+            chmod 600 "$DIR/RELEASE_COMPLETE"
+            echo 'CUTOVER_RELEASE_VERIFIED=true'
