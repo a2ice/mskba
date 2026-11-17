@@ -392,7 +392,6 @@ if (dayBookingDialog) {
                 const reason = document.createElement('span');
                 reason.textContent = ' Специальные условия';
                 reason.title = data.price_preview.personal_discount.reason;
-                reason.tabIndex = 0;
                 summary.prepend(original, document.createTextNode(' '));
                 summary.append(reason);
             }
@@ -620,11 +619,8 @@ if (dayBookingDialog) {
                         else guestLink.removeAttribute('href');
                     }
                     eventInfoDialog.showModal();
-                    // The shared draggable-header controller adds tabindex=0.
-                    // Safari otherwise auto-focuses the header and draws a
-                    // full rectangular focus ring across the modal title.
-                    // Focus the real close control; retain keyboard focus
-                    // indications on interactive elements.
+                    // Focus the real close control rather than the informational
+                    // heading; retain keyboard focus for interactive elements.
                     eventInfoDialog.querySelector('[data-venue-overlay-close]')
                         ?.focus?.({ preventScroll: true });
                 });
