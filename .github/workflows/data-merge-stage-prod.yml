@@ -41,8 +41,11 @@ jobs:
           RUN=44113647452
           MEDIA_RUN=44032038961
           RELEASE_DB=mskba_unified_20261117
-          test -n "$DEV_HOST" && test -n "$PROD_HOST"
-          test -n "$DEV_SSH_KEY" && test -n "$PROD_SSH_KEY"
+          test -n "$DEV_HOST" || { echo 'STAGE_BLOCKED missing development host'; exit 2; }
+          test -n "$PROD_HOST" || { echo 'STAGE_BLOCKED missing production host'; exit 2; }
+          test -n "$DEV_SSH_KEY" || { echo 'STAGE_BLOCKED missing development SSH key'; exit 2; }
+          test -n "$PROD_SSH_KEY" || { echo 'STAGE_BLOCKED missing production SSH key'; exit 2; }
+          echo 'STAGE_CREDENTIALS_PRESENT=true'
           printf '%s\n' "$DEV_SSH_KEY" > "$RUNNER_TEMP/mskba-dev.key"
           printf '%s\n' "$PROD_SSH_KEY" > "$RUNNER_TEMP/mskba-prod.key"
           chmod 600 "$RUNNER_TEMP/mskba-dev.key" "$RUNNER_TEMP/mskba-prod.key"
@@ -54,8 +57,11 @@ jobs:
           PROD_SRC="$DEV_SRC"
           PROD_MEDIA="$DEV_MEDIA"
           "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cd '$DEV_SRC' && sha256sum -c --status SHA256SUMS && test -s web-approved-candidate.pgdump"
+          echo 'STAGE_DEV_ARCHIVE_VERIFIED=true'
           "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cd '$DEV_MEDIA' && sha256sum -c --status SHA256SUMS && test -s storage-app-combined.tar.gz"
+          echo 'STAGE_DEV_MEDIA_VERIFIED=true'
           "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; mkdir -p '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && chmod 700 '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && test ! -e '$PROD_SRC/web-approved-candidate.pgdump' && test ! -e '$PROD_MEDIA/storage-app-combined.tar.gz'"
+          echo 'STAGE_PROD_DIR_READY=true'
           # Only streaming via two encrypted SSH sessions; never store the
           # private database dump or media in runner filesystem/artifacts.
           "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_SRC/web-approved-candidate.pgdump'" |
