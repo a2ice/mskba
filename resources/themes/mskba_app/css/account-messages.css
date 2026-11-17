@@ -409,3 +409,53 @@
 .app-support-close-dialog :is(select,textarea){width:100%;padding:12px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:9px}
 .app-support-close-dialog [data-support-close-description-wrap]:not([hidden]){display:grid;gap:8px}
 .app-support-close-dialog__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+
+
+/* Thread layout: one responsive header, no overflowing sibling participant rail. */
+.app-messages--thread .app-messages__thread-header{
+    min-width:0;
+}
+.app-messages--thread .app-messages__thread-contact{
+    flex:1 1 auto;min-width:0;
+}
+.app-messages--thread .app-messages__thread-contact h2{
+    white-space:normal;overflow:visible;text-overflow:clip;
+    overflow-wrap:anywhere;max-width:100%;line-height:1.35;
+}
+.app-messages__thread-participants{
+    padding:12px 16px;min-width:0;
+}
+.app-messages__thread-participants summary{
+    cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);
+}
+.app-messages__thread-participants .app-messages__participants{
+    margin-top:10px;min-width:0;overflow-wrap:anywhere;
+}
+.app-messages__thread-participants .app-messages__participant{
+    max-width:100%;overflow-wrap:anywhere;
+}
+.app-messages--thread .app-messages__compose{
+    box-sizing:border-box;min-width:0;
+}
+.app-messages--thread .app-messages__compose-footer{
+    padding:6px 5px 5px;gap:6px;min-width:0;
+}
+.app-messages--thread .app-messages__compose-footer>.button{
+    flex:0 0 auto;max-width:100%;
+}
+.app-messages__team-closed{padding:8px 12px;color:var(--muted);font-size:13px}
+.app-messages__team-closed[hidden]{display:none}
+.app-messages__team-review-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.app-messages__team-review-actions .button{flex:0 1 auto}
+.app-messages__team-review-dialog{max-width:min(480px,calc(100vw - 24px))}
+.app-messages__team-review-dialog[open]{display:block}
+.app-messages__team-review-dialog textarea{min-height:90px}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__thread-header{gap:9px;padding:10px;align-items:flex-start}
+    .app-messages--thread .app-messages__back{width:32px;height:32px}
+    .app-messages--thread .app-messages__thread-header .app-messages__avatar{width:32px;height:32px}
+    .app-messages--thread .app-messages__thread-contact h2{font-size:14px}
+    .app-messages__thread-participants{padding:10px 12px}
+    .app-messages--thread .app-messages__compose-footer{padding:5px;gap:5px}
+    .app-messages__team-review-actions{flex-wrap:wrap}
+}
