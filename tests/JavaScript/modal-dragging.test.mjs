@@ -153,6 +153,7 @@ test('global focus rings only target interactive controls; static tooltips canno
     const darkBase=readFileSync(new URL('../../resources/themes/mskba_dark/css/default.css',import.meta.url),'utf8');
     const tooltip=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/tooltips.js',import.meta.url),'utf8');
     const summary=readFileSync(new URL('../../resources/themes/mskba_dark/js/features/site-summary.js',import.meta.url),'utf8');
+    const tooltipCss=readFileSync(new URL('../../resources/themes/mskba_dark/css/tooltip.css',import.meta.url),'utf8');
     const tournament=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/tournaments/show.blade.php',import.meta.url),'utf8');
     const venue=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/venues/show.blade.php',import.meta.url),'utf8');
     const event=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/events/show.blade.php',import.meta.url),'utf8');
@@ -162,6 +163,8 @@ test('global focus rings only target interactive controls; static tooltips canno
         assert.match(css,/\[role="button"\][^}]*:focus-visible/s);
     }
     assert.doesNotMatch(tooltip,/\.attr\('tabindex',\s*'0'\)/);
+    assert.doesNotMatch(tooltipCss,/\.ui-tooltip-source:focus-visible/);
+    assert.match(tooltipCss,/\.ui-tooltip-source:is\(button,a\[href\],\[role="button"\]\):focus-visible/);
     assert.doesNotMatch(summary,/target\.setAttribute\('tabindex',\s*'0'\)/);
     assert.doesNotMatch(tournament,/data-tooltip-visual tabindex="0"/);
     assert.doesNotMatch(venue,/data-tooltip-icon\s+tabindex="0"/);
