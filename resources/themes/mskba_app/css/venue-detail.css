@@ -479,6 +479,10 @@
     max-width:min(540px,calc(100vw - 24px));
     max-height:85dvh;overflow-y:auto;
 }
+/* Closed event details must never appear as a page-level section.
+   Native showModal() adds [open] only for a public booking event click. */
+dialog.app-venue-day-event-dialog:not([open]){display:none!important}
+dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
 .app-venue-day-event-dialog__body{display:grid;gap:16px;padding:0 22px 22px}
 .app-venue-day-event-dialog__time{margin:0;color:var(--muted);font-weight:700}
 .app-venue-day-event-dialog__body>p{margin:0;line-height:1.5;overflow-wrap:anywhere}
