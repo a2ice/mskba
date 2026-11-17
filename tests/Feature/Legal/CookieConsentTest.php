@@ -16,7 +16,7 @@ class CookieConsentTest extends TestCase
 
     public function test_visitor_sees_cookie_notice_with_real_privacy_link(): void
     {
-        $response = $this->get(route('welcome'));
+        $response = $this->get(route('homepage.original'));
 
         $response->assertOk()
             ->assertSee('data-cookie-consent-banner', false)
@@ -46,7 +46,7 @@ class CookieConsentTest extends TestCase
 
         // Revisit from a fresh session: account preference is durable.
         Session::flush();
-        $this->actingAs($user)->get(route('welcome'))
+        $this->actingAs($user)->get(route('homepage.original'))
             ->assertSee('mc.yandex.ru/metrika/tag.js', false);
     }
 
@@ -60,7 +60,7 @@ class CookieConsentTest extends TestCase
             'version' => CookieConsent::version(),
             'analytics' => 'accepted',
         ], Session::get(CookieConsent::SESSION_CHOICE_KEY));
-        $this->get(route('welcome'))->assertSee('mc.yandex.ru/metrika/tag.js', false);
+        $this->get(route('homepage.original'))->assertSee('mc.yandex.ru/metrika/tag.js', false);
         $this->assertDatabaseCount('user_cookie_consent_preferences', 0);
         $this->assertDatabaseHas('cookie_consent_events', [
             'user_id' => null,
@@ -69,7 +69,7 @@ class CookieConsentTest extends TestCase
 
         // A new guest session cannot silently inherit a past analytics opt-in.
         Session::flush();
-        $this->get(route('welcome'))
+        $this->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
     }
 
@@ -79,7 +79,7 @@ class CookieConsentTest extends TestCase
         $this->postJson(route('cookie-consent.store'), ['analytics' => 'accepted'])->assertOk();
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get(route('welcome'))
+        $this->actingAs($user)->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
         $this->assertDatabaseMissing('user_cookie_consent_preferences', [
             'user_id' => $user->id,
@@ -105,7 +105,7 @@ class CookieConsentTest extends TestCase
             'user_id' => $canonical->id,
             'analytics_choice' => 'accepted',
         ]);
-        $this->actingAs($canonical)->get(route('welcome'))
+        $this->actingAs($canonical)->get(route('homepage.original'))
             ->assertSee('mc.yandex.ru/metrika/tag.js', false);
     }
 
@@ -117,15 +117,15 @@ class CookieConsentTest extends TestCase
 
         $this->actingAs($first)->postJson(route('cookie-consent.store'), ['analytics' => 'accepted'])
             ->assertOk();
-        $this->actingAs($second)->get(route('welcome'))
+        $this->actingAs($second)->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
-        $this->actingAs($first)->get(route('welcome'))
+        $this->actingAs($first)->get(route('homepage.original'))
             ->assertSee('mc.yandex.ru/metrika/tag.js', false);
 
         $this->postJson(route('cookie-consent.store'), ['analytics' => 'rejected'])
             ->assertOk()->assertJsonPath('analytics', 'rejected');
         Session::flush();
-        $this->actingAs($first)->get(route('welcome'))
+        $this->actingAs($first)->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
         $this->assertDatabaseHas('user_cookie_consent_preferences', [
             'user_id' => $first->id,
@@ -142,9 +142,9 @@ class CookieConsentTest extends TestCase
             ->assertOk();
 
         config(['legal.cookie_consent_version' => '2027-01-01']);
-        $this->get(route('welcome'))->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
+        $this->get(route('homepage.original'))->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
         $this->postJson(route('cookie-consent.store'), ['analytics' => 'accepted'])->assertOk();
-        $this->get(route('welcome'))->assertSee('mc.yandex.ru/metrika/tag.js', false);
+        $this->get(route('homepage.original'))->assertSee('mc.yandex.ru/metrika/tag.js', false);
         $this->assertDatabaseHas('user_cookie_consent_preferences', [
             'user_id' => $user->id,
             'notice_version' => '2027-01-01',
@@ -156,14 +156,14 @@ class CookieConsentTest extends TestCase
         config(['services.yandex_metrika.id' => '12345678']);
         $visitorId = (string) Str::uuid();
 
-        $this->get(route('welcome'))
+        $this->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
             ->assertDontSee('mc.yandex.ru/watch/', false);
 
         // A legacy year-long browser cookie must not be treated as fresh
         // guest or user consent after the storage-policy change.
         $this->withCookie(CookieConsent::COOKIE_NAME, CookieConsent::version().'|accepted|'.$visitorId)
-            ->get(route('welcome'))
+            ->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
 
         $this->withSession([
@@ -171,7 +171,7 @@ class CookieConsentTest extends TestCase
                 'version' => 'obsolete',
                 'analytics' => 'accepted',
             ],
-        ])->get(route('welcome'))
+        ])->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
 
         $this->withSession([
@@ -179,7 +179,7 @@ class CookieConsentTest extends TestCase
                 'version' => CookieConsent::version(),
                 'analytics' => 'rejected',
             ],
-        ])->get(route('welcome'))
+        ])->get(route('homepage.original'))
             ->assertDontSee('mc.yandex.ru/metrika/tag.js', false);
 
         $this->withSession([
@@ -187,7 +187,7 @@ class CookieConsentTest extends TestCase
                 'version' => CookieConsent::version(),
                 'analytics' => 'accepted',
             ],
-        ])->get(route('welcome'))
+        ])->get(route('homepage.original'))
             ->assertSee('mc.yandex.ru/metrika/tag.js', false);
     }
 
