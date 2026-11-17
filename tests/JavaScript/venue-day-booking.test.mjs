@@ -26,6 +26,7 @@ function node() {
         textContent: '',
         classList: { toggle() {}, add() {} },
         scrollIntoView() {},
+        click() { this.listeners.click?.(); },
         addEventListener(type, listener) { this.listeners[type] = listener; },
         querySelectorAll() { return []; },
         querySelector() { return null; },
@@ -43,7 +44,10 @@ function node() {
     };
 }
 
-function mountDayBooking({ previewFails = false, customSlots = null, personalDiscount = null } = {}) {
+function mountDayBooking({
+    previewFails = false, customSlots = null, personalDiscount = null,
+    viewerAuthenticated = true, sessionStore = null,
+} = {}) {
     const status = node();
     const heading = node();
     const grid = node();
@@ -116,6 +120,7 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
             venue_court_id: Number(url.searchParams.get('venue_court_id') || 13),
             slots,
             booking_enabled: true,
+            viewer_authenticated: viewerAuthenticated,
             step_minutes: 30,
             minimum_minutes: 60,
             maximum_minutes: 180,
@@ -129,13 +134,36 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
         createElement: tag => ({...node(), tagName: tag}),
         createTextNode: text => ({textContent: text}),
     };
+    const storage = sessionStore || new Map();
+    const windowListeners = {};
+    const windowEvents = [];
+    const window = {
+        location: {
+            href: 'https://dev.mskba.ru/venues/26-basketpoint-na-dubinskoy',
+            pathname: '/venues/26-basketpoint-na-dubninskoy',
+            reload() { window.reloads = (window.reloads || 0) + 1; },
+        },
+        sessionStorage: {
+            getItem: key => storage.get(key) || null,
+            setItem: (key, value) => storage.set(key, value),
+            removeItem: key => storage.delete(key),
+        },
+        addEventListener: (type, listener) => { windowListeners[type] = listener; },
+        dispatchEvent(event) {
+            windowEvents.push(event);
+            windowListeners[event.type]?.(event);
+        },
+    };
+    class CustomEvent {
+        constructor(type, options = {}) { this.type = type; this.detail = options.detail; }
+    }
     runInNewContext(dayBookingModule, {
-        document,
-        window: { location: { href: 'https://dev.mskba.ru/venues/26-basketpoint-na-dubinskoy' } },
+        document, window, CustomEvent,
         AbortController, URL, fetch, displayClock, groupDayBookingSlots,
     }, { filename: 'venue-detail.js' });
     return {
         dialog, eventDialog, eventFields, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
+        window, windowEvents, storage,
         async open(expectedCards = 2) {
             await opener.listeners.click();
             assert.equal(grid.children.length, expectedCards);
@@ -217,6 +245,84 @@ test('venue event section excludes booking-only days and disappears without link
     assert.match(page, /->filter\(fn \(array \$slot\): bool => !empty\(\$slot\['hasEvent'\]\)\)/);
     assert.match(page, /@if\(\$activityDays->isNotEmpty\(\)\)[\s\S]*?<section class="panel app-venue-block" id="app-venue-activities">/);
     assert.match(styles, /\.app-venue-day-dialog__calendar\s*\{[^}]*padding-top:5px/s);
+});
+
+test('booking popup shows owner-only create event action, not an invented event', async () => {
+    const page = mountDayBooking({viewerAuthenticated: true, customSlots: [
+        {starts_at: '07:00', ends_at: '08:00', status: 'booked', selectable: false, price_minor: null,
+         booking_group: {
+             key: 'owner-booking', has_event: false, event: null,
+             create_event_url: '/account/venue-bookings/owner/event/create',
+         }},
+    ]});
+    await page.open(1);
+    page.grid.children[0].click();
+    assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-day-booking-actions]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-booking-create-event]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-booking-create-event]'].href,
+        '/account/venue-bookings/owner/event/create');
+    assert.equal(page.eventFields['[data-venue-day-booking-login]'].hidden, true);
+    assert.match(page.eventFields['[data-venue-day-booking-action-status]'].textContent,
+        /создать мероприятие/i);
+});
+
+test('a non-owner sees no actionable booking URL or login prompt', async () => {
+    const page = mountDayBooking({viewerAuthenticated: true, customSlots: [
+        {starts_at: '07:00', ends_at: '08:00', status: 'booked', selectable: false, price_minor: null,
+         booking_group: {key: 'foreign-booking', has_event: false, event: null, create_event_url: null}},
+    ]});
+    await page.open(1);
+    page.grid.children[0].click();
+    assert.equal(page.eventFields['[data-venue-day-booking-create-event]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-booking-login]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-booking-action-status]'].textContent,
+        'Действия недоступны.');
+});
+
+test('guest login reopens selected booking after fresh authenticated schedule fetch', async () => {
+    const storage = new Map();
+    const guestSlots = [
+        {starts_at: '07:00', ends_at: '08:00', status: 'booked', selectable: false, price_minor: null,
+         booking_group: {key: 'the-booking', has_event: false, event: null, create_event_url: null}},
+    ];
+    const guest = mountDayBooking({
+        viewerAuthenticated: false, sessionStore: storage, customSlots: guestSlots,
+    });
+    await guest.open(1);
+    guest.grid.children[0].click();
+    assert.equal(guest.eventFields['[data-venue-day-booking-login]'].hidden, false);
+    assert.equal(guest.eventFields['[data-venue-day-booking-action-status]'].textContent,
+        'Для просмотра доступных действий авторизуйтесь.');
+    guest.eventFields['[data-venue-day-booking-login]'].onclick();
+    assert.equal(guest.eventDialog.open, false);
+    assert.equal(guest.windowEvents.at(-1).type, 'mskba:auth:open');
+    assert.equal(guest.windowEvents.at(-1).detail.stayOnPage, true);
+    assert.equal(storage.size, 1);
+    guest.window.dispatchEvent({type: 'mskba:auth:success'});
+    assert.equal(guest.window.reloads, 1);
+
+    const owner = mountDayBooking({
+        viewerAuthenticated: true, sessionStore: storage, customSlots: [
+            {...guestSlots[0], booking_group: {...guestSlots[0].booking_group,
+                create_event_url: '/account/venue-bookings/owner/event/create'}},
+        ],
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(owner.eventDialog.open, true);
+    assert.equal(owner.eventFields['[data-venue-day-booking-create-event]'].hidden, false);
+    assert.equal(storage.size, 0, 'resume marker must be consumed after reopening');
+});
+
+test('booking popup inline type label has a colon and shared row alignment', () => {
+    const template = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/partials/day-event-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    const css = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/venue-detail.css', import.meta.url), 'utf8',
+    );
+    assert.match(template, /class="app-venue-day-event-dialog__type-row"><dt>Тип:<\\/dt>/);
+    assert.match(css, /\.app-venue-day-event-dialog__type-row\s*\{\s*display:flex/);
 });
 
 test('private attached event opens minimal popup without leaking details or actions', async () => {
