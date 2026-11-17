@@ -456,6 +456,9 @@ if (dayBookingDialog) {
                     const canMessage = !!eventInfo.organizer_user_id
                         && !!document.querySelector('[data-direct-message-dialog]');
                     message.hidden = !canMessage;
+                    const organizerFallback = info('[data-venue-day-event-organizer-fallback]');
+                    organizerFallback.hidden = canMessage;
+                    organizerFallback.textContent = eventInfo.organizer_name || 'Организатор';
                     if (canMessage) {
                         message.dataset.recipientId = String(eventInfo.organizer_user_id);
                         message.dataset.recipientName = eventInfo.organizer_name || 'Организатор';
