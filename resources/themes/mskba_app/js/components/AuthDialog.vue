@@ -11,7 +11,6 @@ const opened = ref(false);
 const preferredRole = ref('');
 const mode = ref('login');
 const panel = ref(null);
-const dialogHeading = ref(null);
 const telegramContainer = ref(null);
 const legalDialog = ref(null);
 const busy = ref(false);
@@ -56,8 +55,8 @@ function selectMode(nextMode) {
     transientMessage.value = false;
     message.value = '';
     errors.value = {};
-    // Do not auto-focus inputs: it opens autofill suggestions and the mobile keyboard.
-    nextTick(() => dialogHeading.value?.focus({ preventScroll: true }));
+    // Keep the iOS keyboard closed and focus a real action, not static text.
+    nextTick(() => panel.value?.querySelector('.mskba-auth-close:not(:disabled)')?.focus({ preventScroll: true }));
 }
 
 async function openDialog(nextMode = 'login') {
@@ -77,8 +76,8 @@ async function openDialog(nextMode = 'login') {
     // showModal enters the browser's top layer, above all CSS z-index stacks.
     panel.value.showModal();
     document.body.style.overflow = 'hidden';
-    // Native showModal traps focus, while the heading is a neutral initial target.
-    dialogHeading.value?.focus({ preventScroll: true });
+    // Native showModal traps focus; the close control is the initial action.
+    panel.value.querySelector('.mskba-auth-close:not(:disabled)')?.focus({ preventScroll: true });
 }
 
 function openLegalDocument(kind, trigger) {
@@ -270,7 +269,7 @@ onBeforeUnmount(() => {
             aria-labelledby="mskba-auth-title" :aria-busy="busy"
             @cancel.prevent="closeDialog" @click="onDialogBackdropClick">
             <header class="mskba-modal__header mskba-auth-top">
-                <h2 id="mskba-auth-title" ref="dialogHeading" tabindex="-1" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
+                <h2 id="mskba-auth-title" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
                 <button type="button" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
                     :disabled="busy" @click="closeDialog">
                     <svg aria-hidden="true"><use href="#close" /></svg>
