@@ -148,7 +148,12 @@ try{
   if(!in_array((string)$m['disk'],['public','local'],true)){
     throw new RuntimeException('External media disk not in protected storage archive');
   }
+  if($m['original_path']!==null &&
+    !in_array((string)($m['original_disk']??''),['public','local'],true)){
+    throw new RuntimeException('External original media source unavailable');
+  }
   $m['mediable_id']=$targetOwner;
+  $m['is_featured']=in_array($m['is_featured'],[true,1,'1','t','true'],true);
   $existing=rows($dst,"SELECT id FROM media
     WHERE mediable_type=? AND mediable_id=? AND disk=? AND path=? AND deleted_at IS NULL",
     [$type,$targetOwner,$m['disk'],$m['path']]);
