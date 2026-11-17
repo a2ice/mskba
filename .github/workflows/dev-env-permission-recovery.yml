@@ -1,0 +1,56 @@
+name: MSKBA recover dev .env permission guard
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/dev-env-permission-recovery.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 8
+    steps:
+      - name: Restore only the verified dev .env metadata
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = 'deploy'
+            cd /var/www/mskba-dev-next
+            test -f .dev-bootstrap-complete
+            test -f compose.dev.local.yaml
+            test -f .env
+            test -f public/build/manifest.json
+            grep -Fxq 'APP_ENV=staging' .env
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            grep -Fxq 'APP_THEME=mskba_app' .env
+            grep -Fxq 'APP_DEBUG=false' .env
+            grep -Fxq 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            docker image inspect mskbanew-phpfpm:latest >/dev/null
+
+            echo "DEV_ENV_METADATA_BEFORE=$(stat -c '%U:%G:%a' .env)"
+            DEV_UID="$(id -u deploy)"
+            WEB_GID="$(getent group www-data | cut -d: -f3)"
+            test "$DEV_UID" -gt 0
+            test "$WEB_GID" -gt 0
+            # The php image is already on this staging host. An offline,
+            # no-network ephemeral root process fixes only the bind-mounted
+            # .env inode owner/group/mode; never reads or prints its values.
+            docker run --rm --pull=never --network none --user 0:0 \
+              --entrypoint sh \
+              --mount "type=bind,source=$(pwd)/.env,target=/secure-env" \
+              mskbanew-phpfpm:latest \
+              -c "chown $DEV_UID:$WEB_GID /secure-env && chmod 0640 /secure-env"
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            echo "DEV_ENV_METADATA_AFTER=$(stat -c '%U:%G:%a' .env)"
+            echo "DEV_ENV_GUARD_REPAIRED=true"
+            echo 'This workflow has not changed application code, DB, or production.'
