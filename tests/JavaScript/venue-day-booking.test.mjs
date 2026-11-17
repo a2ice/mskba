@@ -162,7 +162,7 @@ test('event details stay hidden outside an explicitly opened event modal', () =>
     assert.match(template, /<dialog\b[^>]*data-venue-day-event-dialog/);
     assert.doesNotMatch(template, /<dialog\b[^>]*\sopen(?:\s|=|>)/);
     assert.match(dayBookingModule, /const eventInfo = slot\.booking_group\?\.event \|\| null;/);
-    assert.match(dayBookingModule, /if \(eventInfo\) \{/);
+    assert.match(dayBookingModule, /if \(slot\.status === 'booked'\) \{/);
     assert.match(dayBookingModule, /eventInfoDialog\.showModal\(\);/);
 });
 
