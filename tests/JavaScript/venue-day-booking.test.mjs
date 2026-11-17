@@ -210,8 +210,8 @@ test('occupied MSKBA booking without event opens truthful booking details', asyn
     assert.equal(page.eventFields['[data-venue-day-event-time]'].textContent, '07:00–08:00');
     assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent, 'Бронирование MSKBA');
     assert.equal(page.eventFields['[data-venue-day-event-type]'].textContent, 'Бронирование');
-    assert.match(page.eventFields['[data-venue-day-event-private-note]'].textContent,
-        /мероприятие не прикреплено/);
+    assert.equal(page.eventFields['[data-venue-day-event-private-note]'].hidden, true,
+        'Unlinked booking must not repeat that no event exists');
     assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
     assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, true);
 });
