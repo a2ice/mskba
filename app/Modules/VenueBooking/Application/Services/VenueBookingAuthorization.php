@@ -2,6 +2,7 @@
 
 namespace App\Modules\VenueBooking\Application\Services;
 
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
@@ -59,6 +60,9 @@ final readonly class VenueBookingAuthorization
 
     public function assertCanView(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
+        if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
+            return;
+        }
         if ($booking->pre_request_id !== null) {
             app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest);
             return;
@@ -77,6 +81,9 @@ final readonly class VenueBookingAuthorization
     /** Read-only support may inspect conversations, but cannot post as a participant. */
     public function assertCanWriteConversation(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
+        if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
+            return;
+        }
         if ($booking->pre_request_id !== null) {
             app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest, 'write');
             return;
@@ -99,6 +106,24 @@ final readonly class VenueBookingAuthorization
         }
 
         $this->assertCanRejectBooking($actor, $venue, $booking);
+    }
+
+    /**
+     * A booking's confirming representative may return to its conversation,
+     * but only while their delegation to confirm this venue/court is active.
+     * Mere historical participation never grants ongoing access.
+     */
+    private function isConfirmingRepresentative(Actor $actor, VenueBooking $booking, Venue $venue): bool
+    {
+        $user = $actor->user;
+
+        return $user !== null
+            && $booking->status === VenueBookingStatusEnum::CONFIRMED
+            && $this->allowsBooking($user, $venue, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS, $booking)
+            && $booking->transitions()
+                ->where('to_status', VenueBookingStatusEnum::CONFIRMED->value)
+                ->whereHas('actor', fn ($query) => $query->whereIn('user_id', $user->canonical()->identityIds()))
+                ->exists();
     }
 
     private function allowsBooking(User $user, Venue $venue, VenuePermissionEnum $permission, ?VenueBooking $booking): bool
