@@ -321,6 +321,11 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertArrayHasKey('confirmed_count', $published);
         $this->assertArrayHasKey('organizer_user_id', $published);
 
+        $event->update(['status' => EventStatusEnum::COMPLETED]);
+        $completed = $days->forDate($venue, $court, $date->toDateString())['slots'];
+        $this->assertSame('Состоялось',
+            collect($completed)->firstWhere('starts_at', '12:00')['booking_group']['event']['status']);
+
         $event->update(['status' => EventStatusEnum::DRAFT]);
         $unpublished = $days->forDate($venue, $court, $date->toDateString())['slots'];
         $this->assertNull(collect($unpublished)->firstWhere('starts_at', '12:00')['booking_group']['event']);
