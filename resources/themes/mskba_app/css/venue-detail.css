@@ -449,3 +449,58 @@
 @media(max-width:640px){
     .app-venue-day-dialog__date-item{flex-basis:108px}
 }
+
+/* Booking groups and fixed day navigation: only the slot list scrolls. */
+.app-venue-day-dialog{position:relative}
+.app-venue-day-dialog__calendar{
+    grid-template-columns:minmax(0,1fr);
+    padding-left:20px;padding-right:20px;
+}
+.app-venue-day-dialog__nav{
+    position:absolute;top:52%;transform:translateY(-50%);
+    z-index:4;width:34px;min-height:64px;
+    box-shadow:0 2px 10px rgba(0,0,0,.06);
+}
+.app-venue-day-dialog__nav[data-venue-day-nav="-1"]{left:10px}
+.app-venue-day-dialog__nav[data-venue-day-nav="1"]{right:10px}
+.app-venue-day-dialog__grid{padding-left:54px;padding-right:54px}
+.app-venue-day-dialog__slot.is-booking-group{min-height:56px}
+.app-venue-day-dialog__slot.is-public-event{
+    cursor:pointer;border-color:var(--slot-booked-color,#d54747);
+}
+.app-venue-day-dialog__slot.is-public-event:hover{
+    background:color-mix(in srgb,var(--slot-booked-color,#d54747) 12%,var(--surface,#fff));
+}
+.app-venue-day-dialog__slot.is-public-event:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;
+}
+.app-venue-day-event-dialog{
+    width:min(540px,calc(100vw - 24px));
+    max-width:min(540px,calc(100vw - 24px));
+    max-height:85dvh;overflow-y:auto;
+}
+.app-venue-day-event-dialog__body{display:grid;gap:16px;padding:0 22px 22px}
+.app-venue-day-event-dialog__time{margin:0;color:var(--muted);font-weight:700}
+.app-venue-day-event-dialog__body>p{margin:0;line-height:1.5;overflow-wrap:anywhere}
+.app-venue-day-event-dialog__body dl{display:grid;gap:10px;margin:0}
+.app-venue-day-event-dialog__body dl>div{
+    display:grid;grid-template-columns:minmax(100px,.6fr) minmax(0,1fr);
+    gap:8px;padding-bottom:9px;border-bottom:1px solid var(--line);
+}
+.app-venue-day-event-dialog__body dt{color:var(--muted);font-size:13px}
+.app-venue-day-event-dialog__body dd{margin:0;font-weight:650;overflow-wrap:anywhere}
+.app-venue-day-event-dialog__contact{
+    border:0;background:transparent;padding:0;cursor:pointer;
+    color:var(--accent);font:inherit;text-align:left;
+    text-decoration:underline;text-underline-offset:3px;
+}
+.app-venue-day-event-dialog__contact:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-venue-day-event-dialog__body>.button{justify-self:start}
+@media(max-width:640px){
+    .app-venue-day-dialog__calendar{grid-template-columns:minmax(0,1fr);padding-left:12px;padding-right:12px}
+    .app-venue-day-dialog__grid{grid-template-columns:minmax(0,1fr);padding-left:43px;padding-right:43px}
+    .app-venue-day-dialog__nav{width:28px;min-height:58px}
+    .app-venue-day-dialog__nav[data-venue-day-nav="-1"]{left:7px}
+    .app-venue-day-dialog__nav[data-venue-day-nav="1"]{right:7px}
+    .app-venue-day-event-dialog__body{padding:0 14px 18px}
+}
