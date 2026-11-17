@@ -24,8 +24,9 @@ final class VenueScheduleDayController extends Controller
     public function __invoke(Request $request, Venue $venue, PublicVenueDaySchedule $days): JsonResponse
     {
         $isAdmin = $request->user()?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN) ?? false;
+        $viewerActor = app(CurrentActorResolver::class)->resolveForRequest($request);
         $mayPreview = app(VenueAccessResolver::class)->canManage(
-            $request->user(), $venue, app(CurrentActorResolver::class)->resolveForRequest($request),
+            $request->user(), $venue, $viewerActor,
         );
         abort_unless($venue->isPubliclyVisible() || $mayPreview
             || ($venue->is_published && $isAdmin), 404);
@@ -49,7 +50,7 @@ final class VenueScheduleDayController extends Controller
             $result = $days->forDate(
                 $venue, $court, $data['date'],
                 $data['preview_start'] ?? null, $data['preview_duration_minutes'] ?? null,
-                $request->user(),
+                $request->user(), $viewerActor,
             );
             if ($result['price_preview'] !== null) {
                 $baseline = $result['price_preview']['total_minor'];
