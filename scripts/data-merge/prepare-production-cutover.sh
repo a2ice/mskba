@@ -124,7 +124,16 @@ cmp -s <(grep '^APP_KEY=' "$DIR/original.env") <(grep '^APP_KEY=' .env)
  printf 'prepared_utc=%s\n' "$(date -u +%FT%TZ)"
 } > "$DIR/CUTOVER_STATE"
 chmod 600 "$DIR"/*
+# Automatic rollback of a prepared-but-unreleased site after 45 minutes.
+# The assistant will mark RELEASE_COMPLETE after successful main deploy/QA;
+# no pending/failed release should leave the public site in maintenance forever.
+[[ "${MSKBA_CUTOVER_RUN_ID:-}" =~ ^[0-9]+$ ]] || { echo 'CUTOVER_BLOCKED watchdog run ID';exit 8; }
+ROLLBACK_SCRIPT="/home/deploy/mskba-cutover-tools/$MSKBA_CUTOVER_RUN_ID/scripts/data-merge/rollback-production-cutover.sh"
+test -r "$ROLLBACK_SCRIPT"
+command -v setsid >/dev/null
+setsid bash -c "sleep 2700; if test ! -f '$DIR/RELEASE_COMPLETE' && test ! -f '$DIR/ROLLED_BACK'; then bash '$ROLLBACK_SCRIPT' > '$DIR/automatic-rollback.log' 2>&1; fi" </dev/null >/dev/null 2>&1 &
 PREPARED=1
+echo 'CUTOVER_ROLLBACK_WATCHDOG_ARMED=true'
 echo 'CUTOVER_PREPARED=true'
 echo "staged_db=$STAGED_DB"
 echo 'OLD_PRODUCTION_DATABASE_INTACT=true'
