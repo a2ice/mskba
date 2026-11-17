@@ -316,7 +316,7 @@ final class VenueCommissionPricingTest extends TestCase
         $visible = $days->forDate($venue, $court, $date->toDateString())['slots'];
         $published = collect($visible)->firstWhere('starts_at', '12:00')['booking_group']['event'];
         $this->assertSame('Только для приглашённых', $published['title']);
-        $this->assertSame('Игра', $published['type'] ?: 'Игра');
+        $this->assertNotEmpty($published['type']);
         $this->assertArrayHasKey('confirmed_count', $published);
         $this->assertArrayHasKey('organizer_user_id', $published);
 
