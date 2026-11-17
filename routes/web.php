@@ -1174,6 +1174,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.threads.direct.read');
         Route::get('/notifications/threads/team/{joinRequest}', [AccountConversationsController::class, 'team'])
             ->name('account.notifications.threads.team')->defaults('breadcrumb', 'Переписка по заявке');
+        Route::get('/notifications/threads/team/{joinRequest}/state', [AccountConversationsController::class, 'stateTeam'])
+            ->middleware('throttle:30,1')->name('account.notifications.threads.team.state');
         Route::post('/notifications/threads/team/{joinRequest}/messages', [AccountConversationsController::class, 'sendTeam'])
             ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
         Route::patch('/notifications/threads/team/{joinRequest}/read', [AccountConversationsController::class, 'readTeam'])
