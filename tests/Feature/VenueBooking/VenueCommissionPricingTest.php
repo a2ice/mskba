@@ -310,25 +310,46 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertNotSame($booking->public_id, $first['booking_group']['key']);
         $this->assertSame($first['booking_group']['key'], $second['booking_group']['key']);
         $this->assertTrue($first['booking_group']['has_event']);
-        $this->assertNull($first['booking_group']['event']);
+        $private = $first['booking_group']['event'];
+        $this->assertFalse($private['public']);
+        $this->assertSame('По приглашению', $private['visibility']);
+        $this->assertNotEmpty($private['type']);
+        $this->assertNull($private['title']);
+        $this->assertNull($private['description']);
+        $this->assertNull($private['url']);
+        $this->assertNull($private['organizer_user_id']);
+        $this->assertNull($private['confirmed_count']);
+        $this->assertNull($private['participation']);
         $this->assertStringNotContainsString('Только для приглашённых', json_encode($slots));
 
         $event->update(['visibility' => EventVisibilityEnum::PUBLIC]);
         $visible = $days->forDate($venue, $court, $date->toDateString())['slots'];
         $published = collect($visible)->firstWhere('starts_at', '12:00')['booking_group']['event'];
+        $this->assertTrue($published['public']);
         $this->assertSame('Только для приглашённых', $published['title']);
         $this->assertNotEmpty($published['type']);
+        $this->assertSame('open', $published['participation']['state']);
+        $this->assertTrue($published['participation']['can_join']);
+        $this->assertFalse($published['participation']['can_tentative']);
+        $this->assertSame('PATCH', $published['participation']['join_method']);
+        $this->assertSame(route('events.participation', $event->routeIdentifier()),
+            $published['participation']['join_url']);
         $this->assertArrayHasKey('confirmed_count', $published);
         $this->assertArrayHasKey('organizer_user_id', $published);
 
         $event->update(['status' => EventStatusEnum::COMPLETED]);
         $completed = $days->forDate($venue, $court, $date->toDateString())['slots'];
-        $this->assertSame('Состоялось',
-            collect($completed)->firstWhere('starts_at', '12:00')['booking_group']['event']['status']);
+        $completedEvent = collect($completed)->firstWhere('starts_at', '12:00')['booking_group']['event'];
+        $this->assertSame('Состоялось', $completedEvent['status']);
+        $this->assertFalse($completedEvent['participation']['can_join']);
 
         $event->update(['status' => EventStatusEnum::DRAFT]);
         $unpublished = $days->forDate($venue, $court, $date->toDateString())['slots'];
-        $this->assertNull(collect($unpublished)->firstWhere('starts_at', '12:00')['booking_group']['event']);
+        $draft = collect($unpublished)->firstWhere('starts_at', '12:00')['booking_group']['event'];
+        $this->assertFalse($draft['public']);
+        $this->assertNull($draft['title']);
+        $this->assertNull($draft['url']);
+        $this->assertNull($draft['participation']);
     }
 
     public function test_fixed_fees_rounding_and_zero_prices(): void
