@@ -65,7 +65,7 @@ if (modalRoot) {
         textarea.value = '';
         updateCharCount();
         if (!dialog.open) dialog.showModal();
-        dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
+        dialog.querySelector('[data-direct-dialog-close]')?.focus({ preventScroll: true });
         try {
             const result = await jsonRequest(urlFor('accessUrl', recipient));
             if (current !== serial || !dialog.open) return;
