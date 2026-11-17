@@ -1,0 +1,39 @@
+name: MSKBA merged database offline web smoke
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-web-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-smoke:
+    name: Run merged Laravel pages, media and venue-rights checks
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n scripts/data-merge/smoke-merged-site.sh
+      - name: Upload script outside both live sites
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/smoke-merged-site.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Smoke isolated final candidate and media bundle
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217
