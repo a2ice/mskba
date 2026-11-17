@@ -156,16 +156,16 @@ test('global focus rings only target interactive controls; static tooltips canno
     const tournament=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/tournaments/show.blade.php',import.meta.url),'utf8');
     const venue=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/venues/show.blade.php',import.meta.url),'utf8');
     const event=readFileSync(new URL('../../resources/themes/mskba_dark/views/pages/events/show.blade.php',import.meta.url),'utf8');
-    assert.doesNotMatch(lightBase,/:focus-visible\\{outline:2px solid var\\(--accent\\);outline-offset:3px\\}/);
-    assert.doesNotMatch(darkBase,/^:focus-visible\\s*\\{/m);
+    assert.doesNotMatch(lightBase,/:focus-visible\{outline:2px solid var\(--accent\);outline-offset:3px\}/);
+    assert.doesNotMatch(darkBase,/^:focus-visible\s*\{/m);
     for (const css of [lightBase,darkBase]) {
-        assert.match(css,/\\[role="button"\\][^}]*:focus-visible/s);
+        assert.match(css,/\[role="button"\][^}]*:focus-visible/s);
     }
-    assert.doesNotMatch(tooltip,/\\.attr\\('tabindex',\\s*'0'\\)/);
-    assert.doesNotMatch(summary,/target\\.setAttribute\\('tabindex',\\s*'0'\\)/);
+    assert.doesNotMatch(tooltip,/\.attr\('tabindex',\s*'0'\)/);
+    assert.doesNotMatch(summary,/target\.setAttribute\('tabindex',\s*'0'\)/);
     assert.doesNotMatch(tournament,/data-tooltip-visual tabindex="0"/);
-    assert.doesNotMatch(venue,/data-tooltip-icon\\s+tabindex="0"/);
-    assert.doesNotMatch(event,/data-tooltip-variant="title"\\s+tabindex="0"/);
+    assert.doesNotMatch(venue,/data-tooltip-icon\s+tabindex="0"/);
+    assert.doesNotMatch(event,/data-tooltip-variant="title"\s+tabindex="0"/);
 });
 
 test('both themes and native map/price overlays import the shared controller and backdrop CSS',()=>{
