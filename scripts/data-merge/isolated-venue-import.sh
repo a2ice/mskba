@@ -76,9 +76,12 @@ after="$(query 'SELECT COUNT(*) FROM venues')"
 [[ "$before" == 14 && "$after" == 18 ]] || { echo 'VENUE_IMPORT_BLOCKED incorrect venue count'; exit 8; }
 bookings="$(query 'SELECT COUNT(*) FROM venue_bookings')"
 [[ "$bookings" == "$(cat "$DEST/booking-count-before")" ]] || { echo 'VENUE_IMPORT_BLOCKED booking history changed'; exit 9; }
-original_fingerprint="$(query "SELECT md5(coalesce(string_agg(id||':'||alias||':'||status||':'||coalesce(created_by_actor_id::text,''),',' ORDER BY id),'')) FROM venues WHERE id IN (SELECT id FROM venues WHERE id <= 14)")"
-# Existing records need not have contiguous IDs: a direct historic mapping is
-# verified by comparing exact historical IDs from the original snapshot.
+# Compare the exact original prod ID/alias/status/owner tuples, excluding
+# only newly inserted source venues/courts (do not assume contiguous IDs).
+venue_after="$(query "SELECT md5(coalesce(string_agg(id||':'||alias||':'||status||':'||coalesce(created_by_actor_id::text,''),',' ORDER BY id),'')) FROM venues WHERE id NOT IN (SELECT target_venue_id FROM data_merge_venue_map WHERE resolution='new_venue')")"
+court_after="$(query "SELECT md5(coalesce(string_agg(id||':'||alias||':'||venue_id,',' ORDER BY id),'')) FROM venue_courts WHERE id NOT IN (SELECT target_court_id FROM data_merge_court_map WHERE resolution='new_court')")"
+[[ "$venue_after" == "$(cat "$DEST/venue-original-fingerprint")" ]] || { echo 'VENUE_IMPORT_BLOCKED historical venue identifiers/status/owner changed'; exit 10; }
+[[ "$court_after" == "$(cat "$DEST/court-original-fingerprint")" ]] || { echo 'VENUE_IMPORT_BLOCKED historical court ID/alias/venue link changed'; exit 11; }
 query 'SELECT source_venue_id,target_venue_id,resolution FROM data_merge_venue_map ORDER BY source_venue_id' > "$DEST/venue-map.tsv"
 query 'SELECT source_court_id,target_court_id,resolution FROM data_merge_court_map ORDER BY source_court_id' > "$DEST/court-map.tsv"
 [[ "$(query 'SELECT count(*) FROM data_merge_venue_map')" == 9 ]] || { echo 'VENUE_IMPORT_BLOCKED incomplete venue map'; exit 10; }
