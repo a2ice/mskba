@@ -131,7 +131,7 @@ final readonly class PublicVenueDaySchedule
                     }
                     try {
                         $authorization->assertCanView($viewerActor, $candidate, $venue);
-                    } catch (VenueBookingTransitionException|\\Symfony\\Component\\HttpKernel\\Exception\\HttpExceptionInterface) {
+                    } catch (VenueBookingTransitionException|\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
                         continue;
                     }
                     $bookingAccess[$candidate->id] = [
