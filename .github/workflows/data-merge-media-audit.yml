@@ -1,0 +1,37 @@
+name: MSKBA backup media collision audit
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-media-audit.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit private storage/app copies for path collisions
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static syntax check
+        run: python3 -m py_compile scripts/data-merge/audit-storage-archives.py
+      - name: Stage reviewed auditor outside webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/audit-storage-archives.py
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Audit tar archives without extraction or source writes
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            python3 /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/audit-storage-archives.py
