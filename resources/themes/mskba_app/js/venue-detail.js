@@ -505,8 +505,18 @@ if (dayBookingDialog) {
                     const bookingStatus = info('[data-venue-day-booking-action-status]');
                     const createEvent = info('[data-venue-day-booking-create-event]');
                     const loginButton = info('[data-venue-day-booking-login]');
-                    bookingActions.hidden = hasEvent;
+                    const requestUrl = slot.booking_group?.request_url || '';
+                    const requesterLogin = slot.booking_group?.requester_login || '';
+                    const requestLink = info('[data-venue-day-booking-request-link]');
+                    requestLink.hidden = !requestUrl;
+                    if (requestUrl) requestLink.href = requestUrl;
+                    else requestLink.removeAttribute('href');
+                    const requesterRow = info('[data-venue-day-booking-requester-row]');
+                    requesterRow.hidden = !requestUrl || !requesterLogin;
+                    info('[data-venue-day-booking-requester]').textContent =
+                        requesterRow.hidden ? '' : requesterLogin;
                     const createUrl = !hasEvent ? slot.booking_group?.create_event_url : null;
+                    bookingActions.hidden = hasEvent || (!!requestUrl && !createUrl);
                     createEvent.hidden = !createUrl;
                     if (createUrl) createEvent.href = createUrl;
                     else createEvent.removeAttribute('href');
