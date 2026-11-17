@@ -5,6 +5,7 @@ on:
     branches: [dev]
     paths:
       - .github/workflows/data-merge-stage-prod.yml
+      - scripts/data-merge/stage-verified-candidate.sh
   workflow_dispatch:
 
 permissions:
@@ -40,7 +41,7 @@ jobs:
           umask 077
           RUN=44113647452
           MEDIA_RUN=44032038961
-          RELEASE_DB=mskba_unified_20261117
+          RELEASE_DB=mskba_unified_20261117_v2
           test -n "$DEV_HOST" || { echo 'STAGE_BLOCKED missing development host'; exit 2; }
           test -n "$PROD_HOST" || { echo 'STAGE_BLOCKED missing production host'; exit 2; }
           test -n "$DEV_SSH_KEY" || { echo 'STAGE_BLOCKED missing development SSH key'; exit 2; }
