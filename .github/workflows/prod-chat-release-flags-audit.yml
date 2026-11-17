@@ -1,0 +1,43 @@
+name: MSKBA verify production chat release flags read only
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/prod-chat-release-flags-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check production release, effective feature flags and read-only data counts
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = 'deploy'
+            cd /var/www/mskba
+            test -f .env
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'APP_DEBUG=false' .env
+            echo "PROD_CHAT_RELEASE_SHA=$(git rev-parse HEAD)"
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              foreach (["rental_flow", "conversations", "portal"] as $flag) {
+                  echo "PROD_".strtoupper($flag)."=".
+                      (config("features.venue_rental.".$flag) ? "ENABLED" : "DISABLED")."\n";
+              }
+              echo "PROD_IDENTITY_RECORDS=".\App\Modules\Identity\Domain\Models\User::query()->count()."\n";
+              echo "PROD_RENTAL_BOOKINGS=".\App\Modules\VenueBooking\Domain\Models\VenueBooking::query()->count()."\n";
+            '
+            echo 'PRODUCTION_CHAT_READ_ONLY_AUDIT_COMPLETE=true'
