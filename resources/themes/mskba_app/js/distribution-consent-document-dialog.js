@@ -18,7 +18,7 @@ function ensureDialog() {
     panel.setAttribute('aria-labelledby', 'mskba-distribution-legal-dialog-title');
     panel.innerHTML = [
         '<header class="mskba-modal__header mskba-legal-dialog__header">',
-        ' <h2 id="mskba-distribution-legal-dialog-title" tabindex="-1">Согласие на обработку персональных данных, разрешённых для распространения</h2>',
+        ' <h2 id="mskba-distribution-legal-dialog-title">Согласие на обработку персональных данных, разрешённых для распространения</h2>',
         ' <button type="button" class="icon-button" data-legal-close aria-label="Закрыть документ">',
         '  <svg aria-hidden="true"><use href="#close"/></svg></button>',
         '</header>',
@@ -57,7 +57,7 @@ function closeDialog() {
     document.body.style.overflow = previousOverflow;
     const trigger = opener;
     opener = null;
-    // Opening focuses the neutral heading; closing restores the original link.
+    // Closing restores the original link.
     if (trigger?.isConnected) trigger.focus({ preventScroll: true });
 }
 
@@ -127,7 +127,7 @@ function openDialog(trigger) {
     previousOverflow = document.body.style.overflow;
     panel.showModal(); // Browser top layer, above the existing onboarding dialog.
     document.body.style.overflow = 'hidden';
-    panel.querySelector('#mskba-distribution-legal-dialog-title')?.focus({ preventScroll: true });
+    panel.querySelector('[data-legal-close]')?.focus({ preventScroll: true });
     body.scrollTo({ top: 0 });
     loadDocument();
 }
