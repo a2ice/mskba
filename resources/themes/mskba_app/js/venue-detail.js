@@ -415,7 +415,8 @@ if (dayBookingDialog) {
             cell.className = 'app-venue-day-dialog__slot';
             if (slot.selectable) cell.dataset.slotIndex = String(group.firstIndex);
             if (group.count > 1) cell.classList.add('is-booking-group');
-            if (eventInfo) cell.classList.add('is-public-event');
+            if (eventInfo) cell.classList.add('has-attached-event');
+            if (eventInfo?.public) cell.classList.add('is-public-event');
             cell.dataset.slotStatus = slot.status;
             cell.disabled = !slot.selectable && !eventInfo;
             cell.setAttribute('aria-pressed', 'false');
@@ -435,30 +436,46 @@ if (dayBookingDialog) {
                 price.title = 'Цена одного интервала с комиссиями. Итог для нескольких интервалов рассчитывается отдельно.';
             }
             if (eventInfo) {
-                cell.setAttribute('aria-label', times.textContent + ' · Занято (m, e) · '
-                    + eventInfo.title + '. Открыть мероприятие');
+                const isPublic = eventInfo.public === true;
+                cell.setAttribute('aria-label',
+                    times.textContent + ' · Занято (m, e) · '
+                    + (isPublic ? (eventInfo.title || eventInfo.type || 'Мероприятие')
+                        : 'Мероприятие по приглашению') + '. Открыть сведения');
                 cell.addEventListener('click', () => {
                     if (!eventInfoDialog) return;
                     const info = (selector) => eventInfoDialog.querySelector(selector);
-                    info('[data-venue-day-event-title]').textContent = eventInfo.title || 'Мероприятие';
+                    info('[data-venue-day-event-title]').textContent =
+                        isPublic ? (eventInfo.title || 'Мероприятие') : 'Мероприятие';
                     info('[data-venue-day-event-time]').textContent = times.textContent;
-                    info('[data-venue-day-event-description]').textContent = eventInfo.description || '';
-                    info('[data-venue-day-event-description]').hidden = !eventInfo.description;
+                    info('[data-venue-day-event-access]').textContent =
+                        eventInfo.visibility || 'Подробности не опубликованы';
                     info('[data-venue-day-event-type]').textContent = eventInfo.type || 'Не указан';
-                    info('[data-venue-day-event-status]').textContent = eventInfo.status || 'Не указан';
-                    info('[data-venue-day-event-count]').textContent =
-                        String(eventInfo.confirmed_count ?? 0) + (eventInfo.max_participants
-                            ? ' из ' + eventInfo.max_participants : '') + ' · думают: '
-                        + String(eventInfo.tentative_count ?? 0);
+
+                    const description = info('[data-venue-day-event-description]');
+                    description.textContent = isPublic ? (eventInfo.description || '') : '';
+                    description.hidden = !isPublic || !eventInfo.description;
+                    info('[data-venue-day-event-private-note]').hidden = isPublic;
+
+                    info('[data-venue-day-event-status-row]').hidden = !isPublic;
+                    info('[data-venue-day-event-status]').textContent =
+                        isPublic ? (eventInfo.status || 'Не указан') : '';
+                    info('[data-venue-day-event-count-row]').hidden = !isPublic;
+                    info('[data-venue-day-event-count]').textContent = isPublic
+                        ? String(eventInfo.confirmed_count ?? 0)
+                            + (eventInfo.max_participants ? ' из ' + eventInfo.max_participants : '')
+                            + ' · думают: ' + String(eventInfo.tentative_count ?? 0)
+                        : '';
+                    info('[data-venue-day-event-organizer-row]').hidden = !isPublic;
                     const organizer = info('[data-venue-day-event-organizer]');
-                    organizer.textContent = eventInfo.organizer_name || 'Организатор';
+                    organizer.textContent = isPublic ? (eventInfo.organizer_name || 'Организатор') : '';
                     const message = info('[data-venue-day-event-message]');
-                    const canMessage = !!eventInfo.organizer_user_id
+                    const canMessage = isPublic && !!eventInfo.organizer_user_id
                         && !!document.querySelector('[data-direct-message-dialog]');
                     message.hidden = !canMessage;
                     const organizerFallback = info('[data-venue-day-event-organizer-fallback]');
-                    organizerFallback.hidden = canMessage;
-                    organizerFallback.textContent = eventInfo.organizer_name || 'Организатор';
+                    organizerFallback.hidden = canMessage || !isPublic;
+                    organizerFallback.textContent =
+                        isPublic ? (eventInfo.organizer_name || 'Организатор') : '';
                     if (canMessage) {
                         message.dataset.recipientId = String(eventInfo.organizer_user_id);
                         message.dataset.recipientName = eventInfo.organizer_name || 'Организатор';
@@ -467,7 +484,54 @@ if (dayBookingDialog) {
                         delete message.dataset.recipientName;
                     }
                     const link = info('[data-venue-day-event-link]');
-                    link.href = eventInfo.url || '#';
+                    link.hidden = !isPublic || !eventInfo.url;
+                    if (!link.hidden) link.href = eventInfo.url;
+                    else link.removeAttribute('href');
+
+                    // All join/tentative actions use existing, server-checked
+                    // participation endpoints; never grant access based on UI.
+                    const participation = isPublic ? eventInfo.participation : null;
+                    const actionBox = info('[data-venue-day-event-participation]');
+                    actionBox.hidden = !participation;
+                    const joinState = participation?.state || 'unavailable';
+                    const messages = {
+                        unavailable: 'Запись на мероприятие недоступна.',
+                        ended: 'Мероприятие уже завершено или набор закрыт.',
+                        organizer: 'Вы организатор. Управление доступно на странице мероприятия.',
+                        joined: 'Вы уже участвуете в мероприятии.',
+                        full: 'Все места заняты. Можно ответить «Думаю», но это не бронирует место.',
+                        reconfirm: 'Условия изменились. Требуется повторное подтверждение участия.',
+                        open: 'Набор участников открыт.',
+                    };
+                    const guestCannotRespondTentative = joinState === 'full'
+                        && !info('[data-venue-day-event-tentative-form]');
+                    info('[data-venue-day-event-join-state]').textContent = participation
+                        ? (guestCannotRespondTentative
+                            ? 'Все места заняты. После входа можно ответить «Думаю», но это не резервирует место.'
+                            : (messages[joinState] || messages.unavailable)) : '';
+
+                    const joinForm = info('[data-venue-day-event-join-form]');
+                    const tentativeForm = info('[data-venue-day-event-tentative-form]');
+                    const guestLink = info('[data-venue-day-event-guest-join]');
+                    if (joinForm) {
+                        joinForm.hidden = !participation?.can_join || !participation?.join_url;
+                        if (!joinForm.hidden) joinForm.action = participation.join_url;
+                        else joinForm.removeAttribute('action');
+                        const method = info('[data-venue-day-event-join-method]');
+                        method.value = participation?.join_method === 'POST' ? 'POST' : 'PATCH';
+                        info('[data-venue-day-event-join-label]').textContent =
+                            joinState === 'reconfirm' ? 'Подтвердить участие' : 'Присоединиться';
+                    }
+                    if (tentativeForm) {
+                        tentativeForm.hidden = !participation?.can_tentative || !participation?.join_url;
+                        if (!tentativeForm.hidden) tentativeForm.action = participation.join_url;
+                        else tentativeForm.removeAttribute('action');
+                    }
+                    if (guestLink) {
+                        guestLink.hidden = !participation?.can_join || !eventInfo.url;
+                        if (!guestLink.hidden) guestLink.href = eventInfo.url;
+                        else guestLink.removeAttribute('href');
+                    }
                     eventInfoDialog.showModal();
                 });
             }

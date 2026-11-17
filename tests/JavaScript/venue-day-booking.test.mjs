@@ -24,7 +24,7 @@ function node() {
         disabled: false,
         hidden: false,
         textContent: '',
-        classList: { toggle() {} },
+        classList: { toggle() {}, add() {} },
         scrollIntoView() {},
         addEventListener(type, listener) { this.listeners[type] = listener; },
         querySelectorAll() { return []; },
@@ -75,6 +75,9 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
         '[data-venue-day-minimum]': minimum,
     };
     dialog.querySelector = selector => fields[selector] || null;
+    const eventDialog = node();
+    const eventFields = {};
+    eventDialog.querySelector = selector => eventFields[selector] ||= node();
     const dates = ['2026-11-15', '2026-11-16', '2026-11-17'].map(date => {
         const button = node();
         button.dataset.venueDayDate = date;
@@ -120,7 +123,8 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
         }) };
     };
     const document = {
-        querySelector: selector => selector === '[data-venue-day-dialog]' ? dialog : null,
+        querySelector: selector => selector === '[data-venue-day-dialog]' ? dialog
+            : (selector === '[data-venue-day-event-dialog]' ? eventDialog : null),
         querySelectorAll: selector => selector === '[data-venue-day-open]' ? [opener] : [],
         createElement: tag => ({...node(), tagName: tag}),
         createTextNode: text => ({textContent: text}),
@@ -131,10 +135,10 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
         AbortController, URL, fetch, displayClock, groupDayBookingSlots,
     }, { filename: 'venue-detail.js' });
     return {
-        dialog, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
-        async open() {
+        dialog, eventDialog, eventFields, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
+        async open(expectedCards = 2) {
             await opener.listeners.click();
-            assert.equal(grid.children.length, 2);
+            assert.equal(grid.children.length, expectedCards);
         },
         clickSlot(index) {
             grid.listeners.click({
@@ -144,6 +148,82 @@ function mountDayBooking({ previewFails = false, customSlots = null, personalDis
         },
     };
 }
+
+test('event details stay hidden outside an explicitly opened event modal', () => {
+    const css = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/venue-detail.css', import.meta.url), 'utf8',
+    );
+    const template = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/partials/day-event-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    // A closed native dialog must not render as a large visible block above the schedule.
+    assert.match(css, /dialog\.app-venue-day-event-dialog:not\(\[open\]\)\s*\{\s*display:none!important\s*\}/);
+    assert.match(css, /dialog\.app-venue-day-event-dialog\[open\]\s*\{\s*display:flex/);
+    assert.match(template, /<dialog\b[^>]*data-venue-day-event-dialog/);
+    assert.doesNotMatch(template, /<dialog\b[^>]*\sopen(?:\s|=|>)/);
+    assert.match(dayBookingModule, /const eventInfo = slot\.booking_group\?\.event \|\| null;/);
+    assert.match(dayBookingModule, /if \(eventInfo\) \{/);
+    assert.match(dayBookingModule, /eventInfoDialog\.showModal\(\);/);
+});
+
+test('private attached event opens minimal popup without leaking details or actions', async () => {
+    const event = {
+        public: false, visibility: 'По приглашению', type: 'Игра',
+        title: null, description: null, url: null, status: null,
+        confirmed_count: null, tentative_count: null, max_participants: null,
+        organizer_name: null, organizer_user_id: null, participation: null,
+    };
+    const page = mountDayBooking({ customSlots: [
+        { starts_at: '18:00', ends_at: '18:30', status: 'booked', selectable: false,
+          booking_group: { key: 'same', has_event: true, event }, price_minor: null },
+        { starts_at: '18:30', ends_at: '19:00', status: 'booked', selectable: false,
+          booking_group: { key: 'same', has_event: true, event }, price_minor: null },
+    ] });
+    await page.open(1);
+    assert.equal(page.grid.children[0].children[1].textContent, 'Занято (m, e)');
+    page.grid.children[0].listeners.click();
+    assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-day-event-title]'].textContent, 'Мероприятие');
+    assert.equal(page.eventFields['[data-venue-day-event-time]'].textContent, '18:00–19:00');
+    assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent, 'По приглашению');
+    assert.equal(page.eventFields['[data-venue-day-event-private-note]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-event-status-row]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-count-row]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-organizer-row]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, true);
+});
+
+test('public event offers server-authorized participation from grouped booking popup', async () => {
+    const event = {
+        public: true, visibility: 'Публичное', type: 'Игра', title: 'Вечерняя игра',
+        description: 'Игра 5 на 5', status: 'Опубликовано',
+        confirmed_count: 7, tentative_count: 2, max_participants: 10,
+        organizer_name: 'Организатор', organizer_user_id: null,
+        url: '/events/123', participation: {
+            state: 'open', can_join: true, can_tentative: false,
+            join_url: '/events/123/participation', join_method: 'PATCH',
+        },
+    };
+    const page = mountDayBooking({ customSlots: [
+        { starts_at: '19:00', ends_at: '19:30', status: 'booked', selectable: false,
+          booking_group: { key: 'public-booking', has_event: true, event }, price_minor: null },
+    ] });
+    await page.open(1);
+    page.grid.children[0].listeners.click();
+    assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-day-event-title]'].textContent, 'Вечерняя игра');
+    assert.equal(page.eventFields['[data-venue-day-event-private-note]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-count-row]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-event-count]'].textContent, '7 из 10 · думают: 2');
+    assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-event-join-form]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-event-join-form]'].action, '/events/123/participation');
+    assert.equal(page.eventFields['[data-venue-day-event-join-method]'].value, 'PATCH');
+    assert.equal(page.eventFields['[data-venue-day-event-tentative-form]'].hidden, true);
+    assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, false);
+    assert.equal(page.eventFields['[data-venue-day-event-link]'].href, '/events/123');
+});
 
 for (const audience of ['авторизованный пользователь', 'гость']) {
     test(`два выбранных слота запускают расчёт и разблокируют бронирование: ${audience}`, async () => {

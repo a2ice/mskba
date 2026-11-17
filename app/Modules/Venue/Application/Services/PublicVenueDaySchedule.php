@@ -12,6 +12,9 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -45,6 +48,7 @@ final readonly class PublicVenueDaySchedule
     public function forDate(
         Venue $venue, VenueCourt $court, string $date,
         ?string $previewStart = null, ?int $previewDurationMinutes = null,
+        ?User $viewer = null,
     ): array
     {
         if ($court->venue_id !== $venue->id || $court->trashed()) {
@@ -167,6 +171,7 @@ final readonly class PublicVenueDaySchedule
         $endIndex = (int) ceil($maxMinute / $step);
         $slots = [];
         $publicEventCache = [];
+        $viewer = $viewer?->canonical();
 
         for ($index = $startIndex; $index < $endIndex; $index++) {
             $start = $day->addMinutes($index * $step);
@@ -262,27 +267,91 @@ final readonly class PublicVenueDaySchedule
                     EventStatusEnum::CANCELLED,
                 ], true);
             $eventDetails = null;
-            if ($isPublicEvent && ! isset($publicEventCache[$event->id])) {
-                $organizer = $event->organizerActor?->user;
-                $organizerName = trim(implode(' ', array_filter([
-                    $organizer?->profile?->first_name,
-                    $organizer?->profile?->last_name,
-                ]))) ?: ($organizer?->username ?: 'Организатор');
-                $counts = $this->eventParticipation->publicStatusCounts($event);
-                $publicEventCache[$event->id] = [
-                    'title' => $event->title,
-                    'description' => Str::limit(trim(strip_tags((string) $event->description)), 500),
-                    'url' => route('events.show', $event->routeIdentifier()),
-                    'type' => $event->type?->label(),
-                    'status' => $event->status?->label(),
-                    'confirmed_count' => $counts['confirmed'],
-                    'tentative_count' => $counts['tentative'],
-                    'max_participants' => $event->max_participants,
-                    'organizer_name' => $organizerName,
-                    'organizer_user_id' => $organizer?->id,
+            if ($event !== null && ! isset($publicEventCache[$event->id])) {
+                // Visibility-safe summary for *every* attached event. Private
+                // events are visible as occupied activities but never disclose
+                // title, description, participants, organizer or a route.
+                $details = [
+                    'public' => $isPublicEvent,
+                    'visibility' => $isPublicEvent
+                        ? 'Публичное'
+                        : ($event->visibility === EventVisibilityEnum::PRIVATE
+                            ? 'По приглашению' : 'Подробности не опубликованы'),
+                    'type' => $event->type?->label() ?? 'Мероприятие',
+                    'title' => $isPublicEvent ? $event->title : null,
+                    'status' => $isPublicEvent ? $event->status?->label() : null,
+                    'description' => null,
+                    'url' => null,
+                    'confirmed_count' => null,
+                    'tentative_count' => null,
+                    'max_participants' => null,
+                    'organizer_name' => null,
+                    'organizer_user_id' => null,
+                    'participation' => null,
                 ];
+                if ($isPublicEvent) {
+                    $organizer = $event->organizerActor?->user;
+                    $organizerName = trim(implode(' ', array_filter([
+                        $organizer?->profile?->first_name,
+                        $organizer?->profile?->last_name,
+                    ]))) ?: ($organizer?->username ?: 'Организатор');
+                    $counts = $this->eventParticipation->publicStatusCounts($event);
+                    $participant = $viewer === null ? null
+                        : $this->eventParticipation->effectiveParticipant($event, $viewer);
+                    $isOrganizer = $participant?->role === EventParticipantRoleEnum::ORGANIZER;
+                    $wasConfirmed = $participant?->status === EventParticipantStatusEnum::CONFIRMED;
+                    $alreadyAttending = $wasConfirmed
+                        && $participant->confirmation_version === $event->participation_confirmation_version;
+                    $hasPlaces = $event->max_participants === null
+                        || $counts['confirmed'] < $event->max_participants;
+                    $isOpen = $event->status === EventStatusEnum::PUBLISHED
+                        && $event->ends_at->isFuture();
+                    // Mirror the existing ShowVenueHandler / Event participation
+                    // eligibility. Final validation always occurs in the use case.
+                    $canJoin = $isOpen && ! $alreadyAttending && (
+                        $isOrganizer ? (! $wasConfirmed && $hasPlaces)
+                            : ($hasPlaces || $wasConfirmed)
+                    );
+                    $canTentative = $isOpen && ! $hasPlaces && ! $alreadyAttending
+                        && ! $isOrganizer && ! $canJoin;
+                    $joinState = match (true) {
+                        ! $isOpen => 'ended',
+                        $alreadyAttending => 'joined',
+                        $isOrganizer && ! $canJoin => 'organizer',
+                        $canJoin && $wasConfirmed => 'reconfirm',
+                        $canJoin => 'open',
+                        ! $hasPlaces => 'full',
+                        default => 'unavailable',
+                    };
+                    $joinMethod = $isOrganizer && $canJoin ? 'POST' : 'PATCH';
+                    $joinUrl = ($canJoin || $canTentative)
+                        ? ($joinMethod === 'POST'
+                            ? route('events.join', $event->routeIdentifier())
+                            : route('events.participation', $event->routeIdentifier()))
+                        : null;
+                    $details = [
+                        ...$details,
+                        'description' => Str::limit(trim(strip_tags((string) $event->description)), 500),
+                        'url' => route('events.show', $event->routeIdentifier()),
+                        'confirmed_count' => $counts['confirmed'],
+                        'tentative_count' => $counts['tentative'],
+                        'max_participants' => $event->max_participants,
+                        'organizer_name' => $organizerName,
+                        'organizer_user_id' => $organizer?->id,
+                        'participation' => [
+                            'state' => $joinState,
+                            'can_join' => $canJoin,
+                            'can_tentative' => $canTentative,
+                            'join_method' => $joinMethod,
+                            'join_url' => $joinUrl,
+                        ],
+                    ];
+                }
+                $publicEventCache[$event->id] = $details;
             }
-            $eventDetails = $isPublicEvent ? $publicEventCache[$event->id] : null;
+            if ($event !== null) {
+                $eventDetails = $publicEventCache[$event->id];
+            }
 
             $slots[] = [
                 'booking_group' => $booking === null ? null : [
