@@ -64,7 +64,17 @@ jobs:
             elif state in ('08006','08001'):
                 print('classification=db_connection')
             tags={
-             'database_connection':'could not connect|connection refused|Name or service not known',
+             'pg_authentication':'password authentication failed|no password supplied',
+             'pg_database_missing':'database .{0,50} does not exist',
+             'pg_host_resolution':'could not translate host name|Name or service not known',
+             'pg_connection_refused':'connection refused|Is the server running',
+             'pg_network_block':'No route to host|Network is unreachable',
+             'pg_ssl':'SSL is required|does not support SSL|certificate verify failed',
+             'pg_server_closed':'server closed the connection|terminating connection',
+             'pg_pg_hba':'no pg_hba.conf entry',
+             'pg_connection_timeout':'connection timed out',
+             'pg_connection_limit':'too many clients already|remaining connection slots',
+             'database_connection':'could not connect',
              'redis':'RedisException|Redis connection|redis',
              'view_error':'ViewException|Undefined variable|Undefined array key',
              'encryption':'encryption key|DecryptException|The MAC is invalid',
