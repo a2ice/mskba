@@ -156,10 +156,10 @@ document.querySelectorAll('[data-venue-slot-open]').forEach(button => {
         const joinForm = slotDialog.querySelector('[data-venue-slot-join-form]');
         const tentativeForm = slotDialog.querySelector('[data-venue-slot-tentative-form]');
         const guestLink = slotDialog.querySelector('[data-venue-slot-guest-link]');
-        const hasEvent = !!eventUrl;
+        const hasEvent = button.dataset.hasEvent === 'true' || !!eventUrl;
 
         slotDialog.querySelector('[data-venue-slot-title]').textContent =
-            hasEvent ? (button.dataset.eventTitle || button.dataset.eventType || 'Мероприятие') : 'Занятое время';
+            hasEvent ? (eventUrl ? (button.dataset.eventTitle || button.dataset.eventType || 'Мероприятие') : 'Мероприятие по приглашению') : 'Занятое время';
         slotDialog.querySelector('[data-venue-slot-time]').textContent =
             [button.dataset.slotDay, button.dataset.slotTime].filter(Boolean).join(' · ');
         const messages = {
@@ -416,9 +416,12 @@ if (dayBookingDialog) {
             if (slot.selectable) cell.dataset.slotIndex = String(group.firstIndex);
             if (group.count > 1) cell.classList.add('is-booking-group');
             if (eventInfo) cell.classList.add('has-attached-event');
+            if (slot.status === 'booked') cell.classList.add('has-booking-details');
             if (eventInfo?.public) cell.classList.add('is-public-event');
             cell.dataset.slotStatus = slot.status;
-            cell.disabled = !slot.selectable && !eventInfo;
+            // Occupied slots are informational, even when there is no event.
+            // Only available slots remain selectable for a new reservation.
+            cell.disabled = !slot.selectable && slot.status !== 'booked';
             cell.setAttribute('aria-pressed', 'false');
             const times = document.createElement('strong');
             times.textContent = displayClock(slot.starts_at) + '–' + displayClock(group.last.ends_at);
@@ -435,26 +438,36 @@ if (dayBookingDialog) {
             if (group.count === 1 && slot.price_minor !== null) {
                 price.title = 'Цена одного интервала с комиссиями. Итог для нескольких интервалов рассчитывается отдельно.';
             }
-            if (eventInfo) {
-                const isPublic = eventInfo.public === true;
+            if (slot.status === 'booked') {
+                const hasEvent = !!eventInfo;
+                const isPublic = eventInfo?.public === true;
+                const eventLabel = !hasEvent ? 'Сведения о занятости'
+                    : (isPublic ? (eventInfo.title || eventInfo.type || 'Мероприятие')
+                        : 'Мероприятие по приглашению');
                 cell.setAttribute('aria-label',
-                    times.textContent + ' · Занято (m, e) · '
-                    + (isPublic ? (eventInfo.title || eventInfo.type || 'Мероприятие')
-                        : 'Мероприятие по приглашению') + '. Открыть сведения');
+                    times.textContent + ' · ' + state.textContent + ' · ' + eventLabel + '. Открыть сведения');
                 cell.addEventListener('click', () => {
                     if (!eventInfoDialog) return;
                     const info = (selector) => eventInfoDialog.querySelector(selector);
                     info('[data-venue-day-event-title]').textContent =
-                        isPublic ? (eventInfo.title || 'Мероприятие') : 'Мероприятие';
+                        !hasEvent ? 'Занятое время'
+                            : (isPublic ? (eventInfo.title || 'Мероприятие') : 'Мероприятие');
                     info('[data-venue-day-event-time]').textContent = times.textContent;
-                    info('[data-venue-day-event-access]').textContent =
-                        eventInfo.visibility || 'Подробности не опубликованы';
-                    info('[data-venue-day-event-type]').textContent = eventInfo.type || 'Не указан';
+                    info('[data-venue-day-event-access]').textContent = hasEvent
+                        ? (eventInfo.visibility || 'Подробности не опубликованы')
+                        : (slot.booking_group ? 'Бронирование MSKBA' : 'Занято по расписанию площадки');
+                    info('[data-venue-day-event-type]').textContent = hasEvent
+                        ? (eventInfo.type || 'Не указан')
+                        : (slot.booking_group ? 'Бронирование' : 'Занятый интервал');
 
                     const description = info('[data-venue-day-event-description]');
                     description.textContent = isPublic ? (eventInfo.description || '') : '';
-                    description.hidden = !isPublic || !eventInfo.description;
-                    info('[data-venue-day-event-private-note]').hidden = isPublic;
+                    description.hidden = !isPublic || !eventInfo?.description;
+                    const note = info('[data-venue-day-event-private-note]');
+                    note.hidden = isPublic;
+                    note.textContent = hasEvent
+                        ? 'Подробности доступны только приглашённым участникам.'
+                        : 'К этому занятому интервалу мероприятие не прикреплено.';
 
                     info('[data-venue-day-event-status-row]').hidden = !isPublic;
                     info('[data-venue-day-event-status]').textContent =
