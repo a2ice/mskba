@@ -166,6 +166,7 @@ final readonly class PublicVenueDaySchedule
         $startIndex = intdiv($minMinute, $step);
         $endIndex = (int) ceil($maxMinute / $step);
         $slots = [];
+        $publicEventCache = [];
 
         for ($index = $startIndex; $index < $endIndex; $index++) {
             $start = $day->addMinutes($index * $step);
@@ -256,16 +257,19 @@ final readonly class PublicVenueDaySchedule
                 : ($booking->event ?? $linkedEvents->get($booking->id));
             $isPublicEvent = $event !== null
                 && $event->visibility === EventVisibilityEnum::PUBLIC
-                && $event->status === EventStatusEnum::PUBLISHED;
+                && in_array($event->status, [
+                    EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED,
+                    EventStatusEnum::CANCELLED,
+                ], true);
             $eventDetails = null;
-            if ($isPublicEvent) {
+            if ($isPublicEvent && ! isset($publicEventCache[$event->id])) {
                 $organizer = $event->organizerActor?->user;
                 $organizerName = trim(implode(' ', array_filter([
                     $organizer?->profile?->first_name,
                     $organizer?->profile?->last_name,
                 ]))) ?: ($organizer?->username ?: 'Организатор');
                 $counts = $this->eventParticipation->publicStatusCounts($event);
-                $eventDetails = [
+                $publicEventCache[$event->id] = [
                     'title' => $event->title,
                     'description' => Str::limit(trim(strip_tags((string) $event->description)), 500),
                     'url' => route('events.show', $event->routeIdentifier()),
@@ -278,6 +282,7 @@ final readonly class PublicVenueDaySchedule
                     'organizer_user_id' => $organizer?->id,
                 ];
             }
+            $eventDetails = $isPublicEvent ? $publicEventCache[$event->id] : null;
 
             $slots[] = [
                 'booking_group' => $booking === null ? null : [
