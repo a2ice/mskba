@@ -15,7 +15,7 @@
             <div data-venue-day-event-status-row hidden>
                 <dt>Статус</dt><dd data-venue-day-event-status></dd>
             </div>
-            <div data-venue-day-booking-requester-row hidden>
+            <div class="app-venue-day-event-dialog__requester-row" data-venue-day-booking-requester-row hidden>
                 <dt>Заказчик:</dt><dd data-venue-day-booking-requester></dd>
             </div>
             <div data-venue-day-event-count-row hidden>
