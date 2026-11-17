@@ -52,6 +52,7 @@ function mapping(PDO $db,string $type,int $old,int $new):void {
      VALUES(?,?,?) ON CONFLICT(kind,source_id) DO UPDATE SET target_id=EXCLUDED.target_id');
  $stmt->execute([$type,$old,$new]);
 }
+$phase = 'preflight';
 try{
  $needed=['data_merge_user_map','data_merge_actor_map','data_merge_venue_map','data_merge_court_map'];
  foreach($needed as $table){
@@ -65,6 +66,7 @@ try{
  $dst->exec("CREATE TABLE IF NOT EXISTS data_merge_media_mappings(
   kind varchar(40) NOT NULL,source_id bigint NOT NULL,target_id bigint NOT NULL,
   PRIMARY KEY(kind,source_id))");
+ $phase='profiles';
  $profileMap=[];
  foreach(rows($src,'SELECT id,user_id FROM profiles') as $p){
   $user=required($userMap,(int)$p['user_id'],'profile owner');
@@ -72,6 +74,7 @@ try{
   if(count($matches)!==1)throw new RuntimeException('Missing target profile');
   $profileMap[(int)$p['id']]=(int)$matches[0]['id'];
  }
+ $phase='teams';
  $teamMap=[];
  foreach(rows($src,'SELECT * FROM teams WHERE deleted_at IS NULL ORDER BY id') as $t){
   $matches=rows($dst,'SELECT id,name FROM teams WHERE alias=? AND deleted_at IS NULL',[$t['alias']]);
@@ -81,6 +84,7 @@ try{
   $teamMap[(int)$t['id']]=(int)$matches[0]['id'];
   mapping($dst,'team',(int)$t['id'],$teamMap[(int)$t['id']]);
  }
+ $phase='leagues';
  $leagueMap=[];
  foreach(rows($src,'SELECT * FROM leagues ORDER BY id') as $r){
   $old=(int)$r['id'];
@@ -92,6 +96,7 @@ try{
   $leagueMap[$old]=$id;
   mapping($dst,'league',$old,$id);
  }
+ $phase='seasons';
  $seasonMap=[];
  foreach(rows($src,'SELECT * FROM league_seasons ORDER BY id') as $r){
   $old=(int)$r['id'];
@@ -100,6 +105,7 @@ try{
   $seasonMap[$old]=$id;
   mapping($dst,'league_season',$old,$id);
  }
+ $phase='league_pivots';
  foreach(['league_team'=>['league_id'=>'league','team_id'=>'team'],
           'league_season_team'=>['league_season_id'=>'season','team_id'=>'team']] as $table=>$keys){
   foreach(rows($src,'SELECT * FROM '.$table.' ORDER BY id') as $row){
@@ -112,6 +118,7 @@ try{
   }
  }
 
+ $phase='folders';
  $folderMap=[];
  foreach(rows($src,'SELECT * FROM site_media_folders ORDER BY id') as $folder){
   $old=(int)$folder['id'];
@@ -119,6 +126,7 @@ try{
   $id=$same!==[]?(int)$same[0]['id']:put($dst,'site_media_folders',$folder);
   $folderMap[$old]=$id;mapping($dst,'site_media_folder',$old,$id);
  }
+ $phase='site_assets';
  $assetMap=[];
  $assets=rows($src,'SELECT * FROM site_media_assets ORDER BY id');
  foreach($assets as $asset){
@@ -133,11 +141,13 @@ try{
   $id=put($dst,'site_media_assets',$asset);
   $assetMap[$old]=$id;mapping($dst,'site_media_asset',$old,$id);
  }
+ $phase='media_owner_maps';
  $maps=[
   'profile'=>$profileMap,'site_media_asset'=>$assetMap,
   'venue'=>$venueMap,'venue_court'=>$courtMap,'team'=>$teamMap,
   'league'=>$leagueMap,'league_season'=>$seasonMap,
  ];
+ $phase='media';
  $allSource=rows($src,'SELECT * FROM media ORDER BY id');
  $counts=[];$mediaMap=[];
  foreach($allSource as $m){
@@ -173,6 +183,7 @@ try{
   $mediaMap[$old]=$id;mapping($dst,'media',$old,$id);
   $counts[$type]=($counts[$type]??0)+1;
  }
+ $phase='asset_media_links';
  foreach($assets as $sourceAsset){
   $targetId=required($assetMap,(int)$sourceAsset['id'],'site media');
   $current=$sourceAsset['current_media_id'];
@@ -184,6 +195,7 @@ try{
    $targetId,
   ]);
  }
+ $phase='final_count_check';
  if(count($mediaMap)!==count($allSource) || count($assetMap)!==count($assets)){
   throw new RuntimeException('Incomplete asset or media transfer');
  }
@@ -198,6 +210,11 @@ try{
  echo 'PROD_FEATURED_PHOTOS_PRESERVED=true'.PHP_EOL;
 }catch(Throwable $error){
  if($dst->inTransaction())$dst->rollBack();
- fwrite(STDERR,'MEDIA_RELATIONS_BLOCKED: '.get_class($error).PHP_EOL);
+ $reason = $error instanceof PDOException
+   ? 'sqlstate_'.preg_replace('/[^A-Za-z0-9]/','',strval($error->getCode()))
+   : strval($error->getMessage());
+ // The user-defined RuntimeException messages here contain only static
+ // technical labels; never expose PDO database exception messages or rows.
+ fwrite(STDERR,'MEDIA_RELATIONS_BLOCKED phase='.$phase.' kind='.get_class($error).' reason='.$reason.PHP_EOL);
  exit(1);
 }
