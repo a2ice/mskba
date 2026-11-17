@@ -68,7 +68,11 @@ mv "$DIR/original-production.pgdump.part" "$DIR/original-production.pgdump"
 tar -czf "$DIR/original-storage.tar.gz.part" -C "$ROOT" storage/app
 test -s "$DIR/original-storage.tar.gz.part"
 mv "$DIR/original-storage.tar.gz.part" "$DIR/original-storage.tar.gz"
-sha256sum "$DIR/original-production.pgdump" "$DIR/original-storage.tar.gz" "$DIR/original.env" > "$DIR/SHA256SUMS"
+test -f public/build/manifest.json
+tar -czf "$DIR/original-build.tar.gz.part" -C "$ROOT" public/build
+test -s "$DIR/original-build.tar.gz.part"
+mv "$DIR/original-build.tar.gz.part" "$DIR/original-build.tar.gz"
+sha256sum "$DIR/original-production.pgdump" "$DIR/original-storage.tar.gz" "$DIR/original-build.tar.gz" "$DIR/original.env" > "$DIR/SHA256SUMS"
 sha256sum -c --status "$DIR/SHA256SUMS"
 echo 'CUTOVER_ORIGINAL_DB_AND_MEDIA_BACKED_UP=true'
 # Validate existing paths and add only genuinely NEW files; never overwrite.
