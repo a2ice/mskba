@@ -1,0 +1,37 @@
+name: MSKBA offline shop catalogue import
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-shop-import.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shop:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate import shell
+        run: bash -n scripts/data-merge/isolated-shop-import.sh
+      - name: Stage reviewed shop script
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/isolated-shop-import.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Copy shop only to offline editorial candidate and validate FK
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-shop-import.sh ${{ github.run_id }} 44031956579
