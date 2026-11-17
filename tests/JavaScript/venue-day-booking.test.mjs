@@ -393,6 +393,8 @@ test('booking popup inline type label has a colon and shared row alignment', () 
     );
     assert.match(template, /class="app-venue-day-event-dialog__type-row"><dt>Тип:<\/dt>/);
     assert.match(css, /\.app-venue-day-event-dialog__type-row\s*\{\s*display:flex/);
+    assert.match(template, /class="app-venue-day-event-dialog__requester-row" data-venue-day-booking-requester-row hidden>\s*<dt>Заказчик:<\/dt><dd data-venue-day-booking-requester><\/dd>/);
+    assert.match(css, /\.app-venue-day-event-dialog__requester-row\s*\{\s*display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;/);
 });
 
 test('private attached event opens minimal popup without leaking details or actions', async () => {
