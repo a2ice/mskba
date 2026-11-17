@@ -3,7 +3,7 @@
 # not with live DB/services. No public ports and no source writes.
 set -euo pipefail
 umask 077
-[[ $# -eq 2 && "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ ]] || exit 2
+[[ $# -eq 3 && "$1" =~ ^[0-9]+$ && "$2" =~ ^[0-9]+$ && "$3" =~ ^[0-9a-f]{40}$ ]] || exit 2
 RUN="$1"
 SOURCE_RUN="$2"
 ROOT=/home/deploy/mskba-data-merge-candidates
@@ -11,9 +11,25 @@ SOURCE="$ROOT/$SOURCE_RUN-finalized/finalized-candidate.pgdump"
 MEDIA="$ROOT/44032038961-media-union/storage-app-combined.tar.gz"
 DEST="$ROOT/$RUN-web-smoke"
 DEV_ROOT=/var/www/mskba-dev-next
+EXPECTED_DEV_SHA="$3"
 NET="mskba-smoke-net-$RUN"
 DB="mskba-smoke-db-$RUN"
 APP="mskba-smoke-app-$RUN"
+# Run only against the exact tested dev code, never an older deployed SHA.
+# CI and deploy_dev can complete after this workflow starts.
+deployed=false
+for attempt in $(seq 1 120); do
+  if [ -d "$DEV_ROOT/.git" ] && [ "$(git -C "$DEV_ROOT" rev-parse HEAD)" = "$EXPECTED_DEV_SHA" ]; then
+    deployed=true
+    break
+  fi
+  sleep 10
+done
+[[ "$deployed" == true ]] || {
+  echo 'SMOKE_BLOCKED expected dev commit not deployed'
+  exit 3
+}
+grep -Fxq 'APP_URL=https://dev.mskba.ru' "$DEV_ROOT/.env"
 test -s "$SOURCE" && test -s "$MEDIA"
 test -f "$DEV_ROOT/artisan" && test -f "$DEV_ROOT/vendor/autoload.php"
 test -f "$DEV_ROOT/public/build/manifest.json"
@@ -139,6 +155,39 @@ foreach($paths as $path){
     echo "route={$path} status={$status}\n";
     if($status!==200 || $body===false || strlen($body)<100)$failed++;
 }
+// Every historically published production URL must continue to work on
+// the new code and merged production-derived database.
+$baseline='/var/www/html/docs/tasks/316/baseline/production-url-snapshot-2026-11-12.csv';
+$csv=@fopen($baseline,'r');
+if($csv===false){echo "legacy_url_baseline_missing=true\n";exit(4);}
+$headers=fgetcsv($csv);
+$pathIdx=array_search('path',$headers,true);
+$statusIdx=array_search('source_status',$headers,true);
+if($pathIdx===false||$statusIdx===false){echo "legacy_url_baseline_invalid=true\n";exit(4);}
+$checked=0;
+$broken=[];
+while(($record=fgetcsv($csv))!==false){
+    if(($record[$statusIdx]??'')!=='200')continue;
+    $path=$record[$pathIdx]??'';
+    if(!is_string($path)||!str_starts_with($path,'/')||str_starts_with($path,'//'))continue;
+    $ctx=stream_context_create(['http'=>[
+        'ignore_errors'=>true,'timeout'=>20,'follow_location'=>0,
+        'header'=>"User-Agent: MSKBA-Legacy-Cutover-Smoke/1.0\\r\\n",
+    ]]);
+    $body=@file_get_contents('http://127.0.0.1:8000'.$path,false,$ctx);
+    $line=$http_response_header[0]??'NO_RESPONSE';
+    preg_match('/\\s(\\d{3})\\s/',$line,$m);
+    $status=isset($m[1])?(int)$m[1]:0;
+    $checked++;
+    if($status!==200||$body===false||strlen($body)<100){
+        $broken[]=$path.' status='.$status;
+    }
+}
+fclose($csv);
+echo 'legacy_urls_checked='.$checked."\n";
+echo 'legacy_urls_failed='.count($broken)."\n";
+foreach(array_slice($broken,0,12) as $item){echo 'legacy_url_failure='.$item."\n";}
+if($checked!==51||$broken!==[])$failed++;
 exit($failed===0?0:2);
 PHP
  echo 'SMOKE_BLOCKED HTTP routes';cat "$DEST/http-smoke.log";exit 6
