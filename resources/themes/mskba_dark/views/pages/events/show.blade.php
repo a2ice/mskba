@@ -446,7 +446,6 @@
                                                 class="event-participant-chip__changed"
                                                 title="Изменил: {{ $statusChangerName }} · {{ $statusChangedByOrganizer ? 'организатор' : 'ответственный' }}"
                                                 data-tooltip-variant="title"
-                                                tabindex="0"
                                             >изменено {{ $participant->status_changed_at->setTimezone($timezone)->format('H:i') }}</small>
                                         @endif
                                     </div>

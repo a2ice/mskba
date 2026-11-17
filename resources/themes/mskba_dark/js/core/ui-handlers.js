@@ -10,7 +10,13 @@ const MODAL_FOCUSABLE_SELECTOR = [
     'input:not([disabled]):not([type="hidden"])',
     'select:not([disabled])',
     'textarea:not([disabled])',
-    '[tabindex]:not([tabindex="-1"])',
+    // Only explicitly interactive non-native elements may join the Tab cycle.
+    '[role="button"][tabindex]:not([tabindex="-1"])',
+    '[role="tab"][tabindex]:not([tabindex="-1"])',
+    '[role="checkbox"][tabindex]:not([tabindex="-1"])',
+    '[role="radio"][tabindex]:not([tabindex="-1"])',
+    'summary',
+    '[contenteditable="true"]',
 ].join(',');
 
 const handlers = {
@@ -512,8 +518,10 @@ function bindModalTray() {
 function focusModal(modal) {
     window.requestAnimationFrame(() => {
         const autofocus = modal.find('[autofocus]:visible').first().get(0);
-        const dialog = modal.find('.modal__dialog').first().get(0);
-        (autofocus || dialog)?.focus({ preventScroll: true });
+        const control = modal.find(MODAL_FOCUSABLE_SELECTOR).filter(':visible').first().get(0);
+        // Never focus the inert dialog surface or text-only header.
+        // Real interactive controls keep their native focus affordance.
+        (autofocus || control)?.focus({ preventScroll: true });
     });
 }
 
@@ -654,7 +662,8 @@ function trapModalFocus(event) {
     const focusable = modal.find(MODAL_FOCUSABLE_SELECTOR).filter(':visible').get();
     if (!focusable.length) {
         event.preventDefault();
-        modal.find('.modal__dialog').first().trigger('focus');
+        // An empty dialog has no legitimate tab target. Do not focus
+        // its static surface (which drew a rectangle around the modal).
         return;
     }
 

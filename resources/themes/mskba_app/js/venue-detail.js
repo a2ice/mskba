@@ -497,10 +497,10 @@ if (dayBookingDialog) {
                     description.textContent = isPublic ? (eventInfo.description || '') : '';
                     description.hidden = !isPublic || !eventInfo?.description;
                     const note = info('[data-venue-day-event-private-note]');
-                    note.hidden = isPublic;
-                    note.textContent = hasEvent
-                        ? 'Подробности доступны только приглашённым участникам.'
-                        : 'К этому занятому интервалу мероприятие не прикреплено.';
+                    // Booking-only slots have their own permission-based
+                    // actions below; do not repeat that no event is attached.
+                    note.hidden = !hasEvent || isPublic;
+                    note.textContent = 'Подробности доступны только приглашённым участникам.';
                     const bookingActions = info('[data-venue-day-booking-actions]');
                     const bookingStatus = info('[data-venue-day-booking-action-status]');
                     const createEvent = info('[data-venue-day-booking-create-event]');
@@ -607,6 +607,13 @@ if (dayBookingDialog) {
                         else guestLink.removeAttribute('href');
                     }
                     eventInfoDialog.showModal();
+                    // The shared draggable-header controller adds tabindex=0.
+                    // Safari otherwise auto-focuses the header and draws a
+                    // full rectangular focus ring across the modal title.
+                    // Focus the real close control; retain keyboard focus
+                    // indications on interactive elements.
+                    eventInfoDialog.querySelector('[data-venue-overlay-close]')
+                        ?.focus?.({ preventScroll: true });
                 });
             }
             cell.append(times, state, price);

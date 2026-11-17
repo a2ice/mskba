@@ -2,7 +2,7 @@
     aria-labelledby="app-venue-day-event-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-event-title" data-venue-day-event-title>Мероприятие</h2>
-        <button type="button" data-venue-overlay-close aria-label="Закрыть">
+        <button type="button" data-venue-overlay-close aria-label="Закрыть" autofocus>
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>

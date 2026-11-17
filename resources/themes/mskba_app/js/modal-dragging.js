@@ -128,7 +128,10 @@ export function initModalDragging(doc = document, win = window) {
         }
         if (!e.altKey || !e.key.startsWith('Arrow')) return;
         const handle = e.target?.closest?.(HANDLE);
-        if (!handle || e.target !== handle) return;
+        // The heading is static content, never a keyboard tab stop.
+        // Preserve Alt+arrow motion when a real header action has focus.
+        const action = e.target?.closest?.('button, a, [role="button"]');
+        if (!handle || !action || action.closest?.(HANDLE) !== handle) return;
         const surface = surfaceFor(handle);
         if (!surface) return;
         const amount = e.shiftKey ? 32 : 10;
@@ -150,10 +153,10 @@ export function initModalDragging(doc = document, win = window) {
     const prepareHandle = handle => {
         if (handle.hasAttribute('data-mskba-drag-handle')) return;
         handle.setAttribute('data-mskba-drag-handle', '');
-        if (!handle.hasAttribute('tabindex')) handle.tabIndex = 0;
-        handle.setAttribute('aria-keyshortcuts',
-            'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight');
-        handle.setAttribute('title', 'Переместить окно: перетащи заголовок или Alt + стрелки');
+        // Do not inject tabindex or aria-keyshortcuts on an informational
+        // title bar. It was being auto-focused by native dialogs (especially
+        // mobile Safari), showing an inexplicable rectangle around labels.
+        handle.setAttribute('title', 'Переместить окно: перетащи заголовок');
     };
     const prepare = node => {
         if (!node?.querySelectorAll) return;

@@ -26,6 +26,7 @@ function node() {
         textContent: '',
         classList: { toggle() {}, add() {} },
         scrollIntoView() {},
+        focus(options) { this.focused = true; this.focusOptions = options; },
         click() { this.listeners.click?.(); },
         addEventListener(type, listener) { this.listeners[type] = listener; },
         querySelectorAll() { return []; },
@@ -189,6 +190,8 @@ test('event details stay hidden outside an explicitly opened event modal', () =>
     assert.match(css, /dialog\.app-venue-day-event-dialog\[open\]\s*\{\s*display:flex/);
     assert.match(template, /<dialog\b[^>]*data-venue-day-event-dialog/);
     assert.doesNotMatch(template, /<dialog\b[^>]*\sopen(?:\s|=|>)/);
+    assert.match(template, /data-venue-overlay-close[^>]*autofocus/);
+    assert.match(dayBookingModule, /\?\.focus\?\.\(\{ preventScroll: true \}\)/);
     assert.match(dayBookingModule, /const eventInfo = slot\.booking_group\?\.event \|\| null;/);
     assert.match(dayBookingModule, /if \(slot\.status === 'booked'\) \{/);
     assert.match(dayBookingModule, /eventInfoDialog\.showModal\(\);/);
@@ -206,12 +209,14 @@ test('occupied MSKBA booking without event opens truthful booking details', asyn
     assert.equal(page.grid.children[0].children[1].textContent, 'Занято (m)');
     page.grid.children[0].listeners.click();
     assert.equal(page.eventDialog.open, true);
+    assert.equal(page.eventFields['[data-venue-overlay-close]'].focused, true,
+        'Initial focus must go to the close button, not the draggable title bar');
     assert.equal(page.eventFields['[data-venue-day-event-title]'].textContent, 'Занятое время');
     assert.equal(page.eventFields['[data-venue-day-event-time]'].textContent, '07:00–08:00');
     assert.equal(page.eventFields['[data-venue-day-event-access]'].textContent, 'Бронирование MSKBA');
     assert.equal(page.eventFields['[data-venue-day-event-type]'].textContent, 'Бронирование');
-    assert.match(page.eventFields['[data-venue-day-event-private-note]'].textContent,
-        /мероприятие не прикреплено/);
+    assert.equal(page.eventFields['[data-venue-day-event-private-note]'].hidden, true,
+        'Unlinked booking must not repeat that no event exists');
     assert.equal(page.eventFields['[data-venue-day-event-link]'].hidden, true);
     assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, true);
 });
