@@ -25,6 +25,18 @@ jobs:
           set -euo pipefail
           php -l scripts/data-merge/import-dev-editorial.php
           bash -n scripts/data-merge/isolated-editorial-import.sh
+      - name: Read only DEV media owner-type counts (no paths or rows)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT mediable_type, COUNT(*) FROM media GROUP BY mediable_type ORDER BY mediable_type"' 
       - name: Stage reviewed scripts outside webroots
         uses: appleboy/scp-action@v1
         with:
