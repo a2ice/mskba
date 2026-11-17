@@ -358,3 +358,36 @@ scripts/data-merge/isolated-schema-candidate.sh. Работает только �
 isolated-collision-audit.sh использует два restored snapshot в контейнере
 PostgreSQL без сети, выводит только агрегаты коллизий; кандидаты на
 совпадение ID остаются в серверном приватном каталоге.
+
+## Этап D1 — импорт пользователей и Identity (изолированная репетиция)
+
+После успешного schema upgrade и аудита коллизий реализованы:
+- `scripts/data-merge/import-dev-identities.php` — отдельный PostgreSQL
+  PDO-импортёр; `dry-run` по умолчанию (полный rollback), `--apply`
+  разрешён только при `MSKBA_MERGE_ISOLATED=YES` и подключении к
+  временной БД `candidate` в частной Docker-сети.
+- `scripts/data-merge/isolated-identity-import.sh` и CI workflow
+  `.github/workflows/data-merge-identity-import.yml` полностью
+  восстанавливают защищённый candidate schema snapshot и dev snapshot
+  в независимые контейнерные базы, без взаимодействия с живыми БД.
+- Пользователь с совпавшим username/verified contact/Telegram ID
+  **не получает чужой доступ**: создаётся `pending_identity` с
+  `target_user_id=NULL` до подтверждения, кроме точно
+  идентифицированного служебного `superadmin/system` principal,
+  где переносятся только mapping, но не пароль и полномочия dev.
+- Новые пользователи сохраняют парольные хеши, профиль, профиль игрока,
+  роли участия, согласия, приватность, свои подтверждённые контакты;
+  перенесённые dev персональные роли admin/system принудительно
+  понижаются до `user`. Внешний Telegram chat state очищается, чтобы
+  не подписывать получателя на неправильного бота.
+- `actor_key` из dev **нельзя** использовать как исходный ID в prod.
+  Создаётся `data_merge_actor_map`; guest actors имеют уникальный
+  импортный ключ без привязки к чужому browser fingerprint.
+- Исходные prod пользователи, их ID и password hashes сверяются в
+  транзакции и никогда не обновляются; создаётся checkpoint только
+  временного candidate и частный журнал mapping.
+
+До успешного CI, dry-run, apply и независимой проверки этот этап
+не считать завершённым. `pending_identity` и `pending_owner` —
+релизные блокеры для данных, требующих доступа/владения, и не разрешаются
+по совпадению ФИО. Финансы/платежи и живые переписки пока не импортируются.
