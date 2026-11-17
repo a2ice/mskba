@@ -93,7 +93,7 @@
                 @if($canWrite)
                     <label class="app-messages__rental-attach" title="Прикрепить файл">
                         <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf,.txt" data-rental-file>
-                        <svg aria-hidden="true"><use href="#attachment"/></svg>
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l10-10a4 4 0 0 1 5.7 5.7l-10 10a2 2 0 0 1-2.8-2.8l9.2-9.2"/></svg>
                         <span class="sr-only">Прикрепить файл</span>
                     </label>
                     <span class="app-messages__rental-file-name" data-rental-file-name></span>
