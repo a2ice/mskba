@@ -497,10 +497,10 @@ if (dayBookingDialog) {
                     description.textContent = isPublic ? (eventInfo.description || '') : '';
                     description.hidden = !isPublic || !eventInfo?.description;
                     const note = info('[data-venue-day-event-private-note]');
-                    note.hidden = isPublic;
-                    note.textContent = hasEvent
-                        ? 'Подробности доступны только приглашённым участникам.'
-                        : 'К этому занятому интервалу мероприятие не прикреплено.';
+                    // Booking-only slots have their own permission-based
+                    // actions below; do not repeat that no event is attached.
+                    note.hidden = !hasEvent || isPublic;
+                    note.textContent = 'Подробности доступны только приглашённым участникам.';
                     const bookingActions = info('[data-venue-day-booking-actions]');
                     const bookingStatus = info('[data-venue-day-booking-action-status]');
                     const createEvent = info('[data-venue-day-booking-create-event]');
