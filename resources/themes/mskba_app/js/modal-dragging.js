@@ -97,7 +97,9 @@ export function initModalDragging(doc = document, win = window) {
             handle, surface, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY,
             lastX: e.clientX, lastY: e.clientY, startOffset: getOffset(surface), dragging: false,
         };
-        tracked.add(surface);
+        // A simple tap is not a drag. Tracking taps caused visualViewport
+        // resize/scroll (iOS Safari browser chrome) to translate untouched
+        // dialogs away from the centered viewport position.
     };
     const onMove = e => {
         const state = attempt;
@@ -106,6 +108,7 @@ export function initModalDragging(doc = document, win = window) {
         if (!state.dragging) {
             if (Math.hypot(e.clientX - state.startX, e.clientY - state.startY) < THRESHOLD) return;
             state.dragging = true;
+            tracked.add(state.surface);
             doc.documentElement.setAttribute('data-mskba-modal-dragging', 'true');
             state.surface.setAttribute('data-mskba-dragging', 'true');
             try { state.handle.setPointerCapture?.(state.pointerId); } catch { /* window listeners still work */ }
