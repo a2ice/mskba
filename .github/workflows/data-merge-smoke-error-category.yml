@@ -37,28 +37,31 @@ jobs:
                 raise SystemExit(0)
             last=errors[-1]
             kinds=re.findall(r'[A-Za-z_]+(?:Exception|Error)',last)
-            states=re.findall(r'SQLSTATE\\[([A-Z0-9]{5})\\]',last)
+            marker='SQLSTATE['
+            state='none'
+            if marker in last:
+                value=last.split(marker,1)[1].split(']',1)[0]
+                if len(value)==5 and value.isalnum():
+                    state=value
             print('error_classes='+(','.join(sorted(set(kinds))[:5]) if kinds else 'not_classified'))
-            print('sqlstate_codes='+(','.join(sorted(set(states))[:3]) if states else 'none'))
-            # Only print schema identifiers in canonical PostgreSQL error forms.
-            # Never print SQL queries, values, identities, contacts or raw logs.
-            for hint,pat in [
-                ('missing_relation',r'(?i)relation "([a-z_][a-z0-9_]{1,70})" does not exist'),
-                ('missing_column',r'(?i)column "([a-z_][a-z0-9_]{1,70})" does not exist'),
-                ('missing_table_alias',r'(?i)missing FROM-clause entry for table "([a-z_][a-z0-9_]{1,70})"'),
-                ('missing_function',r'(?i)function ([a-z_][a-z0-9_]{1,70})\\('),
-                ('missing_operator',r'(?i)operator does not exist: ([a-z_][a-z0-9_]{1,70})'),
+            print('sqlstate_code='+state)
+            # Print schema identifiers only; never print SQL or row values.
+            for hint,keyword in [
+                ('missing_relation','relation "'),
+                ('missing_column','column "'),
+                ('missing_table_alias','entry for table "'),
             ]:
-                m=re.search(pat,last)
-                if m:
-                    print(hint+'='+m.group(1))
-            if '42P01' in states or '42703' in states:
-                print('classification=missing_db_relation_or_column')
-            elif '23502' in states or '23503' in states or '23505' in states:
+                if keyword in last:
+                    value=last.split(keyword,1)[1].split('"',1)[0]
+                    if re.fullmatch('[a-z_][a-z0-9_]{1,70}',value):
+                        print(hint+'='+value)
+            if state in ('42P01','42703'):
+                print('classification=missing_relation_or_column')
+            elif state in ('23502','23503','23505'):
                 print('classification=integrity_constraint')
-            elif '22P02' in states:
+            elif state == '22P02':
                 print('classification=invalid_cast')
-            elif '08006' in states or '08001' in states:
+            elif state in ('08006','08001'):
                 print('classification=db_connection')
             tags={
              'database_connection':'could not connect|connection refused|Name or service not known',
