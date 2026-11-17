@@ -46,7 +46,12 @@ p {
     margin: 0;
 }
 
-:focus-visible {
+/* Keep keyboard focus visible on actions, never draw rectangles around
+   inert headings, modal surfaces, labels or informational text. */
+:is(a[href], button, input, select, textarea, summary,
+    [role="button"], [role="link"], [role="tab"], [role="radio"],
+    [role="checkbox"], [role="switch"], [role="menuitem"], [role="option"],
+    [contenteditable="true"]):focus-visible {
     outline: 2px solid rgba(255, 139, 47, 0.85);
     outline-offset: 3px;
 }
