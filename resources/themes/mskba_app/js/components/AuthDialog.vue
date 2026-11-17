@@ -11,7 +11,7 @@ const opened = ref(false);
 const preferredRole = ref('');
 const mode = ref('login');
 const panel = ref(null);
-const dialogHeading = ref(null);
+const closeButton = ref(null);
 const telegramContainer = ref(null);
 const legalDialog = ref(null);
 const busy = ref(false);
@@ -56,8 +56,8 @@ function selectMode(nextMode) {
     transientMessage.value = false;
     message.value = '';
     errors.value = {};
-    // Do not auto-focus inputs: it opens autofill suggestions and the mobile keyboard.
-    nextTick(() => dialogHeading.value?.focus({ preventScroll: true }));
+    // Keep the mobile keyboard closed: the dialog close control is interactive.
+    nextTick(() => closeButton.value?.focus({ preventScroll: true }));
 }
 
 async function openDialog(nextMode = 'login') {
@@ -77,8 +77,8 @@ async function openDialog(nextMode = 'login') {
     // showModal enters the browser's top layer, above all CSS z-index stacks.
     panel.value.showModal();
     document.body.style.overflow = 'hidden';
-    // Native showModal traps focus, while the heading is a neutral initial target.
-    dialogHeading.value?.focus({ preventScroll: true });
+    // Never focus text-only headings. Use an actual control without opening the keyboard.
+    closeButton.value?.focus({ preventScroll: true });
 }
 
 function openLegalDocument(kind, trigger) {
@@ -270,15 +270,15 @@ onBeforeUnmount(() => {
             aria-labelledby="mskba-auth-title" :aria-busy="busy"
             @cancel.prevent="closeDialog" @click="onDialogBackdropClick">
             <header class="mskba-modal__header mskba-auth-top">
-                <h2 id="mskba-auth-title" ref="dialogHeading" tabindex="-1" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
-                <button type="button" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
+                <h2 id="mskba-auth-title" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
+                <button type="button" ref="closeButton" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
                     :disabled="busy" @click="closeDialog">
                     <svg aria-hidden="true"><use href="#close" /></svg>
                 </button>
             </header>
 
             <form v-if="mode === 'login'" class="mskba-auth-form" @submit.prevent="submitLogin">
-                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля входа" tabindex="0">
+                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля входа">
                     <label>Логин или подтверждённый контакт
                         <input v-model.trim="loginForm.login" type="text" name="login" autocomplete="username"
                             required minlength="3" maxlength="255" :disabled="busy" />
@@ -320,7 +320,7 @@ onBeforeUnmount(() => {
                 @step-change="dismissTransientMessage" />
 
             <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
-                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">
+                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа">
                     <label>Email
                         <input v-model.trim="restoreForm.contact" type="email" autocomplete="email"
                             required :disabled="busy" />
