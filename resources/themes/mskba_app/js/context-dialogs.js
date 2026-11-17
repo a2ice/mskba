@@ -12,7 +12,8 @@ function showDialog(dialog, trigger) {
     lastTrigger = trigger;
     if (actions?.open) actions.open = false;
     if (!dialog?.open) dialog?.showModal();
-    dialog?.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+    // A static title is not an actionable focus target; avoid the iOS focus rectangle.
+    dialog?.querySelector('[data-context-placeholder-close], [data-context-help-close]')?.focus({ preventScroll: true });
 }
 function closeDialog(dialog, restore = true) {
     if (dialog?.open) dialog.close();
