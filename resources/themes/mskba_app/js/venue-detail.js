@@ -288,6 +288,37 @@ if (dayBookingDialog) {
     let loading = null;
     let previewSequence = 0;
 
+    // Keep only the selected public schedule coordinates across an auth
+    // redirect. Owner permissions are always re-fetched from the server.
+    const bookingResumeKey = 'mskba:venue-booking-popup-resume';
+    const readBookingResume = () => {
+        try {
+            const raw = window.sessionStorage?.getItem(bookingResumeKey);
+            if (!raw) return null;
+            const saved = JSON.parse(raw);
+            if (Date.now() - Number(saved.savedAt) > 10 * 60 * 1000
+                || saved.path !== window.location.pathname) {
+                window.sessionStorage.removeItem(bookingResumeKey);
+                return null;
+            }
+            return saved;
+        } catch { return null; }
+    };
+    const saveBookingResume = (slot) => {
+        try {
+            window.sessionStorage?.setItem(bookingResumeKey, JSON.stringify({
+                path: window.location.pathname, date: activeDate,
+                courtId: dayBookingDialog.dataset.courtId || null,
+                startsAt: slot.starts_at,
+                bookingKey: slot.booking_group?.key || null,
+                savedAt: Date.now(),
+            }));
+        } catch { /* Session storage is optional. */ }
+    };
+    window.addEventListener?.('mskba:auth:success', () => {
+        if (readBookingResume()) window.location.reload();
+    });
+
     const selectedIndexesAreContiguous = () => selection.every((index, i) =>
         i === 0 || index === selection[i - 1] + 1);
     function redrawSelection() {
@@ -417,6 +448,8 @@ if (dayBookingDialog) {
             if (group.count > 1) cell.classList.add('is-booking-group');
             if (eventInfo) cell.classList.add('has-attached-event');
             if (slot.status === 'booked') cell.classList.add('has-booking-details');
+            cell.dataset.bookingStartsAt = slot.starts_at;
+            if (slot.booking_group?.key) cell.dataset.bookingKey = slot.booking_group.key;
             if (eventInfo?.public) cell.classList.add('is-public-event');
             cell.dataset.slotStatus = slot.status;
             // Occupied slots are informational, even when there is no event.
@@ -468,6 +501,34 @@ if (dayBookingDialog) {
                     note.textContent = hasEvent
                         ? 'Подробности доступны только приглашённым участникам.'
                         : 'К этому занятому интервалу мероприятие не прикреплено.';
+                    const bookingActions = info('[data-venue-day-booking-actions]');
+                    const bookingStatus = info('[data-venue-day-booking-action-status]');
+                    const createEvent = info('[data-venue-day-booking-create-event]');
+                    const loginButton = info('[data-venue-day-booking-login]');
+                    bookingActions.hidden = hasEvent;
+                    const createUrl = !hasEvent ? slot.booking_group?.create_event_url : null;
+                    createEvent.hidden = !createUrl;
+                    if (createUrl) createEvent.href = createUrl;
+                    else createEvent.removeAttribute('href');
+                    const guestBooking = !hasEvent && !!slot.booking_group
+                        && data.viewer_authenticated === false;
+                    if (loginButton) loginButton.hidden = !guestBooking;
+                    if (!hasEvent) {
+                        bookingStatus.textContent = createUrl
+                            ? 'Вы можете создать мероприятие на основе этой брони.'
+                            : (guestBooking
+                                ? 'Для просмотра доступных действий авторизуйтесь.'
+                                : 'Действия недоступны.');
+                        if (guestBooking && loginButton) {
+                            loginButton.onclick = () => {
+                                saveBookingResume(slot);
+                                eventInfoDialog.close();
+                                window.dispatchEvent(new CustomEvent('mskba:auth:open', {
+                                    detail: { mode: 'login', stayOnPage: true },
+                                }));
+                            };
+                        }
+                    }
 
                     info('[data-venue-day-event-status-row]').hidden = !isPublic;
                     info('[data-venue-day-event-status]').textContent =
@@ -635,7 +696,7 @@ if (dayBookingDialog) {
         });
     }
 
-    async function showDay(date) {
+    async function showDay(date, resumeBooking = null) {
         if (!date) return;
         ++previewSequence;
         loading?.abort();
@@ -669,6 +730,13 @@ if (dayBookingDialog) {
             if (!result.ok) throw new Error(data.message || 'Не удалось загрузить расписание');
             if (signal.aborted || !dayBookingDialog.open) return;
             renderSlots(data);
+            if (resumeBooking) {
+                const match = Array.from(grid.children).find(cell =>
+                    cell.dataset.bookingStartsAt === resumeBooking.startsAt
+                    && (!resumeBooking.bookingKey
+                        || cell.dataset.bookingKey === resumeBooking.bookingKey));
+                match?.click?.();
+            }
         } catch (error) {
             if (signal.aborted || !dayBookingDialog.open) return;
             status.textContent = error.message || 'Не удалось получить расписание.';
@@ -691,6 +759,15 @@ if (dayBookingDialog) {
     });
     // The review page opens the same dialog after a court change. The
     // original priced quote is not replaced until the visitor confirms slots.
+    // Restore the same booking popup after normal login, social login or
+    // registration redirect; the fresh day request resolves new owner rights.
+    const pendingResume = readBookingResume();
+    if (pendingResume && dateValues.includes(pendingResume.date)) {
+        try { window.sessionStorage?.removeItem(bookingResumeKey); } catch { /* optional */ }
+        if (pendingResume.courtId) dayBookingDialog.dataset.courtId = pendingResume.courtId;
+        void showDay(pendingResume.date, pendingResume);
+    }
+
     dayBookingDialog.addEventListener('mskba:choose-court', event => {
         const nextCourt = Number(event.detail?.courtId);
         if (Number.isInteger(nextCourt) && nextCourt > 0) {
