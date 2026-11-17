@@ -161,12 +161,25 @@ final class VenueAppScheduleActivitiesTest extends TestCase
 
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Время занято')
+            ->assertSee('Мероприятие по приглашению')
             ->assertSee('data-venue-slot-open', false)
+            ->assertSee('data-has-event="true"', false)
             ->assertDontSee('Секретная тренировка')
             ->assertDontSee('Закрытое содержание')
             ->assertDontSee('Подтвердили:')
             ->assertDontSee('Думают:');
+    }
+
+    public function test_booking_without_attached_event_does_not_render_activity_section_or_anchor(): void
+    {
+        [$venue] = $this->venueAndBooking();
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('id="app-venue-activities"', false)
+            ->assertDontSee('href="#app-venue-activities"', false)
+            ->assertDontSee('<h2>Игры и мероприятия</h2>', false)
+            ->assertSee('Расписание');
     }
 
     public function test_cashback_is_in_about_section_not_day_dialog_and_respects_reward_toggle(): void
