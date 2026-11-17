@@ -1,4 +1,4 @@
-name: MSKBA align production default appearance with dev (one-time)
+name: MSKBA align production renderer and light appearance with dev (one-time)
 
 on:
   push:
@@ -15,11 +15,11 @@ concurrency:
 
 jobs:
   align:
-    name: Switch verified production default to published light Court Day
+    name: Switch verified production layout and default to published light Court Day
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Switch only design_theme_settings after verified release (reversible)
+      - name: Switch APP_THEME and design_theme_settings after verified release (reversible)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -32,7 +32,7 @@ jobs:
             RELEASE=/home/deploy/mskba-cutover-backups/release-20261117
             cd "$ROOT"
 
-            # Never touch the previous site or an unfinished/rolled-back release.
+            # Only the verified completed release may be adjusted.
             test "$(git rev-parse HEAD)" = 101ce9745da4152983143f373eab945b711aa98e
             test -f "$RELEASE/CUTOVER_STATE"
             test -f "$RELEASE/RELEASE_COMPLETE"
@@ -40,6 +40,13 @@ jobs:
             grep -Fxq 'APP_ENV=production' .env
             grep -Fxq 'APP_URL=https://mskba.ru' .env
             grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            THEME_LINE_COUNT="$(grep -c '^APP_THEME=' .env || true)"
+            [ "$THEME_LINE_COUNT" -le 1 ]
+            OLD_APP_THEME="$(grep '^APP_THEME=' .env | cut -d= -f2- || true)"
+            case "$OLD_APP_THEME" in
+              ''|mskba_dark|mskba_app) ;;
+              *) echo 'CUTOVER_BLOCKED_UNEXPECTED_APP_THEME=true'; exit 1 ;;
+            esac
 
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
             query() {
@@ -49,41 +56,64 @@ jobs:
             CURRENT_ID="$(query 'SELECT theme_id FROM design_theme_settings WHERE id=1')"
             [[ "$TARGET_ID" =~ ^[0-9]+$ ]]
             [[ "$CURRENT_ID" =~ ^[0-9]+$ ]]
-            [[ "$(query "SELECT count(*) FROM design_theme_settings WHERE id=1")" = 1 ]]
+            [ "$(query 'SELECT count(*) FROM design_theme_settings WHERE id=1')" = 1 ]
 
-            # Preserve the existing default to support an exact settings-only rollback.
-            if [ "$CURRENT_ID" != "$TARGET_ID" ]; then
-              printf '%s\n' "$CURRENT_ID" > "$RELEASE/previous-default-theme-id"
-              chmod 600 "$RELEASE/previous-default-theme-id"
-            fi
+            # No full redeploy: change just the theme renderer env setting and
+            # the globally selected published palette. Never clear user preferences.
+            BACKUP_ENV="$RELEASE/pre-light-theme-$(date -u +%Y%m%dT%H%M%SZ).env"
+            test ! -e "$BACKUP_ENV"
+            cp -p .env "$BACKUP_ENV"
+            chmod 600 "$BACKUP_ENV"
+            printf '%s\n' "$CURRENT_ID" > "$RELEASE/previous-default-theme-id"
+            chmod 600 "$RELEASE/previous-default-theme-id"
             CHANGED=0
             restore_on_error() {
-              status=$?
-              if [ "$status" -ne 0 ] && [ "$CHANGED" -eq 1 ]; then
-                echo 'PROD_THEME_VERIFY_FAILED_RESTORING_PREVIOUS_DEFAULT=true'
+              result=$?
+              trap - EXIT
+              if [ "$result" -ne 0 ] && [ "$CHANGED" -eq 1 ]; then
+                echo 'PROD_THEME_CHECK_FAILED_ROLLING_BACK_BOTH_SETTINGS=true'
+                cp -p "$BACKUP_ENV" .env || true
                 query "UPDATE design_theme_settings SET theme_id=$CURRENT_ID, updated_at=NOW() WHERE id=1 AND theme_id=$TARGET_ID" >/dev/null || true
+                $COMPOSE exec -T phpfpm php artisan optimize:clear >/dev/null 2>&1 || true
+                $COMPOSE exec -T phpfpm php artisan config:cache >/dev/null 2>&1 || true
+                $COMPOSE restart phpfpm >/dev/null 2>&1 || true
               fi
+              exit "$result"
             }
             trap restore_on_error EXIT
 
+            CHANGED=1
             if [ "$CURRENT_ID" != "$TARGET_ID" ]; then
-              CHANGED=1
               query "UPDATE design_theme_settings SET theme_id=$TARGET_ID, updated_at=NOW() WHERE id=1 AND theme_id=$CURRENT_ID" >/dev/null
             fi
+            if [ "$THEME_LINE_COUNT" = 1 ]; then
+              sed -i 's/^APP_THEME=.*/APP_THEME=mskba_app/' .env
+            else
+              printf '\nAPP_THEME=mskba_app\n' >> .env
+            fi
             test "$(query 'SELECT theme_id FROM design_theme_settings WHERE id=1')" = "$TARGET_ID"
+            grep -Fxq 'APP_THEME=mskba_app' .env
+            $COMPOSE exec -T phpfpm php artisan optimize:clear >/dev/null
+            $COMPOSE exec -T phpfpm php artisan config:cache >/dev/null
+            $COMPOSE restart phpfpm >/dev/null
 
-            # Real guest HTML, not a simulated test: CSS and public markup must use the light theme.
+            # Guest HTML must select both the same renderer and light palette
+            # as dev. The shop title is theme-specific and catches legacy fallback.
             VERIFIED=0
             for ATTEMPT in 1 2 3 4 5; do
-              HTML="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/?theme_verify=$ATTEMPT-$(date +%s)" || true)"
-              if [[ "$HTML" == *'data-design-theme="court_day"'* && "$HTML" == *'data-appearance-mode="light"'* ]]; then
+              HOME="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/?theme_verify=$ATTEMPT-$(date +%s)" || true)"
+              SHOP="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/shop?theme_verify=$ATTEMPT-$(date +%s)" || true)"
+              if [[ "$HOME" == *'data-design-theme="court_day"'* && "$HOME" == *'data-appearance-mode="light"'* &&
+                    "$SHOP" == *'data-design-theme="court_day"'* && "$SHOP" == *'data-appearance-mode="light"'* &&
+                    "$SHOP" == *'Магазин · Каталог MSKBA'* ]]; then
                 VERIFIED=1
                 break
               fi
-              sleep 2
+              sleep 3
             done
             test "$VERIFIED" -eq 1
-            echo 'PRODUCTION_DEFAULT_THEME=court_day'
+            echo 'PRODUCTION_APP_THEME=mskba_app'
+            echo 'PRODUCTION_DEFAULT_DESIGN_THEME=court_day'
             echo 'PRODUCTION_APPEARANCE_MODE=light'
-            echo 'PRODUCTION_LIGHT_THEME_PUBLIC_HTTP_VERIFIED=true'
-            echo 'PRODUCTION_DB_UNCHANGED_EXCEPT_GLOBAL_THEME_SETTING=true'
+            echo 'PRODUCTION_SHOP_APP_LAYOUT_VERIFIED=true'
+            echo 'PRODUCTION_APP_THEME_AND_LIGHT_PALETTE_VERIFIED=true'
