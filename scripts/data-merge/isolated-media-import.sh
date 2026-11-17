@@ -43,8 +43,8 @@ run_import(){
 }
 run_import > "$DEST/dry-run.log" 2>&1 || { echo 'MEDIA_RELATIONS_BLOCKED dry-run';exit 6; }
 run_import --apply > "$DEST/apply.log" 2>&1 || { echo 'MEDIA_RELATIONS_BLOCKED apply';exit 7; }
-[[ "$(sql 'SELECT count(*) FROM data_merge_media_mappings WHERE kind='\''media'\''')" -eq 109 ]] || { echo 'MEDIA_RELATIONS_BLOCKED incomplete image map';exit 8; }
-[[ "$(sql 'SELECT count(*) FROM data_merge_media_mappings WHERE kind='\''site_media_asset'\''')" -eq 45 ]] || { echo 'MEDIA_RELATIONS_BLOCKED incomplete media library';exit 9; }
+[[ "$(sql "SELECT count(*) FROM data_merge_media_mappings WHERE kind='media'")" -eq 109 ]] || { echo 'MEDIA_RELATIONS_BLOCKED incomplete image map';exit 8; }
+[[ "$(sql "SELECT count(*) FROM data_merge_media_mappings WHERE kind='site_media_asset'")" -eq 45 ]] || { echo 'MEDIA_RELATIONS_BLOCKED incomplete media library';exit 9; }
 [[ "$before_hash" == "$(sql "SELECT md5(coalesce(string_agg(id||':'||mediable_type||':'||mediable_id||':'||path||':'||is_featured,',' ORDER BY id),'')) FROM media WHERE id <= $max_before")" ]] || { echo 'MEDIA_RELATIONS_BLOCKED original production media changed';exit 10; }
 [[ "$(sql "SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated")" -eq 0 ]] || { echo 'MEDIA_RELATIONS_BLOCKED unvalidated foreign key';exit 11; }
 docker exec "$DB" pg_dump -U postgres -d candidate --format=custom --no-owner --no-acl > "$DEST/media-candidate.pgdump.part"
