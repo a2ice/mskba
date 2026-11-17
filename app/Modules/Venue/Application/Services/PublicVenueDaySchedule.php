@@ -15,6 +15,10 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -42,6 +46,7 @@ final readonly class PublicVenueDaySchedule
         private VenueCommissionCalculator $commissions,
         private VenueSlotPricing $slotPricing,
         private EventIdentityParticipationService $eventParticipation,
+        private VenueBookingAuthorization $bookingAuthorization,
     ) {}
 
     /** @return array<string, mixed> */
@@ -49,6 +54,7 @@ final readonly class PublicVenueDaySchedule
         Venue $venue, VenueCourt $court, string $date,
         ?string $previewStart = null, ?int $previewDurationMinutes = null,
         ?User $viewer = null,
+        ?Actor $viewerActor = null,
     ): array
     {
         if ($court->venue_id !== $venue->id || $court->trashed()) {
@@ -88,7 +94,14 @@ final readonly class PublicVenueDaySchedule
             ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('starts_at', '<', $rangeEnd->utc())
             ->where('ends_at', '>', $rangeStart->utc())
-            ->with(['event.organizerActor.user.profile', 'event.participants'])
+            ->with([
+                'event.organizerActor.user.profile',
+                'event.participants',
+                'requester',
+                'transitions' => fn ($query) => $query
+                    ->where('to_status', VenueBookingStatusEnum::CONFIRMED->value)
+                    ->with('actor'),
+            ])
             ->orderBy('starts_at')
             ->limit(500)
             ->get();
@@ -172,6 +185,8 @@ final readonly class PublicVenueDaySchedule
         $slots = [];
         $publicEventCache = [];
         $viewer = $viewer?->canonical();
+        $viewerIdentityIds = $viewer?->identityIds() ?? [];
+        $isSuperadmin = $viewer?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN) ?? false;
 
         for ($index = $startIndex; $index < $endIndex; $index++) {
             $start = $day->addMinutes($index * $step);
@@ -364,6 +379,31 @@ final readonly class PublicVenueDaySchedule
                 && $booking->event_id === null
                 && config('features.venue_rental.booking_events', false);
 
+            // The schedule is public; a request URL and the customer's login
+            // must only be returned to a currently authorized participant.
+            $bookingUrl = null;
+            $requesterLogin = null;
+            if ($booking !== null && $booking->status === VenueBookingStatusEnum::CONFIRMED
+                && $viewer !== null && $viewerActor !== null) {
+                $isRequester = in_array((int) $booking->requester_user_id, $viewerIdentityIds, true);
+                $confirmedByUserId = $booking->transitions->last()?->actor?->user_id;
+                $isConfirmingRepresentative = $confirmedByUserId !== null
+                    && in_array((int) $confirmedByUserId, $viewerIdentityIds, true);
+                if ($isRequester || $isSuperadmin || $isConfirmingRepresentative) {
+                    try {
+                        // Do not advertise a link that the booking controller
+                        // would reject after a representative's rights change.
+                        $this->bookingAuthorization->assertCanView($viewerActor, $booking, $venue);
+                        $bookingUrl = route('account.venue-bookings.show', $booking);
+                        if ($isSuperadmin || $isConfirmingRepresentative) {
+                            $requesterLogin = $booking->requester?->canonical()->username;
+                        }
+                    } catch (VenueBookingTransitionException) {
+                        // Booking details stay private, even in a public timetable.
+                    }
+                }
+            }
+
             $slots[] = [
                 'booking_group' => $booking === null ? null : [
                     'key' => substr(hash_hmac('sha256', $date.'|'.$booking->id, (string) config('app.key')), 0, 24),
@@ -372,6 +412,8 @@ final readonly class PublicVenueDaySchedule
                     'create_event_url' => $canCreateEvent
                         ? route('account.venue-bookings.event.create', $booking)
                         : null,
+                    'request_url' => $bookingUrl,
+                    'requester_login' => $requesterLogin,
                 ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
