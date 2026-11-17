@@ -21,8 +21,11 @@ return new class extends Migration
         // account preferences must remain after evidence retention expires.
         DB::table('cookie_consent_events as events')
             ->join('users', 'events.user_id', '=', 'users.id')
-            ->select('events.id', 'events.user_id', 'events.analytics_choice',
+            ->select('events.id', 'events.analytics_choice',
                 'events.notice_version', 'events.created_at')
+            // Preserve prior acceptance even for an account which was later
+            // merged into a canonical MSKBA user.
+            ->selectRaw('COALESCE(users.canonical_user_id, users.id) AS user_id')
             ->chunkById(500, function ($events): void {
                 $latestPerUser = [];
                 foreach ($events as $event) {
