@@ -1,4 +1,4 @@
-import { subscribePrivate } from '../../js/realtime.js';
+import { subscribePrivate } from '../../../js/realtime.js';
 
 const root = document.querySelector('[data-team-chat-root]');
 if (root) {
@@ -27,7 +27,6 @@ if (root) {
         } catch { /* Read marker is retried on the next visible refresh. */ }
     };
     const refresh = async () => {
-        if (busy) return;
         try {
             const response = await fetch(root.dataset.teamStateUrl, {headers:{Accept:'application/json'},credentials:'same-origin'});
             if (response.status === 403 || response.status === 404) { window.location.reload(); return; }
