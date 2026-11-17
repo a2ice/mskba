@@ -242,7 +242,7 @@ test('confirmed booking popup links to a request only for authorized viewers', a
         { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
           booking_group: {
               key: 'owned-booking', has_event: false, event: null,
-              request_url: requestUrl, requester_login: 'booking_customer_demo',
+              request_url: requestUrl, requester_login: 'booking_customer_demo', requester_is_viewer: false,
           }, price_minor: null },
     ] });
     await permitted.open(1);
@@ -251,20 +251,22 @@ test('confirmed booking popup links to a request only for authorized viewers', a
     assert.equal(permitted.eventFields['[data-venue-day-booking-request-link]'].href, requestUrl);
     assert.equal(permitted.eventFields['[data-venue-day-booking-requester-row]'].hidden, false);
     assert.equal(permitted.eventFields['[data-venue-day-booking-requester]'].textContent, 'booking_customer_demo');
+    assert.equal(permitted.eventFields['[data-venue-day-booking-self]'].hidden, true);
     assert.equal(permitted.eventFields['[data-venue-day-booking-actions]'].hidden, true);
 
     const client = mountDayBooking({ customSlots: [
         { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
           booking_group: {
               key: 'client-booking', has_event: false, event: null,
-              request_url: requestUrl, requester_login: null,
+              request_url: requestUrl, requester_login: 'booking_customer_demo', requester_is_viewer: true,
           }, price_minor: null },
     ] });
     await client.open(1);
     client.grid.children[0].click();
     assert.equal(client.eventFields['[data-venue-day-booking-request-link]'].hidden, false);
-    assert.equal(client.eventFields['[data-venue-day-booking-requester-row]'].hidden, true);
-    assert.equal(client.eventFields['[data-venue-day-booking-requester]'].textContent, '');
+    assert.equal(client.eventFields['[data-venue-day-booking-requester-row]'].hidden, false);
+    assert.equal(client.eventFields['[data-venue-day-booking-requester]'].textContent, 'booking_customer_demo');
+    assert.equal(client.eventFields['[data-venue-day-booking-self]'].hidden, false);
 
     const outsider = mountDayBooking({ customSlots: [
         { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
@@ -278,12 +280,17 @@ test('confirmed booking popup links to a request only for authorized viewers', a
     assert.equal(outsider.eventFields['[data-venue-day-booking-request-link]'].hidden, true);
     assert.equal(outsider.eventFields['[data-venue-day-booking-request-link]'].href, undefined);
     assert.equal(outsider.eventFields['[data-venue-day-booking-requester-row]'].hidden, true);
+    assert.equal(outsider.eventFields['[data-venue-day-booking-self]'].hidden, true);
     assert.equal(outsider.eventFields['[data-venue-day-booking-action-status]'].textContent, 'Действия недоступны.');
 
     const template = readFileSync(
         new URL('../../resources/themes/mskba_app/views/pages/venues/partials/day-event-dialog.blade.php', import.meta.url), 'utf8',
     );
-    assert.match(template, /data-venue-day-booking-request-link\s+target="_blank" rel="noopener noreferrer"/);
+    assert.match(template, /class="app-venue-day-event-dialog__request-link" data-venue-day-booking-request-link\s+target="_blank" rel="noopener noreferrer" hidden>К заявке<\/a>/);
+    assert.doesNotMatch(template, /class="button secondary" data-venue-day-booking-request-link/);
+    assert.match(template, /data-venue-day-booking-self hidden> \(это Вы\)<\/span>/);
+    const styles = readFileSync(new URL('../../resources/themes/mskba_app/css/venue-detail.css', import.meta.url), 'utf8');
+    assert.match(styles, /app-venue-day-event-dialog__request-link\{[^}]*color:var\(--accent\);[^}]*font-weight:650/s);
 });
 
 test('occupied imported interval opens generic details but not a fabricated event', async () => {
@@ -393,7 +400,7 @@ test('booking popup inline type label has a colon and shared row alignment', () 
     );
     assert.match(template, /class="app-venue-day-event-dialog__type-row"><dt>Тип:<\/dt>/);
     assert.match(css, /\.app-venue-day-event-dialog__type-row\s*\{\s*display:flex/);
-    assert.match(template, /class="app-venue-day-event-dialog__requester-row" data-venue-day-booking-requester-row hidden>\s*<dt>Заказчик:<\/dt><dd data-venue-day-booking-requester><\/dd>/);
+    assert.match(template, /class="app-venue-day-event-dialog__requester-row" data-venue-day-booking-requester-row hidden>\s*<dt>Заказчик:<\/dt><dd><span data-venue-day-booking-requester><\/span><span class="app-venue-day-event-dialog__requester-self" data-venue-day-booking-self hidden> \(это Вы\)<\/span><\/dd>/);
     assert.match(css, /\.app-venue-day-event-dialog__requester-row\s*\{\s*display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;/);
 });
 
