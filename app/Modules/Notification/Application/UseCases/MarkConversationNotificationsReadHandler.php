@@ -14,7 +14,7 @@ final class MarkConversationNotificationsReadHandler
 
     public function handle(User $user, ?int $joinRequestId = null, ?int $directConversationId = null,
         ?int $profileChangeRequestId = null, ?int $supportTicketId = null,
-        ?int $operatorConversationId = null): int
+        ?int $operatorConversationId = null, ?string $bookingPublicId = null, ?int $preRequestId = null): int
     {
         $canonical = $user->canonical();
         $query = UserNotification::query()
@@ -31,10 +31,15 @@ final class MarkConversationNotificationsReadHandler
             $query->where('payload->support_ticket_id', $supportTicketId);
         } elseif ($operatorConversationId !== null) {
             $query->where('payload->operator_conversation_id', $operatorConversationId);
+        } elseif ($bookingPublicId !== null) {
+            $query->where('payload->booking_id', $bookingPublicId);
+        } elseif ($preRequestId !== null) {
+            $query->where('payload->pre_request_id', $preRequestId);
         } else {
             $query->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
                 ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id')
-                ->whereNull('payload->operator_conversation_id');
+                ->whereNull('payload->operator_conversation_id')->whereNull('payload->booking_id')
+                ->whereNull('payload->pre_request_id');
         }
 
         $updated = $query->update([

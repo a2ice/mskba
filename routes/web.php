@@ -1172,6 +1172,19 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/notifications/threads/direct/{conversation}/history', [DirectMessagesController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.direct.history');
         Route::patch('/notifications/threads/direct/{conversation}/read', [DirectMessagesController::class, 'read'])
             ->name('account.notifications.threads.direct.read');
+        Route::middleware(['venue-rental-feature:rental_flow', 'venue-rental-feature:conversations'])->group(function (): void {
+            $bookingChat = \App\Modules\Notification\Presentation\Http\Controllers\AccountBookingConversationsController::class;
+            Route::get('/notifications/threads/booking/{venueBooking}', [$bookingChat, 'booking'])
+                ->name('account.notifications.threads.booking')->defaults('breadcrumb', 'Переписка по бронированию');
+            Route::patch('/notifications/threads/booking/{venueBooking}/read', [$bookingChat, 'readBooking'])
+                ->middleware('throttle:60,1')->name('account.notifications.threads.booking.read');
+            Route::get('/notifications/threads/pre-request/{preRequest}', [$bookingChat, 'preRequest'])
+                ->name('account.notifications.threads.pre-request')->defaults('breadcrumb', 'Переписка по предзаявке');
+            Route::get('/notifications/threads/pre-request/{preRequest}/messages', [$bookingChat, 'preRequestMessages'])
+                ->middleware('throttle:60,1')->name('account.notifications.threads.pre-request.messages');
+            Route::patch('/notifications/threads/pre-request/{preRequest}/read', [$bookingChat, 'readPreRequest'])
+                ->middleware('throttle:60,1')->name('account.notifications.threads.pre-request.read');
+        });
         Route::get('/notifications/threads/team/{joinRequest}', [AccountConversationsController::class, 'team'])
             ->name('account.notifications.threads.team')->defaults('breadcrumb', 'Переписка по заявке');
         Route::get('/notifications/threads/team/{joinRequest}/state', [AccountConversationsController::class, 'stateTeam'])

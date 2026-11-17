@@ -192,6 +192,41 @@ final class VenueBookingConversationTest extends TestCase
             ->assertSee('data-booking-unread-count', false);
     }
 
+
+    public function test_rental_dialog_is_visible_in_unified_messages_without_copying_domain_messages(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+        [, $ownerActor, $venue] = $this->ownedVenue();
+        [$requester, $requesterActor] = $this->userAndActor();
+        [$outsider] = $this->userAndActor();
+        $booking = $this->booking($venue, $requester, $requesterActor);
+        $message = app(SendVenueBookingMessageHandler::class)->handle(
+            $booking->id, $ownerActor, (string) Str::uuid(), 'Тестовый ответ представителя'
+        );
+        $url = route('account.notifications.threads.booking', $booking);
+
+        $this->actingAs($requester)->get(route('account.notifications'))->assertOk()
+            ->assertSee('booking-'.$booking->id, false)
+            ->assertSee($url, false);
+        $this->get($url)->assertOk()
+            ->assertSee('data-rental-chat-root', false)
+            ->assertSee('Тестовый ответ представителя')
+            ->assertSee('data-rental-chat-compose', false)
+            ->assertSee('app-messages__compose-footer', false);
+        $this->patchJson(route('account.notifications.threads.booking.read', $booking))
+            ->assertOk();
+        $this->assertDatabaseHas('venue_booking_conversation_reads', [
+            'conversation_id' => $message->conversation_id,
+            'user_id' => $requester->id,
+            'last_read_message_id' => $message->id,
+        ]);
+        $this->assertSame(1, $message->conversation->messages()->count());
+
+        $this->actingAs($outsider)->get($url)->assertForbidden();
+        $this->patchJson(route('account.notifications.threads.booking.read', $booking))->assertForbidden();
+    }
+
     private function booking(Venue $venue, User $requester, Actor $actor): VenueBooking
     {
         return VenueBooking::query()->create([

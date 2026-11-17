@@ -1,0 +1,21 @@
+
+
+/* Rental conversation extends the shared account messenger rather than a bespoke modal. */
+.app-messages__thread-source{flex:none;color:var(--accent);font-size:13px;font-weight:650;text-decoration:none}
+.app-messages__thread-source:hover{color:var(--text)}
+.app-messages__load-older{align-self:center;background:transparent;color:var(--accent);border:0;cursor:pointer;font:inherit;font-size:12px;padding:8px}
+.app-messages__load-older[hidden],.app-messages__rental-actions [hidden]{display:none!important}
+.app-messages__rental-attach{flex:0 0 auto;position:relative;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;color:var(--accent)}
+.app-messages__rental-attach input{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.app-messages__rental-attach svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.7}
+.app-messages__rental-file-name{flex:1 1 auto;min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)}
+.app-messages__rental-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+.app-messages__rental-actions>.button{font-size:12px}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__thread-header{flex-wrap:wrap}
+    .app-messages__thread-source{margin-left:auto;font-size:12px}
+    .app-messages__rental-actions{margin-left:auto}
+    .app-messages__rental-file-name{max-width:70px}
+    .app-messages__rental-actions>.button{padding:9px 10px}
+    .app-messages--thread .app-messages__compose-footer>.button{padding:9px 11px}
+}
