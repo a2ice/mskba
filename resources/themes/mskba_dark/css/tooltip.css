@@ -54,7 +54,7 @@
 .ui-tooltip-source--help:hover > .ui-tooltip-trigger,
 .ui-tooltip-source--help:focus-within > .ui-tooltip-trigger,
 .ui-tooltip-source--help:hover + .ui-tooltip-trigger,
-.ui-tooltip-source--help:focus-visible + .ui-tooltip-trigger {
+.ui-tooltip-source--help:is(button,a[href],[role="button"]):focus-visible + .ui-tooltip-trigger {
     border-color: rgba(255, 139, 47, 0.72);
     background: rgba(236, 127, 18, 0.16);
     color: var(--accent-text);
@@ -137,27 +137,27 @@
 .ui-tooltip-trigger:focus-visible::after,
 .ui-tooltip-source:hover::before,
 .ui-tooltip-source:hover::after,
-.ui-tooltip-source:focus-visible::before,
-.ui-tooltip-source:focus-visible::after {
+.ui-tooltip-source:is(button,a[href],[role="button"]):focus-visible::before,
+.ui-tooltip-source:is(button,a[href],[role="button"]):focus-visible::after {
     opacity: 1;
 }
 
 .ui-tooltip-trigger:hover::before,
 .ui-tooltip-trigger:focus-visible::before,
 .ui-tooltip-source:hover::before,
-.ui-tooltip-source:focus-visible::before {
+.ui-tooltip-source:is(button,a[href],[role="button"]):focus-visible::before {
     transform: translate(-50%, 0);
 }
 
 .ui-tooltip-trigger:hover::after,
 .ui-tooltip-trigger:focus-visible::after,
 .ui-tooltip-source:hover::after,
-.ui-tooltip-source:focus-visible::after {
+.ui-tooltip-source:is(button,a[href],[role="button"]):focus-visible::after {
     transform: translate(-50%, 0) rotate(45deg);
 }
 
 .ui-tooltip-trigger:focus-visible,
-.ui-tooltip-source:focus-visible {
+.ui-tooltip-source:is(button,a[href],[role="button"]):focus-visible {
     border-color: var(--accent-hover);
     outline: 2px solid rgba(255, 139, 47, 0.36);
     outline-offset: 2px;
