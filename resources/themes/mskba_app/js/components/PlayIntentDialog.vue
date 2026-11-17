@@ -2,7 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, nextTick, reactive, ref, watch } from 'vue';
 const props = defineProps({ options: { type:Object, required:true } });
 const STORAGE = 'mskba:play-intent:pending:v1';
-const visible=ref(false), el=ref(null), heading=ref(null), expanded=ref(false);
+const visible=ref(false), el=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref(''), manuallyNamed=ref(false), step=ref('form');
 const hasExpiry=ref(false), expiryDate=ref('');
@@ -381,7 +381,8 @@ async function openDialog(){
     if(visible.value)return;
     restoreFocus=document.activeElement;overflow=document.body.style.overflow;visible.value=true;
     await nextTick();el.value?.showModal();document.body.style.overflow='hidden';
-    heading.value?.focus({preventScroll:true});
+    // Focus the actual close action, never the informational title.
+    el.value?.querySelector('.app-play-dialog__header button')?.focus({preventScroll:true});
     void hydrateVenue();
 
     // Entity-only favorites do not need basketball game catalogs.
@@ -498,7 +499,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title" ref="heading" tabindex="-1">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
+        <div><p class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">

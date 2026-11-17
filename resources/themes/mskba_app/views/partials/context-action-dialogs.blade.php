@@ -1,6 +1,6 @@
 <dialog class="mskba-modal app-context-placeholder-dialog" data-context-placeholder-dialog aria-labelledby="context-placeholder-title">
     <header class="mskba-modal__header app-context-dialog__header">
-        <h2 id="context-placeholder-title" tabindex="-1" data-context-placeholder-title>Функция в разработке</h2>
+        <h2 id="context-placeholder-title" data-context-placeholder-title>Функция в разработке</h2>
         <button type="button" data-context-placeholder-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body app-context-dialog__content">
@@ -13,7 +13,7 @@
         data-question-url="{{ route('faq.questions.store') }}"
         aria-labelledby="context-help-title">
     <header class="mskba-modal__header app-context-dialog__header">
-        <h2 id="context-help-title" tabindex="-1">Помощь и FAQ</h2>
+        <h2 id="context-help-title">Помощь и FAQ</h2>
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
