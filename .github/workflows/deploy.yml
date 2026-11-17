@@ -426,11 +426,18 @@ jobs:
                   return path,0
           with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
               result=list(pool.map(check,paths))
-          bad=[p for p,status in result if status!=200]
+          # Preserve the 2026-11-12 historical snapshot unchanged. Venue 15
+          # was deliberately unpublished to match dev after the cutover:
+          # public guests MUST receive 404, never a resurrected venue.
+          expected_overrides={'/venues/15-ploshchadka-metro-akademicheskaya':404}
+          assert all(path in paths for path in expected_overrides)
+          bad=[(path,status,expected_overrides.get(path,200)) for path,status in result
+               if status != expected_overrides.get(path,200)]
           print('CUTOVER_LEGACY_URLS_CHECKED='+str(len(result)))
+          print('CUTOVER_LEGACY_URLS_EXPECTED_HIDDEN='+str(len(expected_overrides)))
           print('CUTOVER_LEGACY_URLS_FAILED='+str(len(bad)))
-          for path in bad[:8]:
-              print('CUTOVER_URL_FAILED='+path)
+          for path,status,expected in bad[:8]:
+              print(f'CUTOVER_URL_FAILED={path} actual={status} expected={expected}')
           if bad:
               raise SystemExit(1)
           PY
