@@ -98,7 +98,7 @@ if (accountConfirmationGuide && contextBar) {
                 returnFocus = trigger;
             }
             accountConfirmationGuide.showModal();
-            accountConfirmationGuide.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+            accountConfirmationGuide.querySelector('[data-account-confirmation-guide-close]')?.focus({ preventScroll: true });
         });
     });
     accountConfirmationGuide.querySelectorAll('[data-account-confirmation-guide-close]').forEach(button => {
