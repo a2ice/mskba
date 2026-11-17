@@ -85,6 +85,19 @@ test('native modal drag starts after threshold, disables and restores backdrop b
     h.controller.destroy();
 });
 
+test('tapping a draggable heading does not move the dialog when Safari viewport resizes',()=>{
+    const h=harness();
+    h.doc.emit('pointerdown',h.pointer('down',400,150));
+    h.win.emit('pointerup',h.pointer('up',400,150));
+    // Simulate the visual viewport shrinking as the iPhone toolbar returns.
+    // Only intentionally dragged dialogs should enter the viewport clamp list.
+    h.win.innerHeight=330;
+    h.win.emit('resize',{});
+    assert.equal(h.dialog.style.translate,'',
+        'An untouched dialog must remain centered by CSS after a mobile viewport change');
+    h.controller.destroy();
+});
+
 test('pointercancel and Escape restore previous position; buttons cannot start dragging',()=>{
     const h=harness();
     h.doc.emit('pointerdown',h.pointer('down',400,150));
