@@ -33,7 +33,7 @@ cleanup(){
 }
 trap cleanup EXIT
 docker network create --internal "$NET" >/dev/null
-docker run --rm -d --network "$NET" --network-alias candidate-db --name "$DB" \
+docker run --rm -d --network "$NET" --network-alias candidate-db --network-alias db --name "$DB" \
  -e POSTGRES_DB=candidate -e POSTGRES_PASSWORD="$PW" postgres:17-alpine >/dev/null
 ready=false
 for _ in $(seq 1 60); do
