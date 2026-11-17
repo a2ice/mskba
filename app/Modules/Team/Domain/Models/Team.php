@@ -3,19 +3,26 @@
 namespace App\Modules\Team\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
+use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -36,7 +43,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Team extends Model
 {
-    use Auditable, SoftDeletes;
+    use Auditable, HasEntityBanner, SoftDeletes;
 
     public function routeIdentifier(): string
     {
@@ -82,9 +89,24 @@ class Team extends Model
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value);
     }
 
+    public function uniformDesign(): HasOne
+    {
+        return $this->hasOne(UniformDesign::class, 'team_id');
+    }
+
     public function joinRequests(): HasMany
     {
         return $this->hasMany(TeamJoinRequest::class);
+    }
+
+    public function tournamentEntries(): HasMany
+    {
+        return $this->hasMany(TournamentEntry::class);
+    }
+
+    public function gameSides(): HasMany
+    {
+        return $this->hasMany(GameSide::class);
     }
 
     public function sportProfiles(): HasMany
@@ -105,6 +127,16 @@ class Team extends Model
     public function sportsSections(): BelongsToMany
     {
         return $this->belongsToMany(SportsSection::class, 'sports_section_team')->withTimestamps();
+    }
+
+    public function leagues(): BelongsToMany
+    {
+        return $this->belongsToMany(League::class, 'league_team')->withTimestamps();
+    }
+
+    public function leagueSeasons(): BelongsToMany
+    {
+        return $this->belongsToMany(LeagueSeason::class, 'league_season_team')->withTimestamps();
     }
 
     public function media(): MorphMany

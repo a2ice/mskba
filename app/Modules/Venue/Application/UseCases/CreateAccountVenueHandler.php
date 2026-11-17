@@ -2,6 +2,10 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
@@ -9,6 +13,8 @@ use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Application\Services\VenueOwnershipClaimDraftManager;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
+use App\Modules\Venue\Application\Services\VenueCourtConfigurator;
+use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -26,6 +32,8 @@ final class CreateAccountVenueHandler
         private readonly VenueUniquenessChecker $uniqueness,
         private readonly VenueProximityService $proximity,
         private readonly VenueTagSynchronizer $tagSynchronizer,
+        private readonly VenueCourtConfigurator $courtConfigurator,
+        private readonly VenueFacilitiesSynchronizer $facilities,
         private readonly VenueOwnershipClaimDraftManager $drafts,
     ) {}
 
@@ -37,6 +45,9 @@ final class CreateAccountVenueHandler
         if ($actor?->user_id === null) {
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы добавить площадку.');
         }
+        abort_unless(app(UserOperationalPermissionChecker::class)->allows(
+            $actor->user, UserOperationalPermissionEnum::CREATE_VENUE,
+        ), 403);
 
         $draft = null;
         try {
@@ -91,7 +102,17 @@ final class CreateAccountVenueHandler
                     'raw_address' => $rawAddress,
                 ]);
 
+                // A contributor contract covers catalogue management; verified
+                // commercial ownership still requires the existing claim workflow.
+                $creator = User::query()->findOrFail($actor->user_id)->canonical();
+                app(EntityContractManager::class)->grantOwner(
+                    Scope::VENUE, $venue->id, $creator, $creator,
+                    'Ответственный за площадку «'.$venue->name.'»',
+                );
                 $this->tagSynchronizer->sync($venue, $tagNames);
+
+                $this->courtConfigurator->configure($venue, (array) ($data['initial_courts'] ?? []));
+                $this->facilities->sync($venue, [], (array) ($data['amenity_ids'] ?? []));
 
                 if (($data['creation_role'] ?? null) === VenueCreationRoleEnum::REPRESENTATIVE->value) {
                     $draft = $this->drafts->create($venue, User::query()->findOrFail($actor->user_id),

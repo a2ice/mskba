@@ -32,6 +32,7 @@ final class RewardCatalogManager
                 'code' => (string) $attributes['code'],
                 'name' => (string) $attributes['name'],
                 'description' => $attributes['description'] ?? null,
+                'amount_caption_template' => $attributes['amount_caption_template'] ?? null,
                 'mechanism_code' => $mechanismCode,
                 'is_enabled' => $isEnabled,
             ]);
@@ -64,10 +65,12 @@ final class RewardCatalogManager
 
         return DB::transaction(function () use ($reward, $attributes, $mechanismCode, $isEnabled, $parameters): Reward {
             $lockedReward = Reward::query()->lockForUpdate()->findOrFail($reward->id);
+            $wasEnabled = (bool) $lockedReward->is_enabled;
 
             $lockedReward->update([
                 'name' => (string) $attributes['name'],
                 'description' => $attributes['description'] ?? null,
+                'amount_caption_template' => $attributes['amount_caption_template'] ?? null,
                 'mechanism_code' => $mechanismCode,
                 'is_enabled' => $isEnabled,
             ]);
@@ -88,7 +91,13 @@ final class RewardCatalogManager
                 validFrom: now(),
             );
 
-            if ($currentVersion === null || $this->versionChanged($currentVersion, $nextPayload)) {
+            // Rental cashback activation starts a new eligibility window:
+            // bookings confirmed while disabled must never receive backdated bonuses.
+            $activatingRentalCashback = $lockedReward->code === 'venue_rental_completed'
+                && ! $wasEnabled && $isEnabled;
+
+            if ($currentVersion === null || $this->versionChanged($currentVersion, $nextPayload)
+                || $activatingRentalCashback) {
                 $now = now();
 
                 if ($currentVersion !== null) {

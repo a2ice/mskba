@@ -11,6 +11,7 @@ final class UserPrivacyAccessService
     public function __construct(
         private readonly PersonalDataDistributionConsentService $distributionConsents,
     ) {}
+
     public function allows(User $subject, ?User $viewer, UserPrivacySettingTypeEnum $type): bool
     {
         $subject = $subject->canonical();
@@ -18,6 +19,18 @@ final class UserPrivacyAccessService
 
         if ($viewer !== null && $viewer->id === $subject->id) {
             return true;
+        }
+
+        // An unfinished user must not leak through default EVERYONE settings.
+        if ($this->distributionConsents->requiresSetup($subject)) {
+            return false;
+        }
+
+        // Discoverability must never exceed the effective visibility of the
+        // profile itself, including its separate distribution consent.
+        if ($type === UserPrivacySettingTypeEnum::DISCOVERABILITY
+            && ! $this->allows($subject, $viewer, UserPrivacySettingTypeEnum::PROFILE)) {
+            return false;
         }
 
         $setting = $subject->privacySettings()

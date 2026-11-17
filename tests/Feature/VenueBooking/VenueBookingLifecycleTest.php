@@ -3,10 +3,13 @@
 namespace Tests\Feature\VenueBooking;
 
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -14,13 +17,20 @@ use App\Modules\Event\Domain\Models\VenueBooking as LegacyVenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
+use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Jobs\SendUserNotificationEmailJob;
+use App\Modules\Notification\Presentation\Mail\UserNotificationMail;
 use App\Modules\VenueBooking\Application\Services\VenueBookingEventConsumer;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -37,11 +47,15 @@ use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingIdempotencyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
+use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\View;
 use LogicException;
 use RuntimeException;
 use Tests\TestCase;
@@ -86,6 +100,325 @@ final class VenueBookingLifecycleTest extends TestCase
             'user_id' => $applicant->id,
             'role' => 'applicant',
         ]);
+    }
+
+    public function test_new_booking_request_creates_owner_in_app_notification_and_verified_email(): void
+    {
+        Queue::fake();
+        Mail::fake();
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $email = 'owner-booking-'.$owner->id.'@example.test';
+        Contact::query()->create([
+            'contactable_type' => 'user',
+            'contactable_id' => $owner->id,
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => $email,
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, false);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+
+        // Queue workers publish the outbox in production. Dispatch it here
+        // deliberately to exercise the real permission-filtered recipients.
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $notification = UserNotification::query()
+            ->where('user_id', $owner->id)
+            ->where('payload->source', UserNotificationSourceEnum::VENUE_BOOKING_REQUESTED->value)
+            ->firstOrFail();
+        $this->assertSame('Новая заявка на аренду', $notification->title);
+        $this->assertSame('Открыть заявку', $notification->action_text);
+        $this->assertStringContainsString((string) $booking->public_id, (string) $notification->action_url);
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $applicant->id,
+            'title' => 'Новая заявка на аренду',
+        ]);
+
+        // Sending the queued mail uses the recipient's confirmed email,
+        // subject to their selected request-notification preferences.
+        (new SendUserNotificationEmailJob($notification->id))->handle();
+        Mail::assertSent(UserNotificationMail::class,
+            fn (UserNotificationMail $message): bool => $message->hasTo($email));
+        $this->assertDatabaseHas('user_notification_deliveries', [
+            'user_notification_id' => $notification->id,
+            'channel' => 'email',
+            'status' => 'sent',
+        ]);
+    }
+
+    public function test_primary_manager_contract_receives_requests_and_unrelated_superadmin_does_not(): void
+    {
+        Queue::fake();
+        Mail::fake();
+        [$owner, , $venue] = $this->ownedVenue();
+        [$mainResponsible] = $this->userAndActor();
+        $unrelatedAdmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $membership = app(EntityContractManager::class)->grantOwner(
+            ContractMembershipScopeTypeEnum::VENUE, $venue->id, $mainResponsible, $mainResponsible,
+        );
+        $this->assertSame('primary_manager', $membership->access_level);
+        foreach ([
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
+        ] as $permission) {
+            $this->assertTrue($membership->contract->permissions->contains('permission', $permission->value));
+        }
+        $this->assertContains($mainResponsible->id, app(VenueMembershipAccess::class)
+            ->allowedUserIdsForCourt($venue->primaryCourt()->firstOrFail(), VenuePermissionEnum::VIEW_BOOKING_REQUESTS));
+
+        [$applicant, $actor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $mainResponsible->id, 'title' => 'Новая заявка на аренду',
+        ]);
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $unrelatedAdmin->id, 'title' => 'Новая заявка на аренду',
+        ]);
+    }
+
+    public function test_viewing_delegate_gets_notification_and_dialogue_but_cannot_approve_or_reject(): void
+    {
+        Queue::fake();
+        [$owner, , $venue] = $this->ownedVenue();
+        [$viewer, $viewerActor] = $this->userAndActor();
+        [$applicant, $actor] = $this->userAndActor();
+        $delegation = Contract::query()->create([
+            'family' => ContractFamilyEnum::MEMBERSHIP,
+            'status' => ContractStatusEnum::ACTIVE,
+            'starts_at' => now()->subMinute(),
+            'assigner' => UserParticipationRoleAssignerEnum::OTHER,
+        ]);
+        $delegation->membership()->create([
+            'scope_type' => ContractMembershipScopeTypeEnum::VENUE,
+            'scope_id' => $venue->id,
+            'user_id' => $viewer->id,
+            'access_level' => 'responsible',
+        ]);
+        $delegation->permissions()->create([
+            'permission' => VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+        ]);
+
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $outbox = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)->firstOrFail();
+        $this->assertTrue(app(VenueBookingOutboxDispatcher::class)->dispatch($outbox->id));
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $viewer->id, 'title' => 'Новая заявка на аренду',
+        ]);
+        $actions = app(VenueBookingActionState::class)->for($booking, $viewerActor);
+        $this->assertFalse($actions['accept']['allowed']);
+        $this->assertFalse($actions['reject']['allowed']);
+        $this->assertFalse($actions['confirm']['allowed']);
+        $this->assertFalse($actions['cancel']['allowed']);
+
+        $this->expectException(VenueBookingTransitionException::class);
+        app(AcceptVenueBookingHandler::class)->handle($booking->id, $viewerActor);
+    }
+
+    public function test_approval_and_rejection_are_independent_delegated_actions(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$approver, $approverActor] = $this->userAndActor();
+        [$rejector, $rejectorActor] = $this->userAndActor();
+        [$applicant, $actor] = $this->userAndActor();
+
+        foreach ([
+            [$approver, VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS],
+            [$rejector, VenuePermissionEnum::REJECT_BOOKING_REQUESTS],
+        ] as [$delegate, $right]) {
+            $contract = Contract::query()->create([
+                'family' => ContractFamilyEnum::MEMBERSHIP,
+                'status' => ContractStatusEnum::ACTIVE,
+                'starts_at' => now()->subMinute(),
+                'assigner' => UserParticipationRoleAssignerEnum::OTHER,
+            ]);
+            $contract->membership()->create([
+                'scope_type' => ContractMembershipScopeTypeEnum::VENUE,
+                'scope_id' => $venue->id,
+                'user_id' => $delegate->id,
+                'access_level' => 'responsible',
+            ]);
+            $contract->permissions()->createMany([
+                ['permission' => VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value],
+                ['permission' => $right->value],
+            ]);
+        }
+
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $approverActions = app(VenueBookingActionState::class)->for($booking, $approverActor);
+        $rejectorActions = app(VenueBookingActionState::class)->for($booking, $rejectorActor);
+        $this->assertTrue($approverActions['accept']['allowed']);
+        $this->assertFalse($approverActions['reject']['allowed']);
+        $this->assertFalse($approverActions['cancel']['allowed']);
+        $this->assertFalse($rejectorActions['accept']['allowed']);
+        $this->assertTrue($rejectorActions['reject']['allowed']);
+        $this->assertTrue($rejectorActions['cancel']['allowed']);
+
+        $rejected = app(RejectVenueBookingHandler::class)
+            ->handle($booking->id, $rejectorActor, 'Нет свободного зала');
+        $this->assertSame(VenueBookingStatusEnum::REJECTED, $rejected->status);
+    }
+
+    public function test_existing_five_permission_primary_manager_contract_is_upgraded(): void
+    {
+        [$user] = $this->userAndActor();
+        $venue = Venue::factory()->create();
+        $membership = app(EntityContractManager::class)->grantOwner(
+            ContractMembershipScopeTypeEnum::VENUE, $venue->id, $user, $user,
+        );
+        $membership->contract->permissions()->whereIn('permission', [
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS->value,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS->value,
+        ])->delete();
+
+        $this->assertFalse(app(VenueMembershipAccess::class)->allows(
+            $user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+        ));
+        $migration = require database_path('migrations/2026_11_14_171500_split_venue_booking_contract_permissions.php');
+        $migration->up();
+        foreach ([
+            VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
+            VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS,
+            VenuePermissionEnum::REJECT_BOOKING_REQUESTS,
+        ] as $right) {
+            $this->assertTrue(app(VenueMembershipAccess::class)->allows($user, $venue, $right));
+        }
+        // Idempotent when deploy reruns a migration.
+        $migration->up();
+        $this->assertSame(3, $membership->contract->permissions()
+            ->whereIn('permission', [
+                VenuePermissionEnum::VIEW_BOOKING_REQUESTS->value,
+                VenuePermissionEnum::CONFIRM_BOOKING_REQUESTS->value,
+                VenuePermissionEnum::REJECT_BOOKING_REQUESTS->value,
+            ])->count());
+    }
+
+    public function test_app_theme_incoming_list_and_booking_detail_render_for_superadmin(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant, $actor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $actor, false);
+        $owner->forceFill(['system_role' => UserSystemRoleEnum::SUPERADMIN])->save();
+        config(['themes.active' => 'mskba_app', 'features.venue_rental.portal' => true]);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($owner)->get(route('account.venue-bookings.inbox'))
+            ->assertOk()->assertSee('Входящие заявки на аренду')
+            ->assertSee($booking->public_id);
+        $this->get(route('account.venue-bookings.show', $booking))
+            ->assertOk()->assertSee('Детали бронирования')
+            ->assertSee('Принять заявку')
+            ->assertSee('data-booking-id="'.$booking->public_id.'"', false);
+        $this->actingAs($applicant)->get(route('account.venue-bookings.index'))
+            ->assertOk()->assertSee('Мои бронирования')
+            ->assertSee($booking->public_id);
+    }
+
+    public function test_app_theme_rental_quote_page_prefills_fields_and_hides_undiscounted_commissions(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant] = $this->userAndActor();
+        $this->quote($venue, $owner, $applicant, false);
+
+        config(['themes.active' => 'mskba_app']);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($applicant)->post(route('venues.rental.quote', $venue->id), [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
+            'starts_at' => '2026-08-26T12:00',
+            'duration_minutes' => 60,
+            'scope' => 'whole',
+        ])->assertOk()
+            ->assertSee('value="2026-08-26T12:00"', false)
+            ->assertSee('data-rental-court', false)
+            ->assertSee('data-venue-day-date=', false)
+            ->assertSee('data-quote-status-url=', false)
+            ->assertSee('Итого:')
+            ->assertDontSee('Комиссия MSKBA')
+            ->assertDontSee('Аренда после скидок')
+            ->assertDontSee('app-rental-pricing__discount');
+    }
+
+    public function test_rental_quote_form_preserves_selected_time_after_overnight_rejection(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant] = $this->userAndActor();
+        $this->quote($venue, $owner, $applicant, false);
+
+        config(['themes.active' => 'mskba_app']);
+        $this->app->forgetInstance(ThemeResolver::class);
+        View::getFinder()->replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $this->actingAs($applicant)->post(route('venues.rental.quote', $venue->id), [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
+            'starts_at' => '2026-08-26T23:30',
+            'duration_minutes' => 60,
+            'scope' => 'whole',
+        ])->assertUnprocessable()
+            ->assertSee('Аренда должна завершаться не позднее 00:00 следующих суток.')
+            ->assertSee('value="2026-08-26T23:30"', false)
+            ->assertSee('value="60"', false);
+    }
+
+    public function test_live_quote_status_invalidates_an_occupied_slot_and_request_is_rejected(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$firstUser, $firstActor] = $this->userAndActor();
+        [$secondUser, $secondActor] = $this->userAndActor();
+        $firstQuote = $this->quote($venue, $owner, $firstUser, false);
+        $secondQuote = $this->quote($venue, $owner, $secondUser, false);
+
+        $statusUrl = route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $secondQuote,
+        ]);
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', true);
+
+        $first = app(RequestVenueBookingHandler::class)->handle($firstActor, $firstQuote);
+        app(AcceptVenueBookingHandler::class)->handle($first->id, $ownerActor);
+
+        $this->getJson($statusUrl)
+            ->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'unavailable');
+
+        try {
+            app(RequestVenueBookingHandler::class)->handle($secondActor, $secondQuote);
+            $this->fail('Occupied quote must not create another booking.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('BOOKING_CONFLICT', $exception->errorCode);
+        }
+        $this->assertDatabaseCount('venue_bookings', 1);
+        $this->assertDatabaseCount('venue_booking_quotes', 2);
+    }
+
+    public function test_live_quote_status_marks_expired_without_creating_a_booking(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$user] = $this->userAndActor();
+        $quoteId = $this->quote($venue, $owner, $user, false);
+        Carbon::setTestNow(CarbonImmutable::parse('2026-08-25 10:20:00', 'Europe/Moscow'));
+
+        $this->getJson(route('venues.rental.quote.status', [
+            'venue' => $venue->id, 'quote_id' => $quoteId,
+        ]))->assertOk()->assertJsonPath('available', false)
+            ->assertJsonPath('reason', 'expired');
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 
     public function test_free_booking_follows_requested_held_confirmed_history(): void

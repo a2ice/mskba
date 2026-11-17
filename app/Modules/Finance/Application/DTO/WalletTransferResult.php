@@ -9,5 +9,6 @@ final readonly class WalletTransferResult
     public function __construct(
         public WalletOperation $operation,
         public bool $replayed,
+        public bool $notificationFailed = false,
     ) {}
 }

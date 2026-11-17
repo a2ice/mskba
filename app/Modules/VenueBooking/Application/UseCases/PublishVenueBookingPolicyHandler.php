@@ -34,9 +34,42 @@ final readonly class PublishVenueBookingPolicyHandler
             }
 
             $normalized = $this->validate($venue, $data);
+            foreach ($venue->courts()->get() as $court) {
+                $step = (int) ($court->time_step_minutes ?? $normalized['time_step_minutes']);
+                $minimum = (int) ($court->minimum_duration_minutes ?? $normalized['minimum_duration_minutes']);
+                $maximum = (int) ($court->maximum_duration_minutes ?? $normalized['maximum_duration_minutes']);
+                if ($step < 5 || $step > 240 || $step % $normalized['time_step_minutes'] !== 0
+                    || $minimum < 15 || $maximum > 1440 || $minimum > $maximum
+                    || $minimum % $step !== 0) {
+                    throw new VenueBookingPolicyException(
+                        'Новые условия несовместимы с индивидуальными ограничениями зала «'.$court->name.'».'
+                    );
+                }
+            }
+
             $latestVersion = (int) VenueBookingPolicy::query()
                 ->where('venue_id', $venue->id)
                 ->max('version');
+
+            // A change to pricing or other rules must not manufacture a fresh
+            // hold verification. It remains current only when checked manually.
+            $previous = VenueBookingPolicy::query()
+                ->where('venue_id', $venue->id)
+                ->where('active_marker', true)
+                ->first();
+            $verificationChanged = $previous === null
+                || (int) $previous->hold_duration_minutes !== $normalized['hold_duration_minutes']
+                || $previous->hold_verification_method !== $normalized['hold_verification_method']
+                || $previous->hold_verification_note !== $normalized['hold_verification_note'];
+            if ($verificationChanged) {
+                $hasEvidence = $normalized['hold_verification_method'] !== null
+                    && trim((string) $normalized['hold_verification_note']) !== '';
+                $normalized['hold_verified_at'] = $hasEvidence ? now() : null;
+                $verifiedByUserId = $hasEvidence ? $publisher->id : null;
+            } else {
+                $normalized['hold_verified_at'] = $previous->hold_verified_at;
+                $verifiedByUserId = $previous->hold_verified_by_user_id;
+            }
 
             VenueBookingPolicy::query()
                 ->where('venue_id', $venue->id)
@@ -48,6 +81,7 @@ final readonly class PublishVenueBookingPolicyHandler
                 'venue_id' => $venue->id,
                 'version' => $latestVersion + 1,
                 'published_by_user_id' => $publisher->id,
+                'hold_verified_by_user_id' => $verifiedByUserId,
                 'published_at' => now(),
                 'active_marker' => true,
             ]);
@@ -78,6 +112,14 @@ final readonly class PublishVenueBookingPolicyHandler
                 ? (int) $data['half_price_per_step_minor']
                 : null,
             'hold_duration_minutes' => (int) ($data['hold_duration_minutes'] ?? 0),
+            'external_hold_required' => (bool) ($data['external_hold_required'] ?? false),
+            'hold_verification_method' => $data['hold_verification_method'] ?? null,
+            'hold_verification_note' => $data['hold_verification_note'] ?? null,
+            'hold_verified_at' => null,
+            'buyer_postpay_allowed' => (bool) ($data['buyer_postpay_allowed'] ?? false),
+            'agent_portal_postpay_allowed' => (bool) ($data['agent_portal_postpay_allowed'] ?? false),
+            'portal_venue_postpay_allowed' => (bool) ($data['portal_venue_postpay_allowed'] ?? false),
+            'agent_portal_self_attestation_allowed' => (bool) ($data['agent_portal_self_attestation_allowed'] ?? false),
             'allows_hold_extension' => (bool) ($data['allows_hold_extension'] ?? false),
             'maximum_hold_extension_minutes' => isset($data['maximum_hold_extension_minutes'])
                 ? (int) $data['maximum_hold_extension_minutes']
@@ -119,6 +161,15 @@ final readonly class PublishVenueBookingPolicyHandler
         if ($normalized['whole_price_per_step_minor'] < 0
             || ($normalized['half_price_per_step_minor'] !== null && $normalized['half_price_per_step_minor'] < 0)) {
             throw new VenueBookingPolicyException('Цена не может быть отрицательной.');
+        }
+
+        if (! in_array($normalized['hold_verification_method'], [null, 'phone', 'messenger', 'provider', 'contract', 'other'], true)
+            || mb_strlen((string) $normalized['hold_verification_note']) > 2000) {
+            throw new VenueBookingPolicyException('Некорректные сведения об источнике срока холда.');
+        }
+        if ($normalized['external_hold_required'] && ($normalized['hold_verification_method'] === null
+            || trim((string) $normalized['hold_verification_note']) === '')) {
+            throw new VenueBookingPolicyException('Для внешнего холда необходимо указать способ и основание проверки.');
         }
 
         if ($normalized['hold_duration_minutes'] < 1 || $normalized['hold_duration_minutes'] > 1440) {

@@ -1,0 +1,336 @@
+const actions = document.querySelector('[data-app-context-actions]');
+const placeholder = document.querySelector('[data-context-placeholder-dialog]');
+const help = document.querySelector('[data-context-help-dialog]');
+let lastTrigger = null;
+let helpContext = '';
+let faq = null;
+let faqSection = null;
+let faqArticle = null;
+let waitingForAuth = false;
+
+function showDialog(dialog, trigger) {
+    lastTrigger = trigger;
+    if (actions?.open) actions.open = false;
+    if (!dialog?.open) dialog?.showModal();
+    // Headings are not controls; put initial focus on a close action.
+    dialog?.querySelector('[data-context-placeholder-close], [data-context-help-close]')?.focus({ preventScroll: true });
+}
+function closeDialog(dialog, restore = true) {
+    if (dialog?.open) dialog.close();
+    if (restore && lastTrigger?.isConnected) lastTrigger.focus({ preventScroll: true });
+}
+function bindBackdrop(dialog) {
+    dialog?.addEventListener('click', (event) => {
+        if (event.target !== dialog) return;
+        const rect = dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog(dialog);
+    });
+}
+
+if (actions && placeholder) {
+    actions.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-context-placeholder]');
+        if (!button) return;
+        placeholder.querySelector('[data-context-placeholder-title]').textContent = button.dataset.contextPlaceholder;
+        showDialog(placeholder, button);
+    });
+    placeholder.querySelector('[data-context-placeholder-close]')?.addEventListener('click', () => closeDialog(placeholder));
+    bindBackdrop(placeholder);
+}
+
+if (help) {
+    const articleList = help.querySelector('[data-help-articles]');
+    const lookup = help.querySelector('[data-help-search]');
+    const options = help.querySelector('[data-help-options]');
+    const toggle = help.querySelector('[data-help-toggle]');
+    const clear = help.querySelector('[data-help-clear]');
+    const breadcrumbs = help.querySelector('[data-help-breadcrumbs]');
+    const form = help.querySelector('[data-help-form]');
+    const guest = help.querySelector('[data-help-guest]');
+    const feedback = help.querySelector('[data-help-form-status]');
+    let requestId = 0;
+    let highlightedIndex = -1;
+    let visibleSections = [];
+
+    function node(tag, text, className = '') {
+        const el = document.createElement(tag);
+        if (text != null) el.textContent = text;
+        if (className) el.className = className;
+        return el;
+    }
+    function linkButton(text, onClick, className = 'app-context-help__link') {
+        const button = node('button', text, className);
+        button.type = 'button';
+        button.addEventListener('click', onClick);
+        return button;
+    }
+    function updateAuth(authenticated, token) {
+        if (token) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
+        form.hidden = !authenticated;
+        guest.hidden = authenticated;
+    }
+    function closeOptions() {
+        options.hidden = true;
+        lookup.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-expanded', 'false');
+        lookup.removeAttribute('aria-activedescendant');
+        highlightedIndex = -1;
+    }
+    function highlight(index, scroll = false) {
+        highlightedIndex = index;
+        [...options.children].forEach((option, i) => {
+            option.setAttribute('aria-selected', String(i === index));
+        });
+        if (index >= 0) {
+            const active = options.children[index];
+            lookup.setAttribute('aria-activedescendant', active.id);
+            if (scroll) active.scrollIntoView({ block: 'nearest' });
+        } else {
+            lookup.removeAttribute('aria-activedescendant');
+        }
+    }
+    function openOptions(query = '') {
+        if (!faq) return;
+        const normalized = query.trim().toLocaleLowerCase();
+        visibleSections = faq.sections.filter(s => s.label.toLocaleLowerCase().startsWith(normalized));
+        options.replaceChildren();
+        for (const [i, section] of visibleSections.entries()) {
+            const option = node('button', section.label, 'app-context-help__option');
+            option.type = 'button';
+            option.id = `context-help-choice-${i}`;
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
+            option.addEventListener('click', () => {
+                closeOptions();
+                load(section.key);
+                lookup.focus({ preventScroll: true });
+            });
+            options.append(option);
+        }
+        if (!visibleSections.length) options.append(node('p', 'Раздел не найден'));
+        options.hidden = false;
+        lookup.setAttribute('aria-expanded', 'true');
+        toggle.setAttribute('aria-expanded', 'true');
+        highlight(visibleSections.length ? 0 : -1);
+    }
+    function render() {
+        if (!faq) return;
+        const groups = faq.sections || [];
+        const isFaqRoot = !faqSection;
+        const sectionSelector = lookup.closest('[data-help-combobox]');
+        // On the root page the section cards are already the navigation.
+        // Neither the duplicate selector nor a one-item breadcrumb is useful.
+        sectionSelector.hidden = isFaqRoot;
+        breadcrumbs.hidden = isFaqRoot;
+        lookup.value = groups.find(s => s.key === faqSection)?.label || '';
+        clear.hidden = isFaqRoot;
+        sectionSelector.classList.toggle('has-clear', !isFaqRoot);
+        closeOptions();
+        breadcrumbs.replaceChildren();
+        const trail = faq.breadcrumbs || [];
+        for (const [index, crumb] of trail.entries()) {
+            if (index) breadcrumbs.append(node('span', '/', 'app-context-help__crumb-divider'));
+            if (index === trail.length - 1) {
+                const current = node('span', crumb.label, 'app-context-help__breadcrumb app-context-help__breadcrumb--current');
+                current.setAttribute('aria-current', 'page');
+                breadcrumbs.append(current);
+            } else {
+                breadcrumbs.append(linkButton(crumb.label, () => load(crumb.section, crumb.article), 'app-context-help__breadcrumb'));
+            }
+        }
+        articleList.replaceChildren();
+        if (faq.article) {
+            articleList.append(node('h3', faq.article.title));
+            const content = node('div', null, 'app-context-help__rendered');
+            // The existing server-side ContentBodyRenderer sanitizes this HTML.
+            content.innerHTML = faq.article.html;
+            articleList.append(content);
+            return;
+        }
+        if (!faqSection) {
+            for (const group of groups) {
+                const button = linkButton(group.label, () => load(group.key), 'app-context-help__link app-context-help__section');
+                button.append(node('span', `${group.articles.length}`, 'app-context-help__count'));
+                articleList.append(button);
+            }
+            return;
+        }
+        const section = groups.find(s => s.key === faqSection);
+        if (faqSection === 'payments') {
+            // The avatar top-up dialog and contextual FAQ consume the same
+            // enabled Rewards catalogue returned by the help endpoint.
+            const intro = node('p', 'Бонусы начисляются после подтверждения условия. Пополнение картой пока не подключено и не списывает деньги.');
+            articleList.append(intro);
+            const rewards = Array.isArray(faq.bonus_opportunities) ? faq.bonus_opportunities : [];
+            if (rewards.length) {
+                const listing = node('ul', '', 'app-context-help__bonus-list');
+                for (const item of rewards) {
+                    const line = node('li');
+                    const amount = (Number(item.amount_minor) / 100).toLocaleString('ru-RU', {
+                        style: 'currency', currency: 'RUB',
+                    });
+                    line.append(node('strong', item.title + ' — ' + amount));
+                    line.append(node('p', item.description));
+                    listing.append(line);
+                }
+                articleList.append(listing);
+            } else {
+                articleList.append(node('p', 'Сейчас нет активных бонусных программ.'));
+            }
+            if (!section?.articles?.length) return;
+        }
+        if (!section?.articles?.length) {
+            articleList.append(node('p', 'По данному разделу пока нет информации. Вы можете задать вопрос ниже.'));
+            return;
+        }
+        for (const item of section.articles) {
+            articleList.append(linkButton(item.title, () => load(faqSection, item.alias)));
+        }
+    }
+    async function load(section = null, article = null, usePageContext = false) {
+        const id = ++requestId;
+        articleList.replaceChildren(node('p', 'Загружаем ответы…'));
+        const url = new URL(help.dataset.helpUrl, location.origin);
+        if (usePageContext && helpContext) url.searchParams.set('context', helpContext);
+        if (section) url.searchParams.set('section', section);
+        if (article) url.searchParams.set('article', article);
+        try {
+            const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('help fetch failed');
+            const data = await response.json();
+            if (id !== requestId) return;
+            faq = data;
+            faqSection = data.section;
+            faqArticle = data.article?.alias || null;
+            updateAuth(data.authenticated, data.csrf_token);
+            render();
+        } catch {
+            if (id === requestId) articleList.replaceChildren(node('p', 'Не удалось загрузить FAQ. Попробуйте ещё раз.'));
+        }
+    }
+    function chooseSection() {
+        if (!faq) return;
+        const value = lookup.value.trim().toLocaleLowerCase();
+        if (!value) { closeOptions(); return load(); }
+        const section = faq.sections.find(s => s.label.toLocaleLowerCase() === value || s.key === value);
+        if (section) { closeOptions(); return load(section.key); }
+        openOptions(value);
+    }
+    lookup.addEventListener('input', () => openOptions(lookup.value));
+    lookup.addEventListener('change', () => {
+        // Native change can fire on blur; never reopen dropdown unexpectedly.
+        const value = lookup.value.trim().toLocaleLowerCase();
+        const match = faq?.sections?.find(section => section.label.toLocaleLowerCase() === value);
+        if (options.hidden && match && match.key !== faqSection) load(match.key);
+    });
+    lookup.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !options.hidden) {
+            closeOptions(); event.preventDefault(); event.stopPropagation(); return;
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (options.hidden) openOptions('');
+            else if (visibleSections.length) highlight((highlightedIndex + (event.key === 'ArrowDown' ? 1 : -1) + visibleSections.length) % visibleSections.length, true);
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!options.hidden && highlightedIndex >= 0 && visibleSections[highlightedIndex]) {
+                closeOptions(); load(visibleSections[highlightedIndex].key);
+            } else chooseSection();
+        }
+    });
+    toggle.addEventListener('click', () => {
+        if (!options.hidden) closeOptions();
+        else { openOptions(lookup.value); lookup.focus({ preventScroll: true }); }
+    });
+    clear.addEventListener('click', () => { closeOptions(); load(); lookup.focus({ preventScroll: true }); });
+    document.addEventListener('pointerdown', event => {
+        if (!options.hidden && !event.target.closest('[data-help-combobox]')) closeOptions();
+    });
+    actions?.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
+        helpContext = event.currentTarget.dataset.helpContext || '';
+        waitingForAuth = false;
+        showDialog(help, event.currentTarget);
+        load(null, null, true);
+    });
+    // Shared declarative API for Page Builder and other server-rendered content.
+    // The Page Builder sanitizer explicitly allows only these safe data attributes.
+    function openFaq({ section = null, article = null, context = '' } = {}, trigger = null) {
+        helpContext = context;
+        waitingForAuth = false;
+        showDialog(help, trigger);
+        void load(section, article);
+    }
+    document.addEventListener('click', (event) => {
+        const trigger = event.target instanceof Element
+            ? event.target.closest('[data-mskba-faq-section], [data-mskba-faq-article]')
+            : null;
+        if (!trigger || !help) return;
+        event.preventDefault();
+        openFaq({
+            section: trigger.dataset.mskbaFaqSection || null,
+            article: trigger.dataset.mskbaFaqArticle || null,
+            context: trigger.dataset.mskbaFaqContext || '',
+        }, trigger);
+    });
+    // Optional integration for an editor-owned JS component (no duplicate modal).
+    window.addEventListener('mskba:faq:open', (event) => {
+        const detail = event.detail || {};
+        openFaq({
+            section: detail.section || null,
+            article: detail.article || null,
+            context: detail.context || '',
+        }, detail.trigger instanceof Element ? detail.trigger : null);
+    });
+
+    help.querySelector('[data-context-help-close]')?.addEventListener('click', () => closeDialog(help));
+    bindBackdrop(help);
+    help.querySelector('[data-help-auth]')?.addEventListener('click', () => {
+        waitingForAuth = true;
+        closeDialog(help, false);
+        window.dispatchEvent(new CustomEvent('mskba:auth:open', { detail: { mode: 'login', stayOnPage: true } }));
+    });
+    window.addEventListener('mskba:auth:success', () => {
+        if (!waitingForAuth) return;
+        waitingForAuth = false;
+        showDialog(help, lastTrigger);
+        help.querySelector('[data-help-ask]').open = true;
+        load(faqSection, faqArticle);
+    });
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const submit = form.querySelector('[type="submit"]');
+        submit.disabled = true;
+        feedback.textContent = 'Отправляем вопрос…';
+        try {
+            const data = new FormData(form);
+            const response = await fetch(help.dataset.questionUrl, {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                body: JSON.stringify({ topic: data.get('topic'), message: data.get('message'), source_path: location.pathname }),
+            });
+            if (response.status === 401) { updateAuth(false); throw new Error('Авторизуйтесь и повторите попытку.'); }
+            if (response.status === 419) throw new Error('Сессия истекла. Обновите страницу.');
+            if (response.status === 429) throw new Error('Слишком много вопросов. Попробуйте позже.');
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(response.status === 403
+                    ? 'Создание обращения недоступно для этого аккаунта.'
+                    : (error.message || 'Не удалось отправить вопрос. Проверьте поля и попробуйте ещё раз.'));
+            }
+            const result = await response.json();
+            if (!result.redirect_url) throw new Error('Не удалось открыть созданное обращение.');
+            const destination = new URL(result.redirect_url, location.origin);
+            if (destination.origin !== location.origin
+                || !destination.pathname.startsWith('/account/notifications/threads/support/')) {
+                throw new Error('Получена некорректная ссылка на обращение.');
+            }
+            feedback.textContent = result.message || 'Обращение создано. Открываем переписку…';
+            window.location.assign(destination.href);
+        } catch (error) {
+            feedback.textContent = error.message || 'Не удалось отправить вопрос.';
+        } finally { submit.disabled = false; }
+    });
+}

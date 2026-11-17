@@ -1,6 +1,7 @@
 @extends('theme::layouts.section-sidebar', [
     'title' => $team->name, 'sectionId' => 'teams', 'sectionClass' => 'teams-section',
     'contentTitle' => $team->name, 'contentSubtitle' => null,
+    'entityEditUrl' => !empty($canEditSettings) ? route('teams.edit', $team->routeIdentifier()) : null,
 ])
 @php
     $memberName = static fn ($membership) => trim(implode(' ', array_filter([
@@ -55,6 +56,7 @@
 </ul></div>
 @endsection
 @section('section-content')
+@include('components.entity-public-banner', ['bannerUrl' => $team->bannerUrl()])
 <article class="team-profile">
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif

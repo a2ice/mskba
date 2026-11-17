@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "inspect",
+  "kind": "components",
+  "key": "venues-scene-v3"
+}

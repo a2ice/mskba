@@ -1,0 +1,100 @@
+/* Theme-aware background utilities for Page Builder markup.
+   The published Design Theme CSS owns --info, --accent, --surface-raised,
+   --muted, --success, --danger and --warning. Switching between light/dark
+   appearance (or editing a palette in Filament) updates every utility.
+   Only backgrounds change: content authors must ensure text contrast.
+   Each color family has exactly 9 classes: 3 solids + 6 gradients. */
+.mskba-page-builder {
+    --mskba-bg-blue: color-mix(in srgb, var(--info, #438bc1) 55%, #1c5fab);
+    --mskba-bg-grey: color-mix(in srgb, var(--surface-raised, #343a40) 68%, var(--muted, #899099) 32%);
+    --mskba-bg-orange: var(--accent, #ff7900);
+    --mskba-bg-green: color-mix(in srgb, var(--success, #2fbc7a) 60%, #198257);
+    --mskba-bg-red: color-mix(in srgb, var(--danger, #df4659) 65%, #b52233);
+    --mskba-bg-yellow: color-mix(in srgb, var(--warning, #ffcc55) 60%, #b78200);
+    --mskba-bg-blue-light: color-mix(in srgb, var(--mskba-bg-blue) 32%, white);
+    --mskba-bg-blue-dark: color-mix(in srgb, var(--mskba-bg-blue) 46%, black);
+    --mskba-bg-grey-light: color-mix(in srgb, var(--mskba-bg-grey) 32%, white);
+    --mskba-bg-grey-dark: color-mix(in srgb, var(--mskba-bg-grey) 46%, black);
+    --mskba-bg-orange-light: color-mix(in srgb, var(--mskba-bg-orange) 32%, white);
+    --mskba-bg-orange-dark: color-mix(in srgb, var(--mskba-bg-orange) 46%, black);
+    --mskba-bg-green-light: color-mix(in srgb, var(--mskba-bg-green) 32%, white);
+    --mskba-bg-green-dark: color-mix(in srgb, var(--mskba-bg-green) 46%, black);
+    --mskba-bg-red-light: color-mix(in srgb, var(--mskba-bg-red) 32%, white);
+    --mskba-bg-red-dark: color-mix(in srgb, var(--mskba-bg-red) 46%, black);
+    --mskba-bg-yellow-light: color-mix(in srgb, var(--mskba-bg-yellow) 32%, white);
+    --mskba-bg-yellow-dark: color-mix(in srgb, var(--mskba-bg-yellow) 46%, black);
+}
+
+/* blue */
+.mskba-page-builder .bg-lightblue { background: var(--mskba-bg-blue-light); }
+.mskba-page-builder .bg-blue { background: var(--mskba-bg-blue); }
+.mskba-page-builder .bg-darkblue { background: var(--mskba-bg-blue-dark); }
+.mskba-page-builder .bg-grad-lightblue-blue { background: linear-gradient(135deg, var(--mskba-bg-blue-light), var(--mskba-bg-blue)); }
+.mskba-page-builder .bg-grad-blue-lightblue { background: linear-gradient(135deg, var(--mskba-bg-blue), var(--mskba-bg-blue-light)); }
+.mskba-page-builder .bg-grad-blue-darkblue { background: linear-gradient(135deg, var(--mskba-bg-blue), var(--mskba-bg-blue-dark)); }
+.mskba-page-builder .bg-grad-darkblue-blue { background: linear-gradient(135deg, var(--mskba-bg-blue-dark), var(--mskba-bg-blue)); }
+.mskba-page-builder .bg-grad-lightblue-darkblue { background: linear-gradient(135deg, var(--mskba-bg-blue-light), var(--mskba-bg-blue-dark)); }
+.mskba-page-builder .bg-grad-darkblue-lightblue { background: linear-gradient(135deg, var(--mskba-bg-blue-dark), var(--mskba-bg-blue-light)); }
+
+/* grey */
+.mskba-page-builder .bg-lightgrey { background: var(--mskba-bg-grey-light); }
+.mskba-page-builder .bg-grey { background: var(--mskba-bg-grey); }
+.mskba-page-builder .bg-darkgrey { background: var(--mskba-bg-grey-dark); }
+.mskba-page-builder .bg-grad-lightgrey-grey { background: linear-gradient(135deg, var(--mskba-bg-grey-light), var(--mskba-bg-grey)); }
+.mskba-page-builder .bg-grad-grey-lightgrey { background: linear-gradient(135deg, var(--mskba-bg-grey), var(--mskba-bg-grey-light)); }
+.mskba-page-builder .bg-grad-grey-darkgrey { background: linear-gradient(135deg, var(--mskba-bg-grey), var(--mskba-bg-grey-dark)); }
+.mskba-page-builder .bg-grad-darkgrey-grey { background: linear-gradient(135deg, var(--mskba-bg-grey-dark), var(--mskba-bg-grey)); }
+.mskba-page-builder .bg-grad-lightgrey-darkgrey { background: linear-gradient(135deg, var(--mskba-bg-grey-light), var(--mskba-bg-grey-dark)); }
+.mskba-page-builder .bg-grad-darkgrey-lightgrey { background: linear-gradient(135deg, var(--mskba-bg-grey-dark), var(--mskba-bg-grey-light)); }
+
+/* orange */
+.mskba-page-builder .bg-lightorange { background: var(--mskba-bg-orange-light); }
+.mskba-page-builder .bg-orange { background: var(--mskba-bg-orange); }
+.mskba-page-builder .bg-darkorange { background: var(--mskba-bg-orange-dark); }
+.mskba-page-builder .bg-grad-lightorange-orange { background: linear-gradient(135deg, var(--mskba-bg-orange-light), var(--mskba-bg-orange)); }
+.mskba-page-builder .bg-grad-orange-lightorange { background: linear-gradient(135deg, var(--mskba-bg-orange), var(--mskba-bg-orange-light)); }
+.mskba-page-builder .bg-grad-orange-darkorange { background: linear-gradient(135deg, var(--mskba-bg-orange), var(--mskba-bg-orange-dark)); }
+.mskba-page-builder .bg-grad-darkorange-orange { background: linear-gradient(135deg, var(--mskba-bg-orange-dark), var(--mskba-bg-orange)); }
+.mskba-page-builder .bg-grad-lightorange-darkorange { background: linear-gradient(135deg, var(--mskba-bg-orange-light), var(--mskba-bg-orange-dark)); }
+.mskba-page-builder .bg-grad-darkorange-lightorange { background: linear-gradient(135deg, var(--mskba-bg-orange-dark), var(--mskba-bg-orange-light)); }
+
+/* green */
+.mskba-page-builder .bg-lightgreen { background: var(--mskba-bg-green-light); }
+.mskba-page-builder .bg-green { background: var(--mskba-bg-green); }
+.mskba-page-builder .bg-darkgreen { background: var(--mskba-bg-green-dark); }
+.mskba-page-builder .bg-grad-lightgreen-green { background: linear-gradient(135deg, var(--mskba-bg-green-light), var(--mskba-bg-green)); }
+.mskba-page-builder .bg-grad-green-lightgreen { background: linear-gradient(135deg, var(--mskba-bg-green), var(--mskba-bg-green-light)); }
+.mskba-page-builder .bg-grad-green-darkgreen { background: linear-gradient(135deg, var(--mskba-bg-green), var(--mskba-bg-green-dark)); }
+.mskba-page-builder .bg-grad-darkgreen-green { background: linear-gradient(135deg, var(--mskba-bg-green-dark), var(--mskba-bg-green)); }
+.mskba-page-builder .bg-grad-lightgreen-darkgreen { background: linear-gradient(135deg, var(--mskba-bg-green-light), var(--mskba-bg-green-dark)); }
+.mskba-page-builder .bg-grad-darkgreen-lightgreen { background: linear-gradient(135deg, var(--mskba-bg-green-dark), var(--mskba-bg-green-light)); }
+
+/* red */
+.mskba-page-builder .bg-lightred { background: var(--mskba-bg-red-light); }
+.mskba-page-builder .bg-red { background: var(--mskba-bg-red); }
+.mskba-page-builder .bg-darkred { background: var(--mskba-bg-red-dark); }
+.mskba-page-builder .bg-grad-lightred-red { background: linear-gradient(135deg, var(--mskba-bg-red-light), var(--mskba-bg-red)); }
+.mskba-page-builder .bg-grad-red-lightred { background: linear-gradient(135deg, var(--mskba-bg-red), var(--mskba-bg-red-light)); }
+.mskba-page-builder .bg-grad-red-darkred { background: linear-gradient(135deg, var(--mskba-bg-red), var(--mskba-bg-red-dark)); }
+.mskba-page-builder .bg-grad-darkred-red { background: linear-gradient(135deg, var(--mskba-bg-red-dark), var(--mskba-bg-red)); }
+.mskba-page-builder .bg-grad-lightred-darkred { background: linear-gradient(135deg, var(--mskba-bg-red-light), var(--mskba-bg-red-dark)); }
+.mskba-page-builder .bg-grad-darkred-lightred { background: linear-gradient(135deg, var(--mskba-bg-red-dark), var(--mskba-bg-red-light)); }
+
+/* yellow */
+.mskba-page-builder .bg-lightyellow { background: var(--mskba-bg-yellow-light); }
+.mskba-page-builder .bg-yellow { background: var(--mskba-bg-yellow); }
+.mskba-page-builder .bg-darkyellow { background: var(--mskba-bg-yellow-dark); }
+.mskba-page-builder .bg-grad-lightyellow-yellow { background: linear-gradient(135deg, var(--mskba-bg-yellow-light), var(--mskba-bg-yellow)); }
+.mskba-page-builder .bg-grad-yellow-lightyellow { background: linear-gradient(135deg, var(--mskba-bg-yellow), var(--mskba-bg-yellow-light)); }
+.mskba-page-builder .bg-grad-yellow-darkyellow { background: linear-gradient(135deg, var(--mskba-bg-yellow), var(--mskba-bg-yellow-dark)); }
+.mskba-page-builder .bg-grad-darkyellow-yellow { background: linear-gradient(135deg, var(--mskba-bg-yellow-dark), var(--mskba-bg-yellow)); }
+.mskba-page-builder .bg-grad-lightyellow-darkyellow { background: linear-gradient(135deg, var(--mskba-bg-yellow-light), var(--mskba-bg-yellow-dark)); }
+.mskba-page-builder .bg-grad-darkyellow-lightyellow { background: linear-gradient(135deg, var(--mskba-bg-yellow-dark), var(--mskba-bg-yellow-light)); }
+
+/* Semantic backgrounds inherit the currently selected Design Theme too. */
+.mskba-page-builder .bg-page { background: var(--bg, #090a0b); }
+.mskba-page-builder .bg-surface { background: var(--surface, #141618); }
+.mskba-page-builder .bg-surface-raised { background: var(--surface-raised, #1d2023); }
+.mskba-page-builder .bg-field { background: var(--field, #0e1012); }
+.mskba-page-builder .bg-accent { background: var(--accent, #ff7900); }
+.mskba-page-builder .bg-transparent { background: transparent; }

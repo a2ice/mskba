@@ -21,10 +21,16 @@ use Illuminate\Support\Facades\Storage;
     'source_reference',
     'disk',
     'path',
+    'original_path',
+    'original_disk',
+    'crop_draft',
+    'crop_applied',
     'title',
     'description',
     'mime',
     'size',
+    'width',
+    'height',
     'is_featured',
     'sort_order',
 ])]
@@ -67,7 +73,11 @@ class Media extends Model
         return [
             'is_featured' => 'boolean',
             'size' => 'integer',
+            'width' => 'integer',
+            'height' => 'integer',
             'sort_order' => 'integer',
+            'crop_draft' => 'array',
+            'crop_applied' => 'array',
         ];
     }
 }

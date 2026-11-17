@@ -255,7 +255,7 @@ class TelegramMiniAppAuthTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->get(route('welcome'))
+            ->get(route('homepage.original'))
             ->assertOk()
             ->assertSee('data-authenticated="1"', false)
             ->assertSee('data-profile-initials', false)
@@ -278,6 +278,9 @@ class TelegramMiniAppAuthTest extends TestCase
             'alias' => 'tsentralnaya-ploshchadka',
             'type' => VenueTypeEnum::STREET_COURT,
             'status' => VenueStatusEnum::CONFIRMED,
+            // Free filtering must match an explicitly free court, not unknown.
+            'requires_payment' => false,
+            'requires_booking' => false,
             'raw_address' => 'Москва, Арбат, 10',
         ])->tags()->create([
             'name' => 'Круглосуточно',
@@ -318,9 +321,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
             ->assertJsonPath('venues.0.status', VenueStatusEnum::CONFIRMED->label())
             ->assertJsonPath('venues.0.is_confirmed', true)
-            ->assertJsonPath('venues.0.requires_payment', null)
+            ->assertJsonPath('venues.0.requires_payment', false)
             ->assertJsonPath('venues.0.requires_booking_approval', false)
-            ->assertJsonPath('venues.0.has_free_access', false)
+            ->assertJsonPath('venues.0.has_free_access', true)
             ->assertJsonMissing(['name' => 'Чужая скрытая Арбатская площадка']);
 
         $this
@@ -344,6 +347,12 @@ class TelegramMiniAppAuthTest extends TestCase
             'telegram_flow' => '1',
             'name' => 'Площадка Telegram',
             'type' => 'street_court',
+            'initial_courts' => [[
+                    'name' => 'Корт 1',
+                    'environment' => 'outdoor',
+                    'hoops_count' => 2,
+                    'amenity_ids' => [],
+                ]],
             'requires_payment' => '1',
             'requires_booking_approval' => '1',
             'location' => [

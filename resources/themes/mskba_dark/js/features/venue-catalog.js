@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import { venuePlacemark } from '../core/venue-map-pins.js';
 import '../../css/pages/venue-catalog-fixes.css';
 
 const SINGLE_POINT_ZOOM = 15;
@@ -54,11 +55,16 @@ function initCatalogMap(catalog, getPromise, setPromise) {
             });
             const placemarks = mapPoints.map((point) => {
                 const coordinates = [point.latitude, point.longitude];
-                return new window.ymaps.Placemark(coordinates, {
+                return venuePlacemark(coordinates, {
                     hintContent: point.name,
                     balloonContentHeader: point.name,
-                    balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
-                }, { preset: 'islands#orangeSportIcon' });
+                    balloonContentBody: `${escapeHtml(point.address || '')}`
+                        + (point.matched_court ? `<br>Подходящий зал: ${escapeHtml(point.matched_court)}` : '')
+                        + (point.free_courts ? '<br>Есть бесплатный доступ' : '')
+                        + (point.paid_courts ? '<br>Есть платные залы' : '')
+                        + `<br><a href="${escapeHtml(point.url)}">${point.matched_court ? 'Открыть зал' : 'Открыть площадку'}</a>` +
+                        `<button type="button" class="mskba-favorite-heart" data-favorite-venue="${Number(point.id)}" title="Добавить в избранное" aria-pressed="false" aria-label="Добавить в избранное">♡</button>`, 
+                });
             });
             const clusterer = new window.ymaps.Clusterer({
                 preset: 'islands#invertedOrangeClusterIcons',

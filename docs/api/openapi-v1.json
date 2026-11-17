@@ -1,0 +1,2027 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MSKBA REST API v1",
+    "version": "1.0.0",
+    "description": "Versioned REST contract for implemented MSKBA endpoints only. Opened in DEV Swagger UI; GraphQL remains separate. This spec includes public feeds and first-party Sanctum authentication. Internal Page Builder operations are available ONLY on dev.mskba.ru and require dedicated short-lived superadmin tokens; they are not part of the mobile-client contract."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current MSKBA host (DEV for testing)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Площадки"
+    },
+    {
+      "name": "Авторизация"
+    },
+    {
+      "name": "Профиль"
+    },
+    {
+      "name": "Главная страница"
+    },
+    {
+      "name": "Внутренний API · Page Builder (DEV)",
+      "description": "Только DEV/staging; отдельный временный токен superadmin, права Filament, контроль SHA-256, аудит. Не использовать обычный мобильный токен."
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Login with existing MSKBA account",
+        "operationId": "login",
+        "description": "Rate limit 5/minute; returns a personal Sanctum token, valid for 30 days.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Register a new MSKBA mobile account",
+        "operationId": "registerMobileAccount",
+        "description": "Stateless first-party registration using the same rules as website sign-up. Explicit consent to personal-data processing is mandatory (https://dev.mskba.ru/personal-data-consent); the consent is audited. Username is trimmed and lowercased. Creates an unconfirmed account (contact confirmation and privacy-distribution setup happen separately) and immediately returns a 30-day scoped Sanctum Bearer token. Rate limit 5/minute; no cookie or CSRF token required. Do not use this operation to register a second account for an existing user.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MobileRegisterRequest"
+              },
+              "example": {
+                "username": "new_player_123",
+                "password": "StrongPass1!",
+                "password_confirmation": "StrongPass1!",
+                "privacy_consent": true,
+                "role": "player",
+                "first_name": "Алексей",
+                "last_name": "Игроков",
+                "device_name": "ios-iphone"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; token issued, same structure as login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Revoke current device token",
+        "operationId": "logoutCurrentDevice",
+        "description": "Requires Bearer token with auth:logout. Other device tokens are not revoked.",
+        "security": [
+          {
+            "sanctumBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/home/tournaments-scene": {
+      "get": {
+        "summary": "Homepage tournaments scene",
+        "tags": [
+          "Главная страница"
+        ],
+        "operationId": "getHomeTournamentsScene",
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentsScene"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/home/venues-map": {
+      "get": {
+        "tags": [
+          "Главная страница"
+        ],
+        "summary": "Homepage venues map",
+        "operationId": "Homepagevenuesmap",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from meta.next_cursor",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Профиль"
+        ],
+        "summary": "Own user profile",
+        "operationId": "getMe",
+        "description": "Requires Bearer token with profile:read; website session is not an API credential.",
+        "security": [
+          {
+            "sanctumBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/venues": {
+      "get": {
+        "tags": [
+          "Площадки"
+        ],
+        "summary": "Каталог опубликованных площадок с фильтрами",
+        "operationId": "Listpublicvenues",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from meta.next_cursor",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Тип площадки (те же значения, что на сайте).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sports_hall",
+                "school",
+                "university",
+                "sports_complex",
+                "arena",
+                "street_court"
+              ]
+            },
+            "example": "street_court"
+          },
+          {
+            "name": "operational_status",
+            "in": "query",
+            "required": false,
+            "description": "Текущее состояние: работает либо временно закрыта. Не является статусом модерации (публикуются только confirmed).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "temporarily_closed"
+              ]
+            },
+            "example": "active"
+          },
+          {
+            "name": "access",
+            "in": "query",
+            "required": false,
+            "description": "Условия доступа: free = без оплаты и предварительного подтверждения; paid = требует оплаты; approval = требует подтверждения. paid и approval могут пересекаться.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "free",
+                "paid",
+                "approval"
+              ]
+            },
+            "example": "free"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Поиск по названию, адресу и краткому описанию: все слова должны совпасть; не более 100 символов.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": "Москва"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenuePage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "JSON response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Only confirmed, non-deleted venues. Filters match the web catalog and are applied in SQL before cursor pagination. Empty/omitted filters return all public venues. The next-page URL retains filters."
+      }
+    },
+    "/api/v1/venues/{venue}": {
+      "get": {
+        "tags": [
+          "Площадки"
+        ],
+        "summary": "Получить опубликованную площадку по ID",
+        "description": "Public, read-only. Shares visibility and fields with GET /api/v1/venues. Returns 404 for missing, unconfirmed, blocked or soft-deleted venues.",
+        "operationId": "getPublicVenue",
+        "security": [],
+        "parameters": [
+          {
+            "name": "venue",
+            "in": "path",
+            "required": true,
+            "description": "Positive numeric MSKBA venue ID (not a cursor or slug).",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Площадка найдена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Нет опубликованной площадки с таким ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "message": "Площадка не найдена."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов (60/мин)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}": {
+      "get": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "getPageBuilderAgentDocument",
+        "summary": "Прочитать HTML/CSS/JS Page Builder",
+        "description": "Только https://dev.mskba.ru, действующий короткоживущий токен superadmin со способностью page-builder:read и разрешениями Page Builder. Ответ содержит полный draft/published текст и SHA-256; не кэшировать и не копировать в публичные логи.",
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/draft": {
+      "patch": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "stagePageBuilderAgentDraft",
+        "summary": "Сохранить только черновик HTML/CSS/JS",
+        "description": "Только DEV. Способность page-builder:write и соответствующие permissions. Сверяет expected_draft_sha256 под блокировкой БД, валидирует HTML/CSS и сохраняет только выбранный черновик, не публикуя его. JS и CSS используют штатный store; reason фиксируется в аудите.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentStageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/publish": {
+      "post": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "publishPageBuilderAgentField",
+        "summary": "Опубликовать выбранное поле HTML/CSS/JS",
+        "description": "Только DEV. Способность page-builder:publish и соответствующие permissions. Оба контрольных SHA-256 должны совпасть. Публикация HTML отклоняется, если штатный publisher затронул бы другие неопубликованные поля. JS публикуется и активируется; для CSS/JS сохраняется версия отката.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentPublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/page-builder/{kind}/{key}/rollback": {
+      "post": {
+        "tags": [
+          "Внутренний API · Page Builder (DEV)"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "description": "Тип сущности Page Builder",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "components",
+                "templates",
+                "pages"
+              ]
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "Slug компонента/шаблона; для pages — home либо числовой ID",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "venues-scene-v3"
+            }
+          }
+        ],
+        "security": [
+          {
+            "pageBuilderAgentBearer": []
+          }
+        ],
+        "x-internal": true,
+        "x-environments": [
+          "staging"
+        ],
+        "x-production-available": false,
+        "operationId": "rollbackPageBuilderAgentField",
+        "summary": "Откатить опубликованный CSS/JS",
+        "description": "Только DEV. Способность page-builder:publish, соответствующие permissions, действующий previous slot. Откат HTML через API не поддерживается (используется история Filament). Перед откатом проверяется SHA-256 опубликованной версии.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageBuilderAgentRollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Текущее состояние всех draft/published источников и контрольные SHA-256",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageBuilderAgentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован: отсутствует либо недействителен Bearer-токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Не тот тип токена, роль или недостаточные permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не DEV/staging, несуществующий объект или закрытый маршрут",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Содержимое Filament изменилось либо публикация не допускается без разрешения конфликта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации запроса или запрещённое содержимое",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sanctumBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum"
+      },
+      "pageBuilderAgentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum (24-hour Page Builder agent PAT)",
+        "description": "Только временный персональный Sanctum-токен superadmin с префиксом имени mskba-pagebuilder-agent: и abilities page-builder:read/write/publish. Выдаётся в Filament DEV; не является мобильным токеном и не передаётся в чат/репозиторий."
+      }
+    },
+    "schemas": {
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "type_label": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "operational_status": {
+            "type": "string"
+          },
+          "short_description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "requires_payment": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "null = не установлено, поэтому не считается бесплатной или платной площадкой"
+          },
+          "requires_booking_approval": {
+            "type": "boolean",
+            "description": "Требуется согласование доступа"
+          },
+          "has_free_access": {
+            "type": "boolean",
+            "description": "true только если requires_payment=false и requires_booking_approval=false"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "alias",
+          "type",
+          "type_label",
+          "status",
+          "operational_status",
+          "short_description",
+          "address",
+          "latitude",
+          "longitude",
+          "image_url",
+          "url",
+          "requires_payment",
+          "requires_booking_approval",
+          "has_free_access"
+        ]
+      },
+      "CursorMeta": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "limit",
+          "has_more",
+          "next_cursor"
+        ]
+      },
+      "VenuePage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Venue"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "next": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "next"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "meta",
+          "links"
+        ]
+      },
+      "MapSurface": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ]
+      },
+      "MapVenue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "district": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapSurface"
+            }
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "url",
+          "image_url",
+          "latitude",
+          "longitude",
+          "district",
+          "surfaces",
+          "amenities"
+        ]
+      },
+      "MapPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapVenue"
+            }
+          },
+          "maps_api_key": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMeta"
+          }
+        },
+        "required": [
+          "data",
+          "maps_api_key",
+          "meta"
+        ]
+      },
+      "TournamentPreview": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "format",
+          "url"
+        ]
+      },
+      "TournamentsScene": {
+        "type": "object",
+        "properties": {
+          "assets": {
+            "type": "object",
+            "properties": {
+              "background": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ball": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "background",
+              "rim",
+              "ball"
+            ]
+          },
+          "tournaments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TournamentPreview"
+            }
+          }
+        },
+        "required": [
+          "assets",
+          "tournaments"
+        ]
+      },
+      "OwnProfile": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "middle_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "avatar_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name",
+          "middle_name",
+          "gender",
+          "birth_date",
+          "avatar_url"
+        ]
+      },
+      "OwnUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "profile": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OwnProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "participation_roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "status",
+          "profile",
+          "participation_roles"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 255,
+            "example": "test_user"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "writeOnly": true
+          },
+          "device_name": {
+            "type": "string",
+            "maxLength": 80,
+            "example": "ios-test-device"
+          }
+        },
+        "required": [
+          "login",
+          "password"
+        ]
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token_type": {
+            "type": "string",
+            "const": "Bearer"
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "requires_password_change": {
+            "type": "boolean"
+          },
+          "user": {
+            "$ref": "#/components/schemas/OwnUser"
+          }
+        },
+        "required": [
+          "token_type",
+          "access_token",
+          "expires_at",
+          "requires_password_change",
+          "user"
+        ]
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OwnUser"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "ValidationError": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "VenueDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Venue"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "description": "Single published venue in the same field format as a list item."
+      },
+      "PageBuilderAgentSource": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "draft": {
+            "type": "string",
+            "description": "Текущий черновик (только авторизованный ответ)"
+          },
+          "published": {
+            "type": "string",
+            "description": "Опубликованная версия (только авторизованный ответ)"
+          },
+          "draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "pending": {
+            "type": "boolean",
+            "description": "Черновик отличается от публикации"
+          }
+        },
+        "required": [
+          "draft",
+          "published",
+          "draft_sha256",
+          "published_sha256",
+          "pending"
+        ]
+      },
+      "PageBuilderAgentRevision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action"
+        ]
+      },
+      "PageBuilderAgentDocument": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "component",
+              "template",
+              "page"
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "js_enabled": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "object",
+            "properties": {
+              "html": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              },
+              "css": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              },
+              "js": {
+                "$ref": "#/components/schemas/PageBuilderAgentSource"
+              }
+            },
+            "required": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "recent_revisions": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "$ref": "#/components/schemas/PageBuilderAgentRevision"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "published_at",
+          "js_enabled",
+          "sources",
+          "recent_revisions"
+        ]
+      },
+      "PageBuilderAgentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageBuilderAgentDocument"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "PageBuilderAgentStageRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 100000,
+            "description": "Полное новое содержимое одного черновика, не частичный patch"
+          },
+          "expected_draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "expected_draft_sha256",
+          "reason"
+        ]
+      },
+      "PageBuilderAgentPublishRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "html",
+              "css",
+              "js"
+            ]
+          },
+          "expected_draft_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "expected_published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "expected_draft_sha256",
+          "expected_published_sha256",
+          "reason"
+        ]
+      },
+      "PageBuilderAgentRollbackRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "css",
+              "js"
+            ]
+          },
+          "expected_published_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 полного поля редактора в нижнем регистре; считывается из свежего GET"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "Причина изменения для аудита"
+          }
+        },
+        "required": [
+          "field",
+          "expected_published_sha256",
+          "reason"
+        ]
+      },
+      "MobileRegisterRequest": {
+        "type": "object",
+        "description": "Mandatory consent and username/password follow the web registration rules. Non-player roles cannot save player-only fields; unrelated fields are ignored. No email or phone number required at registration.",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$",
+            "description": "Unique username; case-insensitive, trimmed and stored lowercase.",
+            "example": "new_player_123"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "writeOnly": true,
+            "minLength": 6,
+            "maxLength": 255,
+            "description": "Requires uppercase and lowercase Latin letters, a digit and a special character; no leading/trailing whitespace."
+          },
+          "password_confirmation": {
+            "type": "string",
+            "format": "password",
+            "writeOnly": true,
+            "description": "Must match password."
+          },
+          "privacy_consent": {
+            "type": "boolean",
+            "const": true,
+            "description": "Explicit agreement to the current personal-data processing consent; required true."
+          },
+          "device_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Optional device label for the token; default mobile. Do not use hardware serial numbers.",
+            "example": "ios-iphone"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "player",
+              "coach",
+              "referee",
+              "statistician",
+              "media",
+              "venue_related",
+              "organizer",
+              null
+            ],
+            "description": "Optional participation role (alias participantRole also accepted)."
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "middle_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "male",
+              "female",
+              null
+            ]
+          },
+          "birth_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "YYYY-MM-DD, before current date."
+          },
+          "height_cm": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 150,
+            "maximum": 220,
+            "description": "Used only for role=player."
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 40,
+            "maximum": 140,
+            "description": "Used only for role=player."
+          },
+          "body_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "slim",
+              "normal",
+              "large",
+              "athletic",
+              "muscular",
+              "stocky",
+              null
+            ],
+            "description": "Used only for role=player."
+          },
+          "position": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "point_guard",
+              "shooting_guard",
+              "small_forward",
+              "power_forward",
+              "center",
+              null
+            ],
+            "description": "Used only for role=player."
+          },
+          "experience_started_year": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Used only for role=player; server allows between current year minus 50 and current year minus 10."
+          },
+          "participantRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "player",
+              "coach",
+              "referee",
+              "statistician",
+              "media",
+              "venue_related",
+              "organizer",
+              null
+            ],
+            "description": "Optional backwards-compatible alias for role; role wins if both nonempty."
+          }
+        },
+        "required": [
+          "username",
+          "password",
+          "password_confirmation",
+          "privacy_consent"
+        ]
+      }
+    }
+  }
+}

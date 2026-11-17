@@ -2,124 +2,319 @@
 
 namespace App\Presentation\Navigation\Menus;
 
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Presentation\Navigation\MenuHandler;
+use App\Presentation\Theming\ThemeResolver;
 
 final class AccountMenu implements MenuHandler
 {
     use MenuHelper;
 
+    /** Stable route-based sprite configuration for the opt-in compact sidebar. */
+    private const APP_ICONS = [
+        'account' => 'home',
+        'account.profile' => 'user',
+        'account.roles' => 'people',
+        'account.teams' => 'people',
+        'account.my-games' => 'ball',
+        'account.leagues.index' => 'cup',
+        'account.uniforms' => 'shirt',
+        'play-intents.mine' => 'bell',
+        'favorites.mine' => 'heart',
+        'account.my-trainings' => 'clock',
+        'account.sports-sections.index' => 'people',
+        'account.venues' => 'pin',
+        'account.my-bookings' => 'calendar',
+        'account.venue-schedule' => 'calendar',
+        'account.my-events' => 'calendar',
+        'account.my-tournaments' => 'cup',
+        'account.referee-assignments' => 'check',
+        'account.statistics' => 'sliders',
+        'account.my-materials' => 'save',
+        'account.notifications' => 'message',
+        'account.contacts' => 'contact-mail',
+        'account.wallet' => 'currency-ruble',
+        'account.settings' => 'sliders',
+        'account.settings.dashboard' => 'home',
+        'account.contracts' => 'file-description',
+        'account.contracts.venues' => 'pin',
+        'auth.logout' => 'arrow-up-right',
+    ];
+
     public function __construct(
         private readonly VenueAccessResolver $venueAccessResolver,
     ) {}
 
-    /**
-     * @return array<int, array{label: string, url: string, active: bool, visible: bool, divider?: bool, badge?: int}>
-     */
+    /** @return array<int, array<string, mixed>> */
     public function items(): array
     {
         $user = request()->user();
+        if ($user && app(ThemeResolver::class)->active() === 'mskba_app') {
+            return $this->appItems($user);
+        }
 
-        $items = [
+        // Preserve the existing menu contract for mskba_dark and other themes.
+        $items = [[
+            'label' => 'Профиль',
+            'url' => $this->routeUrl('account'),
+            'active' => $this->isActiveRoute('account'),
+            'visible' => true,
+        ]];
+
+        if (! $user) {
+            return $items;
+        }
+
+        $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
+        $items[] = $this->link('Кошелёк', 'account.wallet');
+        $items[] = [
+            'label' => 'Роли в проекте',
+            'url' => $this->routeUrl('account.roles'),
+            'active' => $this->isActiveRoute('account.roles, account.roles.*, account.participation-role'),
+            'visible' => true,
+        ];
+        $items[] = $this->link('Мои команды', 'account.teams');
+        if (config('features.sports_sections.enabled')) {
+            $items[] = [
+                'label' => 'Мои секции',
+                'url' => $this->routeUrl('account.sports-sections.index'),
+                'active' => $this->isActiveRoute('account.sports-sections.*'),
+                'visible' => true,
+            ];
+        }
+        $items[] = $this->link('Уведомления', 'account.notifications', $newNotificationsCount);
+        $items[] = [
+            'label' => 'Контакты',
+            'url' => $this->routeUrl('account.contacts'),
+            'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
+            'visible' => true,
+        ];
+        $items[] = $this->contractsGroup();
+        $items[] = $this->link('Настройки', 'account.settings');
+        $items[] = $this->link('Выйти', 'auth.logout', 0, true);
+
+        return $items;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function appItems(User $user): array
+    {
+        $items = [$this->link('Обзор', 'account')];
+
+        // Navigation is an invitation to participate, not a report of existing relations.
+        // Roles only control menu visibility; domain permissions are enforced by handlers.
+        $roleSections = [
+            UserParticipationRoleEnum::PLAYER->value => ['teams', 'games', 'trainings'],
+            UserParticipationRoleEnum::COACH->value => ['sections', 'trainings', 'teams'],
+            UserParticipationRoleEnum::VENUE_RELATED->value => ['bookings', 'schedule'],
+            UserParticipationRoleEnum::ORGANIZER->value => ['events', 'tournaments'],
+            UserParticipationRoleEnum::REFEREE->value => ['games', 'assignments'],
+            UserParticipationRoleEnum::STATISTICIAN->value => ['games', 'statistics'],
+            UserParticipationRoleEnum::MEDIA->value => ['materials', 'events'],
+        ];
+        $definitions = [
+            'teams' => ['Мои команды', 'account.teams', 'account.teams'],
+            'games' => ['Мои игры', 'account.my-games', 'account.my-games'],
+            'trainings' => ['Мои тренировки', 'account.my-trainings', 'account.my-trainings'],
+            'sections' => ['Мои секции', 'account.sports-sections.index', 'account.sports-sections.*'],
+            'bookings' => ['Бронирования', 'account.my-bookings', 'account.my-bookings'],
+            'schedule' => ['Расписание', 'account.venue-schedule', 'account.venue-schedule'],
+            'events' => ['Мои мероприятия', 'account.my-events', 'account.my-events'],
+            'tournaments' => ['Мои турниры', 'account.my-tournaments', 'account.my-tournaments'],
+            'assignments' => ['Судейские назначения', 'account.referee-assignments', 'account.referee-assignments'],
+            'statistics' => ['Статистика', 'account.statistics', 'account.statistics'],
+            'materials' => ['Мои материалы', 'account.my-materials', 'account.my-materials'],
+        ];
+        $roles = $user->canonical()->participationRoles()->get(['role'])
+            ->map(fn ($role): string => $role->role->value)->all();
+
+        // Before the first role, "Роли в проекте" is a direct entry point to
+        // role selection. As soon as a role is active, it becomes a toggle-only
+        // group: "Все роли" leads to selection and each role to its parameters.
+        $roleChildren = [[
+            'label' => 'Все роли',
+            'icon' => self::APP_ICONS['account.roles'],
+            'url' => $this->routeUrl('account.roles'),
+            'active' => $this->isActiveRoute('account.roles, account.roles.*'),
+            'visible' => true,
+        ]];
+        foreach ($roleSections as $roleValue => $_sections) {
+            if (! in_array($roleValue, $roles, true)) {
+                continue;
+            }
+
+            $role = UserParticipationRoleEnum::from($roleValue);
+            $roleChildren[] = [
+                'label' => $role->label(),
+                'icon' => 'user',
+                'url' => route('account.participation-role', ['role' => $roleValue]),
+                'active' => request()->routeIs('account.participation-role')
+                    && request()->route('role') === $roleValue,
+                'visible' => true,
+            ];
+        }
+        $roleItem = count($roleChildren) === 1
+            ? $this->link('Роли в проекте', 'account.roles')
+            : [
+                'label' => 'Роли в проекте',
+                'icon' => 'people',
+                'url' => null,
+                'active' => collect($roleChildren)->contains(fn (array $child): bool => $child['active']),
+                'visible' => true,
+                'children' => $roleChildren,
+            ];
+
+        $profile = $this->link('Общие данные', 'account.profile');
+        $items[] = [
+            'label' => 'Профиль',
+            'icon' => self::APP_ICONS['account.profile'],
+            'url' => null,
+            'active' => $profile['active'] || $roleItem['active'],
+            'visible' => true,
+            'children' => [$profile, $roleItem],
+        ];
+
+        $sectionKeys = [];
+        foreach ($roleSections as $role => $sections) {
+            if (! in_array($role, $roles, true)) {
+                continue;
+            }
+            foreach ($sections as $key) {
+                if ($key === 'sections' && ! config('features.sports_sections.enabled')) {
+                    continue;
+                }
+                $sectionKeys[$key] = true;
+            }
+        }
+
+        $children = [];
+        foreach (array_keys($sectionKeys) as $key) {
+            [$label, $route, $activePatterns] = $definitions[$key];
+            $children[] = [
+                'label' => $label,
+                'icon' => self::APP_ICONS[$route] ?? 'ball',
+                'url' => $this->routeUrl($route),
+                'active' => $this->isActiveRoute($activePatterns),
+                'visible' => true,
+            ];
+        }
+        $participationChildren = [...$children, [
+            ...$this->link('Мои лиги', 'account.leagues.index'),
+            'active' => $this->isActiveRoute('account.leagues.*'),
+        ]];
+        $items[] = [
+            'label' => 'Участие',
+            'icon' => 'ball',
+            'url' => null,
+            'active' => collect($participationChildren)->contains(
+                fn (array $child): bool => $child['active']
+            ),
+            'visible' => true,
+            'children' => $participationChildren,
+        ];
+
+        $items[] = $this->link('Мои формы', 'account.uniforms');
+        // A subscription is available to any signed-in user, regardless of participation role.
+        $items[] = $this->link('Мои подписки', 'play-intents.mine');
+        $items[] = $this->link('Избранное', 'favorites.mine');
+
+        $items[] = [
+            ...$this->link('Сообщения', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
+            'active' => $this->isActiveRoute('account.notifications, account.notifications.*'),
+            'notificationCounter' => true,
+        ];
+        $items[] = $this->contractsGroup();
+        $settingsChildren = [
+            $this->link('Общие настройки', 'account.settings'),
+            $this->link('Дашборд', 'account.settings.dashboard'),
             [
-                'label' => 'Профиль',
-                'url' => $this->routeUrl('account'),
-                'active' => $this->isActiveRoute('account'),
+                'label' => 'Контакты',
+                'icon' => self::APP_ICONS['account.contacts'],
+                'url' => $this->routeUrl('account.contacts'),
+                'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
+                'visible' => true,
+            ],
+            $this->link('Кошелёк', 'account.wallet'),
+        ];
+        $items[] = [
+            'label' => 'Настройки',
+            'icon' => self::APP_ICONS['account.settings'],
+            'url' => null,
+            'active' => collect($settingsChildren)->contains(
+                fn (array $child): bool => $child['active']
+            ),
+            'visible' => true,
+            'children' => $settingsChildren,
+        ];
+        $items[] = $this->link('Выйти', 'auth.logout', 0, true);
+
+        return $items;
+    }
+
+    /** The contract group stays discoverable even before the first venue contract. */
+    private function contractsGroup(): array
+    {
+        $children = [
+            [
+                'label' => 'Все контракты',
+                'icon' => self::APP_ICONS['account.contracts'],
+                'url' => $this->routeUrl('account.contracts'),
+                'active' => $this->isActiveRoute('account.contracts, account.contracts.show'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Площадки',
+                'icon' => self::APP_ICONS['account.contracts.venues'],
+                'url' => $this->routeUrl('account.contracts.venues'),
+                'active' => $this->isActiveRoute('account.contracts.venues, account.venues.*, account.venue-bookings.inbox'),
                 'visible' => true,
             ],
         ];
 
-        if ($user) {
-            $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
+        return [
+            'label' => 'Мои контракты',
+            'icon' => self::APP_ICONS['account.contracts'],
+            'url' => null,
+            'active' => collect($children)->contains(fn (array $item): bool => $item['active']),
+            'visible' => true,
+            'children' => $children,
+        ];
+    }
 
-            $items[] = [
-                'label' => 'Кошелёк',
-                'url' => $this->routeUrl('account.wallet'),
-                'active' => $this->isActiveRoute('account.wallet'),
-                'visible' => true,
-            ];
+    /** @return array<string, mixed> */
+    private function link(string $label, string $route, int $badge = 0, bool $divider = false): array
+    {
+        return [
+            'label' => $label,
+            'icon' => self::APP_ICONS[$route] ?? 'ball',
+            'url' => $this->routeUrl($route),
+            'active' => $this->isActiveRoute($route),
+            'visible' => true,
+            ...($badge > 0 ? ['badge' => $badge] : []),
+            ...($divider ? ['divider' => true] : []),
+        ];
+    }
 
-            $items[] = [
-                'label' => 'Роли в проекте',
-                'url' => $this->routeUrl('account.roles'),
-                'active' => $this->isActiveRoute('account.roles, account.roles.*, account.participation-role'),
-                'visible' => true,
-            ];
+    /** @return array<string, mixed> */
+    private function venueLink(User $user): array
+    {
+        return [
+            'label' => 'Мои площадки',
+            'url' => $this->routeUrl('account.venues'),
+            'active' => $this->isActiveRoute('account.venues, account.venues.*, account.venue-bookings.inbox'),
+            'visible' => true,
+            'badge' => app(CountActionableVenueBookingRequests::class)->totalFor($user),
+            'badgeAttribute' => 'data-venue-booking-request-count',
+        ];
+    }
 
-            if (
-                $this->venueAccessResolver->bootstrapOwnedVenueIdsFor($user) !== []
-                || $this->venueAccessResolver->contractedVenueIdsFor($user) !== []
-            ) {
-                $bookingRequestsCount = app(CountActionableVenueBookingRequests::class)->totalFor($user);
-                $items[] = [
-                    'label' => 'Мои площадки',
-                    'url' => $this->routeUrl('account.venues'),
-                    'active' => $this->isActiveRoute('account.venues, account.venues.*, account.venue-bookings.inbox'),
-                    'visible' => true,
-                    'badge' => $bookingRequestsCount,
-                    'badgeAttribute' => 'data-venue-booking-request-count',
-                ];
-            }
-
-            $items[] = [
-                'label' => 'Мои команды',
-                'url' => $this->routeUrl('account.teams'),
-                'active' => $this->isActiveRoute('account.teams'),
-                'visible' => true,
-            ];
-
-            if (config('features.sports_sections.enabled')) {
-                $items[] = [
-                    'label' => 'Мои секции',
-                    'url' => $this->routeUrl('account.sports-sections.index'),
-                    'active' => $this->isActiveRoute('account.sports-sections.*'),
-                    'visible' => true,
-                ];
-            }
-
-            $items[] = [
-                'label' => 'Уведомления',
-                'url' => $this->routeUrl('account.notifications'),
-                'active' => $this->isActiveRoute('account.notifications'),
-                'visible' => true,
-                'badge' => $newNotificationsCount,
-            ];
-
-            $items[] = [
-                'label' => 'Контакты',
-                'url' => $this->routeUrl('account.contacts'),
-                'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
-                'visible' => true,
-            ];
-
-            $items[] = [
-                'label' => 'Настройки',
-                'url' => $this->routeUrl('account.settings'),
-                'active' => $this->isActiveRoute('account.settings'),
-                'visible' => true,
-            ];
-
-            if ($user->isConfirmed()) {
-                $items[] = [
-                    'label' => 'Контракты',
-                    'url' => $this->routeUrl('account.contracts'),
-                    'active' => $this->isActiveRoute('account.contracts'),
-                    'visible' => true,
-                ];
-
-            }
-
-            $items[] = [
-                'label' => 'Выйти',
-                'url' => $this->routeUrl('auth.logout'),
-                'active' => false,
-                'visible' => true,
-                'divider' => true,
-            ];
-        }
-
-        return $items;
+    private function hasVenueRelations(User $user): bool
+    {
+        return $this->venueAccessResolver->bootstrapOwnedVenueIdsFor($user) !== []
+            || $this->venueAccessResolver->contractedVenueIdsFor($user) !== [];
     }
 }

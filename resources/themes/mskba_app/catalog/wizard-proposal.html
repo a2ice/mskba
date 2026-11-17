@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090a0b">
+  <meta name="robots" content="noindex,nofollow">
+  <title>MSKBA App — Wizard 1.1 / принятый визуальный образец</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <link rel="stylesheet" href="./wizard-proposal.css">
+  <script src="./wizard-proposal.js" defer></script>
+</head>
+<body class="wizard-proposal-page">
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+    <symbol id="chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6l6 -6"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+    <symbol id="close" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+  </defs></svg>
+  <a class="skip" href="#wizard">К мастеру</a>
+  <header class="wizard-review-header">
+    <a href="./#components" class="brand"><img class="brand-logo" src="../assets/images/logo-mark-100.png" alt=""><span>MSK<span class="accent">BA</span></span></a>
+    <span class="draft">WIZARD / ПРИНЯТО 1.1</span>
+  </header>
+  <main class="wizard-review-content">
+    <div class="wizard-review-meta">
+      <p class="eyebrow accent">ЗАДАЧА 010 · ВИЗУАЛЬНО ПРИНЯТО</p>
+      <p class="caption">Интерактивный образец · никаких аккаунтов и запросов к серверу</p>
+    </div>
+    <section class="wizard-frame panel" id="wizard" aria-label="Демонстрация мастера регистрации">
+      <header class="wizard-head">
+        <div class="wizard-heading">
+          <h1 class="eyebrow accent">РЕГИСТРАЦИЯ</h1>
+          <p class="wizard-step-count" id="wizard-step-count" role="status" aria-live="polite"></p>
+        </div>
+        <progress id="wizard-progress" max="5" value="1" aria-label="Прогресс регистрации"></progress>
+      </header>
+      <div class="wizard-body mskba-modal__body mskba-scroll" role="region" aria-label="Содержимое текущего шага" tabindex="0">
+        <div class="wizard-step-title" tabindex="-1" id="wizard-step-title">Выберите роль</div>
+        <div class="wizard-step-hint" id="wizard-step-hint" role="note"></div>
+        <form id="wizard-form" novalidate>
+          <section class="wizard-step" data-step="role" aria-label="Роль">
+            <fieldset class="wizard-role-options">
+              <legend class="sr-only">Ваша роль в баскетболе</legend>
+              <div class="wizard-role-item">
+                <details class="wizard-role-group" data-role-group="primary" open>
+                <summary class="wizard-role-group-toggle">
+                  <span>Основные</span>
+                  <svg aria-hidden="true" focusable="false"><use href="#chevron-down"/></svg>
+                </summary>
+                <div class="wizard-choice-set">
+                  <label class="wizard-choice"><input type="radio" name="role" value="player">
+                    <span><strong>Игрок</strong><small>Играю в баскетбол, участвую в играх и тренировках</small></span>
+                  </label>
+                  <label class="wizard-choice"><input type="radio" name="role" value="coach">
+                    <span><strong>Тренер</strong><small>Провожу занятия, развиваю игроков</small></span>
+                  </label>
+                  <label class="wizard-choice"><input type="radio" name="role" value="referee">
+                    <span><strong>Судья</strong><small>Сужу игры и турниры</small></span>
+                  </label>
+                  <label class="wizard-choice"><input type="radio" name="role" value="venue_related">
+                    <span><strong>Представитель площадки</strong><small>Управляю или представляю площадку</small></span>
+                  </label>
+                </div>
+                </details>
+                <div class="wizard-role-picked" data-role-picked hidden>
+                  <small data-role-selection aria-live="polite"></small>
+                  <button class="wizard-role-clear" type="button" data-clear-role="primary" aria-label="Сбросить выбранную роль" title="Сбросить выбранную роль">
+                    <svg aria-hidden="true" focusable="false"><use href="#close"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="wizard-role-item">
+                <details class="wizard-role-group" data-role-group="other">
+                <summary class="wizard-role-group-toggle">
+                  <span>Другие</span>
+                  <svg aria-hidden="true" focusable="false"><use href="#chevron-down"/></svg>
+                </summary>
+                <div class="wizard-choice-set">
+                  <label class="wizard-choice"><input type="radio" name="role" value="media">
+                    <span><strong>Медиа (блогер)</strong><small>Фото, видео и материалы о баскетболе</small></span>
+                  </label>
+                  <label class="wizard-choice"><input type="radio" name="role" value="statistician">
+                    <span><strong>Статист</strong><small>Веду статистику команд и матчей</small></span>
+                  </label>
+                  <label class="wizard-choice"><input type="radio" name="role" value="organizer">
+                    <span><strong>Организатор мероприятий</strong><small>Организую игры, тренировки и турниры</small></span>
+                  </label>
+                </div>
+                </details>
+                <div class="wizard-role-picked" data-role-picked hidden>
+                  <small data-role-selection aria-live="polite"></small>
+                  <button class="wizard-role-clear" type="button" data-clear-role="other" aria-label="Сбросить выбранную роль" title="Сбросить выбранную роль">
+                    <svg aria-hidden="true" focusable="false"><use href="#close"/></svg>
+                  </button>
+                </div>
+              </div>
+            </fieldset>
+            <p class="error" id="role-error" hidden></p>
+          </section>
+          <section class="wizard-step" data-step="person" hidden aria-label="Основные данные">
+            <div class="field-group">
+              <label for="gender">Пол</label>
+              <span class="select-control"><select id="gender" name="gender">
+                <option value="">Не указывать</option><option value="male">Мужской</option><option value="female">Женский</option>
+              </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span>
+            </div>
+            <div class="field-group">
+              <label for="birth_date">Дата рождения</label>
+              <input id="birth_date" name="birth_date" type="date">
+              <p class="error" id="birth_date-error" hidden></p>
+            </div>
+          </section>
+          <section class="wizard-step" data-step="sport" hidden aria-label="Спортивные характеристики">
+            <div class="wizard-field-pair">
+              <div class="field-group"><label for="height_cm">Рост, см</label><input id="height_cm" name="height_cm" type="number" min="150" max="220" inputmode="numeric" placeholder="180"><p class="helper">От 150 до 220 см</p><p class="error" id="height_cm-error" hidden></p></div>
+              <div class="field-group"><label for="weight_kg">Вес, кг</label><input id="weight_kg" name="weight_kg" type="number" min="40" max="140" inputmode="decimal" placeholder="80"><p class="helper">От 40 до 140 кг</p><p class="error" id="weight_kg-error" hidden></p></div>
+            </div>
+            <div class="field-group"><label for="position">Игровая позиция</label><span class="select-control"><select id="position" name="position"><option value="">Выберу позже</option><option value="point_guard">Разыгрывающий</option><option value="shooting_guard">Атакующий защитник</option><option value="small_forward">Лёгкий форвард</option><option value="power_forward">Тяжёлый форвард</option><option value="center">Центровой</option></select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span><p class="helper">Не уверены? Оставьте пустым.</p></div>
+            <div class="field-group"><label for="body_type">Телосложение</label><span class="select-control"><select id="body_type" name="body_type"><option value="">Не указывать</option><option value="slim">Худощавое</option><option value="athletic">Атлетичное</option><option value="muscular">Мускулистое</option><option value="stocky">Коренастое</option><option value="large">Крупное</option></select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span></div>
+            <div class="field-group"><label for="experience_started_year">Играю с (год)</label><input id="experience_started_year" name="experience_started_year" type="number" min="1976" max="2026" placeholder="2015" inputmode="numeric"><p class="error" id="experience_started_year-error" hidden></p></div>
+          </section>
+          <section class="wizard-step" data-step="name" hidden aria-label="Личные данные">
+            <div class="field-group"><label for="last_name">Фамилия</label><input id="last_name" name="last_name" autocomplete="family-name" maxlength="255"></div>
+            <div class="field-group"><label for="first_name">Имя</label><input id="first_name" name="first_name" autocomplete="given-name" maxlength="255"></div>
+            <div class="field-group"><label for="middle_name">Отчество</label><input id="middle_name" name="middle_name" autocomplete="additional-name" maxlength="255"><p class="helper">Если нет отчества, оставьте поле пустым.</p></div>
+          </section>
+          <section class="wizard-step" data-step="account" hidden aria-label="Аккаунт">
+            <div class="field-group"><label for="username" class="wizard-required-label" data-tooltip="Обязательное поле">Логин <span class="wizard-required" aria-hidden="true">*</span></label><input id="username" name="username" autocomplete="username" required minlength="3" maxlength="255"><p class="error" id="username-error" hidden></p></div>
+            <div class="field-group"><label for="password" class="wizard-required-label" data-tooltip="Обязательное поле">Пароль <span class="wizard-required" aria-hidden="true">*</span></label><input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" aria-describedby="password-hint"><p class="helper" id="password-hint">Не менее 8 символов · только демонстрационная форма</p><p class="error" id="password-error" hidden></p></div>
+            <div class="field-group"><label for="password_confirmation" class="wizard-required-label" data-tooltip="Обязательное поле">Повторите пароль <span class="wizard-required" aria-hidden="true">*</span></label><input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required><p class="error" id="password_confirmation-error" hidden></p></div>
+            <label class="check-label wizard-consent wizard-required-label" data-tooltip="Обязательное поле"><input type="checkbox" id="privacy_consent" name="privacy_consent" required><span>Согласен на обработку персональных данных <span class="wizard-required" aria-hidden="true">*</span></span></label><p class="error" id="privacy_consent-error" hidden></p>
+          </section>
+        </form>
+      </div>
+      <footer class="wizard-foot">
+        <p class="wizard-error-summary" id="wizard-error-summary" role="alert" hidden></p>
+        <div class="wizard-actions"><button class="button secondary" type="button" id="wizard-back">Назад</button><button class="button primary" type="button" id="wizard-next">Пропустить</button></div>
+      </footer>
+    </section>
+    <div class="wizard-review-tools">
+      <button class="button secondary" id="wizard-simulate-server-error" type="button">Показать возврат на ошибку сервера</button>
+      <button class="button ghost" id="wizard-reset" type="button">Начать заново</button>
+    </div>
+    <p class="caption">Демонстрация алгоритма: состояние хранится только в этой вкладке до её обновления; финальная кнопка не создаёт аккаунт.</p>
+  </main>
+</body>
+</html>

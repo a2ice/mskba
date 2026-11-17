@@ -13,6 +13,7 @@ use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardGrant;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
+use App\Modules\Rewards\Infrastructure\Services\NotifyCompletedRewardGrant;
 use Illuminate\Support\Facades\DB;
 
 final class RewardEngine
@@ -21,6 +22,7 @@ final class RewardEngine
         private readonly RewardMechanismRegistry $mechanisms,
         private readonly EnsureWalletHandler $ensureWallet,
         private readonly CreditWalletHandler $creditWallet,
+        private readonly NotifyCompletedRewardGrant $rewardNotifications,
     ) {}
 
     public function process(string $rewardCode, RewardMechanismContext $context): ?RewardGrant
@@ -66,7 +68,8 @@ final class RewardEngine
 
         $decision = $mechanism->evaluate($context, $version);
 
-        if (! $decision->eligible || $decision->recipientUserId === null) {
+        if (! $decision->eligible || $decision->recipientUserId === null
+            || ($decision->amountMinorOverride !== null && $decision->amountMinorOverride <= 0)) {
             return null;
         }
 
@@ -82,6 +85,7 @@ final class RewardEngine
             mechanism: $mechanism,
             context: $context,
             recipient: $recipient,
+            amountMinorOverride: $decision->amountMinorOverride,
         );
 
         return $this->settle($grant);
@@ -136,6 +140,11 @@ final class RewardEngine
                     'wallet_operation_id' => $operation->id,
                     'completed_at' => now(),
                 ])->save();
+
+                // The financial ledger is already idempotent; tie the durable
+                // notification to the *first* completed transition under lock.
+                // Replayed events/jobs do not generate duplicate toasts.
+                $this->rewardNotifications->create($locked);
             }
 
             return $locked->refresh();
@@ -148,8 +157,9 @@ final class RewardEngine
         RewardMechanism $mechanism,
         RewardMechanismContext $context,
         User $recipient,
+        ?int $amountMinorOverride = null,
     ): RewardGrant {
-        return DB::transaction(function () use ($reward, $version, $mechanism, $context, $recipient): RewardGrant {
+        return DB::transaction(function () use ($reward, $version, $mechanism, $context, $recipient, $amountMinorOverride): RewardGrant {
             $now = now();
             $identity = [
                 'reward_id' => (int) $reward->id,
@@ -163,7 +173,7 @@ final class RewardEngine
                 'reward_version_id' => (int) $version->id,
                 'mechanism_code' => $mechanism->code(),
                 'wallet_operation_type' => $mechanism->walletOperationType()->value,
-                'amount_minor' => (int) $version->amount_minor,
+                'amount_minor' => $amountMinorOverride ?? (int) $version->amount_minor,
                 'currency' => $version->currency,
                 'status' => RewardGrantStatusEnum::PENDING->value,
                 'created_at' => $now,

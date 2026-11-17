@@ -150,6 +150,7 @@
         data-site-summary-heartbeat-interval="{{ max(30, (int) config('site_summary.heartbeat_interval_seconds', 45)) }}"
     >
         @include('partials.analytics.yandex-metrika-noscript')
+        @include('partials.privacy.cookie-banner')
 
         @if($shouldBootstrapTelegramAuth)
             <div

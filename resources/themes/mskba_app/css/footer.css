@@ -1,0 +1,141 @@
+/* MSKBA App footer: production information architecture, app design tokens.
+   Surfaces and contrast adapt automatically to the active appearance theme. */
+.app-site-footer {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    background:
+        radial-gradient(ellipse at 2% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 48%),
+        color-mix(in srgb, var(--surface) 84%, var(--bg));
+    color: var(--text);
+}
+.app-site-footer > .container {
+    padding-top: clamp(40px, 5vw, 68px);
+    padding-bottom: 30px;
+}
+.app-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.5fr) repeat(2, minmax(145px, .72fr));
+    gap: clamp(24px, 4vw, 64px);
+    align-items: start;
+}
+.app-footer__identity { max-width: 390px; }
+.app-footer__logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -.06em;
+    line-height: 1;
+}
+.app-footer__logo:hover { color: var(--text); }
+.app-footer__mark {
+    display: block;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    background: url('../assets/images/logo-mark-100.png') center / contain no-repeat;
+}
+.app-footer__description {
+    max-width: 340px;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.65;
+}
+.app-footer__socials {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+.app-footer__socials a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--control-line);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--muted);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.app-footer__socials a:hover {
+    background: var(--subtle-accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.app-footer__socials svg {
+    width: 20px;
+    height: 20px;
+}
+.app-footer__nav {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+.app-footer__nav h2 {
+    margin: 2px 0 6px;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.5;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.app-footer__nav a {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    transition: color 160ms ease;
+}
+.app-footer__nav a:hover { color: var(--text); }
+.app-site-footer a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 3px;
+}
+.app-footer__legal {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 44px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    font-size: 12px;
+    line-height: 1.65;
+}
+.app-footer__legal p:first-child { max-width: 770px; }
+.app-footer__copyright { flex-shrink: 0; text-align: right; }
+@media (max-width: 900px) {
+    .app-footer__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 34px 24px;
+    }
+    .app-footer__identity { grid-column: 1 / -1; }
+    .app-footer__legal { flex-direction: column; gap: 12px; }
+    .app-footer__copyright { text-align: left; }
+}
+@media (max-width: 639px) {
+    .app-site-footer > .container {
+        padding-top: 36px;
+        /* The app's 72px fixed bottom navigation must not cover the legal copy. */
+        padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+    }
+    .app-footer__logo { font-size: 24px; }
+    .app-footer__mark { flex-basis: 36px; width: 36px; height: 36px; }
+    .app-footer__nav { gap: 14px; }
+    .app-footer__legal { margin-top: 32px; padding-top: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-footer__socials a, .app-footer__nav a { transition: none; }
+}

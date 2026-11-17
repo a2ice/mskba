@@ -13,6 +13,8 @@ enum VenueRentalFeature: string
     case CONTRIBUTIONS = 'contributions';
     case PORTAL = 'portal';
     case PAYMENT_PORT = 'payment_port';
+    case EXTERNAL_HOLDS = 'external_holds';
+    case INVOICES = 'invoices';
 
     public function label(): string
     {
@@ -26,6 +28,8 @@ enum VenueRentalFeature: string
             self::CONTRIBUTIONS => 'Приватные вклады участников',
             self::PORTAL => 'Кабинет аренды и read projections',
             self::PAYMENT_PORT => 'Платёжный порт аренды',
+            self::EXTERNAL_HOLDS => 'Подтверждённые внешние холды аренды',
+            self::INVOICES => 'Счета и финансовые обязательства аренды',
         };
     }
 }

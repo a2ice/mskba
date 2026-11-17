@@ -17,10 +17,12 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
+use App\Modules\VenueBooking\Application\UseCases\ToggleVenueBookingPolicyHandler;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
 use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Carbon\CarbonImmutable;
@@ -44,6 +46,40 @@ final class VenueBookingPolicyQuoteTest extends TestCase
     {
         Carbon::setTestNow();
         parent::tearDown();
+    }
+
+    public function test_filament_quick_toggle_publishes_versions_and_preserves_paid_policy(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        $toggle = app(ToggleVenueBookingPolicyHandler::class);
+
+        try {
+            $toggle->handle($venue, $owner, true);
+            $this->fail('Нельзя включать аренду без опубликованных условий.');
+        } catch (VenueBookingPolicyException $exception) {
+            $this->assertStringContainsString('сначала опубликуйте', $exception->getMessage());
+        }
+
+        $first = app(PublishVenueBookingPolicyHandler::class)->handle(
+            $venue, $owner, $this->policyData(),
+        );
+        $this->assertTrue($first->is_enabled);
+
+        $disabled = $toggle->handle($venue, $owner, false);
+        $this->assertFalse($disabled->is_enabled);
+        $this->assertSame(2, $disabled->version);
+        $this->assertNull($first->fresh()->active_marker);
+        $this->assertTrue($disabled->active_marker);
+        $this->assertTrue($disabled->requires_payment);
+        $this->assertSame($first->whole_price_per_step_minor, $disabled->whole_price_per_step_minor);
+        $this->assertSame($first->time_step_minutes, $disabled->time_step_minutes);
+
+        $enabled = $toggle->handle($venue, $owner, true);
+        $this->assertTrue($enabled->is_enabled);
+        $this->assertSame(3, $enabled->version);
+        $this->assertNull($disabled->fresh()->active_marker);
+        $this->assertSame($enabled->id, $toggle->handle($venue, $owner, true)->id);
+        $this->assertSame(3, VenueBookingPolicy::query()->where('venue_id', $venue->id)->count());
     }
 
     public function test_policy_versions_are_append_only_and_old_quote_keeps_original_snapshot(): void
@@ -356,6 +392,239 @@ final class VenueBookingPolicyQuoteTest extends TestCase
             'scope' => VenueBookingScopeEnum::WHOLE->value,
         ])->assertNotFound()
             ->assertJsonPath('code', 'feature_disabled');
+    }
+
+    public function test_date_prices_override_weekday_and_preserve_previous_quote_snapshot(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+        $date = CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow');
+        VenueScheduleSlotPrice::query()->create([
+            'venue_id' => $venue->id, 'day_of_week' => 3, 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 700,
+        ]);
+        $venue->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 800,
+            'half_price_per_step_minor' => null,
+        ]);
+
+        $first = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $date, 60, VenueBookingScopeEnum::WHOLE, $owner
+        );
+        $this->assertSame(1300, $first->amountMinor); // calendar 800 + inherited 500
+        $firstStored = VenueBookingQuote::query()->where('public_id', $first->publicId)->firstOrFail();
+        $this->assertSame([800, 500], $firstStored->snapshot['pricing']['prices_per_step_minor']);
+
+        $venue->calendarSlotPrices()->whereDate('date', '2026-08-26')->update([
+            'whole_price_per_step_minor' => 2000,
+        ]);
+        $second = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $date, 60, VenueBookingScopeEnum::WHOLE, $owner
+        );
+        $this->assertSame(2500, $second->amountMinor);
+        $this->assertSame(1300, (int) $firstStored->refresh()->amount_minor);
+        $this->assertSame([800, 500], $firstStored->snapshot['pricing']['prices_per_step_minor']);
+    }
+
+    public function test_court_step_sums_venue_substeps_and_explicit_court_calendar_price_takes_priority(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData([
+            'maximum_duration_minutes' => 240,
+        ]));
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update([
+            'time_step_minutes' => 60,
+            'minimum_duration_minutes' => 120,
+            'maximum_duration_minutes' => 240,
+        ]);
+        $venue->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 700,
+        ]);
+        $venue->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:30',
+            'whole_price_per_step_minor' => 800,
+        ]);
+
+        $date = CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow');
+        try {
+            app(QuoteVenueBookingHandler::class)->handle($venue, $date, 60, VenueBookingScopeEnum::WHOLE, $owner, $court);
+            $this->fail('Court minimum duration should reject one hour.');
+        } catch (VenueBookingPolicyException) {
+            $this->assertTrue(true);
+        }
+
+        $inherited = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $date, 120, VenueBookingScopeEnum::WHOLE, $owner, $court
+        );
+        $this->assertSame(2500, $inherited->amountMinor); // 700 + 800 + 500 + 500
+
+        $court->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 1800,
+        ]);
+        $court->update(['whole_price_per_step_minor' => 2200]);
+        $override = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $date, 120, VenueBookingScopeEnum::WHOLE, $owner, $court->fresh()
+        );
+        $this->assertSame(4000, $override->amountMinor);
+        $snapshot = VenueBookingQuote::query()->where('public_id', $override->publicId)->firstOrFail()->snapshot;
+        $this->assertSame(60, $snapshot['policy']['time_step_minutes']);
+        $this->assertSame(30, $snapshot['policy']['venue_time_step_minutes']);
+        $this->assertSame(120, $snapshot['policy']['minimum_duration_minutes']);
+        $this->assertSame([1800, 2200], $snapshot['pricing']['prices_per_step_minor']);
+    }
+
+    public function test_court_and_venue_calendar_prices_can_be_managed_without_leaking_permissions(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+        $court = $venue->primaryCourt()->firstOrFail();
+        $params = [
+            'date' => '2026-08-26',
+            'starts_at' => '12:00',
+            'whole_price_per_step' => '1200,50',
+            'half_price_per_step' => '',
+        ];
+
+        $this->actingAs($owner)->post(route('account.venues.calendar-prices.store', $venue), $params)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post(
+            route('account.venues.courts.calendar-prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+            $params
+        )->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('venue_calendar_slot_prices', [
+            'venue_id' => $venue->id, 'whole_price_per_step_minor' => 120050,
+        ]);
+        $this->actingAs($owner)->post(route('account.venues.calendar-prices.store', $venue), [
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step' => '1', 'half_price_per_step' => '',
+        ])->assertRedirect()->assertSessionHasErrors('whole_price_per_step');
+        $this->assertDatabaseHas('venue_calendar_slot_prices', [
+            'venue_id' => $venue->id, 'whole_price_per_step_minor' => 120050,
+        ]);
+
+        $this->assertDatabaseHas('venue_court_calendar_slot_prices', [
+            'venue_court_id' => $court->id, 'whole_price_per_step_minor' => 120050,
+        ]);
+
+        // Explicit paid slot tariffs cannot undercut the venue minimum.
+        $belowMinimum = [
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step' => '1', 'half_price_per_step' => '',
+        ];
+        $this->actingAs($owner)->post(
+            route('account.venues.courts.calendar-prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]),
+            $belowMinimum
+        )->assertRedirect()->assertSessionHasErrors('whole_price_per_step');
+        $this->assertDatabaseHas('venue_court_calendar_slot_prices', [
+            'venue_court_id' => $court->id, 'whole_price_per_step_minor' => 120050,
+        ]);
+
+
+        $intruder = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($intruder)
+            ->post(route('account.venues.calendar-prices.store', $venue), $params)->assertForbidden();
+        $this->actingAs($intruder)
+            ->post(route('account.venues.courts.calendar-prices.store', [$venue->routeIdentifier(), $court->routeIdentifier()]), $params)
+            ->assertForbidden();
+    }
+
+    public function test_incompatible_new_venue_step_cannot_publish_over_custom_court_step(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        $publish = app(PublishVenueBookingPolicyHandler::class);
+        $publish->handle($venue, $owner, $this->policyData());
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update(['time_step_minutes' => 90, 'minimum_duration_minutes' => 90]);
+
+        $this->expectException(VenueBookingPolicyException::class);
+        // Venue min 60 is divisible by 20; only the court's 90-minute step conflicts.
+        $publish->handle($venue, $owner, $this->policyData(['time_step_minutes' => 20]));
+    }
+
+    public function test_active_mskba_app_theme_has_working_venue_and_court_rental_editors(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+
+        $this->actingAs($owner)->get(route('account.venues.booking-policy.edit', $venue->id))
+            ->assertOk()->assertSeeText('Базовые условия площадки')->assertSeeText('Цены по датам');
+
+        $this->actingAs($owner)->get(route('account.venues.courts.index', $venue->routeIdentifier()))
+            ->assertOk()->assertSeeText('Условия аренды')->assertSeeText('Цены по датам');
+
+        $this->get(route('venues.rental.show', $venue->id))
+            ->assertOk()->assertSeeText('Аренда зала')->assertSeeText('Параметры аренды');
+    }
+
+    public function test_venue_minimum_is_enforced_for_weekly_calendar_and_court_tariffs(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData([
+            'whole_price_per_step_minor' => 600,
+        ]));
+        $start = CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow');
+        $venue->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 200,
+        ]);
+        VenueScheduleSlotPrice::query()->create([
+            'venue_id' => $venue->id, 'day_of_week' => 3, 'starts_at' => '12:30',
+            'whole_price_per_step_minor' => 900,
+        ]);
+
+        $first = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $start, 60, VenueBookingScopeEnum::WHOLE, $owner,
+        );
+        $firstStored = VenueBookingQuote::query()->where('public_id', $first->publicId)->firstOrFail();
+        $this->assertSame(1500, $first->amountMinor);
+        $this->assertSame([600, 900], $firstStored->snapshot['pricing']['prices_per_step_minor']);
+
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update(['whole_price_per_step_minor' => 400]);
+        $court->calendarSlotPrices()->create([
+            'date' => '2026-08-26', 'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 1100,
+        ]);
+        $second = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $start, 60, VenueBookingScopeEnum::WHOLE, $owner, $court->fresh(),
+        );
+        $secondStored = VenueBookingQuote::query()->where('public_id', $second->publicId)->firstOrFail();
+        $this->assertSame(1700, $second->amountMinor);
+        $this->assertSame([1100, 600], $secondStored->snapshot['pricing']['prices_per_step_minor']);
+
+        // Prices already quoted remain immutable after changing the tariff.
+        $this->assertSame([600, 900], $firstStored->fresh()->snapshot['pricing']['prices_per_step_minor']);
+    }
+
+    public function test_minimum_price_scales_with_court_step(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData([
+            'whole_price_per_step_minor' => 600,
+            'maximum_duration_minutes' => 240,
+        ]));
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update([
+            'time_step_minutes' => 60,
+            'minimum_duration_minutes' => 120,
+            'maximum_duration_minutes' => 240,
+            'whole_price_per_step_minor' => 700,
+        ]);
+        $start = CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow');
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $start, 120, VenueBookingScopeEnum::WHOLE, $owner, $court->fresh(),
+        );
+        $this->assertSame(2400, $quote->amountMinor);
+        $snapshot = VenueBookingQuote::query()->where('public_id', $quote->publicId)->firstOrFail()->snapshot;
+        $this->assertSame([1200, 1200], $snapshot['pricing']['prices_per_step_minor']);
     }
 
     /** @return array{User, Venue} */

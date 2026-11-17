@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventContractResponsibilityService;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -14,7 +15,8 @@ use InvalidArgumentException;
 
 final class RemoveEventResponsibilityHandler
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(private readonly EventManagementAccess $access,
+        private readonly EventContractResponsibilityService $contracts) {}
 
     public function handle(string $identifier, int $participantId, Actor $actor): Event
     {
@@ -38,7 +40,7 @@ final class RemoveEventResponsibilityHandler
                 'responsibility_requested_at' => null,
                 'responsibility_responded_at' => null,
             ])->save();
-            $participant->responsibilityPermissions()->delete();
+            $this->contracts->revoke($participant, $actor->user->canonical());
 
             return $event;
         });

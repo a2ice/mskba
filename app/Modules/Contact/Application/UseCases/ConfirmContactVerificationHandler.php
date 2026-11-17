@@ -80,6 +80,23 @@ class ConfirmContactVerificationHandler
                 'verified_at' => now(),
             ]);
 
+            // The first successfully verified contact becomes primary, even when
+            // an earlier unverified contact was provisionally marked as primary.
+            if ($contact->contactable_type === 'user') {
+                $identityUser = User::query()->find((int) $contact->contactable_id);
+                $canonicalUser = $identityUser?->canonical();
+
+                if ($canonicalUser !== null && ! $canonicalUser->hasVerifiedPrimaryContact()) {
+                    User::query()->whereKey($canonicalUser->identityIds())
+                        ->orderBy('id')->lockForUpdate()->get();
+                    if (! $canonicalUser->hasVerifiedPrimaryContact()) {
+                        $canonicalUser->identityContactsQuery()->where('is_primary', true)
+                            ->update(['is_primary' => false]);
+                        $contact->update(['is_primary' => true]);
+                    }
+                }
+            }
+
             return $verification->refresh();
         });
 

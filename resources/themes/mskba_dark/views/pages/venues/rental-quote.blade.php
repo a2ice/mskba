@@ -7,6 +7,8 @@
         @include('theme::partials.breadcrumbs')
         <h1 class="section-title mb-4">{{ $title }}</h1>
         @if(isset($error))<div class="alert alert-danger">{{ $error['message'] }}</div>@endif
+        @if(session('error'))<div class="alert alert-danger" role="alert">{{ session('error') }}</div>@endif
+        @if($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
         <div class="card mb-4"><div class="card-body">
             <p>Расчёт выполняется по версии условий №{{ $policy->version }}. Он не резервирует зал.</p>
             <form method="POST" action="{{ route('venues.rental.quote', $venue) }}" data-venue-rental-court-form>
@@ -21,6 +23,9 @@
                                         value="{{ $courtOption->id }}"
                                         data-allows-whole="{{ $courtOption->allows_whole ? '1' : '0' }}"
                                         data-allows-halves="{{ ($courtOption->supports_halves && $courtOption->allows_halves) ? '1' : '0' }}"
+                                        data-min-duration="{{ $courtOption->minimum_duration_minutes ?? $policy->minimum_duration_minutes }}"
+                                        data-max-duration="{{ $courtOption->maximum_duration_minutes ?? $policy->maximum_duration_minutes }}"
+                                        data-time-step="{{ $courtOption->time_step_minutes ?? $policy->time_step_minutes }}"
                                         @selected((int) old('venue_court_id', $court->id) === (int) $courtOption->id)
                                     >{{ $courtOption->name }}</option>
                                 @endforeach
@@ -30,8 +35,8 @@
                             <div class="form-control" aria-readonly="true">{{ $court->name }}</div>
                         @endif
                     </div>
-                    <div class="col-md-4"><label class="form-label">Начало</label><input class="form-control" type="datetime-local" name="starts_at" required value="{{ old('starts_at') }}"></div>
-                    <div class="col-md-2"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" required min="{{ $policy->minimum_duration_minutes }}" max="{{ $policy->maximum_duration_minutes }}" step="{{ $policy->time_step_minutes }}" value="{{ old('duration_minutes', $policy->minimum_duration_minutes) }}"></div>
+                    <div class="col-md-4"><label class="form-label">Начало</label><input class="form-control" type="datetime-local" name="starts_at" required data-venue-rental-start step="{{ ($court->time_step_minutes ?? $policy->time_step_minutes) * 60 }}" value="{{ old('starts_at') }}"></div>
+                    <div class="col-md-2"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" data-venue-rental-duration required min="{{ $court->minimum_duration_minutes ?? $policy->minimum_duration_minutes }}" max="{{ $court->maximum_duration_minutes ?? $policy->maximum_duration_minutes }}" step="{{ $court->time_step_minutes ?? $policy->time_step_minutes }}" value="{{ old('duration_minutes', $court->minimum_duration_minutes ?? $policy->minimum_duration_minutes) }}"></div>
                     <div class="col-md-2">
                         <label class="form-label" for="venue-rental-scope">Область</label>
                         <select id="venue-rental-scope" class="form-select" name="scope" data-venue-rental-scope>
@@ -42,7 +47,18 @@
                     </div>
                 </div>
                 <div class="text-muted small mt-2" data-venue-rental-scope-empty hidden>Для выбранного зала аренда сейчас отключена.</div>
+                @if(config('features.venue_rental.special_terms'))
+                    <label class="form-label">Промокод <input class="form-control" name="coupon_code" maxlength="32" value="{{ old('coupon_code', $submitted['coupon_code'] ?? '') }}"></label>
+                @endif
                 <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>Рассчитать</button>
+                @auth
+                    <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
+                    <label class="form-label">Комментарий к предзаявке (необязательно)<textarea class="form-control" name="note" maxlength="4000" rows="2">{{ old('note') }}</textarea></label>
+                    <button class="btn btn--secondary btn--sm" type="submit" formaction="{{ route('venues.pre-requests.store', $venue) }}">Предзаявка</button>
+                    <p>Предзаявка открывает переписку. Время не резервируется, оплата не требуется.</p>
+                @else
+                    <a class="btn btn--secondary btn--sm" href="{{ route('login') }}">Предзаявка · войти</a>
+                @endauth
             </form>
         </div></div>
 
@@ -50,7 +66,11 @@
             <div class="card"><div class="card-body">
                 <h2 class="h4">Итог предложения</h2>
                 <p><strong>{{ $court->name }}</strong></p>
-                <p><strong>{{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($quote->currency) }}</strong></p>
+                @if($quote->personalDiscount)
+                    <p><del>{{ number_format($quote->personalDiscount['original_amount_minor'] / 100, 2, ',', ' ') }} {{ $quote->currency }}</del>
+                    <span title="{{ $quote->personalDiscount['reason'] }}" tabindex="0">{{ $quote->personalDiscount['title'] }}</span></p>
+                @endif
+                <p><strong>Итого: {{ number_format($quote->amountMinor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($quote->currency) }}</strong></p>
                 <p>{{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('d.m.Y H:i') }}–{{ $quote->endsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('H:i') }}</p>
                 <p>Hold: {{ $quote->holdDurationMinutes }} мин. Quote действует до {{ $quote->validUntil->format('d.m.Y H:i') }} UTC.</p>
                 <p class="text-muted">Идентификатор: {{ $quote->publicId }}. При отправке заявки сервер повторно проверит этот snapshot.</p>
@@ -93,6 +113,21 @@
 
         const syncScopes = () => {
             const selected = courtSelect?.selectedOptions?.[0];
+            const minDuration = Number(selected?.dataset.minDuration ?? {{ (int) ($court->minimum_duration_minutes ?? $policy->minimum_duration_minutes) }});
+            const maxDuration = Number(selected?.dataset.maxDuration ?? {{ (int) ($court->maximum_duration_minutes ?? $policy->maximum_duration_minutes) }});
+            const timeStep = Number(selected?.dataset.timeStep ?? {{ (int) ($court->time_step_minutes ?? $policy->time_step_minutes) }});
+            const duration = form.querySelector('[data-venue-rental-duration]');
+            const start = form.querySelector('[data-venue-rental-start]');
+            if (duration) {
+                duration.min = String(minDuration);
+                duration.max = String(maxDuration);
+                duration.step = String(timeStep);
+                const value = Number(duration.value);
+                if (!value || value < minDuration || value > maxDuration || value % timeStep !== 0) {
+                    duration.value = String(minDuration);
+                }
+            }
+            if (start) start.step = String(timeStep * 60);
             const allowsWhole = selected ? selected.dataset.allowsWhole === '1' : {{ ($court->allows_whole ? 'true' : 'false') }};
             const allowsHalves = selected ? selected.dataset.allowsHalves === '1' : {{ (($court->supports_halves && $court->allows_halves) ? 'true' : 'false') }};
             const whole = allowsWhole;

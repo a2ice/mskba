@@ -40,6 +40,13 @@ final class SendUserNotificationEmailJob implements ShouldQueue
             return;
         }
 
+        // Source-specific subscription preferences override global delivery.
+        $selected = data_get($notification->payload, 'delivery_channels');
+        if (is_array($selected) && ! in_array('email', $selected, true)) {
+            $delivery->update(['status' => 'skipped', 'last_error' => 'Channel disabled for this subscription.']);
+            return;
+        }
+
         $category = UserNotificationDeliveryCategoryEnum::tryFrom(
             (string) data_get($notification->payload, 'delivery_category', UserNotificationDeliveryCategoryEnum::GENERAL->value),
         ) ?? UserNotificationDeliveryCategoryEnum::GENERAL;
@@ -52,8 +59,16 @@ final class SendUserNotificationEmailJob implements ShouldQueue
             return;
         }
 
-        $email = $canonicalUser->primaryEmail();
-        if ($email === null || ! $email->hasBeenVerified()) {
+        // A user's primary identity contact can be Telegram or an unverified email.
+        // Prefer the verified primary email, then another verified email from
+        // the same canonical identity; never deliver to unverified addresses.
+        $email = $canonicalUser->identityContactsQuery()
+            ->where('type', 'email')
+            ->whereNotNull('verified_at')
+            ->orderByDesc('is_primary')
+            ->orderByDesc('verified_at')
+            ->first();
+        if ($email === null) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Verified primary email is missing.']);
 
             return;

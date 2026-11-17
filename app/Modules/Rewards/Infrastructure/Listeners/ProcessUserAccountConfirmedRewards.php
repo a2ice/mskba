@@ -6,16 +6,20 @@ use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Services\RewardEngine;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class ProcessUserAccountConfirmedRewards implements ShouldQueue
+final class ProcessUserAccountConfirmedRewards implements ShouldQueueAfterCommit
 {
     use Queueable;
 
     public function __construct(
         private readonly RewardEngine $engine,
-    ) {}
+    ) {
+        // A caller may wrap moderation or confirmation in an outer transaction.
+        // Defer the queued listener until that transaction actually commits.
+        $this->afterCommit();
+    }
 
     public int $tries = 5;
 

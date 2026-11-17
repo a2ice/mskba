@@ -10,12 +10,38 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Application\Services\VenueFacilitiesSynchronizer;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class VenueFacilitiesManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_reselecting_soft_deleted_amenity_restores_unique_pivot_instead_of_inserting_duplicate(): void
+    {
+        $venue = Venue::factory()->create(['type' => VenueTypeEnum::SPORTS_HALL]);
+        $amenity = Amenity::query()->where('alias', 'parking')->firstOrFail();
+        DB::table('venue_amenities')->insert([
+            'venue_id' => $venue->id,
+            'amenity_id' => $amenity->id,
+            'deleted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        app(VenueFacilitiesSynchronizer::class)->sync($venue, [], [$amenity->id]);
+
+        $this->assertSame(1, DB::table('venue_amenities')
+            ->where('venue_id', $venue->id)
+            ->where('amenity_id', $amenity->id)->count());
+        $this->assertDatabaseHas('venue_amenities', [
+            'venue_id' => $venue->id,
+            'amenity_id' => $amenity->id,
+            'deleted_at' => null,
+        ]);
+    }
 
     public function test_bootstrap_owner_can_save_characteristics_and_applicable_amenities(): void
     {
@@ -41,7 +67,7 @@ class VenueFacilitiesManagementTest extends TestCase
                     'surface_condition' => 3,
                     'marking_condition' => VenueMarkingConditionEnum::GOOD->value,
                 ],
-                'amenity_ids' => [$lighting->id, $parking->id],
+                'amenity_ids' => [$parking->id],
             ])
             ->assertSessionHasNoErrors();
 
@@ -54,8 +80,11 @@ class VenueFacilitiesManagementTest extends TestCase
             'first_hoop_marking' => 'good',
             'second_hoop_marking' => null,
         ]);
-        $this->assertDatabaseHas('venue_amenities', [
-            'venue_id' => $venue->id,
+        app(\App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer::class)->sync(
+            $venue->primaryCourt()->firstOrFail(), [$lighting->id],
+        );
+        $this->assertDatabaseHas('venue_court_amenities', [
+            'venue_court_id' => $venue->primaryCourt()->firstOrFail()->id,
             'amenity_id' => $lighting->id,
         ]);
         $this->assertDatabaseHas('venue_amenities', [
@@ -150,7 +179,7 @@ class VenueFacilitiesManagementTest extends TestCase
         $this->assertSame(['before' => $parking->name, 'after' => $shower->name], collect($fields->get('Удобства'))->only(['before', 'after'])->all());
     }
 
-    public function test_outdoor_venue_rejects_indoor_amenity(): void
+    public function test_outdoor_court_can_share_venue_shower_facility(): void
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
@@ -168,9 +197,9 @@ class VenueFacilitiesManagementTest extends TestCase
                 'amenity_ids' => [$shower->id],
             ])
             ->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
-            ->assertSessionHas('error', 'Выбранная опция не подходит для этого типа площадки.');
+            ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseMissing('venue_amenities', [
+        $this->assertDatabaseHas('venue_amenities', [
             'venue_id' => $venue->id,
             'amenity_id' => $shower->id,
         ]);

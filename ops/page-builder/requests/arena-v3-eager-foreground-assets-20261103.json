@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Устранить пустые изображения Arena v3 при lazy loading в Chromium: заранее загрузить корзину и двух игроков",
+  "publish": true,
+  "expected_draft_sha256": "de97f1e401484f070b4b546919d2e0d2a4ab047c201aabcd12339cad61d0910b",
+  "expected_published_sha256": "de97f1e401484f070b4b546919d2e0d2a4ab047c201aabcd12339cad61d0910b",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "  const desktop = window.matchMedia('(min-width: 1100px)');\n  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');\n  const clamp = n => Math.max(0, Math.min(1, n));",
+      "to": "  const desktop = window.matchMedia('(min-width: 1100px)');\n  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');\n  // These three foreground sprites overlap the Hero and must not wait for\n  // lazy image intersection while their initial image height is unknown.\n  function loadForegroundSprites() {\n    if (!desktop.matches) return;\n    for (const image of scene.querySelectorAll('.mskba-v3-venues__hoop, .mskba-v3-venues__defender, .mskba-v3-venues__shooter')) {\n      const full = image.dataset.mskbaLqipFullSrc;\n      if (!full || image.dataset.arenaV3FullReady === '1') continue;\n      image.dataset.arenaV3FullReady = '1';\n      image.loading = 'eager';\n      image.src = full;\n    }\n  }\n  loadForegroundSprites();\n  desktop.addEventListener?.('change', loadForegroundSprites);\n  const clamp = n => Math.max(0, Math.min(1, n));"
+    }
+  ]
+}

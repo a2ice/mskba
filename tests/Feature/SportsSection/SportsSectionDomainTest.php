@@ -2,6 +2,10 @@
 
 namespace Tests\Feature\SportsSection;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -63,6 +67,10 @@ final class SportsSectionDomainTest extends TestCase
         $membership = $handler->add($section, $coach, $owner, [SportsSectionPermissionEnum::MANAGE_SESSIONS]);
 
         $this->assertDatabaseHas('contract_permissions', ['contract_id' => $membership->contract_id, 'permission' => SportsSectionPermissionEnum::MANAGE_SESSIONS->value]);
+        $this->assertSame(TeamInvitationStatusEnum::PENDING, $membership->invitation_status);
+        $this->assertFalse(app(SportsSectionAccess::class)->allows($coach, $section, SportsSectionPermissionEnum::MANAGE_SESSIONS));
+        app(EntityContractManager::class)->respond($membership, $coach, true);
+        $this->assertTrue(app(SportsSectionAccess::class)->allows($coach, $section, SportsSectionPermissionEnum::MANAGE_SESSIONS));
         $handler->transferHeadCoach($section, $membership, $owner);
         $this->assertSame($membership->id, $section->refresh()->head_coach_membership_id);
 

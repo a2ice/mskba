@@ -7,12 +7,15 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\CreateEventFromConfirmedVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RescheduleBookedEventHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\Response;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +25,35 @@ use InvalidArgumentException;
 
 final class VenueBookingEventController extends Controller
 {
+    public function create(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors): Response
+    {
+        $actor = $actors->resolveForRequest($request);
+        // Match the existing event-creation handler's requester authorization.
+        abort_unless($actor !== null && $actor->user_id !== null
+            && (int) $actor->user_id === (int) $venueBooking->requester_user_id, 403);
+        abort_unless(
+            $venueBooking->flow === 'rental'
+            && $venueBooking->status === VenueBookingStatusEnum::CONFIRMED
+            && $venueBooking->starts_at->isFuture(),
+            409,
+            'Мероприятие можно создать только до начала подтверждённой брони.',
+        );
+        abort_if(
+            $venueBooking->event_id !== null
+                || Event::query()->where('booking_id', $venueBooking->id)->exists(),
+            409,
+            'К этому бронированию уже привязано мероприятие.',
+        );
+
+        $venueBooking->loadMissing(['venue.schedule', 'court']);
+
+        return ThemeResolver::page('venue-bookings.event-create', [
+            'booking' => $venueBooking,
+            'types' => EventTypeEnum::cases(),
+            'visibilities' => EventVisibilityEnum::cases(),
+        ]);
+    }
+
     public function store(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, CreateEventFromConfirmedVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         $data = $request->validate([

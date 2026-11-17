@@ -333,7 +333,8 @@ class VenueModerationWorkflowTest extends TestCase
         $this->assertDatabaseHas('venues', [
             'id' => $blockedVenue->id,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
-            'status_info' => null,
+            // A status transition must not silently erase its internal note.
+            'status_info' => 'Спам-заявки.',
         ]);
 
         $this

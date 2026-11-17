@@ -75,6 +75,12 @@ final readonly class RequestVenueBookingExtensionHandler
             throw new VenueBookingTransitionException('Новый срок должен быть позже текущего.', 'INVALID_EXTENSION_DEADLINE');
         }
 
+        if ((bool) data_get($booking->quote_snapshot, 'policy.external_hold_required', false)) {
+            $external = $booking->externalHold;
+            if ($external === null || $external->expires_at === null || $requestedUntil->greaterThan($external->expires_at)) {
+                throw new VenueBookingTransitionException('Продление требует нового внешнего подтверждения.', 'EXTERNAL_HOLD_EXTENSION_REQUIRED');
+            }
+        }
         $maximum = $booking->hold_expires_at?->addMinutes($limit);
         if ($maximum === null || $requestedUntil->greaterThan($maximum)) {
             throw new VenueBookingTransitionException('Запрошенный срок превышает лимит условий брони.', 'EXTENSION_LIMIT_EXCEEDED');

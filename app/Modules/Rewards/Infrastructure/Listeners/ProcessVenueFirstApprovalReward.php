@@ -7,16 +7,20 @@ use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Services\RewardEngine;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 
-final class ProcessVenueFirstApprovalReward implements ShouldQueue
+final class ProcessVenueFirstApprovalReward implements ShouldQueueAfterCommit
 {
     use Queueable;
 
     public function __construct(
         private readonly RewardEngine $engine,
-    ) {}
+    ) {
+        // A caller may wrap moderation or confirmation in an outer transaction.
+        // Defer the queued listener until that transaction actually commits.
+        $this->afterCommit();
+    }
 
     public int $tries = 5;
 

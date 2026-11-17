@@ -1,5 +1,6 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { resolveReverbBrowserConfig } from './reverb-browser-config.js';
 
 let echo = null;
 let state = 'idle';
@@ -13,24 +14,33 @@ const announceState = (nextState) => {
 };
 
 const createEcho = () => {
-    const key = import.meta.env.VITE_REVERB_APP_KEY;
+    // The app theme supplies its own public Reverb key at runtime.
+    // GitHub Actions must never bake local .env.example endpoints into dev bundles.
+    const runtimeKeyMeta = document.querySelector('meta[name="mskba-reverb-app-key"]');
+    const browserConfig = resolveReverbBrowserConfig(
+        runtimeKeyMeta === null ? null : runtimeKeyMeta.content,
+        {
+            key: import.meta.env.VITE_REVERB_APP_KEY,
+            host: import.meta.env.VITE_REVERB_PUBLIC_HOST,
+            port: import.meta.env.VITE_REVERB_PUBLIC_PORT,
+            scheme: import.meta.env.VITE_REVERB_PUBLIC_SCHEME,
+        },
+        window.location,
+    );
 
-    if (!key) {
+    if (!browserConfig.key) {
         announceState('unavailable');
         return null;
     }
 
     window.Pusher = Pusher;
-    const forceTLS = (import.meta.env.VITE_REVERB_PUBLIC_SCHEME || window.location.protocol.replace(':', '')) === 'https';
-    const browserPort = Number(window.location.port || (forceTLS ? 443 : 80));
-
     echo = new Echo({
         broadcaster: 'reverb',
-        key,
-        wsHost: import.meta.env.VITE_REVERB_PUBLIC_HOST || window.location.hostname,
-        wsPort: Number(import.meta.env.VITE_REVERB_PUBLIC_PORT || browserPort),
-        wssPort: Number(import.meta.env.VITE_REVERB_PUBLIC_PORT || browserPort),
-        forceTLS,
+        key: browserConfig.key,
+        wsHost: browserConfig.host,
+        wsPort: browserConfig.port,
+        wssPort: browserConfig.port,
+        forceTLS: browserConfig.forceTLS,
         enabledTransports: ['ws', 'wss'],
     });
 

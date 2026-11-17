@@ -1,0 +1,82 @@
+/* Shared public editorial templates for news and FAQ.
+   Keep the markup within the mskba_app design system, not dark-theme classes. */
+.app-content-page {
+    padding-block: clamp(28px, 4vw, 64px);
+    display: grid;
+    gap: clamp(20px, 3vw, 32px);
+}
+.app-content-page > nav a { color: inherit; text-underline-offset: 4px; }
+.app-content-page__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+    align-items: start;
+    gap: clamp(14px, 2vw, 22px);
+}
+.app-content-page__card {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+    min-width: 0;
+    padding: clamp(20px, 2.3vw, 30px);
+}
+.app-content-page__card h2 {
+    font-size: clamp(20px, 2vw, 26px);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+.app-content-page__card h2 a {
+    color: inherit;
+    text-decoration: none;
+}
+.app-content-page__card h2 a:hover { text-decoration: underline; }
+.app-content-page__card p { line-height: 1.6; }
+.app-content-page__card .button { justify-self: start; }
+.app-content-page__card time { margin-inline-start: 12px; }
+.app-content-page__cover {
+    display: block;
+    width: 100%;
+    max-height: 560px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+.app-content-page__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.app-content-page__article {
+    width: 100%;
+    max-width: 1000px;
+    padding: clamp(22px, 4vw, 52px);
+    display: grid;
+    gap: clamp(16px, 2vw, 26px);
+}
+.app-content-page__article-heading { display: grid; gap: 12px; }
+.app-content-page__article h1 {
+    font-size: clamp(30px, 4vw, 52px);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+.app-content-page__lead { font-size: clamp(17px, 1.8vw, 22px); line-height: 1.55; }
+.app-content-page__body {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.75;
+}
+.app-content-page__body :is(p, ul, ol, blockquote, figure, table) { margin-block: 0 1.25em; }
+.app-content-page__body :is(h2, h3, h4) { margin-block: 1.3em .55em; }
+.app-content-page__body img { max-width: 100%; height: auto; border-radius: 8px; }
+.app-content-page__body a { text-underline-offset: 3px; }
+.app-content-page__body table { display: block; width: 100%; overflow-x: auto; }
+.app-content-page__requirements {
+    border-inline-start: 3px solid var(--accent, currentColor);
+    padding-inline-start: 20px;
+}
+.app-content-page__requirements li, .app-content-page__article > ol li { margin-block: 10px; line-height: 1.6; }
+.app-content-page__requirements a { margin-inline-start: 8px; }
+.app-content-page__pagination { max-width: 100%; overflow-x: auto; }
+.app-content-page__card[id] { scroll-margin-top: 110px; }
+@media(max-width: 680px) {
+    .app-content-page__grid { grid-template-columns: minmax(0, 1fr); }
+    .app-content-page__article { padding: 20px; }
+}

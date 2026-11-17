@@ -10,14 +10,21 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Rewards\Application\Contracts\RewardMechanism;
 use App\Modules\Rewards\Application\Data\RewardMechanismContext;
 use App\Modules\Rewards\Application\Data\RewardMechanismDecision;
+use App\Modules\Rewards\Application\Services\RewardCatalogManager;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Tests\TestCase;
 
 final class RewardsCatalogTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTruncation;
+
+    protected function beforeTruncatingDatabase(): void
+    {
+        RefreshDatabaseState::$migrated = false;
+    }
 
     public function test_initial_catalog_contains_implemented_and_enabled_rewards(): void
     {
@@ -45,7 +52,10 @@ final class RewardsCatalogTest extends TestCase
             ->assertSee('Вознаграждения')
             ->assertSee('Подтверждённый приглашённый пользователь')
             ->assertSee('Подтверждённый пользователь второго уровня')
-            ->assertSee('Первая успешная модерация новой площадки');
+            ->assertSee('Первая успешная модерация новой площадки')
+            ->assertSee('Выплата реальными деньгами')
+            ->assertSee('Пока недоступно. Начисления производятся только бонусными средствами.')
+            ->assertSee('type="checkbox" disabled aria-describedby="reward-real-payment-create-hint"', false);
     }
 
     public function test_superadmin_can_create_reward_and_standard_audit_is_written(): void
@@ -114,6 +124,29 @@ final class RewardsCatalogTest extends TestCase
         $this->assertSame(35000, $newVersion->amount_minor);
         $this->assertSame('Обновлённые условия будущего механизма.', $newVersion->conditions);
         $this->assertSame(2, RewardVersion::query()->where('reward_id', $reward->id)->count());
+    }
+
+    public function test_editing_public_caption_does_not_change_financial_reward_version(): void
+    {
+        $reward = Reward::query()->where('code', 'referral_user_confirmed')->firstOrFail();
+        $version = $reward->currentVersion()->firstOrFail();
+        $edited = app(RewardCatalogManager::class)->update($reward, [
+            'name' => $reward->name,
+            'description' => $reward->description,
+            'amount_caption_template' => 'За приглашение — {amount}',
+            'mechanism_code' => $reward->mechanism_code,
+            'is_enabled' => $reward->is_enabled,
+            'amount_minor' => $version->amount_minor,
+            'currency' => $version->currency,
+            'conditions' => $version->conditions,
+            'recipient_description' => $version->recipient_description,
+            'trigger_description' => $version->trigger_description,
+            'mechanism_parameters' => $version->mechanism_parameters ?? [],
+        ]);
+
+        $this->assertSame('За приглашение — {amount}', $edited->amount_caption_template);
+        $this->assertSame($version->id, $edited->currentVersion()->firstOrFail()->id);
+        $this->assertSame(1, $edited->versions()->count());
     }
 
     public function test_unimplemented_mechanism_cannot_be_enabled(): void

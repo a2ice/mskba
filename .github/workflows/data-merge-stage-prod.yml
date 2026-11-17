@@ -1,0 +1,98 @@
+name: MSKBA prepare isolated production candidate
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-stage-prod.yml
+      - scripts/data-merge/stage-verified-candidate.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-prod-stage
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    name: Transfer protected candidate and stage separate production DB
+    runs-on: ubuntu-latest
+    environment: development
+    env:
+      DEV_HOST: ${{ secrets.DEV_SERVER_HOST }}
+      DEV_SSH_KEY: ${{ secrets.DEV_SERVER_SSH_KEY }}
+      PROD_HOST: ${{ secrets.SERVER_HOST }}
+      PROD_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate staging script and tool availability
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/data-merge/stage-verified-candidate.sh
+          command -v ssh
+          command -v scp
+      - name: Stream verified private candidate directly from dev to production
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          RUN=44113647452
+          MEDIA_RUN=44032038961
+          RELEASE_DB=mskba_unified_20261117_v2
+          test -n "$DEV_HOST" || { echo 'STAGE_BLOCKED missing development host'; exit 2; }
+          test -n "$PROD_HOST" || { echo 'STAGE_BLOCKED missing production host'; exit 2; }
+          test -n "$DEV_SSH_KEY" || { echo 'STAGE_BLOCKED missing development SSH key'; exit 2; }
+          test -n "$PROD_SSH_KEY" || { echo 'STAGE_BLOCKED missing production SSH key'; exit 2; }
+          echo 'STAGE_CREDENTIALS_PRESENT=true'
+          printf '%s\n' "$DEV_SSH_KEY" > "$RUNNER_TEMP/mskba-dev.key"
+          printf '%s\n' "$PROD_SSH_KEY" > "$RUNNER_TEMP/mskba-prod.key"
+          chmod 600 "$RUNNER_TEMP/mskba-dev.key" "$RUNNER_TEMP/mskba-prod.key"
+          DEV_SSH=(ssh -i "$RUNNER_TEMP/mskba-dev.key" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR)
+          PROD_SSH=(ssh -i "$RUNNER_TEMP/mskba-prod.key" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR)
+          PROD_SCP=(scp -q -i "$RUNNER_TEMP/mskba-prod.key" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new)
+          DEV_SRC="/home/deploy/mskba-data-merge-candidates/$RUN-web-smoke"
+          DEV_MEDIA="/home/deploy/mskba-data-merge-candidates/$MEDIA_RUN-media-union"
+          PROD_SRC="$DEV_SRC"
+          PROD_MEDIA="$DEV_MEDIA"
+          "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cd '$DEV_SRC' && sha256sum -c --status SHA256SUMS && test -s web-approved-candidate.pgdump"
+          echo 'STAGE_DEV_ARCHIVE_VERIFIED=true'
+          "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cd '$DEV_MEDIA' && sha256sum -c --status SHA256SUMS && test -s storage-app-combined.tar.gz"
+          echo 'STAGE_DEV_MEDIA_VERIFIED=true'
+          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; mkdir -p '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && chmod 700 '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN'"
+          echo 'STAGE_PROD_DIR_READY=true'
+          # Only streaming via two encrypted SSH sessions; never store the
+          # private database dump or media in runner filesystem/artifacts.
+          if "${PROD_SSH[@]}" "deploy@$PROD_HOST" "test -s '$PROD_SRC/web-approved-candidate.pgdump'"; then
+            echo 'STAGE_PROD_DB_ARCHIVE_ALREADY_PRESENT_VERIFYING=true'
+          else
+            "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_SRC/web-approved-candidate.pgdump'" |
+              "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; test ! -e '$PROD_SRC/web-approved-candidate.pgdump' && cat > '$PROD_SRC/web-approved-candidate.pgdump.part' && mv '$PROD_SRC/web-approved-candidate.pgdump.part' '$PROD_SRC/web-approved-candidate.pgdump'"
+          fi
+          echo 'STAGE_PROD_DB_ARCHIVE_READY=true'
+          if "${PROD_SSH[@]}" "deploy@$PROD_HOST" "test -s '$PROD_MEDIA/storage-app-combined.tar.gz'"; then
+            echo 'STAGE_PROD_MEDIA_ALREADY_PRESENT_VERIFYING=true'
+          else
+            "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_MEDIA/storage-app-combined.tar.gz'" |
+              "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; test ! -e '$PROD_MEDIA/storage-app-combined.tar.gz' && cat > '$PROD_MEDIA/storage-app-combined.tar.gz.part' && mv '$PROD_MEDIA/storage-app-combined.tar.gz.part' '$PROD_MEDIA/storage-app-combined.tar.gz'"
+          fi
+          echo 'STAGE_PROD_MEDIA_READY=true'
+          for spec in "$DEV_SRC|web-approved-candidate.pgdump" "$DEV_MEDIA|storage-app-combined.tar.gz"; do
+            IFS='|' read -r src_dir filename <<< "$spec"
+            source_digest="$("${DEV_SSH[@]}" "deploy@$DEV_HOST" "sha256sum '$src_dir/$filename' | cut -d' ' -f1")"
+            target_digest="$("${PROD_SSH[@]}" "deploy@$PROD_HOST" "sha256sum '$src_dir/$filename' | cut -d' ' -f1")"
+            test "$source_digest" = "$target_digest" || {
+              echo "::error::Private transfer checksum mismatch"
+              exit 1
+            }
+          done
+          # Recreate protected checksum manifests beside transferred archives.
+          db_digest="$("${PROD_SSH[@]}" "deploy@$PROD_HOST" "sha256sum '$PROD_SRC/web-approved-candidate.pgdump' | cut -d' ' -f1")"
+          media_digest="$("${PROD_SSH[@]}" "deploy@$PROD_HOST" "sha256sum '$PROD_MEDIA/storage-app-combined.tar.gz' | cut -d' ' -f1")"
+          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; printf '%s  web-approved-candidate.pgdump\n' '$db_digest' > '$PROD_SRC/SHA256SUMS'; printf '%s  storage-app-combined.tar.gz\n' '$media_digest' > '$PROD_MEDIA/SHA256SUMS'"
+          echo 'PRIVATE_TRANSFER_VERIFIED=true'
+          "${PROD_SCP[@]}" scripts/data-merge/stage-verified-candidate.sh "deploy@$PROD_HOST:/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh"
+          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "chmod 700 '/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh' && bash '/home/deploy/mskba-data-merge-tools/$RUN/stage-verified-candidate.sh' '$RUN' '$RELEASE_DB'"
+          echo 'ACTIVE_PRODUCTION_SITE_NOT_SWITCHED=true'

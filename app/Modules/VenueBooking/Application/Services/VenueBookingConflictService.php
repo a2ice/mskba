@@ -127,6 +127,7 @@ final readonly class VenueBookingConflictService
                         $candidate->id,
                         scope: $candidate->scope,
                         court: $court,
+                        allowEndAtMidnight: $candidate->flow === 'rental',
                     );
                 } catch (InvalidArgumentException) {
                     return false;

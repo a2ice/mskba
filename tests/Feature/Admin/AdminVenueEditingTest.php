@@ -34,7 +34,7 @@ final class AdminVenueEditingTest extends TestCase
             ->assertOk()
             ->assertSee('Старое название')
             ->assertSee('Кольца, покрытие и разметка')
-            ->assertSee('Оснащение и удобства');
+            ->assertSee('Общие удобства площадки');
 
         $this->actingAs($superadmin)
             ->put(route('admin.venues.update', $venue), [

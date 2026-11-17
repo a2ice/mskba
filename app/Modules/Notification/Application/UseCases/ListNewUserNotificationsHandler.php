@@ -12,14 +12,15 @@ final class ListNewUserNotificationsHandler
     /**
      * @return Collection<int, UserNotification>
      */
-    public function handle(User $user, int $limit = 20): Collection
+    public function handle(User $user, int $limit = 20, ?int $beforeId = null): Collection
     {
         $identityIds = $user->canonical()->identityIds();
 
         return UserNotification::query()
             ->whereIn('user_id', $identityIds)
             ->where('status', UserNotificationStatusEnum::NEW)
-            ->latest()
+            ->when($beforeId !== null, fn ($query) => $query->where('id', '<', $beforeId))
+            ->orderByDesc('id')
             ->limit($limit)
             ->get();
     }

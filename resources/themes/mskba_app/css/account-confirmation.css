@@ -1,0 +1,344 @@
+/* Account confirmation: the new theme uses independent condition cards. */
+.app-confirmation,.app-confirmation__form{display:flex;flex-direction:column;gap:20px;min-width:0}
+.app-confirmation__card{padding:24px;min-width:0;border-radius:var(--radius-card)}
+.app-confirmation__card-heading{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.app-confirmation__card h2{font-size:22px;line-height:28px;margin:0}
+.app-confirmation__card>p{font-size:14px;line-height:22px;color:var(--muted);margin:0 0 18px}
+.app-confirmation__value{font-weight:700!important;color:var(--text)!important;margin:0!important;overflow-wrap:anywhere}
+.app-confirmation__state{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;line-height:18px;color:var(--muted);white-space:nowrap}
+.app-confirmation__state--done{border-color:color-mix(in srgb,var(--success) 40%,transparent);color:var(--success)}
+.app-confirmation__contact-actions{display:flex;flex-direction:column;align-items:flex-start;gap:18px}
+.app-confirmation__contact-link{display:inline-block;margin-top:20px;font-size:14px;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.app-profile-change-review-list{display:flex;flex-direction:column;gap:20px;margin:20px 0}
+.app-profile-change-review{padding:24px}
+.app-profile-change-review h2{font-size:20px;line-height:28px;margin:0 0 12px}
+.app-profile-change-review p{margin:6px 0 12px;color:var(--muted);line-height:1.5}
+.app-profile-change-review__table{width:100%;border-collapse:collapse;margin:16px 0 22px}
+.app-profile-change-review__table th,.app-profile-change-review__table td{padding:9px;text-align:left;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.app-profile-change-review__actions{display:flex;flex-wrap:wrap;gap:18px}
+.app-profile-change-review__actions form{flex:1 1 220px}
+.app-profile-change-review__actions textarea{display:block;width:100%;min-height:65px;margin:8px 0}
+.app-confirmation__contact-actions form{margin:0}
+.app-confirmation__field-action{display:flex;align-items:center;gap:12px;min-width:0}
+.app-confirmation__field-action input{flex:1 1 auto;width:100%;min-width:0}
+.app-confirmation__field-action .button{flex:0 0 auto;min-height:46px}
+.app-confirmation__contact-add,.app-confirmation__contact-code{width:100%;max-width:650px}
+.app-confirmation__card .field-group{min-width:0}
+.app-confirmation__details-grid,.app-confirmation__name-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;min-width:0}
+.app-confirmation__name-grid{gap:16px}
+.app-confirmation__name-grid .field-group:last-child{grid-column:1/-1}
+.app-confirmation__details-grid[hidden]{display:none}
+.app-confirmation__notice{padding:16px 18px}
+.app-confirmation__notice--error,.app-confirmation__error{color:var(--danger)}
+.app-confirmation__error{display:block;font-size:13px;line-height:20px;margin-top:8px}
+.app-confirmation__finish{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:16px}
+.app-confirmation__finish p{font-size:13px;line-height:20px;color:var(--muted);margin:0;flex:1 1 200px}
+.app-confirmation__finish .button:disabled{opacity:.45;cursor:not-allowed}
+@container (max-width:700px){.app-confirmation__details-grid,.app-confirmation__name-grid{grid-template-columns:minmax(0,1fr)}.app-confirmation__name-grid .field-group:last-child{grid-column:auto}}
+@media (max-width:639px){.app-confirmation__card{padding:18px}.app-confirmation__field-action{flex-direction:column;align-items:stretch}.app-confirmation__field-action .button,.app-confirmation__finish .button{width:100%}}
+
+/* Verified-contact onboarding dialog. */
+.app-contact-wizard__trigger{display:flex;align-items:center;flex-wrap:wrap;gap:12px 14px;margin-top:16px}
+.app-contact-wizard__hint{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
+.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px var(--shadow-menu);overflow:auto}
+.app-contact-wizard__dialog:not([open]){display:none}
+.app-contact-wizard__dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
+.app-contact-wizard__header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 26px 18px;border-bottom:1px solid var(--line)}
+.app-contact-wizard__header h2{font-size:22px;line-height:1.25;margin:4px 0 0}
+.app-contact-wizard__eyebrow{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0}
+.app-contact-wizard__close{width:38px;height:38px;flex:none;display:grid;place-items:center;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:50%;font-size:26px;cursor:pointer}
+.app-contact-wizard__body{padding:22px 26px}
+.app-contact-wizard__body [hidden],.app-contact-wizard__footer [hidden]{display:none!important}
+.app-contact-wizard__body h3{font-size:19px;line-height:1.3;margin:0 0 10px}
+.app-contact-wizard__body section>p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 20px}
+.app-contact-wizard__choices{display:grid;gap:10px}
+.app-contact-wizard__choices label{display:flex;align-items:center;gap:14px;padding:15px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .15s ease;background:color-mix(in srgb,var(--surface) 95%,var(--text) 5%)}
+.app-contact-wizard__choices label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.app-contact-wizard__choices input{accent-color:var(--accent);width:18px;height:18px;flex:none}
+.app-contact-wizard__choices strong{display:block;font-size:15px}
+.app-contact-wizard__choices small{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.app-contact-wizard__choices .is-disabled{opacity:.45;cursor:not-allowed}
+.app-contact-wizard__body .field-group{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:600}
+.app-contact-wizard__body .field-group input{width:100%;min-width:0}
+.app-contact-wizard__telegram{min-height:70px;display:flex;align-items:center}
+.app-contact-wizard__error{color:var(--danger);font-size:14px;line-height:1.5;margin:16px 0 0}
+.app-contact-wizard__feedback{color:var(--success);font-size:14px;line-height:1.5;margin:16px 0 0}
+.app-contact-wizard__resend{border:0;background:transparent;color:var(--accent);font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:8px 0;cursor:pointer}
+.app-contact-wizard__resend:disabled{opacity:.5;cursor:wait}
+.app-contact-wizard__footer{display:flex;justify-content:flex-end;gap:12px;padding:18px 26px 24px;border-top:1px solid var(--line)}
+.app-contact-wizard__footer .button{min-width:100px}
+.app-contact-wizard__footer .button:disabled{opacity:.6;cursor:wait}
+@media(max-width:480px){.app-contact-wizard__header{padding:18px}.app-contact-wizard__body{padding:18px}.app-contact-wizard__footer{padding:16px 18px}.app-contact-wizard__header h2{font-size:20px}.app-contact-wizard__trigger .button{width:100%}}
+
+.app-account-contacts{display:grid;gap:20px}
+.app-account-contacts__panel{padding:24px;min-width:0}
+.app-account-contacts__panel h2{font-size:22px;margin:0 0 14px}
+.app-account-contacts__panel>p{color:var(--muted);font-size:14px;line-height:1.6}
+/* One compact contact row. Contact + statuses may wrap above the control
+   group on narrow screens, but code/confirm/resend/delete remain together. */
+.app-account-contacts__item{
+    display:flex;align-items:center;justify-content:space-between;gap:14px 18px;
+    flex-wrap:wrap;min-width:0;padding:16px 0;
+    border-bottom:1px solid var(--line);
+}
+.app-account-contacts__item:last-of-type{border-bottom:0}
+.app-account-contacts__meta{
+    display:flex;align-items:center;gap:8px 12px;flex:1 1 260px;
+    min-width:0;flex-wrap:wrap;overflow-wrap:anywhere;
+}
+.app-account-contacts__meta>strong{font-size:14px;line-height:1.5}
+.app-account-contacts__value{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.app-account-contacts__value>span:last-child{min-width:0;overflow-wrap:anywhere}
+.app-account-contacts__type-icon{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-account-contacts__badges{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.app-account-contacts__badges .app-confirmation__state{
+    font-size:11px;padding:4px 8px;line-height:16px;
+}
+.app-account-contacts__controls{
+    display:flex;align-items:center;justify-content:flex-end;
+    flex:0 1 auto;gap:8px;min-width:0;max-width:100%;
+}
+/* Override global form{width:100%;flex-direction:column} only inside action row. */
+.app-account-contacts__controls form{
+    width:auto;margin:0;display:flex;flex-direction:row;
+    align-items:center;gap:8px;min-width:0;flex:0 0 auto;
+}
+.app-account-contacts__controls .app-account-contacts__verify{
+    flex:0 1 auto;min-width:0;
+}
+.app-account-contacts__verify input:not([type="hidden"]){
+    flex:0 1 112px;width:112px;min-width:82px;height:40px;
+    text-align:center;font-size:14px;letter-spacing:.1em;
+    padding:7px 8px;background:var(--field);color:var(--text);
+    border:1px solid var(--control-line);
+    border-radius:var(--radius-control,12px);
+}
+.app-account-contacts__verify input[type="hidden"]{display:none}
+.app-account-contacts__feedback{
+    flex:0 0 100%;min-width:0;margin:0;
+    color:var(--muted);font-size:13px;line-height:19px;
+    overflow-wrap:anywhere;
+}
+.app-account-contacts__feedback--error{color:var(--danger)}
+.app-account-contacts__resend-hint{font-variant-numeric:tabular-nums}
+.app-account-contacts__resend-hint[hidden]{display:none!important}
+.app-account-contacts__icon-button:disabled{opacity:.55;cursor:default}
+.app-account-contacts__start-button{
+    min-height:40px;min-width:120px;padding:8px 14px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    white-space:nowrap;
+}
+.app-account-contacts__start-button:disabled{opacity:.65;cursor:wait}
+.app-account-contacts__controls form>.app-account-contacts__primary-button{
+    min-height:40px;margin:0;padding:8px 12px;
+    font-size:13px;line-height:20px;white-space:nowrap;
+}
+.app-account-contacts__feedback--error[hidden]{display:none!important}
+.app-account-contacts__resend-spinner{
+    display:inline-block;width:16px;height:16px;flex:none;
+    border:2px solid currentColor;border-right-color:transparent;
+    border-radius:50%;animation:app-account-contacts-spin .7s linear infinite;
+}
+@keyframes app-account-contacts-spin{to{transform:rotate(360deg)}}
+
+
+.app-account-contacts__icon-button{
+    position:relative;display:grid;place-items:center;flex:none;
+    width:40px;height:40px;padding:0;
+    color:var(--text);background:var(--surface);
+    border:1px solid var(--control-line);border-radius:var(--radius-control);
+    cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease;
+}
+.app-account-contacts__icon-button svg{
+    width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round;pointer-events:none;
+}
+.app-account-contacts__icon-button:hover,
+.app-account-contacts__icon-button:focus-visible{
+    color:var(--accent);border-color:var(--accent);
+}
+.app-account-contacts__icon-button--confirm{color:var(--accent)}
+.app-account-contacts__icon-button--delete:hover,
+.app-account-contacts__icon-button--delete:focus-visible{color:var(--danger);border-color:var(--danger)}
+.app-account-contacts__icon-button[data-tooltip]::after{
+    content:attr(data-tooltip);
+    position:absolute;inset-inline-end:0;bottom:calc(100% + 8px);z-index:10;
+    width:max-content;max-width:min(240px,calc(100vw - 36px));
+    padding:6px 9px;border-radius:8px;border:1px solid var(--control-line);
+    background:var(--surface-raised);color:var(--text);
+    box-shadow:0 8px 20px var(--shadow-menu);font-size:12px;line-height:16px;font-weight:500;
+    text-align:left;white-space:normal;pointer-events:none;
+    opacity:0;visibility:hidden;transition:opacity .12s ease,visibility .12s ease;
+}
+.app-account-contacts__icon-button[data-tooltip]:is(:hover,:focus-visible)::after{
+    opacity:1;visibility:visible;
+}
+.app-account-contacts__add{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:18px}
+.app-account-contacts__add .field-group{display:grid;gap:7px;min-width:180px;flex:1}
+.app-account-contacts__note{font-size:13px;margin:18px 0 0}
+@media(max-width:639px){
+    .app-account-contacts__panel{padding:18px}
+    .app-account-contacts__item{align-items:flex-start;gap:12px}
+    .app-account-contacts__meta{flex:1 1 100%}
+    .app-account-contacts__badges .app-confirmation__state{
+        max-width:100%;white-space:normal;
+    }
+    .app-account-contacts__controls{justify-content:flex-start}
+    .app-account-contacts__icon-button{width:38px;height:38px}
+    .app-account-contacts__controls form>.app-account-contacts__primary-button{min-height:38px;padding:7px 10px;font-size:12px}
+    .app-account-contacts__verify input{height:38px}
+    .app-account-contacts__add .field-group{flex-basis:100%}
+}
+@media(max-width:359px){
+    .app-account-contacts__controls{gap:5px}
+    .app-account-contacts__controls form{gap:5px}
+    .app-account-contacts__verify input{width:91px;min-width:78px}
+}
+/* The modal footer itself is hidden on OAuth / completion steps. */
+.app-contact-wizard__footer[hidden]{display:none!important}
+
+/* Reuse Modal 1.1 shell and the same eyebrow/close design as AuthDialog. */
+.mskba-modal.app-contact-wizard__dialog{
+    position:fixed;inset:0;margin:auto;transform:none;box-sizing:border-box;
+    display:flex;flex-direction:column;overflow:hidden;width:min(560px,calc(100vw - 24px));
+    max-height:90vh;max-height:90dvh; /* unified background lives on .mskba-modal */
+    border:1px solid var(--line);border-radius:var(--radius-card);
+}
+.mskba-modal.app-contact-wizard__dialog:not([open]){display:none}
+.app-contact-wizard__header{flex:0 0 auto;padding:20px 32px;align-items:center;border-bottom:1px solid var(--line)}
+.app-contact-wizard__header .mskba-auth-heading{margin:0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.app-contact-wizard__header .mskba-auth-heading:focus{outline:none}
+.app-contact-wizard__header .app-contact-wizard__close{
+    flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-control);
+    background:transparent;color:var(--text);border:1px solid var(--line);font-size:inherit
+}
+.app-contact-wizard__close svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none}
+.app-contact-wizard__body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px 32px}
+.app-contact-wizard__footer{flex:0 0 auto;padding:18px 32px 24px;border-top:1px solid var(--line)}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices{gap:10px}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices label,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices label{padding:14px 16px}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices label strong,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices label strong{font-size:14px}
+@media(max-width:639px){
+    .app-contact-wizard__header{padding:16px 20px}
+    .app-contact-wizard__body{padding:18px 20px}
+    .app-contact-wizard__footer{padding:16px 20px}
+}
+/* Contact removal confirmation uses the shared Modal 1.1 shell. */
+.app-account-contacts__delete-question{
+    margin:0;font-size:16px;line-height:1.5;font-weight:600;color:var(--text);
+}
+.app-account-contacts__delete-target{
+    margin:12px 0 0;font-size:14px;line-height:1.5;color:var(--muted);
+    overflow-wrap:anywhere;
+}
+.app-account-contacts__delete-footer{flex-wrap:wrap}
+@media(max-width:480px){
+    .app-account-contacts__delete-footer .button{flex:1 1 auto;min-width:0}
+}
+
+/* One profile card with independent AJAX save controls. */
+.app-confirmation__profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;min-width:0}
+.app-confirmation__profile-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.app-confirmation__profile-field>label{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.app-confirmation__optional{font-size:12px;font-weight:400;color:var(--muted)}
+/* Inline save affordance, inside the same border as the input. */
+.app-confirmation__input-row{min-width:0}
+.app-confirmation__input-wrap{
+    display:block;position:relative;width:100%;min-width:0;
+}
+.app-confirmation__input-wrap>input,
+.app-confirmation__input-wrap>select{
+    display:block;width:100%;min-width:0;min-height:46px;
+    padding-inline-end:52px;
+}
+.app-confirmation__input-wrap.select-control>select{
+    padding-inline-end:86px;
+}
+.app-confirmation__input-wrap.select-control>.app-confirmation__select-arrow{
+    inset-inline-end:51px;
+}
+.app-confirmation__input-wrap--date>input{
+    padding-inline-end:86px;
+}
+.app-confirmation__input-wrap--date>input::-webkit-calendar-picker-indicator{
+    margin-inline-end:3px;
+}
+.app-confirmation__save-field{
+    position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);
+    z-index:2;display:grid;place-items:center;width:34px;height:34px;
+    padding:0;background:transparent;border:0;border-radius:8px;
+    color:var(--accent);cursor:pointer;
+    transition:color .15s ease,background .15s ease;
+}
+.app-confirmation__save-field .app-confirmation__save-icon{
+    width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round
+}
+.app-confirmation__save-field:disabled{color:var(--muted);opacity:.5;cursor:default}
+.app-confirmation__save-field.is-loading{opacity:1;color:var(--accent)}
+.app-confirmation__save-field:not(:disabled):hover{background:var(--surface-raised)}
+.app-confirmation__save-field .app-confirmation__save-loader{
+    width:17px;height:17px;border:2px solid color-mix(in srgb,var(--accent) 24%,transparent);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:app-confirmation-save-spin .7s linear infinite
+}
+.app-confirmation__save-loader[hidden]{display:none!important}
+.app-confirmation__save-cooldown{
+    display:grid;place-items:center;width:30px;height:30px;
+    color:var(--accent);font-size:12px;font-weight:700;
+    font-variant-numeric:tabular-nums;line-height:1;
+}
+.app-confirmation__save-cooldown[hidden]{display:none!important}
+.app-confirmation__save-field.is-cooling{opacity:1;color:var(--accent);cursor:default}
+.app-confirmation__save-field.is-cooling:hover{background:transparent}
+/* Show on the whole editable control, not just the save icon.
+   This is immediate and works even while a cooldown blocks saving. */
+.app-confirmation__input-wrap[data-cooldown-tooltip]::after{
+    content:attr(data-cooldown-tooltip);
+    position:absolute;inset-inline-end:4px;bottom:calc(100% + 6px);z-index:8;
+    width:max-content;max-width:calc(100vw - 48px);
+    padding:5px 9px;border:1px solid var(--control-line);
+    border-radius:8px;background:var(--surface-raised);color:var(--text);
+    box-shadow:0 6px 18px var(--shadow-popover);
+    font-size:12px;font-weight:500;line-height:16px;letter-spacing:normal;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity 100ms ease-out,visibility 100ms ease-out;
+}
+.app-confirmation__input-wrap[data-cooldown-tooltip]:is(:hover,:focus-within)::after{
+    opacity:1;visibility:visible;
+}
+
+.app-confirmation__save-field.is-cooling .app-confirmation__save-icon{display:none}
+
+.app-confirmation__save-field.is-loading .app-confirmation__save-icon{display:none}
+@keyframes app-confirmation-save-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+    .app-confirmation__save-field .app-confirmation__save-loader{animation-duration:1.8s}
+}
+.app-confirmation__profile-actions{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:18px}
+.app-confirmation__profile-actions p{margin:0;font-size:13px;color:var(--success)}
+.app-confirmation__profile-actions p.is-error{color:var(--danger)}
+.app-confirmation__profile-actions .button:disabled{opacity:.5}
+.app-confirmation__card.is-saving .app-confirmation__input-row input,
+.app-confirmation__card.is-saving .app-confirmation__input-row select{opacity:.6}
+.app-confirmation__finish{padding:4px 0 12px}
+.app-confirmation__finish a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:700px){.app-confirmation__profile-fields{grid-template-columns:1fr}}
+
+
+/* Explicitly labelled, staging-only third-party provider simulation. */
+.app-contact-emulation__notice{
+    padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+    margin:0 0 18px!important;color:var(--muted);font-size:14px;line-height:1.5;
+}
+.app-contact-emulation__run{margin-top:18px}
+
+.app-account-contacts__icon-button [data-contact-resend-timer]{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.app-account-contacts__icon-button [hidden]{display:none!important}
+
+/* Shared confirmation gate: missing values stay navigable without disabled submit buttons. */
+[data-confirm-missing-list] a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+[data-confirm-missing-list] li+li{margin-top:6px}

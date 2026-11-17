@@ -1,0 +1,522 @@
+<script setup>
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import UniformKitPreview from './UniformKitPreview.vue';
+import { cycleUniformView } from './uniform-workshop-navigation.js';
+
+const props = defineProps({
+  initialId: { type: [String, Number], default: null },
+  context: { type: String, default: 'page' },
+  teamId: { type: [String, Number], default: null },
+});
+const isTeamContext = computed(() => !!props.teamId);
+const canEdit = ref(!props.teamId);
+const readOnly = computed(() => isTeamContext.value && !canEdit.value);
+const missingTeamDesign = ref(false);
+const teamName = ref('');
+const assignedNumber = ref(null);
+const previewNumber = computed(() => isTeamContext.value ? (assignedNumber.value || '01') : form.jersey_number);
+// Even an authorized team editor must not see an invented "01" in place of
+// an unassigned roster number. The team template owns styling, not the number.
+const previewNumberEnabled = computed(() => form.number_enabled &&
+  (!isTeamContext.value || assignedNumber.value !== null));
+
+const form = reactive({
+  name: 'Моя форма',
+  primary_color: '#DCE7EF',
+  secondary_color: '',
+  sizes: ['M'],
+  sleeve_style: 'sleeveless',
+  logo_source: 'none',
+  logo_team_id: '',
+  jersey_number: '01',
+  number_enabled: true,
+  jersey_number_x: 225,
+  jersey_number_y: 394,
+  jersey_number_scale: 1,
+  jersey_back_number_x: 735,
+  jersey_back_number_y: 371,
+  jersey_back_number_scale: 1,
+  shorts_number_x: 178,
+  shorts_number_y: 755,
+  shorts_number_scale: 1,
+  number_color: '',
+  number_outline: false,
+  number_outline_color: '',
+  logo_front_position: 'left',
+  logo_back_position: 'above',
+  logo_front_enabled: true,
+  logo_back_enabled: true,
+  logo_shorts_enabled: false,
+  logo_front_x: 273,
+  logo_front_y: 256,
+  logo_front_scale: 1,
+  logo_back_x: 735,
+  logo_back_y: 245,
+  logo_back_scale: 1,
+  logo_shorts_x: 275,
+  logo_shorts_y: 686,
+  logo_shorts_scale: 1,
+});
+const previewView = ref('front');
+const selectedPart = ref(null);
+const defaultPieces = Object.freeze({
+  jersey: { x: 225, y: 394, scale: 1 },
+  jersey_back: { x: 735, y: 371, scale: 1 },
+  shorts: { x: 178, y: 755, scale: 1 },
+  logo_front: { x: 273, y: 256, scale: 1 },
+  logo_back: { x: 735, y: 245, scale: 1 },
+  logo_shorts: { x: 275, y: 686, scale: 1 },
+});
+const pieceKeys = Object.keys(defaultPieces);
+function selectPiece(part) {
+  if (readOnly.value) return;
+  selectedPart.value = part && pieceKeys.includes(part) ? part : null;
+}
+function changePiecePosition({ part, x, y, scale } = {}) {
+  if (readOnly.value) return;
+  if (!pieceKeys.includes(part)) return;
+  const prefix = part.startsWith('logo_') ? part : part + '_number';
+  if (Number.isFinite(x)) form[prefix + '_x'] = x;
+  if (Number.isFinite(y)) form[prefix + '_y'] = y;
+  if (Number.isFinite(scale)) form[prefix + '_scale'] = scale;
+}
+function resetSelectedPosition() {
+  if (readOnly.value) return;
+  const part = selectedPart.value;
+  if (part && defaultPieces[part]) changePiecePosition({ part, ...defaultPieces[part] });
+}
+function clearOutsideSelection(event) {
+  if (readOnly.value) return;
+  // Keep selection only when touching the actual piece or its reset action.
+  // A click on the form settings, side arrows or empty preview removes handles.
+  if (event.target?.closest?.('[data-editable-piece], .mskba-uniform-editor__piece-actions')) return;
+  selectedPart.value = null;
+}
+const viewNames = { front: 'Спереди', left: 'Слева', rear: 'Сзади', right: 'Справа' };
+const viewCaption = computed(() => viewNames[previewView.value] || viewNames.front);
+const previousViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, -1)]);
+const nextViewCaption = computed(() => viewNames[cycleUniformView(previewView.value, 1)]);
+function changeView(direction) {
+  previewView.value = cycleUniformView(previewView.value, direction);
+  selectedPart.value = null;
+}
+function normalizeNumber() {
+  const numeric = Number.parseInt(form.jersey_number, 10);
+  if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 999)
+    form.jersey_number = String(numeric).padStart(2, '0');
+}
+const logoFile = ref(null);
+const fileUrl = ref('');
+const storedLogoUrl = ref('');
+const teams = ref([]);
+const authenticated = ref(document.querySelector('meta[name="mskba-authenticated"]')?.content === '1');
+const busy = ref(false);
+const loading = ref(false);
+const error = ref('');
+const editId = ref(props.initialId || null);
+const selectedTeam = computed(() => teams.value.find(t => String(t.id) === String(form.logo_team_id)));
+const logoUrl = computed(() => form.logo_source === 'custom'
+  ? (fileUrl.value || storedLogoUrl.value)
+  : form.logo_source === 'team' ? (selectedTeam.value?.logo_url || '') : '');
+
+function onFile(event) {
+  error.value = '';
+  const file = event.target.files?.[0] || null;
+  if (file && (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024)) {
+    error.value = 'Выберите PNG, JPG или WebP размером до 2 МБ.';
+    event.target.value = '';
+    return;
+  }
+  if (fileUrl.value) URL.revokeObjectURL(fileUrl.value);
+  logoFile.value = file;
+  fileUrl.value = file ? URL.createObjectURL(file) : '';
+}
+function hydrate(design) {
+  editId.value = design.id;
+  form.name = design.name;
+  form.primary_color = design.primary_color;
+  form.secondary_color = design.secondary_color || '';
+  form.jersey_number = String(design.jersey_number || 1).padStart(2, '0');
+  form.number_enabled = design.number_enabled !== false;
+  for (const part of pieceKeys) {
+    const prefix = part.startsWith('logo_') ? part : part + '_number';
+    const defaults = defaultPieces[part];
+    for (const name of ['x', 'y', 'scale']) {
+      let fallback = defaults[name];
+      if (part === 'logo_front' && name === 'x' && design.logo_front_position === 'right') fallback = 182;
+      if (part === 'logo_back' && name === 'y' && design.logo_back_position === 'below') fallback = 432;
+      const raw = design[prefix + '_' + name];
+      const value = raw === null || raw === undefined ? NaN : Number(raw);
+      form[prefix + '_' + name] = Number.isFinite(value) && value > 0 ? value : fallback;
+    }
+  }
+  form.logo_front_enabled = design.logo_front_enabled ?? (design.logo_front_position !== 'none');
+  form.logo_back_enabled = design.logo_back_enabled ?? (design.logo_back_position !== 'none');
+  form.logo_shorts_enabled = design.logo_shorts_enabled ?? false;
+  selectedPart.value = null;
+  form.number_color = design.number_color || '';
+  form.number_outline = !!design.number_outline;
+  form.number_outline_color = design.number_outline_color || '';
+  form.logo_front_position = design.logo_front_position || 'left';
+  form.logo_back_position = design.logo_back_position || 'above';
+  // Preserve historical backend size metadata until sizing is modeled separately.
+  form.sizes = Array.isArray(design.sizes) && design.sizes.length ? [...design.sizes] : ['M'];
+  form.sleeve_style = 'sleeveless'; // Sleeves are not implemented in the SVG pattern yet.
+  form.logo_source = design.logo_source;
+  form.logo_team_id = design.logo_team_id || '';
+  storedLogoUrl.value = design.logo_source === 'custom' ? (design.logo_url || '') : '';
+}
+onMounted(async () => {
+  loading.value = true;
+  try {
+    const response = await fetch('/uniforms/options', {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    });
+    if (!response.ok) throw new Error('Не удалось загрузить доступные логотипы.');
+    const data = await response.json();
+    authenticated.value = !!data.authenticated;
+    teams.value = (data.teams || []).filter(team => !isTeamContext.value || String(team.id) === String(props.teamId));
+    if (isTeamContext.value) {
+      const response = await fetch('/uniforms/teams/' + encodeURIComponent(props.teamId), {
+        headers: { Accept: 'application/json' }, credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error(response.status === 403
+        ? 'Нет доступа к форме этой команды.' : 'Не удалось загрузить форму команды.');
+      const data = await response.json();
+      canEdit.value = data.can_edit === true;
+      teamName.value = data.team?.name || 'Команда';
+      assignedNumber.value = data.player_number || null;
+      missingTeamDesign.value = !data.design;
+      if (data.design) {
+        hydrate(data.design);
+      } else {
+        form.name = 'Форма «' + teamName.value + '»';
+      }
+    } else if (editId.value) {
+      const result = await fetch('/uniforms/projects/' + encodeURIComponent(editId.value), {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      });
+      if (!result.ok) throw new Error(result.status === 404 ? 'Форма недоступна.' : 'Не удалось загрузить форму.');
+      hydrate((await result.json()).design);
+    }
+  } catch (e) { error.value = e.message; }
+  finally { loading.value = false; }
+});
+onBeforeUnmount(() => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value); });
+
+const preparePendingFile = file => new Promise((resolve, reject) => {
+  if (!file) return resolve(null);
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('Не удалось подготовить логотип.'));
+  reader.readAsDataURL(file);
+});
+async function savePendingDraft() {
+  const logo_data = form.logo_source === 'custom' ? await preparePendingFile(logoFile.value) : null;
+  try {
+    sessionStorage.setItem('mskba.uniform.pending.v1', JSON.stringify({
+      name: form.name, primary_color: form.primary_color, secondary_color: form.secondary_color,
+      sizes: [...form.sizes], sleeve_style: form.sleeve_style,
+      jersey_number: Number.parseInt(form.jersey_number, 10), number_enabled: form.number_enabled,
+      jersey_number_x: form.jersey_number_x, jersey_number_y: form.jersey_number_y,
+      jersey_number_scale: form.jersey_number_scale,
+      shorts_number_x: form.shorts_number_x, shorts_number_y: form.shorts_number_y,
+      shorts_number_scale: form.shorts_number_scale,
+      jersey_back_number_x: form.jersey_back_number_x,
+      jersey_back_number_y: form.jersey_back_number_y,
+      jersey_back_number_scale: form.jersey_back_number_scale,
+      ...Object.fromEntries(['front', 'back', 'shorts'].flatMap(place => [
+        ['logo_' + place + '_enabled', form['logo_' + place + '_enabled']],
+        ...['x', 'y', 'scale'].map(axis => ['logo_' + place + '_' + axis, form['logo_' + place + '_' + axis]]),
+      ])),
+      number_color: form.number_color || null, number_outline: form.number_outline,
+      number_outline_color: form.number_outline_color || null,
+      logo_front_position: form.logo_front_position, logo_back_position: form.logo_back_position,
+      logo_source: form.logo_source, logo_team_id: form.logo_team_id || null, logo_data,
+    }));
+  } catch {
+    throw new Error('Не удалось сохранить черновик в браузере. Попробуйте уменьшить логотип.');
+  }
+}
+async function save() {
+  if (readOnly.value) return;
+  error.value = '';
+  if (!form.name.trim() || form.name.trim().length < 2) {
+    error.value = 'Укажите название формы (минимум два символа).';
+    return;
+  }
+  const number = Number.parseInt(form.jersey_number, 10);
+  if (!isTeamContext.value && (!/^\d{1,3}$/.test(form.jersey_number) || !Number.isInteger(number) || number < 1 || number > 999)) {
+    error.value = 'Номер должен быть от 01 до 999.'; return;
+  }
+  normalizeNumber();
+  if (form.logo_source === 'team' && !selectedTeam.value) { error.value = 'Выберите команду.'; return; }
+  if (form.logo_source === 'custom' && !logoFile.value && !storedLogoUrl.value) {
+    error.value = 'Загрузите логотип.';
+    return;
+  }
+  busy.value = true;
+  try {
+    if (!authenticated.value) {
+      await savePendingDraft();
+      window.dispatchEvent(new CustomEvent('mskba:auth:open', { detail: { mode: 'login', stayOnPage: true } }));
+      return;
+    }
+    const payload = new FormData();
+    payload.append('name', form.name.trim());
+    payload.append('primary_color', form.primary_color);
+    payload.append('secondary_color', form.secondary_color);
+    payload.append('sleeve_style', 'sleeveless');
+    if (!isTeamContext.value) payload.append('jersey_number', String(Number.parseInt(form.jersey_number, 10)));
+    payload.append('number_enabled', form.number_enabled ? '1' : '0');
+    for (const part of pieceKeys) {
+      const prefix = part.startsWith('logo_') ? part : part + '_number';
+      for (const axis of ['x', 'y', 'scale']) {
+        payload.append(prefix + '_' + axis, String(form[prefix + '_' + axis]));
+      }
+    }
+    for (const place of ['front', 'back', 'shorts']) {
+      payload.append('logo_' + place + '_enabled', form['logo_' + place + '_enabled'] ? '1' : '0');
+    }
+    payload.append('number_outline', form.number_outline ? '1' : '0');
+    if (form.number_color) payload.append('number_color', form.number_color);
+    if (form.number_outline_color) payload.append('number_outline_color', form.number_outline_color);
+    payload.append('logo_front_position', form.logo_front_position);
+    payload.append('logo_back_position', form.logo_back_position);
+    form.sizes.forEach((s, i) => payload.append('sizes[' + i + ']', s));
+    payload.append('logo_source', form.logo_source);
+    if (form.logo_source === 'team') payload.append('logo_team_id', form.logo_team_id);
+    if (form.logo_source === 'custom' && logoFile.value) payload.append('logo', logoFile.value);
+    const url = isTeamContext.value ? '/uniforms/teams/' + encodeURIComponent(props.teamId)
+      : (editId.value ? '/uniforms/projects/' + editId.value : '/uniforms/projects');
+    if (!isTeamContext.value && editId.value) payload.append('_method', 'PUT');
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      credentials: 'same-origin',
+      body: payload,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      authenticated.value = false;
+      await savePendingDraft();
+      window.dispatchEvent(new CustomEvent('mskba:auth:open', { detail: { mode: 'login', stayOnPage: true } }));
+      return;
+    }
+    if (!response.ok) {
+      const issues = Object.values(result.errors || {}).flat().filter(Boolean);
+      throw new Error(issues.join(' · ') || 'Не удалось сохранить форму.');
+    }
+    if (isTeamContext.value) {
+      window.dispatchEvent(new CustomEvent('mskba:uniform:saved', {
+        detail: { context: props.context, teamId: props.teamId, design: result.design },
+      }));
+      return;
+    }
+    if (props.context === 'player-avatar') {
+      window.dispatchEvent(new CustomEvent('mskba:uniform:saved', {
+        detail: { context: props.context, design: result.design },
+      }));
+      return;
+    }
+    window.location.assign('/account/uniforms?saved=1');
+  } catch (e) { error.value = e.message; }
+  finally { busy.value = false; }
+}
+</script>
+
+<template>
+  <div class="mskba-uniform-editor" @pointerdown.capture="clearOutsideSelection">
+    <section class="mskba-uniform-editor__preview" aria-label="Предпросмотр формы">
+      <div class="mskba-uniform-editor__stage">
+        <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--previous"
+          :aria-label="'Предыдущий ракурс: ' + previousViewCaption" :title="'Предыдущий: ' + previousViewCaption"
+          @click="changeView(-1)">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <UniformKitPreview
+          :name="form.name" :primary="form.primary_color" :secondary="form.secondary_color"
+          :sleeve-style="form.sleeve_style" :logo="logoUrl" :view="previewView"
+          :size="'M'" :number="previewNumber" :number-color="form.number_color"
+          :number-outline="form.number_outline" :number-outline-color="form.number_outline_color"
+          :logo-front-position="form.logo_front_position" :logo-back-position="form.logo_back_position"
+          :number-enabled="previewNumberEnabled" :jersey-number-x="form.jersey_number_x"
+          :jersey-number-y="form.jersey_number_y" :jersey-number-scale="form.jersey_number_scale"
+          :shorts-number-x="form.shorts_number_x" :shorts-number-y="form.shorts_number_y"
+          :shorts-number-scale="form.shorts_number_scale"
+          :jersey-back-number-x="form.jersey_back_number_x"
+          :jersey-back-number-y="form.jersey_back_number_y"
+          :jersey-back-number-scale="form.jersey_back_number_scale"
+          :logo-front-enabled="form.logo_front_enabled" :logo-back-enabled="form.logo_back_enabled"
+          :logo-shorts-enabled="form.logo_shorts_enabled"
+          :logo-front-x="form.logo_front_x" :logo-front-y="form.logo_front_y"
+          :logo-front-scale="form.logo_front_scale"
+          :logo-back-x="form.logo_back_x" :logo-back-y="form.logo_back_y"
+          :logo-back-scale="form.logo_back_scale"
+          :logo-shorts-x="form.logo_shorts_x" :logo-shorts-y="form.logo_shorts_y"
+          :logo-shorts-scale="form.logo_shorts_scale"
+          :editable="!readOnly" :selected-part="selectedPart"
+          @select-element="selectPiece" @change-element="changePiecePosition" />
+        <button type="button" class="mskba-uniform-editor__view-arrow mskba-uniform-editor__view-arrow--next"
+          :aria-label="'Следующий ракурс: ' + nextViewCaption" :title="'Следующий: ' + nextViewCaption"
+          @click="changeView(1)">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <span class="mskba-uniform-editor__view-caption" role="status" aria-live="polite">{{ viewCaption }}</span>
+      </div>
+    </section>
+    <section v-if="readOnly" class="mskba-uniform-editor__controls mskba-uniform-editor__readonly"
+      aria-label="Описание командной формы">
+      <h2>Форма команды</h2>
+      <p v-if="loading" role="status">Загружаем форму…</p>
+      <p v-else-if="missingTeamDesign">Командная форма ещё не создана. Создать её может владелец команды или участник с соответствующим правом.</p>
+      <template v-else>
+        <dl class="mskba-uniform-editor__details">
+          <div><dt>Название формы</dt><dd>{{ form.name }}</dd></div>
+          <div><dt>Основной цвет</dt><dd><span class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.primary_color }"></span>{{ form.primary_color.toUpperCase() }}</dd></div>
+          <div><dt>Дополнительный цвет</dt><dd><span v-if="form.secondary_color" class="mskba-uniform-editor__swatch" :style="{ backgroundColor: form.secondary_color }"></span>{{ form.secondary_color ? form.secondary_color.toUpperCase() : 'Не задан' }}</dd></div>
+          <div><dt>Фасон</dt><dd>{{ form.sleeve_style === 'sleeved' ? 'С рукавами' : 'Без рукавов' }}</dd></div>
+          <div><dt>Игровой номер</dt><dd>{{ form.number_enabled && assignedNumber !== null ? assignedNumber : 'Не назначен' }} <small>Присваивается в составе команды</small></dd></div>
+          <div><dt>Цвет номера</dt><dd>{{ form.number_color || 'Автоматический контраст' }}</dd></div>
+          <div><dt>Обводка номера</dt><dd>{{ form.number_outline ? (form.number_outline_color || 'Автоматическая') : 'Нет' }}</dd></div>
+        </dl>
+      </template>
+      <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
+    </section>
+    <form v-else class="mskba-uniform-editor__controls" @submit.prevent="save" novalidate>
+      <h2>Настройки формы</h2>
+      <label class="mskba-uniform-editor__field">
+        <span>Название формы</span>
+        <input v-model.trim="form.name" maxlength="100" minlength="2" type="text"
+          autocomplete="off" required placeholder="Название формы"/>
+      </label>
+      <div class="mskba-uniform-editor__colors">
+        <label class="mskba-uniform-editor__field">
+          <span>Основной цвет</span>
+          <span class="mskba-uniform-editor__color">
+            <input v-model="form.primary_color" type="color" aria-label="Основной цвет"/>
+            <span>{{ form.primary_color.toUpperCase() }}</span>
+          </span>
+        </label>
+        <div class="mskba-uniform-editor__field">
+          <label class="mskba-uniform-editor__optional"><input type="checkbox"
+            :checked="!!form.secondary_color"
+            @change="form.secondary_color = $event.target.checked ? '#F58220' : ''"/>
+            <span>Дополнительный цвет</span></label>
+          <span v-if="form.secondary_color" class="mskba-uniform-editor__color">
+            <input v-model="form.secondary_color" type="color" aria-label="Дополнительный цвет"/>
+            <span>{{ form.secondary_color.toUpperCase() }}</span>
+          </span>
+          <span v-else class="mskba-uniform-editor__hint">Не задан — форма одноцветная</span>
+        </div>
+      </div>
+      <fieldset class="mskba-uniform-editor__cut">
+        <legend>Фасон</legend>
+        <div class="mskba-uniform-editor__choices">
+          <label class="check-label">
+            <input v-model="form.sleeve_style" type="radio" name="sleeve-style" value="sleeveless"/>
+            <span>Без рукавов</span>
+          </label>
+          <label class="check-label">
+            <input v-model="form.sleeve_style" type="radio" name="sleeve-style" value="sleeved" disabled/>
+            <span>С рукавами</span>
+          </label>
+        </div>
+      </fieldset>
+      <fieldset class="mskba-uniform-editor__numbers">
+        <legend>Игровой номер</legend>
+        <label class="mskba-uniform-editor__optional mskba-uniform-editor__number-toggle">
+          <input v-model="form.number_enabled" type="checkbox" @change="selectedPart = null"/><span>С номером</span>
+        </label>
+        <div v-if="form.number_enabled" class="mskba-uniform-editor__number-configuration">
+        <label v-if="!isTeamContext" class="mskba-uniform-editor__field mskba-uniform-editor__number-field">
+          <span>Номер (01–999)</span>
+          <input v-model="form.jersey_number" type="text" inputmode="numeric"
+            pattern="[0-9]{1,3}" maxlength="3" autocomplete="off"
+            aria-label="Игровой номер от 01 до 999" @blur="normalizeNumber"/>
+        </label>
+        <p v-else class="mskba-uniform-editor__hint">Командный шаблон определяет оформление номера. Сам номер каждому игроку назначается в составе команды и не редактируется здесь.</p>
+        <div class="mskba-uniform-editor__number-options">
+          <label class="mskba-uniform-editor__optional"><input type="checkbox"
+            :checked="!!form.number_color" @change="form.number_color = $event.target.checked ? '#111924' : ''"/>
+            <span>Свой цвет номера</span></label>
+          <span v-if="form.number_color" class="mskba-uniform-editor__color">
+            <input v-model="form.number_color" type="color" aria-label="Цвет игрового номера"/>
+            <span>{{ form.number_color.toUpperCase() }}</span>
+          </span>
+          <label class="mskba-uniform-editor__optional"><input v-model="form.number_outline"
+            type="checkbox"/><span>Обводка номера</span></label>
+          <label v-if="form.number_outline" class="mskba-uniform-editor__optional">
+            <input type="checkbox" :checked="!!form.number_outline_color"
+              @change="form.number_outline_color = $event.target.checked ? '#FFFFFF' : ''"/>
+            <span>Свой цвет обводки</span>
+          </label>
+          <span v-if="form.number_outline && form.number_outline_color" class="mskba-uniform-editor__color">
+            <input v-model="form.number_outline_color" type="color" aria-label="Цвет обводки номера"/>
+            <span>{{ form.number_outline_color.toUpperCase() }}</span>
+          </span>
+        </div>
+        </div>
+      </fieldset>
+      <fieldset class="mskba-uniform-editor__logos">
+        <legend>Логотип</legend>
+        <div class="mskba-uniform-editor__choices mskba-uniform-editor__choices--logos">
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="none" @change="selectedPart = null"/><span>Без логотипа</span></label>
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="team" @change="selectedPart = null"/><span>Моя команда</span></label>
+          <label class="check-label"><input v-model="form.logo_source" type="radio" name="logo-source" value="custom" @change="selectedPart = null"/><span>Загрузить свой</span></label>
+        </div>
+        <label v-if="form.logo_source === 'team'" class="mskba-uniform-editor__field">
+          <span>Команда</span>
+          <span class="select-control">
+            <select v-model="form.logo_team_id" :disabled="!teams.length">
+              <option value="">Выберите команду</option>
+              <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+            </select>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><use href="#chevron-down"/></svg>
+          </span>
+          <small v-if="!teams.length">Команды с логотипами недоступны.</small>
+        </label>
+        <label v-if="form.logo_source === 'custom'" class="mskba-uniform-editor__upload">
+          <span>PNG, JPG или WebP · до 2 МБ</span>
+          <input type="file" accept="image/png,image/jpeg,image/webp" @change="onFile"/>
+          <small v-if="storedLogoUrl && !logoFile">Логотип загружен</small>
+        </label>
+        <div v-if="form.logo_source !== 'none'" class="mskba-uniform-editor__logo-checkboxes">
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_front_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип спереди</span>
+          </label>
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_back_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип сзади</span>
+          </label>
+          <label class="mskba-uniform-editor__optional">
+            <input v-model="form.logo_shorts_enabled" type="checkbox" @change="selectedPart = null"/>
+            <span>Логотип на шортах</span>
+          </label>
+        </div>
+      </fieldset>
+      <div v-if="selectedPart" class="mskba-uniform-editor__piece-actions">
+        <button type="button" class="button secondary" @click="resetSelectedPosition">Сбросить положение</button>
+      </div>
+      <p v-if="loading" class="mskba-uniform-editor__message" role="status">Загружаем…</p>
+      <p v-if="error" class="mskba-uniform-editor__error" role="alert">{{ error }}</p>
+      <div class="mskba-uniform-editor__actions">
+        <button type="submit" class="button primary" :disabled="busy || loading" :aria-busy="busy">
+          {{ busy ? 'Сохраняем…' : isTeamContext ? 'Сохранить форму команды' : editId ? 'Сохранить изменения' : 'Сохранить форму' }}
+        </button>
+        <a v-if="!isTeamContext && context !== 'player-avatar'" class="button secondary" href="/account/uniforms">Мои формы</a>
+      </div>
+    </form>
+  </div>
+</template>

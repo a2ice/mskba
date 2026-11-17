@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "publish",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Опубликовать проверенный в Chromium единый CSS Arena v3 без повторной перезаписи",
+  "expected_draft_sha256": "a7141b68ccee5bae355f4ca1b5756ccae443a9f31e4e25354f5bc494c9e16dce",
+  "expected_published_sha256": "e8ceb847b80a6d8d69e0e67fd6e61c2cf5e59140e28a4fbb8005f377f6fc59ea"
+}

@@ -19,15 +19,31 @@
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
+        <div class="card mb-3"><div class="card-body">
+            <strong>Область действия прав</strong>
+            <div class="d-flex gap-2 flex-wrap mt-2">
+                <a class="btn btn--sm {{ $selectedCourt === null ? 'btn--primary' : 'btn--secondary' }}"
+                    href="{{ route('account.venues.commercial-memberships.index', $venue) }}">Вся площадка</a>
+                @foreach($courts as $court)
+                    <a class="btn btn--sm {{ $selectedCourt?->id === $court->id ? 'btn--primary' : 'btn--secondary' }}"
+                        href="{{ route('account.venues.commercial-memberships.index', [$venue, 'court_id' => $court->id]) }}">
+                        {{ $court->name }}</a>
+                @endforeach
+            </div>
+            <p class="text-muted mt-2">Права площадки действуют на все её залы. Права отдельного зала не действуют на соседние.</p>
+        </div></div>
+
         <div class="card mb-4"><div class="card-body">
             <h2 class="h4 mb-3">Добавить участника</h2>
             <form method="POST" action="{{ route('account.venues.commercial-memberships.store', $venue) }}">
                 @csrf
+                @if($selectedCourt)<input type="hidden" name="court_id" value="{{ $selectedCourt->id }}">@endif
                 @include('theme::partials.forms.entity-predictive-search', [
                     'id' => 'venueCommercialUser', 'name' => 'user_id',
                     'label' => 'Подтверждённый пользователь',
                     'placeholder' => 'Начните вводить имя или логин…',
-                    'searchUrl' => route('account.venues.commercial-memberships.candidates', $venue),
+                    'searchUrl' => route('account.venues.commercial-memberships.candidates',
+                        $selectedCourt ? [$venue, 'court_id' => $selectedCourt->id] : $venue),
                 ])
                 <label class="form-label mt-3" for="venueCommercialRole">Роль</label>
                 <select id="venueCommercialRole" class="form-select" name="role" required>
@@ -38,7 +54,7 @@
             </form>
         </div></div>
 
-        <h2 class="h4 mb-3">Участники договора</h2>
+        <h2 class="h4 mb-3">Участники: {{ $selectedCourt?->name ?? 'вся площадка' }}</h2>
         @foreach($memberships as $membership)
             @php
                 $role = \App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum::from($membership->access_level);

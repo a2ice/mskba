@@ -3,19 +3,21 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
 use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\UseCases\GeneratePlayerCharacterTwoDimensionalHandler;
+use App\Modules\Identity\Application\Services\PlayerCharacterInitialRenderService;
 use App\Modules\Identity\Application\UseCases\StorePlayerCharacterFaceReferenceHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerCharacterRenderModeHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerProfileHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\UpdatePlayerProfileRequest;
-use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -24,6 +26,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -35,7 +40,7 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerCharacterRenderModeHandler $renderModeHandler,
         StorePlayerCharacterFaceReferenceHandler $faceReferenceHandler,
         GeneratePlayerCharacterTwoDimensionalHandler $generationHandler,
-        PricingPriceResolver $prices,
+        GetPlayerAvatarGenerationOffer $generationOffer,
     ): JsonResponse|RedirectResponse {
         if ($request->mutation() === 'render_mode') {
             return $this->updateRenderMode($request, $renderModeHandler);
@@ -45,8 +50,12 @@ final class UpdatePlayerProfileController extends Controller
             return $this->storeFaceReference($request, $faceReferenceHandler);
         }
 
+        if ($request->mutation() === 'face_reference_delete') {
+            return $this->deleteFaceReference($request);
+        }
+
         if ($request->mutation() === 'generation_quote') {
-            return $this->generationQuote($prices);
+            return $this->generationQuote($request, $generationOffer);
         }
 
         if ($request->mutation() === 'generation_preferences') {
@@ -67,16 +76,19 @@ final class UpdatePlayerProfileController extends Controller
 
         $handler->handle(
             $request->user(),
-            $request->profileData(),
-            $request->positions(),
-            $request->selfAssessment(),
+            $request->profileDataForSection(),
+            $request->section() === 'physical' ? null : $request->positions(),
+            $request->section() === 'physical' ? null : $request->selfAssessment(),
             $request->characterAppearance(),
         );
 
         return redirect()
             ->route(
                 $request->shouldClose() ? 'account' : 'account.participation-role',
-                $request->shouldClose() ? [] : [UserParticipationRoleEnum::PLAYER->value],
+                $request->shouldClose() ? [] : [
+                    'role' => UserParticipationRoleEnum::PLAYER->value,
+                    ...($request->section() ? ['tab' => $request->section()] : []),
+                ],
             )
             ->with('status', 'Профиль игрока обновлён.');
     }
@@ -114,6 +126,13 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerProfileRequest $request,
         StorePlayerCharacterFaceReferenceHandler $handler,
     ): JsonResponse {
+        if ($this->hasActiveGeneration($request->user())) {
+            return response()->json([
+                'code' => 'generation_in_progress',
+                'message' => 'Дождитесь завершения генерации, прежде чем заменять фотографии лица.',
+            ], 409);
+        }
+
         $slot = $request->faceReferenceSlot();
         $file = $request->faceReferenceFile();
 
@@ -165,36 +184,95 @@ final class UpdatePlayerProfileController extends Controller
         }
 
         return response()->json([
-            'message' => 'Фото проверено и сохранено.',
+            'message' => 'Фотография сохранена. Проверка результата генерации ещё не выполнена.',
             'slot' => $slot,
             'status' => 'stored',
+            'media_id' => (int) $result['media']->id,
+            'verified' => false,
             'width' => $result['width'],
             'height' => $result['height'],
             'preview_url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$result['media']->id,
         ]);
     }
 
-    private function generationQuote(PricingPriceResolver $prices): JsonResponse
+    private function deleteFaceReference(UpdatePlayerProfileRequest $request): JsonResponse
     {
-        $price = $prices->resolve(GeneratePlayerCharacterTwoDimensionalHandler::SERVICE_CODE);
-
-        if ($price === null) {
+        if ($this->hasActiveGeneration($request->user())) {
             return response()->json([
-                'code' => 'pricing_unavailable',
-                'message' => 'Цена генерации временно недоступна.',
-            ], 503);
+                'code' => 'generation_in_progress',
+                'message' => 'Дождитесь завершения генерации, прежде чем удалять фотографии лица.',
+            ], 409);
+        }
+
+        $slot = $request->faceReferenceSlot();
+        $profile = $request->user()->profile;
+        if ($slot === null || $profile === null) {
+            return response()->json([
+                'code' => 'face_reference_missing',
+                'message' => 'Не удалось определить фотографию лица.',
+            ], 422);
+        }
+
+        $reference = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot($slot))
+            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
+            ->latest('id')
+            ->first();
+
+        if ($reference !== null) {
+            $disk = $reference->disk;
+            $path = $reference->path;
+            $reference->forceDelete();
+            Storage::disk($disk)->delete($path);
         }
 
         return response()->json([
-            'price_minor' => (int) $price->amount_minor,
-            'currency' => 'RUB',
+            'slot' => $slot,
+            'deleted' => true,
+            'message' => 'Фотография удалена.',
         ]);
+    }
+
+    private function hasActiveGeneration(User $user): bool
+    {
+        return PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $user->identityIds())
+            ->whereIn('status', [
+                PlayerCharacterGenerationStatusEnum::PENDING->value,
+                PlayerCharacterGenerationStatusEnum::PROCESSING->value,
+            ])
+            ->where(function ($query): void {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->exists();
+    }
+
+    /** @return array<string, array{id: int, url: string, verified: bool}> */
+    private function faceReferenceState(User $user): array
+    {
+        return app(PlayerCharacterInitialRenderService::class)->faceReferences($user);
+    }
+
+    private function generationQuote(
+        UpdatePlayerProfileRequest $request,
+        GetPlayerAvatarGenerationOffer $offer,
+    ): JsonResponse {
+        // A quote is an authorized read-only snapshot: price and both wallet
+        // buckets from the same source as the rendered page and debit handler.
+        // The actual debit always rechecks the active price and locked balance.
+        return response()->json(
+            $offer->handle($request->user()),
+            200,
+            ['Cache-Control' => 'private, no-store'],
+        );
     }
 
     private function generationPreferences(UpdatePlayerProfileRequest $request): JsonResponse
     {
         $playerProfile = $request->user()->playerProfile()->first();
         $character = (array) data_get($playerProfile?->extra, 'character', []);
+        // The logo is part of a uniform, not a player preference.
+        unset($character['with_team_logo'], $character['generation_logo_mode'], $character['generation_custom_logo_id']);
         $teams = $this->playerGenerationTeams($request->user());
 
         return response()->json([
@@ -203,13 +281,16 @@ final class UpdatePlayerProfileController extends Controller
             'body_type' => $playerProfile?->body_type?->value,
             'character' => $character,
             'generation_team_id' => data_get($character, 'generation_team_id'),
-            'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
+            'generation_uniform_source' => data_get($character, 'generation_uniform_source'),
+            'generation_uniform_design_id' => data_get($character, 'generation_uniform_design_id'),
+            'face_references' => $this->faceReferenceState($request->user()),
             'teams' => $teams->map(fn (Team $team): array => [
                 'id' => (int) $team->id,
                 'name' => (string) $team->name,
                 'has_logo' => $team->logo !== null,
+                'logo_url' => $team->logo?->publicUrl(),
             ])->values(),
-        ]);
+        ], 200, ['Cache-Control' => 'private, no-store']);
     }
 
     private function generationHistory(UpdatePlayerProfileRequest $request): JsonResponse
@@ -379,16 +460,21 @@ final class UpdatePlayerProfileController extends Controller
                 'code' => 'face_reference_invalid_file',
                 'message' => $exception->getMessage(),
             ], 422);
-        } catch (RuntimeException $exception) {
+        } catch (Throwable $exception) {
+            // Unexpected PHP/driver exceptions must not become an HTML 500 that
+            // the browser silently reduces to "Не удалось выполнить операцию".
+            $errorId = (string) Str::uuid();
             Log::error('Player character generation failed unexpectedly.', [
+                'error_id' => $errorId,
                 'user_id' => $request->user()->id,
                 'exception' => $exception::class,
                 'message' => $exception->getMessage(),
             ]);
 
             return response()->json([
-                'code' => 'generation_failed',
-                'message' => 'Не удалось сгенерировать модель игрока.',
+                'code' => 'generation_unexpected_error',
+                'message' => 'Не удалось запустить генерацию. Средства не должны списываться за неудачный запуск. Если ошибка повторится, сообщите код в поддержку.',
+                'error_id' => $errorId,
             ], 502);
         }
 

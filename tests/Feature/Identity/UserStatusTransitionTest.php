@@ -3,6 +3,7 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -29,10 +30,28 @@ class UserStatusTransitionTest extends TestCase
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $this->addVerifiedPrimaryEmail($user);
+        $user->createProfile([
+            'first_name' => 'Анна',
+            'last_name' => 'Смирнова',
+            'birth_date' => '1999-09-03',
+            'gender' => UserGenderEnum::FEMALE,
+        ]);
 
         $user->confirmAccount();
 
         $this->assertSame(UserStatusEnum::CONFIRMED, $user->refresh()->status);
+    }
+
+    public function test_verified_primary_contact_does_not_confirm_account_with_incomplete_personal_data(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $this->addVerifiedPrimaryEmail($user);
+        $user->createProfile(['first_name' => 'Анна']);
+
+        $this->expectException(UserCannotBeChangedException::class);
+        $this->expectExceptionMessage('Заполни имя, фамилию, дату рождения и пол');
+
+        $user->confirmAccount();
     }
 
     public function test_only_unconfirmed_account_can_be_confirmed(): void

@@ -104,7 +104,7 @@ function initHomeEventLocation(flow) {
                     <button class="modal__window-action modal__close" type="button" aria-label="Закрыть настройку локации" title="Закрыть" data-handler="modal" data-modal-action="close"><i class="ti ti-x" aria-hidden="true"></i></button>
                 </div>
             </header>
-            <div class="modal__body" data-modal-body tabindex="0">
+            <div class="modal__body" data-modal-body>
                 <div class="home-event-location-modal__head">
                     <p class="home-flow-modal__eyebrow">Локация мероприятия</p>
                     <h2 class="modal_title" id="modal-title-${MINI_MODAL_ID}">Уточните, где искать</h2>

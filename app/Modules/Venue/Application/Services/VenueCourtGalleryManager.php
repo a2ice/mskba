@@ -16,8 +16,6 @@ use Throwable;
 
 final class VenueCourtGalleryManager
 {
-    public const MAX_PHOTOS = 3;
-
     public const MAX_OUTPUT_DIMENSION = 500;
 
     public function __construct(private readonly WebpImageNormalizer $normalizer) {}
@@ -61,14 +59,6 @@ final class VenueCourtGalleryManager
                     'is_featured' => true,
                     'sort_order' => 0,
                 ]);
-
-                foreach ($lockedCourt->media()
-                    ->where('collection', 'gallery')
-                    ->latest('id')
-                    ->get()
-                    ->slice(self::MAX_PHOTOS) as $obsolete) {
-                    $this->deleteMediaAfterCommit($obsolete);
-                }
 
                 return $photo;
             });

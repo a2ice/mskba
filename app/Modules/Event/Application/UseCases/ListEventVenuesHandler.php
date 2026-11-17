@@ -15,10 +15,17 @@ final class ListEventVenuesHandler
         return Venue::query()
             ->with('location.address')
             ->where('status', VenueStatusEnum::CONFIRMED->value)
+            ->where('is_published', true)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
-            ->when($freeOnly, fn ($query) => $query
-                ->where('requires_payment', false)
-                ->where('requires_booking_approval', false))
+            ->when($freeOnly, fn ($query) => $query->where(fn ($query) => $query
+                ->where(fn ($parent) => $parent->where('requires_payment', false)
+                    ->where('requires_booking_approval', false))
+                ->orWhereHas('courts', fn ($court) => $court
+                    ->where('requires_payment', false)
+                    ->where('requires_booking_approval', false)
+                    ->where(fn ($court) => $court->whereNull('requires_booking')
+                        ->orWhere('requires_booking', false)))
+            ))
             ->orderBy('name')
             ->get([
                 'id',

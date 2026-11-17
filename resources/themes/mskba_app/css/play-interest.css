@@ -1,0 +1,411 @@
+/* Task 286. Reuse existing MSKBA App tokens and core form/modal components. */
+.app-venue-page{padding-top:24px;padding-bottom:48px}
+.app-venue-page__hero-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px}
+.app-venue-gallery{overflow:hidden;min-height:360px}
+.app-venue-gallery__main{display:block;width:100%;height:360px;object-fit:cover}
+.app-venue-gallery__missing{min-height:360px;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:var(--surface-raised);color:var(--muted)}
+.app-venue-gallery__missing svg{width:40px;height:40px}
+.app-venue-gallery__thumbs{padding:12px;display:flex;gap:8px;overflow:auto}
+.app-venue-gallery__thumbs a{border-radius:10px;overflow:hidden;flex:0 0 82px}
+.app-venue-gallery__thumbs img{width:82px;height:60px;object-fit:cover}
+.app-venue-intro{padding:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:16px}
+.app-venue-intro__title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.app-venue-intro h1{font-size:clamp(27px,3.5vw,44px);letter-spacing:-.03em;line-height:1.12;margin:0;font-weight:750;overflow-wrap:anywhere}
+.app-venue-intro__address{display:flex;gap:8px;align-items:flex-start;color:var(--muted);font-size:14px}
+.app-venue-intro__address svg{width:19px;height:19px}
+.app-venue-intro__badges,.app-venue-block__court-list,.app-venue-block__amenities{display:flex;flex-wrap:wrap;gap:8px}
+.app-venue-intro__copy{font-size:14px;color:var(--muted)}
+.app-venue-intro__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+.app-venue-intro__actions .button{flex:1 1 170px}
+.app-venue-intro__hint{font-size:12px;color:var(--muted)}
+.app-venue-page__anchors{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line);padding:16px 0;margin-bottom:24px}
+.app-venue-page__anchors a{border-radius:12px;padding:10px 14px;font-size:14px;font-weight:650;color:var(--muted)}
+.app-venue-page__anchors a:hover,.app-venue-page__anchors a:focus-visible{color:var(--accent);background:var(--surface-raised)}
+.app-venue-page__columns{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;align-items:start}
+.app-venue-page__sections{display:grid;gap:20px;min-width:0}
+.app-venue-block{padding:clamp(20px,3vw,28px);display:flex;flex-direction:column;align-items:flex-start;gap:16px;scroll-margin-top:128px}
+.app-venue-block__header{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.app-venue-block h2{font-size:22px;line-height:1.3}
+.app-venue-block h3{font-size:16px}
+.app-venue-block>p,.app-venue-block__description{color:var(--muted);font-size:14px;white-space:pre-wrap}
+.app-venue-schedule{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;width:100%}
+.app-venue-schedule__day{padding:12px;border:1px solid var(--line);border-radius:14px;font-size:13px;display:grid;gap:8px;align-content:start}
+.app-venue-schedule__day p{font-size:12px;color:var(--muted)}
+.app-venue-schedule__day a{color:var(--accent);text-decoration:underline}
+.app-venue-schedule__slots{display:grid;gap:5px;min-width:0;border-top:1px solid var(--line);padding-top:8px}
+.app-venue-schedule__slots-title{font-size:12px;font-weight:700;color:var(--text)}
+.app-venue-schedule__slot-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.app-venue-schedule__slot-list li{min-width:0;font-size:12px;line-height:1.35}
+.app-venue-schedule__slot-list a{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:650;text-decoration:underline;text-underline-offset:2px}
+.app-venue-schedule__slot-list a:hover{color:var(--accent-hover,var(--accent))}
+.app-venue-schedule__slot-list a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+.app-venue-page__aside{padding:20px;display:flex;flex-direction:column;gap:12px;position:sticky;top:calc(var(--header-height,80px) + var(--context-bar-height,44px) + 15px)}
+.app-venue-page__aside strong{font-size:18px}
+.app-venue-page__aside p{font-size:14px;color:var(--muted)}
+.app-venue-page__empty{padding:40px;display:grid;gap:20px}
+.app-venue-page__empty h1{font-size:30px;margin:0}
+.app-play-dialog{width:min(660px,calc(100vw - 24px))}
+.app-play-dialog__header{padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line)}
+.app-play-dialog__header h2{margin-top:6px;font-size:23px;line-height:1.2}
+.app-play-dialog__header h2:focus{outline:0}
+.app-play-dialog__body{padding:20px 24px;display:grid;align-content:start;gap:18px}
+.app-play-dialog__footer{padding:16px 24px;border-top:1px solid var(--line)}
+.app-play-dialog__footer--success{display:flex;flex-direction:row;gap:12px;justify-content:flex-end;align-items:center;flex-wrap:nowrap}
+.app-play-dialog__footer--success>.button{flex:0 1 200px;max-width:200px;min-width:0;width:auto;text-align:center}
+.app-play-dialog__chosen-venue{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-size:14px;border:1px solid var(--line);padding:12px 14px;border-radius:12px;background:var(--surface-raised)}
+.app-play-dialog__chosen-venue a,.app-play-interests__venue a,.app-venue-interest-summary__own a{color:var(--accent);font-weight:650;text-decoration:underline;text-underline-offset:2px}
+.app-venue-interest-summary{display:grid;gap:8px;width:100%;font-size:14px}
+.app-venue-interest-summary__own{font-size:14px;font-weight:600}
+
+.app-play-dialog__success{font-size:17px;font-weight:650}
+.app-play-dialog__info{background:var(--surface-raised);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:14px;color:var(--text)}
+.app-play-dialog__info-details{max-height:300px;overflow:auto;margin-top:12px;display:grid;gap:8px;color:var(--muted)}
+.app-play-dialog__info-details p{font-size:13px}
+.app-play-dialog__login-hint .app-play-dialog__text-button{padding:0;font-size:inherit}
+.app-play-dialog__text-button{border:0;background:transparent;color:var(--accent);padding:6px 0;font-size:13px;font-weight:700;align-self:flex-start;cursor:pointer}
+.app-play-dialog__text-button:hover{text-decoration:underline}
+.app-play-dialog__hint{font-size:13px;color:var(--muted)}
+.app-play-dialog__form{display:flex;flex-direction:column;gap:20px}
+.app-play-dialog__form fieldset{display:flex;flex-direction:column;gap:10px}
+
+.app-play-dialog__expiry{display:grid;gap:10px;justify-items:start}
+.app-play-dialog__expiry>.check-label{margin:0;min-height:28px}
+.app-play-dialog__expiry-date{width:min(100%,320px)}
+.app-play-dialog__expiry-date input[type=date]{box-sizing:border-box;display:block;width:100%;height:44px;min-height:44px;max-height:44px;padding:9px 14px;border:1px solid var(--control-line);border-radius:12px;background:var(--field);color:var(--text);font:inherit;font-size:14px;line-height:20px}
+.app-play-dialog__expiry-date input[type=date]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app-play-dialog__form legend{font-weight:700;font-size:15px}
+.app-play-dialog__field-label{font-size:13px;font-weight:600;color:var(--muted)}
+.app-play-dialog__chips{display:flex;flex-wrap:wrap;gap:6px}
+.app-play-dialog__chips .chip{border:1px solid var(--control-line);border-radius:999px;padding:7px 12px;font-weight:600;min-width:0;min-height:37px}
+.app-play-dialog__chips .chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.app-play-dialog__chips .chip:hover:not([aria-pressed="true"]){background:var(--surface-raised)}
+.app-play-dialog__day-grid{display:flex;flex-direction:column;gap:10px}
+.app-play-dialog__day{border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.app-play-dialog__day>strong{font-size:15px}
+.app-play-dialog__time-entry{display:grid;gap:10px}
+.app-play-dialog__time-entry+.app-play-dialog__time-entry{border-top:1px solid var(--line);padding-top:12px}
+.app-play-dialog__time-range,.app-play-dialog__date-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.app-play-dialog__date-row{grid-template-columns:minmax(0,1fr) auto}
+.app-play-dialog__form .field-group{gap:6px}
+.app-play-dialog__form .field-group label,.app-play-dialog__form .field-group{font-size:13px}
+.app-play-dialog__form input[type=range]{accent-color:var(--accent);width:100%;padding:0}
+.app-play-dialog__similar{background:var(--surface-raised);border:1px solid var(--line);padding:16px;border-radius:16px;display:grid;gap:16px}
+.app-play-dialog__amenity-group{border-top:1px solid var(--line);padding-top:8px}
+.app-play-dialog__amenity-group summary{font-weight:650;font-size:13px;padding:8px;cursor:pointer}
+.app-play-dialog__amenity-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(128px,170px);gap:12px;align-items:center;padding:6px 0}
+.app-play-dialog__amenity-row .check-label{min-width:0}
+.app-play-dialog__amenity-row .select-control select{min-height:42px}
+.app-play-dialog__notify{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
+.app-play-dialog .check-label:focus-within{outline:none}
+.app-play-dialog .check-label input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:900px){
+ .app-venue-page__hero-grid{grid-template-columns:1fr}
+ .app-venue-page__columns{grid-template-columns:1fr}
+ .app-venue-page__aside{display:none}
+}
+@media(max-width:639px){
+ .app-venue-page{padding-top:12px}
+ .app-venue-page__hero-grid{gap:12px}
+ .app-venue-gallery__main,.app-venue-gallery__missing{height:220px;min-height:220px}
+ .app-venue-intro{padding:20px}
+ .app-venue-page__anchors{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}
+ .app-venue-block{padding:20px}
+ .app-play-dialog__header{padding:16px}
+ .app-play-dialog__body{padding:16px}
+ .app-play-dialog__footer{padding:12px 16px max(12px,env(safe-area-inset-bottom))}
+ .app-play-dialog__footer--success{gap:8px}
+ .app-play-dialog__footer--success>.button{flex:1 1 0;max-width:200px;min-width:0}
+
+ .app-play-dialog__time-range{gap:8px}
+ .app-play-dialog__amenity-row{grid-template-columns:1fr}
+ .app-play-dialog__amenity-row .select-control{max-width:210px;margin-left:32px}
+}
+@media(prefers-reduced-motion:reduce){
+ .app-play-dialog__chips .chip{transition:none}
+}
+
+
+.app-play-interests{padding:clamp(18px,3vw,28px);display:grid;gap:20px}
+.app-play-interests__top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.app-play-interests__top h2{font-size:22px}
+.app-play-interests__empty{padding:24px;display:grid;gap:6px;border:1px dashed var(--control-line);border-radius:16px}
+.app-play-interests__item{display:grid;gap:12px;padding:18px 0;border-top:1px solid var(--line)}
+.app-play-interests__item-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.app-play-interests__item-head strong{min-width:0;overflow-wrap:anywhere}
+.app-play-dialog__name-input{width:100%}
+.app-play-interests__venue{font-size:14px;overflow-wrap:anywhere}
+.app-play-interests__actions{display:flex;flex-wrap:wrap;gap:8px}
+.app-play-interests__results{font-size:13px}
+.app-play-interests__results ul{list-style:none;margin:0;padding:8px 0;display:grid;gap:9px}
+.app-play-interests__results li a{color:var(--accent);font-weight:650;text-decoration:underline}
+
+/* Venue association is optional during interest editing. */
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:0;border:1px solid var(--control-line);border-radius:9px;color:var(--text);background:var(--surface);font-size:24px;line-height:1;cursor:pointer}
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:hover{border-color:var(--accent);color:var(--accent)}
+.app-play-dialog__chosen-venue .app-play-dialog__unlink-venue:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-venue-schedule__hours{font-weight:650;color:var(--text)}
+.app-venue-schedule__continuation{font-size:12px;color:var(--muted)}
+
+/* Favorite choice is part of the interest form, not a separate heart button. */
+.app-play-dialog__favorite-choice{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.app-play-dialog__favorite-choice input{flex:none}
+.app-play-dialog__favorite-count{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+
+
+/* Task 286: subscription wizard, predictive venue selectors and Filament-like tags. */
+.app-play-dialog__steps-footer{display:flex;gap:12px}
+.app-play-dialog__steps-footer>.button{flex:1 1 0;min-width:0}
+.app-play-dialog__venue-picker{display:grid;gap:8px;min-width:0}
+.app-play-dialog__venue-picker-header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.app-play-dialog__autocomplete{position:relative;min-width:0}
+.app-play-dialog__autocomplete>input{display:block;width:100%;min-height:44px}
+.app-play-dialog__autocomplete>input:disabled{opacity:.6;cursor:not-allowed}
+.app-play-dialog__suggestions{position:absolute;z-index:30;top:calc(100% + 4px);left:0;right:0;max-height:230px;overflow:auto;background:var(--surface);border:1px solid var(--control-line);border-radius:12px;padding:4px;box-shadow:0 12px 24px #0002}
+.app-play-dialog__suggestions button{display:grid;gap:2px;width:100%;padding:10px;text-align:left;border:0;border-radius:9px;background:transparent;cursor:pointer;color:var(--text)}
+.app-play-dialog__suggestions button span{font-size:12px;color:var(--muted)}
+.app-play-dialog__suggestions button:hover,.app-play-dialog__suggestions button:focus-visible{background:var(--surface-raised);outline:2px solid var(--accent);outline-offset:-2px}
+.app-play-dialog__suggestions p{padding:10px;font-size:13px}
+.app-play-dialog__excluded-tags{display:flex;flex-wrap:wrap;gap:6px}
+.app-play-dialog__excluded-tag{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:7px 10px;border:1px solid var(--control-line);border-radius:9px;background:var(--surface-raised);font-size:12px;font-weight:600;color:var(--text);cursor:pointer}
+.app-play-dialog__excluded-tag span{font-size:19px;line-height:1}
+.app-play-dialog__excluded-tag:hover,.app-play-dialog__excluded-tag:focus-visible{border-color:var(--accent);outline-offset:2px}
+.app-play-dialog__settings{border-top:1px solid var(--line);display:grid;gap:16px;padding-top:18px}
+.app-play-dialog__settings .check-label{font-size:14px;line-height:1.5;color:var(--text);align-items:flex-start}
+.app-play-dialog__settings .check-label input{flex-shrink:0;margin-top:3px}
+.app-venue-interest-summary__breakdown{font-size:13px;color:var(--muted)}
+.app-venue-interest-summary__breakdown strong{color:var(--text)}
+.app-venue-interests-dialog__group{display:grid;gap:12px;padding:12px 0}
+.app-venue-interests-dialog__group+.app-venue-interests-dialog__group{border-top:1px solid var(--line)}
+.app-venue-interests-dialog__heading{display:flex;justify-content:space-between;gap:12px;font-weight:700}
+.app-venue-interests-dialog__total{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:14px;background:var(--surface-raised);padding:14px;text-align:center}
+.app-venue-interests-dialog__total-number{font-size:36px;line-height:1.1;font-weight:750}
+.app-venue-interests-dialog__total-word{font-size:14px;line-height:1.4;color:var(--muted)}
+.app-venue-interests-dialog__private .app-venue-interest-summary__avatar{background:var(--surface-raised);color:var(--muted)}
+@media(max-width:639px){.app-play-dialog__steps-footer{gap:8px}.app-venue-interests-dialog__heading{font-size:14px}}
+
+
+/* General subscriptions hub: compact shared filter toolbar.
+ * Qualify the form against the base form{flex-direction:column} rule and
+ * design-theme overrides. Desktop is a true single row, like the prod toolbar.
+ */
+.app-play-interests form.app-play-interests__filters{
+    width:100%;
+    min-width:0;
+    max-width:none;
+    margin:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+    align-items:end;
+    gap:12px;
+    padding:0 0 20px;
+    border-bottom:1px solid var(--line);
+}
+.app-play-interests .app-play-interests__filters .app-play-interests__filter-field{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    width:100%;
+    min-width:0;
+    max-width:none;
+    margin:0;
+    padding:0;
+}
+.app-play-interests__filters .app-play-interests__filter-field>span:first-child{
+    color:var(--muted);
+    font-size:13px;
+    font-weight:650;
+    line-height:20px;
+}
+.app-play-interests__filters .select-control{
+    display:block;
+    position:relative;
+    width:100%;
+    min-width:0;
+    line-height:normal;
+}
+.app-play-interests__filters .select-control select{
+    box-sizing:border-box;
+    display:block;
+    width:100%;
+    height:44px;
+    min-height:44px;
+    max-height:44px;
+    padding:10px 44px 10px 14px;
+    appearance:none;
+    -webkit-appearance:none;
+    border:1px solid var(--control-line);
+    border-radius:12px;
+    background:var(--field);
+    color:var(--text);
+    font-size:14px;
+    line-height:20px;
+    font-weight:500;
+    cursor:pointer;
+}
+.app-play-interests__filters .select-control>svg{
+    width:16px;
+    height:16px;
+    position:absolute;
+    inset-inline-end:14px;
+    top:50%;
+    transform:translateY(-50%);
+    pointer-events:none;
+    color:var(--muted);
+}
+.app-play-interests form.app-play-interests__filters>.app-play-interests__filter-reset{
+    min-height:44px;
+    height:44px;
+    width:auto;
+    margin:0;
+    align-self:end;
+    justify-self:start;
+    white-space:nowrap;
+}
+@media(forced-colors:active){
+    .app-play-interests__filters .select-control select{appearance:auto;-webkit-appearance:auto}
+    .app-play-interests__filters .select-control>svg{display:none}
+}
+.app-play-interests__pagination{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line)}
+.app-play-interests__pagination[hidden]{display:none}
+.app-play-interests__page-summary{font-size:13px;color:var(--muted)}
+.app-play-interests__page-buttons{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.app-play-interests__page-buttons>.button{min-width:40px;min-height:38px;padding:8px 12px;font-size:13px}
+.app-play-interests__page-buttons>.button.is-active{background:var(--accent);border-color:var(--accent);color:#fff}
+.app-play-interests__page-buttons>.button:disabled{opacity:.45;cursor:not-allowed}
+.app-play-interests__page-ellipsis{padding:0 4px;color:var(--muted)}
+@media(max-width:700px){
+    .app-play-interests form.app-play-interests__filters{
+        grid-template-columns:minmax(0,1fr);
+        gap:14px;
+    }
+    .app-play-interests form.app-play-interests__filters>.app-play-interests__filter-reset{
+        width:100%;
+    }
+}
+@media(max-width:640px){.app-play-interests__page-buttons{justify-content:center;width:100%}}
+
+
+/* Subscription details: same layered modal rhythm as the play wizard. */
+dialog.app-subscription-details{
+    box-sizing:border-box;
+    inset:0;
+    margin:auto;
+    padding:0;
+    width:min(640px,calc(100vw - 28px));
+    max-width:640px;
+    max-height:min(88dvh,820px);
+    overflow:hidden;
+    border:1px solid var(--line);
+    border-radius:22px;
+    background:var(--surface,#fff);
+    color:var(--text);
+    box-shadow:0 24px 70px #0003;
+}
+dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop-filter:blur(3px)}
+.app-subscription-details__shell{display:flex;flex-direction:column;min-height:0;max-height:min(88dvh,820px)}
+.app-subscription-details__header{
+    padding:22px 24px 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    border-bottom:1px solid var(--line);
+}
+.app-subscription-details__heading{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.app-subscription-details__eyebrow{font-size:12px;letter-spacing:.06em;font-weight:750;color:var(--accent)}
+.app-subscription-details__header h2{font-size:23px;line-height:1.22;letter-spacing:-.02em;font-weight:750;margin:0;overflow-wrap:anywhere}
+.app-subscription-details__close{
+    width:44px;height:44px;min-width:44px;display:grid;place-items:center;flex-shrink:0;
+    padding:0;border:1px solid var(--control-line);border-radius:12px;
+    background:var(--surface);color:var(--text);cursor:pointer;
+}
+.app-subscription-details__close svg{width:18px;height:18px}
+.app-subscription-details__close:hover{background:var(--surface-raised)}
+.app-subscription-details__close:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-subscription-details__content{padding:22px 24px;overflow-y:auto;min-height:0;flex:1 1 auto}
+.app-subscription-details__content>h3{font-size:15px;line-height:1.4;margin:0 0 10px;font-weight:700}
+.app-subscription-details__body{display:grid;gap:0;padding:0;margin:0}
+.app-subscription-details__fact{
+    display:grid;grid-template-columns:minmax(0,40%) minmax(0,60%);
+    align-items:start;gap:16px;padding:13px 0;border-bottom:1px solid var(--line);
+}
+.app-subscription-details__fact:last-child{border-bottom:0}
+.app-subscription-details__fact dt{font-size:13px;line-height:1.5;color:var(--muted);font-weight:500;max-width:none}
+.app-subscription-details__fact dd{margin:0;font-size:14px;line-height:1.5;font-weight:650;text-align:right;overflow-wrap:anywhere}
+.app-subscription-details__error{margin:16px 0 0}
+.app-subscription-details__error[hidden]{display:none!important}
+.app-subscription-details__footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:16px 24px;border-top:1px solid var(--line);
+    background:var(--surface);
+}
+.app-subscription-details__footer>.button{min-height:44px;margin:0}
+.app-subscription-details__footer>.button[hidden]{display:none!important}
+@media(max-width:640px){
+    .app-subscription-details__header{padding:18px 16px 14px}
+    .app-subscription-details__header h2{font-size:20px}
+    .app-subscription-details__content{padding:18px 16px}
+    .app-subscription-details__fact{grid-template-columns:minmax(0,1fr);gap:3px;padding:11px 0}
+    .app-subscription-details__fact dd{text-align:left}
+    .app-subscription-details__footer{padding:12px 16px max(12px,env(safe-area-inset-bottom));gap:8px}
+    .app-subscription-details__footer>.button{flex:1 1 0;min-width:0}
+}
+/* Venue search and excluded-venue search inherit theme form control geometry. */
+.app-play-dialog .app-play-dialog__autocomplete>.app-play-dialog__venue-input{
+    box-sizing:border-box;display:block;width:100%;height:44px;min-height:44px;max-height:44px;
+    padding:10px 14px;border:1px solid var(--control-line);border-radius:12px;
+    background:var(--field);color:var(--text);font:inherit;font-size:14px;line-height:20px;font-weight:500;box-shadow:none
+}
+.app-play-dialog .app-play-dialog__autocomplete>.app-play-dialog__venue-input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-play-dialog .app-play-dialog__autocomplete>.app-play-dialog__venue-input:disabled{opacity:.6;cursor:not-allowed}
+.app-play-dialog__matches{display:grid;gap:10px;margin-top:18px;padding:16px 0;border-top:1px solid var(--line)}
+.app-play-dialog__matches>.button{justify-self:start}
+.app-play-dialog__matches ul{list-style:none;display:grid;gap:8px;padding:0;margin:0}
+.app-play-dialog__matches li a{font-size:14px;font-weight:650;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:640px){.app-subscription-details__fact{gap:8px}.app-subscription-details__body{padding:10px 16px}.app-subscription-details__footer>.button{flex:1}}
+
+/* Subscription second step: independent topics and delivery-channel matrix. */
+.app-play-dialog__notification-topic{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,1fr);gap:12px 20px;align-items:start;padding:12px 0;border-top:1px solid var(--line,#dce0e5)}
+.app-play-dialog__notification-topic>.check-label{margin:2px 0}
+.app-play-dialog__notification-channels{display:grid;gap:8px;min-width:0}
+.app-play-dialog__notification-channels>strong{font-size:13px;font-weight:650;color:var(--text-muted,#657181)}
+.app-play-dialog__channel{display:flex;align-items:center;gap:10px;min-width:0;min-height:32px}
+.app-play-dialog__settings .app-play-dialog__channel .check-label{
+    display:inline-flex;align-items:center;gap:8px;margin:0;min-height:32px;
+    font-size:13px;line-height:1.35;min-width:0
+}
+.app-play-dialog__settings .app-play-dialog__channel .check-label input{
+    margin:0;align-self:center
+}
+.app-play-dialog__channel-add{
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;
+    width:30px;height:30px;padding:0;border:1px solid var(--line,#dce0e5);
+    border-radius:8px;background:var(--surface,#fff);color:var(--accent,#c34c00);
+    font-size:22px;font-weight:650;line-height:1;cursor:pointer
+}
+.app-play-dialog__channel-add:hover{border-color:var(--accent,#c34c00);background:var(--surface-raised,#fff)}
+.app-play-dialog__channel-add:focus-visible{outline:2px solid var(--accent,#c34c00);outline-offset:2px}
+.app-play-dialog__channel-add:disabled{opacity:.5;cursor:not-allowed}
+.app-play-dialog__channel-settings-link{font-size:12px;line-height:1.3;color:var(--accent,#c34c00)}
+.app-play-dialog__channel-hint{grid-column:1/-1;font-size:12px;line-height:1.4;color:var(--text-muted,#657181)}
+.app-subscription-contact-dialog [data-contact-add-open]{display:none!important}
+@media(max-width:620px){.app-play-dialog__notification-topic{grid-template-columns:1fr}.app-play-dialog__notification-channels{padding-left:28px}}
+
+.app-subscription-channels{border-top:1px solid var(--line,#dce0e5);margin-top:16px;padding-top:14px;display:grid;gap:9px}
+.app-subscription-channels h3{font-size:15px;margin:0 0 5px}
+.app-subscription-channels__row{display:grid;gap:3px}
+.app-subscription-channels__row label{display:flex;gap:9px;align-items:center;font-size:14px}
+.app-subscription-channels__row input{accent-color:var(--accent,#c34c00)}
+.app-subscription-channels__row small{font-size:12px;line-height:1.4;padding-left:25px}
+.app-subscription-channels__row button{justify-self:start;margin-left:25px}
+
+/* Shared favorite/context sections of the original two-step dialog. */
+.app-play-dialog__context-section{border:1px solid var(--line,#dce0e5);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:grid;gap:8px}
+.app-play-dialog__context-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-play-dialog__context-section .check-label{margin:0}
+.app-play-dialog__context-hint{font-size:13px;color:var(--text-muted,#667481);line-height:1.5;margin:0}
+.app-play-dialog__context-hint a{color:var(--accent,#c55200)}
+
+.app-play-dialog__notification-topic--collapsed{grid-template-columns:minmax(0,1fr)}
+

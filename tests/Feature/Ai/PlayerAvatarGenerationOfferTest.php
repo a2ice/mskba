@@ -1,0 +1,281 @@
+<?php
+
+namespace Tests\Feature\Ai;
+
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
+use App\Modules\Finance\Application\UseCases\CreditWalletHandler;
+use App\Modules\Finance\Application\UseCases\EnsureWalletHandler;
+use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
+use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
+use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
+use App\Modules\Finance\Domain\Models\WalletOperation;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Pricing\Application\Services\PricingPriceResolver;
+use App\Modules\Rewards\Domain\Models\Reward;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
+use Tests\TestCase;
+
+final class PlayerAvatarGenerationOfferTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+    }
+
+    protected function tearDown(): void
+    {
+        config()->set('themes.active', $this->previousTheme);
+        View::replaceNamespace('theme', resource_path('themes/'.$this->previousTheme.'/views'));
+        app()->forgetInstance(ThemeResolver::class);
+        parent::tearDown();
+    }
+
+    private function player(): User
+    {
+        $user = User::factory()->create(['system_role' => UserSystemRoleEnum::USER]);
+        $user->profile()->create(['gender' => UserGenderEnum::MALE]);
+        $user->participationRoles(false)->create([
+            'role' => UserParticipationRoleEnum::PLAYER,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+            'assigned_by' => $user->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+
+        return $user;
+    }
+
+    private function quote(User $user)
+    {
+        return $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generation_quote',
+        ]);
+    }
+
+    public function test_zero_balance_offer_is_read_only_and_generation_form_is_disabled(): void
+    {
+        $user = $this->player();
+
+        $this->quote($user)->assertOk()->assertHeader('Cache-Control')
+            ->assertJsonPath('price_minor', 10000)
+            ->assertJsonPath('bonus_balance_minor', 0)
+            ->assertJsonPath('real_balance_minor', 0)
+            ->assertJsonPath('available_minor', 0)
+            ->assertJsonPath('available_generations', 0)
+            ->assertJsonPath('can_generate', false);
+
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('Генерация аватара')
+            ->assertSee('Недостаточно средств')
+            ->assertSee('Как пополнить?')
+            ->assertSee('data-player-generation-affordable="false"', false)
+            ->assertSee('Оплата картой пока недоступна');
+
+        $this->assertSame(0, WalletOperation::query()->count());
+    }
+
+    public function test_offer_counts_bonus_first_and_real_money_from_finance_in_kopecks(): void
+    {
+        $user = $this->player();
+        $wallet = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $user->id);
+        $credit = app(CreditWalletHandler::class);
+        $credit->handle(
+            wallet: $wallet,
+            balanceType: WalletBalanceTypeEnum::BONUS,
+            amountMinor: 17500,
+            operationType: WalletOperationTypeEnum::BONUS_GRANT,
+            idempotencyKey: 'avatar-058-bonus-'.$user->id,
+        );
+        $credit->handle(
+            wallet: $wallet,
+            balanceType: WalletBalanceTypeEnum::REAL,
+            amountMinor: 3000,
+            operationType: WalletOperationTypeEnum::TOP_UP,
+            idempotencyKey: 'avatar-058-real-'.$user->id,
+        );
+
+        $this->quote($user)->assertOk()
+            ->assertJsonPath('price_minor', 10000)
+            ->assertJsonPath('bonus_balance_minor', 17500)
+            ->assertJsonPath('real_balance_minor', 3000)
+            ->assertJsonPath('available_minor', 20500)
+            ->assertJsonPath('available_generations', 2)
+            ->assertJsonPath('can_generate', true);
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('175,00')
+            ->assertDontSee('Доступно для оплаты (всего)')
+            ->assertSee('data-player-offer-count', false)
+            ->assertSee('data-player-generation-fields', false)
+            ->assertSee('data-player-generation-affordable="true"', false);
+        $this->assertSame(2, WalletOperation::query()->count());
+    }
+
+    public function test_current_pricing_change_recalculates_quote_without_any_hard_coded_100_rubles(): void
+    {
+        $user = $this->player();
+        $wallet = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $user->id);
+        app(CreditWalletHandler::class)->handle(
+            wallet: $wallet,
+            balanceType: WalletBalanceTypeEnum::BONUS,
+            amountMinor: 25000,
+            operationType: WalletOperationTypeEnum::BONUS_GRANT,
+            idempotencyKey: 'avatar-058-new-price-'.$user->id,
+        );
+        $price = app(PricingPriceResolver::class)->resolve('avatar_generation');
+        $this->assertNotNull($price);
+        $price->update(['amount_minor' => 13000]);
+
+        $this->quote($user)->assertOk()
+            ->assertJsonPath('price_minor', 13000)
+            ->assertJsonPath('available_generations', 1)
+            ->assertJsonPath('can_generate', true);
+    }
+
+    public function test_inactive_pricing_never_falls_back_to_hard_coded_price_or_charges_wallet(): void
+    {
+        $user = $this->player();
+        $price = app(PricingPriceResolver::class)->resolve('avatar_generation');
+        $price->update(['is_active' => false]);
+
+        $this->quote($user)->assertOk()
+            ->assertJsonPath('price_minor', null)
+            ->assertJsonPath('available_generations', null)
+            ->assertJsonPath('can_generate', false);
+        $this->assertSame(0, WalletOperation::query()->count());
+    }
+
+    public function test_bonus_offer_lists_only_enabled_catalog_rewards_without_granting_anything(): void
+    {
+        $user = $this->player();
+        $offers = app(GetPlayerAvatarGenerationOffer::class)->handle($user);
+        $listed = collect($offers['bonus_opportunities'])->pluck('code');
+        $this->assertContains('venue_first_approval', $listed->all());
+        $this->assertContains('referral_user_confirmed', $listed->all());
+
+        Reward::query()->where('code', 'venue_first_approval')->update(['is_enabled' => false]);
+        $after = app(GetPlayerAvatarGenerationOffer::class)->handle($user);
+        $this->assertNotContains('venue_first_approval', collect($after['bonus_opportunities'])->pluck('code')->all());
+        $this->assertSame(0, WalletOperation::query()->count());
+    }
+
+
+
+    public function test_confirmed_player_without_username_cannot_receive_broken_referral_url(): void
+    {
+        $user = $this->player();
+        $user->forceFill([
+            'username' => null,
+            'status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED->value,
+        ])->save();
+
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('Чтобы получить реферальную ссылку, сначала укажите логин')
+            ->assertSee(route('account.profile'), false)
+            ->assertDontSee('data-referral-url', false);
+    }
+
+    public function test_topup_uses_contextual_promotions_and_reward_key_value_rows(): void
+    {
+        $user = $this->player();
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('data-topup-method="tasks"', false)
+            ->assertDontSee('data-topup-method="tasks" open', false)
+            ->assertSee('data-topup-more', false)
+            ->assertSee('data-topup-less', false)
+            ->assertSee('data-topup-method="payment"', false)
+            ->assertSee('data-topup-method="friend"', false)
+            ->assertSee('data-topup-task', false)
+            ->assertSee('Вознаграждение:')
+            ->assertSee('100 баллов')
+            ->assertSee('Условие:')
+            ->assertSee('Добавьте новую площадку. Бонусы начисляются после её первой успешной модерации.')
+            ->assertDontSee('role="tablist"', false)
+            ->assertDontSee('100,00 ₽ бонусами');
+
+        // Amounts are always read from the current reward version, not hard coded.
+        $reward = Reward::query()->where('code', 'venue_first_approval')->firstOrFail();
+        $version = $reward->currentVersion;
+        $version->update(['amount_minor' => 12500]);
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('125 баллов')
+            ->assertDontSee('100,00 ₽ бонусами');
+    }
+
+
+    public function test_avatar_summary_has_compact_help_and_generation_options(): void
+    {
+        $user = $this->player();
+        $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()
+            ->assertSee('data-player-offer-bonus', false)
+            ->assertSee('data-player-offer-count', false)
+            ->assertSee('data-player-topup-open', false)
+            ->assertSee('data-player-billing-open', false)
+            ->assertSee('data-player-generation-team', false)
+            ->assertDontSee('data-player-logo-dialog', false)
+            ->assertDontSee('data-player-logo-control', false)
+            ->assertSee('data-player-face-slot="front"', false)
+            ->assertSee('data-player-face-slot="left"', false)
+            ->assertSee('data-player-face-slot="right"', false)
+            ->assertDontSee('class="app-player-workspace__generation-hint"', false)
+            ->assertDontSee('Доступно для оплаты (всего)');
+    }
+
+    public function test_face_upload_placeholders_match_saved_gender_for_all_three_views(): void
+    {
+        $user = $this->player();
+        $route = route('account.participation-role', ['role' => 'player']);
+
+        $this->actingAs($user)->get($route)
+            ->assertOk()
+            ->assertSee('images/blank/avatar/front-male.png', false)
+            ->assertSee('images/blank/avatar/left-male.png', false)
+            ->assertSee('images/blank/avatar/right-male.png', false)
+            ->assertDontSee('images/blank/avatar/front-female.png', false);
+
+        $female = $this->player();
+        $female->profile()->update(['gender' => UserGenderEnum::FEMALE]);
+
+        $this->actingAs($female)->get($route)
+            ->assertOk()
+            ->assertSee('images/blank/avatar/front-female.png', false)
+            ->assertSee('images/blank/avatar/left-female.png', false)
+            ->assertSee('images/blank/avatar/right-female.png', false)
+            ->assertDontSee('images/blank/avatar/front-male.png', false);
+    }
+
+    public function test_help_payments_section_uses_the_same_enabled_reward_catalogue(): void
+    {
+        $this->getJson(route('faq.help-content', ['context' => 'payments']))
+            ->assertOk()
+            ->assertJsonPath('section', 'payments')
+            ->assertJsonPath('breadcrumbs.1.label', 'Оплата и бонусы')
+            ->assertJsonStructure(['bonus_opportunities' => [['code', 'title', 'description', 'amount_minor']]])
+            ->assertJsonFragment(['code' => 'venue_first_approval']);
+
+        Reward::query()->where('code', 'venue_first_approval')->update(['is_enabled' => false]);
+        $this->getJson(route('faq.help-content', ['context' => 'payments']))
+            ->assertOk()
+            ->assertJsonMissing(['code' => 'venue_first_approval']);
+    }
+}

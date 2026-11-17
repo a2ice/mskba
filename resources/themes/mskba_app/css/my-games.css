@@ -1,0 +1,19 @@
+/* Task 295: active applications to games and game trainings, using the account design system. */
+.app-my-games { display:grid; gap:20px; padding:22px; }
+.app-my-games__top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.app-my-games__top h2 { font-size:19px; line-height:1.4; margin:0; }
+.app-my-games__filters { display:flex; flex-wrap:wrap; gap:8px; }
+.app-my-games__filters a { text-decoration:none; min-height:36px; display:inline-flex; align-items:center; }
+.app-my-games__filter--active { color:var(--accent); border-color:var(--accent); background:var(--subtle-accent-bg); }
+.app-my-games__group { display:grid; gap:12px; }
+.app-my-games__group h3 { margin:0; font-size:17px; }
+.app-my-games__list { display:grid; gap:12px; }
+.app-my-games__card { display:grid; justify-items:start; gap:12px; padding:16px; border:1px solid var(--line); background:var(--surface-raised); border-radius:14px; }
+.app-my-games__card-head { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.app-my-games__status { font-size:12px; font-weight:700; color:var(--muted); }
+.app-my-games__card h4 { font-size:17px; margin:0; overflow-wrap:anywhere; }
+.app-my-games__card h4 a { color:var(--text); }
+.app-my-games__card h4 a:hover { color:var(--accent); }
+.app-my-games__meta { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:13px; color:var(--muted); }
+.app-my-games__pagination { min-width:0; }
+@media(max-width:640px) { .app-my-games{padding:16px;} .app-my-games__card{padding:14px;} }

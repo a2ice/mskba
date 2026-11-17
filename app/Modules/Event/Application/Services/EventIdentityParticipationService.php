@@ -38,7 +38,65 @@ final class EventIdentityParticipationService
 
     public function confirmedIdentityCount(Event $event): int
     {
-        return count($this->confirmedCanonicalIds($event));
+        $userIds = $event->participants()
+            ->occupiesPlayerSpot()
+            ->where('confirmation_version', $event->participation_confirmation_version)
+            ->pluck('user_id')->all();
+        if ($userIds === []) {
+            return 0;
+        }
+
+        return User::query()->whereIn('id', $userIds)->get()
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->unique()->count();
+    }
+
+    /**
+     * Counts unique canonical players by current response status.
+     * Stale confirmations do not occupy a place, and a confirmed identity
+     * cannot also inflate the tentative total through another linked account.
+     *
+     * @return array{confirmed: int, tentative: int}
+     */
+    public function publicStatusCounts(Event $event): array
+    {
+        $participants = $event->relationLoaded('participants')
+            ? $event->participants
+            : $event->participants()->get();
+        $relevant = $participants->filter(
+            fn (EventParticipant $participant): bool => $participant->hasPlayerRole()
+                && ($participant->status === EventParticipantStatusEnum::TENTATIVE
+                    || ($participant->status === EventParticipantStatusEnum::CONFIRMED
+                        && $participant->confirmation_version === $event->participation_confirmation_version)),
+        );
+
+        if ($relevant->isEmpty()) {
+            return ['confirmed' => 0, 'tentative' => 0];
+        }
+
+        $users = User::query()->whereIn('id', $relevant->pluck('user_id')->unique()->all())
+            ->get()->keyBy('id');
+        $confirmed = [];
+        $tentative = [];
+
+        foreach ($relevant as $participant) {
+            $user = $users->get((int) $participant->user_id);
+            if ($user === null) {
+                continue;
+            }
+
+            $identityId = (int) $user->canonical()->id;
+            if ($participant->status === EventParticipantStatusEnum::CONFIRMED) {
+                $confirmed[$identityId] = true;
+            } else {
+                $tentative[$identityId] = true;
+            }
+        }
+
+        return [
+            'confirmed' => count($confirmed),
+            'tentative' => count(array_diff_key($tentative, $confirmed)),
+        ];
     }
 
     /**

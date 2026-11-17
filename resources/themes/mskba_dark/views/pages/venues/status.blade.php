@@ -6,8 +6,9 @@
     $hasDraftRevision = $venue?->draftRevision !== null;
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Аккаунт', 'url' => route('account')],
-        ['label' => 'Мои площадки', 'url' => route('account.venues')],
-        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
         ['label' => 'Модерация'],
     ];
     $venueSidebarActive = 'status';
@@ -45,9 +46,6 @@
             Текущий статус: <strong>{{ $venue->status->label() }}</strong>
             @if($venue->canonicalVenue)
                 <br>Эта запись связана с главной площадкой: #{{ $venue->canonicalVenue->id }} {{ $venue->canonicalVenue->name }}
-            @endif
-            @if($venue->status_info)
-                <br>{{ $venue->status_info }}
             @endif
         </div>
 

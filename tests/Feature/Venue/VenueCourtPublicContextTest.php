@@ -6,7 +6,9 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -16,6 +18,46 @@ use Tests\TestCase;
 final class VenueCourtPublicContextTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_court_short_and_full_descriptions_override_parent_and_can_inherit(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'short_description' => 'Общая информация о школе',
+            'full_description' => 'Школьный комплекс с несколькими игровыми зонами.',
+        ]);
+        $outdoor = $venue->primaryCourt()->firstOrFail();
+        $outdoor->update([
+            'name' => 'Уличная площадка',
+            'short_description' => 'Уличная площадка уровня американского колледжа',
+            'full_description' => 'Открытый баскетбольный корт с двумя кольцами.',
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Общая информация о школе')
+            ->assertSee('Школьный комплекс с несколькими игровыми зонами.')
+            ->assertDontSee('Уличная площадка уровня американского колледжа');
+
+        $courtUrl = route('venues.courts.show', [$venue->routeIdentifier(), $outdoor->routeIdentifier()]);
+        $this->get($courtUrl)
+            ->assertOk()
+            ->assertSee('Уличная площадка уровня американского колледжа')
+            ->assertSee('Открытый баскетбольный корт с двумя кольцами.')
+            ->assertDontSee('Общая информация о школе')
+            ->assertDontSee('Школьный комплекс с несколькими игровыми зонами.');
+
+        $outdoor->update(['short_description' => null, 'full_description' => null]);
+        $this->get($courtUrl)
+            ->assertOk()
+            ->assertSee('Общая информация о школе')
+            ->assertSee('Школьный комплекс с несколькими игровыми зонами.');
+    }
 
     public function test_non_primary_court_has_compact_picker_and_own_characteristics(): void
     {
@@ -121,14 +163,26 @@ final class VenueCourtPublicContextTest extends TestCase
         $this->assertNotNull($primary);
     }
 
-    public function test_primary_court_nested_url_redirects_to_canonical_venue_url(): void
+    public function test_primary_court_has_its_own_url_and_general_venue_has_overview_selector(): void
     {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
         $primary = $venue->primaryCourt()->firstOrFail();
+        $venue->courts()->create([
+            'name' => 'Второй зал', 'alias' => 'second', 'sort_order' => 20,
+            'allows_whole' => true,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()->assertSee('Все залы и корты · общая страница')
+            ->assertSee('data-venue-court-dropdown', false);
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $primary->routeIdentifier()]))
-            ->assertRedirect(route('venues.show', $venue->routeIdentifier()))
-            ->assertStatus(301);
+            ->assertOk()->assertSee($primary->publicName())
+            ->assertSee('data-venue-court-dropdown', false);
     }
 
     public function test_activity_endpoint_is_scoped_to_selected_court_and_keeps_legacy_public_events(): void
@@ -166,6 +220,121 @@ final class VenueCourtPublicContextTest extends TestCase
             ->assertJsonFragment(['title' => $legacyEvent->title])
             ->assertJsonMissing(['title' => $otherCourtEvent->title])
             ->assertJsonMissing(['title' => $privateEvent->title]);
+    }
+
+    public function test_mixed_indoor_and_outdoor_courts_are_reflected_in_venue_eyebrow(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа тестовая',
+            'type' => VenueTypeEnum::SCHOOL,
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $primary = $venue->primaryCourt()->firstOrFail();
+        $primary->update(['environment' => VenueCourtEnvironmentEnum::OUTDOOR]);
+        $second = $venue->courts()->create([
+            'name' => 'Школьный зал',
+            'alias' => 'indoor-zone',
+            'sort_order' => 20,
+            'is_primary' => false,
+            'environment' => VenueCourtEnvironmentEnum::INDOOR,
+            'supports_halves' => false,
+            'allows_whole' => true,
+            'allows_halves' => false,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: крытый зал и уличный корт');
+
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee('<h1 id="app-venue-title">Школа тестовая</h1>', false)
+            ->assertDontSee('app-venue-intro__court-name');
+
+        $second->delete();
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: уличный корт');
+
+        $primary->update(['environment' => VenueCourtEnvironmentEnum::INDOOR]);
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: крытый зал');
+    }
+
+    public function test_legacy_court_aliases_are_backfilled_without_overwriting_explicit_or_unknown_types(): void
+    {
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'type' => VenueTypeEnum::SCHOOL,
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $outdoor = $venue->primaryCourt()->firstOrFail();
+        $outdoor->update(['name' => 'Уличная площадка', 'alias' => 'outdoor', 'environment' => null]);
+        $indoor = $venue->courts()->create([
+            'name' => 'Школьный зал',
+            'alias' => 'indoor',
+            'sort_order' => 20,
+            'environment' => null,
+            'allows_whole' => true,
+        ]);
+        $unknown = $venue->courts()->create([
+            'name' => 'Дополнительная зона',
+            'alias' => 'other',
+            'sort_order' => 30,
+            'environment' => null,
+        ]);
+        $otherVenue = Venue::factory()->create();
+        $explicit = $otherVenue->primaryCourt()->firstOrFail();
+        $explicit->update([
+            'name' => 'Явно заданная уличная зона',
+            'alias' => 'indoor',
+            'environment' => VenueCourtEnvironmentEnum::OUTDOOR,
+        ]);
+
+        (require database_path('migrations/2026_10_25_000300_backfill_venue_court_environments_from_alias.php'))->up();
+
+        $this->assertSame(VenueCourtEnvironmentEnum::OUTDOOR, $outdoor->refresh()->environment);
+        $this->assertSame(VenueCourtEnvironmentEnum::INDOOR, $indoor->refresh()->environment);
+        $this->assertNull($unknown->refresh()->environment);
+        $this->assertSame(VenueCourtEnvironmentEnum::OUTDOOR, $explicit->refresh()->environment);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Школа: крытый зал и уличный корт');
+    }
+
+    public function test_nearby_map_requires_bounded_radius_and_returns_only_close_confirmed_venues(): void
+    {
+        $home = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $near = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $far = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $blocked = Venue::factory()->create(['status' => VenueStatusEnum::BLOCKED]);
+        foreach ([
+            [$home, 55.7558, 37.6173],
+            [$near, 55.7570, 37.6173],
+            [$far, 55.8558, 37.6173],
+            [$blocked, 55.7565, 37.6173],
+        ] as [$venue, $lat, $lon]) {
+            $venue->location->address()->update(['latitude' => $lat, 'longitude' => $lon]);
+        }
+        $route = route('venues.nearby-map', $home->routeIdentifier());
+        $this->getJson($route.'?radius_km=0')->assertUnprocessable();
+        $this->getJson($route.'?radius_km=11')->assertUnprocessable();
+        $response = $this->getJson($route.'?radius_km=2')->assertOk();
+        $ids = collect($response->json('venues'))->pluck('id')->all();
+        $this->assertContains($near->id, $ids);
+        $this->assertNotContains($far->id, $ids);
+        $this->assertNotContains($blocked->id, $ids);
+        $this->assertNotContains($home->id, $ids);
     }
 
     private function futureEvent(Venue $venue, string $title, int $courtId): Event

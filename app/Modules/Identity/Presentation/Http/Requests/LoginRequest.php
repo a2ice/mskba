@@ -18,6 +18,7 @@ class LoginRequest extends FormRequest
             'password' => ['required', 'string', 'max:255'],
             'remember' => ['nullable'],
             'redirect_to' => ['nullable', 'string', 'max:2048'],
+            'inline_auth' => ['nullable', 'boolean'],
         ];
     }
 

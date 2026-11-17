@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import { venuePlacemark } from '../core/venue-map-pins.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const maps = Array.from(document.querySelectorAll('[data-venue-map]'));
@@ -43,12 +44,10 @@ function initVenueMap(map) {
         zoom: 15,
         controls: ['zoomControl', 'fullscreenControl'],
     });
-    const currentPlacemark = new window.ymaps.Placemark(center, {
+    const currentPlacemark = venuePlacemark(center, {
         balloonContentHeader: title,
         balloonContentBody: address,
         hintContent: title,
-    }, {
-        preset: 'islands#orangeSportIcon',
     });
 
     yandexMap.geoObjects.add(currentPlacemark);
@@ -82,10 +81,9 @@ function initNearbyVenues(map, yandexMap, currentPlacemark, center) {
 
     const nearbyCollection = new window.ymaps.GeoObjectCollection();
     points.forEach((point) => {
-        const placemark = new window.ymaps.Placemark(
+        const placemark = venuePlacemark(
             [Number(point.latitude), Number(point.longitude)],
             { hintContent: point.name || 'Площадка рядом' },
-            { preset: 'islands#blueSportIcon' },
         );
 
         placemark.events.add('click', (event) => {

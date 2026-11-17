@@ -2,10 +2,14 @@
 
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
+use App\Modules\Ai\Application\Queries\GetPlayerAvatarGenerationOffer;
+
 use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
+use App\Modules\Contact\Application\Exceptions\ContactVerificationDeliveryException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
+use App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Application\UseCases\DeleteContactHandler;
@@ -14,6 +18,7 @@ use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
 use App\Modules\Contact\Presentation\Http\Requests\ConfirmContactVerificationRequest;
 use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
@@ -21,7 +26,9 @@ use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
+use App\Modules\Identity\Application\Services\PlayerCharacterInitialRenderService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
@@ -30,11 +37,16 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
+use App\Modules\Notification\Application\Services\SystemNotificationTimeline;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\GetSystemConversationPreviewHandler;
+use App\Modules\Notification\Application\UseCases\ListAccountConversationsHandler;
 use App\Modules\Notification\Application\UseCases\ListNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
@@ -44,6 +56,7 @@ use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
@@ -59,6 +72,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use LogicException;
 
@@ -88,6 +102,13 @@ class AccountController extends Controller
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
         ];
 
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            $canonical = $user->canonical();
+            $data['dashboardWidgets'] = app(\App\Modules\Dashboard\Application\Services\AccountDashboardService::class)->forUser($canonical);
+            $data['dashboardUser'] = $canonical;
+            $data['dashboardUnread'] = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)->handle($canonical);
+        }
+
         return ThemeResolver::page('account.index', $data);
     }
 
@@ -112,14 +133,13 @@ class AccountController extends Controller
             'primaryContact' => $primaryContact,
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
             'primaryContactPendingVerification' => $primaryContact?->verifications->first(),
-            'currentParticipationRole' => $wizard->primaryParticipationRole($user),
-            'participationRoles' => UserParticipationRoleEnum::cases(),
+            'primaryContactResendSeconds' => EmailContactVerificationStrategy::secondsUntilResend(
+                $primaryContact?->verifications->first(),
+            ),
             'genders' => UserGenderEnum::cases(),
-            'rolesRequiringProfileDetails' => collect(UserParticipationRoleEnum::cases())
-                ->filter(fn (UserParticipationRoleEnum $role): bool => $wizard->roleRequiresBirthDateAndGender($role))
-                ->map(fn (UserParticipationRoleEnum $role): string => $role->value)
-                ->values()
-                ->all(),
+            'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
+            'vkEnabled' => trim((string) config('vk.app_id')) !== '',
+            'contactEmulationEnabled' => EmulateSocialContactController::enabled(),
         ]);
     }
 
@@ -131,10 +151,8 @@ class AccountController extends Controller
 
         $updatedUser = $completeAccountConfirmationWizard->handle(
             $user,
-            $request->role(),
             $request->firstName(),
             $request->lastName(),
-            $request->middleName(),
             $request->birthDate(),
             $request->gender(),
         );
@@ -148,82 +166,120 @@ class AccountController extends Controller
         CreateAccountContactRequest $request,
         CreateContactForUserHandler $createContactForUser,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
+        $data = $request->toDTO();
 
-        try {
-            $contact = $createContactForUser->handle($user, $request->toDTO());
-            $startContactVerification->handle($contact);
-        } catch (InvalidArgumentException|ContactVerificationCooldownException|LogicException $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
+        // Telegram and VK must be verified via their signed identity providers.
+        // Never let a typed username count as a verified login identity.
+        if ($data->type !== ContactTypeEnum::EMAIL) {
+            $message = 'Для Telegram и VK используйте официальную авторизацию. Подтверждение телефона пока недоступно.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : redirect()->route('account.confirmation')->with('error', $message);
         }
 
-        return redirect()
-            ->route('account.confirmation')
+        try {
+            $existing = $user->identityContactsQuery()
+                ->where('type', ContactTypeEnum::EMAIL)
+                ->where('value', $data->value)
+                ->first();
+            if ($existing?->hasBeenVerified()) {
+                throw new InvalidArgumentException('Этот Email уже подтверждён в твоём аккаунте.');
+            }
+            $contact = $existing ?? $createContactForUser->handle($user, $data);
+            $startContactVerification->handle($contact);
+        } catch (ContactVerificationCooldownException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'contact_id' => $contact->id,
+                    'seconds_left' => $e->secondsLeft,
+                ], 429);
+            }
+
+            return redirect()->route('account.confirmation')
+                ->with('info', $e->getMessage())
+                ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (ContactVerificationDeliveryException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 503)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
+        } catch (InvalidArgumentException|LogicException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Код подтверждения отправлен.',
+                'contact_id' => $contact->id,
+                'value' => $contact->displayValue(),
+                'seconds_left' => 60,
+            ]);
+        }
+
+        return redirect()->route('account.confirmation')
             ->with('status', 'Контакт добавлен. Код подтверждения отправлен.');
     }
 
     public function startConfirmationContactVerification(
         Contact $contact,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): RedirectResponse|JsonResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
 
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
+        abort_unless($contact->type === ContactTypeEnum::EMAIL, 422);
 
         try {
             $startContactVerification->handle($contact);
         } catch (ContactVerificationCooldownException $e) {
-            return redirect()
-                ->route('account.confirmation')
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage(), 'seconds_left' => $e->secondsLeft], 429);
+            }
+
+            return redirect()->route('account.confirmation')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->with('error', $e->getMessage());
+        } catch (ContactVerificationDeliveryException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 503)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
+        } catch (LogicException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
         }
 
-        return redirect()
-            ->route('account.confirmation')
-            ->with('status', 'Код подтверждения отправлен.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Новый код отправлен.', 'seconds_left' => 60])
+            : redirect()->route('account.confirmation')->with('status', 'Код подтверждения отправлен.');
     }
 
     public function confirmConfirmationContactVerification(
         ConfirmContactVerificationRequest $request,
         Contact $contact,
         ConfirmContactVerificationHandler $confirmContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
 
         try {
             $confirmContactVerification->handle($contact, $request->toDTO());
         } catch (ContactVerificationException|LogicException $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()
-            ->route('account.confirmation')
-            ->with('status', 'Контакт подтвержден.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Контакт подтверждён.', 'redirect_url' => route('account.confirmation')])
+            : redirect()->route('account.confirmation')->with('status', 'Контакт подтвержден.');
     }
 
     public function settings(PersonalDataDistributionConsentService $distributionConsents): Response
@@ -302,6 +358,9 @@ class AccountController extends Controller
     public function notifications(
         ListUserNotificationsHandler $listUserNotifications,
         CountNewUserNotificationsHandler $countNewUserNotifications,
+        GetSystemConversationPreviewHandler $systemConversation,
+        ListAccountConversationsHandler $conversations,
+        CurrentActorResolver $actors,
     ): Response {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -315,6 +374,27 @@ class AccountController extends Controller
         return ThemeResolver::page('account.notifications', [
             'notifications' => $listUserNotifications->handle($user),
             'newNotificationsCount' => $countNewUserNotifications->handle($user),
+            'systemConversation' => $systemConversation->handle($user),
+            'applicationConversations' => $conversations->handle($user, $actors->resolveForRequest(request())),
+        ]);
+    }
+
+    public function systemNotificationConversation(
+        ListUserNotificationsHandler $listUserNotifications,
+        GetSystemConversationPreviewHandler $systemConversation,
+    ): Response|RedirectResponse {
+        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return redirect()->route('account.notifications');
+        }
+
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+        $page = app(SystemNotificationTimeline::class)->page($user);
+
+        return ThemeResolver::page('account.notification-conversation', [
+            'notifications' => $page['entries'], 'nextBefore' => $page['next_before'],
+            'systemConversation' => $systemConversation->handle($user),
+            'conversationCards' => app(AccountConversationRail::class)->items($user, request()),
+            'activeConversationId' => 'system',
         ]);
     }
 
@@ -346,11 +426,17 @@ class AccountController extends Controller
     ): JsonResponse {
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
+        // Cursor pagination avoids losing messages when unread notifications
+        // are marked read while the client is loading its toast list.
+        $params = request()->validate(['before_id' => ['sometimes', 'integer', 'min:1']]);
+        $notifications = $listNewUserNotifications->handle($user, 20, $params['before_id'] ?? null);
+
         return response()->json([
-            'notifications' => $listNewUserNotifications->handle($user)
+            'notifications' => $notifications
                 ->map(fn (UserNotification $notification): array => $presenter->present($notification))
                 ->values(),
             'unread_count' => $countNewUserNotifications->handle($user),
+            'next_before_id' => $notifications->count() === 20 ? $notifications->last()->id : null,
         ]);
     }
 
@@ -411,31 +497,58 @@ class AccountController extends Controller
                     ContactTypeEnum::VK,
                 ], true),
             )),
+            'contactResendCooldowns' => $user->contacts->mapWithKeys(fn (Contact $contact): array => [
+                $contact->id => EmailContactVerificationStrategy::secondsUntilResend(
+                    $contact->verifications->first(),
+                ),
+            ])->all(),
             'linkedTelegramAccount' => $linkedTelegramAccount,
             'linkedVkAccount' => $linkedVkAccount,
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
+            'contactEmulationEnabled' => EmulateSocialContactController::enabled(),
         ]);
     }
 
     public function storeContact(
         CreateAccountContactRequest $request,
         CreateContactForUserHandler $createContactForUser,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
+        $contactData = $request->toDTO();
 
-        try {
-            $createContactForUser->handle($user, $request->toDTO());
-        } catch (InvalidArgumentException $e) {
-            return redirect()
-                ->route('account.contacts')
-                ->withInput()
-                ->with('error', $e->getMessage());
+        // Telegram and VK contacts can be created only by their signed identity flows.
+        // User-supplied handles must never enter the identity contact list.
+        if (! in_array($contactData->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
+            $message = 'Telegram и VK добавляются только через официальную авторизацию.';
+
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : redirect()->route('account.contacts')->with('error', $message);
         }
 
-        return redirect()
-            ->route('account.contacts')
-            ->with('status', 'Контакт добавлен.');
+        try {
+            $contact = $createContactForUser->handle($user, $contactData);
+        } catch (InvalidArgumentException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.contacts')->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Контакт добавлен.',
+                'contact' => [
+                    'id' => $contact->id,
+                    'type' => $contact->type->value,
+                    'value' => $contact->displayValue(),
+                    'is_verified' => $contact->hasBeenVerified(),
+                    'is_primary' => (bool) $contact->is_primary,
+                ],
+            ], 201);
+        }
+
+        return redirect()->route('account.contacts')->with('status', 'Контакт добавлен.');
     }
 
     public function setPrimaryContact(Contact $contact, SetPrimaryContactForUserHandler $setPrimaryContact): RedirectResponse
@@ -457,8 +570,9 @@ class AccountController extends Controller
     public function startContactVerification(
         Contact $contact,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): RedirectResponse|JsonResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
 
         abort_unless(
             $user->ownsIdentityContact($contact),
@@ -466,16 +580,59 @@ class AccountController extends Controller
         );
 
         try {
-            $startContactVerification->handle($contact);
+            $verification = $startContactVerification->handle($contact);
         } catch (ContactVerificationCooldownException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'seconds_left' => $e->secondsLeft,
+                ], 429);
+            }
+
             return redirect()
                 ->route('account.contacts')
                 ->with('info', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id)
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
-        } catch (\Throwable $e) {
+        } catch (ContactVerificationDeliveryException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 503);
+            }
+
             return redirect()
                 ->route('account.contacts')
-                ->with('error', $e->getMessage());
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
+        } catch (LogicException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
+        } catch (\Throwable $e) {
+            Log::error('Contact verification request failed', [
+                'contact_id' => $contact->id,
+                'exception' => $e::class,
+            ]);
+            $message = 'Не удалось запросить код подтверждения. Попробуйте позже.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 500);
+            }
+
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $message)
+                ->with('contactVerificationFeedbackContactId', $contact->id);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Код подтверждения отправлен.',
+                'seconds_left' => EmailContactVerificationStrategy::secondsUntilResend($verification),
+            ]);
         }
 
         return redirect()
@@ -487,26 +644,27 @@ class AccountController extends Controller
         ConfirmContactVerificationRequest $request,
         Contact $contact,
         ConfirmContactVerificationHandler $confirmContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
-
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
 
         try {
             $confirmContactVerification->handle($contact, $request->toDTO());
         } catch (ContactVerificationException|LogicException $e) {
-            return redirect()
-                ->route('account.contacts')
-                ->withInput()
-                ->with('error', $e->getMessage());
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+            return redirect()->route('account.contacts')->withInput()
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
         }
 
-        return redirect()
-            ->route('account.contacts')
-            ->with('status', 'Контакт подтвержден.');
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Контакт подтверждён.',
+                'contact_id' => $contact->id, 'verified' => $contact->refresh()->hasBeenVerified()]);
+        }
+
+        return redirect()->route('account.contacts')->with('status', 'Контакт подтвержден.');
     }
 
     public function destroyContact(Contact $contact, DeleteContactHandler $deleteContact): RedirectResponse
@@ -555,9 +713,14 @@ class AccountController extends Controller
         abort_if($participationRole === null, 404);
 
         $playerTeams = collect();
+        $playerUniformDesigns = collect();
         if ($roleEnum === UserParticipationRoleEnum::PLAYER) {
             $identityIds = $user->identityIds();
+            $playerUniformDesigns = UniformDesign::query()
+                ->whereIn('user_id', $identityIds)
+                ->orderBy('name')->get(['id', 'name']);
             $playerTeams = Team::query()
+                ->with('logo')
                 ->whereNull('temporary_for_event_id')
                 ->whereHas('memberships', fn ($memberships) => $memberships
                     ->whereIn('user_id', $identityIds)
@@ -569,7 +732,39 @@ class AccountController extends Controller
                 ->get(['id', 'name', 'colors']);
         }
 
-        return ThemeResolver::page('account.participation-role', [
+        // The player role reuses the profile editor, including existing moderation
+        // states and permissions. Only load these details for the MSKBA App UI.
+        $personalData = [];
+        if ($roleEnum === UserParticipationRoleEnum::PLAYER
+            && app(ThemeResolver::class)->active() === 'mskba_app') {
+            $canonical = $user->canonical()->loadMissing('profile');
+            $requests = ProfileChangeRequest::query()->where('user_id', $canonical->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_ACCOUNT);
+            $playerRequests = ProfileChangeRequest::query()->where('user_id', $canonical->id)
+                ->where('scope', ProfileChangeRequest::SCOPE_PLAYER);
+            $canEditConfirmedPlayer = app(\App\Modules\Identity\Application\Services\UserOperationalPermissionChecker::class)
+                ->allows($canonical, \App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum::EDIT_OWN_PROFILE);
+            $initial = app(PlayerCharacterInitialRenderService::class);
+            $personalData = [
+                'playerFaceReferences' => $initial->faceReferences($canonical),
+                'playerInitialAvatar' => $initial->initialAvatar($canonical),
+                'personalProfile' => $canonical->profile,
+                'profileConfirmed' => $canonical->isConfirmed(),
+                'genders' => UserGenderEnum::cases(),
+                'latestProfileChangeRequest' => (clone $requests)->latest('id')->first(),
+                'activeProfileChangeRequest' => (clone $requests)
+                    ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])
+                    ->first(),
+                'playerConfirmed' => $participationRole->confirmed_at !== null,
+                'canEditConfirmedPlayer' => $canEditConfirmedPlayer,
+                'latestPlayerChangeRequest' => (clone $playerRequests)->latest('id')->first(),
+                'activePlayerChangeRequest' => (clone $playerRequests)
+                    ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])
+                    ->first(),
+            ];
+        }
+
+        return ThemeResolver::page('account.participation-role', array_merge([
             'user' => $user,
             'participationRole' => $participationRole,
             'role' => $roleEnum,
@@ -579,7 +774,11 @@ class AccountController extends Controller
             'playerSkills' => PlayerSelfAssessment::SKILLS,
             'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
             'playerTeams' => $playerTeams,
-        ]);
+            'playerUniformDesigns' => $playerUniformDesigns,
+            'generationOffer' => $roleEnum === UserParticipationRoleEnum::PLAYER
+                ? app(GetPlayerAvatarGenerationOffer::class)->handle($user)
+                : null,
+        ], $personalData));
     }
 
     public function contracts(ListAccountContractsHandler $listAccountContracts): Response
@@ -664,8 +863,11 @@ class AccountController extends Controller
         ]);
     }
 
-    public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response
+    public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response|RedirectResponse
     {
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            return redirect()->route('account.venues.edit', ['alias' => $alias, 'tab' => 'schedule']);
+        }
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
             $venue = $showVenueSchedule->handle($alias, $user);
@@ -716,13 +918,15 @@ class AccountController extends Controller
             );
         } catch (\Exception $e) {
             return redirect()
-                ->route('account.venues.schedule.edit', $alias)
+                ->route(app(ThemeResolver::class)->active() === 'mskba_app' ? 'account.venues.edit' : 'account.venues.schedule.edit',
+                    app(ThemeResolver::class)->active() === 'mskba_app' ? ['alias' => $alias, 'tab' => 'schedule'] : $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
 
         return redirect()
-            ->route('account.venues.schedule.edit', $alias)
+            ->route(app(ThemeResolver::class)->active() === 'mskba_app' ? 'account.venues.edit' : 'account.venues.schedule.edit',
+                app(ThemeResolver::class)->active() === 'mskba_app' ? ['alias' => $alias, 'tab' => 'schedule'] : $alias)
             ->with('status', 'Расписание сохранено.');
     }
 
@@ -747,6 +951,7 @@ class AccountController extends Controller
         $contacts = $user->identityContactsQuery()
             ->with(['verifications' => fn ($query) => $query
                 ->where('status', ContactVerificationStatusEnum::PENDING->value)
+                ->where('expires_at', '>', now())
                 ->latest()])
             ->orderByDesc('is_primary')
             ->orderBy('type')

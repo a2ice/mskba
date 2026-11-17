@@ -16,3 +16,5 @@
 - `content_item` — материал;
 - `team` — команда и её логотип.
 - `tournament_entry` — временная команда, сформированная внутри турнира, и её логотип.
+
+Медиафайлы оформления сайта: [Site Media Library](../../../docs/specification/site-media-library.md). Логические ассеты имеют morph alias site_media_asset и collection site_assets, отдельно от файлов предметных сущностей.

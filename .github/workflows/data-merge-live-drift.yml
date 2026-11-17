@@ -1,0 +1,75 @@
+name: MSKBA live data drift preflight
+# Final cutover refresh — 2026-11-17, read-only source checks.
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-live-drift.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prod:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Read-only row counts and latest timestamps without personal values
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            echo "DRIFT_SCOPE=prod"
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+            SELECT 'users' AS entity, count(*) AS rows, max(updated_at) AS latest FROM users
+            UNION ALL SELECT 'profiles',count(*),max(updated_at) FROM profiles
+            UNION ALL SELECT 'teams',count(*),max(updated_at) FROM teams
+            UNION ALL SELECT 'tournaments',count(*),max(updated_at) FROM tournaments
+            UNION ALL SELECT 'games',count(*),max(updated_at) FROM games
+            UNION ALL SELECT 'events',count(*),max(updated_at) FROM events
+            UNION ALL SELECT 'venues',count(*),max(updated_at) FROM venues
+            UNION ALL SELECT 'venue_courts',count(*),max(updated_at) FROM venue_courts
+            UNION ALL SELECT 'venue_bookings',count(*),max(updated_at) FROM venue_bookings
+            UNION ALL SELECT 'media',count(*),max(updated_at) FROM media
+            UNION ALL SELECT 'contacts',count(*),max(updated_at) FROM contacts
+            UNION ALL SELECT 'wallets',count(*),max(updated_at) FROM wallets
+            UNION ALL SELECT 'migrations',count(*),null::timestamp FROM migrations
+            ORDER BY 1;
+            SQL
+
+  dev:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Read-only row counts and latest timestamps without personal values
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            grep -Fxq 'APP_URL=https://dev.mskba.ru' .env
+            echo "DRIFT_SCOPE=dev"
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; export PGOPTIONS="-c default_transaction_read_only=on"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+            SELECT 'users' AS entity, count(*) AS rows, max(updated_at) AS latest FROM users
+            UNION ALL SELECT 'profiles',count(*),max(updated_at) FROM profiles
+            UNION ALL SELECT 'teams',count(*),max(updated_at) FROM teams
+            UNION ALL SELECT 'tournaments',count(*),max(updated_at) FROM tournaments
+            UNION ALL SELECT 'games',count(*),max(updated_at) FROM games
+            UNION ALL SELECT 'events',count(*),max(updated_at) FROM events
+            UNION ALL SELECT 'venues',count(*),max(updated_at) FROM venues
+            UNION ALL SELECT 'venue_courts',count(*),max(updated_at) FROM venue_courts
+            UNION ALL SELECT 'venue_bookings',count(*),max(updated_at) FROM venue_bookings
+            UNION ALL SELECT 'media',count(*),max(updated_at) FROM media
+            UNION ALL SELECT 'contacts',count(*),max(updated_at) FROM contacts
+            UNION ALL SELECT 'wallets',count(*),max(updated_at) FROM wallets
+            UNION ALL SELECT 'migrations',count(*),null::timestamp FROM migrations
+            ORDER BY 1;
+            SQL

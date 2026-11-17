@@ -1,0 +1,103 @@
+/*
+ * Shared app-theme catalog controls.
+ * Use the same existing MSKBA icon-only view selector on /shop and /venues.
+ * Form select styling follows design-system.css .select-control.
+ */
+.app-catalog-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:none;min-width:0}
+.app-catalog-tools__views{display:flex;align-items:center;gap:3px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.app-catalog-tools__icon{
+  box-sizing:border-box;display:grid;place-items:center;width:42px;height:42px;min-width:42px;
+  padding:9px;border:1px solid transparent;border-radius:9px;
+  color:var(--muted);background:transparent;text-decoration:none;cursor:pointer;
+  transition:color .16s ease,background .16s ease,border-color .16s ease
+}
+.app-catalog-tools__icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-catalog-tools__icon:is(:hover,:focus-visible),.app-catalog-tools__icon.is-active{
+  background:var(--surface-raised);border-color:var(--control-line);color:var(--accent)
+}
+.app-catalog-tools__sort{position:relative;flex:none}
+.app-catalog-tools__sort>summary{list-style:none;border:1px solid var(--line);background:var(--surface);border-radius:12px}
+.app-catalog-tools__sort>summary::-webkit-details-marker{display:none}
+.app-catalog-tools__sort[open]>summary{background:var(--surface-raised);border-color:var(--accent);color:var(--accent)}
+.app-catalog-tools__sort-menu{
+  position:absolute;z-index:30;right:0;top:calc(100% + 7px);min-width:205px;max-width:calc(100vw - 24px);
+  padding:6px;border:1px solid var(--control-line);border-radius:12px;background:var(--surface);
+  box-shadow:0 14px 35px var(--shadow-popover);font-size:13px
+}
+.app-catalog-tools__sort-menu a{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  border-radius:8px;padding:10px 12px;white-space:nowrap;color:var(--text);font-weight:600}
+.app-catalog-tools__sort-menu a:is(:hover,:focus-visible),.app-catalog-tools__sort-menu a.is-selected{
+  background:var(--surface-raised);color:var(--accent)
+}
+.app-catalog-tools__reset{border-color:var(--line);border-radius:12px;background:var(--surface)}
+/* Explicit design-system select-control wrapper (native OS select arrow hidden). */
+:is(.app-shop__filters,.app-venues-catalog__filters) .select-control{position:relative;display:block;width:100%;min-width:0}
+:is(.app-shop__filters,.app-venues-catalog__filters) .select-control select{
+  box-sizing:border-box;width:100%;min-width:0;min-height:46px;
+  appearance:none;-webkit-appearance:none;border:1px solid var(--control-line);
+  border-radius:12px;padding:10px 40px 10px 12px;background:var(--field);color:var(--text);
+  font-family:inherit;font-size:13px;font-weight:600;line-height:22px;cursor:pointer
+}
+:is(.app-shop__filters,.app-venues-catalog__filters) .select-control>svg{
+  position:absolute;top:50%;right:12px;transform:translateY(-50%);
+  width:18px;height:18px;color:var(--muted);pointer-events:none
+}
+:is(.app-shop__filters,.app-venues-catalog__filters) input[type=search]{
+  box-sizing:border-box;min-height:46px;width:100%;min-width:0;padding:9px 12px;
+  border-radius:12px;font:inherit;font-size:12px;line-height:20px;color:var(--text);background:var(--field);
+  border:1px solid var(--control-line)
+}
+:is(.app-shop__filters,.app-venues-catalog__filters) input[type=search]::placeholder{color:var(--muted);opacity:1;font-size:12px}
+:is(.app-shop__filters,.app-venues-catalog__filters) :is(input[type=search],.select-control select):focus-visible{
+  outline:2px solid var(--accent)!important;outline-offset:2px!important
+}
+@media (forced-colors:active){
+  :is(.app-shop__filters,.app-venues-catalog__filters) .select-control select{appearance:auto;-webkit-appearance:auto}
+  :is(.app-shop__filters,.app-venues-catalog__filters) .select-control>svg{display:none}
+}
+/* Height/weight range language from the player profile: orange active track and thumbs. */
+.app-shop__filters .app-shop__price-range{
+  min-width:0;display:grid;gap:12px;margin:3px 0 9px;
+  --shop-price-start:0%;--shop-price-end:100%
+}
+.app-shop__price-range-labels{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.app-shop__price-range-labels output{
+  display:block;min-width:0;font-size:13px;line-height:20px;color:var(--text);font-weight:750;
+  font-variant-numeric:tabular-nums;white-space:nowrap
+}
+.app-shop__price-range-track{position:relative;height:28px;margin:1px 10px}
+.app-shop__price-range-track:before,.app-shop__price-range-track:after{
+  content:"";position:absolute;top:50%;height:7px;transform:translateY(-50%);border-radius:99px;pointer-events:none
+}
+.app-shop__price-range-track:before{left:0;right:0;background:var(--line)}
+.app-shop__price-range-track:after{left:var(--shop-price-start);right:calc(100% - var(--shop-price-end));background:var(--accent)}
+.app-shop__filters .app-shop__price-range input[type=range]{
+  appearance:none;-webkit-appearance:none;position:absolute;top:0;left:0;
+  display:block;width:100%;height:28px;min-height:28px;padding:0;margin:0;
+  border:0;border-radius:0;background:transparent;pointer-events:none;cursor:pointer
+}
+.app-shop__filters .app-shop__price-range input[type=range]:first-child{z-index:2}
+.app-shop__filters .app-shop__price-range input[type=range]:nth-child(2){z-index:3}
+.app-shop__filters .app-shop__price-range input[type=range]::-webkit-slider-runnable-track{height:7px;background:transparent}
+.app-shop__filters .app-shop__price-range input[type=range]::-moz-range-track{height:7px;background:transparent}
+.app-shop__filters .app-shop__price-range input[type=range]::-moz-range-progress{background:transparent}
+.app-shop__filters .app-shop__price-range input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;pointer-events:auto;width:22px;height:22px;
+  margin-top:-8px;border:3px solid var(--surface);border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 1px var(--accent),0 0 13px color-mix(in srgb,var(--accent) 20%,transparent)
+}
+.app-shop__filters .app-shop__price-range input[type=range]::-moz-range-thumb{
+  pointer-events:auto;width:16px;height:16px;border:3px solid var(--surface);
+  border-radius:50%;background:var(--accent);box-shadow:0 0 0 1px var(--accent)
+}
+.app-shop__filters .app-shop__price-range input[type=range]:focus-visible{outline:0!important;box-shadow:none!important}
+.app-shop__filters .app-shop__price-range input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--accent)}
+.app-shop__filters .app-shop__price-range input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--accent)}
+.app-shop__filters .app-shop__filter-actions{display:block}
+.app-shop__filters .app-shop__filter-actions .button{width:100%}
+@media(max-width:570px){
+  .app-catalog-tools{gap:5px}
+  .app-catalog-tools__icon{width:38px;height:38px;min-width:38px;padding:7px}
+  .app-catalog-tools__icon svg{width:18px;height:18px}
+}
+@media(prefers-reduced-motion:reduce){.app-catalog-tools__icon{transition:none}}

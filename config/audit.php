@@ -26,6 +26,14 @@ use App\Modules\Pricing\Domain\Models\PricingVariant;
 use App\Modules\Rewards\Domain\Models\Reward;
 use App\Modules\Rewards\Domain\Models\RewardVersion;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCalendarSlotPrice;
+use App\Modules\Venue\Domain\Models\VenueCourtCalendarSlotPrice;
+use App\Modules\Venue\Domain\Models\VenuePricingRule;
+use App\Modules\Venue\Domain\Models\PortalCommissionPolicy;
+use App\Modules\Venue\Domain\Models\VenueCommissionAgent;
+use App\Modules\Venue\Domain\Models\VenueCommissionPolicy;
+use App\Modules\Venue\Domain\Models\VenueCourtCommissionPolicy;
+use App\Modules\Venue\Domain\Models\VenueCourtPricingRuleOverride;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
@@ -59,6 +67,14 @@ return [
         Contact::class,
         ContactVerification::class,
         Venue::class,
+        VenueCalendarSlotPrice::class,
+        VenueCourtCalendarSlotPrice::class,
+        VenuePricingRule::class,
+        PortalCommissionPolicy::class,
+        VenueCommissionAgent::class,
+        VenueCommissionPolicy::class,
+        VenueCourtCommissionPolicy::class,
+        VenueCourtPricingRuleOverride::class,
         VenueDuplicate::class,
         VenueSchedule::class,
         VenueScheduleInterval::class,

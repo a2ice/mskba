@@ -102,6 +102,86 @@ final class AccountPlayerProfileTest extends TestCase
         );
     }
 
+    public function test_player_can_apply_physical_form_with_normal_body_type_and_character_options(): void
+    {
+        $user = $this->player();
+
+        // Match the actual MSKBA App physical form, including its 'section'.
+        // This must work on legacy player profiles that never stored body_type.
+        $this->actingAs($user)
+            ->patch(route('account.player-profile.update'), [
+                'section' => 'physical',
+                'height_cm' => 185,
+                'weight_kg' => 80,
+                'body_type' => 'normal',
+                'character' => [
+                    'uniform_kit' => 'mskba_home',
+                    'shoes' => 'blue',
+                    'attributes' => ['wristband_left'],
+                ],
+            ])
+            ->assertRedirect(route('account.participation-role', ['role' => 'player', 'tab' => 'physical']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('player_profiles', [
+            'user_id' => $user->id,
+            'height_cm' => 185,
+            'weight_kg' => 80,
+            'body_type' => 'normal',
+        ]);
+        $character = $user->fresh()->playerProfile->extra['character'];
+        $this->assertSame('blue', $character['shoes']);
+        $this->assertSame(['wristband_left'], $character['attributes']);
+    }
+
+    public function test_equipment_sides_round_trip_with_legacy_character_attributes_and_clear(): void
+    {
+        $user = $this->player();
+        $url = route('account.player-profile.update');
+        $physicalPage = route('account.participation-role', ['role' => 'player', 'tab' => 'physical']);
+
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+                'attributes' => ['elbow_left', 'elbow_right', 'knee_right', 'headband'],
+            ],
+        ])->assertSessionHasNoErrors()->assertRedirect($physicalPage);
+
+        $this->assertSame(
+            ['elbow_left', 'elbow_right', 'knee_right', 'headband'],
+            $user->fresh()->playerProfile->extra['character']['attributes'],
+        );
+
+        // The persisted format is shared with the legacy theme. The new
+        // MSKBA App markup is verified by the dedicated UI contract test.
+        $this->actingAs($user)->get($physicalPage)->assertOk();
+
+        // A common checkbox can clear both sides without a new data model.
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+                'attributes' => ['elbow_right', 'headband'],
+            ],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(
+            ['elbow_right', 'headband'],
+            $user->fresh()->playerProfile->extra['character']['attributes'],
+        );
+
+        $this->actingAs($user)->patch($url, [
+            'section' => 'physical',
+            'character' => [
+                'uniform_kit' => 'mskba_home',
+                'shoes' => 'white',
+            ],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame([], $user->fresh()->playerProfile->extra['character']['attributes']);
+    }
+
     public function test_player_profile_shows_only_calculated_objective_metrics(): void
     {
         $user = $this->player();

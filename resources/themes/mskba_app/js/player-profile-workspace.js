@@ -1,0 +1,735 @@
+const workspace = document.querySelector('[data-player-workspace]');
+if (workspace) {
+    const playerChangeDialog = workspace.querySelector('[data-player-change-request-dialog]');
+    const playerChangeTrigger = document.querySelector('[data-player-change-request-open]');
+    if (playerChangeDialog && playerChangeTrigger) {
+        playerChangeTrigger.addEventListener('click', () => {
+            playerChangeDialog.showModal();
+            playerChangeDialog.querySelector('[data-player-change-request-close]')?.focus({ preventScroll: true });
+        });
+        playerChangeDialog.querySelectorAll('[data-player-change-request-close]').forEach(button => {
+            button.addEventListener('click', () => playerChangeDialog.close());
+        });
+        playerChangeDialog.addEventListener('close', () => {
+            if (playerChangeTrigger.isConnected) playerChangeTrigger.focus({ preventScroll: true });
+        });
+    }
+
+    const preview = workspace.querySelector('[data-player-preview]');
+    const form = workspace.querySelector('[data-player-physical-form]');
+    const height = form?.querySelector('[data-physical-height]');
+    const weight = form?.querySelector('[data-physical-weight]');
+    const body = form?.querySelector('[data-physical-body-type]');
+    const stage = workspace.querySelector('[data-player-stage]');
+    const figure = workspace.querySelector('[data-player-figure]');
+
+
+    // Gender is a single canonical profile attribute, never a separate player field.
+    // Keep the explanatory step and the full profile editor in native top-layer dialogs.
+    const genderInfo = workspace.querySelector('[data-player-gender-dialog]');
+    const personalInfo = workspace.querySelector('[data-player-personal-dialog]');
+    const genderTrigger = workspace.querySelector('[data-player-gender-open]');
+    if (genderInfo && personalInfo && genderTrigger) {
+        const openProfileDialog = dialog => {
+            dialog.showModal();
+            dialog.querySelector('[data-player-gender-close], [data-player-personal-close]')?.focus({preventScroll:true});
+        };
+        genderTrigger.addEventListener('click', () => openProfileDialog(genderInfo));
+        genderInfo.querySelectorAll('[data-player-gender-close]').forEach(button =>
+            button.addEventListener('click', () => genderInfo.close()));
+        personalInfo.querySelectorAll('[data-player-personal-close]').forEach(button =>
+            button.addEventListener('click', () => personalInfo.close()));
+        genderInfo.querySelector('[data-player-personal-open]')?.addEventListener('click', () => {
+            genderInfo.close();
+            openProfileDialog(personalInfo);
+        });
+        personalInfo.addEventListener('close', () => {
+            if (genderTrigger.isConnected) genderTrigger.focus({preventScroll:true});
+        });
+    }
+
+    // Task 057: side selection is a UI adapter around the existing
+    // character.attributes[] wire format. No new persistence fields.
+    const equipmentDialog = workspace.querySelector('[data-player-equipment-dialog]');
+    if (form && equipmentDialog) {
+        const equipmentTitle = equipmentDialog.querySelector('[data-player-equipment-title]');
+        const leftInput = equipmentDialog.querySelector('[data-player-equipment-left]');
+        const rightInput = equipmentDialog.querySelector('[data-player-equipment-right]');
+        let activeEquipmentGroup = null;
+        let equipmentReturnFocus = null;
+
+        const valuesFor = group =>
+            Array.from(group.querySelectorAll('[data-player-equipment-values] input'))
+                .map(input => input.value);
+
+        const updateEquipmentGroup = (group, selected) => {
+            const leftValue = group.dataset.equipmentLeft;
+            const rightValue = group.dataset.equipmentRight;
+            const left = selected.includes(leftValue);
+            const right = selected.includes(rightValue);
+            const toggle = group.querySelector('[data-player-equipment-toggle]');
+            const suffix = group.querySelector('[data-player-equipment-suffix]');
+            const edit = group.querySelector('[data-player-equipment-edit]');
+            const holder = group.querySelector('[data-player-equipment-values]');
+            toggle.checked = left || right;
+            suffix.textContent = left && right ? ' (л/п)' : left ? ' (л)' : right ? ' (п)' : '';
+            edit.hidden = !(left || right);
+            holder.replaceChildren();
+            for (const value of [left && leftValue, right && rightValue].filter(Boolean)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'character[attributes][]';
+                input.setAttribute('form', 'player-physical-form');
+                input.value = value;
+                holder.appendChild(input);
+            }
+        };
+
+        const openEquipmentDialog = (group, trigger) => {
+            if (equipmentDialog.open) return;
+            activeEquipmentGroup = group;
+            equipmentReturnFocus = trigger;
+            const values = valuesFor(group);
+            leftInput.checked = values.includes(group.dataset.equipmentLeft);
+            rightInput.checked = values.includes(group.dataset.equipmentRight);
+            equipmentTitle.textContent = group.dataset.equipmentName + ': выбор стороны';
+            equipmentDialog.showModal();
+            equipmentDialog.querySelector('[data-player-equipment-cancel]')?.focus({preventScroll:true});
+        };
+
+        workspace.querySelectorAll('[data-player-equipment-group]').forEach(group => {
+            const toggle = group.querySelector('[data-player-equipment-toggle]');
+            const edit = group.querySelector('[data-player-equipment-edit]');
+            toggle.addEventListener('change', () => {
+                if (toggle.checked) {
+                    // A click does not commit a side until the user presses Apply.
+                    toggle.checked = false;
+                    openEquipmentDialog(group, toggle);
+                } else {
+                    // Clearing the common checkbox removes both legacy side values.
+                    updateEquipmentGroup(group, []);
+                }
+            });
+            edit.addEventListener('click', () => openEquipmentDialog(group, edit));
+        });
+
+        equipmentDialog.querySelector('[data-player-equipment-apply]')?.addEventListener('click', () => {
+            if (!activeEquipmentGroup) return;
+            const selected = [];
+            if (leftInput.checked) selected.push(activeEquipmentGroup.dataset.equipmentLeft);
+            if (rightInput.checked) selected.push(activeEquipmentGroup.dataset.equipmentRight);
+            updateEquipmentGroup(activeEquipmentGroup, selected);
+            equipmentDialog.close();
+        });
+        equipmentDialog.querySelectorAll('[data-player-equipment-cancel]').forEach(button =>
+            button.addEventListener('click', () => equipmentDialog.close()));
+        equipmentDialog.addEventListener('close', () => {
+            const returnTo = equipmentReturnFocus;
+            const group = activeEquipmentGroup;
+            activeEquipmentGroup = null;
+            equipmentReturnFocus = null;
+            if (returnTo?.isConnected && !returnTo.hidden) {
+                returnTo.focus({preventScroll:true});
+            } else {
+                // When Apply clears both sides, the Edit control becomes hidden.
+                // Return focus to that group's checkbox rather than another group.
+                group?.querySelector('[data-player-equipment-toggle]')?.focus({preventScroll:true});
+            }
+        });
+    }
+
+    // Sticky preview follows the CSS sticky offsets, not a transient nav
+    // getBoundingClientRect().bottom. That rectangle may reflect a pre-restored
+    // scroll position on reload and previously left the preview too far down.
+    const playerNav = workspace.querySelector('[data-player-section-nav]');
+    if (playerNav) {
+        let stickyPending = false;
+        const updateSticky = () => {
+            stickyPending = false;
+            if (!playerNav.getClientRects().length) return;
+            const navHeight = Math.ceil(playerNav.getBoundingClientRect().height);
+            workspace.style.setProperty('--player-nav-height', navHeight + 'px');
+            const navRect = playerNav.getBoundingClientRect();
+            const top = Number.parseFloat(window.getComputedStyle(playerNav).top) || 0;
+            playerNav.classList.toggle('is-stuck', window.scrollY > 0 && Math.abs(navRect.top - top) <= 2);
+        };
+        const scheduleSticky = () => {
+            if (stickyPending) return;
+            stickyPending = true;
+            window.requestAnimationFrame(updateSticky);
+        };
+        // Set the height synchronously on DOM startup: CSS already has a
+        // stable 58px fallback until the ResizeObserver picks up real geometry.
+        workspace.style.setProperty('--player-nav-height', Math.ceil(playerNav.offsetHeight) + 'px');
+        window.addEventListener('scroll', scheduleSticky, {passive:true});
+        window.addEventListener('resize', scheduleSticky, {passive:true});
+        window.addEventListener('pageshow', scheduleSticky);
+        window.addEventListener('load', scheduleSticky, {once:true});
+        if ('ResizeObserver' in window) new ResizeObserver(scheduleSticky).observe(playerNav);
+        document.fonts?.ready?.then(scheduleSticky);
+        let transitionFrame = null;
+        window.addEventListener('mskba:header-visibility', () => {
+            const until = performance.now() + 340;
+            if (transitionFrame !== null) cancelAnimationFrame(transitionFrame);
+            const follow = () => {
+                scheduleSticky();
+                transitionFrame = performance.now() < until ? requestAnimationFrame(follow) : null;
+            };
+            transitionFrame = requestAnimationFrame(follow);
+        });
+        scheduleSticky();
+    }
+
+    const feedback = workspace.querySelector('[data-player-generation-status]');
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    // The server renders the real first frame: either the correctly scaled
+    // silhouette or the primary generated avatar. Never show an interim sprite.
+    const figureLoading = workspace.querySelector('[data-player-figure-loading]');
+    const hasInitialAvatar = Boolean(preview?.dataset.initialAvatarId);
+    let lastImage = hasInitialAvatar ? figure?.src || '' : '';
+    let figureRequest = 0;
+    const setFigureLoading = loading => {
+        if (figureLoading) figureLoading.hidden = !loading;
+        stage?.classList.toggle('is-figure-loading', loading);
+    };
+    if (figure && hasInitialAvatar) {
+        const settleInitial = () => setFigureLoading(false);
+        const handleInitialError = () => {
+            // Preserve a usable first frame if an old generation file has gone missing.
+            // Keep the layer visible until the fallback silhouette has loaded too.
+            lastImage = '';
+            figure.classList.remove('is-generated');
+            figure.addEventListener('load', settleInitial, {once: true});
+            figure.addEventListener('error', settleInitial, {once: true});
+            figure.src = preview.dataset.defaultSrc;
+            if (figure.complete && figure.naturalWidth > 0) settleInitial();
+        };
+        if (figure.complete) {
+            if (figure.naturalWidth > 0) settleInitial();
+            else handleInitialError();
+        } else {
+            figure.addEventListener('load', settleInitial, {once: true});
+            figure.addEventListener('error', handleInitialError, {once: true});
+        }
+    }
+
+    workspace.querySelectorAll('[data-player-skill]').forEach(slider => {
+        const output = slider.parentElement?.querySelector('output');
+        if (!output) return;
+        slider.addEventListener('input', () => { output.textContent = slider.value; });
+    });
+
+    function updateFigure() {
+        if (!form || !stage) return;
+        const cm = Number(height?.value || 185);
+        const kg = Number(weight?.value || 80);
+        const bmi = kg / Math.pow(cm / 100, 2);
+        const bodyAdjustment = {slim:-0.09, normal:0, athletic:0, muscular:0.12, stocky:0.15, large:0.20}[body?.value] || 0;
+        const width = Math.min(1.4, Math.max(0.78, 1 + (bmi-23)*0.009 + bodyAdjustment));
+        const scaleHeight = Math.max(0, Math.min(225, cm));
+        stage.style.setProperty('--figure-height', (scaleHeight / 225 * 100) + '%');
+        const heightMarker = workspace.querySelector('[data-player-height-marker]');
+        if (heightMarker) heightMarker.style.bottom = (scaleHeight / 225 * 100) + '%';
+        const heightMarkerLabel = workspace.querySelector('[data-player-height-marker-label]');
+        if (heightMarkerLabel) heightMarkerLabel.textContent = cm + ' см';
+        stage.style.setProperty('--figure-width', String(width));
+        workspace.querySelector('[data-player-height-label]').textContent =
+            'Рост: ' + (height?.value ? cm + ' см' : '185 см (пример)');
+        workspace.querySelector('[data-player-weight-label]').textContent =
+            'Вес: ' + (weight?.value ? kg + ' кг' : 'не указан');
+    }
+    const heightOutput = workspace.querySelector('[data-physical-height-value]');
+    const weightOutput = workspace.querySelector('[data-physical-weight-value]');
+    function onPhysicalInput() {
+        if (heightOutput) heightOutput.textContent = height.value + ' см';
+        if (weightOutput) weightOutput.textContent = weight.value + ' кг';
+        updateFigure();
+    }
+    [height, weight, body].forEach(input => input?.addEventListener('input', onPhysicalInput));
+    // The slim height indicator reveals its cm badge on hover or while the height slider has focus.
+    height?.addEventListener('focus', () => stage?.classList.add('is-height-focused'));
+    height?.addEventListener('blur', () => stage?.classList.remove('is-height-focused'));
+
+    // Drag the orange height line itself. The same native range input owns the
+    // value, so drag, keyboard and range-slider edits share one update path.
+    const heightMarkerDrag = workspace.querySelector('[data-player-height-marker]');
+    const heightScale = heightMarkerDrag?.parentElement;
+    let activeHeightPointer = null;
+    let heightDragOffsetY = 0;
+    const applyPointerHeight = clientY => {
+        if (!height || height.disabled || !heightScale) return;
+        const rect = heightScale.getBoundingClientRect();
+        if (rect.height <= 0) return;
+        const proposedCm = Math.round((rect.bottom - clientY) / rect.height * 225);
+        const cm = Math.max(Number(height.min), Math.min(Number(height.max), proposedCm));
+        if (Number(height.value) === cm) return;
+        height.value = String(cm);
+        height.dispatchEvent(new Event('input', {bubbles:true}));
+    };
+    heightMarkerDrag?.addEventListener('pointerdown', event => {
+        if (!height || height.disabled || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const bounds = heightScale?.getBoundingClientRect();
+        if (!bounds?.height) return;
+        event.preventDefault();
+        // Preserve the initial marker position when the user grabs the
+        // enlarged transparent hit area above or below the 1px line.
+        const markerCenterY = bounds.bottom - Number(height.value) / 225 * bounds.height;
+        heightDragOffsetY = event.clientY - markerCenterY;
+        activeHeightPointer = event.pointerId;
+        heightMarkerDrag.setPointerCapture(event.pointerId);
+        stage?.classList.add('is-height-dragging');
+    });
+    heightMarkerDrag?.addEventListener('pointermove', event => {
+        if (event.pointerId !== activeHeightPointer) return;
+        event.preventDefault();
+        applyPointerHeight(event.clientY - heightDragOffsetY);
+    });
+    const endHeightDrag = event => {
+        if (event.pointerId !== activeHeightPointer) return;
+        activeHeightPointer = null;
+        heightDragOffsetY = 0;
+        stage?.classList.remove('is-height-dragging');
+        if (heightMarkerDrag?.hasPointerCapture(event.pointerId)) {
+            heightMarkerDrag.releasePointerCapture(event.pointerId);
+        }
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type =>
+        heightMarkerDrag?.addEventListener(type, endHeightDrag));
+
+    updateFigure();
+
+    const message = (text, error = false) => {
+        if (!feedback) return;
+        feedback.textContent = text;
+        feedback.classList.toggle('is-error', error);
+    };
+    const setImage = (url, allowData = false) => {
+        if (!url || !figure) return Promise.resolve(false);
+        let target;
+        try {
+            target = new URL(url, location.origin);
+        } catch {
+            return Promise.resolve(false);
+        }
+        if (target.origin !== location.origin &&
+            !(allowData && /^data:image\/(?:png|jpeg|webp);base64,/i.test(url))) {
+            return Promise.resolve(false);
+        }
+        if (lastImage === target.href) return Promise.resolve(true);
+
+        const requestId = ++figureRequest;
+        setFigureLoading(true);
+        // Decode off-screen first so a clicked avatar never replaces the stage
+        // with a blank/broken image while its private endpoint is loading.
+        return new Promise(resolve => {
+            const image = new Image();
+            image.onload = () => {
+                if (requestId !== figureRequest) return resolve(false);
+                lastImage = target.href;
+                figure.src = target.href;
+                figure.classList.add('is-generated');
+                setFigureLoading(false);
+                resolve(true);
+            };
+            image.onerror = () => {
+                if (requestId === figureRequest) {
+                    setFigureLoading(false);
+                    avatarStatus('Не удалось загрузить изображение аватара.', true);
+                }
+                resolve(false);
+            };
+            image.src = target.href;
+        });
+    };
+    const readJson = async response => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            const detail = data?.errors ? Object.values(data.errors).flat()[0] : null;
+            const fallback = {
+                401:'Войдите в аккаунт заново и повторите попытку.',
+                403:'У вас нет доступа к генерации аватара.',
+                413:'Фотографии слишком большие для загрузки. Уменьшите их размер и повторите попытку.',
+                419:'Сессия истекла. Обновите страницу и повторите попытку.',
+                422:'Проверьте выбранные фотографии и параметры генерации.',
+                429:'Слишком много запросов. Повторите попытку позднее.',
+                502:'Сервис генерации временно недоступен. Попробуйте позднее.',
+                503:'Сервис генерации временно недоступен. Попробуйте позднее.',
+                504:'Сервис генерации не ответил вовремя. Попробуйте позднее.',
+            }[response.status] || (response.status >= 500
+                ? 'Ошибка сервера при генерации аватара. Попробуйте позднее.'
+                : 'Не удалось выполнить запрос. Проверьте данные и повторите попытку.');
+            const reason = typeof detail === 'string' && detail.trim() ? detail
+                : (typeof data?.message === 'string' && data.message.trim() ? data.message : fallback);
+            const errorId = typeof data?.error_id === 'string' ? ' Код: ' + data.error_id : '';
+            throw new Error(reason + errorId);
+        }
+        if (!data || typeof data !== 'object') {
+            throw new Error('Сервер вернул некорректный ответ. Проверьте результат перед повторной попыткой.');
+        }
+        return data;
+    };
+    const request = async payload => {
+        let response;
+        try {
+            response = await fetch(form.action, {
+                method:'POST', credentials:'same-origin',
+                headers:{Accept:'application/json', 'X-CSRF-TOKEN':csrf},
+                body:payload,
+            });
+        } catch {
+            throw new Error('Нет соединения с сервером. Проверьте интернет и повторите попытку.');
+        }
+        return readJson(response);
+    };
+    const jsonMutation = async body => {
+        const payload = new FormData();
+        payload.set('_method','PATCH');
+        payload.set('_token',csrf);
+        Object.entries(body).forEach(([key,value]) => payload.set(key,String(value)));
+        return request(payload);
+    };
+    // The existing pipeline owns image storage, access checks, and billing.
+    // The gallery shows only completed images from the authorized history endpoint.
+    const gallery = workspace.querySelector('[data-player-avatar-library]');
+    const avatarRail = gallery?.querySelector('[data-player-avatar-rail]');
+    const avatarCount = gallery?.querySelector('[data-player-avatar-count]');
+    const avatarHeading = gallery?.querySelector('[data-player-avatar-heading]');
+    const avatarEmpty = gallery?.querySelector('[data-player-avatar-empty]');
+    const avatarActions = gallery?.querySelector('[data-player-avatar-actions]');
+    const makePrimary = gallery?.querySelector('[data-player-avatar-make-primary]');
+    const primaryLabel = gallery?.querySelector('[data-player-avatar-primary-label]');
+    const avatarFeedback = gallery?.querySelector('[data-player-avatar-feedback]');
+    let availableAvatars = [];
+    let selectedAvatarId = null;
+    let primaryAvatarId = null;
+    let selectingPrimary = false;
+
+    const ownImageUrl = value => {
+        if (typeof value !== 'string' || !value) return null;
+        try {
+            const url = new URL(value, location.origin);
+            return url.origin === location.origin ? url.href : null;
+        } catch {
+            return null;
+        }
+    };
+    // Sticky avatar previews cannot be scrolled into view reliably. Scroll to
+    // a non-sticky section for success, or to the actual error for failure.
+    const scrollToPlayerTarget = target => {
+        if (!target) return;
+        const nav = workspace.querySelector('[data-player-section-nav]');
+        const navTop = nav ? (parseFloat(getComputedStyle(nav).top) || 0) : 0;
+        const navHeight = nav?.getBoundingClientRect().height || 0;
+        const offset = navTop + navHeight + 16;
+        const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - offset);
+        window.scrollTo({
+            top,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        });
+    };
+    const scrollToGeneratedAvatar = () =>
+        scrollToPlayerTarget(workspace.querySelector('.app-player-workspace__physical') || preview);
+    const scrollToGenerationError = () => scrollToPlayerTarget(feedback);
+    const avatarStatus = (status, error = false) => {
+        if (!avatarFeedback) return;
+        avatarFeedback.textContent = status;
+        avatarFeedback.classList.toggle('is-error', error);
+    };
+    const renderAvatars = () => {
+        if (!avatarRail) return;
+        avatarRail.replaceChildren();
+        const hasAvatars = availableAvatars.length > 0;
+        if (avatarCount) avatarCount.textContent = String(availableAvatars.length);
+        if (avatarHeading) avatarHeading.hidden = !hasAvatars;
+        if (avatarRail) avatarRail.hidden = !hasAvatars;
+        if (avatarEmpty) avatarEmpty.hidden = hasAvatars;
+        if (avatarActions) avatarActions.hidden = availableAvatars.length === 0;
+        if (makePrimary) {
+            makePrimary.hidden = !selectedAvatarId || selectedAvatarId === primaryAvatarId;
+            makePrimary.setAttribute('aria-disabled', String(selectingPrimary));
+            makePrimary.tabIndex = selectingPrimary ? -1 : 0;
+        }
+        if (primaryLabel) primaryLabel.hidden = !selectedAvatarId || selectedAvatarId !== primaryAvatarId;
+        availableAvatars.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'app-player-workspace__avatar-item';
+            button.setAttribute('aria-label', 'Аватар ' + (index + 1) +
+                (item.generation_id === primaryAvatarId ? ', основной' : ''));
+            button.setAttribute('aria-pressed', String(item.generation_id === selectedAvatarId));
+            if (item.generation_id === selectedAvatarId) button.classList.add('is-selected');
+            const img = document.createElement('img');
+            img.src = item.image_url;
+            img.alt = '';
+            img.loading = 'lazy';
+            button.append(img);
+            if (item.generation_id === primaryAvatarId) {
+                const badge = document.createElement('span');
+                badge.className = 'app-player-workspace__avatar-item-badge';
+                badge.textContent = 'Основной';
+                button.append(badge);
+            }
+            button.addEventListener('click', () => {
+                selectedAvatarId = item.generation_id;
+                setImage(item.image_url);
+                avatarStatus('');
+                renderAvatars();
+                // Rebuilding the list should not discard keyboard focus.
+                avatarRail.querySelectorAll('button')[index]?.focus({preventScroll:true});
+            });
+            avatarRail.append(button);
+        });
+    };
+    const showExisting = async (preferredAvatar = null) => {
+        if (!form) return;
+        try {
+            const history = await jsonMutation({mutation:'generation_history'});
+            // Keep only own completed entries that expose authorized same-origin image URLs.
+            availableAvatars = (Array.isArray(history.generations) ? history.generations : [])
+                .filter(item => item.status === 'completed' && item.generation_id && ownImageUrl(item.image_url))
+                .map(item => ({generation_id:item.generation_id, image_url:ownImageUrl(item.image_url)}));
+            const availableIds = new Set(availableAvatars.map(item => item.generation_id));
+            // The status endpoint has already confirmed the newly generated image.
+            // Include it if the history endpoint is briefly behind the callback.
+            const preferredId = preferredAvatar?.generation_id;
+            const preferredUrl = ownImageUrl(preferredAvatar?.image_url);
+            if (preferredId && preferredUrl && !availableIds.has(preferredId)) {
+                availableAvatars.unshift({generation_id:preferredId, image_url:preferredUrl});
+                availableIds.add(preferredId);
+            }
+            primaryAvatarId = availableIds.has(history.primary_generation_id)
+                ? history.primary_generation_id : (availableAvatars[0]?.generation_id || null);
+            if (preferredId && availableIds.has(preferredId)) {
+                selectedAvatarId = preferredId;
+            } else if (!availableIds.has(selectedAvatarId)) {
+                selectedAvatarId = primaryAvatarId;
+            }
+            const selected = availableAvatars.find(item => item.generation_id === selectedAvatarId);
+            if (selected) setImage(selected.image_url);
+            renderAvatars();
+            const pending = history.generations?.find(item => ['pending','processing'].includes(item.status));
+            if (pending) message('Генерация ранее запущена. Обнови страницу позже, чтобы увидеть результат.');
+        } catch {
+            avatarStatus('Не удалось загрузить библиотеку аватаров.', true);
+        }
+    };
+    makePrimary?.addEventListener('click', async event => {
+        event.preventDefault();
+        if (selectingPrimary || !selectedAvatarId || selectedAvatarId === primaryAvatarId) return;
+        selectingPrimary = true;
+        avatarStatus('Сохраняем основной аватар…');
+        renderAvatars();
+        try {
+            const result = await jsonMutation({mutation:'generation_primary', generation_id:selectedAvatarId});
+            if (result.generation_id !== selectedAvatarId) throw new Error('Не удалось подтвердить выбор.');
+            primaryAvatarId = selectedAvatarId;
+            avatarStatus('Основной аватар обновлён.');
+        } catch (error) {
+            avatarStatus(error.message || 'Не удалось выбрать основной аватар.', true);
+        } finally {
+            selectingPrimary = false;
+            renderAvatars();
+            if (primaryAvatarId === selectedAvatarId) {
+                const index = availableAvatars.findIndex(item => item.generation_id === selectedAvatarId);
+                avatarRail?.querySelectorAll('button')[index]?.focus({preventScroll:true});
+            }
+        }
+    });
+
+    async function pollGeneration(statusUrl, id) {
+        const target = new URL(statusUrl, location.origin);
+        if (target.origin !== location.origin) throw new Error('Неверный адрес генерации.');
+        let lastStatus = '';
+        for (let i=0;i<90;i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            let response;
+            try {
+                response = await fetch(target.href,{credentials:'same-origin',headers:{Accept:'application/json'}});
+            } catch {
+                throw new Error('Нет соединения с сервером при проверке генерации. Результат можно проверить позднее.');
+            }
+            const data = await readJson(response);
+            if (data.status === 'failed') {
+                const failure = new Error(data.message || 'Не удалось сгенерировать аватар.');
+                failure.generationTerminal = true;
+                throw failure;
+            }
+            if (data.status === 'completed' && data.image_url) {
+                await setImage(data.image_url);
+                let selectedAsPrimary = false;
+                try {
+                    await jsonMutation({mutation:'generation_primary',generation_id:id});
+                    selectedAsPrimary = true;
+                } catch { /* Avatar is ready even if making it primary failed. */ }
+                selectedAvatarId = id;
+                await showExisting({generation_id:id, image_url:data.image_url});
+                // History refresh does not overwrite the decoded image with an interim sprite.
+                workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
+                message(selectedAsPrimary
+                    ? 'Готово! Аватар создан и установлен как основной.'
+                    : 'Готово! Аватар создан. При необходимости выберите его основным.');
+                requestAnimationFrame(scrollToGeneratedAvatar);
+                return true;
+            }
+            if (data.status === 'completed') {
+                const failure = new Error('Генерация завершилась, но изображение недоступно. Проверьте библиотеку аватаров.');
+                failure.generationTerminal = true;
+                throw failure;
+            }
+            if (data.status !== lastStatus) {
+                message(data.status === 'processing'
+                    ? 'Генерация аватара… Обрабатываем фотографии и создаём изображение.'
+                    : 'Генерация аватара… Ожидаем начала обработки.');
+                lastStatus = data.status;
+            }
+        }
+        message('Генерация ещё выполняется. Результат появится в библиотеке аватаров после обновления страницы.');
+        return false;
+    }
+
+    const generate = workspace.querySelector('[data-player-generate]');
+    const generationOffer = workspace.querySelector('[data-player-generation-offer]');
+    const generationFields = generationOffer?.querySelector('[data-player-generation-fields]');
+    const offerPrice = generationOffer?.querySelector('[data-player-offer-price]');
+    const offerBonus = generationOffer?.querySelector('[data-player-offer-bonus]');
+    const offerCount = generationOffer?.querySelector('[data-player-offer-count]');
+    const offerUnavailable = generationOffer?.querySelector('[data-player-offer-unavailable]');
+    const topupDialog = workspace.querySelector('[data-player-topup-dialog]');
+    const money = minor => (Number(minor) / 100).toLocaleString('ru-RU', {
+        style: 'currency', currency: 'RUB',
+    });
+    let canGenerate = generate ? !generate.disabled : false;
+    let isGenerating = false;
+    const loadingIcon = generate?.querySelector('[data-player-generate-spinner]');
+    const setGenerationBusy = busy => {
+        if (!generate) return;
+        if (loadingIcon) loadingIcon.hidden = !busy;
+        generate.setAttribute('aria-busy', String(busy));
+        generate.disabled = busy || !canGenerate;
+    };
+    const displayOffer = quote => {
+        const available = !!quote.can_generate;
+        canGenerate = available;
+        if (offerPrice) offerPrice.textContent = quote.price_minor === null
+            ? 'Недоступна' : money(quote.price_minor);
+        if (offerBonus) offerBonus.textContent = money(quote.bonus_balance_minor || 0);
+        if (offerCount) offerCount.textContent = quote.price_minor === null
+            ? '—' : Number(quote.price_minor) === 0
+                ? 'Без оплаты' : String(quote.available_generations ?? 0);
+        if (generationFields) generationFields.hidden = !available;
+        if (offerUnavailable) {
+            offerUnavailable.hidden = available;
+            offerUnavailable.textContent = quote.price_minor === null
+                ? 'Стоимость генерации временно недоступна.'
+                : 'Недостаточно средств для генерации аватара.';
+        }
+        if (generate) generate.disabled = !available || isGenerating;
+    };
+    const refreshOffer = async () => {
+        if (!generationOffer) return null;
+        const quote = await jsonMutation({mutation:'generation_quote'});
+        displayOffer(quote);
+        return quote;
+    };
+    topupDialog?.querySelector('[data-player-topup-close]')?.addEventListener('click', () => topupDialog.close());
+    topupDialog?.addEventListener('click', event => {
+        if (event.target === topupDialog) topupDialog.close();
+    });
+    generationOffer?.querySelector('[data-player-topup-open]')?.addEventListener('click', () => {
+        if (topupDialog?.showModal && !topupDialog.open) topupDialog.showModal();
+    });
+    if (generationOffer) {
+        void refreshOffer().catch(() => {
+            if (generate) generate.disabled = true;
+            canGenerate = false;
+            if (generationFields) generationFields.hidden = true;
+            if (offerUnavailable) {
+                offerUnavailable.hidden = false;
+                offerUnavailable.textContent = 'Не удалось проверить стоимость и баланс. Обнови страницу.';
+            }
+        });
+    }
+    generate?.addEventListener('click', async () => {
+        if (isGenerating) return;
+        isGenerating = true;
+        setGenerationBusy(true);
+        let reservationPending = false;
+        let terminalResultReceived = false;
+        try {
+            message('Проверяем стоимость и баланс…');
+            const quote = await refreshOffer();
+            if (!quote || !quote.can_generate || quote.price_minor === null) {
+                throw new Error('Недостаточно средств или стоимость генерации временно недоступна.');
+            }
+            if (workspace.dataset.playerFaceUploading === 'true') {
+                throw new Error('Дождитесь завершения сохранения фотографий лица.');
+            }
+
+            const payload = new FormData(form);
+            payload.set('_method','PATCH');
+            payload.set('mutation','generate_2d');
+            const source = workspace.querySelector('[data-player-uniform-source]')?.value || 'neutral';
+            const team = workspace.querySelector('[data-player-generation-team]');
+            const design = workspace.querySelector('[data-player-generation-uniform-design]');
+            if (!['neutral', 'team', 'mine'].includes(source)) {
+                throw new Error('Выберите форму перед генерацией.');
+            }
+            payload.set('generation_uniform_source', source);
+            if (source === 'team') {
+                if (!team?.value) throw new Error('Выберите команду для формы.');
+                payload.set('generation_team_id', team.value);
+            }
+            if (source === 'mine') {
+                if (!design?.value) throw new Error('Выберите сохранённую форму.');
+                payload.set('generation_uniform_design_id', design.value);
+            }
+            for (const input of workspace.querySelectorAll('[data-player-face-slot]')) {
+                if (input.files?.[0]) {
+                    if (input.files[0].size > 5 * 1024 * 1024) {
+                        throw new Error('Каждая фотография лица должна быть не больше 5 МБ. Уменьшите размер и повторите попытку.');
+                    }
+                    payload.set('generation_face_references[' + input.dataset.playerFaceSlot + ']',input.files[0]);
+                }
+            }
+            message('Генерация аватара… Отправляем фотографии и параметры.');
+            const result = await request(payload);
+            if (result.status === 'pending' && result.status_url) {
+                reservationPending = true;
+                message('Генерация аватара… Ожидаем начала обработки.');
+                // Billing reserves the full cost immediately. Do not display a
+                // zero-balance warning until the generation has actually settled.
+                terminalResultReceived = await pollGeneration(result.status_url,result.generation_id);
+            } else if (result.image_data_url?.startsWith('data:image/')) {
+                await setImage(result.image_data_url, true);
+                if (result.generation_id) {
+                    selectedAvatarId = result.generation_id;
+                    await showExisting({generation_id:result.generation_id});
+                } else {
+                    await showExisting();
+                }
+                message('Готово! Аватар создан.');
+                workspace.dispatchEvent(new CustomEvent('mskba:avatar-generated'));
+                requestAnimationFrame(scrollToGeneratedAvatar);
+            } else {
+                throw new Error('Сервер не подтвердил запуск генерации. Проверьте библиотеку аватаров перед повторной попыткой.');
+            }
+        } catch (error) {
+            if (error.generationTerminal === true) terminalResultReceived = true;
+            message('Ошибка генерации: ' + (error.message || 'Не удалось создать аватар.'), true);
+            requestAnimationFrame(scrollToGenerationError);
+        } finally {
+            isGenerating = false;
+            // A pending job with a lost connection or polling timeout is still
+            // unresolved. Do not turn its reserved balance into a premature
+            // "insufficient funds" warning or enable a duplicate paid attempt.
+            if (!reservationPending || terminalResultReceived) {
+                await refreshOffer().catch(() => {});
+            } else {
+                canGenerate = false;
+            }
+            setGenerationBusy(false);
+        }
+    });
+    void showExisting();
+}

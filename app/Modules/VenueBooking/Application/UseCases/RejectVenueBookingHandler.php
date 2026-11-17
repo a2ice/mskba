@@ -3,6 +3,7 @@
 namespace App\Modules\VenueBooking\Application\UseCases;
 
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
@@ -33,8 +34,9 @@ final readonly class RejectVenueBookingHandler
         return $this->commands->execute('venue_booking.reject', $actor, [
             'booking_id' => $bookingId, 'reason' => $reason, 'expected_version' => $expectedVersion,
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $reason, $expectedVersion): VenueBooking {
-            $this->authorization->assertCommercialDecision($actor, $venue);
+            $this->authorization->assertCanRejectBooking($actor, $venue, $booking);
             $this->lifecycle->reject($booking, $actor, CarbonImmutable::now(), $reason, $expectedVersion);
+            app(EventVenueInterestService::class)->releaseLinkedBooking($booking);
             $this->outbox->record($booking->id, VenueBookingRejected::class);
 
             return $booking->fresh('transitions');

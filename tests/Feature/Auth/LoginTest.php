@@ -32,6 +32,47 @@ class LoginTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_inline_help_login_returns_fresh_csrf_token_without_navigation_for_complete_account(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'help_login_user',
+            'password' => 'password',
+            'status' => UserStatusEnum::CONFIRMED,
+            'personal_data_distribution_required_at' => null,
+        ]);
+
+        $this->postJson(route('auth.login'), [
+            'login' => 'help_login_user',
+            'password' => 'password',
+            'redirect_to' => '/venues',
+            'inline_auth' => true,
+        ])->assertOk()
+            ->assertJsonPath('inline_auth', true)
+            ->assertJsonPath('requires_setup', false)
+            ->assertJsonStructure(['csrf_token', 'redirect_url']);
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_inline_login_still_requires_mandatory_privacy_setup(): void
+    {
+        User::factory()->create([
+            'username' => 'help_pending_user',
+            'password' => 'password',
+            'status' => UserStatusEnum::CONFIRMED,
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => null,
+        ]);
+
+        $this->postJson(route('auth.login'), [
+            'login' => 'help_pending_user',
+            'password' => 'password',
+            'redirect_to' => '/venues',
+            'inline_auth' => true,
+        ])->assertOk()
+            ->assertJsonPath('inline_auth', false)
+            ->assertJsonPath('requires_setup', true);
+    }
+
     public function test_user_can_logout(): void
     {
         $user = User::factory()->create([

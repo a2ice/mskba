@@ -2,6 +2,7 @@
 
 namespace App\Modules\Team\Application\Services;
 
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -29,7 +30,32 @@ final class TeamManagementAccess
             return false;
         }
 
-        if ($this->isCreator($team, $actor)) {
+        // An active owner contract is maximally privileged even when it predates
+        // the addition of the team.uniform.manage capability.
+        if ($permission === TeamPermissionEnum::MANAGE_UNIFORMS && ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
+            ->where('scope_id', $team->id)
+            ->whereIn('user_id', $user->identityIds())
+            ->where('access_level', 'owner')
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+            ->exists()) {
+            return true;
+        }
+
+        // Historic seeders and older teams have owner membership rows without
+        // explicit capability snapshots. Preserve creator fallback for those
+        // only; new/backfilled owner contracts contain EDIT_SETTINGS.
+        if ($this->isCreator($team, $actor) && ! $team->memberships()
+            ->where('access_level', 'owner')
+            ->whereHas('contract', fn ($q) => $q
+                ->whereHas('permissions', fn ($rights) => $rights
+                    ->where('permission', TeamPermissionEnum::EDIT_SETTINGS->value)))
+            ->exists()) {
             return true;
         }
 
@@ -40,6 +66,9 @@ final class TeamManagementAccess
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn ($q) => app(ContractAssurance::class)->constrain($q))
+                ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now()))
                 ->whereHas('permissions', fn ($permissions) => $permissions
                     ->where('permission', $permission->value)))
             ->exists();
@@ -48,6 +77,11 @@ final class TeamManagementAccess
     public function canManage(Team $team, Actor $actor): bool
     {
         foreach (TeamPermissionEnum::cases() as $permission) {
+            // Uniform-only delegation must not unlock historical endpoints
+            // that still authorize general team management through canManage().
+            if ($permission === TeamPermissionEnum::MANAGE_UNIFORMS) {
+                continue;
+            }
             if ($this->allows($team, $actor, $permission)) {
                 return true;
             }

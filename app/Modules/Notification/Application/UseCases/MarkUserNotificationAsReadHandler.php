@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCountUpdatedBroadcast;
 
 final class MarkUserNotificationAsReadHandler
 {
@@ -30,6 +31,14 @@ final class MarkUserNotificationAsReadHandler
 
         if ($updated === 1) {
             $this->counterStore->forget((int) $canonical->id);
+            try {
+                UserNotificationCountUpdatedBroadcast::dispatch(
+                    (int) $canonical->id,
+                    $this->counterStore->get((int) $canonical->id),
+                );
+            } catch (\Throwable $exception) {
+                report($exception); // A websocket outage must not undo a successful read.
+            }
         }
 
         return $notification->refresh();

@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\DTO\EventSubmissionResult;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -20,7 +21,7 @@ final readonly class SubmitEventWizardHandler
     public function __construct(
         private CreateEventHandler $events,
         private CreateStandaloneGameHandler $standaloneGames,
-        private RequestEventVenueBookingHandler $rentalBookings,
+        private EventVenueInterestService $interests,
         private PrepareTelegramEventPublicationsHandler $telegramPublications,
         private VenueEventAvailability $availability,
     ) {}
@@ -35,13 +36,7 @@ final readonly class SubmitEventWizardHandler
             ->where('is_enabled', true)
             ->exists();
 
-        if ($rentalPolicyExists) {
-            return EventSubmissionResult::booking(
-                $this->rentalBookings->handle($actor, $venue, $data),
-            );
-        }
-
-        if (! $venue->hasFreeAccess()) {
+        if (! $rentalPolicyExists && ! $venue->hasFreeAccess()) {
             $timezone = $venue->schedule()->value('timezone')
                 ?: config('app.timezone', 'Europe/Moscow');
             $startsAt = CarbonImmutable::parse((string) $data['starts_at'], $timezone);
@@ -58,10 +53,17 @@ final readonly class SubmitEventWizardHandler
             );
         }
 
-        $event = DB::transaction(function () use ($actor, $data) {
+        $event = DB::transaction(function () use ($actor, $data, $rentalPolicyExists) {
+            // An event may recruit people without holding a venue. A rental booking
+            // is requested separately when the organizer is ready.
+            $payload = [...$data, 'defer_booking' => $rentalPolicyExists];
             $event = $data['type'] === EventTypeEnum::GAME->value
-                ? $this->standaloneGames->handle($actor, $data)
-                : $this->events->handle($actor, $data);
+                ? $this->standaloneGames->handle($actor, $payload)
+                : $this->events->handle($actor, $payload);
+
+            if ($rentalPolicyExists && (bool) ($data['send_pre_request'] ?? false)) {
+                $this->interests->createFor($event, $actor);
+            }
 
             if ((bool) ($data['publish_to_telegram'] ?? false)) {
                 $this->telegramPublications->handle($event, $data['telegram_chat_ids'] ?? []);

@@ -1,0 +1,45 @@
+name: MSKBA offline venue and court import rehearsal
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-venue-import.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-venue-import
+  cancel-in-progress: false
+
+jobs:
+  venues:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate isolated import syntax
+        run: |
+          set -euo pipefail
+          bash -n scripts/data-merge/isolated-venue-import.sh
+          php -l scripts/data-merge/import-dev-venues.php
+      - name: Stage reviewed importer outside both webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/import-dev-venues.php,scripts/data-merge/isolated-venue-import.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Run full venue import rehearsal on restored candidate only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-venue-import.sh ${{ github.run_id }} 43984936846 /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/import-dev-venues.php

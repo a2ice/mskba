@@ -102,7 +102,7 @@ callback secret и repository. Затем идут Yandex AI Studio, прямо�
 1. VDS создаёт generation job с `pending` и короткоживущий signed manifest URL;
 2. VDS вызывает GitHub `workflow_dispatch`; на VDS нет OpenAI API request;
 3. GitHub-hosted runner скачивает private references по signed URLs и вызывает
-   `POST /v1/images/edits` с `gpt-image-2`, PNG и transparent background;
+   `POST /v1/images/edits` с `gpt-image-2.5-sunburst`, PNG и transparent background;
 4. runner отправляет `processing|completed|failed` callback в MSKBA;
 5. MSKBA проверяет timestamp, SHA-256 файла/метаданных и HMAC, валидирует
    PNG/прозрачные углы и сохраняет файл в private storage.
@@ -165,8 +165,13 @@ Pending face references are sent in one validation request. The provider does no
 the person; it only checks image usability and expected front/left/right orientation.
 
 Player generation uses the Images Edit API so all confirmed face references can be passed
-as identity inputs. The provider requests `background=transparent` and PNG output, then
-MSKBA independently rejects responses whose corner pixels are not transparent.
+as identity inputs. The default `gpt-image-2.5-sunburst` supports transparent PNG outputs;
+`gpt-image-2` transparency is preview-only and caused provider rejections in November 2026.
+The provider requests `background=transparent` and PNG output, then MSKBA independently
+rejects responses whose corner pixels are not transparent. Both direct OpenAI and
+GitHub Actions manifest paths normalize legacy `gpt-image-2`, its dated snapshot,
+and retired `gpt-image-1` overrides to `gpt-image-2.5-sunburst`. Other configured image
+models (such as `gpt-image-2.5-flare`) remain available via `OPENAI_IMAGE_MODEL`.
 
 Provider model names, timeouts, image size and quality are environment-configurable via
 `config/services.php`. Secrets must live only in server environment configuration.

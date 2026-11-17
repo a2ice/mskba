@@ -164,7 +164,7 @@ final class ParticipantCatalogTest extends TestCase
             ->assertSee('Игрок');
     }
 
-    public function test_catalog_does_not_leak_private_profile_fields_when_distribution_is_not_allowed(): void
+    public function test_catalog_excludes_profile_when_distribution_setup_is_incomplete(): void
     {
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -178,9 +178,8 @@ final class ParticipantCatalogTest extends TestCase
 
         $this->get(route('participants.index'))
             ->assertOk()
-            ->assertSee('tg_123456789')
-            ->assertDontSee('Секретное Имя')
-            ->assertSee('Профиль закрыт');
+            ->assertDontSee('tg_123456789')
+            ->assertDontSee('Секретное Имя');
     }
 
     public function test_authenticated_participant_is_first_and_marked_as_own_profile(): void

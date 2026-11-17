@@ -13,7 +13,10 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -26,11 +29,30 @@ final class AddEventParticipantHandler
         private readonly EventIdentityParticipationService $identityParticipation,
     ) {}
 
-    public function handle(string $identifier, Actor $actor, int $userId): Event
+    public function handle(string $identifier, Actor $actor, int $userId, bool $asBackoffice = false, ?array $participationRoles = null): Event
     {
-        $event = DB::transaction(function () use ($identifier, $actor, $userId): Event {
+        // Keep existing web invitations as player by default. Backoffice may
+        // explicitly select multiple event-specific functions.
+        $roles = $participationRoles ?? [UserParticipationRoleEnum::PLAYER->value];
+        if (! is_array($roles) || $roles === []
+            || collect($roles)->contains(fn ($role): bool => ! is_string($role)
+                || ($case = UserParticipationRoleEnum::tryFrom($role)) === null
+                || $case === UserParticipationRoleEnum::ORGANIZER)
+            || count($roles) !== count(array_unique($roles))) {
+            throw new InvalidArgumentException('Выберите хотя бы одну допустимую роль участия.');
+        }
+
+        $event = DB::transaction(function () use ($identifier, $actor, $userId, $asBackoffice, $roles): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            if (! $asBackoffice) {
+                $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+            } else {
+                $user = $actor->user?->canonical();
+                $permissions = app(BackofficePermissionManager::class);
+                abort_unless($user !== null
+                    && $permissions->allows($user, Permission::BACKOFFICE_ACCESS)
+                    && $permissions->allows($user, Permission::BACKOFFICE_EVENT_MANAGE), 403);
+            }
             $this->assertCanChangeParticipants($event);
 
             $viewer = $actor->user?->canonical();
@@ -50,9 +72,15 @@ final class AddEventParticipantHandler
                 throw new InvalidArgumentException('Пользователь уже участвует в мероприятии.');
             }
 
+            // Organizer membership is not interchangeable with an invitation.
+            if ($existing?->role === EventParticipantRoleEnum::ORGANIZER) {
+                throw new InvalidArgumentException('Организатора нельзя пригласить как обычного участника.');
+            }
+
             $existing?->responsibilityPermissions()->delete();
             $attributes = [
                 'role' => EventParticipantRoleEnum::PARTICIPANT,
+                'participation_roles' => $roles,
                 'status' => EventParticipantStatusEnum::TENTATIVE,
                 'joined_at' => null,
                 'left_at' => null,

@@ -18,7 +18,7 @@ final class OpenAiPlayerCharacterAiGatewayTest extends TestCase
             'api_key' => 'sk-test-not-real',
             'base_url' => 'https://api.openai.test/v1',
             'face_validation_model' => 'gpt-5.6-luna',
-            'image_model' => 'gpt-image-2',
+            'image_model' => 'gpt-image-2.5-sunburst',
             'image_size' => '1024x1536',
             'image_quality' => 'medium',
             'connect_timeout_seconds' => 1,
@@ -126,12 +126,34 @@ final class OpenAiPlayerCharacterAiGatewayTest extends TestCase
             $body = $request->body();
 
             return $request->url() === 'https://api.openai.test/v1/images/edits'
-                && str_contains($body, 'gpt-image-2')
+                && str_contains($body, 'gpt-image-2.5-sunburst')
                 && str_contains($body, 'transparent')
                 && str_contains($body, 'png')
                 && str_contains($body, '1024x1536')
                 && str_contains($body, 'medium');
         });
+    }
+
+    public function test_it_upgrades_legacy_gpt_image_2_for_transparent_generation(): void
+    {
+        config()->set('services.openai.image_model', 'gpt-image-2');
+
+        Http::fake([
+            'https://api.openai.test/v1/images/edits' => Http::response([
+                'data' => [['b64_json' => base64_encode($this->png(true))]],
+            ]),
+        ]);
+
+        $this->gateway()->generatePlayerCharacter([
+            'face_references' => [
+                'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
+            ],
+        ]);
+
+        Http::assertSent(static fn (Request $request): bool => str_contains(
+            $request->body(),
+            'gpt-image-2.5-sunburst',
+        ));
     }
 
     public function test_it_rejects_generated_image_without_transparent_background(): void

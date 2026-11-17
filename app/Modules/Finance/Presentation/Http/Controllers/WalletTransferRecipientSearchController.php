@@ -5,6 +5,7 @@ namespace App\Modules\Finance\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,7 @@ final class WalletTransferRecipientSearchController extends Controller
     {
         $validated = $request->validate([
             'q' => ['required', 'string', 'min:2', 'max:100'],
+            'purpose' => ['sometimes', 'in:request,transfer'],
         ]);
 
         /** @var User|null $viewer */
@@ -26,6 +28,7 @@ final class WalletTransferRecipientSearchController extends Controller
             (string) $validated['q'],
             limit: 10,
             requiredStatus: UserStatusEnum::CONFIRMED,
+            requiredAccess: ($validated['purpose'] ?? 'transfer') === 'request' ? UserPrivacySettingTypeEnum::WALLET_TRANSFER_REQUESTS : null,
         )->map(function (User $user): array {
                 $name = trim(implode(' ', array_filter([
                     $user->profile?->first_name,

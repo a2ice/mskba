@@ -9,6 +9,8 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
@@ -28,13 +30,17 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 
 #[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'personal_data_distribution_required_at', 'personal_data_distribution_setup_completed_at', 'status', 'system_role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
-    use Auditable, HasFactory, Notifiable, SoftDeletes;
+    use Auditable, HasFactory, HasApiTokens, Notifiable, SoftDeletes;
 
     protected static function newFactory(): UserFactory
     {
@@ -165,6 +171,12 @@ class User extends Authenticatable
             });
     }
 
+    public function managerSpecializations(): BelongsToMany
+    {
+        return $this->belongsToMany(ManagerSpecialization::class, 'manager_specialization_user')
+            ->withPivot('assigned_by')->withTimestamps();
+    }
+
     public function operationalPermissions(): HasMany
     {
         return $this->hasMany(UserOperationalPermission::class);
@@ -237,14 +249,33 @@ class User extends Authenticatable
             throw new UserCannotBeChangedException('Подтвердить можно только неподтвержденный аккаунт.');
         }
 
-        if (! $this->hasVerifiedPrimaryContact()) {
-            throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
-        }
+        $this->assertAccountConfirmationRequirements();
 
         $this->forceFill([
             'status' => UserStatusEnum::CONFIRMED,
         ])->save();
+    }
 
+    /**
+     * The full account-confirmation invariant also protects administrative status changes.
+     *
+     * @throws UserCannotBeChangedException
+     */
+    public function assertAccountConfirmationRequirements(): void
+    {
+        if (! $this->hasVerifiedPrimaryContact()) {
+            throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
+        }
+
+        $profile = $this->profile()->first();
+        if ($profile === null
+            || blank(trim((string) $profile->first_name))
+            || blank(trim((string) $profile->last_name))
+            || $profile->birth_date === null
+            || $profile->birth_date->greaterThanOrEqualTo(today())
+            || $profile->gender === null) {
+            throw new UserCannotBeChangedException('Заполни имя, фамилию, дату рождения и пол перед подтверждением аккаунта.');
+        }
     }
 
     /**
@@ -268,6 +299,22 @@ class User extends Authenticatable
     public function hasSystemRole(UserSystemRoleEnum|string $role): bool
     {
         return $this->system_role === $role;
+    }
+
+    public function getFilamentName(): string
+    {
+        return trim(implode(' ', array_filter([
+            $this->profile?->first_name,
+            $this->profile?->last_name,
+        ]))) ?: (string) $this->username;
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $panel->getId() === 'backoffice'
+            && app(BackofficePermissionManager::class)->allows(
+                $this, UserOperationalPermissionEnum::BACKOFFICE_ACCESS,
+            );
     }
 
     public function isAdmin(bool $isConfirmed = true): bool

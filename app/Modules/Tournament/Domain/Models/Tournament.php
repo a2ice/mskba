@@ -3,12 +3,15 @@
 namespace App\Modules\Tournament\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\League\Domain\Models\League;
+use App\Modules\League\Domain\Models\LeagueSeason;
 use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPhaseEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
@@ -28,6 +31,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'created_by_actor_id',
     'default_venue_id',
+    'league_id',
+    'league_season_id',
     'title',
     'alias',
     'status',
@@ -51,7 +56,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Tournament extends Model
 {
     /** @use HasFactory<TournamentFactory> */
-    use Auditable, HasFactory, SoftDeletes;
+    use Auditable, HasEntityBanner, HasFactory, SoftDeletes;
 
     protected static function newFactory(): TournamentFactory
     {
@@ -79,6 +84,16 @@ class Tournament extends Model
     public function createdByActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'created_by_actor_id');
+    }
+
+    public function league(): BelongsTo
+    {
+        return $this->belongsTo(League::class);
+    }
+
+    public function leagueSeason(): BelongsTo
+    {
+        return $this->belongsTo(LeagueSeason::class);
     }
 
     public function defaultVenue(): BelongsTo

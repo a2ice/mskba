@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -59,6 +60,48 @@ final class PlayerCharacterGenerationUxTest extends TestCase
         $this->assertFalse((bool) $items->firstWhere('generation_id', $newer->public_id)['is_primary']);
     }
 
+    public function test_gallery_history_returns_only_owned_images_and_read_does_not_change_primary(): void
+    {
+        $user = $this->player();
+        $other = $this->player();
+        $first = $this->completedGeneration($user, now()->subMinutes(5));
+        $second = $this->completedGeneration($user, now()->subMinute());
+        $foreign = $this->completedGeneration($other, now());
+        PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+            'reference_media_ids' => [],
+            'payload_snapshot' => [],
+        ]);
+
+        $history = $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_history'])
+            ->assertOk()
+            ->assertHeader('Cache-Control')
+            ->assertJsonPath('primary_generation_id', $second->public_id);
+        $cacheControl = (string) $history->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('private', $cacheControl);
+        $items = collect($history->json('generations'));
+        $this->assertCount(3, $items); // Two completed plus one pending, all owned.
+        $this->assertNotContains($foreign->public_id, $items->pluck('generation_id')->all());
+        $this->assertCount(2, $items->where('status', 'completed')->whereNotNull('image_url'));
+        $this->assertStringContainsString(
+            $first->public_id,
+            $items->firstWhere('generation_id', $first->public_id)['image_url'],
+        );
+        $this->assertNull(data_get($user->playerProfile()->firstOrFail()->extra, 'character.primary_generation_id'));
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generation_primary',
+                'generation_id' => $foreign->public_id,
+            ])->assertNotFound();
+        $this->assertNull(data_get($user->playerProfile()->firstOrFail()->fresh()->extra, 'character.primary_generation_id'));
+    }
+
     public function test_generation_preferences_return_saved_visual_options(): void
     {
         $user = $this->player();
@@ -73,6 +116,8 @@ final class PlayerCharacterGenerationUxTest extends TestCase
                     'attributes' => ['headband'],
                     'generation_team_id' => 321,
                     'with_team_logo' => true,
+                    'generation_logo_mode' => 'custom',
+                    'generation_custom_logo_id' => 49,
                 ],
             ],
         ])->save();
@@ -86,9 +131,37 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ->assertJsonPath('weight_kg', 94)
             ->assertJsonPath('body_type', 'athletic')
             ->assertJsonPath('generation_team_id', 321)
-            ->assertJsonPath('with_team_logo', true)
             ->assertJsonPath('character.shoes', 'white')
             ->assertJsonPath('character.attributes.0', 'headband');
+    }
+
+    public function test_legacy_logo_preferences_are_not_exposed_as_avatar_controls(): void
+    {
+        $user = $this->player();
+        $profile = $user->playerProfile()->firstOrFail();
+        $profile->forceFill(['extra' => ['character' => [
+            'with_team_logo' => true,
+            'generation_logo_mode' => 'custom',
+            'generation_custom_logo_id' => 22,
+        ]]])->save();
+
+        $response = $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generation_preferences',
+        ])->assertOk();
+
+        $this->assertArrayNotHasKey('with_team_logo', $response->json());
+        $this->assertArrayNotHasKey('generation_logo_mode', $response->json());
+        $this->assertArrayNotHasKey('generation_custom_logo_id', $response->json());
+        $this->assertArrayNotHasKey('with_team_logo', $response->json('character'));
+        $this->assertArrayNotHasKey('generation_logo_mode', $response->json('character'));
+    }
+
+    public function test_avatar_generation_ui_has_no_independent_logo_control(): void
+    {
+        $js = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-generation-ux.js'));
+
+        $this->assertStringNotContainsString('data-player-generation-logo-choice', $js);
+        $this->assertStringNotContainsString("formData.set('generation_with_team_logo'", $js);
     }
 
     public function test_generation_start_persists_current_player_and_visual_settings(): void
@@ -125,7 +198,68 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ['knee_left', 'knee_right', 'headband'],
             data_get($profile->extra, 'character.attributes'),
         );
-        $this->assertFalse((bool) data_get($profile->extra, 'character.with_team_logo'));
+        $this->assertArrayNotHasKey('with_team_logo', (array) data_get($profile->extra, 'character'));
+        $this->assertArrayNotHasKey('generation_logo_mode', (array) data_get($profile->extra, 'character'));
+    }
+
+    public function test_generation_saves_owned_uniform_selection_even_before_face_references_exist(): void
+    {
+        $user = $this->player();
+        $design = UniformDesign::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Black and yellow',
+            'primary_color' => '#111924',
+            'secondary_color' => '#FFCC00',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeved',
+            'logo_source' => 'none',
+            'editor_version' => 1,
+        ]);
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $design->id,
+            'generation_logo_mode' => 'none',
+        ])->assertUnprocessable()->assertJsonPath('code', 'face_references_missing');
+
+        $character = (array) data_get($user->playerProfile()->firstOrFail()->fresh()->extra, 'character');
+        $this->assertSame('mine', $character['generation_uniform_source']);
+        $this->assertSame($design->id, $character['generation_uniform_design_id']);
+        $this->assertNull($character['generation_team_id']);
+        $this->assertArrayNotHasKey('generation_logo_mode', $character);
+    }
+
+    public function test_foreign_uniform_cannot_be_used_for_paid_generation(): void
+    {
+        $owner = $this->player();
+        $other = $this->player();
+        $foreign = UniformDesign::query()->create([
+            'user_id' => $other->id,
+            'name' => 'Чужая форма',
+            'primary_color' => '#111924',
+            'secondary_color' => '#FFCC00',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeveless',
+            'logo_source' => 'none',
+            'editor_version' => 1,
+        ]);
+
+        $this->actingAs($owner)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $foreign->id,
+        ])->assertUnprocessable()->assertJsonPath('code', 'uniform_design_unavailable');
+        $this->assertNull(data_get($owner->playerProfile()->firstOrFail()->fresh()->extra, 'character.generation_uniform_design_id'));
+    }
+
+    public function test_team_uniform_requires_explicit_team_selection(): void
+    {
+        $user = $this->player();
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'team',
+        ])->assertUnprocessable()->assertJsonPath('code', 'uniform_team_required');
     }
 
     public function test_generation_quote_uses_current_pricing_catalog(): void

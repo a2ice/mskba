@@ -29,3 +29,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Published Filament assets are regenerated from locked Composer dependencies.
+/public/css/filament/
+/public/js/filament/
+/public/fonts/filament/
+/public/images/filament/

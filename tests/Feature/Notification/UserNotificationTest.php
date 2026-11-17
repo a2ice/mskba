@@ -19,7 +19,9 @@ use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationChannel;
+use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCountUpdatedBroadcast;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCreatedBroadcast;
+use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +30,33 @@ use Tests\TestCase;
 class UserNotificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_toast_palette_is_defined_by_notification_type_and_exposed_to_client(): void
+    {
+        $user = User::factory()->create();
+        $presenter = app(UserNotificationPresenter::class);
+        $colors = [];
+
+        foreach (UserNotificationTypeEnum::cases() as $type) {
+            $notification = UserNotification::query()->create([
+                'user_id' => $user->id,
+                'type' => $type,
+                'status' => UserNotificationStatusEnum::NEW,
+                'title' => $type->label(),
+                'body' => 'Тест уведомления.',
+            ]);
+
+            $view = $presenter->present($notification);
+            $this->assertSame($type->value, $view['type']);
+            $this->assertSame($type->toastBorderColor(), $view['type_color']);
+            $this->assertMatchesRegularExpression('/^#[a-f0-9]{6}$/i', $view['type_color']);
+            $colors[] = $view['type_color'];
+        }
+
+        $this->assertCount(count(UserNotificationTypeEnum::cases()), array_unique($colors));
+        $this->assertSame('#ff8a00', UserNotificationTypeEnum::SYSTEM->toastBorderColor());
+        $this->assertSame('#38bdf8', UserNotificationTypeEnum::MESSAGE->toastBorderColor());
+    }
 
     public function test_first_login_creates_welcome_notification(): void
     {
@@ -192,6 +221,44 @@ class UserNotificationTest extends TestCase
             ->assertJsonPath('unread_count', 0);
     }
 
+    public function test_marking_a_notification_read_broadcasts_updated_count_for_other_tabs(): void
+    {
+        Event::fake([UserNotificationCountUpdatedBroadcast::class]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $notification = UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Realtime count',
+            'body' => 'Проверка.',
+        ]);
+
+        $this->actingAs($user)->patchJson(route('account.notifications.read', $notification))->assertOk();
+        Event::assertDispatched(UserNotificationCountUpdatedBroadcast::class, function ($event) use ($user): bool {
+            return $event->userId === $user->id
+                && $event->unreadCount === 0
+                && $event->broadcastAs() === 'notification.count-updated'
+                && $event->broadcastWith()['unread_count'] === 0;
+        });
+    }
+
+    public function test_marking_all_notifications_read_broadcasts_latest_count(): void
+    {
+        Event::fake([UserNotificationCountUpdatedBroadcast::class]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Unread',
+            'body' => 'Проверка.',
+        ]);
+        $this->actingAs($user)->patchJson(route('account.notifications.read-all'))->assertOk()
+            ->assertJsonPath('unread_count', 0);
+        Event::assertDispatched(UserNotificationCountUpdatedBroadcast::class,
+            fn ($event): bool => $event->userId === $user->id && $event->unreadCount === 0);
+    }
+
     public function test_user_can_synchronize_latest_new_notifications_for_a_new_tab(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
@@ -226,6 +293,45 @@ class UserNotificationTest extends TestCase
             ->assertJsonPath('unread_count', 1)
             ->assertJsonCount(1, 'notifications')
             ->assertJsonPath('notifications.0.title', 'Непрочитанное');
+    }
+
+    public function test_unread_sync_uses_cursor_to_deliver_every_toast_without_exposing_others(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        for ($i = 1; $i <= 23; $i++) {
+            UserNotification::query()->create([
+                'user_id' => $user->id,
+                'type' => UserNotificationTypeEnum::SYSTEM,
+                'status' => UserNotificationStatusEnum::NEW,
+                'title' => 'Сообщение '.$i,
+                'body' => 'Проверка всех toast',
+            ]);
+        }
+        UserNotification::query()->create([
+            'user_id' => $other->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Чужое сообщение',
+            'body' => 'Не должно появиться',
+        ]);
+
+        $pageOne = $this->actingAs($user)->getJson(route('account.notifications.new'))
+            ->assertOk()->assertJsonPath('unread_count', 23)->assertJsonCount(20, 'notifications');
+        $cursor = $pageOne->json('next_before_id');
+        $this->assertIsInt($cursor);
+        $pageTwo = $this->getJson(route('account.notifications.new', ['before_id' => $cursor]))
+            ->assertOk()->assertJsonPath('unread_count', 23)
+            ->assertJsonCount(3, 'notifications')
+            ->assertJsonPath('next_before_id', null);
+        $ids = array_merge(array_column($pageOne->json('notifications'), 'id'), array_column($pageTwo->json('notifications'), 'id'));
+        $this->assertCount(23, array_unique($ids));
+        $this->assertSame(23, max($ids) - min($ids) + 1);
+        $this->assertNotContains('Чужое сообщение', array_merge(
+            array_column($pageOne->json('notifications'), 'title'),
+            array_column($pageTwo->json('notifications'), 'title'),
+        ));
+        $this->getJson(route('account.notifications.new', ['before_id' => 'invalid']))->assertUnprocessable();
     }
 
     public function test_generic_notification_cta_is_exposed_to_sync_and_notification_center(): void
@@ -285,6 +391,9 @@ class UserNotificationTest extends TestCase
 
         $this->assertTrue($channel->join($user, $user->id));
         $this->assertFalse($channel->join($user, $other->id));
+        $alias = User::factory()->create(['canonical_user_id' => $user->id]);
+        $this->assertTrue($channel->join($alias, $user->id));
+        $this->assertFalse($channel->join($alias, $other->id));
     }
 
     public function test_user_can_view_notifications_page(): void

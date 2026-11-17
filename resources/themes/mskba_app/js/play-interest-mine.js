@@ -1,0 +1,344 @@
+const root = document.querySelector('[data-play-interests]');
+if (root) {
+    const outlet = root.querySelector('[data-play-interests-list]');
+    const filters = root.querySelector('[data-subscriptions-filters]');
+    const pagination = root.querySelector('[data-subscriptions-pagination]');
+    const count = root.querySelector('[data-subscriptions-count]');
+    const venueSubscriptionsUrl = root.dataset.venueSubscriptionsUrl || '/account/venue-subscriptions';
+    const detailsDialog = root.querySelector('[data-subscription-details-dialog]');
+    const detailsBody = detailsDialog?.querySelector('[data-subscription-details-body]');
+    const detailsTitle = detailsDialog?.querySelector('[data-subscription-details-title]');
+    const detailsEdit = detailsDialog?.querySelector('[data-subscription-details-edit]');
+    const detailsRestore = detailsDialog?.querySelector('[data-subscription-details-restore]');
+    const detailsError = detailsDialog?.querySelector('[data-subscription-details-error]');
+    let detailsTrigger = null;
+    detailsDialog?.querySelectorAll('[data-subscription-details-close]').forEach(button=>button.addEventListener('click',()=>detailsDialog.close()));
+    detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
+    const typeSelect = filters?.querySelector('[name="type"]');
+    const statusSelect = filters?.querySelector('[name="status"]');
+    const validTypes = new Set(['all','play','venue']);
+    const validStatuses = new Set(['all','active','paused','expired','cancelled','completed']);
+    let currentPage = 1;
+    let loadSequence = 0;
+
+    function syncFromUrl() {
+        const url = new URL(location.href);
+        typeSelect.value = validTypes.has(url.searchParams.get('type')) ? url.searchParams.get('type') : 'all';
+        statusSelect.value = validStatuses.has(url.searchParams.get('status')) ? url.searchParams.get('status') : 'active';
+        currentPage = Math.max(1, Number.parseInt(url.searchParams.get('page'), 10) || 1);
+    }
+    function updateUrl() {
+        const url = new URL(location.href);
+        for (const [key, value] of [['type',typeSelect.value],['status',statusSelect.value],['page',String(currentPage)]]) {
+            if ((key==='type' && value==='all') || (key==='status' && value==='active') || (key==='page' && value==='1')) url.searchParams.delete(key);
+            else url.searchParams.set(key,value);
+        }
+        history.pushState(null,'',url);
+    }
+    const openPage = page => {
+        currentPage = page;
+        updateUrl();
+        void load();
+    };
+    function renderPagination(meta) {
+        pagination.replaceChildren();
+        pagination.hidden = !meta || meta.total === 0;
+        if (pagination.hidden) return;
+        const total = meta.total, last = Math.max(1,meta.last_page), page = meta.current_page;
+        const offset = (page-1)*meta.per_page;
+        pagination.append(make('span',`Показано ${offset+1}–${Math.min(total, offset+meta.per_page)} из ${total}`,'app-play-interests__page-summary'));
+        if (last < 2) return;
+        const controls = make('div',null,'app-play-interests__page-buttons');
+        const addPage = (text,value,disabled=false,active=false) => {
+            const control = make('button',text,'button secondary');
+            control.type = 'button';
+            control.disabled = disabled;
+            if (active) { control.classList.add('is-active'); control.setAttribute('aria-current','page'); }
+            control.addEventListener('click',()=>openPage(value));
+            controls.append(control);
+        };
+        addPage('Назад',Math.max(1,page-1),page===1);
+        const pages = [...new Set([1,last,page-1,page,page+1].filter(n=>n>=1 && n<=last))].sort((a,b)=>a-b);
+        let previous = 0;
+        for (const number of pages) {
+            if(number-previous>1) controls.append(make('span','…','app-play-interests__page-ellipsis'));
+            addPage(String(number),number,false,number===page);
+            previous=number;
+        }
+        addPage('Далее',Math.min(last,page+1),page===last);
+        pagination.append(controls);
+    }
+    syncFromUrl();
+    filters?.addEventListener('change',()=>{currentPage=1;updateUrl();void load();});
+    filters?.addEventListener('reset',event=>{
+        event.preventDefault();
+        typeSelect.value='all';
+        statusSelect.value='active';
+        currentPage=1;
+        updateUrl();
+        void load();
+    });
+    window.addEventListener('popstate',()=>{syncFromUrl();void load();});
+    const make = (tag, text, className = '') => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+    };
+    const statusNames = {active:'Активно',paused:'На паузе',expired:'Истёк',cancelled:'Отменён',completed:'Выполнено'};
+    const cadenceNames = {flexible:'Гибкий поиск',once:'Разово',regular:'Регулярно'};
+    const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const request = async (url, method = 'GET', body = null) => {
+        const res = await fetch(url,{method,credentials:'same-origin',headers:{
+            Accept:'application/json','X-Requested-With':'XMLHttpRequest',
+            'X-CSRF-TOKEN':csrf(),
+            ...(body !== null ? {'Content-Type':'application/json'} : {}),
+        },...(body !== null ? {body:JSON.stringify(body)} : {})});
+        if(!res.ok)throw new Error(res.status===419?'Сессия истекла. Обнови страницу.':'Не удалось выполнить запрос.');
+        return res.json();
+    };
+    const summary = intent => {
+        const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+        const dayLabel = intent.weekdays?.length
+            ? intent.weekdays.map(n=>days[Number(n)-1]).filter(Boolean).join(', ') : 'любые дни';
+        const frequency = cadenceNames[intent.cadence] || intent.cadence;
+        const dates = intent.dates?.length ? intent.dates.join(', ') : '';
+        // This describes matching conditions, not the user's chosen venue.
+        const venueKind = intent.venue_id && !intent.include_similar_venues
+            ? null
+            : {any:'любая площадка',indoor:'крытая площадка',outdoor:'открытая площадка'}[intent.venue_kind || 'any'];
+        return [frequency, dates || dayLabel, (intent.formats || []).length
+            ? intent.formats.join(', ').replaceAll('x','×') : 'любой формат', venueKind].filter(Boolean).join(' · ');
+    };
+    const button = (text, action) => {
+        const b = make('button',text,'button secondary');b.type='button';
+        b.classList.add('account-collection__action');
+        b.addEventListener('click',action);return b;
+    };
+    function editSubscription(intent) {
+        detailsDialog?.close();
+        window.dispatchEvent(new CustomEvent('mskba:play-intent:edit',{detail:{intent}}));
+    }
+    function showActionError(message, element) {
+        const old=element.querySelector('.app-play-interests__action-error');
+        old?.remove();
+        const error=make('p',message,'error app-play-interests__action-error');
+        error.setAttribute('role','alert');
+        element.append(error);
+    }
+    async function restoreSubscription(intent, container, actionButton) {
+        if (intent.cadence === 'once') {
+            editSubscription(intent); // Never silently replay the previous one-time date.
+            return;
+        }
+        if (actionButton) actionButton.disabled=true;
+        if (detailsError) {detailsError.textContent='';detailsError.hidden=true;}
+        try {
+            await request(root.dataset.pauseUrl+'/'+intent.id+'/restore','PATCH');
+            if(detailsDialog?.open)detailsDialog.close();
+            await load(); // Respects active status filters and correct page count.
+        } catch(e) {
+            if(container===detailsDialog && detailsError){
+                detailsError.textContent=e.message;
+                detailsError.hidden=false;
+            }else showActionError(e.message,container);
+        } finally {
+            if(actionButton) actionButton.disabled=false;
+        }
+    }
+    let editedVenue = null;
+    async function venueChannelsEditor(intent) {
+        const current=detailsDialog?.querySelector('[data-venue-channels-editor]');
+        current?.remove();
+        if (!detailsDialog || intent.subscription_type!=='venue' || intent.effective_status!=='active') return;
+        const section=make('section',null,'app-subscription-channels');
+        section.dataset.venueChannelsEditor='1';
+        section.append(make('h3','Каналы уведомлений'));
+        const hint=make('p','Проверяем доступность каналов…','muted');
+        section.append(hint);
+        detailsBody.parentElement.append(section);
+        try{
+            const response=await request(root.dataset.channelsUrl || '/account/subscription-channels');
+            if (!detailsDialog.open || editedVenue?.id!==intent.id) return;
+            const available=response.channels||{};
+            hint.remove();
+            for(const [key,label] of [['in_app','Личные сообщения'],['telegram','Telegram'],['email','Email'],['phone','Телефон']]){
+                const holder=make('div',null,'app-subscription-channels__row');
+                const item=make('label');
+                const input=make('input');
+                input.type='checkbox';input.value=key;
+                input.checked=Boolean(available[key]?.available && (intent.delivery_channels||['in_app']).includes(key));
+                input.disabled=!available[key]?.available;
+                item.append(input,make('span',label));holder.append(item);
+                if(!available[key]?.available){
+                    holder.append(make('small',available[key]?.reason||'Канал недоступен','muted'));
+                    if(key!=='in_app'){
+                        const add=button('Добавить '+label,()=>window.dispatchEvent(
+                            new CustomEvent('mskba:contact:add',{detail:{type:key}})));
+                        add.className='app-play-dialog__text-button';
+                        holder.append(add);
+                    }
+                }
+                section.append(holder);
+            }
+            detailsEdit.hidden=false;
+            detailsEdit.textContent='Сохранить каналы';
+            detailsEdit.onclick=async()=>{
+                const selected=[...section.querySelectorAll('input:checked')].map(input=>input.value);
+                if(!selected.length){showActionError('Выбери хотя бы один доступный канал.',section);return;}
+                detailsEdit.disabled=true;
+                try{
+                    await request(venueSubscriptionsUrl+'/'+intent.id,'PATCH',{active:true,delivery_channels:selected});
+                    detailsDialog.close();editedVenue=null;await load();
+                }catch(e){showActionError(e.message,section);}finally{detailsEdit.disabled=false;}
+            };
+        }catch(e){hint.textContent=e.message;}
+    }
+    window.addEventListener('mskba:contact:updated',()=>{
+        if(editedVenue && detailsDialog?.open)void venueChannelsEditor(editedVenue);
+    });
+
+    // The shared list exposes only generic actions. Type-specific settings
+    // live in the detail viewer and in the existing subscription editor.
+    function openDetails(intent, trigger) {
+        if (!detailsDialog || !detailsBody) return;
+        detailsTrigger=trigger;
+        editedVenue=intent.subscription_type==='venue'?intent:null;
+        detailsDialog.querySelector('[data-venue-channels-editor]')?.remove();
+        detailsTitle.textContent=intent.subscription_type==='venue'
+            ? 'Новости площадки' : (intent.name || 'Подписка №'+intent.id);
+        detailsBody.replaceChildren();
+        if(detailsError){detailsError.hidden=true;detailsError.textContent='';}
+        const addFact=(label,value)=>{
+            if(value===null || value===undefined || value==='')return;
+            const row=make('div',null,'app-subscription-details__fact');
+            row.append(make('dt',label),make('dd',String(value)));
+            detailsBody.append(row);
+        };
+        addFact('Статус',statusNames[intent.effective_status] || intent.status);
+        addFact('Тип подписки',intent.subscription_type==='venue'?'На обновления площадки':'Игровая');
+        addFact('Площадка',intent.venue?.name || (intent.venue_id?'Площадка больше недоступна':'Без конкретной площадки'));
+        if(intent.subscription_type==='venue') {
+            addFact('Уведомления','Новые игры, тренировки и турниры');
+            addFact('Каналы', (intent.delivery_channels||['in_app']).map(x=>({in_app:'Личные сообщения',telegram:'Telegram',email:'Email',phone:'Телефон'}[x]||x)).join(', '));
+        } else addFact('Условия',summary(intent));
+        if(intent.subscription_type!=='venue') addFact('Срок действия',intent.expires_at
+            ? new Date(intent.expires_at).toLocaleDateString('ru-RU')
+            : 'Бессрочно');
+        if(intent.subscription_type!=='venue') {
+            addFact('Уведомления об играх',intent.notify_matches?'Включены':'Выключены');
+            addFact('Предложения площадок',intent.notify_offers?'Включены':'Выключены');
+            addFact('Публикация игровых данных',intent.show_on_venue?'Включена':'Выключена');
+        }
+
+        const restorable=['expired','cancelled'].includes(intent.effective_status);
+        if(detailsEdit){
+            // Game subscriptions keep the original two-step editor.
+            // Venue-news subscriptions only expose delivery-channel settings.
+            detailsEdit.hidden=['cancelled','completed'].includes(intent.effective_status);
+            detailsEdit.textContent=intent.subscription_type==='venue'?'Настроить уведомления':'Редактировать';
+            detailsEdit.onclick=()=>intent.subscription_type==='venue'
+                ? void venueChannelsEditor(intent) : editSubscription(intent);
+        }
+        if(detailsRestore){
+            detailsRestore.hidden=!restorable || intent.subscription_type==='venue';
+            detailsRestore.onclick=()=>void restoreSubscription(intent,detailsDialog,detailsRestore);
+        }
+        // Opening "Посмотреть" stays read-only; editing is an explicit action.
+        detailsDialog.showModal();
+    }
+
+    function showError(message) { outlet.replaceChildren(make('p',message,'error')); }
+    async function load() {
+        const sequence=++loadSequence;
+        try {
+            const target=new URL(root.dataset.listUrl,location.origin);
+            target.searchParams.set('type',typeSelect.value);
+            target.searchParams.set('status',statusSelect.value);
+            target.searchParams.set('page',String(currentPage));
+            const response = await request(target.href);
+            if(sequence!==loadSequence)return;
+            if(response.meta && currentPage>response.meta.last_page){
+                currentPage=response.meta.last_page;
+                updateUrl();
+                return load();
+            }
+            outlet.replaceChildren();
+            if (count) count.textContent = 'Найдено подписок: ' + (response.meta?.total ?? response.data?.length ?? 0);
+            renderPagination(response.meta);
+            if (!response.data?.length) {
+                const empty=make('div',null,'app-play-interests__empty account-collection__empty');
+                const filtered=typeSelect.value!=='all'||statusSelect.value!=='all';
+                empty.append(make('p',filtered?'По выбранным фильтрам подписок нет.':'Пока нет подписок.'));
+                if (!filtered) empty.append(make('p','Когда ты оформишь первую подписку, она появится здесь.','muted'));
+                outlet.append(empty);return;
+            }
+            for (const intent of response.data) {
+                const card = make('article',null,'app-play-interests__item account-collection__card');
+                const head = make('div',null,'app-play-interests__item-head account-collection__card-head');
+                const heading = make('div');
+                heading.append(
+                    make('p',intent.subscription_type==='venue'?'Новости площадки':'Игровая подписка','account-collection__eyebrow'),
+                    make('h2',intent.name || 'Подписка №'+intent.id),
+                );
+                const status = make('span',statusNames[intent.effective_status] || intent.status,'badge account-collection__status');
+                if (intent.effective_status === 'active') status.classList.add('is-active');
+                head.append(heading,status);
+                card.append(head);
+                if (intent.venue) {
+                    const venueLine = make('p',null,'app-play-interests__venue');
+                    venueLine.append(make('span','Площадка: '));
+                    const venueLink = make('a',intent.venue.name);
+                    // The API supplies the canonical internal URL.
+                    const target = new URL(intent.venue.url,location.origin);
+                    if(target.origin === location.origin) {
+                        venueLink.href=target.href;
+                        venueLine.append(venueLink);
+                    }else venueLine.append(make('span',intent.venue.name));
+                    card.append(venueLine);
+                } else if (intent.venue_id) {
+                    card.append(make('p','Площадка больше недоступна','muted'));
+                } else {
+                    card.append(make('p','Поиск без конкретной площадки','muted'));
+                }
+                card.append(make('p',summary(intent),'muted'));
+                const actions=make('div',null,'app-play-interests__actions account-collection__actions');
+                const viewButton=button('Посмотреть',()=>editSubscription(intent));
+                viewButton.classList.add('account-collection__action','account-collection__action--primary');
+                actions.append(viewButton);
+                if(!['cancelled','completed'].includes(intent.effective_status)) {
+                    // Do not replace the full game-subscription editor with a
+                    // notification-only modal. Open the original first step.
+                    actions.append(button('Редактировать',()=>editSubscription(intent)));
+                }
+                if(intent.effective_status === 'active') {
+                    actions.append(button('Приостановить',async()=>{
+                        try{await request(root.dataset.pauseUrl+'/'+intent.id+'/pause','PATCH');await load();}
+                        catch(e){showError(e.message);}
+                    }));
+                }else if(intent.effective_status === 'paused') {
+                    actions.append(button('Возобновить',async()=>{
+                        try{await request(root.dataset.pauseUrl+'/'+intent.id+'/resume','PATCH');await load();}
+                        catch(e){showError(e.message);}
+                    }));
+                }
+                if(['expired','cancelled'].includes(intent.effective_status)) {
+                    const restoreButton=button('Восстановить подписку',()=>void restoreSubscription(intent,card,restoreButton));
+                    actions.append(restoreButton);
+                }
+                if(!['cancelled','completed','expired'].includes(intent.effective_status)) {
+                    actions.append(button('Отменить подписку',async()=>{
+                        if(!window.confirm('Отменить эту игровую подписку?'))return;
+                        try{await request(root.dataset.pauseUrl+'/'+intent.id,'DELETE');await load();}
+                        catch(e){showError(e.message);}
+                    }));
+                }
+                card.append(actions);outlet.append(card);
+            }
+        } catch (e) {
+            if(sequence===loadSequence){pagination.hidden=true;if(count) count.textContent='';showError(e.message);}
+        }
+    }
+    window.addEventListener('mskba:play-intent:saved',()=>{void load();});
+    void load();
+}

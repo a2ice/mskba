@@ -46,8 +46,8 @@ final class MainMenu implements MenuHandler
             $moreItems[] = [
                 'divider' => true,
                 'label' => $user->isAdmin() ? 'Админка' : 'Контент',
-                'url' => $this->routeUrl($user->isAdmin() ? 'admin.dashboard' : 'admin.content'),
-                'active' => $this->isActiveRoute('admin.*'),
+                'url' => $this->routeUrl($user->isAdmin() ? '/backoffice' : 'admin.content'),
+                'active' => $this->isActiveRoute($user->isAdmin() ? 'admin.*, filament.backoffice.*' : 'admin.*'),
                 'visible' => true,
             ];
 
@@ -121,6 +121,12 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
+                'label' => 'Лиги',
+                'url' => $this->routeUrl('leagues.index'),
+                'active' => $this->isActiveRoute('leagues.*'),
+                'visible' => true,
+            ],
+            [
                 'label' => 'Мероприятия',
                 'url' => $this->routeUrl('events.index'),
                 'active' => $this->isActiveRoute('events.*, tournaments.*, sports-sections.*'),
@@ -142,7 +148,7 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Магазин',
-                'url' => $this->routeUrl('/#shop'),
+                'url' => $this->routeUrl('shop.index'),
                 'active' => $this->isActiveRoute('shop, shop.*'),
                 'visible' => true,
             ],

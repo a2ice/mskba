@@ -11,7 +11,9 @@ class DeleteContactHandler
 {
     public function handle(Contact $contact): void
     {
-        if ($contact->is_primary) {
+        // A provisional, unverified primary can be removed. A verified primary
+        // must be replaced with another verified contact before deletion.
+        if ($contact->is_primary && $contact->hasBeenVerified()) {
             throw ContactDeletionException::primaryContact();
         }
 

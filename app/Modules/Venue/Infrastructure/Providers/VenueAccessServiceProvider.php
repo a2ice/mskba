@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\PlayInterest\Application\Services\VenueGroupOffers;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
@@ -73,6 +74,10 @@ class VenueAccessServiceProvider extends ServiceProvider
                 return;
             }
 
+            if (app(VenueGroupOffers::class)->canManage($user, $venueModel)) {
+                $view->with('groupOffersManagementUrl', route('account.venues.group-offers.index', ['venue'=>$venueModel->id]));
+            }
+
             $view->with('contextManagementPlacement', 'section-after-panel');
             $view->with('headingTitleSuffixView', 'theme::partials.venues.court-selector');
 
@@ -114,9 +119,15 @@ class VenueAccessServiceProvider extends ServiceProvider
             $venue = $view->getData()['venue'] ?? null;
             $user = request()->user();
 
-            if (! $venue instanceof Venue
-                || $user === null
-                || ! $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venue)) {
+            if (! $venue instanceof Venue || $user === null) {
+                return;
+            }
+
+            if (app(VenueGroupOffers::class)->canManage($user, $venue)) {
+                $view->with('groupOffersManagementUrl', route('account.venues.group-offers.index', ['venue'=>$venue->id]));
+            }
+
+            if (! $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venue)) {
                 return;
             }
 

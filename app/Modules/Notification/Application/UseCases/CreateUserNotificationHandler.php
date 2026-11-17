@@ -8,6 +8,9 @@ use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Jobs\SendUserNotificationEmailJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
+use Illuminate\Support\Facades\DB;
 
 final class CreateUserNotificationHandler
 {
@@ -15,17 +18,21 @@ final class CreateUserNotificationHandler
         private readonly UserNotificationCounterStore $counterStore,
     ) {}
 
-    public function handle(CreateUserNotificationDTO $data): UserNotification
+    public function handle(CreateUserNotificationDTO $data, bool $deferEventUntilCommit = false): UserNotification
     {
         $targetUser = User::query()->find($data->userId);
         $targetUserId = $targetUser === null
             ? $data->userId
             : (int) $targetUser->canonical()->id;
 
+        $selected = $data->payload['delivery_channels'] ?? null;
+        $internal = ! is_array($selected) || in_array('in_app', $selected, true);
+
         $notification = UserNotification::query()->create([
             'user_id' => $targetUserId,
             'type' => $data->type,
-            'status' => UserNotificationStatusEnum::NEW,
+            'status' => $internal ? UserNotificationStatusEnum::NEW : UserNotificationStatusEnum::READ,
+            'read_at' => $internal ? null : now(),
             'title' => $data->title,
             'body' => $data->body,
             'action_url' => $data->actionUrl,
@@ -33,8 +40,24 @@ final class CreateUserNotificationHandler
             'payload' => $data->payload,
         ]);
 
-        $this->counterStore->forget($targetUserId);
-        UserNotificationCreated::dispatch($notification->id);
+        if ($internal) {
+            $this->counterStore->forget($targetUserId);
+            if ($deferEventUntilCommit && DB::transactionLevel() > 0) {
+                // Realtime consumers must only see the committed notification.
+                DB::afterCommit(static fn () => UserNotificationCreated::dispatch($notification->id));
+            } else {
+                UserNotificationCreated::dispatch($notification->id);
+            }
+        } else {
+            // An external-only subscription should not create a new message
+            // or realtime toast in the site's personal messenger.
+            if (in_array('email', $selected, true)) {
+                SendUserNotificationEmailJob::dispatch($notification->id)->afterCommit();
+            }
+            if (in_array('telegram', $selected, true)) {
+                SendUserNotificationToTelegramJob::dispatch($notification->id)->afterCommit();
+            }
+        }
 
         return $notification;
     }

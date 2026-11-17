@@ -36,17 +36,14 @@ final class VenueCourtPublicController extends Controller
             ]]);
         }
 
-        if ($details->selectedCourt['isPrimary']) {
-            return redirect()->route('venues.show', $details->routeIdentifier(), 301);
-        }
-
         $canonicalUrl = route('venues.courts.show', [
             $details->routeIdentifier(),
             $details->selectedCourt['routeIdentifier'],
         ]);
 
         $venueAddress = $details->address?->display ?: $details->rawAddress;
-        $generatedDescription = 'Зал «'.$details->selectedCourt['name'].'» площадки «'.$details->name.'»'
+        $areaNoun = ($details->selectedCourt['environment'] ?? null) === 'outdoor' ? 'Корт' : 'Зал';
+        $generatedDescription = $areaNoun.' «'.$details->selectedCourt['name'].'» площадки «'.$details->name.'»'
             .($venueAddress ? ' по адресу '.$venueAddress : '')
             .'. Характеристики, расписание и условия доступа на MSKBA.';
         $seoDescription = $details->shortDescription ?: $generatedDescription;

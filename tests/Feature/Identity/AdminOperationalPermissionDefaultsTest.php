@@ -30,7 +30,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
 
         foreach (UserOperationalPermissionEnum::cases() as $permission) {
             $this->assertSame(
-                $permission !== UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+                $permission->defaultAllowedFor(UserSystemRoleEnum::ADMIN),
                 $checker->allows($admin, $permission),
                 "admin default mismatch for {$permission->value}.",
             );
@@ -54,9 +54,11 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::CREATE_EVENT));
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::CREATE_TOURNAMENT));
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES));
+        $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES));
+        $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS));
     }
 
-    public function test_explicit_snapshot_overrides_admin_default(): void
+    public function test_explicit_denial_overrides_system_role_baseline(): void
     {
         $admin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -110,7 +112,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
 
         foreach (UserOperationalPermissionEnum::cases() as $permission) {
             $this->assertSame(
-                $permission !== UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+                $permission->defaultAllowedFor(UserSystemRoleEnum::ADMIN),
                 (bool) $adminPermissions->get($permission->value)->is_allowed,
             );
         }
@@ -120,5 +122,6 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
         $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_EVENT->value)->is_allowed);
         $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_TOURNAMENT->value)->is_allowed);
         $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES->value)->is_allowed);
+        $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES->value)->is_allowed);
     }
 }

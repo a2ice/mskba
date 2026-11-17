@@ -58,7 +58,7 @@ final class ListEventsHandler
                     ->orderByRaw('scheduled_starts_at nulls last')
                     ->orderBy('id'),
             ])
-            ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
+            ->withCount(['participants as participants_count' => fn ($query) => $query->occupiesPlayerSpot()])
             ->when(
                 $period === 'past',
                 fn ($query) => $query->where('ends_at', '<=', now())->orderByDesc('ends_at'),

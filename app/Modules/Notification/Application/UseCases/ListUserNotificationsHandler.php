@@ -17,7 +17,8 @@ final class ListUserNotificationsHandler
 
         return UserNotification::query()
             ->whereIn('user_id', $identityIds)
-            ->latest()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate($perPage);
     }
 }

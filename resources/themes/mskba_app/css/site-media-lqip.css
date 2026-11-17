@@ -1,0 +1,73 @@
+/* Server opt-in only: images without a generated LQIP remain unchanged. */
+/* Reusable <x-site-media-image> frame. Without JS the full image displays normally. */
+.mskba-site-media-image {
+    display: inline-grid;
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+    vertical-align: middle;
+}
+.mskba-site-media-image > img {
+    display: block;
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.mskba-site-media-image__lqip {
+    position: absolute;
+    inset: 0;
+    filter: blur(3px);
+    pointer-events: none;
+    /* Full image (including alpha) is authoritative after decode or without JS. */
+    opacity: 0;
+    transition: opacity .28s ease;
+}
+.mskba-site-media-image.is-lqip-pending .mskba-site-media-image__lqip {
+    opacity: 1;
+}
+.mskba-site-media-image.is-lqip-pending .mskba-site-media-image__original {
+    opacity: 0;
+}
+.mskba-site-media-image.is-lqip-ready .mskba-site-media-image__original {
+    opacity: 1;
+    transition: opacity .28s ease;
+}
+
+.mskba-hero-slide__background.has-site-lqip > img.site-lqip-full {
+    opacity: 0;
+    transition: opacity .28s ease;
+}
+.mskba-hero-slide__background.has-site-lqip.site-lqip-ready > img.site-lqip-full { opacity: 1; }
+.mskba-hero-slide__player.site-lqip-full:not(.site-lqip-ready),
+.mskba-hero-slide__layer-image.site-lqip-full:not(.site-lqip-ready) {
+    opacity: 0 !important;
+}
+.mskba-hero-slide__player.site-lqip-full.site-lqip-ready,
+.mskba-hero-slide__layer-image.site-lqip-full.site-lqip-ready {
+    transition: opacity .28s ease;
+}
+.site-lqip-preview {
+    pointer-events: none !important;
+    filter: blur(3px);
+    transition: opacity .28s ease;
+}
+.site-lqip-preview.site-lqip-fading { opacity: 0 !important; }
+.mskba-hero-slide__layer-image.site-lqip-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+@media (prefers-reduced-motion: reduce) {
+    .mskba-site-media-image__lqip,
+    .mskba-site-media-image__original { transition: none !important; }
+    .site-lqip-preview,
+    .mskba-hero-slide__background.has-site-lqip > img.site-lqip-full,
+    .mskba-hero-slide__player.site-lqip-full,
+    .mskba-hero-slide__layer-image.site-lqip-full {
+        transition: none !important;
+        filter: none !important;
+    }
+}

@@ -30,6 +30,9 @@
 @endsection
 
 @section('section-content')
+    @if(app(\App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager::class)->canManage(auth()->user(), $venue))
+        <p><a href="{{ route('account.venues.special-terms.index', $venue->id) }}">Специальные условия</a></p>
+    @endif
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
         @if($policy)<p class="text-muted mb-3">Активная версия: №{{ $policy->version }}, опубликована {{ $policy->published_at->format('d.m.Y H:i') }}. Сохранение создаст новую версию.</p>@endif
@@ -75,6 +78,43 @@
             </div>
             @include('theme::partials.forms.toggle', ['name' => 'requires_payment', 'title' => 'Требуется оплата', 'checked' => $fieldValue('requires_payment', true), 'wrapperClass' => 'form-group field my-3'])
             @include('theme::partials.forms.toggle', ['name' => 'allows_hold_extension', 'title' => 'Разрешить согласование продления hold', 'checked' => $fieldValue('allows_hold_extension', false), 'wrapperClass' => 'form-group field my-3'])
+            @foreach([
+                'external_hold_required' => 'Требовать подтверждение реального холда',
+                'buyer_postpay_allowed' => 'Разрешить постоплату покупателя',
+                'agent_portal_postpay_allowed' => 'Разрешить постоплату агента MSKBA',
+                'portal_venue_postpay_allowed' => 'Разрешить постоплату MSKBA площадке',
+                'agent_portal_self_attestation_allowed' => 'Разрешить доверенное подтверждение агента MSKBA',
+            ] as $name => $label)
+                @include('theme::partials.forms.toggle', ['name' => $name, 'title' => $label, 'checked' => $fieldValue($name, false), 'wrapperClass' => 'form-group field my-3'])
+            @endforeach
+            <div class="row g-3 my-3">
+                <div class="col-md-4"><label class="form-label">Источник срока холда
+                    <select name="hold_verification_method" class="form-select">
+                        <option value="">Не уточнено</option>
+                        @foreach(['phone'=>'Телефон','messenger'=>'Мессенджер','provider'=>'Агрегатор','contract'=>'Контракт','other'=>'Другое'] as $value=>$label)
+                            <option value="{{ $value }}" @selected($fieldValue('hold_verification_method') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label></div>
+                <div class="col-md-8"><label class="form-label">Кто подтвердил срок, дата и основание
+                    <textarea name="hold_verification_note" class="form-control" maxlength="2000" rows="2">{{ $fieldValue('hold_verification_note') }}</textarea>
+                </label></div>
+            </div>
+            @if($policy?->hold_verified_at)
+                <p class="text-muted">Последняя проверка: {{ $policy->hold_verified_at->format('d.m.Y H:i') }}</p>
+            @endif
+            <p><a href="{{ route('account.venues.invoice-templates.index', $venue->id) }}">Шаблоны счетов аренды</a></p>
             <button class="btn btn--primary btn--sm" type="submit">Опубликовать новую версию</button>
         </div></form>
+        @if($policy)
+            @include('theme::partials.venues.calendar-price-editor', [
+                'calendarPrices' => $venue->calendarSlotPrices()->orderBy('date')->orderBy('starts_at')->get(),
+                'calendarStoreUrl' => route('account.venues.calendar-prices.store', $venue->id),
+                'calendarDeleteUrl' => route('account.venues.calendar-prices.destroy', [$venue->id, '__PRICE__']),
+                'calendarStep' => $policy->time_step_minutes,
+                'calendarCurrency' => $policy->currency,
+                'calendarId' => 'venue-calendar',
+                'amounts' => $amounts,
+            ])
+        @endif
 @endsection

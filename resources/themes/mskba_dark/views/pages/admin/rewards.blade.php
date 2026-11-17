@@ -68,6 +68,15 @@
                 </label>
 
                 <div class="admin-acquisition-field admin-acquisition-field--wide">
+                    <span class="form-label">Тип вознаграждения</span>
+                    <label class="form-check">
+                        <input class="form-check-input" type="checkbox" disabled aria-describedby="reward-real-payment-create-hint">
+                        <span>Выплата реальными деньгами</span>
+                    </label>
+                    <small id="reward-real-payment-create-hint" class="admin-muted">Пока недоступно. Начисления производятся только бонусными средствами.</small>
+                </div>
+
+                <div class="admin-acquisition-field admin-acquisition-field--wide">
                     <button class="btn btn--primary" type="submit">Создать вознаграждение</button>
                 </div>
             </form>
@@ -161,6 +170,15 @@
                         <span class="form-label">Условия</span>
                         <textarea class="form-control" rows="3" name="conditions">{{ $version?->conditions }}</textarea>
                     </label>
+
+                    <div class="admin-acquisition-field admin-acquisition-field--wide">
+                        <span class="form-label">Тип вознаграждения</span>
+                        <label class="form-check">
+                            <input class="form-check-input" type="checkbox" disabled aria-describedby="reward-real-payment-{{ $reward->id }}-hint">
+                            <span>Выплата реальными деньгами</span>
+                        </label>
+                        <small id="reward-real-payment-{{ $reward->id }}-hint" class="admin-muted">Пока недоступно. Начисления производятся только бонусными средствами.</small>
+                    </div>
 
                     <div class="admin-acquisition-field admin-acquisition-field--wide d-flex gap-2">
                         <button class="btn btn--primary" type="submit">Сохранить</button>

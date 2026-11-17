@@ -6,14 +6,21 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
 final class VenueEventAvailability
 {
+    public function __construct(
+        private readonly EffectiveVenueHours $hours,
+        private readonly AppliedImportedCourtAvailability $importedAvailability,
+    ) {}
+
     public function resolveEndsAt(
         Venue $venue,
         CarbonImmutable $startsAt,
@@ -36,19 +43,11 @@ final class VenueEventAvailability
         $timezone = $schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $localStart = $startsAt->setTimezone($timezone);
         $endBoundary = $localStart->endOfDay();
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->format('Y-m-d') === $localStart->format('Y-m-d')
-        );
+        $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
-        if ($exception?->is_closed) {
+        if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
             throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
         }
-
-        $hasRegularHours = $schedule?->intervals->isNotEmpty() ?? false;
-        $applicableIntervals = $exception?->intervals
-            ?? ($hasRegularHours
-                ? $schedule->intervals->where('day_of_week', $localStart->isoWeekday())
-                : null);
 
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
@@ -112,6 +111,7 @@ final class VenueEventAvailability
         bool $checkBookings = true,
         VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
         ?VenueCourt $court = null,
+        bool $allowEndAtMidnight = false,
     ): void {
         $court = $this->resolveCourt($venue, $court);
 
@@ -131,6 +131,9 @@ final class VenueEventAvailability
 
         if ($venue->operational_status !== VenueOperationalStatusEnum::ACTIVE) {
             throw new InvalidArgumentException('Площадка временно закрыта.');
+        }
+        if ($court?->operational_status === VenueOperationalStatusEnum::TEMPORARILY_CLOSED) {
+            throw new InvalidArgumentException('Выбранный зал временно закрыт.');
         }
 
         $minimumStartsAt = CarbonImmutable::now($startsAt->getTimezone())
@@ -152,35 +155,54 @@ final class VenueEventAvailability
         $localStart = $startsAt->setTimezone($timezone);
         $localEnd = $endsAt->setTimezone($timezone);
 
-        if (! $localStart->isSameDay($localEnd)) {
-            throw new InvalidArgumentException('В первой версии мероприятие должно завершаться в тот же день.');
+        // 00:00 on the following day is the exclusive end of the starting
+        // date, not an overnight stay. Rental requests may finish exactly
+        // here; event creation retains its existing same-day restriction.
+        $endsAtMidnight = $localEnd->equalTo($localStart->startOfDay()->addDay());
+        if (! $localStart->isSameDay($localEnd)
+            && ! ($allowEndAtMidnight && $endsAtMidnight)) {
+            throw new InvalidArgumentException($allowEndAtMidnight
+                ? 'Аренда должна завершаться не позднее 00:00 следующих суток.'
+                : 'В первой версии мероприятие должно завершаться в тот же день.');
         }
 
-        $exception = $schedule?->exceptions->first(
-            fn ($item): bool => $item->date->format('Y-m-d') === $localStart->format('Y-m-d')
-        );
+        $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
-        if ($exception?->is_closed) {
+        if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
             throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
         }
 
-        $hasRegularHours = $schedule?->intervals->isNotEmpty() ?? false;
-        $applicableIntervals = $exception?->intervals
-            ?? ($hasRegularHours
-                ? $schedule->intervals->where('day_of_week', $localStart->isoWeekday())
-                : null);
-
         if ($applicableIntervals !== null) {
             $startTime = $localStart->format('H:i:s');
-            $endTime = $localEnd->format('H:i:s');
+            $endTime = $allowEndAtMidnight && $endsAtMidnight
+                ? '24:00:00' : $localEnd->format('H:i:s');
+            // The native FindSport importer stores 23:59 in HTML time
+            // fields as a sentinel for an actual midnight close. Only when
+            // checking a rental that ends exactly at midnight, interpret
+            // that sentinel as the exclusive 24:00 boundary. An ordinary
+            // manually configured 23:59 closing time is not extended.
+            $importedMidnight = $allowEndAtMidnight && $endsAtMidnight
+                && $court !== null
+                && $this->importedAvailability->activeFor($court) !== null;
             $insideWorkingInterval = $applicableIntervals->contains(
-                fn ($interval): bool => $startTime >= $this->normalizeTime((string) $interval->starts_at)
-                    && $endTime <= $this->normalizeTime((string) $interval->ends_at)
+                function ($interval) use ($startTime, $endTime, $importedMidnight): bool {
+                    $endBoundary = $this->normalizeTime((string) $interval->ends_at);
+                    if ($importedMidnight && $endBoundary === '23:59:00') {
+                        $endBoundary = '24:00:00';
+                    }
+
+                    return $startTime >= $this->normalizeTime((string) $interval->starts_at)
+                        && $endTime <= $endBoundary;
+                }
             );
 
             if (! $insideWorkingInterval) {
                 throw new InvalidArgumentException('Выбранное время не входит в часы работы площадки.');
             }
+        }
+
+        if ($court !== null) {
+            $this->importedAvailability->assertAvailable($court, $startsAt, $endsAt);
         }
 
         $hasOverlap = $checkBookings && VenueBooking::query()

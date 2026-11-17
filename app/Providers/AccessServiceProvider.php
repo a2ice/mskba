@@ -6,6 +6,10 @@ use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
+use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
+use App\Policies\DashboardButtonStylePolicy;
+use App\Policies\AccountDashboardWidgetPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,11 +28,14 @@ class AccessServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(AccountDashboardWidget::class, AccountDashboardWidgetPolicy::class);
+        Gate::policy(DashboardButtonStyle::class, DashboardButtonStylePolicy::class);
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
         Gate::define(
             'manage-content',
             fn (User $user): bool => $user->isConfirmed()
-                && $user->system_role->atLeast(UserSystemRoleEnum::EDITOR),
+                && app(UserOperationalPermissionChecker::class)
+                    ->allows($user, UserOperationalPermissionEnum::CONTENT_MANAGE),
         );
         Gate::define(
             'manage-user-operational-permissions',
@@ -40,6 +47,8 @@ class AccessServiceProvider extends ServiceProvider
         Gate::define(
             'manage-user-system-role',
             fn (User $actor, User $target): bool => $actor->isConfirmed()
+                && ($target->system_role !== UserSystemRoleEnum::SYSTEM
+                    || $actor->system_role === UserSystemRoleEnum::SUPERADMIN)
                 && $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)
                 && ! $actor->is($target)
                 && $actor->system_role->numericValue() > $target->system_role->numericValue()
@@ -67,6 +76,9 @@ class AccessServiceProvider extends ServiceProvider
             fn (User $user): bool => app(UserOperationalPermissionChecker::class)
                 ->allows($user, UserOperationalPermissionEnum::CREATE_TOURNAMENT),
         );
+        Gate::define('review-profile-changes',
+            fn (User $user): bool => app(UserOperationalPermissionChecker::class)
+                ->allows($user, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES));
         Gate::define(
             'edit-venues-as-superadmin',
             fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),

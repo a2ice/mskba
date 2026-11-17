@@ -1,0 +1,46 @@
+name: MSKBA offline dev identity import rehearsal
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-identity-import.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-identity-import
+  cancel-in-progress: false
+
+jobs:
+  identity:
+    name: Reconcile and import dev accounts into isolated candidate
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate importer syntax and wrapper
+        run: |
+          set -euo pipefail
+          bash -n scripts/data-merge/isolated-identity-import.sh
+          php -l scripts/data-merge/import-dev-identities.php
+      - name: Stage only reviewed import scripts outside both webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/import-dev-identities.php,scripts/data-merge/isolated-identity-import.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Perform full dry-run and isolated apply without live database writes
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-identity-import.sh ${{ github.run_id }} /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/import-dev-identities.php

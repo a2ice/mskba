@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\SportsSection;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -148,7 +149,8 @@ final class SportsSectionApplicationsTest extends TestCase
         [$manager] = $this->roleUser(UserParticipationRoleEnum::COACH);
         [$player] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
         $section = $this->activeSection($actor, ['accepts_trainee_requests' => true]);
-        app(ManageSectionCoachHandler::class)->add($section, $manager, $owner, [SportsSectionPermissionEnum::MANAGE]);
+        $invitation = app(ManageSectionCoachHandler::class)->add($section, $manager, $owner, [SportsSectionPermissionEnum::MANAGE]);
+        app(EntityContractManager::class)->respond($invitation, $manager, true);
 
         $this->actingAs($player)->post(route('sports-sections.applications.store', $section))->assertRedirect();
         $application = SportsSectionJoinRequest::query()->sole();

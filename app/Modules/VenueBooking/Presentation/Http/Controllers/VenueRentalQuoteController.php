@@ -3,9 +3,13 @@
 namespace App\Modules\VenueBooking\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
+use InvalidArgumentException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -20,6 +24,7 @@ final class VenueRentalQuoteController extends Controller
 {
     public function show(Request $request, Venue $venue): Response
     {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $policy = VenueBookingPolicy::query()
             ->where('venue_id', $venue->id)
             ->where('active_marker', true)
@@ -40,7 +45,9 @@ final class VenueRentalQuoteController extends Controller
         Request $request,
         Venue $venue,
         QuoteVenueBookingHandler $quotes,
+        FindSportOnDemandRefresh $refresh,
     ): JsonResponse|Response {
+        abort_unless($venue->isPubliclyVisible(), 404);
         $validated = $request->validate([
             'venue_court_id' => [
                 'nullable',
@@ -49,6 +56,7 @@ final class VenueRentalQuoteController extends Controller
                     ->where('venue_id', $venue->id)
                     ->whereNull('deleted_at')),
             ],
+            'coupon_code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9_-]+$/'],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'scope' => ['required', Rule::enum(VenueBookingScopeEnum::class)],
@@ -58,6 +66,11 @@ final class VenueRentalQuoteController extends Controller
             : $this->resolveCourt($venue, '');
 
         try {
+            // An open day dialog can cross FindSport's 5-minute freshness
+            // boundary before the visitor submits. Recheck/refresh through
+            // the same guarded source lock as the day API, then let the
+            // canonical quote availability service make the final decision.
+            $refresh->forCourt($court);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $quote = $quotes->handle(
                 $venue,
@@ -66,6 +79,7 @@ final class VenueRentalQuoteController extends Controller
                 VenueBookingScopeEnum::from($validated['scope']),
                 $request->user(),
                 $court,
+                $validated['coupon_code'] ?? null,
             );
         } catch (VenueBookingPolicyException $exception) {
             if ($request->expectsJson()) {
@@ -78,6 +92,7 @@ final class VenueRentalQuoteController extends Controller
                 'court' => $court,
                 'courts' => $venue->courts()->get(),
                 'quote' => null,
+                'submitted' => $validated,
                 'error' => ['code' => 422, 'message' => $exception->getMessage()],
             ]);
         }
@@ -93,12 +108,18 @@ final class VenueRentalQuoteController extends Controller
                 'starts_at' => $quote->startsAt->toIso8601String(),
                 'ends_at' => $quote->endsAt->toIso8601String(),
                 'amount_minor' => $quote->amountMinor,
+                'personal_discount' => $quote->personalDiscount === null ? null : [
+                    'original_amount_minor' => $quote->personalDiscount['original_amount_minor'],
+                    'discount_minor' => $quote->personalDiscount['discount_minor'],
+                    'final_amount_minor' => $quote->amountMinor,
+                    'reason' => $quote->personalDiscount['reason'],
+                ],
                 'currency' => $quote->currency,
                 'requires_payment' => $quote->requiresPayment,
                 'hold_duration_minutes' => $quote->holdDurationMinutes,
                 'payment_window_minutes' => $quote->paymentWindowMinutes,
                 'valid_until' => $quote->validUntil->toIso8601String(),
-            ]);
+            ])->header('Cache-Control', 'private, no-store');
         }
 
         return ThemeResolver::page('venues.rental-quote', [
@@ -107,7 +128,51 @@ final class VenueRentalQuoteController extends Controller
             'court' => $court,
             'courts' => $venue->courts()->get(),
             'quote' => $quote,
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * Read-only status for an existing price quote. The random quote UUID is
+     * the capability; only availability and expiration are returned. No
+     * applicant, payment, or other booking details are disclosed.
+     */
+    public function status(
+        Request $request,
+        Venue $venue,
+        VenueEventAvailability $availability,
+        FindSportOnDemandRefresh $refresh,
+    ): JsonResponse {
+        abort_unless($venue->isPubliclyVisible(), 404);
+        $input = $request->validate(['quote_id' => ['required', 'uuid']]);
+        $quote = VenueBookingQuote::query()
+            ->where('venue_id', $venue->id)->where('public_id', $input['quote_id'])
+            ->firstOrFail();
+        $court = $venue->courts()->find($quote->venue_court_id);
+        if ($court === null || $court->trashed()) {
+            return response()->json(['available' => false, 'reason' => 'unavailable']);
+        }
+        if (! $quote->valid_until->isFuture()) {
+            return response()->json(['available' => false, 'reason' => 'expired']);
+        }
+
+        // Refresh the approved source through the same guarded, shared
+        // FindSport lock. A failed refresh never turns a stale slot into free.
+        $refresh->forCourt($court);
+
+        try {
+            $availability->assertAvailable(
+                $venue,
+                CarbonImmutable::instance($quote->starts_at)->setTimezone((string) config('app.timezone', 'UTC')),
+                CarbonImmutable::instance($quote->ends_at)->setTimezone((string) config('app.timezone', 'UTC')),
+                scope: $quote->scope,
+                court: $court,
+                allowEndAtMidnight: true,
+            );
+        } catch (InvalidArgumentException) {
+            return response()->json(['available' => false, 'reason' => 'unavailable']);
+        }
+
+        return response()->json(['available' => true, 'reason' => null]);
     }
 
     private function resolveCourt(Venue $venue, string $identifier): VenueCourt

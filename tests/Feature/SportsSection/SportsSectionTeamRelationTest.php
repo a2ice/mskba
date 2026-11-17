@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\SportsSection;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
@@ -93,12 +94,13 @@ final class SportsSectionTeamRelationTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('status');
 
-        app(ManageSectionCoachHandler::class)->add(
+        $invitation = app(ManageSectionCoachHandler::class)->add(
             $section,
             $sectionManager,
             $owner,
             [SportsSectionPermissionEnum::MANAGE],
         );
+        app(EntityContractManager::class)->respond($invitation, $sectionManager, true);
 
         $this->assertFalse(app(TeamManagementAccess::class)->allows(
             $ownedTeam,

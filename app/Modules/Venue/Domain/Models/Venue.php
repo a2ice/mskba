@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -14,6 +15,7 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Domain\Enums\VenueCourtEnvironmentEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -27,6 +29,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegration;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationSource;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationAuditEvent;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -40,9 +46,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type',
     'requires_payment',
     'requires_booking_approval',
+    'requires_booking',
     'status',
     'operational_status',
     'status_info',
+    'is_published',
     'short_description',
     'full_description',
     'raw_address',
@@ -52,13 +60,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Venue extends Model
 {
     /** @use HasFactory<VenueFactory> */
-    use Auditable, HasFactory, SoftDeletes;
+    use Auditable, HasEntityBanner, HasFactory, SoftDeletes;
 
     /** @var array<string, mixed> */
     protected $attributes = [
         'requires_payment' => null,
         'requires_booking_approval' => false,
         'content_version' => 0,
+        'is_published' => true,
         'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
     ];
 
@@ -71,8 +80,11 @@ class Venue extends Model
     {
         static::created(function (self $venue): void {
             $venue->courts()->create([
-                'name' => 'Зал 1',
-                'alias' => 'zal-1',
+                'name' => $venue->type === VenueTypeEnum::STREET_COURT ? 'Корт 1' : 'Зал 1',
+                'alias' => $venue->type === VenueTypeEnum::STREET_COURT ? 'kort-1' : 'zal-1',
+                'environment' => $venue->type === VenueTypeEnum::STREET_COURT
+                    ? VenueCourtEnvironmentEnum::OUTDOOR->value
+                    : VenueCourtEnvironmentEnum::INDOOR->value,
                 'sort_order' => 10,
                 'is_primary' => true,
                 'supports_halves' => false,
@@ -82,6 +94,11 @@ class Venue extends Model
                 'allows_halves' => false,
             ]);
         });
+    }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this->is_published && $this->status->isPubliclyVisible();
     }
 
     public function allowsDetailsEditing(): bool
@@ -94,9 +111,39 @@ class Venue extends Model
         return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
     }
 
+    public function integrations(): HasMany
+    {
+        return $this->hasMany(VenueIntegration::class);
+    }
+
+    public function integrationSources(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            VenueIntegrationSource::class, VenueIntegration::class,
+            'venue_id', 'venue_integration_id',
+        );
+    }
+
+    public function integrationAuditEvents(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            VenueIntegrationAuditEvent::class, VenueIntegration::class,
+            'venue_id', 'venue_integration_id',
+        );
+    }
+
+    public function bookingPolicyCurrency(): string
+    {
+        return \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+            ->where('venue_id', $this->id)->where('active_marker', true)
+            ->value('currency') ?: 'RUB';
+    }
+
     public function hasFreeAccess(): bool
     {
-        return $this->requires_payment === false && ! $this->requires_booking_approval;
+        return $this->requires_booking === null
+            ? $this->requires_payment === false && ! $this->requires_booking_approval
+            : ! $this->requires_booking;
     }
 
     public function routeIdentifier(): string
@@ -178,6 +225,40 @@ class Venue extends Model
         return $this->morphMany(Media::class, 'mediable');
     }
 
+    /**
+     * One representative gallery photo for venue lists and map popups.
+     * A venue photo always wins; otherwise use the first available court
+     * photo in the stable court display order. No photo is copied or saved.
+     */
+    public function representativePhoto(): ?Media
+    {
+        $this->loadMissing('media');
+        $venuePhoto = $this->firstOrderedGalleryPhoto($this->media);
+        if ($venuePhoto !== null) {
+            return $venuePhoto;
+        }
+
+        $this->loadMissing('courts.media');
+        foreach ($this->courts as $court) {
+            $courtPhoto = $this->firstOrderedGalleryPhoto($court->media);
+            if ($courtPhoto !== null) {
+                return $courtPhoto;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstOrderedGalleryPhoto(\Illuminate\Support\Collection $media): ?Media
+    {
+        return $media->filter(fn (Media $item): bool => $item->collection === 'gallery')
+            ->sort(fn (Media $a, Media $b): int =>
+                ((int) $b->is_featured <=> (int) $a->is_featured)
+                ?: ((int) $a->sort_order <=> (int) $b->sort_order)
+                ?: ((int) $a->id <=> (int) $b->id))
+            ->first();
+    }
+
     public function revisions(): HasMany
     {
         return $this->hasMany(VenueRevision::class);
@@ -192,6 +273,7 @@ class Venue extends Model
     {
         return $this
             ->belongsToMany(Amenity::class, 'venue_amenities')
+            ->where('amenities.scope', 'venue')
             ->withPivot(['note', 'deleted_at'])
             ->wherePivotNull('deleted_at')
             ->withTimestamps();
@@ -200,6 +282,51 @@ class Venue extends Model
     public function schedule(): HasOne
     {
         return $this->hasOne(VenueSchedule::class);
+    }
+
+    /** Venue-wide commercial role contracts; court-scoped delegates remain separate. */
+    public function commercialMemberships(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Contract\Domain\Models\ContractMembership::class, 'scope_id')
+            ->where('scope_type', \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::VENUE->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', \App\Modules\Contract\Domain\Enums\ContractStatusEnum::ACTIVE->value));
+    }
+
+    public function commissionPolicy(): HasOne
+    {
+        return $this->hasOne(VenueCommissionPolicy::class);
+    }
+
+    public function commissionAgents(): HasMany
+    {
+        return $this->hasMany(VenueCommissionAgent::class);
+    }
+
+    public function courtCommissionPolicies(): HasMany
+    {
+        return $this->hasMany(VenueCourtCommissionPolicy::class);
+    }
+
+    public function specialTerms(): HasMany
+    {
+        return $this->hasMany(\App\Modules\PlayInterest\Domain\Models\VenueGroupOffer::class)
+            ->whereIn('audience', ['PUBLIC', 'USER_BOUND']);
+    }
+
+    public function pricingRules(): HasMany
+    {
+        return $this->hasMany(VenuePricingRule::class);
+    }
+
+    public function courtPricingRuleOverrides(): HasMany
+    {
+        return $this->hasMany(VenueCourtPricingRuleOverride::class);
+    }
+
+    public function calendarSlotPrices(): HasMany
+    {
+        return $this->hasMany(VenueCalendarSlotPrice::class);
     }
 
     public function scheduleSlotPrices(): HasMany
@@ -215,6 +342,29 @@ class Venue extends Model
     public function courts(): HasMany
     {
         return $this->hasMany(VenueCourt::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function activeBookingPolicy(): HasOne
+    {
+        return $this->hasOne(\App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::class)
+            ->where('active_marker', true)
+            ->where('is_enabled', true);
+    }
+
+    /**
+     * Public discovery reads actual shared and court-specific facilities.
+     *
+     * @return array<int, int>
+     */
+    public function effectiveAmenityIds(): array
+    {
+        $shared = $this->amenities()->where('is_active', true)->pluck('amenities.id');
+        $specific = $this->courts()->with('amenities')->get()->flatMap(
+            fn (VenueCourt $court) => $court->amenities->where('is_active', true)->pluck('id'),
+        );
+
+        return $shared->merge($specific)->map(fn ($id): int => (int) $id)
+            ->unique()->values()->all();
     }
 
     public function primaryCourt(): HasOne
@@ -235,6 +385,22 @@ class Venue extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(VenueBooking::class);
+    }
+
+    /** New rental-flow requests (the legacy Event booking relation is separate). */
+    public function rentalBookings(): HasMany
+    {
+        return $this->hasMany(\App\Modules\VenueBooking\Domain\Models\VenueBooking::class);
+    }
+
+    public function venueInterests(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Event\Domain\Models\EventVenueInterest::class);
+    }
+
+    public function rentalPreRequests(): HasMany
+    {
+        return $this->hasMany(\App\Modules\VenueBooking\Domain\Models\VenueRentalPreRequest::class);
     }
 
     public function ownershipClaims(): HasMany
@@ -258,8 +424,10 @@ class Venue extends Model
             'type' => VenueTypeEnum::class,
             'requires_payment' => 'boolean',
             'requires_booking_approval' => 'boolean',
+            'requires_booking' => 'boolean',
             'status' => VenueStatusEnum::class,
             'operational_status' => VenueOperationalStatusEnum::class,
+            'is_published' => 'boolean',
             'canonical_venue_id' => 'integer',
             'content_version' => 'integer',
         ];

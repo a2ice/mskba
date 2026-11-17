@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Mobile: place venue title, ghost, description and CTA above athletes, put hoop with players, show feature cards below them; do not alter scoped CSS structure",
+  "publish": true,
+  "expected_draft_sha256": "90d372d2f9059c96a8a59df95f4edcd0d743acd026431d6d19f5de9cb0ba2a4e",
+  "expected_published_sha256": "90d372d2f9059c96a8a59df95f4edcd0d743acd026431d6d19f5de9cb0ba2a4e",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "  #venues-scene .mskba-v3-venues__container {\n    padding-top: clamp(405px, 105vw, 500px);\n  }",
+      "to": "  /* Mobile venue copy leads; athletes and basket remain below the CTA. */\n  #venues-scene .mskba-v3-venues__container {\n    padding-top: 28px !important;\n    padding-bottom: 74px !important;\n  }\n  #venues-scene .mskba-v3-venues__copy {\n    position: relative;\n    z-index: 30;\n    padding-top: 20px !important;\n    margin-top: 0 !important;\n  }\n  #venues-scene .mskba-v3-venues__ghost {\n    top: -7px !important;\n    opacity: .14;\n    pointer-events: none;\n  }\n  #venues-scene .mskba-v3-venues__hoop { top: clamp(250px, 67vw, 310px) !important; }\n  #venues-scene .mskba-v3-venues__features {\n    margin-top: clamp(440px, 100vw, 650px) !important;\n  }\n  #venues-scene .mskba-v3-venues__defender {\n    top: clamp(265px, 70vw, 330px) !important;\n  }\n  #venues-scene .mskba-v3-venues__shooter-frame > .mskba-v3-venues__shooter {\n    top: clamp(260px, 69vw, 325px) !important;\n  }"
+    }
+  ]
+}

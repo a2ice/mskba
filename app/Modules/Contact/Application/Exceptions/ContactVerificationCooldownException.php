@@ -9,6 +9,6 @@ class ContactVerificationCooldownException extends RuntimeException
     public function __construct(
         public readonly int $secondsLeft,
     ) {
-        parent::__construct('Код уже отправлен. Новый код можно запросить через :seconds сек.');
+        parent::__construct(sprintf('Код уже отправлен. Новый код можно запросить через %d сек.', $secondsLeft));
     }
 }

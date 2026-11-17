@@ -2,6 +2,7 @@
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css');
 @import 'bootstrap';
 @import './default';
+@import '../../mskba_app/css/cookie-consent.css';
 @import './menu';
 @import './modal';
 @import './user.css';
@@ -10,6 +11,7 @@
 @import './predictive-search';
 @import './address-suggest';
 @import './venue-selector';
+@import './venue-pin.css';
 @import './form-controls';
 @import './creation-guide';
 @import './catalog-card';
@@ -25,6 +27,7 @@
 @import './pages/coordination';
 @import './pages/content';
 @import './pages/sports-sections';
+@import './pages/shop.css';
 @import './pages/public-user-profile';
 @import './pages/participant-catalog.css';
 @import './mobile-primary-bar';

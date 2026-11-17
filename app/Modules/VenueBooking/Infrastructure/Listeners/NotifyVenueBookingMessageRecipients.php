@@ -20,6 +20,10 @@ final class NotifyVenueBookingMessageRecipients implements ShouldQueue
         if ($message === null) {
             return;
         }
+        if ($message->conversation->pre_request_id !== null) {
+            app(\App\Modules\VenueBooking\Application\Services\VenueRentalPreRequests::class)->notifyMessage($message->id);
+            return;
+        }
         $booking = $message->conversation->booking;
         $recipients = collect([$booking->requester_user_id])
             ->merge($booking->parties->pluck('user_id'))
@@ -37,7 +41,7 @@ final class NotifyVenueBookingMessageRecipients implements ShouldQueue
                 }
                 app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
                     userId: (int) $userId,
-                    type: UserNotificationTypeEnum::SYSTEM,
+                    type: UserNotificationTypeEnum::MESSAGE,
                     title: 'Новое сообщение по аренде',
                     body: 'В переписке по заявке появилось новое сообщение.',
                     actionUrl: route('account.venue-bookings.show', $booking).'#booking-conversation',

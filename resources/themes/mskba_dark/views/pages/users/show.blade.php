@@ -1,4 +1,4 @@
-@extends('theme::layouts.section-sidebar', ['title' => $publicProfile['name'], 'contentTitle' => $publicProfile['name'], 'sectionId' => 'user-profile', 'sidebarLabel' => 'Профиль'])
+@extends('theme::layouts.section-sidebar', ['title' => $publicProfile['name'], 'contentTitle' => $publicProfile['name'], 'sectionId' => 'user-profile', 'sidebarLabel' => 'Профиль', 'entityEditUrl' => $publicProfileEditUrl ?? null])
 
 @section('section-sidebar')
     <ul class="sidebar-nav nav flex-column">
@@ -17,6 +17,7 @@
 @endsection
 
 @section('section-content')
+@include('components.entity-public-banner', ['bannerUrl' => $publicProfile['banner_url'] ?? null])
     <article class="public-user-profile">
         @if($publicProfile['avatar_url'])
             <img class="public-user-profile__avatar" src="{{ $publicProfile['avatar_url'] }}" alt="{{ $publicProfile['name'] }}">
@@ -25,6 +26,16 @@
                 class="public-user-profile__avatar public-user-profile__avatar--placeholder"
                 @if($publicProfile['avatar_restricted']) title="Отображение аватара запрещено в настройках профиля" data-tooltip-variant="title" @endif
             ><i class="ti ti-user" aria-hidden="true"></i></div>
+        @endif
+        @if(!empty($publicProfile['demographics']))
+            <section class="public-user-profile__demographics" aria-label="Основные данные">
+                @if(isset($publicProfile['demographics']['gender']))
+                    <p>Пол: {{ $publicProfile['demographics']['gender'] }}</p>
+                @endif
+                @if(isset($publicProfile['demographics']['age']))
+                    <p>Возраст: {{ $publicProfile['demographics']['age'] }}</p>
+                @endif
+            </section>
         @endif
         @foreach($publicProfile['roles'] as $role)
             @if($publicProfile['role'] === null || $publicProfile['role'] === $role['value'])

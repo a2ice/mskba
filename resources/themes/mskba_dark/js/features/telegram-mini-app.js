@@ -839,11 +839,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 heading.textContent = venue.name;
                 meta.textContent = [
                     venue.type,
-                    venue.has_free_access ? 'Свободный доступ' : null,
-                    venue.requires_payment === true
-                        ? 'Платная'
-                        : (venue.requires_payment === false ? 'Бесплатная' : 'Условия оплаты уточняются'),
-                    venue.requires_booking_approval ? 'С подтверждением' : null,
+                    venue.has_free_access ? 'Есть свободный доступ' : null,
+                    venue.has_free_court
+                        ? (venue.has_paid_court ? 'Есть бесплатные залы' : 'Бесплатно') : null,
+                    venue.has_paid_court
+                        ? (venue.has_free_court ? 'Есть платные залы' : 'Платно') : null,
+                    !venue.has_free_court && !venue.has_paid_court ? 'Условия уточняются' : null,
+                    venue.has_approval_court ? 'Есть залы с подтверждением' : null,
+                    venue.matched_court?.name ? `Подходящий зал: ${venue.matched_court.name}` : null,
                     venue.address,
                 ].filter(Boolean).join(' · ');
                 description.textContent = venue.description || '';

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Analytics;
 
+use App\Support\Privacy\CookieConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,13 +21,23 @@ class YandexMetrikaTest extends TestCase
             ->assertDontSee('mc.yandex.ru/watch/', false);
     }
 
-    public function test_counter_is_rendered_on_regular_and_telegram_pages(): void
+    public function test_counter_requires_opt_in_on_regular_and_telegram_pages(): void
     {
         config(['services.yandex_metrika.id' => '12345678']);
 
         foreach ([route('welcome'), route('integrations.telegram.main')] as $url) {
-            $this
+            $this->withSession([CookieConsent::SESSION_CHOICE_KEY => null])
                 ->get($url)
+                ->assertOk()
+                ->assertDontSee('mc.yandex.ru/metrika/tag.js', false)
+                ->assertDontSee('mc.yandex.ru/watch/', false);
+
+            $this->withSession([
+                CookieConsent::SESSION_CHOICE_KEY => [
+                    'version' => CookieConsent::version(),
+                    'analytics' => 'accepted',
+                ],
+            ])->get($url)
                 ->assertOk()
                 ->assertSee('https://mc.yandex.ru/metrika/tag.js', false)
                 ->assertSee('ym(12345678, "init"', false)

@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Media\Domain\Traits\HasEntityBanner;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Infrastructure\Database\Factories\ProfileFactory;
 use App\Modules\Media\Domain\Models\Media;
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */
-    use Auditable, HasFactory;
+    use Auditable, HasEntityBanner, HasFactory;
 
     protected static function newFactory(): ProfileFactory
     {

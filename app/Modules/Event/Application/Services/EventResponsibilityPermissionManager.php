@@ -10,7 +10,9 @@ use InvalidArgumentException;
 
 final class EventResponsibilityPermissionManager
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(private readonly EventManagementAccess $access,
+        private readonly EventContractResponsibilityService $contracts,
+    ) {}
 
     /** @param list<string> $values */
     public function replace(Event $event, EventParticipant $participant, Actor $actor, array $values): void
@@ -24,11 +26,8 @@ final class EventResponsibilityPermissionManager
             throw new InvalidArgumentException('Нельзя выдать права, которыми вы не обладаете.');
         }
 
-        $participant->responsibilityPermissions()->delete();
-        $participant->responsibilityPermissions()->createMany(array_map(
-            fn (EventResponsibilityPermissionEnum $permission): array => ['permission' => $permission->value],
-            $permissions,
-        ));
+        $this->contracts->assign($event, $participant, $actor,
+            array_map(static fn (EventResponsibilityPermissionEnum $right): string => $right->value, $permissions));
     }
 
     /** @param list<string> $values

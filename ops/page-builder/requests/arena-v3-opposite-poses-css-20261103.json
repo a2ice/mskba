@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Изначальная верхняя точка шутера и нижняя точка дефендера задаются CSS; мягкая нижняя маска без резкой обрезки игроков",
+  "publish": true,
+  "expected_draft_sha256": "23b3e5b1babc357deb1497db74ab113e5a23c757edd8096b3de8441b4834e511",
+  "expected_published_sha256": "23b3e5b1babc357deb1497db74ab113e5a23c757edd8096b3de8441b4834e511",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "    --v3-defender-entry-y: 0%;\n    --v3-shooter-entry-y: 0%;",
+      "to": "    /* First paint: defender below, shooter at the peak; JS adds only scroll deltas. */\n    --v3-defender-rise-y: 0px;\n    --v3-shooter-drop-y: 0px;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    overflow: clip; z-index: 20; pointer-events: none;",
+      "to": "    overflow: clip; z-index: 20; pointer-events: none;\n    /* Dissolve the athletes' legs before the hard section boundary. */\n    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 185px), transparent calc(100% - 22px));\n    mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 185px), transparent calc(100% - 22px));"
+    },
+    {
+      "type": "replace_once",
+      "from": "    bottom: calc(-6px + clamp(134px, 10.85vw, 185px)); width: clamp(222px, 18vw, 306px); z-index: 3;\n    transform: translate3d(0, var(--v3-defender-entry-y), 0); will-change: transform;",
+      "to": "    bottom: -6px; width: clamp(222px, 18vw, 306px); z-index: 3;\n    transform: translate3d(0, calc(-1 * var(--v3-defender-rise-y)), 0); will-change: transform;"
+    },
+    {
+      "type": "replace_once",
+      "from": "    transform: translate3d(0, var(--v3-shooter-entry-y), 0);",
+      "to": "    transform: translate3d(0, var(--v3-shooter-drop-y), 0);"
+    }
+  ]
+}

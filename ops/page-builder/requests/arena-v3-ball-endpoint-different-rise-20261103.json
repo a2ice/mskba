@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Поднять финальную точку мяча и удержать его внутри Hero при скролле; задать разную скорость подъёма игроков",
+  "publish": true,
+  "expected_draft_sha256": "a29711dc65a2cd113674cc01c885709f73d823b85b50a66527b419bb9ed19cbf",
+  "expected_published_sha256": "a29711dc65a2cd113674cc01c885709f73d823b85b50a66527b419bb9ed19cbf",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "const endY = markerRect.top - visualRect.top - (venues === venuesV3 ? 70 : 0);",
+      "to": "const endY = markerRect.top - visualRect.top - (venues === venuesV3 ? 150 : 0);"
+    },
+    {
+      "type": "replace_once",
+      "from": "    const remaining = 1 - p;\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * remaining).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-entry-y', (30 * remaining).toFixed(3) + '%');\n    scene.style.setProperty('--v3-shooter-entry-y', (20 * remaining).toFixed(3) + '%');",
+      "to": "    const remaining = 1 - p;\n    const defenderRemaining = 1 - Math.pow(p, .78);\n    const shooterRemaining = 1 - Math.pow(p, 1.22);\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * remaining).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-entry-y', (30 * defenderRemaining).toFixed(3) + '%');\n    scene.style.setProperty('--v3-shooter-entry-y', (20 * shooterRemaining).toFixed(3) + '%');"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const y = startY + (endY - startY) * p;",
+      "to": "        const rawY = startY + (endY - startY) * p;\n        // Keep the entire visible ball inside the Hero even after handoff.\n        const y = venues === venuesV3\n            ? Math.min(rawY, sliderRect.bottom - visualRect.top - 66)\n            : rawY;"
+    }
+  ],
+  "expected_result_sha256": "affdbc799f8ce05e582cbca5636e74877895a0772275c849f9df1b7a0e0b1e31"
+}

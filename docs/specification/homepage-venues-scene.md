@@ -1,0 +1,247 @@
+> **Исторический документ.** Инъекция Venues через Blade и Vite-версии CSS/JS мяча
+> удаляются в рамках Filament-owned миграции. Актуальная процедура:
+> [docs/page-builder/filament-home/README.md](../page-builder/filament-home/README.md).
+> Нельзя использовать изложенную ниже старую схему как инструкцию для текущего DEV.
+
+# Homepage Venues Scene — PR 1 (DEV layout)
+
+## Scope and activation
+
+The first iteration lays out the **static**, responsive Venues introduction immediately
+under the current Page Builder Hero Slider. The four already committed PNG assets
+are composited in a common visual backdrop **starting at the very top of Hero**
+(under the site header) and continuing into the Venues section.
+
+This staging-only rollout deliberately **does not mutate Page Builder draft or
+published HTML/CSS in the database**. The trusted Blade wrapper is rendered by
+`resources/views/page-builder/show.blade.php` only when ALL conditions hold:
+
+- Laravel environment is `staging`;
+- the route is the published homepage `/`, not an editor preview;
+- the rendered page actually contains `data-mskba-hero-slider` and
+  `mskba-hero-scene` (the existing opt-in Ball/Hero composition).
+
+Other Page Builder pages and production are unaffected; `main` is not touched.
+To turn off the staged section, revert the wrapper branch or disable the
+staging-specific Blade guard (no DB rollback, no content publishing).
+
+## Structure
+
+`mskba-home-story` creates a normal document-flow height owner:
+
+1. `mskba-home-story__art`: absolutely positioned backdrop
+   with the four independently accessible transparent PNG canvases:
+   `layer-1-backstage.png`, `layer-2-fense.png`,
+   `layer-3-hoop.png`, `layer-4-player.png`.
+   Existing filename `fense` is intentionally preserved.
+2. `mskba-home-story__hero-slot`: the **unchanged** previously published
+   Page Builder HTML, its Hero Slider, and its **existing Ball Director**.
+3. `mskba-venues-scene`: the new trusted Blade introduction,
+   laid out in normal document flow. The background is shared, not duplicated.
+
+No new sticky/fixed hero, native scroll interception, extra ball, or changes to
+the photographed sprite. The current `#hero.bg-lightgrey` background becomes
+transparent *only inside the staged story*; the slider itself stays opaque.
+
+Desktop layout: two-column image/content composition, background display heading,
+eyebrow, title, description, CTA, four clickable highlights. Tablet rearranges
+the layout/highlights. Mobile stacks the readable content **below an artwork
+window** and uses a 2×2 highlight grid rather than shrinking desktop columns.
+
+`resources/css/page-builder-venues-scene.css` is imported through the trusted
+Page Builder Vite entry. No editor JavaScript/CSS is injected and no arbitrary
+HTML sanitizer settings are weakened.
+
+## Deliberately postponed to subsequent PRs
+
+- Scroll-controlled parallax transforms for the four layers.
+- Scroll-controlled right-to-left entrance of the large gray duplicate title.
+- Highlights appearance at the halfway scroll threshold.
+- Single-ball Hero → Venues handoff, shrink, registration near the player's hand,
+  and reverse-scroll behavior.
+- Structured Filament controls and configuration snapshots, graphic optimization.
+
+For PR 1 all content and highlights are visible **without JavaScript**, and the
+four layers remain static. That is intentional to simplify layout acceptance
+before spatial tracking and animation are added.
+
+## QA and acceptance
+
+1. Confirm the full PR CI (PHP tests and frontend build), merge to `dev`
+   and confirm `deploy_dev` success.
+2. On `https://dev.mskba.ru/` at widths 360/390/640/768/1024/1440,
+   confirm no horizontal overflow and no transparent gaps.
+3. Check that the sky/fence/hoop/player layers retain relative alignment;
+   compare the visual with the provided desktop screenshot.
+4. Verify current hero slides, CTA, marquee/highlights and rolling ball
+   still function as before (including upward scrolling).
+5. Check the new Venues link, the 2×2 mobile highlights, foreground contrast
+   and that text does not overlap the player's face/hand.
+6. Check `prefers-reduced-motion`, keyboard focus, and alt/aria labels.
+7. Check published non-home pages are unchanged; an unpublished draft preview
+   does not acquire the staged scene.
+8. The previously approved staging scrollTop diagnostic is **not removed**
+   in PR 1; remove it after the ongoing gesture investigation is closed.
+
+Known limitations: final visual alignment has not yet been approved on a
+physical iPhone; all four existing PNGs total about 6.6 MB, so optimized
+variants should be prepared before moving this composition to production.
+
+## Follow-up: scroll layout correction and Ball Director v2 (PR 2/3)
+
+Visual acceptance of PR 1 identified oversized foreground artwork, clipped
+background ghost headline, and highlights wider than the text shell.
+
+The follow-up switches all transparent foreground PNGs from full-story-height
+`object-fit: cover` to **width-based intrinsic aspect ratio** with `height:auto`
+and `object-fit:contain`. The sky layer still fills the whole scene independently.
+The global story remains the height owner and clips decorative overflow.
+
+The highlights always stay within their right-hand grid column; links use
+minmax(0,1fr), narrowed icon/text gaps, and desktop 4-column/tablet/mobile
+2-column layouts. The background title is right-anchored inside the text shell
+and uses a capped responsive font size rather than extending outside viewport.
+
+`page-builder-venues-motion.js` computes deterministic absolute progress
+from the current section bounding box. Four layers move at distinct relative
+speeds (less on mobile), the ghost title enters from the right, and highlights
+reveal near progress 0.5. There is no scroll hijack, automatic scroll or time
+simulation. If JS is absent or reduced motion is requested, content stays visible.
+
+The existing `page-builder-rolling-ball.js` retains first-scene motion exactly
+until the Hero landing. After that threshold it reparents the same DOM ball
+into `mskba-home-story` and interpolates its real page coordinates to the
+`data-mskba-ball-target` marker in Venues. Its scale decreases to 0.48 desktop,
+0.50 tablet or 0.52 mobile (relative to its original sprite profile).
+After reaching the target it remains scene-relative, and scroll reversal returns
+the same ball to the original slider with no duplicated sprite.
+The CSS custom `--ball-tile-size` avoids an abrupt tile-size change when
+leaving the Hero container-query context.
+
+Acceptance is still required on physical devices for final composition
+registration of athlete, basket and ball hand, as these image assets have
+not been re-exported and the target marker is currently a responsive code
+parameter. Published Page Builder HTML and DB remain unchanged; staging-only.
+
+## Corrective PR: reference-scale artwork and reachable timeline (2026-10-19)
+
+The prior follow-up still painted three transparent source PNGs at **100% of
+the browser width**, not at their actual display size in the approved mockup.
+The position/scale of the foreground art are now explicit shared responsive
+design tokens, not inferred from image naturalWidth or the section height:
+
+- Desktop: foreground PNGs occupy 74% of the story width, origin below Hero
+  at `clamp(185px,15.5vw,300px)`.
+- Tablet: foreground is 100% and moves to a tablet-specific origin.
+- Mobile: foreground uses a cropped 160% canvas starting after the mobile Hero,
+  without shrinking the text; the scene remains full-bleed and clips artwork.
+- Sky/backstage independently fills the whole story and is not resized with
+  the transparent fence/hoop/player images.
+
+The translucent full-width PLOSHCHADKI is a **direct child** of the Venues
+section. Its final left anchor is 46% of the viewport-width story, not tied to
+the narrow content shell. It clips with the story without creating overflow.
+
+The previous intersection-like progress
+`(viewportHeight - venuesRect.top)/(viewportHeight + venuesHeight)`
+was mathematically unable to reach 1 on a short terminal homepage. The new
+timeline projects the section into document coordinates and bounds the
+effective end by `document.scrollHeight - cachedViewportHeight`. Thus the
+last physically reachable page scroll always finishes heading movement,
+highlights reveal and depth parallax. A page with no scroll immediately
+shows essential content. This also permits reverse scroll determinism and
+prevents iOS Safari toolbar height changes from altering the timeline.
+
+The ball's hand marker inherits exactly the player's current parallax CSS
+shift. Ball Director uses its already-transformed `getBoundingClientRect`,
+and does not apply another independent shift. On each native scroll event,
+Venues motion registers its updated CSS before Ball Director recomputes the
+ball target. Still only one DOM ball and no easing timer.
+
+Regression test `page-builder-venues-motion.test.mjs` models a short
+1170px page in an 866px viewport with 304px actual scroll range, verifies
+progress=1, ghost final offset=0, all highlights revealed and foreground
+parallax completing its authored shift at scroll-bottom.
+
+Pixel-perfect coordinates still require a visual check on DEV at 1440/390
+and a screenshot/video from the actual browser before acceptance; tests alone
+cannot validate composition against the supplied design image.
+
+The same finite-scroll guard also applies to Ball Director's **second** leg:
+nominal 220–440px transition is capped by
+`document.scrollHeight - cachedViewportHeight - heroTransitionEnd`.
+If only 115px of native scroll remain after the 189px first-scene path,
+the ball still reaches the hand marker at the last available scroll position.
+No scrolling is synthesized; this is a deterministic target interpolation.
+A dedicated Node regression test asserts the ball is at its destination at
+maxScroll=304 and returns to the unchanged Hero pose on reverse scroll.
+
+## Desktop visual tuning — athlete jump and foreground parallax (2026-10-19)
+
+Following browser-vs-design review the desktop foreground canvas is now
+68% wide, starting at `clamp(230px, 18vw, 340px)` and 1% left of the story.
+Each transparent image uses an individually authored **left-top transform origin**
+so all scale/translation values share explicit, testable semantics:
+
+- fence: `scale(.88)`, base offset `(-6px,+56px)`;
+- hoop: `scale(.90)`, base offset `(+6px,+64px)`;
+- player: `scale(.67)`, base offset `(+26px,+118px)`;
+- backdrop stays full-bleed and unscaled.
+
+Depth response at full progress: 0px background, 44px fence, 74px hoop,
+142px player, all upward. The player's larger rise is deliberate: it conveys
+a jump. The same player progress continues to drive the hand-target offset for
+the existing one-node Ball Director. Desktop ball target is approximately
+`left:34.5%;top:138px`; tablet has an independent target. These anchors
+require visual confirmation against the photographed hand at DEV before
+calling this composition pixel-perfect.
+
+The desktop per-layer scaling is reset for widths <=1050px so the previously
+separate tablet/mobile crop does not inherit an accidental second shrink.
+The athlete PNG's hard bottom edge is feathered to reduce visible compositing
+seams when it enters the backdrop.
+
+The temporary `scrollTop` diagnostic overlay and its unused public script
+were removed from staging now that the scroll event investigation is complete.
+No database, page-content snapshots, Filament settings, `main`, or production
+were changed by this PR.
+
+## Static composition checkpoint (2026-10-19)
+
+Visual review showed that scroll effects were obscuring a more fundamental layout
+problem: the Venues section was being treated as a shallow band at the *start*
+of a tall story, its athlete PNG was in the full-bleed graphic layer, and its
+decorative heading and ball target were outside the content shell.
+
+The current DEV-only checkpoint intentionally prioritizes exact DOM/layout
+structure before restoring motion:
+
+- `mskba-home-story` is a normal document-flow flex column; `mskba-venues-scene`
+  is its **last/bottom-aligned** child. No absolute-positioned section.
+  The inner visual column reserves scene height; the copy is bottom-aligned
+  with bounded bottom padding rather than adding blank space below it.
+- `mskba-home-story__art` contains **only** three full-bleed graphics:
+  background, fence and hoop. All are motionless for now.
+- Inside `section#venues-intro > .container.mskba-venues-scene__inner` are
+  the player image, hand marker, decorative gray title, section headline,
+  description, CTA and four highlights. The player lives inside the left
+  visual column, and the right text/highlights remain inside the same shell.
+- The decorative title is at its final authored `right:0` coordinate
+  within that shell. Highlights are always visible. No scroll-triggered fade,
+  no ghost-title fly-in and no depth parallax.
+- `page-builder-venues-motion.js` remains in the repository for future work
+  but is **not imported by the active Page Builder entry**. When the static
+  scene is visually accepted, its motion can be reworked against this geometry
+  in a separate PR.
+- The Hero ball remains a single sprite. During its existing second-leg
+  transition it now reparents inside `[data-mskba-venues-visual]` rather
+  than onto the root story; start and end points are measured in that one
+  coordinate space so the ball remains part of the boxed content.
+- The staging-only guard in the Blade page renderer is unchanged. No DB/Filament
+  content updates, and no production/main changes.
+
+QA must check at 1440/1024/768/390/360: (1) no content outside the boxed
+shell, (2) no empty space below the section's meaningful content, (3) correct
+artwork depth order, (4) Hero remains unchanged, and (5) ball continuity.
+Actual pixel-perfect registration of player hand, hoop and ball is still
+subject to browser screenshot acceptance.

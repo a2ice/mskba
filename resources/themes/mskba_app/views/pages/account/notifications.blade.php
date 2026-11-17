@@ -1,0 +1,90 @@
+@extends('theme::layouts.account', ['title' => 'Сообщения'])
+
+@section('account-heading')
+    @include('theme::pages.account.partials.section-heading', ['heading' => 'Сообщения'])
+    @push('account-intro')
+        <section class="panel app-account-intro app-account-intro--with-action" aria-label="О разделе">
+            <p>Системные уведомления, переписки по заявкам и личные сообщения.</p>
+            <div class="app-account-intro__actions">
+                <a class="button primary app-account-intro__action" href="{{ route('account.notifications.support.start') }}">Написать в техподдержку</a>
+                @if (config('features.direct_messages.test_entry'))
+                    <button type="button" class="button secondary" data-direct-test-open>Новое сообщение · тест</button>
+                @endif
+            </div>
+        </section>
+    @endpush
+@endsection
+
+@section('account-content')
+    <section class="app-messages" aria-label="Диалоги">
+        @if (isset($error))
+            <p class="notice" role="alert">{{ $error['message'] }}</p>
+        @else
+            @php
+                $conversationCards = collect($applicationConversations ?? []);
+                if ($systemConversation) {
+                    $preview = $systemConversation['preview'];
+                    $conversationCards->push([
+                        'id' => 'system',
+                        'name' => 'Система MSKBA',
+                        'preview' => $preview->title.' — '.$preview->body,
+                        'unread_count' => $systemConversation['unread_count'],
+                        'date' => $systemConversation['last']->created_at,
+                        'status' => null,
+                        'url' => route('account.notifications.threads.system'),
+                    ]);
+                }
+                $conversationCards = $conversationCards->sortByDesc('date');
+                $conversationGroups = app(\App\Modules\Notification\Presentation\Presenters\ConversationGroupPresenter::class)
+                    ->groups($conversationCards);
+            @endphp
+            @forelse ($conversationGroups as $group)
+                <details class="app-messages__group" data-conversation-group="{{ $group['key'] }}" @if ($loop->first) open @endif>
+                    <summary class="app-messages__group-summary">
+                        <span class="app-messages__group-label">{{ $group['label'] }} <span class="app-messages__group-count">{{ $group['items']->count() }}</span></span>
+                        @if ($group['unread_count'] > 0)
+                            <span class="app-messages__unread" aria-label="Непрочитанных сообщений в группе: {{ $group['unread_count'] }}">{{ $group['unread_count'] > 99 ? '99+' : $group['unread_count'] }}</span>
+                        @endif
+                        <span class="app-messages__group-chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="app-messages__group-items">
+            @foreach ($group['items'] as $conversation)
+                <a href="{{ $conversation['url'] }}"
+                   class="app-messages__conversation {{ $conversation['unread_count'] > 0 ? 'is-unread' : '' }}"
+                   data-conversation="{{ $conversation['id'] }}"
+                   style="--conversation-accent: {{ $conversation['id'] === 'system' ? '#ff8a00' : (str_starts_with((string) $conversation['id'], 'direct-') ? '#a78bfa' : '#38bdf8') }}">
+                    <span class="app-messages__avatar" aria-hidden="true">
+                        <svg><use href="#message"/></svg>
+                    </span>
+                    <span class="app-messages__summary">
+                        <span class="app-messages__heading">
+                            <strong>{{ $conversation['name'] }}</strong>
+                            <time datetime="{{ $conversation['date']?->toIso8601String() }}">
+                                {{ $conversation['date']?->format('d.m.Y H:i') }}
+                            </time>
+                        </span>
+                        @if ($conversation['status'])<span class="app-messages__subject">{{ $conversation['status'] }}</span>@endif
+                        <span class="app-messages__excerpt">{{ \Illuminate\Support\Str::limit($conversation['preview'], 155) }}</span>
+                    </span>
+                    <span class="app-messages__meta">
+                        @if ($conversation['unread_count'] > 0)
+                            <span class="app-messages__unread" aria-label="Непрочитанных сообщений: {{ $conversation['unread_count'] }}">{{ $conversation['unread_count'] > 99 ? '99+' : $conversation['unread_count'] }}</span>
+                        @endif
+                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                    </span>
+                </a>
+            @endforeach
+                    </div>
+                </details>
+            @empty
+                <section class="panel app-messages__empty">
+                    <h2>Сообщений пока нет</h2>
+                    <p>Когда появятся уведомления и переписки, они будут доступны здесь.</p>
+                </section>
+            @endforelse
+        @endif
+    </section>
+    @if (config('features.direct_messages.test_entry'))
+        @include('theme::pages.account.partials.direct-message-dialog', ['directTestEntry' => true])
+    @endif
+@endsection

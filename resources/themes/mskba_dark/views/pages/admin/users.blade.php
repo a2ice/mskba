@@ -11,6 +11,10 @@
         $canManageUsers = auth()->user()?->hasSystemRole(\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN) ?? false;
     @endphp
 
+    @if ($canManageUsers)
+        <p><a class="btn btn--secondary btn--sm" href="{{ route('admin.profile-change-requests') }}">Заявки на изменение профиля</a></p>
+    @endif
+
     <form method="GET" action="{{ route('admin.users') }}" class="admin-filter">
         <label class="admin-filter__field">
             <span class="admin-filter__label">Поиск</span>
@@ -223,7 +227,7 @@
             @foreach($users->filter(fn ($user) => auth()->user()?->can('manage-user-system-role', $user)) as $user)
                 @php
                     $assignableSystemRoles = collect($roles)
-                        ->filter(fn ($role) => $role->numericValue() < auth()->user()->system_role->numericValue())
+                        ->filter(fn ($role) => in_array($role, [\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::ADMIN, \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::MANAGER, \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::USER], true) && $role->numericValue() < auth()->user()->system_role->numericValue())
                         ->sortByDesc(fn ($role) => $role->numericValue());
                 @endphp
                 <div class="admin-action-modal" data-admin-action-modal="user-system-role-{{ $user->id }}" hidden>

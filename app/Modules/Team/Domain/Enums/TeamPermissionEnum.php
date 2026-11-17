@@ -16,6 +16,7 @@ enum TeamPermissionEnum: string
     case MANAGE_PERMISSIONS = 'team.permissions.manage';
     case REMOVE_MEMBERS = 'team.members.remove';
     case MANAGE_FUNDS = 'team.wallet.manage';
+    case MANAGE_UNIFORMS = 'team.uniform.manage';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum TeamPermissionEnum: string
             self::MANAGE_PERMISSIONS => 'Выдавать права управления командой',
             self::REMOVE_MEMBERS => 'Исключать участников из команды',
             self::MANAGE_FUNDS => 'Распоряжаться средствами команды',
+            self::MANAGE_UNIFORMS => 'Создавать и редактировать форму команды',
         };
     }
 }

@@ -39,13 +39,15 @@ final class HandleTelegramBotLoginStartMessage
             return;
         }
 
-        if (preg_match('/^\/start(?:@\w+)?\s+login_([A-Za-z0-9_-]{43})$/', $text, $matches) !== 1) {
+        if (preg_match('/^\/start(?:@\w+)?\s+(login|link)_([A-Za-z0-9_-]{43})$/', $text, $matches) !== 1) {
             return;
         }
 
-        $token = $matches[1];
+        $mode = $matches[1];
+        $token = $matches[2];
+        $challenge = $this->challenges->find($token);
 
-        if ($this->challenges->find($token) === null) {
+        if ($challenge === null || ($challenge['mode'] ?? 'login') !== $mode) {
             $this->telegram->call('sendMessage', [
                 'chat_id' => (string) $chatId,
                 'text' => 'Ссылка для входа истекла. Вернитесь на сайт MSKBA и запустите вход ещё раз.',
@@ -56,12 +58,14 @@ final class HandleTelegramBotLoginStartMessage
 
         $this->telegram->call('sendMessage', [
             'chat_id' => (string) $chatId,
-            'text' => 'Подтвердите вход в аккаунт MSKBA в открытом браузере.',
+            'text' => $mode === 'link'
+                ? 'Подтвердите привязку Telegram к вашему открытому аккаунту MSKBA.'
+                : 'Подтвердите вход в аккаунт MSKBA в открытом браузере.',
             'reply_markup' => [
                 'inline_keyboard' => [[
                     [
-                        'text' => 'Войти в MSKBA',
-                        'callback_data' => "auth:login:{$token}",
+                        'text' => $mode === 'link' ? 'Подтвердить привязку' : 'Войти в MSKBA',
+                        'callback_data' => "auth:{$mode}:{$token}",
                     ],
                 ]],
             ],

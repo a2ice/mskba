@@ -3,6 +3,12 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Analytics\Application\Services\GameLiveViewHistoryRecorder;
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Analytics\Domain\Models\GameLiveViewSession;
 use App\Modules\Event\Application\Services\GameLiveAudiencePresence;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
@@ -192,7 +198,25 @@ final class GameLiveAudienceTest extends TestCase
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'responsibility_status' => EventResponsibilityStatusEnum::ACCEPTED,
             ]);
-            $participant->responsibilityPermissions()->create(['permission' => $permission]);
+            $contract = Contract::query()->create([
+                'family' => ContractFamilyEnum::MEMBERSHIP,
+                'name' => 'Менеджер трансляции',
+                'status' => ContractStatusEnum::ACTIVE,
+                'starts_at' => now(),
+                'assigned_by' => $organizer->id,
+                'assigner' => UserParticipationRoleAssignerEnum::USER,
+                'comment' => \App\Modules\Contract\Application\Services\EntityContractManager::COMMENT_MARKER,
+            ]);
+            $membership = $contract->membership()->create([
+                'scope_type' => Scope::EVENT,
+                'scope_id' => $event->id,
+                'user_id' => $user->id,
+                'access_level' => 'responsible',
+                'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
+            ]);
+            $contract->permissions()->create(['permission' => $permission->value]);
+            $participant->update(['responsibility_contract_membership_id' => $membership->id]);
+            $participant->responsibilityPermissions()->create(['permission' => $permission->value]);
         }
 
         $this->actingAs($responsible)

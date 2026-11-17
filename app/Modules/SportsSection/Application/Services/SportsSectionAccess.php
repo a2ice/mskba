@@ -2,6 +2,7 @@
 
 namespace App\Modules\SportsSection\Application\Services;
 
+use App\Modules\Contract\Application\Services\ContractAssurance;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -10,6 +11,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionAccessLevelEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use Illuminate\Database\Eloquent\Builder;
 
 final class SportsSectionAccess
@@ -35,9 +37,11 @@ final class SportsSectionAccess
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::SPORTS_SECTION->value)
             ->where('scope_id', $section->id)
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn (Builder $query) => $query
                 ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                 ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->where(fn (Builder $q) => app(ContractAssurance::class)->constrain($q))
                 ->where(fn (Builder $query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                 ->where(fn (Builder $query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', $now)));
     }
@@ -46,6 +50,9 @@ final class SportsSectionAccess
     {
         $user = $user->canonical();
 
-        return $this->activeMemberships($section)->whereIn('user_id', $user->identityIds());
+        // A pending or blocked user never receives the section's permissions.
+        $query = $this->activeMemberships($section)->whereIn('user_id', $user->identityIds());
+        return $user->isConfirmed() && ! $user->isBlocked() && ! $user->trashed()
+            ? $query : $query->whereRaw('1 = 0');
     }
 }

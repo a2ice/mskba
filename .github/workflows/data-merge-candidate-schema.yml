@@ -1,0 +1,43 @@
+name: MSKBA isolated production schema upgrade candidate
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-candidate-schema.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-candidate-schema
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    name: Apply dev migrations to restored prod in isolated network
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate offline candidate script
+        run: bash -n scripts/data-merge/isolated-schema-candidate.sh
+      - name: Stage audited script outside both webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/isolated-schema-candidate.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Run isolated migration rehearsal
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-schema-candidate.sh ${{ github.run_id }}

@@ -2,6 +2,8 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Contract\Application\Services\EntityContractManager;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum as Scope;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -34,15 +36,6 @@ final class EventManagementAccess
             return true;
         }
 
-        $identityIds = $user->identityIds();
-        $isOrganizer = $event->organizerActor()
-            ->whereIn('user_id', $identityIds)
-            ->exists();
-
-        if ($isOrganizer) {
-            return true;
-        }
-
         $tournamentMatch = $event->primary_game_id === null
             ? null
             : TournamentMatch::query()->where('game_id', $event->primary_game_id)->with('tournament')->first();
@@ -60,12 +53,8 @@ final class EventManagementAccess
             return true;
         }
 
-        return $event->participants()
-            ->whereIn('user_id', $identityIds)
-            ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
-            ->whereHas('responsibilityPermissions', fn ($query) => $query
-                ->where('permission', $permission->value))
-            ->exists();
+        // EventParticipant remains the sporting roster, never an ACL source.
+        return app(EntityContractManager::class)->allows($user, Scope::EVENT, $event->id, $permission->value);
     }
 
     public function canManage(Event $event, Actor $actor): bool

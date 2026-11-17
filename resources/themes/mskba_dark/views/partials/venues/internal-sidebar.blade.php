@@ -3,7 +3,7 @@
 
     <nav class="venue-side-nav" aria-label="Внутренняя навигация площадки">
         <a
-            href="{{ route('account.venues.show', $venue->routeIdentifier()) }}"
+            href="{{ route('account.contracts.venues') }}"
             @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'show'])
             @if(($venueSidebarActive ?? null) === 'show') aria-current="page" @endif
         >Обзор</a>
@@ -43,12 +43,23 @@
             >Условия аренды</a>
         @endif
 
+        @if($groupOffersManagementUrl ?? null)
+            <a href="{{ $groupOffersManagementUrl }}" class="venue-side-nav__link">Промокоды площадки</a>
+        @endif
+
         @if($commercialMembershipsUrl ?? null)
             <a
                 href="{{ $commercialMembershipsUrl }}"
                 @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'commercial-memberships'])
                 @if(($venueSidebarActive ?? null) === 'commercial-memberships') aria-current="page" @endif
             >Коммерческие роли</a>
+        @endif
+
+        @if(auth()->check() && app(\App\Modules\Event\Application\Services\EventVenueInterestService::class)->canView(auth()->user(), $venue))
+            <a href="{{ route('account.venues.interests.index', $venue) }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'event-interests'])
+                @if(($venueSidebarActive ?? null) === 'event-interests') aria-current="page" @endif
+            >Предварительный интерес</a>
         @endif
 
         @if($venueBookingInboxUrl ?? null)

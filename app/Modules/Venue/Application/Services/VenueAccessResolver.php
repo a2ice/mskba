@@ -4,8 +4,10 @@ namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Builder;
 
 final class VenueAccessResolver
@@ -16,7 +18,12 @@ final class VenueAccessResolver
 
     public function canView(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
-        if ($venue->status->isPubliclyVisible()) {
+        if (! $venue->is_published) {
+            // A hidden venue can still be previewed by an administrator or
+            // authorized manager, never by an ordinary public viewer.
+            return $this->canManage($user, $venue, $actor);
+        }
+        if ($venue->status->isPubliclyVisible() || $this->isSuperadmin($user)) {
             return true;
         }
 
@@ -43,12 +50,32 @@ final class VenueAccessResolver
             return false;
         }
 
+        if ($this->isSuperadmin($user)) {
+            return true;
+        }
+
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT)) {
             return true;
         }
 
         return $this->isBootstrapCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
+    }
+
+    public function canManageCourt(?User $user, VenueCourt $court, ?Actor $actor = null): bool
+    {
+        $venue = $court->venue;
+        return ! $court->trashed() && $venue !== null && ! $venue->trashed()
+            && ($this->canManage($user, $venue, $actor)
+                || ($user !== null && $this->memberships->allowsForCourt($user, $court, VenuePermissionEnum::EDIT)));
+    }
+
+    public function canEditCourtSchedule(?User $user, VenueCourt $court, ?Actor $actor = null): bool
+    {
+        $venue = $court->venue;
+        return ! $court->trashed() && $venue !== null && $venue->allowsOperationalChanges()
+            && ($this->canEditSchedule($user, $venue, $actor)
+                || ($user !== null && $this->memberships->allowsForCourt($user, $court, VenuePermissionEnum::EDIT_SCHEDULE)));
     }
 
     public function canRemove(?User $user, Venue $venue, ?Actor $actor = null): bool
@@ -106,7 +133,7 @@ final class VenueAccessResolver
             ? []
             : Venue::query()
                 ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
-                ->whereNotIn('id', $this->memberships->activeOwnerVenueIds())
+                ->whereNotIn('id', [...$this->memberships->activeOwnerVenueIds(), ...$this->memberships->activePrimaryManagedVenueIds()])
                 ->pluck('id')
                 ->map(fn (mixed $id): int => (int) $id)
                 ->all();
@@ -124,17 +151,27 @@ final class VenueAccessResolver
         return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
     }
 
+    private function isSuperadmin(?User $user): bool
+    {
+        $user = $user?->canonical();
+
+        return $user !== null && $user->isConfirmed()
+            && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN);
+    }
+
     private function isBootstrapCreator(?User $user, Venue $venue): bool
     {
         return $user !== null
             && in_array((int) $venue->creatorActor?->user_id, $user->canonical()->identityIds(), true)
-            && ! $this->memberships->hasActiveOwner($venue);
+            && ! $this->memberships->hasActiveOwner($venue)
+            && ! $this->memberships->hasActivePrimaryManager($venue);
     }
 
     private function isActorCreator(?Actor $actor, Venue $venue): bool
     {
         $user = $actor?->user?->canonical();
-        if ($user === null || $this->memberships->hasActiveOwner($venue)) {
+        if ($user === null || $this->memberships->hasActiveOwner($venue)
+            || $this->memberships->hasActivePrimaryManager($venue)) {
             return false;
         }
 

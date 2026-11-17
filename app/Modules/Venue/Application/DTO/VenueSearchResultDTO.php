@@ -25,11 +25,45 @@ final readonly class VenueSearchResultDTO
         public ?float $longitude,
         public array $metroStations,
         public array $tags,
+        /** @var array<string, array<int, array<string, mixed>>> */
+        public array $courtAccess = [],
+        /** @var array<string, mixed>|null */
+        public ?array $matchedCourt = null,
     ) {}
 
+    /**
+     * Walk-in access, unlike merely free of payment, does not need booking or
+     * an explicit approval. Callers should use hasFreeCourt for free pricing.
+     */
     public function hasFreeAccess(): bool
     {
-        return $this->requiresPayment === false && ! $this->requiresBookingApproval;
+        foreach ($this->courtAccess['free'] ?? [] as $court) {
+            if (! $court['requires_booking'] && ! $court['requires_booking_approval']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasFreeCourt(): bool
+    {
+        return ($this->courtAccess['free'] ?? []) !== [];
+    }
+
+    public function hasPaidCourt(): bool
+    {
+        return ($this->courtAccess['paid'] ?? []) !== [];
+    }
+
+    public function hasApprovalCourt(): bool
+    {
+        return ($this->courtAccess['approval'] ?? []) !== [];
+    }
+
+    public function publicUrl(): string
+    {
+        return $this->matchedCourt['url'] ?? route('venues.show', $this->routeIdentifier());
     }
 
     public function routeIdentifier(): string

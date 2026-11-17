@@ -3,6 +3,7 @@
 use App\Modules\Rewards\Application\Mechanisms\DirectReferralConfirmedMechanism;
 use App\Modules\Rewards\Application\Mechanisms\SecondLevelReferralConfirmedMechanism;
 use App\Modules\Rewards\Application\Mechanisms\VenueFirstApprovalMechanism;
+use App\Modules\Rewards\Application\Mechanisms\VenueRentalCompletedMechanism;
 
 return [
     /*
@@ -19,5 +20,6 @@ return [
         DirectReferralConfirmedMechanism::class,
         SecondLevelReferralConfirmedMechanism::class,
         VenueFirstApprovalMechanism::class,
+        VenueRentalCompletedMechanism::class,
     ],
 ];

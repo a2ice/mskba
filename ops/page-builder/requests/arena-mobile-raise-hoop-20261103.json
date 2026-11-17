@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "components",
+  "key": "venues-scene-v3",
+  "field": "css",
+  "reason": "Raise the basketball hoop and backboard on mobile by about 280–300 CSS pixels to match the marked screenshot; preserve players, heading, CTA, desktop and Hero ball",
+  "publish": true,
+  "expected_draft_sha256": "51a5a602cbb172573456f714279780a511a6e131483f335baae8a591d8ff7a6e",
+  "expected_published_sha256": "51a5a602cbb172573456f714279780a511a6e131483f335baae8a591d8ff7a6e",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "  #venues-scene .mskba-v3-venues__hoop { top: clamp(250px, 67vw, 310px) !important; }",
+      "to": "  #venues-scene .mskba-v3-venues__hoop { top: clamp(-38px, calc(6vw - 62px), -15px) !important; }"
+    }
+  ]
+}

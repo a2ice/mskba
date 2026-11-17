@@ -28,8 +28,12 @@
     $declinedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::LEFT)
         ->where('confirmation_version', $event->participation_confirmation_version)
+        // An organizer who never opted in did not decline an invitation.
+        ->reject(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER
+            && $participant->participation_roles === [])
         ->values();
-    $confirmedCount = $confirmedParticipants->count();
+    $playerParticipants = $confirmedParticipants->filter(fn ($participant) => $participant->hasPlayerRole());
+    $confirmedCount = $playerParticipants->count();
     $miniGameFormats = $confirmedCount < 2
         ? collect()
         : collect(range(2, min(11, $confirmedCount)))
@@ -106,7 +110,7 @@
         })
         ->values();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
-    $bookingScopeLabel = $event->booking?->scope?->label();
+    $bookingScopeLabel = $event->booking?->scope?->label() ?? $event->planned_booking_scope?->label();
     $locationName = $event->venue->name.($bookingScopeLabel ? ' · '.$bookingScopeLabel : '');
     $coordinates = $event->venue->location?->address;
     $mapUrl = $coordinates?->latitude !== null && $coordinates?->longitude !== null
@@ -120,7 +124,9 @@
             || str_contains($haystack, 'паркет');
     });
     $surface = $surfaceAmenity?->pivot?->note ?: $surfaceAmenity?->name ?: 'Не указано';
-    $bookingLabel = $event->booking?->status?->label() ?: 'Не указано';
+    $bookingLabel = $event->booking?->status?->label()
+        ?: $event->sourceBooking?->status?->label()
+        ?: ($event->booking_deferred ? 'Не забронировано' : 'Не указано');
     $organizer = $event->organizerActor?->user;
     $organizerProfile = $organizer?->profile;
     $organizerName = trim(implode(' ', array_filter([
@@ -169,7 +175,8 @@
             @if(session('photo_status')) <div class="alert alert-success event-show__alert">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger event-show__alert">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
             @include('theme::pages.events.partials.pending-booking-publication-notice')
-            @if($event->sourceBooking)
+            @include('theme::pages.events.partials.venue-interest-status')
+            @if($event->sourceBooking && ! $event->booking_deferred)
                 <div class="alert alert-info event-show__alert">Площадка, зона и время управляются связанной бронью. Статус брони: {{ $event->sourceBooking->status->label() }}.</div>
             @endif
 
@@ -224,6 +231,11 @@
                             aria-label="{{ $recruitment['label'] }}"
                         ></span>
                         <h1>{{ $event->title }}</h1>
+                        @if($allows(EventResponsibilityPermissionEnum::UPDATE_EVENT)
+                            && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+                            && $event->ends_at->isFuture())
+                            @include('theme::partials.entity-edit-link', ['url' => route('events.edit', $event->routeIdentifier())])
+                        @endif
                     </div>
                     <div class="event-hero__meta">
                         <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
@@ -325,7 +337,7 @@
             @endif
 
             <section class="event-stat-grid">
-                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong data-event-confirmed-count>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
+                <div><i class="ti ti-users" aria-hidden="true"></i><span>Игроки</span><strong data-event-confirmed-count>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
                 <div><i class="ti ti-ball-basketball" aria-hidden="true"></i><span>Тип</span><strong>{{ $event->type->label() }}</strong></div>
                 <div><i class="ti ti-shield-check" aria-hidden="true"></i><span>Бронирование</span><strong>{{ $bookingLabel }}</strong></div>
             </section>
@@ -434,7 +446,6 @@
                                                 class="event-participant-chip__changed"
                                                 title="Изменил: {{ $statusChangerName }} · {{ $statusChangedByOrganizer ? 'организатор' : 'ответственный' }}"
                                                 data-tooltip-variant="title"
-                                                tabindex="0"
                                             >изменено {{ $participant->status_changed_at->setTimezone($timezone)->format('H:i') }}</small>
                                         @endif
                                     </div>
@@ -645,7 +656,7 @@
                                                 @foreach(['A', 'B'] as $slot)
                                                     <fieldset class="game-side-card">
                                                         <legend>Команда {{ $slot }}</legend>
-                                                        @foreach($confirmedParticipants as $participant)
+                                                        @foreach($playerParticipants as $participant)
                                                             @php
                                                                 $profile = $participant->user->profile;
                                                                 $candidateName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))

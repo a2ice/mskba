@@ -45,6 +45,7 @@
     'sectionId' => 'sports-section',
     'sectionClass' => 'sports-section-public',
     'contentTitle' => $section->name,
+    'entityEditUrl' => $canManageSection ? route('account.sports-sections.edit', $section) : null,
     'contentSubtitle' => null,
     'sidebarLabel' => 'Навигация секции',
 ])

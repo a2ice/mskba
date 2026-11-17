@@ -228,6 +228,12 @@ pipeline доставляет его в центр уведомлений и rea
 ledger. Форме выдаётся UUID idempotency key, поэтому повтор одного и того же
 POST не создаёт второе начисление.
 
+## Финансовые уведомления при переводах (задача 321)
+
+Перевод между пользователями и перечисление бонусов из Filament используют общий `TransferUserWalletBalanceHandler`. Уведомления создаются в `NotifyWalletTransferRecipient`, независимо от presentation-слоя. Для входящего перевода: `type=finance`, `payload.source=finance.wallet.transfer.received`, `delivery_category=system`, `wallet_operation_id` и `transfer_origin=user|backoffice`. Текст отличается для обычного пользователя и администрации.
+
+Запись `wallet_operations` блокируется при проверке и создании уведомления, поэтому повторный вызов по одному idempotency key не создаёт дубль и может восстановить неудавшееся уведомление. Сбой уведомления не откатывает уже зафиксированное движение средств, а передаётся вызывающему коду через `WalletTransferResult::notificationFailed`. Realtime-event для такого уведомления планируется на `afterCommit`, учитывая внешнюю транзакцию Filament; email и Telegram обрабатываются штатными механизмами после commit.
+
 ## Интеграция с прайс-листом
 
 Прайс-лист — отдельный bounded context/модуль. Он отвечает за SKU/услугу,

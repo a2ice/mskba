@@ -184,7 +184,7 @@
 
                     <div class="account-player-character-two" data-player-character-two aria-hidden="true">
                         <img
-                            src="{{ asset('images/blank/avatar/body-'.$characterGender.'.png') }}"
+                            src="{{ asset('images/blank/avatar/body-'.$characterGender.'.webp') }}"
                             alt=""
                             class="is-placeholder"
                             data-placeholder-gender="{{ $characterGender }}"

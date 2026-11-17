@@ -3,6 +3,10 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Event\Application\UseCases\SubmitEventWizardHandler;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\EventVenueInterest;
+use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
@@ -49,7 +53,7 @@ final class EventWizardBookingFirstTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_wizard_creates_booking_intent_then_publishes_one_configured_game_after_confirmation(): void
+    public function test_wizard_creates_event_and_interest_first_then_links_only_one_booking_later(): void
     {
         $requester = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $requesterActor = app(CurrentActorResolver::class)->resolve($requester, null);
@@ -101,6 +105,7 @@ final class EventWizardBookingFirstTest extends TestCase
 
         $payload = [
             'event_request_id' => $requestId,
+            'send_pre_request' => true,
             'venue_id' => $venue->id,
             'booking_scope' => 'whole',
             'title' => 'Игра после подтверждения',
@@ -124,15 +129,40 @@ final class EventWizardBookingFirstTest extends TestCase
         $response = $this->actingAs($requester)->post(route('events.store'), $payload);
         $repeat = app(SubmitEventWizardHandler::class)->handle($requesterActor, $payload);
 
+        $event = Event::query()->where('title', 'Игра после подтверждения')->firstOrFail();
+        $response->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertSame($event->id, $repeat->event->id);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
+        $this->assertTrue($event->booking_deferred);
+        $this->assertNull($event->booking_id);
+        $this->assertDatabaseCount('venue_bookings', 0);
+        $this->assertDatabaseCount('events', 1);
+        $this->assertDatabaseCount('venue_booking_event_intents', 0);
+        $interest = EventVenueInterest::query()->where('event_id', $event->id)->sole();
+        $this->assertSame('open', $interest->status);
+        $this->assertDatabaseHas('venue_booking_conversations', [
+            'event_venue_interest_id' => $interest->id,
+            'venue_booking_id' => null,
+        ]);
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $startsAt, 120, VenueBookingScopeEnum::WHOLE,
+            $requester, $venue->primaryCourt()->firstOrFail(),
+        );
+        $this->actingAs($requester)->post(route('events.booking.store', $event->routeIdentifier()), [
+            'expected_version' => $event->participation_confirmation_version,
+            'quote_id' => $quote->publicId,
+            'interest_id' => $interest->id,
+        ])->assertSessionHasNoErrors();
         $booking = VenueBooking::query()->sole();
-        $response->assertRedirect(route('account.venue-bookings.show', $booking));
-        $this->assertSame($booking->id, $repeat->booking->id);
+        $this->assertSame($event->id, $booking->event_id);
+        $this->assertSame($interest->id, $booking->event_venue_interest_id);
+        $this->assertSame('organizer', $booking->interest_booking_initiator);
         $this->assertSame(VenueBookingStatusEnum::REQUESTED, $booking->status);
-        $this->assertSame('rental', $booking->flow);
-        $this->assertDatabaseCount('events', 0);
-        $this->assertDatabaseCount('venue_booking_event_intents', 1);
-        $this->assertSame('Игра после подтверждения', $booking->eventIntent->event_payload['title']);
-        $this->assertSame([$chat->id], $booking->eventIntent->telegram_chat_ids);
+        $this->assertSame($booking->id, $event->refresh()->booking_id);
+        $this->assertDatabaseHas('venue_booking_conversations', [
+            'event_venue_interest_id' => $interest->id,
+            'venue_booking_id' => $booking->id,
+        ]);
 
         $booking = app(AcceptVenueBookingHandler::class)->handle(
             $booking->id,
@@ -149,7 +179,7 @@ final class EventWizardBookingFirstTest extends TestCase
         app(VenueBookingOutboxDispatcher::class)->dispatchPending();
         app(VenueBookingOutboxDispatcher::class)->dispatchPending();
 
-        $event = $booking->refresh()->event()->with('primaryGame')->sole();
+        $event = $event->refresh()->load('primaryGame');
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
         $this->assertSame(GameFormatEnum::BASKETBALL_5X5, $event->primaryGame->format);
         $this->assertSame(GameTimingModeEnum::PERIODS, $event->primaryGame->timing_mode);
@@ -163,7 +193,7 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->assertDatabaseCount('events', 1);
     }
 
-    public function test_wizard_cannot_create_a_rental_booking_outside_the_active_rollout(): void
+    public function test_wizard_can_publish_interest_without_activating_rental_flow(): void
     {
         config()->set('features.venue_rental_rollout.mode', 'internal');
 
@@ -199,12 +229,133 @@ final class EventWizardBookingFirstTest extends TestCase
                 'game_recruitment_mode' => GameRecruitmentModeEnum::INDIVIDUAL_DRAFT->value,
                 'game_accepts_applications' => true,
             ])
-            ->assertRedirect(route('events.wizard', ['type' => 'game']))
-            ->assertSessionHas('error', 'Онлайн-аренда этой площадки временно недоступна.');
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('venue_bookings', 0);
         $this->assertDatabaseCount('venue_booking_event_intents', 0);
-        $this->assertDatabaseCount('events', 0);
+        $this->assertDatabaseCount('events', 1);
+        $this->assertTrue(Event::query()->sole()->booking_deferred);
+    }
+
+
+    public function test_venue_representative_offers_booking_but_organizer_must_accept_and_thread_survives(): void
+    {
+        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $representative = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $venue = $this->venue($representative);
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(4)->setTime(18, 0);
+        $this->actingAs($organizer)->post(route('events.store'), [
+            'venue_id' => $venue->id,
+            'type' => 'training',
+            'visibility' => 'public',
+            'title' => 'Игра с предварительной перепиской',
+            'starts_at' => $startsAt->format('Y-m-d\TH:i'),
+            'duration_minutes' => 120,
+            'send_pre_request' => true,
+        ])->assertSessionHasNoErrors();
+
+        $event = Event::query()->sole();
+        $interest = $event->venueInterests()->sole();
+        $thread = route('events.interests.show', [
+            'event' => $event->routeIdentifier(),
+            'interest' => $interest->id,
+        ]);
+        $this->actingAs($organizer)->get($thread)->assertOk()->assertSee('Переписка');
+        $stranger = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($stranger)->get($thread)->assertForbidden();
+
+        $this->actingAs($representative)->post(route('events.interests.messages.store', [
+            'event' => $event->routeIdentifier(),
+            'interest' => $interest->id,
+        ]), [
+            'client_id' => (string) Str::uuid(),
+            'body' => 'Предзаявка ещё актуальна?',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($organizer)->get($thread)->assertOk()
+            ->assertSee('Предзаявка ещё актуальна?');
+
+        $this->actingAs($representative)->post(route('events.interests.proposals.store', [
+            'event' => $event->routeIdentifier(),
+            'interest' => $interest->id,
+        ]))->assertSessionHasNoErrors();
+
+        $proposal = \App\Modules\Event\Domain\Models\EventVenueBookingProposal::query()->sole();
+        $this->assertSame('pending', $proposal->status);
+        $this->assertSame($representative->id, $proposal->initiator->user_id);
+        $this->assertDatabaseCount('venue_bookings', 0);
+
+        $this->actingAs($organizer)->post(route('events.booking.quote', $event->routeIdentifier()), [
+            'expected_version' => $event->participation_confirmation_version,
+            'interest_id' => $interest->id,
+            'proposal_id' => $proposal->id,
+        ])->assertOk()->assertSee('Принять предложение и отправить заявку');
+
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue, $startsAt, 120, VenueBookingScopeEnum::WHOLE,
+            $organizer, $venue->primaryCourt()->firstOrFail(),
+        );
+        $this->actingAs($organizer)->post(route('events.booking.store', $event->routeIdentifier()), [
+            'expected_version' => $event->participation_confirmation_version,
+            'quote_id' => $quote->publicId,
+            'interest_id' => $interest->id,
+            'proposal_id' => $proposal->id,
+        ])->assertSessionHasNoErrors();
+
+        $booking = VenueBooking::query()->sole();
+        $this->assertSame('venue', $booking->interest_booking_initiator);
+        $this->assertSame($interest->id, $booking->event_venue_interest_id);
+        $this->assertSame('accepted', $proposal->refresh()->status);
+        $this->assertSame($booking->id, $proposal->booking_id);
+        $this->assertDatabaseHas('venue_booking_conversations', [
+            'event_venue_interest_id' => $interest->id,
+            'venue_booking_id' => $booking->id,
+        ]);
+        $this->actingAs($organizer)->get($thread)->assertOk()->assertSee('Заявка на бронь');
+        $this->actingAs($organizer)->get(route('account.venue-bookings.show', $booking))
+            ->assertOk()->assertSee('Открыть общую переписку');
+    }
+
+    public function test_event_venue_time_revision_keeps_old_values_and_revises_nonbinding_interest(): void
+    {
+        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $representative = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $venue = $this->venue($representative);
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(4)->setTime(18, 0);
+        $this->actingAs($organizer)->post(route('events.store'), [
+            'venue_id' => $venue->id, 'type' => 'training', 'visibility' => 'public',
+            'title' => 'Тренировка с переносом', 'starts_at' => $start->format('Y-m-d\TH:i'),
+            'duration_minutes' => 60, 'send_pre_request' => true,
+        ])->assertSessionHasNoErrors();
+        $event = Event::query()->sole();
+        $first = $event->venueInterests()->sole();
+        $newStart = $start->addHour();
+
+        $this->actingAs($organizer)->put(route('events.update', $event->routeIdentifier()), [
+            'title' => $event->title, 'venue_id' => $venue->id,
+            'type' => 'training', 'visibility' => 'public',
+            'starts_at' => $newStart->format('Y-m-d\TH:i'), 'duration_minutes' => 60,
+            'revision_reason' => 'Подстроили время под команду.',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('revised', $first->refresh()->status);
+        $second = $event->venueInterests()->where('status', 'open')->sole();
+        $this->assertSame(2, $second->revision);
+        $this->assertSame(2, $event->refresh()->participation_confirmation_version);
+        $this->assertDatabaseCount('venue_bookings', 0);
+        $this->assertDatabaseHas('event_venue_revisions', [
+            'event_id' => $event->id, 'revision' => 1,
+            'previous_venue_id' => $venue->id, 'next_venue_id' => $venue->id,
+            'reason' => 'Подстроили время под команду.',
+        ]);
+        $this->actingAs($organizer)->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()->assertSee('История изменений места и времени')
+            ->assertSee('Подстроили время под команду.');
     }
 
     private function venue(User $publisher): Venue

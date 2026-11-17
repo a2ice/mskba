@@ -1,0 +1,411 @@
+/* Account messages: same palette and compact cards as notification toasts,
+   with space for future peer conversations (outgoing / incoming alignment). */
+.app-messages{display:grid;gap:14px;min-width:0}
+.app-messages__conversation{
+    display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:14px;
+    padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--conversation-accent,var(--accent));
+    border-radius:var(--radius-card);background:var(--surface);color:var(--text);
+    box-shadow:0 10px 28px var(--ambient-shadow);text-decoration:none;min-width:0;transition:background .15s,border-color .15s
+}
+.app-messages__conversation:hover{background:var(--surface-raised);border-color:var(--control-line);border-left-color:var(--conversation-accent,var(--accent))}
+.app-messages__avatar{display:grid;place-items:center;width:44px;height:44px;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:14px;color:var(--accent);flex:none}
+.app-messages__avatar svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none}
+.app-messages__summary{display:grid;gap:4px;min-width:0}
+.app-messages__heading{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.app-messages__heading strong{font-size:15px}
+.app-messages__heading time{font-size:12px;color:var(--muted);white-space:nowrap}
+.app-messages__subject{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__excerpt{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__meta{display:flex;align-items:center;gap:10px;color:var(--muted)}
+.app-messages__meta svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;transform:rotate(-90deg)}
+.app-messages__unread{display:grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);font-weight:700;font-size:12px;color:var(--on-accent);font-variant-numeric:tabular-nums}
+.app-messages__empty{padding:24px}
+.app-messages__empty h2{font-size:20px;margin:0 0 8px}
+.app-messages__empty p{font-size:14px;color:var(--muted);margin:0}
+.app-messages--thread{max-width:900px;gap:18px}
+.app-messages__thread-header{display:grid;gap:14px;border-bottom:1px solid var(--line);padding-bottom:18px}
+.app-messages__back{display:inline-flex;align-items:center;gap:8px;width:max-content;text-decoration:none;color:var(--muted);font-size:14px}
+.app-messages__back:hover{color:var(--accent)}
+.app-messages__back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;transform:rotate(180deg)}
+.app-messages__thread-contact{display:flex;align-items:center;gap:12px}
+.app-messages__thread-contact h2{font-size:21px;margin:0 0 3px}
+.app-messages__thread-contact p{font-size:13px;color:var(--muted);margin:0}
+.app-messages__history{display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
+.app-messages__bubble{display:flex;flex-direction:column;align-self:flex-start;width:max-content;max-width:80%;min-width:min(260px,100%);gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:14px 16px;overflow-wrap:anywhere}
+.app-messages__bubble--incoming{border-left:1px solid var(--line)}
+.app-messages__bubble--outgoing{align-self:flex-end;border-radius:18px 18px 6px 18px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 11%,var(--surface))}
+.app-messages__bubble-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.app-messages__bubble-head strong{font-size:14px;line-height:1.4}
+.app-messages__new-label{font-size:11px;font-weight:650;color:var(--accent)}
+.app-messages__bubble-body{font-size:13px;line-height:1.5;color:var(--muted);margin:0;white-space:pre-wrap}
+.app-messages__timestamp{font-size:11px;color:var(--faint);align-self:flex-end;font-variant-numeric:tabular-nums}
+.app-messages__action{color:var(--accent);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-weight:650;align-self:flex-start}
+.app-messages__action-form{margin:0}
+.app-messages__action-form .button{font-size:12px;padding:8px 12px}
+.app-messages__pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-top:1px solid var(--line);font-size:13px}
+.app-messages__pagination a{color:var(--accent);text-decoration:none}
+.app-messages__pagination span{color:var(--muted)}
+.app-messages__thread-empty{color:var(--muted);font-size:14px}
+.app-messages__read-error{color:var(--danger);font-size:13px}
+.app-messages__read-error[hidden]{display:none}
+@media(max-width:680px){
+    .app-messages__conversation{grid-template-columns:40px minmax(0,1fr) auto;padding:14px 12px;gap:10px;border-radius:18px}
+    .app-messages__avatar{height:40px;width:40px}
+    .app-messages__heading{flex-wrap:wrap;gap:4px}
+    .app-messages__heading strong{font-size:14px}
+    .app-messages__heading time{font-size:11px}
+    .app-messages__meta{gap:5px}
+    .app-messages__meta svg{display:none}
+    .app-messages__bubble{max-width:94%;padding:12px 13px}
+    .app-messages__pagination{flex-wrap:wrap;font-size:12px}
+}
+
+.app-messages__support{padding:18px 20px;display:grid;gap:8px;max-width:700px}
+.app-messages__support strong{font-size:15px}
+.app-messages__support p{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.app-messages__support a{color:var(--accent);font-size:13px;width:fit-content;display:inline-flex;gap:6px;align-items:center}
+.app-messages__support a svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+.app-messages__bubble--system{align-self:center;max-width:85%;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.app-messages__bubble--system .app-messages__bubble-head strong{color:var(--accent)}
+.app-messages__participants{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.app-messages__participant{display:inline;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:650;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.app-messages__compose{border-top:1px solid var(--line);padding-top:17px;display:grid;gap:10px;max-width:700px}
+.app-messages__compose label{font-size:13px;font-weight:600}
+.app-messages__compose textarea,.app-messages__direct-dialog textarea{width:100%;min-height:85px;background:var(--surface);color:var(--text);border:1px solid var(--control-line);border-radius:var(--radius-control);resize:vertical;padding:12px}
+.app-messages__compose button{justify-self:end}
+.app-messages__closed{font-size:13px;color:var(--muted);border:1px solid var(--line);padding:14px;border-radius:12px}
+.app-messages__direct-name{font-size:16px;font-weight:700;margin:0 0 12px}
+.app-messages__direct-dialog [data-direct-form]{display:grid;gap:15px}
+.app-messages__direct-dialog [data-direct-form][hidden]{display:none}
+.app-messages__direct-dialog [data-direct-form] button{justify-self:end}
+.app-messages__direct-dialog [data-direct-error]{color:var(--danger)}
+.app-messages__direct-dialog [data-direct-success]{color:var(--success)}
+.app-messages__direct-dialog [hidden]{display:none!important}
+.app-messages__pagination [aria-disabled="true"]{opacity:.4;pointer-events:none}
+
+
+.app-messages--system .app-messages__support{
+    width:min(100%,640px);
+    max-width:100%;
+    box-sizing:border-box;
+    border-radius:16px;
+    padding:16px;
+    gap:7px;
+}
+@media(max-width:680px){
+    .app-messages--system .app-messages__support{
+        padding:14px 12px;
+    }
+}
+/* Pilot 036: compact, responsive reviewer-management controls. */
+.app-profile-thread__management{display:grid;gap:14px;margin-top:16px}
+.app-profile-thread__management form[data-profile-thread-invite]{display:grid;gap:10px}
+.app-profile-thread__management input[type=search]{width:100%;min-height:44px}
+.app-profile-thread__participant{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+.app-profile-thread__participant strong{flex:1 1 140px}
+[data-profile-thread-results]{display:grid;gap:4px}
+[data-profile-thread-results] button{width:100%;text-align:left;padding:10px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);color:var(--text)}
+
+.app-profile-thread__closed{padding:24px}
+.app-profile-thread__closed .muted{margin-top:12px}
+.app-profile-thread__reviewers{padding:20px;margin-bottom:20px}
+.app-profile-thread__lead{margin:8px 0 16px;color:var(--muted)}
+
+/* Messenger v2: consistent compact cards and a self-contained, scrollable log. */
+.app-messages--thread{width:100%;max-width:none;gap:12px;min-height:0}
+.app-messages--thread .app-messages__thread-header{
+    display:flex;align-items:center;gap:12px;padding:12px 16px;
+    border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);
+}
+.app-messages--thread .app-messages__back{
+    display:grid;place-items:center;flex:none;width:36px;height:36px;
+    border:1px solid var(--line);border-radius:50%;color:var(--text)
+}
+.app-messages--thread .app-messages__thread-header .app-messages__avatar{width:36px;height:36px;border-radius:12px}
+.app-messages--thread .app-messages__thread-contact{display:grid;gap:2px;min-width:0}
+.app-messages--thread .app-messages__thread-contact h2{font-size:16px;line-height:1.3;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages--thread .app-messages__thread-contact p{font-size:12px;margin:0}
+/* A thread fills the available account viewport; only its messages scroll.
+   The layout already subtracts the sticky header, breadcrumbs and page padding.
+   Keep a readable minimum for short landscape screens and long sidebars. */
+.app-account-section:has(.app-messages--thread) .app-account-layout{
+    align-items:stretch;
+}
+.app-account-section:has(.app-messages--thread) .app-account-layout__content{
+    display:flex;flex-direction:column;min-height:0;
+}
+.app-messages--thread{
+    flex:1 1 auto;display:flex;flex-direction:column;min-height:0;
+}
+.app-messages--thread>.app-messages__thread-header,
+.app-messages--thread>.app-messages__compose{flex:0 0 auto}
+.app-messages__chat-log{
+    display:flex;flex:1 1 0;flex-direction:column;gap:10px;padding:16px;
+    height:auto;min-height:220px;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-color:var(--control-line) transparent;scrollbar-width:thin;
+}
+.app-messages__chat-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-messages__chat-log .app-messages__history{gap:12px}
+.app-messages__load{min-height:34px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:12px}
+.app-messages__load[hidden]{display:none}
+.app-messages__load .spinner{width:18px;height:18px;flex:none}
+/* One composer outline for both textarea and its actions, no nested input border. */
+.app-messages--thread .app-messages__compose{
+    display:grid;gap:0;max-width:none;width:100%;padding:0;
+    border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);
+    transition:border-color .2s ease;
+}
+.app-messages--thread .app-messages__compose:focus-within{border-color:var(--control-line)}
+.app-messages--thread .app-messages__compose textarea{
+    display:block;box-sizing:border-box;width:100%;max-width:none;
+    min-height:90px;resize:vertical;padding:16px 18px 12px;
+    color:var(--text);background:transparent;border:0;border-radius:var(--radius-card);
+    outline:none;box-shadow:none;
+}
+/* The theme-wide :focus-visible rule uses !important; scope the override to
+   this borderless textarea only. The shared composer border remains the focus cue. */
+.app-messages--thread .app-messages__compose textarea:focus-visible{
+    outline:none!important;box-shadow:none!important;
+}
+.app-messages__compose-footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:6px;
+    min-width:0;padding:8px 12px 10px;
+}
+.app-messages__compose-footer>.button{margin-left:0;flex:none}
+.app-messages__actions{position:relative;flex:0 0 auto;min-width:0}
+/* The same icon-first, expanding Actions control as in the site context bar.
+   Keep its shared hover/focus/open styling; only relocate the flyout upward. */
+.app-messages__actions>.app-context-actions__menu{
+    top:auto;bottom:calc(100% + 6px);right:0;left:auto;z-index:15;
+}
+.app-messages__actions>.app-context-actions__menu :is(button,a){font-size:13px}
+.app-messages--thread .app-profile-thread__reviewers{margin:0;padding:18px}
+.app-messages--thread [hidden]{display:none!important}
+.app-messages__review-dialog{width:min(500px,calc(100vw - 32px));max-width:100%;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-raised);color:var(--text);padding:24px;box-shadow:0 22px 60px var(--shadow-modal)}
+.app-messages__review-dialog::backdrop{background:var(--shadow-modal)}
+.app-messages__review-dialog form{display:grid;gap:14px}
+.app-messages__review-dialog h3{margin:0}
+.app-messages__review-dialog textarea{width:100%;min-height:100px;color:var(--text);background:var(--surface);border:1px solid var(--control-line);border-radius:var(--radius-control);padding:12px}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__thread-header{gap:9px;padding:10px 12px}
+    .app-messages--thread .app-messages__thread-contact h2{font-size:14px}
+    .app-messages__chat-log{min-height:220px;padding:12px}
+    .app-messages--thread .app-messages__compose textarea{padding:12px 14px}
+    .app-messages__compose-footer{gap:6px;padding:6px 8px 8px}
+}
+
+.app-messages__chat-log .app-messages__history{margin-top:auto}
+
+/* Small screens: preserve viewport filling below the mobile account nav, without
+   forcing fixed heights that would hide the composer behind keyboard/safe areas. */
+@media(max-width:900px){
+    .app-account-section:has(.app-messages--thread) .app-account-layout{
+        min-height:calc(100dvh - var(--header-height) - var(--context-bar-height) - 64px);
+    }
+    .app-account-section:has(.app-messages--thread) .app-account-layout__content{
+        flex:1 1 auto;
+    }
+}
+
+/* Task 037: date grouping and updated contrast for the chat's message types. */
+.app-messages--thread .app-messages__day{
+    align-self:center;position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:center;
+    padding:5px 12px;border-radius:999px;
+    background:var(--surface-raised);color:var(--muted);
+    font-size:12px;font-weight:650;text-align:center;
+}
+/* Low-contrast body background; the outline communicates who sent it.
+   System events behave like incoming bubbles, with a stronger orange fill. */
+.app-messages--thread .app-messages__bubble--outgoing{
+    align-self:flex-end;border:1px solid var(--line);
+    background:transparent;
+}
+.app-messages--thread .app-messages__bubble--incoming{
+    align-self:flex-start;border:1px solid color-mix(in srgb,var(--accent) 75%,var(--line));
+    background:transparent;
+}
+.app-messages--thread .app-messages__bubble--system{
+    box-sizing:border-box;align-self:flex-start;width:max-content;max-width:min(80%,620px);min-width:0;
+    border:1px solid color-mix(in srgb,var(--accent) 60%,var(--line));
+    border-radius:18px 18px 18px 6px;
+    background:color-mix(in srgb,var(--accent) 16%,var(--surface));
+}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__bubble--system{max-width:94%}
+}
+
+/* Messenger workspace: conversation + independent, scrollable inbox preview. */
+.app-message-workspace{
+    display:grid;grid-template-columns:minmax(235px,270px) minmax(0,1fr);
+    gap:16px;min-width:0;min-height:0;flex:1 1 auto;
+}
+.app-message-workspace>.app-messages--thread{min-width:0}
+.app-messages__rail{
+    min-width:0;min-height:0;display:flex;flex-direction:column;
+    padding:0;overflow:hidden;
+}
+.app-messages__rail-header{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:16px;border-bottom:1px solid var(--line);font-size:14px;
+}
+.app-messages__rail-header a{color:var(--accent);font-size:12px}
+.app-messages__rail-list{
+    flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    display:flex;flex-direction:column;gap:6px;padding:10px;
+    scrollbar-width:thin;scrollbar-color:var(--control-line) transparent;
+}
+.app-messages__rail-item{
+    display:flex;flex-direction:column;gap:5px;min-width:0;
+    padding:12px;border:1px solid transparent;border-radius:12px;
+    color:var(--text);text-decoration:none;
+}
+.app-messages__rail-item:is(:hover,:focus-visible){background:var(--surface-raised);border-color:var(--line)}
+.app-messages__rail-item.is-active{
+    background:color-mix(in srgb,var(--accent) 9%,var(--surface));
+    border-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+}
+.app-messages__rail-heading{display:flex;justify-content:space-between;align-items:center;gap:7px;min-width:0}
+.app-messages__rail-heading strong{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__rail-item .app-messages__unread{min-width:19px;height:19px;font-size:11px;flex:none}
+.app-messages__rail-excerpt{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__rail-item time{font-size:11px;color:var(--faint);align-self:flex-end}
+.app-messages__rail-empty{padding:12px;font-size:12px;color:var(--muted)}
+@media(max-width:1199px){
+    .app-message-workspace{grid-template-columns:minmax(0,1fr)}
+    .app-messages__rail{display:none}
+}
+@media(max-width:900px){
+    .app-message-workspace{display:flex;flex-direction:column}
+}
+
+/* Read-only system notices: neutral cards instead of orange status panels.
+   Use white titles, orange actions; preserve chat/date geometry. */
+.app-messages--system .app-messages__bubble--notification{
+    box-sizing:border-box;align-self:flex-start;width:max-content;max-width:min(80%,620px);min-width:0;
+    border:1px solid var(--line);
+    border-radius:18px 18px 18px 6px;
+    padding:12px 14px;gap:5px;
+    background:var(--surface);
+}
+.app-messages--system .app-messages__bubble--notification .app-messages__bubble-head strong{
+    color:var(--text);
+}
+.app-messages--system .app-messages__bubble--notification .app-messages__action{
+    text-decoration:none;
+}
+.app-messages--system .app-messages__bubble--notification .app-messages__action:hover{
+    color:color-mix(in srgb,var(--accent) 80%,var(--text));
+    text-decoration:none;
+}
+.app-messages__system-footer{
+    display:flex!important;flex-direction:row;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:14px!important;padding:14px 16px!important;
+}
+.app-messages__system-footer p{margin:0;font-size:12px;color:var(--muted);flex:1 1 230px}
+.app-messages__system-footer .button{flex:none}
+@media(max-width:680px){.app-messages--system .app-messages__bubble--notification{max-width:94%;padding:11px 12px}}
+
+/* New private support request form — reuses the account panel primitives. */
+.app-messages__support-form{display:grid;gap:14px;max-width:740px;padding:24px}
+.app-message-workspace--support-create>.app-messages__support-form{
+    width:100%;max-width:none;min-width:0;align-self:start;
+}
+.app-messages__support-form .app-messages__compose-footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:8px;width:100%;padding:4px 0 0;
+}
+.app-messages__support-email{
+    margin:0;text-align:right;color:var(--muted);font-size:13px;line-height:1.6;
+}
+.app-messages__support-email a{color:var(--accent);text-underline-offset:2px}
+@media(max-width:680px){
+    .app-messages__support-form{padding:18px}
+    .app-messages__support-form .app-messages__compose-footer{flex-wrap:wrap}
+}
+.app-messages__support-form h1{font-size:26px;margin:0}
+.app-messages__support-form>p{margin:0;color:var(--muted)}
+.app-messages__support-form form{display:grid;gap:12px}
+.app-messages__support-form form label{font-weight:650;font-size:13px}
+.app-messages__support-form :is(input,textarea){width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-control);padding:13px;color:var(--text)}
+
+
+.app-messages__actions .app-messages__support-transfer-label{
+    display:block;padding:8px 12px 0;color:var(--muted);font-size:12px;
+}
+.app-messages__actions select{
+    display:block;width:calc(100% - 20px);margin:5px 10px;padding:10px;
+    background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-control);color:var(--text);
+}
+
+/* Temporary test-only contact picker. Reuses the existing direct-message modal. */
+.app-messages__direct-search{display:grid;gap:12px}
+.app-messages__direct-search p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.app-messages__direct-search label{font-weight:650;font-size:13px}
+.app-messages__direct-search input{width:100%;min-width:0;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);color:var(--text);padding:12px}
+.app-messages__direct-search-results{display:grid;gap:6px;max-height:260px;overflow-y:auto}
+.app-messages__direct-candidate{width:100%;padding:11px 12px;text-align:left;color:var(--text);background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-control);cursor:pointer}
+.app-messages__direct-candidate:hover,.app-messages__direct-candidate:focus-visible{border-color:var(--accent);color:var(--accent)}
+.app-messages__direct-back{margin-bottom:10px}
+
+/* Persistent direct-message moderation events, quiet and accessible. */
+.app-messages__direct-event{align-self:center;max-width:96%;display:flex;gap:8px;align-items:baseline;justify-content:center;flex-wrap:wrap;text-align:center;font-size:12px;line-height:1.5;padding:4px 8px}
+.app-messages__direct-event time{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.app-messages__direct-event--blocked span{color:var(--danger)}
+.app-messages__direct-event--unblocked span{color:var(--success)}
+/* Replace, rather than duplicate, the composer textarea while sending is forbidden.
+   Keep the notice inside the shared panel and above the action buttons. */
+.app-messages--thread .app-messages__compose .app-messages__direct-status{
+    display:flex;align-items:center;box-sizing:border-box;min-height:66px;
+    margin:0;padding:16px 18px 8px;
+    color:var(--muted);font-size:14px;line-height:1.5;
+}
+.app-messages__direct-status[hidden],.app-messages__actions [hidden]{display:none!important}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__compose .app-messages__direct-status{
+        min-height:56px;padding:12px 14px 6px;font-size:13px;
+    }
+}
+
+/* Quiet direct-message length indicator; hidden together with a locked composer. */
+.app-messages__char-count{display:block;font-size:11px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.app-messages__compose-footer>.app-messages__char-count{margin-right:auto;padding-left:6px}
+.app-messages__char-count[hidden]{display:none!important}
+
+/* Visual conversation groups; conversation ownership and notification scopes stay independent. */
+.app-messages__group{min-width:0;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface)}
+.app-messages__group-summary,
+.app-messages__rail-group-summary{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;list-style:none;color:var(--text)}
+.app-messages__group-summary::-webkit-details-marker,
+.app-messages__rail-group-summary::-webkit-details-marker{display:none}
+.app-messages__group-summary{padding:16px 18px;font-size:15px;font-weight:700}
+.app-messages__group[open]>.app-messages__group-summary{border-bottom:1px solid var(--line)}
+.app-messages__group-label,.app-messages__rail-group-label{flex:1 1 auto;min-width:0}
+.app-messages__group-count{display:inline-block;margin-left:5px;color:var(--muted);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.app-messages__group-items{display:grid;gap:10px;padding:12px}
+.app-messages__group-items>.app-messages__conversation{box-shadow:none}
+.app-messages__group-chevron{flex:0 0 9px;height:9px;width:9px;border-bottom:2px solid var(--muted);border-right:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.app-messages__group:not([open])>.app-messages__group-summary .app-messages__group-chevron,
+.app-messages__rail-group:not([open])>.app-messages__rail-group-summary .app-messages__group-chevron{transform:rotate(-45deg)}
+.app-messages__rail-group{min-width:0;flex:none}
+.app-messages__rail-group-summary{padding:10px 10px 8px;font-size:12px;font-weight:700}
+.app-messages__rail-group-summary .app-messages__unread{height:19px;min-width:19px;font-size:11px}
+.app-messages__rail-group-items{display:grid;gap:4px;padding:0 0 8px 3px}
+.app-messages__rail-group[open]+.app-messages__rail-group{border-top:1px solid var(--line)}
+.app-messages__message-source{display:grid;gap:3px;font-size:12px;color:var(--muted);line-height:1.4}
+.app-messages__message-source a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.app-messages__message-source a:hover{color:var(--text)}
+@media(max-width:680px){
+    .app-messages__group-summary{padding:13px 12px;font-size:14px}
+    .app-messages__group-items{padding:9px;gap:8px}
+}
+
+/* Support-ticket closure reason confirmation dialog. */
+.app-support-close-dialog{max-width:min(92vw,480px);width:100%;padding:24px;color:var(--text);background:var(--surface-raised,#1a1b1d);border:1px solid var(--line);border-radius:18px}
+.app-support-close-dialog::backdrop{background:rgba(0,0,0,.65)}
+.app-support-close-dialog form{display:grid;gap:12px}
+.app-support-close-dialog h3{margin:0 0 8px;font-size:20px}
+.app-support-close-dialog label{font-weight:600}
+.app-support-close-dialog :is(select,textarea){width:100%;padding:12px;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:9px}
+.app-support-close-dialog [data-support-close-description-wrap]:not([hidden]){display:grid;gap:8px}
+.app-support-close-dialog__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}

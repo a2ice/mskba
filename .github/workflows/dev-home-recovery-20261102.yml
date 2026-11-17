@@ -1,0 +1,115 @@
+name: DEV staging homepage recovery (one-time)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/dev-home-recovery-20261102.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-home-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 6
+    steps:
+      - name: Diagnose staging deploy guard and recover HTTP if needed
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -u
+            echo '=== SSH staging diagnostic start ==='
+            cd /var/www/mskba-dev-next || exit 1
+            echo "User: $(id -un)"
+            echo "Deployed source: $(git rev-parse --short HEAD)"
+            echo "Env mode: $(stat -c '%U:%G:%a' .env)"
+            for expected in APP_ENV=staging APP_DEBUG=false APP_THEME=mskba_app APP_URL=https://dev.mskba.ru TELEGRAM_UPDATES_TRANSPORT=disabled; do
+              if grep -qx "$expected" .env; then
+                echo "$expected: PASS"
+              else
+                echo "$expected: FAIL"
+              fi
+            done
+            if grep -Eq '^SUPERADMIN_SEED_PASSWORD=[0-9a-f]{64}$' .env; then echo 'Seed format: PASS'; else echo 'Seed format: FAIL'; fi
+            if grep -Eq '^MAIL_MAILER=(log|smtp)$' .env; then echo 'Mail mode: PASS'; else echo 'Mail mode: FAIL'; fi
+            for file in compose.dev.local.yaml .dev-bootstrap-complete public/build/manifest.json; do
+              if test -f "$file"; then echo "$file: PRESENT"; else echo "$file: MISSING"; fi
+            done
+            if git diff --quiet HEAD -- . ':(exclude)public/build/**'; then echo 'Tracked source: CLEAN'; else echo 'Tracked source: MODIFIED'; fi
+            if test -w storage && test -w bootstrap/cache; then echo 'Storage writable: PASS'; else echo 'Storage writable: FAIL'; fi
+            # The previous failed deploy restored .env with deploy:deploy:640.
+            # Repair only this exact metadata drift, without viewing/changing values.
+            CURRENT_ENV_MODE="$(stat -c '%U:%G:%a' .env)"
+            if [ "$CURRENT_ENV_MODE" = 'deploy:deploy:640' ]; then
+              echo 'Repairing staging .env group: deploy -> www-data'
+              if ! chgrp www-data .env 2>/dev/null; then
+                COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+                $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env
+              fi
+            fi
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            echo 'Staging .env ownership mode: VALID'
+            echo '=== Read-only Page Builder ball JS diagnostics ==='
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $pageId = \Illuminate\Support\Facades\DB::table("page_builder_pages")->where("published_path", "/")->value("id");
+              $js = (string) \Illuminate\Support\Facades\DB::table("page_builder_script_assets")->where("entity_type", "page")->where("entity_id", $pageId)->value("published_js");
+              echo "ball_js_len=".strlen($js)." sha12=".substr(hash("sha256", $js), 0, 12).PHP_EOL;
+              $checks = [
+                  "original_story" => "const story = scene?.closest",
+                  "original_venues" => "const venues = story?.querySelector",
+                  "v3_venues" => "const venuesV3",
+                  "old_guard" => "if (!story || !venues || !ballTarget || !ballHost)",
+                  "new_guard" => "if (!venues || !ballTarget || !ballHost)",
+                  "v3_marker" => "mskba-venues-v3-handoff-20261102",
+                  "paintVenues" => "function paintVenues(",
+                  "profiles" => "rollingBallProfiles",
+              ];
+              foreach ($checks as $label => $value) {
+                  echo $label."=".(str_contains($js, $value) ? "YES" : "NO").PHP_EOL;
+              }
+              foreach (explode("\n", $js) as $line) {
+                  if (preg_match("/venuesV3|venues-intro|ballTarget|ballHost|const story|desktop:|const venues =/", $line)) {
+                      echo "line: ".substr(trim($line), 0, 220).PHP_EOL;
+                  }
+              }
+            '
+            echo '=== End Page Builder JS diagnostics ==='
+            echo '=== SSH staging diagnostic end ==='
+            set -euo pipefail
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            if curl --fail --silent --show-error --output /dev/null --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+              echo 'DEV homepage is healthy; no recovery required'
+              exit 0
+            fi
+            echo 'Resetting Laravel runtime caches on staging only'
+            $COMPOSE exec -T phpfpm php artisan optimize:clear
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            $COMPOSE restart phpfpm nginx
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --output /dev/null --max-time 7 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+                echo "DEV homepage HTTP 200 restored on attempt $attempt"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo 'Staging homepage remains unhealthy after recovery'
+            exit 1

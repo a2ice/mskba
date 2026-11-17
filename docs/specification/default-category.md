@@ -4,6 +4,17 @@
 
 Паттерн унифицирует только оболочку страницы. Контроллеры, доменные фильтры, карточки, карта и бизнес-правила остаются у конкретного bounded context.
 
+## Актуальная светлая реализация (`mskba_app`, ноябрь 2026)
+
+Для публичных каталогов `/venues`, `/shop`, `/feed`, `/events`, `/tournaments`, `/sections` и `/leagues` используется единый `theme::layouts.category` из `resources/themes/mskba_app/views/layouts/category.blade.php`. Это актуальный light-theme shell, отдельный от исторической реализации `mskba_dark` и описанного ниже `layouts.default-category`.
+
+- Общая двухколоночная композиция sidebar + toolbar + results, адаптивные мобильные фильтры и переключатель карточки/список.
+- Фильтры используют `theme::components.catalog-toolbar` и UI Kit `select-control`; стили в `mskba_app/css/category.css` используют только токены дизайн-темы.
+- Каждый consumer отвечает за серверный поиск, собственные фильтры, карточки, права, пагинацию и SEO. Переключение `?view=list` не сбрасывает поисковые параметры и фильтры.
+- `/leagues` использует фильтры `q`, `status` и `season`, показывает только действующие и архивные лиги, сохраняет права на создание лиги и ссылки на detail-страницы.
+
+Остальные разделы этого документа сохраняют описание прежнего `default-category` из `mskba_dark` для контекста и не должны использоваться вместо актуального `mskba_app` layout на перечисленных маршрутах.
+
 ## Базовый layout
 
 Основной Blade layout: `theme::layouts.default-category`.

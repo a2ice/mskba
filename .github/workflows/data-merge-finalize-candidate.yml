@@ -1,0 +1,52 @@
+name: MSKBA offline final candidate reconciler
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-finalize-candidate.yml
+      - scripts/data-merge/import-dev-media-relations.php
+      - scripts/data-merge/quarantine-unmatched-identities.php
+      - scripts/data-merge/import-dev-content.php
+      - scripts/data-merge/isolated-finalize-candidate.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-final-candidate
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    name: Quarantine, map media and import content in isolated PostgreSQL
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate all offline importer scripts
+        run: |
+          set -euo pipefail
+          php -l scripts/data-merge/quarantine-unmatched-identities.php
+          php -l scripts/data-merge/import-dev-media-relations.php
+          php -l scripts/data-merge/import-dev-content.php
+          bash -n scripts/data-merge/isolated-finalize-candidate.sh
+      - name: Copy reviewed scripts to private tools directory
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/quarantine-unmatched-identities.php,scripts/data-merge/import-dev-media-relations.php,scripts/data-merge/import-dev-content.php,scripts/data-merge/isolated-finalize-candidate.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Apply all final data imports to disposable candidate only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 35m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/isolated-finalize-candidate.sh ${{ github.run_id }} /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge

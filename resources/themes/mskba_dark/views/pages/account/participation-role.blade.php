@@ -100,7 +100,7 @@
                         @if($objectiveAssessment)
                             <div class="account-player-objective__meta">
                                 <strong>Матчей учтено: {{ $objectiveAssessment->games_count }}</strong>
-                                <span title="Достоверность растёт с количеством подтверждённых матчей и достигает максимума после десяти игр." data-tooltip-variant="title" tabindex="0">
+                                <span title="Достоверность растёт с количеством подтверждённых матчей и достигает максимума после десяти игр." data-tooltip-variant="title">
                                     Достоверность {{ (int) round((float) $objectiveAssessment->confidence * 100) }}%
                                 </span>
                             </div>

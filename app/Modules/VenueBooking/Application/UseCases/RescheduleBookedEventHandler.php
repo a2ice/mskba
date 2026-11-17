@@ -143,11 +143,27 @@ final readonly class RescheduleBookedEventHandler
                 'metadata' => ['operation' => 'rescheduled', 'previous' => $previous],
                 'booking_version' => $nextVersion,
             ]);
+            $event->venueRevisions()->create([
+                'revision' => (int) $event->venueRevisions()->max('revision') + 1,
+                'changed_by_actor_id' => $actor->id,
+                'previous_venue_id' => $event->venue_id,
+                'next_venue_id' => $venueId,
+                'previous_court_id' => $event->venue_court_id,
+                'next_court_id' => $targetCourt->id,
+                'previous_scope' => $previous['scope'],
+                'next_scope' => $scope->value,
+                'previous_starts_at' => $event->starts_at,
+                'previous_ends_at' => $event->ends_at,
+                'next_starts_at' => $startsAt,
+                'next_ends_at' => $endsAt,
+                'reason' => $emergencyReason,
+            ]);
             $event->forceFill([
                 'venue_id' => $venueId,
                 'venue_court_id' => $targetCourt->id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
+                'planned_booking_scope' => $scope,
                 'participation_confirmation_version' => $event->participation_confirmation_version + 1,
             ])->save();
             DB::afterCommit(static function () use ($event, $booking): void {

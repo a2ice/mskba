@@ -24,6 +24,7 @@ final class CreateEventRequest extends FormRequest
                 ? $this->input('event_request_id')
                 : (string) Str::uuid(),
             'publish_to_telegram' => $this->boolean('publish_to_telegram'),
+            'send_pre_request' => $this->boolean('send_pre_request'),
             'game_accepts_applications' => $this->input('type') === EventTypeEnum::GAME->value
                 ? ($this->has('game_accepts_applications') ? $this->boolean('game_accepts_applications') : true)
                 : false,
@@ -137,6 +138,7 @@ final class CreateEventRequest extends FormRequest
             ],
             'participant_user_ids' => ['nullable', 'array', 'max:499'],
             'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'send_pre_request' => ['required', 'boolean'],
             'publish_to_telegram' => ['required', 'boolean'],
             'telegram_chat_ids' => [
                 Rule::requiredIf($this->boolean('publish_to_telegram')),

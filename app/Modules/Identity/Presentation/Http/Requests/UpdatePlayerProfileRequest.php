@@ -33,9 +33,11 @@ final class UpdatePlayerProfileRequest extends FormRequest
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
         $rules = [
+            'section' => ['nullable', Rule::in(['physical', 'game'])],
             'mutation' => ['nullable', Rule::in([
                 'render_mode',
                 'face_reference',
+                'face_reference_delete',
                 'generate_2d',
                 'generation_quote',
                 'generation_preferences',
@@ -49,7 +51,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'face_reference_slot' => [
                 'nullable',
-                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'face_reference'),
+                Rule::requiredIf(fn (): bool => in_array($this->input('mutation'), ['face_reference', 'face_reference_delete'], true)),
                 Rule::in(PlayerCharacterFaceReferenceOptions::SLOTS),
             ],
             'face_reference' => [
@@ -59,8 +61,9 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
-            'generation_team_id' => ['nullable', 'integer'],
-            'generation_with_team_logo' => ['nullable', 'boolean'],
+            'generation_uniform_source' => ['nullable', Rule::in(['neutral', 'team', 'mine'])],
+            'generation_uniform_design_id' => ['nullable', 'integer', 'min:1'],
+            'generation_team_id' => ['nullable', 'integer', 'min:1'],
             'generation_id' => [
                 'nullable',
                 Rule::requiredIf(fn (): bool => $this->input('mutation') === 'generation_primary'),
@@ -84,16 +87,17 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume'],
-            'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
-            'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
-            'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
-            'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
-            'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume,adiposity'],
+            'character.skin_tone' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
+            'character.hairstyle' => ['sometimes', Rule::in($allowedHairstyles)],
+            'character.hair_color' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
+            'character.facial_hair' => ['sometimes', Rule::in($allowedFacialHair)],
+            'character.uniform_kit' => ['sometimes', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
             'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
             'character.attributes' => ['nullable', 'array', 'max:7'],
             'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
+            'character.adiposity' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::ADIPOSITY_LEVELS)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
 
@@ -155,6 +159,31 @@ final class UpdatePlayerProfileRequest extends FormRequest
     /**
      * @return array<string, mixed>
      */
+    public function section(): ?string
+    {
+        return $this->validated('section');
+    }
+
+    /** A tab can update its own fields without clearing those on the other tab. */
+    public function profileDataForSection(): array
+    {
+        $data = $this->profileData();
+
+        // A disabled protected field is absent from the request. Never erase it
+        // when the remaining fields of the physical/game section are saved.
+        foreach (['height_cm', 'experience_started_year'] as $protected) {
+            if (! $this->exists($protected)) {
+                unset($data[$protected]);
+            }
+        }
+
+        return match ($this->section()) {
+            'physical' => array_intersect_key($data, array_flip(['height_cm', 'weight_kg', 'body_type'])),
+            'game' => array_intersect_key($data, array_flip(['experience_started_year', 'comment'])),
+            default => $data,
+        };
+    }
+
     public function profileData(): array
     {
         return [
@@ -162,7 +191,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'weight_kg' => $this->nullableInteger('weight_kg'),
             'body_type' => $this->filled('body_type')
                 ? PlayerBodyTypeEnum::from($this->string('body_type')->toString())
-                : null,
+                : ($this->section() === 'physical' ? PlayerBodyTypeEnum::NORMAL : null),
             'experience_started_year' => $this->nullableInteger('experience_started_year'),
             'comment' => $this->filled('comment') ? trim($this->string('comment')->toString()) : null,
         ];
@@ -177,9 +206,17 @@ final class UpdatePlayerProfileRequest extends FormRequest
             return null;
         }
 
-        $character = $this->validated('character');
         $profileGender = PlayerCharacterAppearanceOptions::normalizeGender(
             $this->user()?->profile?->gender?->value,
+        );
+        // This form now edits only physique, clothing and equipment. Keep
+        // historical skin/hair settings that are no longer visible.
+        $stored = data_get($this->user()?->playerProfile?->extra, 'character', []);
+        $submitted = (array) $this->validated('character');
+        $character = array_merge(
+            PlayerCharacterAppearanceOptions::defaults($profileGender),
+            is_array($stored) ? $stored : [],
+            $submitted,
         );
 
         return [
@@ -193,12 +230,14 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
             'shoes' => (string) ($character['shoes'] ?? 'white'),
+            // No checked accessories means clear the previous selection.
             'attributes' => PlayerCharacterAppearanceOptions::normalizeAttributes(
-                (array) ($character['attributes'] ?? []),
+                (array) ($submitted['attributes'] ?? []),
             ),
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,
+            'adiposity' => $character['adiposity'] ?? 'average',
         ];
     }
 
@@ -246,14 +285,16 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 : null;
         }
 
+        if ($this->has('generation_uniform_source')) {
+            $options['uniform_source'] = (string) $this->input('generation_uniform_source');
+        }
+        if ($this->filled('generation_uniform_design_id')) {
+            $options['uniform_design_id'] = (int) $this->input('generation_uniform_design_id');
+        }
         if ($this->has('generation_team_id')) {
             $options['team_id'] = $this->filled('generation_team_id')
                 ? (int) $this->input('generation_team_id')
                 : null;
-        }
-
-        if ($this->has('generation_with_team_logo')) {
-            $options['with_team_logo'] = $this->boolean('generation_with_team_logo');
         }
 
         if ($this->has('character')) {

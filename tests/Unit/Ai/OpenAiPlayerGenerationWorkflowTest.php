@@ -12,7 +12,8 @@ final class OpenAiPlayerGenerationWorkflowTest extends TestCase
 
         $this->assertIsString($workflow);
         $this->assertStringNotContainsString('input_fidelity=high', $workflow);
-        $this->assertStringContainsString('notify_failure generation_failed "${error_message}"', $workflow);
+        $this->assertStringContainsString('notify_failure generation_failed "Сервис AI не смог создать аватар. Попробуйте позже."', $workflow);
+        $this->assertStringNotContainsString('notify_failure generation_failed "${error_message}"', $workflow);
         $this->assertStringContainsString("provider_error=\"$(jq -r '.error.message // empty'", $workflow);
     }
 }

@@ -1,0 +1,21 @@
+/* Shared PageBuilder catalog sidebar: track the same animated sticky boundary
+ * as the breadcrumbs. header.js updates --app-sticky-offset on scroll-up,
+ * downward scroll, and mouse hover at the top edge of the viewport.
+ * Keep this in the theme: catalog sidebars may appear on other pages. */
+@media (min-width: 900px) {
+    .mskba-page-builder .mskba-catalog-sidebar {
+        position: sticky;
+        align-self: start;
+        top: calc(var(--app-sticky-offset, calc(var(--header-height, 80px) + var(--context-bar-height, 44px))) + 15px);
+        max-height: calc(100dvh - var(--app-sticky-offset, calc(var(--header-height, 80px) + var(--context-bar-height, 44px))) - 30px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        transition: top .28s cubic-bezier(.22, .61, .36, 1),
+                    max-height .28s cubic-bezier(.22, .61, .36, 1);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mskba-page-builder .mskba-catalog-sidebar {
+        transition: none;
+    }
+}

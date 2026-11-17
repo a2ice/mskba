@@ -1,0 +1,25 @@
+/* Legacy homepage body only. Header/footer remain on the current MSKBA App. */
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css');
+@import '../themes/mskba_dark/css/pages/home.css';
+
+.mskba-page-builder .mskba-classic-home {
+    --inner-width: 1280px;
+    --font-ui: var(--theme-font-family, Inter, Arial, sans-serif);
+    --font-display: var(--theme-heading-font-family, Inter, Arial, sans-serif);
+    --page: var(--bg);
+    --accent-strong: var(--accent);
+    --accent-text: var(--accent);
+    --line-strong: var(--control-line);
+    --radius-control: 12px;
+    color: var(--text);
+    background: var(--bg);
+    font-family: var(--theme-font-family, Inter, Arial, sans-serif);
+}
+.mskba-classic-home *, .mskba-classic-home *::before, .mskba-classic-home *::after { box-sizing: border-box; }
+.mskba-classic-home :is(h1,h2,h3,p) { margin: 0; }
+.mskba-classic-home a { color: inherit; text-decoration: none; }
+.mskba-classic-home .inner { width: 100%; max-width: var(--inner-width); margin: 0 auto; padding: 0 15px; }
+.mskba-classic-home .home-filter-row > a {
+    display: inline-flex; align-items: center; padding: 9px 13px;
+    border: 1px solid var(--line-strong); border-radius: 12px;
+}

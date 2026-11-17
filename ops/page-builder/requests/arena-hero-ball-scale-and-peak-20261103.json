@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Use real profile target to dock desktop ball fully inside Hero, with scroll rotation; mobile/tablet render at natural small size.",
+  "publish": true,
+  "expected_draft_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
+  "expected_published_sha256": "8956dc17b31887c97404b4f4cd16f390045f2d4b5411d05d9c19f03e7f5a295a",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "        startScale: .525, endScale: .60, tileSize: 122,",
+      "to": "        startScale: .34, endScale: .36, tileSize: 122,"
+    },
+    {
+      "type": "replace_once",
+      "from": "        startScale: .43, endScale: .60, tileSize: 165,",
+      "to": "        startScale: .29, endScale: .34, tileSize: 165,"
+    },
+    {
+      "type": "replace_once",
+      "from": "        from: [255, 440], to: [650, 1030],",
+      "to": "        from: [255, 440], to: [650, 850],"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const endY = desktopDock\n            ? (heroHeight + renderedDiameter * (.5 - .13)) * 1000 / heroHeight\n            : activeProfile.to[1];",
+      "to": "        // Stop fully inside Hero: profile is the preferred dock, and\n        // a measured sprite-radius limit prevents any bottom overflow.\n        const endY = desktopDock\n            ? Math.min(activeProfile.to[1], (heroHeight - renderedDiameter * .5 - 8) * 1000 / heroHeight)\n            : activeProfile.to[1];"
+    }
+  ]
+}

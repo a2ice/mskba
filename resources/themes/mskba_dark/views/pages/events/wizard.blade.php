@@ -348,6 +348,12 @@
                             <button type="button" class="event-wizard-review__row" data-review-edit="details"><span><small>Название</small><strong data-review-title>—</strong></span><i class="ti ti-pencil"></i></button>
                         </div>
                         <div class="event-wizard-review__warning" data-review-warning hidden><i class="ti ti-alert-triangle"></i><span></span></div>
+                        <div class="alert alert-info mt-3">На платной площадке мероприятие создаётся до бронирования. Время не резервируется, зал можно забронировать позднее.</div>
+                        <input type="hidden" name="send_pre_request" value="0">
+                        <label class="d-flex align-items-start gap-2 my-3">
+                            <input type="checkbox" name="send_pre_request" value="1" @checked(old('send_pre_request', true))>
+                            <span>Отправить площадке предварительный интерес к аренде (не является бронью и никого не обязывает)</span>
+                        </label>
                         <button class="btn btn--primary event-wizard-submit" type="submit" data-wizard-submit>Создать мероприятие</button>
                     </section>
 

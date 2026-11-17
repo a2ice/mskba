@@ -14,7 +14,7 @@ final readonly class GetVenueBookingConversationSummary
     {
         $conversation = VenueBookingConversation::query()
             ->with('readMarkers')
-            ->where('venue_booking_id', $booking->id)
+            ->where($booking->conversationLookup())
             ->first();
 
         if ($conversation === null) {

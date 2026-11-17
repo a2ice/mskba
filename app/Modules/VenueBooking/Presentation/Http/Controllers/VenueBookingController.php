@@ -72,7 +72,7 @@ final class VenueBookingController extends Controller
         VenueCommercialAccess $commercialAccess,
         VenueUserRestrictionService $restrictions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
+        $venueBooking->load(['venue', 'venueInterest.event', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt', 'externalHold', 'invoices']);
         $actor = $actors->resolveForRequest($request);
 
         try {
@@ -105,7 +105,7 @@ final class VenueBookingController extends Controller
         if (config('features.venue_rental.conversations')) {
             $conversation = VenueBookingConversation::query()
                 ->with(['messages' => fn ($query) => $query->with('authorActor.user')->latest('id')->limit(30), 'readMarkers'])
-                ->where('venue_booking_id', $venueBooking->id)
+                ->where($venueBooking->conversationLookup())
                 ->first();
             if ($actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
                 AuditLog::query()->create([
@@ -130,19 +130,57 @@ final class VenueBookingController extends Controller
         }
 
         $canViewPayment = $isRequester || ($actor->user !== null
-            && $commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS));
-        $canDecideExtensions = false;
+            && ($commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS)
+                || ($venueBooking->venue_court_id !== null
+                    && ($court = \App\Modules\Venue\Domain\Models\VenueCourt::query()
+                        ->where('venue_id', $venueBooking->venue_id)->find($venueBooking->venue_court_id)) !== null
+                    && $commercialAccess->allowsForCourt($actor->user, $court, VenuePermissionEnum::VIEW_PAYMENTS))));
+        $canApproveExtensions = false;
+        $canRejectExtensions = false;
         $canConfirmPayment = false;
         try {
-            $authorization->assertCommercialDecision($actor, $venueBooking->venue);
-            $canDecideExtensions = true;
+            $authorization->assertCanConfirmBooking($actor, $venueBooking->venue, $venueBooking);
+            $canApproveExtensions = true;
         } catch (VenueBookingTransitionException) {
         }
         try {
-            $authorization->assertCanConfirmPayment($actor, $venueBooking->venue);
+            $authorization->assertCanRejectBooking($actor, $venueBooking->venue, $venueBooking);
+            $canRejectExtensions = true;
+        } catch (VenueBookingTransitionException) {
+        }
+        try {
+            $authorization->assertCanConfirmPayment($actor, $venueBooking->venue, $venueBooking);
             $canConfirmPayment = true;
         } catch (VenueBookingTransitionException) {
         }
+
+        $usesInvoices = (bool) data_get($venueBooking->quote_snapshot, 'policy.invoice_workflow', false);
+        $usesExternalHold = (bool) data_get($venueBooking->quote_snapshot, 'policy.external_hold_required', false);
+        $invoiceManager = app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceManager::class);
+        $canInvoicePortal = $usesInvoices && $invoiceManager->canManagePortal($actor);
+        $canIssueBuyerInvoice = $usesInvoices && $invoiceManager->canReceiveBuyer($venueBooking, $actor);
+        $canConfirmExternalHold = false;
+        if ($usesExternalHold
+            && $venueBooking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::REQUESTED) {
+            try {
+                $authorization->assertCanConfirmBooking($actor, $venueBooking->venue, $venueBooking);
+                $canConfirmExternalHold = true;
+            } catch (VenueBookingTransitionException) {
+            }
+        }
+        $invoiceAgentUserId = data_get($venueBooking->quote_snapshot, 'pricing.commissions.agent.user_id');
+        $visibleInvoices = $usesInvoices
+            ? $venueBooking->invoices->filter(static function ($invoice) use (
+                $isRequester, $canIssueBuyerInvoice, $canInvoicePortal, $actor, $invoiceAgentUserId,
+            ): bool {
+                return match ($invoice->kind) {
+                    'buyer' => $isRequester || $canIssueBuyerInvoice || $canInvoicePortal,
+                    'agent_portal' => $canInvoicePortal
+                        || ($invoiceAgentUserId !== null && (int) $invoiceAgentUserId === (int) $actor->user_id),
+                    'portal_venue' => $canInvoicePortal,
+                    default => false,
+                };
+            })->values() : collect();
 
         return ThemeResolver::page('venue-bookings.show', [
             'booking' => $venueBooking,
@@ -152,12 +190,28 @@ final class VenueBookingController extends Controller
             'isRequester' => $isRequester,
             'isAdministrator' => $isAdministrator,
             'rentalRequesterRestriction' => $rentalRequesterRestriction,
-            'canDecideExtensions' => $canDecideExtensions,
+            'canApproveExtensions' => $canApproveExtensions,
+            'canRejectExtensions' => $canRejectExtensions,
             'canConfirmPayment' => $canConfirmPayment,
             'canViewPayment' => $canViewPayment,
+            'usesInvoices' => $usesInvoices,
+            'usesExternalHold' => $usesExternalHold,
+            'canIssueBuyerInvoice' => $canIssueBuyerInvoice,
+            'canInvoicePortal' => $canInvoicePortal,
+            'canConfirmExternalHold' => $canConfirmExternalHold,
+            'visibleInvoices' => $visibleInvoices,
+            'invoiceTemplates' => $canIssueBuyerInvoice ? $invoiceManager->applicableTemplates($venueBooking, $actor) : collect(),
             'conversation' => $conversation,
             'conversationUnread' => $conversationUnread,
             'contributionSummary' => $contributionSummary,
+            'interestLink' => $venueBooking->venueInterest !== null
+                && $currentUser !== null
+                && app(\App\Modules\Event\Application\Services\EventVenueInterestService::class)
+                    ->canParticipateInThread($currentUser, $venueBooking->venueInterest)
+                ? route('events.interests.show', [
+                    'event' => $venueBooking->venueInterest->event->routeIdentifier(),
+                    'interest' => $venueBooking->venueInterest->id,
+                ]) : null,
         ]);
     }
 

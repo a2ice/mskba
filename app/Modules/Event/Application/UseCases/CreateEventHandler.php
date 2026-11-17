@@ -19,6 +19,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
@@ -43,15 +44,55 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы создать мероприятие.');
         }
 
-        $event = DB::transaction(function () use ($actor, $data): Event {
+        if (! empty($data['event_request_id'])) {
+            $existing = Event::query()->where('creation_key', $data['event_request_id'])->first();
+            if ($existing !== null) {
+                if ($existing->organizerActor?->user?->canonical()->id !== $actor->user?->canonical()->id) {
+                    throw new InvalidArgumentException('Идентификатор создания уже использован другим организатором.');
+                }
+                return $existing->load(['venue', 'court', 'booking', 'participants.user']);
+            }
+        }
+
+        // Other creation workflows keep their legacy semantics unless they opt in
+        // to an explicit attendance decision. Filament always supplies this flag.
+        $explicitChoice = array_key_exists('organizer_participates', $data);
+        $organizerParticipates = $explicitChoice
+            ? filter_var($data['organizer_participates'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : true;
+        if ($organizerParticipates === null) {
+            throw new InvalidArgumentException('Неверно указано участие организатора.');
+        }
+
+        $roles = $data['participation_roles'] ?? null;
+        if ($explicitChoice && $organizerParticipates && (! is_array($roles) || $roles === [])) {
+            throw new InvalidArgumentException('Выберите хотя бы одну роль участия.');
+        }
+        if ($roles !== null && (! is_array($roles)
+            || collect($roles)->contains(fn ($role): bool => ! is_string($role)
+                || UserParticipationRoleEnum::tryFrom($role) === null
+                || $role === UserParticipationRoleEnum::ORGANIZER->value))) {
+            throw new InvalidArgumentException('Выбрана недопустимая роль участия.');
+        }
+        $roles = $organizerParticipates
+            ? array_values(array_unique($roles ?? [UserParticipationRoleEnum::PLAYER->value]))
+            : [];
+
+        $event = DB::transaction(function () use ($actor, $data, $organizerParticipates, $roles): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
+            // Some verified venues (including the production -> dev fixture)
+            // predate VenueCourt and have no court rows. NULL court_id means
+            // the entire venue, as supported by the existing schema/availability.
             $court = isset($data['venue_court_id'])
                 ? VenueCourt::query()
                     ->where('venue_id', $venue->id)
                     ->whereKey((int) $data['venue_court_id'])
-                    ->firstOrFail()
-                : ($venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail());
+                    ->first()
+                : ($venue->primaryCourt()->first() ?? $venue->courts()->first());
+            if (isset($data['venue_court_id']) && $court === null) {
+                throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
+            }
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
             $durationMinutes = (int) $data['duration_minutes'];
@@ -60,27 +101,34 @@ final class CreateEventHandler
                 throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
 
-            // PostgreSQL connection uses the application timezone. Keep the
-            // local value here: Laravel serializes bindings without an offset,
-            // and converting to UTC first would shift the event by three hours.
-            $startsAt = $localStart;
-            $endsAt = $localStart->addMinutes($durationMinutes);
+            // Eloquent and SQL bindings format Carbon timestamps without an
+            // offset. Convert the venue-local instant to the database session's
+            // timezone *before* binding, otherwise a venue using Moscow time
+            // with a UTC connection is stored three hours later.
+            $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+            $startsAt = $localStart->setTimezone($databaseTimezone);
+            $endsAt = $localStart->addMinutes($durationMinutes)->setTimezone($databaseTimezone);
 
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
             $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
 
+            $bookingDeferred = (bool) ($data['defer_booking'] ?? false);
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
                 : VenueBookingStatusEnum::PENDING;
 
             $event = Event::query()->create([
                 'venue_id' => $venue->id,
-                'venue_court_id' => $court->id,
+                'venue_court_id' => $court?->id,
                 'organizer_actor_id' => $actor->id,
+                'participation_confirmation_version' => 1,
+                'creation_key' => $data['event_request_id'] ?? null,
+                'booking_deferred' => $bookingDeferred,
+                'planned_booking_scope' => $bookingScope,
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
                 'type' => EventTypeEnum::from($data['type']),
-                'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED
+                'status' => $bookingDeferred || $bookingStatus === VenueBookingStatusEnum::CONFIRMED
                     ? EventStatusEnum::PUBLISHED
                     : EventStatusEnum::DRAFT,
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
@@ -90,21 +138,27 @@ final class CreateEventHandler
                 'max_participants' => $data['max_participants'] ?? null,
             ]);
 
-            $event->booking()->create([
-                'venue_id' => $venue->id,
-                'venue_court_id' => $court->id,
-                'created_by_actor_id' => $actor->id,
-                'status' => $bookingStatus,
-                'scope' => $bookingScope,
-                'starts_at' => $startsAt,
-                'ends_at' => $endsAt,
-            ]);
+            if (! $bookingDeferred) {
+                $event->booking()->create([
+                    'venue_id' => $venue->id,
+                    'venue_court_id' => $court?->id,
+                    'created_by_actor_id' => $actor->id,
+                    'status' => $bookingStatus,
+                    'scope' => $bookingScope,
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
+                ]);
+            }
 
             $event->participants()->create([
                 'user_id' => $actor->user_id,
                 'role' => EventParticipantRoleEnum::ORGANIZER,
-                'status' => EventParticipantStatusEnum::CONFIRMED,
-                'joined_at' => now(),
+                'participation_roles' => $roles,
+                'status' => $organizerParticipates
+                    ? EventParticipantStatusEnum::CONFIRMED
+                    : EventParticipantStatusEnum::LEFT,
+                'joined_at' => $organizerParticipates ? now() : null,
+                'confirmation_version' => $event->participation_confirmation_version,
             ]);
 
             if ($event->type === EventTypeEnum::GAME) {

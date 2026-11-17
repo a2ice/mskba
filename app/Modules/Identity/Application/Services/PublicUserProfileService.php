@@ -192,6 +192,15 @@ final class PublicUserProfileService
             );
         });
         abort_if($role !== null && ! $roles->contains(fn ($candidate) => $candidate->value === $role), 404);
+        $subject->loadMissing('profile');
+        $data['banner_url'] = $profileAllowed ? $subject->profile?->bannerUrl() : null;
+        $data['demographics'] = $profileAllowed ? array_filter([
+            'gender' => $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
+                ? $subject->profile?->gender?->label() : null,
+            'age' => $this->privacy->allows($subject, $viewer, Privacy::PROFILE_AGE)
+                ? $subject->profile?->age : null,
+        ], static fn ($value): bool => $value !== null) : [];
+
         $data['roles'] = $roles->map(fn ($candidate) => [
             'value' => $candidate->value,
             'name' => $candidate->label(),
@@ -212,7 +221,7 @@ final class PublicUserProfileService
             $data['blocks'][] = ['title' => 'Опубликованные материалы', 'items' => $items->map(fn ($item) => ['name' => $item->title, 'url' => $item->publicUrl()])->all()];
         }
         if ($role === 'venue_related' && $this->privacy->allows($subject, $viewer, Privacy::VENUE_VENUES)) {
-            $venues = Venue::query()->where('status', 'confirmed')->whereIn('id', VenueOwnership::query()->whereIn('owner_user_id', $subject->identityIds())->where('status', 'active')->select('venue_id'))->orderBy('name')->get();
+            $venues = Venue::query()->where('status', 'confirmed')->where('is_published', true)->whereIn('id', VenueOwnership::query()->whereIn('owner_user_id', $subject->identityIds())->where('status', 'active')->select('venue_id'))->orderBy('name')->get();
             $data['blocks'][] = ['title' => 'Площадки под управлением', 'items' => $venues->map(fn ($venue) => ['name' => $venue->name, 'url' => route('venues.show', $venue)])->all()];
         }
         if (in_array($role, ['referee', 'statistician'], true) && $this->privacy->allows($subject, $viewer, $role === 'referee' ? Privacy::REFEREE_EVENTS : Privacy::STATISTICIAN_EVENTS)) {

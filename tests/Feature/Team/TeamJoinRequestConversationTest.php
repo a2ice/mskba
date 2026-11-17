@@ -28,9 +28,9 @@ final class TeamJoinRequestConversationTest extends TestCase
         $entry = TeamJoinRequest::query()->where('team_id', $team->id)->where('user_id', $applicant->id)->firstOrFail();
         $url = route('teams.join-requests.messages.store', [$team->routeIdentifier(), $entry->id]);
 
-        // Applicants cannot initiate a conversation before a manager asks a question.
-        $this->post($url, ['body' => 'Сообщение без запроса'])->assertUnprocessable();
-        $this->assertDatabaseCount('team_join_request_messages', 0);
+        // Applicants may initiate the application discussion before a manager asks.
+        $this->post($url, ['body' => 'Сообщение без запроса'])->assertRedirect();
+        $this->assertDatabaseCount('team_join_request_messages', 1);
 
         $question = 'Расскажите о себе: где играете и откуда узнали про нас?';
         $this->actingAs($owner)->post($url, ['body' => $question])
@@ -49,8 +49,8 @@ final class TeamJoinRequestConversationTest extends TestCase
         $this->get(route('teams.join-requests.index', $team->routeIdentifier()))
             ->assertOk()->assertSee('Ожидается ответ кандидата')->assertSee($question);
 
-        // No duplicate manager prompt while the applicant has yet to reply.
-        $this->post($url, ['body' => 'Второй вопрос'])->assertUnprocessable();
+        // The dialogue may continue while the application remains unresolved.
+        $this->post($url, ['body' => 'Второй вопрос'])->assertRedirect();
         $this->actingAs($applicant)->post(route('teams.join-requests.store', $team->routeIdentifier()))
             ->assertUnprocessable();
         $this->get(route('teams.show', $team->routeIdentifier()))
@@ -72,10 +72,10 @@ final class TeamJoinRequestConversationTest extends TestCase
         ])->assertRedirect();
         $this->assertSame(TeamJoinRequestStatusEnum::ACCEPTED, $entry->fresh()->status);
         $this->post($url, ['body' => 'После принятия'])->assertUnprocessable();
-        $this->assertDatabaseCount('team_join_request_messages', 2);
+        $this->assertDatabaseCount('team_join_request_messages', 4);
     }
 
-    public function test_manager_can_reject_while_waiting_for_answer_and_candidate_cannot_reply_afterward(): void
+    public function test_manager_can_reject_while_waiting_for_answer_and_candidate_can_still_reply(): void
     {
         $this->seed(GameLifecycleDemoSeeder::class);
         $owner = User::query()->where('username', GameLifecycleDemoSeeder::ORGANIZER_USERNAME)->firstOrFail();
@@ -94,8 +94,9 @@ final class TeamJoinRequestConversationTest extends TestCase
             'review_reason' => 'Не подходит по требованиям',
         ])->assertRedirect();
         $this->assertSame(TeamJoinRequestStatusEnum::REJECTED, $entry->fresh()->status);
-        $this->actingAs($applicant)->post($url, ['body' => 'Мой ответ'])->assertUnprocessable();
-        $this->assertDatabaseCount('team_join_request_messages', 1);
+        $this->actingAs($applicant)->post($url, ['body' => 'Мой ответ'])->assertRedirect();
+        $this->assertSame(TeamJoinRequestStatusEnum::REJECTED, $entry->fresh()->status);
+        $this->assertDatabaseCount('team_join_request_messages', 2);
     }
 
     public function test_messages_are_private_to_applicant_and_team_managers(): void

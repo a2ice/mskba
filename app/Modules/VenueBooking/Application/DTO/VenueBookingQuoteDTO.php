@@ -20,5 +20,8 @@ final readonly class VenueBookingQuoteDTO
         public int $holdDurationMinutes,
         public ?int $paymentWindowMinutes,
         public CarbonImmutable $validUntil,
+        /** @var array<string,mixed>|null */
+        public ?array $commissionBreakdown = null,
+        public ?array $personalDiscount = null,
     ) {}
 }

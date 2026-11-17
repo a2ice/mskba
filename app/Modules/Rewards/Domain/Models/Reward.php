@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'code',
     'name',
     'description',
+    'amount_caption_template',
     'mechanism_code',
     'is_enabled',
 ])]

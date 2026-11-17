@@ -79,9 +79,8 @@ function enhanceVisualTooltip(element, title) {
         element.attr('aria-label', title);
     }
 
-    if (!isFocusable(element)) {
-        element.attr('tabindex', '0');
-    }
+    // A tooltip is not a reason to turn a static label into a focus target.
+    // Interactive help triggers keep their native or explicit button semantics.
 }
 
 function isIconOnlyTooltipSource(element) {
@@ -154,16 +153,6 @@ function tooltipPresentation(element) {
 
 function isBlockLike(element) {
     return ['block', 'list-item', 'flex', 'grid'].includes(element.css('display'));
-}
-
-function isFocusable(element) {
-    if (element.is('a[href], button, input, select, textarea, summary')) {
-        return true;
-    }
-
-    const tabindex = element.attr('tabindex');
-
-    return tabindex !== undefined && Number(tabindex) >= 0;
 }
 
 $(function() {

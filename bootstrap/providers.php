@@ -5,6 +5,7 @@ use App\Modules\Ai\Infrastructure\Providers\AiServiceProvider;
 use App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider;
 use App\Modules\Coordination\Infrastructure\Providers\CoordinationInterfaceServiceProvider;
 use App\Modules\Event\Infrastructure\Providers\EventLifecycleServiceProvider;
+use App\Modules\Favorites\Infrastructure\Providers\FavoritesServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityCanonicalizationServiceProvider;
 use App\Modules\Media\Infrastructure\Providers\MediaServiceProvider;
 use App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvider;
@@ -19,16 +20,19 @@ use App\Modules\Venue\Infrastructure\Providers\VenueOwnershipServiceProvider;
 use App\Modules\VenueBooking\Infrastructure\Providers\VenueBookingServiceProvider;
 use App\Modules\Vk\Infrastructure\Providers\VkServiceProvider;
 use App\Providers\AccessServiceProvider;
+use App\Providers\Filament\BackofficePanelProvider;
 use App\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
+    BackofficePanelProvider::class,
     AcquisitionServiceProvider::class,
     AiServiceProvider::class,
     AccessServiceProvider::class,
     ContactServiceProvider::class,
     CoordinationInterfaceServiceProvider::class,
     EventLifecycleServiceProvider::class,
+    FavoritesServiceProvider::class,
     IdentityCanonicalizationServiceProvider::class,
     MediaServiceProvider::class,
     NotificationServiceProvider::class,

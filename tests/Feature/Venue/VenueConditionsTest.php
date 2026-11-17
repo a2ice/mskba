@@ -31,6 +31,35 @@ final class VenueConditionsTest extends TestCase
         $this->get(route('account.venues.conditions.edit', $venue->routeIdentifier()))->assertOk();
     }
 
+    public function test_parent_booking_requirement_is_tristate_and_inherited_by_courts(): void
+    {
+        [$user, $venue] = $this->ownedVenue();
+        $court = $venue->primaryCourt()->firstOrFail();
+
+        $this->actingAs($user)->put(route('account.venues.conditions.update', $venue->routeIdentifier()), [
+            'access_type' => 'free', 'requires_booking_approval' => '0',
+            'requires_booking' => 'yes',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertTrue($venue->refresh()->requires_booking);
+        $this->assertTrue(app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+            ->resolve($venue, $court)['requires_booking']);
+
+        $this->put(route('account.venues.conditions.update', $venue->routeIdentifier()), [
+            'access_type' => 'free', 'requires_booking_approval' => '0',
+            'requires_booking' => 'inherit',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($venue->refresh()->requires_booking);
+
+        $this->put(route('account.venues.conditions.update', $venue->routeIdentifier()), [
+            'access_type' => 'paid', 'requires_booking_approval' => '0',
+            'requires_booking' => 'no',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertFalse($venue->refresh()->requires_booking);
+        $this->assertFalse(app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+            ->resolve($venue, $court)['requires_booking']);
+    }
+
     public function test_confirmed_conditions_preserve_existing_draft_and_survive_details_save(): void
     {
         [$user, $venue] = $this->ownedVenue(VenueStatusEnum::CONFIRMED);

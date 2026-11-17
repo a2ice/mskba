@@ -1,0 +1,328 @@
+<?php
+
+namespace Tests\Feature\Backoffice;
+
+use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccountDashboardWidget;
+use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
+use App\Filament\Backoffice\Resources\DashboardButtonStyles\Pages\CreateDashboardButtonStyle;
+use App\Filament\Backoffice\Resources\FaqSections\Pages\ManageFaqSections;
+use App\Modules\Content\Domain\Models\FaqSection;
+use Filament\Actions\Testing\TestAction;
+use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
+use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
+use Filament\Facades\Filament;
+use Filament\Panel;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+final class BackofficeAccessTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function account(UserSystemRoleEnum $role, UserStatusEnum $status = UserStatusEnum::CONFIRMED): User
+    {
+        $user = User::factory()->create(['system_role' => $role, 'status' => $status]);
+        $user->createProfile([]);
+
+        return $user;
+    }
+
+    public function test_panel_is_restricted_to_confirmed_admins_and_reuses_web_session(): void
+    {
+        $user = $this->account(UserSystemRoleEnum::USER);
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $unconfirmed = $this->account(UserSystemRoleEnum::ADMIN, UserStatusEnum::UNCONFIRMED);
+
+        $this->assertFalse($user->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertTrue($admin->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertFalse($unconfirmed->canAccessPanel(app(Panel::class)->id('backoffice')));
+
+        $this->get('/backoffice')->assertRedirect(route('login'));
+        $this->actingAs($user)->get('/backoffice')->assertForbidden();
+        $this->actingAs($admin)->get('/backoffice')->assertOk();
+    }
+
+    public function test_content_editor_link_uses_the_same_permission_as_the_editor(): void
+    {
+        $editor = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $manager = $this->account(UserSystemRoleEnum::MANAGER);
+
+        $this->actingAs($editor)->get('/backoffice')
+            ->assertOk()
+            ->assertSee('Материалы и FAQ')
+            ->assertSee(route('admin.content'));
+        $this->assertSame('/backoffice/content', route('admin.content', absolute: false));
+        $this->get(route('admin.content', ['type' => 'faq']))
+            ->assertOk()
+            ->assertViewIs('backoffice.content.index');
+        $this->get(route('admin.content.create'))
+            ->assertOk()
+            ->assertViewIs('backoffice.content.form')
+            ->assertSee('name="alias"', escape: false)
+            ->assertSee('fi-sidebar', escape: false);
+        $this->get('/admin/content?type=faq')
+            ->assertStatus(307)
+            ->assertRedirect(route('admin.content', ['type' => 'faq']));
+
+        $this->flushSession();
+        $this->actingAs($manager)->get('/backoffice')
+            ->assertOk()
+            ->assertDontSee('Материалы и FAQ');
+        $this->get(route('admin.content'))->assertForbidden();
+    }
+
+    public function test_content_editor_can_create_and_rename_a_faq_section_in_filament(): void
+    {
+        $admin = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($admin)->get('/backoffice/faq-sections')->assertOk();
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(ManageFaqSections::class)
+            ->callAction('create', data: ['name' => 'Игры', 'code' => 'games', 'sort_order' => 25])
+            ->assertHasNoActionErrors();
+
+        $section = FaqSection::query()->where('code', 'games')->sole();
+        Livewire::test(ManageFaqSections::class)
+            ->callAction(TestAction::make('edit')->table($section), data: ['name' => 'Игры и участие', 'sort_order' => 5])
+            ->assertHasNoActionErrors();
+
+        $this->getJson(route('faq.help-content'))
+            ->assertJsonPath('sections.0.key', 'games')
+            ->assertJsonPath('sections.0.label', 'Игры и участие');
+
+        $this->flushSession();
+        $this->actingAs($this->account(UserSystemRoleEnum::MANAGER))
+            ->get('/backoffice/faq-sections')
+            ->assertForbidden();
+    }
+
+    public function test_resource_page_uses_existing_widget_records_and_limits_custom_html_to_superadmin(): void
+    {
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $widget = AccountDashboardWidget::query()->create([
+            'kind' => 'information', 'title' => 'Анонс соревнований', 'sort_order' => 50,
+            'size' => 'half', 'enabled' => true, 'can_hide' => true, 'contact_filter' => 'any',
+        ]);
+        $custom = AccountDashboardWidget::query()->create([
+            'kind' => 'custom_html', 'title' => 'Код суперадминистратора',
+            'sort_order' => 60, 'size' => 'half',
+            'enabled' => true, 'can_hide' => true, 'contact_filter' => 'any',
+        ]);
+
+        $this->actingAs($admin)->get('/backoffice/account-dashboard-widgets')
+            ->assertOk()->assertSee('Виджеты дашборда');
+        $this->get('/backoffice/account-dashboard-widgets/'.$widget->id.'/edit')
+            ->assertOk();
+        // Unauthorized custom_html records are excluded from the resource query.
+        $this->get('/backoffice/account-dashboard-widgets/'.$custom->id.'/edit')
+            ->assertNotFound();
+        // Filament's AuthenticateSession checks the current session identity.
+        // Reset the test session before switching from admin to superadmin.
+        $this->flushSession();
+        $this->actingAs($super)
+            ->get('/backoffice/account-dashboard-widgets/'.$custom->id.'/edit')
+            ->assertOk();
+        $this->assertSame(2, AccountDashboardWidget::query()
+            ->whereIn('id', [$widget->id, $custom->id])->count());
+    }
+
+    public function test_filament_can_create_targeted_advertisement_without_replacing_existing_data(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateAccountDashboardWidget::class)
+            ->fillForm([
+                'kind' => 'advertisement',
+                'title' => 'Баскетбольный магазин',
+                'body' => 'Товары и услуги для игроков',
+                'actions' => [[
+                    'label' => 'Перейти в магазин',
+                    'url' => 'https://example.org/catalog',
+                    'appearance' => 'primary', 'visibility' => 'always', 'classes' => [],
+                ]],
+                'image_url' => 'https://example.org/banner.jpg',
+                'gradient_color' => '#22CC88',
+                'sort_order' => 15,
+                'size' => 'half',
+                'enabled' => true,
+                'can_hide' => true,
+                'contact_filter' => 'any',
+                'account_statuses' => ['confirmed'],
+                'system_roles' => [],
+                'participation_roles' => [],
+                'include_user_ids' => '10, 11',
+                'exclude_user_ids' => '7',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $widget = AccountDashboardWidget::query()->where('title', 'Баскетбольный магазин')->firstOrFail();
+        $this->assertSame('advertisement', $widget->kind);
+        $this->assertSame('#22CC88', $widget->gradient_color);
+        $this->assertSame(['confirmed'], $widget->account_statuses);
+        $this->assertSame([10, 11], $widget->include_user_ids);
+        $this->assertSame([7], $widget->exclude_user_ids);
+    }
+
+    public function test_filament_saves_editable_status_html_for_confirmed_and_unconfirmed_accounts(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $widget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+
+        Livewire::test(EditAccountDashboardWidget::class, ['record' => $widget->getRouteKey()])
+            ->fillForm([
+                'status_confirmed_html' => '<p>Готово! <a href="/faq" class="button primary">FAQ</a></p>',
+                'status_unconfirmed_html' => '<p>Заполните профиль и подтвердите аккаунт.</p>',
+                'status_blocked_html' => '<p>Напишите в поддержку.</p>',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $widget->refresh();
+        $this->assertStringContainsString('Готово!', $widget->status_confirmed_html);
+        $this->assertStringContainsString('подтвердите аккаунт', $widget->status_unconfirmed_html);
+        $this->assertStringContainsString('поддержку', $widget->status_blocked_html);
+    }
+
+    public function test_repair_migration_restores_historical_missing_image_column_and_is_idempotent(): void
+    {
+        $this->assertTrue(Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+
+        Schema::table('account_dashboard_widgets', function (Blueprint $table): void {
+            $table->dropColumn('image_url');
+        });
+        $this->assertFalse(Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+
+        $migration = require database_path('migrations/2026_10_14_230000_repair_dashboard_widget_image_url_column.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+        $widget = AccountDashboardWidget::query()->create([
+            'kind' => 'advertisement', 'title' => 'Проверка изображения',
+            'image_url' => 'https://example.org/image.jpg',
+            'link_url' => 'https://example.org',
+            'enabled' => true, 'can_hide' => true, 'size' => 'half',
+            'contact_filter' => 'any', 'sort_order' => 20,
+        ]);
+        $this->assertSame('https://example.org/image.jpg', $widget->fresh()->image_url);
+    }
+
+    public function test_filament_accepts_internal_advertising_link(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateAccountDashboardWidget::class)
+            ->fillForm([
+                'kind' => 'advertisement',
+                'title' => 'Внутренний раздел партнёров',
+                'actions' => [[
+                    'label' => 'Наши партнёры',
+                    'url' => '/partners?ref=dashboard',
+                    'appearance' => 'primary', 'visibility' => 'always', 'classes' => [],
+                ]],
+                'sort_order' => 42,
+                'size' => 'half',
+                'enabled' => true,
+                'can_hide' => true,
+                'contact_filter' => 'any',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $widget = AccountDashboardWidget::query()->where('title', 'Внутренний раздел партнёров')->firstOrFail();
+        $this->assertSame('/partners?ref=dashboard', $widget->link_url);
+    }
+
+    public function test_filament_rejects_external_protocol_relative_and_script_links(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        foreach (['//evil.example/path', 'javascript:alert(1)'] as $unsafeUrl) {
+            Livewire::test(CreateAccountDashboardWidget::class)
+                ->fillForm([
+                    'kind' => 'advertisement',
+                    'title' => 'Небезопасная ссылка',
+                    'actions' => [[
+                        'label' => 'Небезопасная кнопка',
+                        'url' => $unsafeUrl,
+                        'appearance' => 'primary', 'visibility' => 'always', 'classes' => [],
+                    ]],
+                    'sort_order' => 50,
+                    'size' => 'half',
+                    'enabled' => true,
+                    'can_hide' => true,
+                    'contact_filter' => 'any',
+                ])
+                ->call('create')
+                ->assertHasFormErrors();
+        }
+        $this->assertDatabaseMissing('account_dashboard_widgets', ['title' => 'Небезопасная ссылка']);
+    }
+
+    public function test_only_superadmin_can_manage_button_styles_in_filament(): void
+    {
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($admin)->get('/backoffice/dashboard-button-styles')->assertForbidden();
+        $this->flushSession();
+        $this->actingAs($super)->get('/backoffice/dashboard-button-styles')->assertOk();
+
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        Livewire::test(CreateDashboardButtonStyle::class)
+            ->fillForm([
+                'name' => 'Зелёная кнопка',
+                'class_name' => 'bg-green',
+                'css_code' => '.bg-green { background-color: green !important; }',
+                'enabled' => true,
+            ])->call('create')->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('dashboard_button_styles', [
+            'name' => 'Зелёная кнопка', 'class_name' => 'bg-green',
+        ]);
+    }
+
+    public function test_administrator_can_edit_button_list_with_registered_classes(): void
+    {
+        DashboardButtonStyle::query()->create([
+            'name' => 'Зелёный',
+            'class_name' => 'bg-green',
+            'css_code' => '.bg-green { background-color: green !important; }',
+            'enabled' => true,
+        ]);
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $widget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditAccountDashboardWidget::class, ['record' => $widget->getRouteKey()])
+            ->fillForm([
+                'actions' => [
+                    ['label' => 'Партнёры', 'url' => '/partners', 'appearance' => 'primary',
+                        'visibility' => 'always', 'classes' => ['bg-green']],
+                    ['label' => 'Мои роли', 'url' => '/account/roles', 'appearance' => 'secondary',
+                        'visibility' => 'confirmed', 'classes' => []],
+                ],
+            ])->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame('/partners', $widget->fresh()->actions[0]['url']);
+        $this->assertSame(['bg-green'], $widget->fresh()->actions[0]['classes']);
+        $this->assertCount(2, $widget->fresh()->actions);
+    }
+}

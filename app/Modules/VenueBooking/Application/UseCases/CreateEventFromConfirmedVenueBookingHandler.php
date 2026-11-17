@@ -54,7 +54,7 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
             if (! $isRequester && ! $isSuperadmin) {
                 throw new VenueBookingTransitionException('Недостаточно прав для создания мероприятия.', 'BOOKING_FORBIDDEN');
             }
-            if ($isSuperadmin && trim((string) ($data['emergency_reason'] ?? '')) === '') {
+            if ($isSuperadmin && ! $isRequester && trim((string) ($data['emergency_reason'] ?? '')) === '') {
                 throw new VenueBookingTransitionException('Для аварийного действия superadmin должна быть указана причина.', 'EMERGENCY_REASON_REQUIRED');
             }
             $existing = Event::query()->where('booking_id', $booking->id)->lockForUpdate()->first();
@@ -79,7 +79,8 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
                     'ends_at' => $booking->ends_at->toIso8601String(),
                     'pricing' => data_get($booking->quote_snapshot, 'pricing'),
                     'policy_version' => data_get($booking->quote_snapshot, 'policy.version'),
-                    'emergency_reason' => $isSuperadmin ? trim((string) $data['emergency_reason']) : null,
+                    'emergency_reason' => $isSuperadmin && ! $isRequester
+                        ? trim((string) ($data['emergency_reason'] ?? '')) : null,
                 ],
                 'organizer_actor_id' => $booking->created_by_actor_id,
                 'title' => trim((string) $data['title']),

@@ -23,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'assigned_at',
     'assigner',
     'comment',
+    'notes',
+    'legal_nature',
+    'verification_requirement',
 ])]
 class Contract extends Model
 {
@@ -36,6 +39,16 @@ class Contract extends Model
     public function relation(): HasOne
     {
         return $this->hasOne(ContractRelation::class);
+    }
+
+    public function evidenceDocuments(): HasMany
+    {
+        return $this->hasMany(ContractEvidenceDocument::class);
+    }
+
+    public function verification(): HasOne
+    {
+        return $this->hasOne(ContractVerification::class);
     }
 
     public function permissions(): HasMany

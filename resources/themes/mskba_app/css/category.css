@@ -1,0 +1,64 @@
+/*
+ * Shared native mskba_app default category composition.
+ * All colors come from active design theme tokens; no mskba_dark styles/layouts.
+ * Same sidebar widths, spacing, toolbar, filter controls and list/cards logic
+ * as the existing /venues and /shop catalogs.
+ */
+.app-category{padding-top:36px;padding-bottom:90px}
+.app-category__header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;margin-bottom:32px}
+.app-category__header h1{font-size:clamp(34px,4vw,50px);line-height:1.1;font-weight:900;letter-spacing:-.04em;margin:0 0 10px}
+.app-category__header p{font-size:15px;color:var(--muted)}
+.app-category__layout{display:grid;grid-template-columns:minmax(240px,280px) minmax(0,1fr);gap:24px;align-items:start}
+.app-category__sidebar{position:sticky;z-index:8;top:calc(var(--app-sticky-offset,136px) + 15px);max-height:calc(100dvh - var(--app-sticky-offset,136px) - 30px);overflow-y:auto;padding:22px;scrollbar-width:thin}
+.app-category__sidebar h2{font-size:15px;line-height:1.3;font-weight:800;margin-bottom:14px;color:var(--accent)}
+.app-category__nav{display:grid;gap:5px}
+.app-category__nav a{display:flex;align-items:center;min-height:42px;border:1px solid transparent;border-radius:var(--radius-control);padding:9px 12px;color:var(--muted);font-size:14px;font-weight:650}
+.app-category__nav a:hover,.app-category__nav a.is-active{color:var(--text);background:var(--surface-raised);border-color:var(--control-line)}
+.app-category__nav a.is-active{border-color:var(--accent)}
+.app-category__separator{height:1px;background:var(--line);margin:18px 0}
+.app-category__filters{display:grid;gap:15px}
+.app-category__filters label{display:grid;gap:7px;min-width:0}
+.app-category__filters label>span:first-child,.app-category__filters legend{color:var(--muted);font-size:12px;font-weight:700}
+.app-category__filters :is(input:not([type=hidden]):not([type=checkbox]),select){box-sizing:border-box;width:100%;min-width:0;min-height:46px;padding:10px 12px;border:1px solid var(--control-line);border-radius:var(--radius-control);background:var(--field);color:var(--text);font-size:13px;font-weight:600}
+.app-category__filters input::placeholder{color:var(--muted);opacity:1}
+.app-category__filters .select-control{position:relative;display:block;min-width:0}
+.app-category__filters .select-control select{appearance:none;-webkit-appearance:none;padding-right:42px}
+.app-category__filters .select-control>svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;pointer-events:none;color:var(--muted)}
+.app-category__filters :is(input,select):focus-visible{outline:2px solid var(--accent)!important;outline-offset:2px!important}
+.app-category__filters .app-category__toggle{display:flex;flex-direction:row;align-items:center;gap:10px;cursor:pointer}
+.app-category__toggle input[type=checkbox]{appearance:none;width:36px;height:22px;border:1px solid var(--control-line);border-radius:99px;position:relative;background:var(--field);flex:none;cursor:pointer;transition:background .15s}
+.app-category__toggle input[type=checkbox]:before{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:transform .15s}
+.app-category__toggle input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+.app-category__toggle input[type=checkbox]:checked:before{transform:translateX(14px);background:var(--on-accent)}
+.app-category__filters .app-category__toggle span{font-size:13px;color:var(--text);font-weight:650}
+.app-category__filter-actions{display:flex;gap:10px;align-items:center}
+.app-category__filter-actions .button{flex:1}
+.app-category__main{min-width:0}
+.app-category__toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;color:var(--muted);font-size:14px}
+.app-category__count{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.app-category__items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:stretch}
+.app-category__card{display:flex;flex-direction:column;position:relative;min-width:0;overflow:hidden}
+.app-category__card-cover{display:block;position:relative;width:100%;aspect-ratio:1.58;overflow:hidden;background:var(--surface-raised)}
+.app-category__card-cover img{display:block;width:100%;height:100%;object-fit:cover}
+.app-category__cover-placeholder{display:grid;place-items:center;height:100%;font-size:13px;color:var(--muted);font-weight:700}
+.app-category__card-body{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;gap:12px;padding:18px}
+.app-category__badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.app-category__badges span{padding:5px 9px;border-radius:99px;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:12px}
+.app-category__card h2{font-size:19px;line-height:1.35;font-weight:800;overflow-wrap:anywhere}
+.app-category__card h2 a:hover{color:var(--accent)}
+.app-category__card p,.app-category__card time{color:var(--muted);font-size:14px;line-height:1.5}
+.app-category__card .app-category__description{font-size:13px;color:var(--muted)}
+.app-category__card .app-category__details{margin-top:auto;align-self:flex-start}
+.app-category__items--list{grid-template-columns:minmax(0,1fr)}
+.app-category__items--list .app-category__card{flex-direction:row;min-height:190px}
+.app-category__items--list .app-category__card-cover{flex:0 0 32%;width:32%;aspect-ratio:auto}
+.app-category__empty{grid-column:1/-1;display:grid;gap:12px;justify-items:center;align-content:center;text-align:center;min-height:220px;padding:44px 20px}
+.app-category__empty h2{font-size:22px;color:var(--text)}
+.app-category__empty p{font-size:14px;color:var(--muted)}
+.app-category__pagination{margin-top:24px;max-width:100%;overflow-x:auto}
+.app-category__mobile-filters{display:none}
+@media(max-width:1000px){.app-category__layout{grid-template-columns:minmax(210px,235px) minmax(0,1fr);gap:16px}.app-category__sidebar{padding:16px}}
+@media(max-width:850px){.app-category__layout{display:block}.app-category__sidebar{display:none}.app-category__mobile-filters{display:block;margin-bottom:18px;padding:16px}.app-category__mobile-filters>summary{list-style:none;cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:space-between;font-weight:800}.app-category__mobile-filters>summary::-webkit-details-marker{display:none}.app-category__mobile-filters[open]>summary{margin-bottom:15px}.app-category__mobile-filters-body h2{margin:15px 0 10px;color:var(--accent);font-size:14px}.app-category__mobile-filters-body nav{margin-bottom:14px}}
+@media(max-width:590px){.app-category{padding-top:24px}.app-category__header{align-items:start}.app-category__items{grid-template-columns:minmax(0,1fr)}.app-category__items--list .app-category__card-cover{width:35%;flex-basis:35%}.app-category__card-body{padding:14px}.app-category__toolbar{flex-wrap:wrap}.app-category__count{flex:1}}
+@media(forced-colors:active){.app-category__filters .select-control select{appearance:auto}.app-category__filters .select-control>svg{display:none}}
+@media(prefers-reduced-motion:reduce){.app-category__toggle input[type=checkbox],.app-category__toggle input[type=checkbox]:before{transition:none}}

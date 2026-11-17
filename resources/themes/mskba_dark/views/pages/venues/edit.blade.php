@@ -2,9 +2,9 @@
     $title = $venue?->name ?? 'Редактирование площадки';
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Аккаунт', 'url' => route('account')],
-        ['label' => 'Мои площадки', 'url' => route('account.venues')],
-        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
-        ['label' => 'Редактирование'],
+        ['label' => 'Мои контракты', 'url' => route('account.contracts')],
+        ['label' => 'Мои площадки', 'url' => route('account.contracts.venues')],
+        ['label' => $venue->name],
     ];
     $venueSidebarActive = 'edit';
     $hasPendingModeration = $venue?->moderationRequests
@@ -81,13 +81,25 @@
             'readOnly' => $hasPendingModeration,
         ])
 
+        @if(! $hasPendingModeration)
+            <div class="mb-4">
+                @include('components.entity-banner-editor', [
+                    'model' => $venue,
+                    'context' => 'account',
+                    'bannerOverride' => $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED
+                        ? app(\App\Modules\Media\Application\Services\VenueBannerDraftManager::class)->preview($venue)
+                        : $venue->banner,
+                ])
+            </div>
+        @endif
+
         @include('theme::partials.venues.form', [
             'venue' => $venue,
             'types' => $types,
             'metros' => $metros,
             'action' => route('account.venues.update', $venue->routeIdentifier()),
             'method' => 'PUT',
-            'cancelUrl' => route('account.venues.show', $venue->routeIdentifier()),
+            'cancelUrl' => route('account.contracts.venues'),
             'submitLabel' => 'Сохранить',
             'venueRevision' => $venueRevision ?? null,
             'readOnly' => $hasPendingModeration,

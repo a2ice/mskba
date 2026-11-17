@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\UseCases\ActivateProfileAvatarHandler;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -14,7 +15,7 @@ final class ActivateAccountAvatarController extends Controller
         Request $request,
         int $avatar,
         ActivateProfileAvatarHandler $activateProfileAvatar,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $profile = $request->user()?->profile;
 
         if ($profile === null) {
@@ -25,6 +26,8 @@ final class ActivateAccountAvatarController extends Controller
 
         $activateProfileAvatar->handle($profile, $avatar);
 
-        return back()->with('avatar_status', 'Активный аватар изменён.');
+        return $request->expectsJson()
+            ? AccountAvatarJsonResponse::success($profile, 'Активный аватар изменён.')
+            : back()->with('avatar_status', 'Активный аватар изменён.');
     }
 }

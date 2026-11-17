@@ -8,18 +8,30 @@
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^6.0.9",
         "concurrently": "^9.2.4",
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.0",
         "vite": "^8.2.0"
     },
     "dependencies": {
+        "@graphiql/toolkit": "^0.12.1",
+        "@inertiajs/vue3": "^2.3.28",
         "bootstrap": "^5.3.8",
+        "graphiql": "^5.4.0",
+        "graphql": "^16.11.0",
         "jquery": "^4.0.0",
         "laravel-echo": "^2.4.0",
         "pusher-js": "^8.6.0",
         "qrcode": "^1.5.4",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+        "swagger-ui-dist": "^5.33.3",
         "three": "0.184.0",
-        "tom-select": "^2.6.1"
+        "tom-select": "^2.6.1",
+        "vue": "^3.5.43"
+    },
+    "scarfSettings": {
+        "enabled": false
     }
 }

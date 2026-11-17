@@ -1,0 +1,277 @@
+/* Player role in MSKBA App: account collection geometry, accessible controls, native page tabs. */
+.app-player-workspace{display:grid;gap:18px;min-width:0}
+.app-player-workspace__notice,.app-player-workspace__error{border:1px solid #c8dfd0;border-radius:13px;padding:14px 18px;background:#ecf8ef;color:#21643f}
+.app-player-workspace__error{border-color:#edb6b6;background:#fff1f1;color:#8d2929}
+.app-player-workspace__error ul{margin:8px 0 0;padding-left:22px}
+.app-player-workspace__tabs{display:flex;flex-wrap:wrap;gap:10px;border-bottom:1px solid #d8e0e7;padding-bottom:12px}
+.app-player-workspace__tabs a{display:inline-flex;align-items:center;min-height:42px;padding:9px 16px;box-sizing:border-box;border:1px solid #d9e1e9;border-radius:11px;background:#f4f7fa;color:#405165;font-weight:700;font-size:14px;text-decoration:none}
+.app-player-workspace__tabs a.is-active{border-color:#293c52;background:#293c52;color:#fff}
+.app-player-workspace__tabs a:focus-visible,.app-player-workspace__primary:focus-visible,.app-player-workspace__secondary:focus-visible{outline:2px solid #bc550f;outline-offset:3px}
+.app-player-workspace__physical{display:grid;grid-template-columns:minmax(255px,365px) minmax(0,1fr);align-items:start;gap:18px}
+.app-player-workspace__preview,.app-player-workspace__editor,.app-player-workspace__game,.app-player-workspace__objective{background:#fff;border:1px solid #dce3ea;border-radius:16px;box-shadow:0 3px 12px rgba(25,41,57,.035);padding:20px;min-width:0;color:#304053}
+.app-player-workspace__preview{display:grid;gap:14px;position:sticky}
+.app-player-workspace__preview-heading{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;justify-content:space-between}
+.app-player-workspace__preview-heading h2,.app-player-workspace__section-heading h2{font-size:21px;line-height:1.3;margin:0;color:#24364c}
+.app-player-workspace__eyebrow{font-size:12px;font-weight:700;color:#748296}
+.app-player-workspace__preview-kind{font-size:11px;padding:6px 9px;border-radius:999px;background:#eff2f5;color:#56677b;font-weight:700}
+.app-player-workspace__stage{position:relative;height:min(470px,70vh);min-height:340px;overflow:hidden;border:1px solid #d7e0e9;border-radius:14px;background:linear-gradient(180deg,#eaf1f7,#f6f9fc)}
+.app-player-workspace__stage::before{content:"";position:absolute;inset:0 0 8% 45px;background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(20% - 1px),#bfcddb66 calc(20% - 1px),#bfcddb66 20%);pointer-events:none}
+.app-player-workspace__scale{position:absolute;inset:7% auto 10% 0;width:58px;color:#64768b;font-size:11px}
+.app-player-workspace__scale span{position:absolute;left:6px;transform:translateY(50%);white-space:nowrap}
+.app-player-workspace__figure{position:absolute;inset:8% 8% 10% 58px;display:flex;align-items:end;justify-content:center}
+/* Keep the image height tied to the ruler. A width cap or flex-shrink silently stops growth near 200cm. */
+.app-player-workspace__figure img{flex:0 0 auto;height:var(--figure-height,74%);max-height:100%;max-width:none;width:auto;object-fit:contain;object-position:center bottom;transform-origin:center bottom;transform:scaleX(var(--figure-width,1));transition:height .2s ease,transform .2s ease;filter:drop-shadow(0 6px 11px #304f6880)}
+.app-player-workspace__figure img.is-generated{transform:none}
+/* Only generated images require a loading layer. The default figure is fully
+   sized in server HTML and must never be obscured by an unnecessary loader. */
+.app-player-workspace__figure-loading{
+  position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:11px;
+  background:rgba(238,244,249,.88);color:#405469;
+  font-size:12px;font-weight:700;backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);border-radius:inherit;
+}
+.app-player-workspace__figure-loading[hidden]{display:none!important}
+.app-player-workspace__figure-spinner{
+  display:block;width:29px;height:29px;border-radius:50%;
+  border:3px solid #cad7e4;border-top-color:var(--accent,#c2510c);
+  animation:app-player-figure-spin .8s linear infinite;
+}
+@keyframes app-player-figure-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+  .app-player-workspace__figure-spinner{animation-duration:1.6s}
+}
+
+.app-player-workspace__floor{position:absolute;bottom:10%;left:58px;right:0;border-bottom:2px solid #8b9eb1}
+.app-player-workspace__metrics{display:flex;align-items:center;flex-wrap:nowrap;gap:10px;font-size:12px;font-weight:700;color:#405469;white-space:nowrap;min-width:0;overflow-x:auto}
+.app-player-workspace__hint{font-size:13px;line-height:1.5;color:#637386;margin:0}
+.app-player-workspace__editor{display:grid;gap:18px}
+.app-player-workspace__section-heading{display:grid;gap:7px}
+.app-player-workspace__section-heading p,.app-player-workspace__generation p{font-size:14px;color:#64758a;line-height:1.5;margin:0}
+.app-player-workspace__editor h3,.app-player-workspace__game h3{font-size:17px;line-height:1.35;color:#24364c;margin:4px 0 0}
+.app-player-workspace__form{display:grid;gap:20px;min-width:0}
+.app-player-workspace__fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.app-player-workspace__field{display:grid;gap:6px;min-width:0;font-size:13px;font-weight:650;color:#2b3a4d}
+.app-player-workspace__field--wide{grid-column:1/-1}
+.app-player-workspace__field :is(input,select,textarea){box-sizing:border-box;width:100%;min-width:0;min-height:42px;border:1px solid #c8d3de;background:#fff;border-radius:9px;color:#233449;padding:9px 11px;font:inherit;font-size:14px;font-weight:500}
+.app-player-workspace__field textarea{resize:vertical}
+.app-player-workspace__field :is(input,select,textarea):focus-visible{outline:2px solid #b45112;outline-offset:2px}
+.app-player-workspace__field input:disabled{background:#f2f5f8;color:#5d6d7e}
+.app-player-workspace__field small{font-size:11px;color:#67798a;line-height:1.4;font-weight:400}
+.app-player-workspace__equipment{margin:0;padding:13px 15px;border:1px solid #dce3ea;border-radius:12px}
+.app-player-workspace__equipment legend{padding:0 5px;color:#293f56;font-size:15px;font-weight:700}
+.app-player-workspace__equipment p{font-size:13px;color:#64758a;margin:0 0 12px}
+.app-player-workspace__checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.app-player-workspace__checks label,.app-player-workspace__checkbox{display:flex;gap:8px;align-items:flex-start;color:#31475f;font-size:13px;line-height:1.4}
+.app-player-workspace__checks input,.app-player-workspace__checkbox input{margin-top:2px;accent-color:#ba560d;flex:none}
+.app-player-workspace__actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.app-player-workspace__primary,.app-player-workspace__secondary{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 15px;box-sizing:border-box;font-size:13px;font-weight:700;border-radius:9px;cursor:pointer}
+.app-player-workspace__primary{border:1px solid #243b54;background:#243b54;color:#fff}
+.app-player-workspace__secondary{border:1px solid #c9d5e1;background:#fff;color:#2c4158}
+.app-player-workspace__primary:disabled,.app-player-workspace__secondary:disabled{opacity:.6;cursor:wait}
+.app-player-workspace__generation{border-top:1px solid #dce3ea;padding-top:18px;display:grid;gap:15px}
+.app-player-workspace__generation-status{margin:0;min-height:20px;font-size:13px;color:#42556a}
+.app-player-workspace__generation-status.is-error{color:#af2929}
+.app-player-workspace__game{display:grid;gap:20px}
+.app-player-workspace__skills{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.app-player-workspace__skill{display:grid;grid-template-columns:minmax(0,1fr) 1.2fr 30px;align-items:center;gap:9px;border:1px solid #dce3ea;border-radius:12px;padding:12px;font-size:13px;color:#334a61}
+.app-player-workspace__skill input{min-width:0;width:100%;accent-color:#bb560f}
+.app-player-workspace__skill output{font-weight:750;text-align:right}
+.app-player-workspace__objective{box-shadow:none;background:#f9fbfd;display:grid;gap:13px}
+.app-player-workspace__objective-meta{font-size:13px;color:#435d75;margin:0}
+.app-player-workspace__objective-list{display:grid;gap:12px}
+.app-player-workspace__objective-item{display:grid;gap:6px}
+.app-player-workspace__objective-item>div{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.app-player-workspace__objective-item progress{width:100%;height:9px;accent-color:#29945a}
+.app-player-workspace__empty{margin:0;font-size:14px;color:#64758a}
+@media(max-width:1050px){.app-player-workspace__physical{grid-template-columns:minmax(240px,310px) minmax(0,1fr)}.app-player-workspace__skills{grid-template-columns:1fr}}
+@media(max-width:760px){.app-player-workspace__physical{grid-template-columns:1fr}.app-player-workspace__preview{position:static}.app-player-workspace__stage{height:430px;max-width:360px;width:100%;margin:auto}.app-player-workspace__skills{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.app-player-workspace__preview,.app-player-workspace__editor,.app-player-workspace__game{padding:15px}.app-player-workspace__fields,.app-player-workspace__checks,.app-player-workspace__skills{grid-template-columns:1fr}.app-player-workspace__stage{height:360px;min-height:320px}.app-player-workspace__skill{grid-template-columns:minmax(0,1fr) 1.1fr 26px}}
+@media(prefers-reduced-motion:reduce){.app-player-workspace__figure img{transition:none}}
+
+/* Task 052: use the shared native-select control from design-system.css. */
+.app-player-workspace__field>.select-control{min-width:0}
+.app-player-workspace__range-field{align-content:start}
+.app-player-workspace__range-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-player-workspace__range-heading output{font-size:14px;font-weight:750;font-variant-numeric:tabular-nums;color:#263d55}
+.app-player-workspace__field input[type="range"]{appearance:none;-webkit-appearance:none;padding:0;margin:6px 0 0;min-height:26px;height:26px;width:100%;border:0;background:transparent;cursor:pointer;accent-color:var(--accent,#c2510c)}
+.app-player-workspace__field input[type="range"]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:#d8e1eb}
+.app-player-workspace__field input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:#d8e1eb}
+.app-player-workspace__field input[type="range"]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:var(--accent,#c2510c);border:3px solid #fff;box-shadow:0 0 0 1px #be5c1d}
+.app-player-workspace__field input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent,#c2510c);border:3px solid #fff;box-shadow:0 0 0 1px #be5c1d}
+.app-player-workspace__range-bounds{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#64758a;font-variant-numeric:tabular-nums}
+.app-player-workspace__equipment .app-player-workspace__fields{margin-top:6px}
+/* Stay within the player section, following the same offset as the venue anchor bar. */
+.app-player-workspace__tabs{position:sticky;top:var(--app-sticky-offset,calc(var(--header-height,80px) + var(--context-bar-height,44px)));z-index:18;min-width:0;padding:8px;border:1px solid var(--line,#d8e0e7);border-radius:12px;background:color-mix(in srgb,var(--surface,#fff) 94%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);transition:top .28s cubic-bezier(.22,.61,.36,1)}
+@media(max-width:640px){.app-player-workspace__tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.app-player-workspace__tabs::-webkit-scrollbar{display:none}.app-player-workspace__tabs a{white-space:nowrap}}
+
+/* Task 053: same visual tokens and sticking behavior as venue section anchors. */
+.app-player-workspace__tabs{
+  display:flex;align-items:center;gap:8px;margin:0;padding:8px;border:1px solid var(--line);
+  border-radius:12px;background:color-mix(in srgb,var(--surface) 91%,transparent);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);scrollbar-width:none;
+}
+.app-player-workspace__tabs a{
+  display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;
+  border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);
+  text-decoration:none;font-size:14px;font-weight:700;
+}
+.app-player-workspace__tabs a.is-active,
+.app-player-workspace__tabs a[aria-current="page"]{
+  color:var(--accent);background:var(--surface-raised);border-color:transparent;
+}
+.app-player-workspace__tabs a:not([aria-current="page"]):hover{color:var(--text)}
+.app-player-workspace__tabs a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.app-player-workspace__tabs.is-stuck{border-top-left-radius:0;border-top-right-radius:0}
+.app-player-workspace__preview{
+  top:calc(var(--app-sticky-offset,124px) + var(--player-nav-height,58px) + 15px);
+  transition:none;
+}
+@media (prefers-reduced-motion:reduce){.app-player-workspace__tabs{transition:none}}
+
+/* Task 055: gender links to the canonical personal-data editor, not player settings. */
+.app-player-workspace__gender-meta{display:flex;align-items:center;gap:4px;margin:0;font-size:14px;color:var(--text);font-weight:600}
+.app-player-workspace__gender-link{border:0;border-radius:0;background:transparent;color:var(--accent);padding:0;font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.app-player-workspace__gender-link:hover{color:var(--accent-hover)}
+.app-player-workspace__gender-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.app-player-workspace__gender-dialog .app-profile__request-body{color:var(--text)}
+.app-player-workspace__gender-dialog .app-profile__request-body p{margin:0}
+.app-player-workspace__personal-dialog{width:min(820px,calc(100vw - 24px))}
+.app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:20px 24px}
+.app-player-workspace__personal-dialog .app-profile__panel{box-shadow:none;border:0;padding:0;background:transparent}
+.app-player-workspace__personal-dialog #app-profile-personal-heading{display:none}
+@media(max-width:700px){
+  .app-player-workspace__personal-dialog .app-profile__field-grid{grid-template-columns:minmax(0,1fr)}
+  .app-player-workspace__personal-dialog .app-player-workspace__personal-body{padding:16px}
+}
+
+/* Task 055 acceptance: only the saved value is interactive; actions stay in the fixed footer. */
+.app-player-workspace__personal-footer .button{min-height:44px}
+.app-player-workspace__personal-footer{flex-wrap:wrap;gap:12px}
+@media(max-width:600px){
+  .app-player-workspace__personal-footer .button{flex:1 1 auto}
+}
+
+/* Task 056: one calibrated 0–225 cm scale for labels, marker, and rendered height. */
+.app-player-workspace__stage::before{display:none}
+.app-player-workspace__scale{inset:8% 0 10% 0;width:auto;pointer-events:none;z-index:1;font-size:11px}
+/* Height lines stay behind the transparent player sprite, labels remain readable at left. */
+.app-player-workspace__figure{z-index:2;pointer-events:none}
+.app-player-workspace__scale-tick{position:absolute;left:0;right:0;display:flex;align-items:center;gap:4px;transform:translateY(50%)}
+.app-player-workspace__scale-tick span{display:block;width:41px;padding-left:6px;flex:none;white-space:nowrap;color:#64768b}
+.app-player-workspace__scale-tick::after{content:"";border-top:1px solid #bfcddb80;flex:1;min-width:0}
+.app-player-workspace__height-marker{position:absolute;left:43px;right:75%;height:1px;background:var(--accent,#eb650d);transform:translateY(50%);z-index:3}
+.app-player-workspace__height-marker span{position:absolute;right:8px;bottom:4px;padding:3px 7px;border-radius:5px;background:var(--accent,#eb650d);color:#fff;font-size:11px;line-height:1.3;font-weight:800;white-space:nowrap;box-shadow:0 2px 6px #263a4c30}
+.app-player-workspace__floor{border-color:#8499ad}
+.app-player-workspace__avatar-library{display:grid;gap:8px;min-width:0}
+.app-player-workspace__avatar-heading{margin:0;font-size:13px;font-weight:750;line-height:1.4;color:var(--text,#25374a)}
+.app-player-workspace__avatar-rail{display:flex;gap:8px;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;overscroll-behavior-inline:contain;padding:2px 2px 8px}
+.app-player-workspace__avatar-item{position:relative;flex:0 0 calc((100% - 24px)/4);min-width:0;aspect-ratio:3/4;overflow:hidden;border:2px solid #d1dbe5;border-radius:9px;background:#eaf1f7;padding:0;cursor:pointer;scroll-snap-align:start}
+.app-player-workspace__avatar-item img{display:block;width:100%;height:100%;object-fit:contain}
+.app-player-workspace__avatar-item.is-selected,.app-player-workspace__avatar-item[aria-pressed="true"]{border-color:var(--accent,#eb650d);box-shadow:0 0 0 1px var(--accent,#eb650d)}
+.app-player-workspace__avatar-item:focus-visible{outline:2px solid var(--accent,#eb650d);outline-offset:2px}
+.app-player-workspace__avatar-item-badge{position:absolute;right:2px;top:2px;max-width:calc(100% - 4px);padding:2px 4px;border-radius:4px;background:#26394ce6;color:#fff;font-size:9px;font-weight:700}
+.app-player-workspace__avatar-empty,.app-player-workspace__avatar-feedback{margin:0;color:#64758a;font-size:12px;line-height:1.45}
+.app-player-workspace__avatar-feedback:empty{display:none}
+.app-player-workspace__avatar-feedback.is-error{color:#ac3131}
+.app-player-workspace__avatar-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+.app-player-workspace__avatar-primary-label,.app-player-workspace__avatar-primary-link{font-size:12px;font-weight:700;color:var(--accent,#d45b06)}
+.app-player-workspace__avatar-primary-link,.app-player-workspace__avatar-primary-link:hover,.app-player-workspace__avatar-primary-link:focus{text-decoration:none}
+.app-player-workspace__avatar-primary-link{cursor:pointer}
+.app-player-workspace__avatar-primary-link:focus-visible{outline:2px solid var(--accent,#d45b06);outline-offset:3px;border-radius:2px}
+.app-player-workspace__avatar-primary-link[aria-disabled="true"]{opacity:.6;cursor:wait}
+.app-player-workspace__avatar-actions[hidden],.app-player-workspace__avatar-actions [hidden]{display:none!important}
+@media(max-width:540px){.app-player-workspace__avatar-item{min-width:0}}
+
+/* Task 056 visual acceptance: ruler marker stays a line until hovered or the height control is focused. */
+.app-player-workspace__scale .app-player-workspace__scale-tick span{
+    position:static;left:auto;right:auto;transform:none;
+}
+.app-player-workspace__height-marker{
+    pointer-events:auto;cursor:ns-resize;touch-action:none;
+    user-select:none;-webkit-user-select:none;
+}
+.app-player-workspace__height-marker::before{
+    content:"";position:absolute;left:0;right:0;top:-11px;bottom:-11px;
+    background:transparent;
+}
+.app-player-workspace__scale .app-player-workspace__height-marker span{
+    position:absolute;left:0;right:auto;bottom:6px;top:auto;
+    display:inline-block;width:max-content;/*max-width:calc(100% - 8px);*/
+    padding:3px 7px;border-radius:5px;white-space:nowrap;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transform:translateY(3px);
+    transition:opacity .15s ease,transform .15s ease,visibility .15s ease;
+}
+.app-player-workspace__height-marker:hover span,
+.app-player-workspace__stage.is-height-focused .app-player-workspace__height-marker span,
+.app-player-workspace__stage.is-height-dragging .app-player-workspace__height-marker span{
+    opacity:1;visibility:visible;transform:translateY(0);
+}
+.app-player-workspace__avatar-heading[hidden],
+.app-player-workspace__avatar-rail[hidden],
+.app-player-workspace__avatar-empty[hidden]{
+    display:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+    .app-player-workspace__scale .app-player-workspace__height-marker span{transition:none}
+}
+
+/* Task 057: one accessory checkbox per type; side choices in the shared native modal. */
+.app-player-workspace__equipment-groups{gap:0 18px;align-items:start}
+.app-player-workspace__equipment-group{display:flex;align-items:center;flex-wrap:wrap;column-gap:12px;min-height:44px;min-width:0}
+.app-player-workspace__equipment-groups .app-player-workspace__equipment-toggle{display:inline-flex;align-items:center;gap:12px;min-height:44px;color:var(--text);font-size:14px;line-height:20px;cursor:pointer}
+.app-player-workspace__equipment-toggle input{width:20px;height:20px;margin:0;accent-color:var(--accent);flex:none}
+.app-player-workspace__equipment-edit{display:inline-flex;align-items:center;align-self:center;min-height:44px;background:transparent;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;line-height:20px;font-weight:700;text-decoration:underline;text-underline-offset:2px;padding:0 2px;border-radius:4px}
+.app-player-workspace__equipment-edit:hover{color:var(--accent-hover,var(--accent))}
+.app-player-workspace__equipment-edit:focus-visible,.app-player-workspace__equipment-toggle input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-player-workspace__equipment-edit[hidden]{display:none!important}
+.app-player-workspace__equipment-dialog{width:min(440px,calc(100vw - 24px))}
+.app-player-workspace__equipment-side-options{display:flex;flex-wrap:wrap;gap:0 26px;margin-top:12px}
+.app-player-workspace__equipment-side-options .check-label{display:inline-flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-size:14px;line-height:20px;color:var(--text)}
+.app-player-workspace__equipment-side-options .check-label input{width:20px;height:20px;margin:0;accent-color:var(--accent);flex:none}
+@media(max-width:540px){.app-player-workspace__equipment-groups{grid-template-columns:1fr}}
+
+
+/* 058 — Generation offer and honest top-up (scoped to the player workspace). */
+.app-player-workspace__generation-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.app-player-workspace__generation-stat{display:grid;gap:5px;min-width:0;padding:13px 15px;border:1px solid #dce3ea;border-radius:11px;background:#f7f9fb}
+.app-player-workspace__generation-stat span{font-size:12px;color:#64758a;line-height:1.4}
+.app-player-workspace__generation-stat strong{font-size:19px;line-height:1.3;color:#24364c;font-weight:750}
+.app-player-workspace__generation-value-row{display:flex;align-items:baseline;justify-content:space-between;gap:9px;min-width:0}
+.app-player-workspace__generation-value-row .app-player-workspace__generation-help{flex:0 0 auto;white-space:nowrap;font-size:12px}
+
+.app-player-workspace__generation-no-funds{padding:13px 15px;border:1px solid #e7be9e;border-radius:10px;background:#fff7ed;color:#a4480b!important;font-weight:650}
+.app-player-workspace__generation-help{padding:0;border:0;background:transparent;color:var(--accent,#ea580c);font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.app-player-workspace__generation-help:focus-visible{outline:2px solid var(--accent,#ea580c);outline-offset:4px}
+.app-player-workspace__generation [data-player-generation-fields]{display:grid;gap:14px;min-width:0}
+.app-player-workspace__generation [hidden],.app-player-workspace__generation [data-player-generation-fields][hidden]{display:none!important}
+.app-player-workspace__topup-dialog{width:min(620px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;border:1px solid #dce3ea;border-radius:16px;background:#fff;color:#293b50;box-shadow:0 20px 64px #24364c45;overflow:auto}
+.app-player-workspace__topup-dialog:not([open]){display:none}
+.app-player-workspace__topup-dialog::backdrop{background:#23324699;backdrop-filter:blur(3px)}
+.app-player-workspace__topup-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 22px;border-bottom:1px solid #dce3ea}
+.app-player-workspace__topup-head h3{margin:0;font-size:20px;color:#24364c}
+.app-player-workspace__topup-body{display:grid;gap:18px;padding:22px}
+.app-player-workspace__topup-body>p,.app-player-workspace__topup-payment>p{margin:0;font-size:14px;line-height:1.6;color:#64758a}
+.app-player-workspace__topup-body a{color:var(--accent,#ea580c);font-weight:700}
+.app-player-workspace__bonus-options{list-style:none;display:grid;gap:10px;margin:0;padding:0}
+.app-player-workspace__bonus-options li{display:grid;gap:5px;padding:12px 14px;border:1px solid #dce3ea;border-radius:10px;background:#f8fafc}
+.app-player-workspace__bonus-options strong{font-size:14px;color:#293b50}
+.app-player-workspace__bonus-options span{font-size:13px;font-weight:750;color:var(--accent,#ea580c)}
+.app-player-workspace__bonus-options p{margin:0;font-size:13px;line-height:1.5;color:#64758a}
+.app-player-workspace__topup-payment{display:grid;gap:12px;padding-top:14px;border-top:1px solid #dce3ea}
+.app-player-workspace__topup-payment h4{font-size:16px;margin:0}
+.app-player-workspace__topup-payment .app-player-workspace__field{max-width:230px}
+.app-player-workspace__topup-payment button[disabled]{opacity:.6;cursor:not-allowed;justify-self:start}
+@media(max-width:1180px){.app-player-workspace__generation-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:570px){.app-player-workspace__generation-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.app-player-workspace__topup-head,.app-player-workspace__topup-body{padding:16px}.app-player-workspace__topup-head h3{font-size:17px}}
+
+/* Compact view/edit control beside a saved player uniform. */
+.app-player-workspace__uniform-design-controls{display:flex;align-items:center;gap:8px;min-width:0}
+.app-player-workspace__uniform-design-controls>.select-control{flex:1 1 auto;min-width:0}
+.app-player-workspace__uniform-design-controls>[data-player-uniform-view]{flex:0 0 auto;min-height:42px;padding:9px 11px;white-space:nowrap}
+
+/* Confirmation state now shares the account intro; requests remain in a compact inline row. */
+.app-player-workspace__request-summary{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:3px 0;font-size:13px;color:var(--muted)}
+.app-player-workspace__request-summary a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.app-player-workspace__request-summary .button{min-height:32px;padding:5px 10px;font-size:12px}

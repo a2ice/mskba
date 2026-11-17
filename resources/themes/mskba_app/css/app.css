@@ -1,0 +1,61 @@
+@import './fonts.css';
+@import './fonts-premium.css';
+@import './tokens.css';
+@import './design-system.css';
+@import './modal.css';
+@import './header.css';
+@import './context-bar.css';
+@import './footer.css';
+@import './cookie-consent.css';
+@import './context-dialogs.css';
+@import './auth-dialog.css';
+@import './creation-access.css';
+@import './legal-dialog.css';
+@import './wizard.css';
+@import './privacy-distribution.css';
+@import './privacy-onboarding-dialog.css';
+@import './notification-toasts.css';
+@import './account-layout.css';
+@import './account-overview.css';
+@import './account-dashboard-customize.css';
+@import './account-confirmation.css';
+@import './account-teams.css';
+@import './leagues.css';
+@import './entity-edit-link.css';
+@import './account-roles.css';
+@import './account-profile.css';
+@import './balance-topup.css';
+@import './account-messages.css';
+@import './appearance-settings.css';
+@import './appearance-light.css';
+@import './appearance-premium.css';
+@import './play-interest.css';
+@import './venue-detail.css';
+@import './venue-editor.css';
+@import './venue-rental-pricing.css';
+@import './venue-interest-group.css';
+@import './group-rentals.css';
+@import './catalog-sidebar-sticky.css';
+@import './venue-catalog.css';
+@import '../../mskba_dark/css/image-upload.css';
+@import './shop.css';
+@import './catalog-controls.css';
+@import './category.css';
+@import './home-venues-map-expand.css';
+@import './site-media-lqip.css';
+@import './page-builder-native-lqip.css';
+@import '../../mskba_dark/css/venue-pin.css';
+@import './venue-favorites.css';
+@import './account-favorites.css';
+@import './my-games.css';
+@import './public-content.css';
+
+.app-shell { min-height: 100dvh; }
+
+/* Click focus should not create decorative orange outlines; keep a subtle
+   visible keyboard focus indicator for accessibility. */
+:where(input,select,textarea,button,a,summary,[tabindex]):focus:not(:focus-visible){outline:none!important}
+:where(input,select,textarea,button,a,summary,[tabindex]):focus-visible{
+    outline:1px solid var(--control-line)!important;outline-offset:2px!important;
+    box-shadow:none!important
+}

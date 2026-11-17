@@ -12,9 +12,6 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
-use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
-use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
-use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -23,7 +20,6 @@ final class RequestEventResponsibilityHandler
     public function __construct(
         private readonly EventManagementAccess $access,
         private readonly EventResponsibilityPermissionManager $permissions,
-        private readonly CreateUserNotificationHandler $notifications,
     ) {}
 
     /** @param list<string> $permissionValues */
@@ -64,15 +60,6 @@ final class RequestEventResponsibilityHandler
             return [$event, $participant->load('user')];
         });
 
-        $this->notifications->handle(new CreateUserNotificationDTO(
-            userId: $participant->user_id,
-            type: UserNotificationTypeEnum::REMINDER,
-            title: 'Назначение ответственным',
-            body: "Вас приглашают стать ответственным за мероприятие «{$event->title}».",
-            actionUrl: route('events.show', $event->routeIdentifier()),
-            actionText: 'Ответить',
-            payload: ['event_id' => $event->id, 'participant_id' => $participant->id],
-        ));
         event(new EventChanged($event->id));
 
         return $event;

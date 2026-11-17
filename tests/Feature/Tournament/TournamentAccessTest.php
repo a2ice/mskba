@@ -32,7 +32,7 @@ final class TournamentAccessTest extends TestCase
             'user_id' => $staff->id,
             'permissions' => [TournamentPermissionEnum::MANAGE_DESCRIPTION->value],
         ])->assertSessionHas('status');
-        $membership = ContractMembership::query()->firstOrFail();
+        $membership = ContractMembership::query()->where('user_id', $staff->id)->firstOrFail();
         $this->assertSame(TeamInvitationStatusEnum::PENDING, $membership->invitation_status);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $staff->id,
@@ -71,7 +71,7 @@ final class TournamentAccessTest extends TestCase
             'user_id' => $staff->id,
             'permissions' => [TournamentPermissionEnum::MANAGE_STATUS->value],
         ]);
-        $membership = ContractMembership::query()->firstOrFail();
+        $membership = ContractMembership::query()->where('user_id', $staff->id)->firstOrFail();
         $this->actingAs($staff)->post(route('tournaments.staff.respond', [$tournament->routeIdentifier(), $membership]), [
             'decision' => TeamInvitationStatusEnum::ACCEPTED->value,
         ]);

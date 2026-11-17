@@ -1,0 +1,48 @@
+name: MSKBA merged database offline web smoke
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-web-smoke.yml
+      - scripts/data-merge/smoke-merged-site.sh
+      - scripts/data-merge/restore-imported-managers.php
+      - scripts/data-merge/smoke-merged-site.sh
+      - scripts/data-merge/restore-imported-managers.php
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-smoke:
+    name: Run merged Laravel pages, media and venue-rights checks
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          bash -n scripts/data-merge/smoke-merged-site.sh
+          php -l scripts/data-merge/restore-imported-managers.php
+      - name: Upload script outside both live sites
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/smoke-merged-site.sh,scripts/data-merge/restore-imported-managers.php
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Smoke isolated final candidate and media bundle
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 40m
+          script: |
+            set -euo pipefail
+            DEPLOYED_SHA="$(git -C /var/www/mskba-dev-next rev-parse HEAD)"
+            [[ "$DEPLOYED_SHA" =~ ^[a-f0-9]{40}$ ]]
+            echo "LEGACY_URL_TEST_DEPLOYED_SHA=$DEPLOYED_SHA"
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/smoke-merged-site.sh ${{ github.run_id }} 44066809217 "$DEPLOYED_SHA"

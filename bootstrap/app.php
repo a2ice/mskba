@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Middleware\ShowCreationPageAccess;
+use App\Http\Middleware\PreventNonProductionIndexing;
+use App\Modules\Favorites\Infrastructure\Http\Middleware\ClaimGuestFavorites;
+use App\Modules\Content\Presentation\Http\Middleware\PageBuilderRouteOverride;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
+use App\Modules\Identity\Infrastructure\Http\Middleware\EnsurePersonalDataDistributionSetupCompleted;
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
 use App\Modules\Identity\Infrastructure\Http\Middleware\ResolveCanonicalUserSession;
 use App\Modules\Portal\Infrastructure\Http\Middleware\RecordOnlineUserPresence;
@@ -17,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: [
             __DIR__.'/../routes/web.php',
+            __DIR__.'/../routes/mskba-app.php',
             __DIR__.'/../routes/legal.php',
             __DIR__.'/../routes/faq-content.php',
             __DIR__.'/../routes/admin-geography.php',
@@ -37,17 +42,21 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->append(PreventNonProductionIndexing::class);
         $middleware->alias([
             'throttle' => RouteScopedThrottleRequests::class,
             'venue-rental-feature' => EnsureVenueRentalFeatureEnabled::class,
         ]);
         $middleware->appendToGroup('web', [
             ResolveCanonicalUserSession::class,
+            ClaimGuestFavorites::class,
+            EnsurePersonalDataDistributionSetupCompleted::class,
             ShowCreationPageAccess::class,
             EnforceCreationOperationalPermissions::class,
             RecordBrowserFingerprint::class,
             RecordOnlineUserPresence::class,
             EnsureGameRosterContainsPlayers::class,
+            PageBuilderRouteOverride::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

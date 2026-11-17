@@ -1,0 +1,49 @@
+/* Events embedded in the existing Yandex venue popup (not separate map pins). */
+.mskba-venues-map__today-events {
+    display: grid;
+    gap: 9px;
+    margin: 12px 0 6px;
+    padding: 11px 12px;
+    border: 1px solid rgba(255, 112, 24, 0.23);
+    border-radius: 12px;
+    background: linear-gradient(120deg, #fff7ef, #fffdfa);
+}
+.mskba-venues-map__today-heading {
+    color: #ed5e05;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+}
+.mskba-venues-map__today-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.mskba-venues-map__today-item + .mskba-venues-map__today-item {
+    padding-top: 9px;
+    border-top: 1px solid #f0d8c9;
+}
+.mskba-venues-map__today-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.mskba-venues-map__today-details strong {
+    color: #111827;
+    font-size: 13px;
+    line-height: 1.35;
+}
+.mskba-venues-map__today-details small {
+    color: #546279;
+    font-size: 11px;
+}
+.mskba-venues-map__today-link {
+    color: #df5900;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+.mskba-venues-map__today-link:hover {
+    text-decoration: underline;
+}

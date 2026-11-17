@@ -1,0 +1,26 @@
+/* Accepted specimen 002-03, design guideline 1.0. */
+:root {
+  color-scheme: dark;
+  --bg:#090a0b; --surface:#141618; --surface-raised:#1d2023; --field:#0e1012;
+  --text:#f5f6f7; --muted:#adb3bb; --faint:#929aa4;
+  --accent:#ff7900; --accent-hover:#ff922e; --accent-active:#e86c00; --on-accent:#14100a;
+  --line:#30353b; --control-line:#707a86;
+  --success:#7cdcab; --warning:#ffd078; --danger:#ff9398; --info:#8ccbff;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px; --s9:48px; --s10:64px;
+  --radius-control:12px; --radius-card:24px; --radius-hero:32px;
+  --header-height:80px; --shadow-accent:0 8px 24px #ff790026;
+  /* Task 031: restrained glow radiating from the inside bottom-right corner. */
+  --surface-corner-glow:#ff79001e;
+  --surface-corner-glow-success:#35cb7922;
+  --surface-corner-glow-error:#ff545e22;
+  --theme-font-family:Inter,Arial,sans-serif;
+  --header-bg:#090a0bf5; --body-glow:#ff79000b; --ambient-shadow:#0004;
+  --glass-bg:#101214e6; --danger-bg:#301b1e; --danger-hover-bg:#422226;
+  --success-bg:#173025; --warning-bg:#33291b; --danger-badge-bg:#301b1e;
+  --surface-glint:#ffffff03; --tile-bg:#281b11; --tile-border:#5c381f;
+  --avatar-bg:#2a1b10; --avatar-border:#8a481b; --backdrop-bg:#000b;
+  --subtle-accent-bg:#ff790014; --subtle-white-bg:#ffffff09;
+  --shadow-menu:#0009; --shadow-popover:#0008; --shadow-modal:#000b;
+  --loader-bg:#090a0bc9; --text-on-accent:var(--on-accent);
+  font-family:var(--theme-font-family); font-synthesis:none;
+}

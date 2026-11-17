@@ -3,6 +3,8 @@
 namespace App\Modules\Identity\Presentation\Http\Requests;
 
 use App\Modules\Identity\Application\DTO\ProfileDTO;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
@@ -49,6 +51,12 @@ class RegisterRequest extends FormRequest
             'gender' => ['nullable', Rule::enum(UserGenderEnum::class)],
             'birth_date' => ['nullable', 'date_format:Y-m-d', 'before:today'],
             'role' => ['nullable', 'string', Rule::enum(UserParticipationRoleEnum::class)],
+            // Data for a different participation role must never be persisted.
+            'height_cm' => [Rule::excludeIf(fn () => $this->input('role') !== 'player'), 'nullable', 'integer', 'between:150,220'],
+            'weight_kg' => [Rule::excludeIf(fn () => $this->input('role') !== 'player'), 'nullable', 'numeric', 'between:40,140'],
+            'body_type' => [Rule::excludeIf(fn () => $this->input('role') !== 'player'), 'nullable', Rule::enum(PlayerBodyTypeEnum::class)],
+            'position' => [Rule::excludeIf(fn () => $this->input('role') !== 'player'), 'nullable', Rule::enum(PlayerPositionEnum::class)],
+            'experience_started_year' => [Rule::excludeIf(fn () => $this->input('role') !== 'player'), 'nullable', 'integer', 'between:'.(now()->year - 50).','.(now()->year - 10)],
             'privacy_consent' => ['accepted'],
             'redirect_to' => ['nullable', 'string', 'max:2048'],
         ];
@@ -61,6 +69,28 @@ class RegisterRequest extends FormRequest
         return is_string($role) && $role !== ''
             ? UserParticipationRoleEnum::tryFrom($role)
             : null;
+    }
+
+    /**
+     * Optional player attributes from the registration wizard.
+     *
+     * @return array<string, mixed>
+     */
+    public function playerData(): array
+    {
+        if ($this->participantRole() !== UserParticipationRoleEnum::PLAYER) {
+            return [];
+        }
+
+        $data = [];
+        foreach (['height_cm', 'weight_kg', 'body_type', 'position', 'experience_started_year'] as $key) {
+            $value = $this->validated($key);
+            if ($value !== null && $value !== '') {
+                $data[$key] = $value;
+            }
+        }
+
+        return $data;
     }
 
     public function profile(): ProfileDTO

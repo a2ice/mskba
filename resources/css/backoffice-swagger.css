@@ -1,0 +1,5 @@
+#mskba-swagger-ui { min-height: 520px; background: #fff; color: #111827; border-radius: 12px; overflow: auto; padding: 10px; }
+#mskba-swagger-ui .swagger-ui .topbar { display: none; }
+#mskba-swagger-ui .swagger-ui .information-container { padding: 12px; }
+#mskba-swagger-ui .swagger-ui .wrapper { max-width: none; }
+#mskba-swagger-ui .swagger-ui .scheme-container { box-shadow: none; background: transparent; padding: 12px; }

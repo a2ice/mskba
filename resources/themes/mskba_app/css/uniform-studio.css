@@ -1,0 +1,557 @@
+/* Uniform Studio: reuse MSKBA App's existing modal, buttons, form controls,
+   check-labels and player profile card/stage geometry.
+   No custom palette: DesignThemeCss owns the colors for dark and light themes. */
+
+.mskba-uniform-page {
+  padding: 32px 0 72px;
+  min-height: 65dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+.mskba-uniform-page__heading { margin: 0 0 24px; }
+.mskba-uniform-page__heading h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(28px, 3.5vw, 36px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+
+/* Same two panels and 16px radius as the player's physical-data editor. */
+.mskba-uniform-editor {
+  display: grid;
+  grid-template-columns: minmax(260px, .88fr) minmax(0, 1.12fr);
+  gap: 18px;
+  align-items: stretch;
+  min-width: 0;
+  color: var(--text);
+}
+.mskba-uniform-editor__preview,
+.mskba-uniform-editor__controls {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 3px 12px rgb(25 41 57 / 4%);
+  padding: 20px;
+  color: var(--text);
+}
+.mskba-uniform-editor__preview { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+.mskba-uniform-editor__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 420px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #d7e0e9;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #eaf1f7, #f6f9fc);
+}
+.mskba-kit-preview {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+.mskba-kit-preview__drawing {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  max-height: 410px;
+  padding: 12px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgb(48 79 104 / 24%));
+}
+.mskba-uniform-editor__controls {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+.mskba-uniform-editor__controls h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.3;
+  font-weight: 750;
+  color: var(--text);
+}
+.mskba-uniform-editor__field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.mskba-uniform-editor__field > input,
+.mskba-uniform-editor__field select {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  border: 1px solid var(--control-line);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--field);
+}
+.mskba-uniform-editor__field input:focus-visible,
+.mskba-uniform-editor__field select:focus-visible,
+.mskba-uniform-editor__color:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mskba-uniform-editor__field .select-control select { padding-inline-end: 48px; }
+.mskba-uniform-editor__colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.mskba-uniform-editor__color {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 4px 12px 4px 5px;
+  border: 1px solid var(--control-line);
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mskba-uniform-editor__color input[type=color] {
+  flex: 0 0 42px;
+  box-sizing: border-box;
+  padding: 0;
+  width: 42px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.mskba-uniform-editor fieldset {
+  border: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+.mskba-uniform-editor legend {
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.mskba-uniform-editor__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 16px;
+}
+.mskba-uniform-editor__choices--logos {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px 12px;
+}
+.mskba-uniform-editor :is(.check-label) { color: var(--text); }
+.mskba-uniform-editor__logos > .mskba-uniform-editor__field { margin-top: 12px; }
+.mskba-uniform-editor__field small,
+.mskba-uniform-editor__upload small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.mskba-uniform-editor__upload {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.mskba-uniform-editor__upload input[type=file] {
+  min-width: 0;
+  width: 100%;
+  color: var(--text);
+  font-size: 13px;
+}
+.mskba-uniform-editor__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+.mskba-uniform-editor__actions .button { text-decoration: none; }
+.mskba-uniform-editor__error {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+.mskba-uniform-editor__message { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* Native modal geometry/drag header/focus/restoration inherited from .mskba-modal.
+   Use the same header and close control as the player's logo dialog. */
+.mskba-uniform-dialog.mskba-modal {
+  width: min(1050px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: 90dvh;
+}
+.mskba-uniform-dialog__body { padding: 20px 24px; }
+.mskba-uniform-dialog .mskba-uniform-editor__stage { min-height: 380px; }
+.mskba-uniform-dialog .mskba-kit-preview__drawing { max-height: 380px; }
+
+/* My uniforms: the same panel/card language as the account workspace. */
+.mskba-uniform-library { min-width: 0; color: var(--text); }
+.mskba-uniform-library__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.mskba-uniform-library__toolbar .button { text-decoration: none; }
+.mskba-uniform-library__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.mskba-uniform-library__card,
+.mskba-uniform-library__empty {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgb(25 41 57 / 4%);
+}
+.mskba-uniform-library__preview {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #eaf1f7, #f6f9fc);
+}
+.mskba-uniform-library__card .mskba-kit-preview__drawing { max-height: 240px; }
+.mskba-uniform-library__card-info { padding: 20px; }
+.mskba-uniform-library__card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.mskba-uniform-library__card p { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+.mskba-uniform-library__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mskba-uniform-library__actions .button { text-decoration: none; }
+.mskba-uniform-library__empty { padding: 32px; text-align: center; }
+.mskba-uniform-library__empty h2 { color: var(--text); font-size: 20px; margin: 0 0 20px; }
+.mskba-uniform-action-dialog__body { display: grid; gap: 16px; }
+.mskba-uniform-action-dialog__body p { margin: 0; color: var(--text); }
+.mskba-uniform-action-dialog__body .button { justify-self: start; }
+
+@media (max-width: 800px) {
+  .mskba-uniform-editor { grid-template-columns: 1fr; }
+  .mskba-uniform-editor__stage { min-height: 320px; }
+  .mskba-uniform-dialog .mskba-uniform-editor__stage { min-height: 290px; }
+  .mskba-kit-preview__drawing { max-height: 320px; }
+  .mskba-uniform-dialog .mskba-kit-preview__drawing { max-height: 290px; }
+}
+@media (max-width: 639px) {
+  .mskba-uniform-page { padding: 24px 0 48px; }
+  .mskba-uniform-page__heading { margin-bottom: 16px; }
+  .mskba-uniform-editor { gap: 16px; }
+  .mskba-uniform-editor__preview,
+  .mskba-uniform-editor__controls { padding: 16px; }
+  .mskba-uniform-editor__stage { min-height: 265px; }
+  .mskba-kit-preview__drawing { max-height: 270px; }
+  .mskba-uniform-editor__colors { gap: 12px; }
+  .mskba-uniform-editor__choices--logos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mskba-uniform-editor__actions .button { flex: 1 1 100%; }
+  .mskba-uniform-dialog.mskba-modal { width: calc(100vw - 16px); max-width: calc(100vw - 16px); }
+  .mskba-uniform-dialog__body { padding: 16px; }
+  .mskba-uniform-library__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 380px) {
+  .mskba-uniform-editor__colors { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mskba-uniform-editor * { transition: none !important; }
+}
+
+.mskba-uniform-editor__logo-positions select {
+  min-height: 36px;
+  padding: 5px 10px;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--control-line);
+  border-radius: 9px;
+  font: inherit;
+}
+.mskba-uniform-editor__logo-positions select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.mskba-uniform-editor__optional {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.mskba-uniform-editor__optional input { flex-shrink: 0; accent-color: var(--accent); }
+.mskba-uniform-editor__hint {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.mskba-uniform-editor__number-field { max-width: 180px; }
+.mskba-uniform-editor__number-options {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 12px;
+}
+.mskba-uniform-editor__number-options .mskba-uniform-editor__color { min-width: 168px; }
+.mskba-uniform-editor__logo-positions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.mskba-uniform-editor__controls .check-label:has(input:disabled) {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 440px) {
+  .mskba-uniform-editor__logo-positions { grid-template-columns: 1fr; }
+}
+
+
+/* Reference-accurate flat-pattern preview: keep both pieces visible when the
+   settings pane scrolls; use the same neutral stage as the player profile. */
+.mskba-uniform-editor { align-items: start; }
+.mskba-uniform-editor__preview {
+  align-self: start;
+  position: sticky;
+  top: 12px;
+}
+.mskba-uniform-editor__stage,
+.mskba-uniform-dialog .mskba-uniform-editor__stage {
+  height: clamp(430px, 64dvh, 630px);
+  min-height: 0;
+  flex: none;
+}
+.mskba-kit-preview { height: 100%; }
+.mskba-kit-preview__drawing,
+.mskba-uniform-dialog .mskba-kit-preview__drawing {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  padding: 0;
+  object-fit: contain;
+}
+.mskba-kit-preview__piece {
+  cursor: default;
+  user-select: none;
+}
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__piece {
+  cursor: grab;
+  touch-action: none;
+}
+.mskba-kit-preview__drawing.is-number-editable .mskba-kit-preview__piece:active { cursor: grabbing; }
+.mskba-kit-preview__drag-target {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+.mskba-kit-preview__selection {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 5;
+  pointer-events: none;
+}
+.mskba-kit-preview__resize {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 3;
+  cursor: nwse-resize;
+  pointer-events: all;
+  touch-action: none;
+}
+.mskba-kit-preview__piece:focus-visible { outline: none; }
+.mskba-kit-preview__piece:focus-visible .mskba-kit-preview__selection {
+  stroke-width: 4px;
+}
+.mskba-uniform-editor__number-configuration { display: grid; gap: 14px; margin-top: 12px; }
+.mskba-uniform-editor__number-toggle { font-size: 14px; font-weight: 700; }
+.mskba-uniform-editor__label { color: var(--text); font-size: 13px; font-weight: 650; }
+.mskba-uniform-editor__number-transform { display: grid; gap: 10px; }
+.mskba-uniform-editor__number-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--field);
+  border: 1px solid var(--line);
+}
+.mskba-uniform-editor__number-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mskba-uniform-editor__number-tabs button.is-active {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 1px 5px rgb(0 0 0 / 7%);
+}
+.mskba-uniform-editor__scale-label {
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 52px;
+  gap: 12px;
+  font-size: 13px;
+}
+.mskba-uniform-editor__scale-label input { width: 100%; accent-color: var(--accent); }
+.mskba-uniform-editor__scale-label output { text-align: right; font-variant-numeric: tabular-nums; }
+.mskba-uniform-editor__number-edit-hint { display: grid; justify-items: start; gap: 10px; }
+.mskba-uniform-editor__number-edit-hint small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.mskba-uniform-editor__number-edit-hint .button { min-height: 34px; }
+@media (max-width: 800px) {
+  .mskba-uniform-editor__preview { position: static; top: auto; }
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage { height: 440px; }
+}
+@media (max-width: 639px) {
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage { height: 340px; }
+}
+
+/* Compact, complete kit preview. The fixed viewBox also prevents XXL cropping. */
+.mskba-uniform-editor__stage,
+.mskba-uniform-dialog .mskba-uniform-editor__stage {
+  position: relative;
+  height: clamp(270px, 46dvh, 410px);
+  min-height: 0;
+  flex: none;
+}
+.mskba-uniform-editor__stage .mskba-kit-preview {
+  width: 100%;
+  height: 100%;
+}
+.mskba-uniform-editor__view-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: 42px;
+  height: 42px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text);
+  border: 1px solid var(--control-line);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(25 41 57 / 12%);
+  cursor: pointer;
+}
+.mskba-uniform-editor__view-arrow--previous { left: 8px; }
+.mskba-uniform-editor__view-arrow--next { right: 8px; }
+.mskba-uniform-editor__view-arrow:hover { color: var(--accent); }
+.mskba-uniform-editor__view-arrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.mskba-uniform-editor__view-caption {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 7px;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: 30px;
+  color: #4e6172;
+  background: #f6f9fce3;
+  font-size: 12px;
+  font-weight: 650;
+  pointer-events: none;
+}
+@media (max-width: 800px) {
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage {
+    height: clamp(260px, 43dvh, 355px);
+  }
+}
+@media (max-width: 639px) {
+  .mskba-uniform-editor__stage,
+  .mskba-uniform-dialog .mskba-uniform-editor__stage {
+    height: clamp(240px, 43dvh, 310px);
+  }
+  .mskba-uniform-editor__view-arrow { width: 38px; height: 38px; }
+  .mskba-uniform-editor__view-arrow--previous { left: 4px; }
+  .mskba-uniform-editor__view-arrow--next { right: 4px; }
+}
+
+/* Team uniform: presentation-only details in the shared modal for members without contract rights. */
+.mskba-uniform-editor__readonly{align-content:start;gap:18px}
+.mskba-uniform-editor__details{display:grid;gap:0;margin:0}
+.mskba-uniform-editor__details>div{display:grid;grid-template-columns:minmax(130px,42%) 1fr;align-items:baseline;gap:12px;padding:13px 0;border-bottom:1px solid var(--line,#dce5ec)}
+.mskba-uniform-editor__details dt{font-size:13px;font-weight:700;color:var(--muted,#65758b)}
+.mskba-uniform-editor__details dd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;color:var(--text,#1c2937);font-weight:600;overflow-wrap:anywhere}
+.mskba-uniform-editor__details dd small{display:block;flex-basis:100%;font-size:11px;color:var(--muted,#65758b);font-weight:400}
+.mskba-uniform-editor__swatch{display:inline-block;flex:0 0 22px;width:22px;height:22px;border:1px solid var(--line,#c8d3de);border-radius:5px}
+@media(max-width:560px){.mskba-uniform-editor__details>div{grid-template-columns:1fr;gap:4px}}
+
+/* Unified direct-manipulation controls for jersey numbers and logos. */
+.mskba-uniform-editor__logo-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+.mskba-uniform-editor__piece-actions { display: flex; justify-content: flex-start; }
+.mskba-uniform-editor__piece-actions .button { min-height: 34px; }

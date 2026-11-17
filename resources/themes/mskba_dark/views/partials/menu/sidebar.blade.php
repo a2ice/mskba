@@ -16,12 +16,33 @@
                     <li class="nav-divider"></li>
                 @endif
                 <li class="nav-item {{ $item['active'] ? 'active' : '' }}">
-                    <a href="{{ $item['url'] }}" class="nav-link text-nowrap {{ $item['active'] ? 'active' : '' }}">
-                        {{ $item['label'] }}
-                        @if(($item['badge'] ?? 0) > 0)
-                            <span class="badge sidebar__notification-badge text-dark ms-2" {{ $item['badgeAttribute'] ?? 'data-notification-count' }}>{{ $item['badge'] }}</span>
-                        @endif
-                    </a>
+                    @if(!empty($item['children']))
+                        <details class="sidebar-nav-group" @if($item['active']) open @endif>
+                            <summary class="nav-link {{ $item['active'] ? 'active' : '' }}">{{ $item['label'] }}</summary>
+                            <ul class="sidebar-nav nav flex-column" aria-label="{{ $item['label'] }}">
+                                @foreach($item['children'] as $child)
+                                    @continue(!($child['visible'] ?? true))
+                                    <li class="nav-item {{ $child['active'] ? 'active' : '' }}">
+                                        <a class="nav-link {{ $child['active'] ? 'active' : '' }}"
+                                            href="{{ $child['url'] }}"
+                                            @if($child['active']) aria-current="page" @endif>
+                                            {{ $child['label'] }}
+                                            @if(($child['badge'] ?? 0) > 0)
+                                                <span class="badge sidebar__notification-badge text-dark ms-2">{{ $child['badge'] }}</span>
+                                            @endif
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </details>
+                    @else
+                        <a href="{{ $item['url'] }}" class="nav-link text-nowrap {{ $item['active'] ? 'active' : '' }}">
+                            {{ $item['label'] }}
+                            @if(($item['badge'] ?? 0) > 0)
+                                <span class="badge sidebar__notification-badge text-dark ms-2" {{ $item['badgeAttribute'] ?? 'data-notification-count' }}>{{ $item['badge'] }}</span>
+                            @endif
+                        </a>
+                    @endif
                 </li>
             @endforeach
         </ul>

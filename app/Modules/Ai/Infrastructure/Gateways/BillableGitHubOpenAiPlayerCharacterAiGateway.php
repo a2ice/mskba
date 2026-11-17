@@ -62,11 +62,13 @@ final readonly class BillableGitHubOpenAiPlayerCharacterAiGateway implements Asy
             );
         }
 
-        $this->billing->charge($generation, $canonicalOwnerId);
-
         try {
+            $this->billing->charge($generation, $canonicalOwnerId);
+
             return $this->gateway->generatePlayerCharacter($payload);
         } catch (Throwable $exception) {
+            // A failed charge or dispatch may not leave a pending request or
+            // consume credits. Refund is idempotent and uses the exact split.
             $this->billing->refund($generation);
             throw $exception;
         }

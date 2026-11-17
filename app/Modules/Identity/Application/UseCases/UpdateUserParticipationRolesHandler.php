@@ -29,51 +29,94 @@ final class UpdateUserParticipationRolesHandler
                 ->get()
                 ->keyBy(fn (UserParticipationRole $role): string => $role->role->value);
 
-            $selectedRoleValues = collect($selectedRoles)
-                ->map(fn (UserParticipationRoleEnum $role): string => $role->value)
-                ->unique()
-                ->values();
+            return $this->synchronizeLocked($lockedUser, $existingRoles, $selectedRoles);
+        });
+    }
 
-            foreach ($selectedRoles as $role) {
-                $participationRole = $existingRoles->get($role->value);
+    /**
+     * Toggle one role without replacing the whole user's role set. All reads
+     * happen under the same lock to avoid lost updates from rapid AJAX calls.
+     */
+    public function updateOne(User $user, UserParticipationRoleEnum $role, bool $enabled): User
+    {
+        return DB::transaction(function () use ($user, $role, $enabled): User {
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
-                if ($participationRole === null) {
-                    $lockedUser->participationRoles(false)->create([
-                        'role' => $role,
-                        'status' => UserParticipationRoleStatusEnum::ACTIVE,
-                        'assigned_at' => now(),
-                        'assigned_by' => $lockedUser->id,
-                        'assigner' => UserParticipationRoleAssignerEnum::USER,
-                        'comment' => 'Выбрана пользователем в настройках ролей проекта.',
-                    ]);
+            /** @var Collection<string, UserParticipationRole> $existingRoles */
+            $existingRoles = $lockedUser->participationRoles(false)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy(fn (UserParticipationRole $item): string => $item->role->value);
 
-                    continue;
-                }
+            $selectedRoles = $existingRoles
+                ->filter(fn (UserParticipationRole $item): bool => $item->status === UserParticipationRoleStatusEnum::ACTIVE)
+                ->map(fn (UserParticipationRole $item): UserParticipationRoleEnum => $item->role)
+                ->values()
+                ->all();
 
-                if ($participationRole->status === UserParticipationRoleStatusEnum::INACTIVE) {
-                    $participationRole->update([
-                        'status' => UserParticipationRoleStatusEnum::ACTIVE,
-                        'assigned_at' => now(),
-                        'expires_at' => null,
-                        'assigned_by' => $lockedUser->id,
-                        'assigner' => UserParticipationRoleAssignerEnum::USER,
-                        'comment' => 'Повторно выбрана пользователем в настройках ролей проекта.',
-                    ]);
-                }
+            if ($enabled && ! in_array($role, $selectedRoles, true)) {
+                $selectedRoles[] = $role;
+            } elseif (! $enabled) {
+                $selectedRoles = array_values(array_filter(
+                    $selectedRoles,
+                    fn (UserParticipationRoleEnum $selected): bool => $selected !== $role,
+                ));
             }
 
-            $existingRoles
-                ->filter(
-                    fn (UserParticipationRole $role): bool => $role->status === UserParticipationRoleStatusEnum::ACTIVE
-                        && ! $selectedRoleValues->contains($role->role->value),
-                )
-                ->each(fn (UserParticipationRole $role) => $role->update([
-                    'status' => UserParticipationRoleStatusEnum::INACTIVE,
-                    'expires_at' => now(),
-                    'comment' => 'Отключена пользователем в настройках ролей проекта.',
-                ]));
-
-            return $lockedUser->refresh()->load('participationRoles');
+            return $this->synchronizeLocked($lockedUser, $existingRoles, $selectedRoles);
         });
+    }
+
+    /**
+     * @param  Collection<string, UserParticipationRole>  $existingRoles
+     * @param  array<int, UserParticipationRoleEnum>  $selectedRoles
+     */
+    private function synchronizeLocked(User $lockedUser, Collection $existingRoles, array $selectedRoles): User
+    {
+        $selectedRoleValues = collect($selectedRoles)
+            ->map(fn (UserParticipationRoleEnum $role): string => $role->value)
+            ->unique()
+            ->values();
+
+        foreach ($selectedRoles as $role) {
+            $participationRole = $existingRoles->get($role->value);
+
+            if ($participationRole === null) {
+                $lockedUser->participationRoles(false)->create([
+                    'role' => $role,
+                    'status' => UserParticipationRoleStatusEnum::ACTIVE,
+                    'assigned_at' => now(),
+                    'assigned_by' => $lockedUser->id,
+                    'assigner' => UserParticipationRoleAssignerEnum::USER,
+                    'comment' => 'Выбрана пользователем в настройках ролей проекта.',
+                ]);
+
+                continue;
+            }
+
+            if ($participationRole->status === UserParticipationRoleStatusEnum::INACTIVE) {
+                $participationRole->update([
+                    'status' => UserParticipationRoleStatusEnum::ACTIVE,
+                    'assigned_at' => now(),
+                    'expires_at' => null,
+                    'assigned_by' => $lockedUser->id,
+                    'assigner' => UserParticipationRoleAssignerEnum::USER,
+                    'comment' => 'Повторно выбрана пользователем в настройках ролей проекта.',
+                ]);
+            }
+        }
+
+        $existingRoles
+            ->filter(
+                fn (UserParticipationRole $role): bool => $role->status === UserParticipationRoleStatusEnum::ACTIVE
+                    && ! $selectedRoleValues->contains($role->role->value),
+            )
+            ->each(fn (UserParticipationRole $role) => $role->update([
+                'status' => UserParticipationRoleStatusEnum::INACTIVE,
+                'expires_at' => now(),
+                'comment' => 'Отключена пользователем в настройках ролей проекта.',
+            ]));
+
+        return $lockedUser->refresh()->load('participationRoles');
     }
 }

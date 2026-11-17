@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "environment": "development",
+  "confirm": "DEV_ONLY_PAGE_BUILDER",
+  "operation": "apply",
+  "kind": "pages",
+  "key": "home",
+  "field": "js",
+  "reason": "Оживить разноскоростное движение игроков, зафиксировать конечный центр мяча в видимой области под шапкой и сохранить вращение по скроллу",
+  "publish": true,
+  "expected_draft_sha256": "cde48fd63cadfef3f618188d717252ed638f0ccdaf0f1d6a86f5b0d87cb658e8",
+  "expected_published_sha256": "cde48fd63cadfef3f618188d717252ed638f0ccdaf0f1d6a86f5b0d87cb658e8",
+  "edits": [
+    {
+      "type": "replace_once",
+      "from": "        from: [255, 440], to: [760, 1100],\n        startScale: .22, endScale: .60, tileSize: 195,",
+      "to": "        from: [255, 440], to: [650, 1030],\n        startScale: .22, endScale: .48, tileSize: 195,"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const transitionStart = start + distance;\n        if (scrollPosition <= transitionStart) {",
+      "to": "        const transitionStart = start + distance;\n        if (desktopScene.matches && venues === venuesV3) {\n            if (scrollPosition <= transitionStart) {\n                assignOwner(false);\n                return false;\n            }\n            // The basketball docks to a stable viewport coordinate just below\n            // the header, instead of continuing upwards over it while the arena\n            // scrolls. Coordinates stay relative to the existing foreground,\n            // so its clipping/fade and the single sprite ownership are intact.\n            const sliderRect = slider.getBoundingClientRect();\n            const hostRect = ballHost.getBoundingClientRect();\n            const dockX = sliderRect.left + sliderRect.width * activeProfile.to[0] / 1000;\n            const dockY = sliderRect.top + sliderRect.height * activeProfile.to[1] / 1000\n                + (scrollPosition - transitionStart);\n            assignOwner(true, ballHost);\n            root.style.left = (dockX - hostRect.left).toFixed(2) + 'px';\n            root.style.top = (dockY - hostRect.top).toFixed(2) + 'px';\n            root.style.setProperty('--ball-scale', activeProfile.endScale.toFixed(4));\n            root.style.setProperty('--ball-brightness', '0.92');\n            root.style.setProperty('--ball-saturation', '1');\n            const elapsedTurns = rollingBallReducedMotion.matches ? 0\n                : rollingBallTurns + Math.max(0, scrollPosition - transitionStart) / 320;\n            const frame = Math.floor(elapsedTurns * rollingBallSpriteFrames) % rollingBallSpriteFrames;\n            root.style.setProperty('--ball-frame-x', `${(frame % 4) * 100 / 3}%`);\n            root.style.setProperty('--ball-frame-y', `${Math.floor(frame / 4) * 100 / 3}%`);\n            return true;\n        }\n        if (scrollPosition <= transitionStart) {"
+    },
+    {
+      "type": "replace_once",
+      "from": "        const framesTravelled = Math.floor(p * rollingBallTurns * rollingBallSpriteFrames);\n        // Reverse the photographic frame sequence when mirroring the horizontal\n        // direction. Both endpoints remain on frontal frame zero.\n        const frame = p >= 1\n    ? 0\n    : framesTravelled % rollingBallSpriteFrames;",
+      "to": "        // Translation clamps at p=1; the sprite rotates more slowly thereafter.\n        // Scroll position, not elapsed wall-clock time, drives the single atlas.\n        const elapsedTurns = p * rollingBallTurns\n            + Math.max(0, window.scrollY - (start + distance)) / 320;\n        const framesTravelled = Math.floor(elapsedTurns * rollingBallSpriteFrames);\n        const frame = rollingBallReducedMotion.matches ? 0\n            : framesTravelled % rollingBallSpriteFrames;"
+    },
+    {
+      "type": "replace_once",
+      "from": "      for (const property of ['--v3-ghost-entry-x', '--v3-defender-entry-y', '--v3-shooter-entry-y']) {",
+      "to": "      for (const property of ['--v3-ghost-entry-x', '--v3-defender-rise-y', '--v3-shooter-drop-y']) {"
+    },
+    {
+      "type": "replace_once",
+      "from": "    const p = reduced.matches ? 1 : clamp((window.scrollY - start) / (finish - start));\n    const remaining = 1 - p;\n    const defenderRemaining = 1 - Math.pow(p, .78);\n    const shooterRemaining = 1 - Math.pow(p, 1.22);\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * remaining).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-entry-y', (30 * defenderRemaining).toFixed(3) + '%');\n    scene.style.setProperty('--v3-shooter-entry-y', (20 * shooterRemaining).toFixed(3) + '%');",
+      "to": "    const p = reduced.matches ? 0 : clamp((window.scrollY - start) / (finish - start));\n    // CSS renders the correct initial poses without JS: shooter at the top,\n    // defender below. Scroll applies only deltas, using a gentler landing speed.\n    const easeInOut = value => value * value * (3 - 2 * value);\n    const shooterProgress = easeInOut(p);\n    const defenderProgress = easeInOut(clamp((p - .065) / .935));\n    const defenderRise = Math.min(185, Math.max(134, window.innerWidth * .1085));\n    const shooterDrop = 20; // percentage of the CSS-sized shooter, matching the previous lower pose\n    scene.style.setProperty('--v3-ghost-entry-x', (24 * (1 - p)).toFixed(3) + 'vw');\n    scene.style.setProperty('--v3-defender-rise-y', (defenderRise * defenderProgress).toFixed(2) + 'px');\n    scene.style.setProperty('--v3-shooter-drop-y', (shooterDrop * shooterProgress).toFixed(2) + '%');"
+    }
+  ]
+}

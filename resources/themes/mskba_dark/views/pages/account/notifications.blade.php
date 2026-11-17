@@ -53,6 +53,7 @@ $notificationPresenter = app(\App\Modules\Notification\Presentation\Presenters\U
                             UserNotificationTypeEnum::PROFILE => 'ti-user-circle',
                             UserNotificationTypeEnum::REMINDER => 'ti-clock',
                             UserNotificationTypeEnum::FINANCE => 'ti-wallet',
+                            UserNotificationTypeEnum::MESSAGE => 'ti-message',
                         };
                     @endphp
                     <li

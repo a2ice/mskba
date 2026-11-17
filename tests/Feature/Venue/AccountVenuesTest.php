@@ -38,8 +38,9 @@ final class AccountVenuesTest extends TestCase
             ->actingAs($user)
             ->get(route('account'))
             ->assertOk()
-            ->assertSee('Мои площадки')
-            ->assertSee(route('account.venues', absolute: false));
+            ->assertSee('Мои контракты')
+            ->assertSee('Площадки')
+            ->assertSee(route('account.contracts.venues', absolute: false));
     }
 
     public function test_my_venues_page_uses_current_theme_components(): void
@@ -57,34 +58,22 @@ final class AccountVenuesTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->get(route('account.venues'))
+            ->get(route('account.contracts.venues'))
             ->assertOk()
             ->assertSee('Площадка в кабинете')
-            ->assertSee('account-venue-list', false)
-            ->assertSee('account-venue-status--unconfirmed', false)
+            ->assertSee('account-contracts-workspace__cards', false)
+            ->assertSee('Без контракта')
+            ->assertSee('Контракт')
             ->assertSee('Не подтверждён')
-            ->assertSee('btn--primary', false)
-            ->assertSee('btn--secondary', false)
             ->assertDontSee('btn-primary', false)
             ->assertDontSee('btn-success', false)
             ->assertDontSee('btn-outline-primary', false);
 
-        $this
-            ->actingAs($user)
+        // The obsolete per-venue account overview is not a second workspace.
+        // Old bookmarks resolve to the canonical contract venue list.
+        $this->actingAs($user)
             ->get(route('account.venues.show', $venue->routeIdentifier()))
-            ->assertOk()
-            ->assertSee('account-venue-detail', false)
-            ->assertSee('account-venue-status--unconfirmed', false)
-            ->assertSee('Не подтверждён')
-            ->assertSee('Мои площадки')
-            ->assertDontSee('Venues')
-            ->assertSee('btn--secondary', false)
-            ->assertSee('Модерация')
-            ->assertSee('target="_blank"', false)
-            ->assertSee('rel="noopener noreferrer"', false)
-            ->assertDontSee('btn-primary', false)
-            ->assertDontSee('btn-outline-primary', false)
-            ->assertDontSee('btn-outline-secondary', false);
+            ->assertRedirect(route('account.contracts.venues'));
     }
 
     public function test_venue_management_uses_authenticated_account_routes_only(): void
@@ -102,11 +91,12 @@ final class AccountVenuesTest extends TestCase
         $this->get(route('account.venues.edit', $routeIdentifier))
             ->assertRedirect(route('login'));
 
+        $this->get(route('account.venues.show', $routeIdentifier))
+            ->assertRedirect(route('login'));
+
         $this->actingAs($user)
             ->get(route('account.venues.show', $routeIdentifier))
-            ->assertOk()
-            ->assertSee(route('account.venues.edit', $routeIdentifier), false)
-            ->assertSee(route('account.venues.status', $routeIdentifier), false);
+            ->assertRedirect(route('account.contracts.venues'));
 
         $this->actingAs($user)
             ->get(route('account.venues.edit', $routeIdentifier))

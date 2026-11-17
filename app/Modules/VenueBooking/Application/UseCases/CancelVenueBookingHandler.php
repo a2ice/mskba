@@ -3,6 +3,7 @@
 namespace App\Modules\VenueBooking\Application\UseCases;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Application\Services\EventVenueInterestService;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\ConfirmedBookingCancellationApplied;
@@ -52,6 +53,8 @@ final readonly class CancelVenueBookingHandler
                 $this->outbox->record($booking->id, VenueBookingPaymentExpired::class, ['payment_attempt_id' => $paymentAttempt->id]);
             }
             $this->lifecycle->cancel($booking, $actor, CarbonImmutable::now(), $reason, $expectedVersion);
+            // Planned events survive cancellation and may be revised/rebooked.
+            app(EventVenueInterestService::class)->releaseLinkedBooking($booking);
             if ($wasConfirmed) {
                 $event = Event::query()->where('booking_id', $booking->id)->lockForUpdate()->first();
                 if ($event !== null && $event->status !== EventStatusEnum::CANCELLED) {

@@ -61,10 +61,15 @@ final class LegacyPrivacyLockdownTest extends TestCase
         $this->assertNotNull($legacy->personal_data_distribution_required_at);
         $this->assertNull($legacy->personal_data_distribution_setup_completed_at);
 
+        // The already-applied September migration has a fixed historical
+        // set of 23 types. New demographic permissions default to NOBODY
+        // without changing or rerunning its immutable historical snapshot.
         $this->assertSame(
-            count(UserPrivacySettingTypeEnum::cases()),
+            23,
             UserPrivacySetting::query()->where('user_id', $legacy->id)->count(),
         );
+        $this->assertSame(UserPrivacyVisibilityEnum::NOBODY, UserPrivacySettingTypeEnum::PROFILE_GENDER->defaultVisibility());
+        $this->assertSame(UserPrivacyVisibilityEnum::NOBODY, UserPrivacySettingTypeEnum::PROFILE_AGE->defaultVisibility());
         $this->assertSame(
             0,
             UserPrivacySetting::query()

@@ -42,6 +42,12 @@
             <form method="POST" action="{{ route('admin.users.update', $editedUser) }}">
                 @csrf
                 @method('PUT')
+                @if ($editedUser->isConfirmed())
+                    <div class="alert alert-info">
+                        <strong>Подтверждённые персональные данные</strong>
+                        <p>Имя, фамилия, дата рождения и пол подтверждённого пользователя защищены. Изменения рассматриваются через <a href="{{ route('admin.profile-change-requests') }}">заявки на изменение профиля</a>.</p>
+                    </div>
+                @endif
 
                 <div class="row g-3">
                     <label class="col-12">
@@ -52,13 +58,13 @@
 
                     <label class="col-12 col-md-6">
                         <span class="form-label">Имя</span>
-                        <input class="form-control" type="text" name="first_name" maxlength="100" value="{{ old('first_name', $editedUser->profile?->first_name) }}">
+                        <input class="form-control" type="text" name="first_name" maxlength="100" @readonly($editedUser->isConfirmed()) value="{{ $editedUser->isConfirmed() ? $editedUser->profile?->first_name : old('first_name', $editedUser->profile?->first_name) }}">
                         @error('first_name')<small class="form-error">{{ $message }}</small>@enderror
                     </label>
 
                     <label class="col-12 col-md-6">
                         <span class="form-label">Фамилия</span>
-                        <input class="form-control" type="text" name="last_name" maxlength="100" value="{{ old('last_name', $editedUser->profile?->last_name) }}">
+                        <input class="form-control" type="text" name="last_name" maxlength="100" @readonly($editedUser->isConfirmed()) value="{{ $editedUser->isConfirmed() ? $editedUser->profile?->last_name : old('last_name', $editedUser->profile?->last_name) }}">
                         @error('last_name')<small class="form-error">{{ $message }}</small>@enderror
                     </label>
 
@@ -70,7 +76,7 @@
 
                     <label class="col-12 col-md-6">
                         <span class="form-label">Дата рождения</span>
-                        <input class="form-control" type="date" name="birth_date" min="1900-01-01" max="{{ now()->toDateString() }}" value="{{ old('birth_date', $editedUser->profile?->birth_date?->toDateString()) }}">
+                        <input class="form-control" type="date" name="birth_date" min="1900-01-01" max="{{ now()->toDateString() }}" @readonly($editedUser->isConfirmed()) value="{{ $editedUser->isConfirmed() ? $editedUser->profile?->birth_date?->toDateString() : old('birth_date', $editedUser->profile?->birth_date?->toDateString()) }}">
                         <small>Возраст рассчитывается автоматически{{ $editedUser->profile?->age !== null ? ': '.$editedUser->profile->age : '' }}.</small>
                         @error('birth_date')<small class="form-error">{{ $message }}</small>@enderror
                     </label>
@@ -323,7 +329,14 @@
                     @csrf
                     <input type="hidden" name="return_to" value="user-edit">
 
-                    @foreach($operationalPermissions as $permission)
+                    @foreach($permissionGroups as $group)
+                        <fieldset class="admin-permission-editor__group">
+                            <legend>{{ $group['label'] }}</legend>
+                            <p class="admin-muted">Доступность: от роли {{ $group['min_role']->label() }}. Конкретные полномочия и ограничения проверяются сервером.</p>
+                            @php
+                                $groupEligible = $editedUser->system_role->atLeast($group['min_role']);
+                            @endphp
+                            @foreach($group['permissions'] as $permission)
                         @php
                             $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
                                 ?? $permission->defaultAllowedFor($editedUser->system_role);
@@ -338,11 +351,14 @@
                                     type="checkbox"
                                     name="permissions[]"
                                     value="{{ $permission->value }}"
-                                    @checked($isAllowed)
+                                    @checked($isAllowed && $groupEligible)
+                                    @disabled(! $groupEligible)
                                 >
                                 <span aria-hidden="true"></span>
                             </span>
                         </label>
+                            @endforeach
+                        </fieldset>
                     @endforeach
 
                     <div class="admin-permission-editor__actions">
@@ -351,7 +367,9 @@
                 </form>
             @else
                 <ul class="admin-user-role-list">
-                    @foreach($operationalPermissions as $permission)
+                    @foreach($permissionGroups as $group)
+                        <li class="admin-user-role-list__item"><strong>{{ $group['label'] }}</strong></li>
+                        @foreach($group['permissions'] as $permission)
                         @php
                             $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
                                 ?? $permission->defaultAllowedFor($editedUser->system_role);
@@ -360,6 +378,7 @@
                             <span>{{ $permission->label() }}</span>
                             <span class="admin-badge">{{ $isAllowed ? 'Разрешено' : 'Запрещено' }}</span>
                         </li>
+                        @endforeach
                     @endforeach
                 </ul>
             @endif

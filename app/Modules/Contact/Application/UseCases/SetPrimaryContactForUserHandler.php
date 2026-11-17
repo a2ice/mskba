@@ -24,6 +24,12 @@ class SetPrimaryContactForUserHandler
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if (! $ownedContact->hasBeenVerified()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'contact' => 'Основным можно назначить только подтверждённый контакт.',
+                ]);
+            }
+
             $canonicalUser->identityContactsQuery()
                 ->where('is_primary', true)
                 ->update(['is_primary' => false]);

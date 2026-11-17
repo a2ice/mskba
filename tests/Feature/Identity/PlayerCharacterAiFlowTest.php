@@ -6,6 +6,8 @@ use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
 use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
 use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
+use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Ai\Infrastructure\Gateways\NullPlayerCharacterAiGateway;
 use App\Modules\Finance\Application\UseCases\CreditWalletHandler;
 use App\Modules\Finance\Application\UseCases\EnsureWalletHandler;
@@ -19,18 +21,23 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
+use App\Modules\Uniform\Application\Services\UniformLogoService;
+use App\Modules\Uniform\Domain\Models\UniformDesign;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class PlayerCharacterAiFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_face_reference_is_not_persisted_when_ai_is_not_configured(): void
+    public function test_face_reference_is_saved_with_no_ai_provider_configured(): void
     {
         Storage::fake('local');
+        // The unconfigured/null provider must not be involved in free uploads.
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
         $user = $this->player();
 
         $this->actingAs($user)
@@ -41,19 +48,40 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 'face_reference_slot' => 'front',
                 'face_reference' => UploadedFile::fake()->image('front.jpg', 1200, 900),
             ])
-            ->assertStatus(503)
-            ->assertJsonPath('code', 'ai_not_configured');
+            ->assertOk()
+            ->assertJsonPath('status', 'stored')
+            ->assertJsonPath('verified', false);
 
-        $this->assertDatabaseMissing('media', [
-            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
-        ]);
-        $this->assertSame([], Storage::disk('local')->allFiles());
+        $reference = $user->profile->media()->where(
+            'collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
+        )->firstOrFail();
+        Storage::disk('local')->assertExists($reference->path);
+        $this->actingAs($user)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertOk();
     }
 
-    public function test_face_reference_wrong_angle_is_not_persisted(): void
+    public function test_face_upload_is_independent_of_external_angle_validation(): void
     {
         Storage::fake('local');
-        $this->bindGateway(faceValid: false);
+        // An unavailable/rejecting AI gateway does not invalidate the profile
+        // photo upload; actual angle validation is a separate feature.
+        $gateway = $this->bindGateway(faceValid: false);
+        $user = $this->player();
+
+        $this->uploadReference($user, 'left');
+
+        $this->assertSame(0, $gateway->validationCalls);
+        $this->assertFalse($gateway->generationCalled);
+        $this->assertDatabaseHas('media', [
+            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('left'),
+        ]);
+    }
+
+    public function test_invalid_small_image_is_not_persisted_even_when_ai_is_offline(): void
+    {
+        Storage::fake('local');
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
         $user = $this->player();
 
         $this->actingAs($user)
@@ -62,10 +90,10 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 '_method' => 'PATCH',
                 'mutation' => 'face_reference',
                 'face_reference_slot' => 'front',
-                'face_reference' => UploadedFile::fake()->image('profile.jpg', 1200, 900),
+                'face_reference' => UploadedFile::fake()->image('small.png', 100, 100),
             ])
             ->assertUnprocessable()
-            ->assertJsonPath('code', 'face_reference_invalid');
+            ->assertJsonPath('code', 'face_reference_invalid_file');
 
         $this->assertDatabaseMissing('media', [
             'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
@@ -73,20 +101,20 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
-    public function test_failed_ai_replacement_keeps_previous_confirmed_reference(): void
+    public function test_replacing_existing_face_photo_works_when_ai_validator_is_unavailable(): void
     {
         Storage::fake('local');
         $user = $this->player();
-
         $this->bindGateway();
         $this->uploadReference($user, 'front');
 
         $profile = $user->profile()->firstOrFail();
-        $reference = $profile->media()
+        $old = $profile->media()
             ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
             ->firstOrFail();
+        $oldPath = $old->path;
 
-        $this->bindGateway(faceValid: false);
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
 
         $this->actingAs($user)
             ->withHeader('Accept', 'application/json')
@@ -94,23 +122,19 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 '_method' => 'PATCH',
                 'mutation' => 'face_reference',
                 'face_reference_slot' => 'front',
-                'face_reference' => UploadedFile::fake()->image('wrong-angle.jpg', 1200, 900),
+                'face_reference' => UploadedFile::fake()->image('replacement.jpg', 1200, 900),
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('code', 'face_reference_invalid');
+            ->assertOk()
+            ->assertJsonPath('status', 'stored');
 
-        $this->assertDatabaseHas('media', [
-            'id' => $reference->id,
-            'path' => $reference->path,
-            'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
-        ]);
-        Storage::disk('local')->assertExists($reference->path);
-        $this->assertSame(
-            1,
-            $profile->media()
-                ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
-                ->count(),
-        );
+        $new = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $this->assertNotSame($old->id, $new->id);
+        $this->assertSame(1, $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))->count());
+        Storage::disk('local')->assertMissing($oldPath);
+        Storage::disk('local')->assertExists($new->path);
     }
 
     public function test_confirmed_face_reference_can_be_previewed_only_by_its_owner(): void
@@ -403,7 +427,55 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame(['elbow_left', 'wristband_right', 'knee_right'], $gateway->lastPayload['appearance']['attributes']);
     }
 
-    public function test_confirmed_face_references_are_reused_for_repeat_generation(): void
+    public function test_uniform_logo_configuration_controls_avatar_reference_even_with_legacy_request_flags(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 20_000);
+        $gateway = $this->bindGateway();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'right');
+
+        $design = UniformDesign::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Форма с эмблемой',
+            'primary_color' => '#111924',
+            'secondary_color' => '#F58220',
+            'sizes' => ['M'],
+            'sleeve_style' => 'sleeveless',
+            'logo_source' => 'custom',
+            'editor_version' => 1,
+        ]);
+        app(UniformLogoService::class)->upload($design, UploadedFile::fake()->image('crest.png', 256, 256));
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'mine',
+            'generation_uniform_design_id' => $design->id,
+            'generation_with_team_logo' => false,
+            'generation_logo_mode' => 'none',
+        ])->assertOk();
+
+        $this->assertSame('mine', $gateway->lastPayload['uniform']['source']);
+        $this->assertSame('custom', $gateway->lastPayload['uniform']['logo_source']);
+        $this->assertTrue($gateway->lastPayload['team']['with_logo']);
+        $this->assertSame('image/webp', $gateway->lastPayload['team_logo_reference']['mime']);
+        $this->assertNotEmpty($gateway->lastPayload['team_logo_reference']['contents']);
+
+        $this->actingAs($user)->patchJson(route('account.player-profile.update'), [
+            'mutation' => 'generate_2d',
+            'generation_uniform_source' => 'neutral',
+            'generation_with_team_logo' => true,
+            'generation_logo_mode' => 'team',
+        ])->assertOk();
+
+        $this->assertSame('neutral', $gateway->lastPayload['uniform']['source']);
+        $this->assertSame('none', $gateway->lastPayload['uniform']['logo_source']);
+        $this->assertNull($gateway->lastPayload['team']);
+        $this->assertNull($gateway->lastPayload['team_logo_reference']);
+    }
+
+    public function test_saved_face_references_are_reused_without_revalidating_on_repeat_generation(): void
     {
         Storage::fake('local');
         $user = $this->player();
@@ -426,7 +498,10 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertOk();
 
         $this->assertTrue($gateway->generationCalled);
-        $this->assertSame(2, $gateway->validationCalls);
+        // Free profile uploads and generation from saved references must not
+        // call the external angle validator; the provider-specific generation
+        // pipeline receives the same persisted media IDs.
+        $this->assertSame(0, $gateway->validationCalls);
         $this->assertArrayHasKey('front', $gateway->lastPayload['face_references']);
         $this->assertArrayHasKey('left', $gateway->lastPayload['face_references']);
     }
@@ -469,6 +544,129 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ])
             ->assertStatus(503)
             ->assertJsonPath('code', 'ai_connection_failed');
+    }
+
+    public function test_saved_face_references_are_reloaded_privately_and_can_be_deleted_without_charge(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $other = $this->player();
+        $this->uploadReference($user, 'front');
+
+        $reference = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonPath('face_references.front.id', $reference->id)
+            ->assertJsonPath('face_references.front.verified', false)
+            ->assertJsonPath('face_references.front.url',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$reference->id);
+
+        $this->actingAs($other)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonMissingPath('face_references.front');
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'face_reference_delete',
+                'face_reference_slot' => 'front',
+            ])
+            ->assertOk()
+            ->assertJsonPath('deleted', true);
+
+        Storage::disk('local')->assertMissing($reference->path);
+        $this->actingAs($user)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertNotFound();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertOk()
+            ->assertJsonMissingPath('face_references.front');
+    }
+
+    public function test_green_check_requires_same_photo_in_completed_generation_and_resets_on_replacement(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'right');
+        $front = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $right = $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('right'))
+            ->firstOrFail();
+
+        $pending = PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::FAILED,
+            'reference_media_ids' => ['front' => $front->id, 'right' => $right->id],
+            'payload_snapshot' => [],
+        ]);
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', false);
+
+        $pending->forceFill(['status' => PlayerCharacterGenerationStatusEnum::COMPLETED])->save();
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', true)
+            ->assertJsonPath('face_references.right.verified', true);
+
+        $this->uploadReference($user, 'front');
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), ['mutation' => 'generation_preferences'])
+            ->assertJsonPath('face_references.front.verified', false)
+            ->assertJsonPath('face_references.right.verified', true);
+    }
+
+    public function test_active_generation_prevents_reference_replacement_or_deletion(): void
+    {
+        Storage::fake('local');
+        $this->bindGateway();
+        $user = $this->player();
+        $this->uploadReference($user, 'front');
+
+        PlayerCharacterGeneration::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'provider' => 'github_openai',
+            'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+            'reference_media_ids' => [],
+            'payload_snapshot' => [],
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'face_reference_delete',
+                'face_reference_slot' => 'front',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'generation_in_progress');
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'face_reference',
+                'face_reference_slot' => 'front',
+                'face_reference' => UploadedFile::fake()->image('other.jpg', 1200, 900),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'generation_in_progress');
+
+        $this->assertSame(1, $user->profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))->count());
     }
 
     private function bindGateway(

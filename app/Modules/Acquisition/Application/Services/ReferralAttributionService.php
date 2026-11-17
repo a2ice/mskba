@@ -22,6 +22,7 @@ final class ReferralAttributionService
         $request->session()->put(self::SESSION_KEY, [
             'referrer_user_id' => (int) $canonical->id,
             'captured_at' => CarbonImmutable::now()->toIso8601String(),
+            'source_page' => $this->sourcePage($request),
         ]);
     }
 
@@ -65,10 +66,37 @@ final class ReferralAttributionService
             [
                 'referrer_user_id' => (int) $referrer->id,
                 'source' => 'referral_link',
+                'source_page' => $pending['source_page'] ?? null,
                 'captured_at' => $capturedAt,
                 'linked_at' => now(),
             ],
         );
+    }
+
+    private function sourcePage(Request $request): ?string
+    {
+        $value = $request->query('source_page');
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+        if (
+            $value === ''
+            || mb_strlen($value) > 2000
+            || ! str_starts_with($value, '/')
+            || str_starts_with($value, '//')
+            || str_contains($value, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $value)
+        ) {
+            return null;
+        }
+
+        // Query strings can contain private form/search data; persist only a local path.
+        $path = parse_url($value, PHP_URL_PATH);
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     private function capturedAt(mixed $value): ?CarbonImmutable

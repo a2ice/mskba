@@ -1,0 +1,359 @@
+/* Breadcrumbs remain sticky even when the primary header scrolls away. */
+:root { --context-bar-height: 44px; }
+html:has(.app-context-bar) {
+    scroll-padding-top: calc(var(--header-height) + var(--context-bar-height) + 24px);
+}
+.app-context-bar {
+    position: sticky;
+    top: var(--app-visible-header-height, var(--header-height));
+    z-index: 19;
+    transition: top .28s cubic-bezier(.22, .61, .36, 1);
+    /* Keep the page visible through the sticky breadcrumb row while scrolling. */
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.15);
+    backdrop-filter: blur(12px) saturate(1.15);
+    border-bottom: 1px solid var(--line);
+}
+.app-context-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: var(--context-bar-height);
+}
+.app-context-trail { min-width: 0; flex: 1 1 auto; }
+/* Home normally has no context bar. Its unconfirmed-only version uses
+   just one label and Actions, without a redundant breadcrumb/back button. */
+.app-context-home-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+.app-context-trail ol {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.app-context-trail li {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 0 0 auto;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--muted);
+}
+.app-context-trail li:not(:first-child)::before {
+    content: '/';
+    color: var(--faint);
+    padding: 0 9px;
+}
+.app-context-trail li:last-child { flex: 0 1 auto; }
+.app-context-trail li :is(a, span) {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.app-context-trail a { color: var(--muted); text-decoration: none; }
+.app-context-trail a:hover { color: var(--accent-hover); }
+.app-context-trail [aria-current="page"] { color: var(--text); }
+.app-context-bar__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* Explicit pin next to the Actions menu: compact, always available on touch and
+   desktop. The chevron rotates when sticky primary navigation is locked open. */
+.app-context-header-pin.app-context-quick { justify-content: center; padding: 0; }
+.app-context-header-pin.app-context-quick:is(:hover,:focus-visible) {
+    width: 44px;
+    max-width: 44px;
+}
+.app-context-header-pin > svg { transition: transform .2s ease; }
+.app-context-header-pin[aria-pressed="true"] { color: var(--accent); }
+.app-context-header-pin[aria-pressed="true"] > svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .app-context-header-pin > svg { transition: none; }
+}
+/* Task 030 review: a 44px hit area with a 36px visible control; the sticky
+   bar itself stays 44px high. Labels never bleed out of collapsed controls. */
+.app-context-quick {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 13px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+    transition: width .2s ease, max-width .2s ease, color .2s;
+}
+.app-context-quick::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    /* Idle: no visible background or frame, but retain the full hit area. */
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    pointer-events: none;
+    transition: background-color .2s;
+}
+.app-context-quick > svg {
+    position: relative;
+    display: block;
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+}
+.app-context-quick__label {
+    position: relative;
+    visibility: hidden;
+    opacity: 0;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity .1s ease;
+}
+.app-context-quick:hover,
+.app-context-quick:focus-visible,
+.app-context-actions[open] > .app-context-quick,
+.app-context-path details[open] > .app-context-quick { color: var(--accent); }
+/* Hover, keyboard focus and expanded Actions restore ONLY the background.
+   The border remains fully transparent in every state, also in chat composers. */
+.app-context-quick:is(:hover,:focus-visible)::before,
+.app-context-actions[open] > .app-context-quick::before,
+.app-context-path details[open] > .app-context-quick::before {
+    background: var(--surface-raised);
+}
+/* Desktop only: icon-first pill grows on hover, or on keyboard focus.
+   An open details menu is not itself a reason to reveal the label. */
+@media (min-width:640px) and (hover:hover) and (pointer:fine) {
+    .app-context-quick:hover { width: 126px; max-width: 126px; }
+    .app-context-back:hover { width: 106px; max-width: 106px; }
+    .app-context-quick:hover .app-context-quick__label { visibility: visible; opacity: 1; }
+}
+@media (min-width:640px) {
+    .app-context-quick:focus-visible { width: 126px; max-width: 126px; }
+    .app-context-back:focus-visible { width: 106px; max-width: 106px; }
+    .app-context-quick:focus-visible .app-context-quick__label { visibility: visible; opacity: 1; }
+}
+.app-context-actions { position: relative; flex: 0 0 auto; }
+.app-context-actions > summary { list-style: none; }
+.app-context-actions > summary::-webkit-details-marker,
+.app-context-actions__nested > summary::-webkit-details-marker,
+.app-context-path summary::-webkit-details-marker { display: none; }
+.app-context-actions > summary::marker,
+.app-context-actions__nested > summary::marker,
+.app-context-path summary::marker { content: ''; }
+.app-context-path { display: none; position: relative; }
+.app-context-path__menu {
+    position: absolute;
+    z-index: 3;
+    top: calc(100% + 2px);
+    left: 0;
+    display: grid;
+    gap: 3px;
+    min-width: 194px;
+    max-width: min(300px, calc(100vw - 24px));
+    max-height: min(55dvh, 360px);
+    overflow-y: auto;
+    padding: 7px;
+    margin: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-raised);
+    box-shadow: 0 18px 44px var(--shadow-modal);
+}
+.app-context-path__menu li { min-width: 0; }
+.app-context-path__menu :is(a,span) {
+    display: block;
+    padding: 11px 12px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 20px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.app-context-path__menu a:hover { background: var(--subtle-accent-bg); color: var(--accent); }
+.app-context-path__menu [aria-current="page"] { color: var(--text); background: var(--subtle-white-bg); }
+.app-context-path details:not([open]) > .app-context-path__menu { display: none; }
+.app-context-actions__menu {
+    position: absolute;
+    top: calc(100% + 2px);
+    right: 0;
+    z-index: 2;
+    width: max-content;
+    min-width: 202px;
+    max-width: min(340px, calc(100vw - 32px));
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-raised);
+    box-shadow: 0 18px 44px var(--shadow-modal);
+}
+.app-context-actions:not([open]) > .app-context-actions__menu { display: none; }
+.app-context-actions__menu :is(a, button, summary) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+.app-context-actions__menu :is(a, button, summary):hover {
+    background: var(--subtle-accent-bg);
+    color: var(--accent);
+}
+.app-context-actions__separator { height: 1px; margin: 6px 8px; background: var(--line); }
+.app-context-actions__nested-links { padding-left: 12px; }
+.app-context-bar :is(a, button, summary):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.app-context-bar__status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+@media (max-width: 639px) {
+    .app-context-bar__inner { gap: 8px; }
+    .app-context-trail { display: none; }
+    .app-context-path { display: block; flex: 1 1 auto; }
+    .app-context-bar__controls { gap: 8px; }
+    /* Compact icon-only controls on touch/mobile, including when open/focused. */
+    .app-context-quick__label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-context-bar { transition: none; }
+    .app-context-quick, .app-context-quick::before, .app-context-quick__label,
+    .app-context-actions__attention,
+    .app-context-actions__trigger > .app-context-quick__label { transition: none; }
+}
+/* Task 026: confirmation entry for unconfirmed users across the portal. */
+.app-context-actions__attention{
+    display:inline-block;flex:0 0 5px;width:5px;height:5px;
+    border-radius:50%;background:var(--success);box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent);
+    animation:app-account-confirm-attention 2s ease-out infinite;
+}
+/* The indicator is the next flex child AFTER the progressively revealed
+   label. No fixed x-coordinate: it follows the clipped last visible letter. */
+.app-context-actions__trigger { gap: 0; }
+.app-context-actions__trigger > .app-context-quick__label {
+    flex: 0 0 auto;
+    width: max-content;
+    max-width: 0;
+    overflow: hidden;
+    margin-left: 0;
+    visibility: visible;
+    opacity: 1;
+    transition: max-width .2s ease, margin-left .2s ease;
+}
+.app-context-actions > summary .app-context-actions__attention {
+    /* Keep an identical vertical offset in compact and expanded states.
+       The natural flex position provides the horizontal offset. */
+    position: relative;
+    top: -7.5px;
+    left: auto;
+    margin-left: 0;
+    transition: margin-left .2s ease;
+}
+/* Keep the Actions pill expanded while its native details menu is open,
+   including after the mouse moves from the trigger to a menu item. */
+@media (min-width: 640px) {
+    .app-context-actions[open] > .app-context-quick {
+        width: 126px;
+        max-width: 126px;
+    }
+    .app-context-actions[open] > summary .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
+    }
+    .app-context-actions[open] > summary .app-context-actions__attention {
+        margin-left: 4px;
+        animation:none;
+        box-shadow:none;
+    }
+}
+@media (min-width: 640px) and (hover: hover) and (pointer: fine) {
+    .app-context-actions > summary:hover .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
+    }
+    .app-context-actions > summary:hover .app-context-actions__attention {
+        margin-left: 4px;
+    }
+}
+@media (min-width: 640px) {
+    .app-context-actions > summary:focus-visible .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
+    }
+    .app-context-actions > summary:focus-visible .app-context-actions__attention {
+        margin-left: 4px;
+    }
+}
+/* Attention rule: one actionable item can mark both the Actions trigger and
+   its destination. The trigger always stays visible; opening the menu freezes
+   its pulse, while the item's own dot keeps drawing attention to the action. */
+.app-context-actions[open] > summary .app-context-actions__attention{
+    animation:none;
+    box-shadow:none;
+}
+@keyframes app-account-confirm-attention{
+    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent)}
+    60%{box-shadow:0 0 0 5px transparent}
+}
+.app-context-actions__menu .app-context-actions__verify{gap:10px}
+.app-account-confirm-dialog__header,
+.app-account-confirm-dialog__footer{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;
+}
+.app-account-confirm-dialog__header{border-bottom:1px solid var(--line)}
+.app-account-confirm-dialog__header h2{margin:0;font-size:22px;line-height:28px}
+.app-account-confirm-dialog__header h2[tabindex="-1"]:focus{outline:none}
+.app-account-confirm-dialog__close{
+    display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;
+    border:1px solid var(--control-line);border-radius:12px;
+    color:var(--text);background:transparent;cursor:pointer;font-size:24px;
+}
+.app-account-confirm-dialog__close:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-account-confirm-dialog__body{padding:22px 24px;color:var(--muted);font-size:14px;line-height:23px}
+.app-account-confirm-dialog__body p+p{margin-top:12px}
+.app-account-confirm-dialog__body a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.app-account-confirm-dialog__body a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-account-confirm-dialog__footer{justify-content:flex-end;border-top:1px solid var(--line)}
+@media(prefers-reduced-motion:reduce){.app-context-actions__attention{animation:none}}

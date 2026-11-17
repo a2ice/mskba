@@ -1,0 +1,23 @@
+/* Universal favorites: light-first, shared MSKBA design tokens. */
+.app-play-dialog__favorite{display:grid;gap:4px;padding:0 0 14px;border-bottom:1px solid var(--line)}
+.app-play-dialog__favorite-button{display:inline-flex;align-items:center;gap:8px;align-self:start;
+    border:1px solid var(--control-line);background:var(--surface-raised);color:var(--text);
+    padding:10px 14px;border-radius:12px;font-weight:650;font-size:14px;cursor:pointer}
+.app-play-dialog__favorite-button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+.app-play-dialog__favorite-button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.app-play-dialog__favorite-button[aria-pressed="true"] svg{fill:var(--accent)}
+.app-play-dialog__favorite-button:disabled{opacity:.6;cursor:wait}
+.app-favorites{padding:clamp(18px,3vw,28px);display:grid;gap:20px}
+.app-favorites__header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.app-favorites__header h2{font-size:22px}
+.app-favorites__filters,.app-favorites__states{display:flex;gap:8px;flex-wrap:wrap}
+.app-favorites .chip{border-radius:999px;padding:8px 14px;border:1px solid var(--control-line)}
+.app-favorites .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.app-favorites__item{padding:16px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    border-top:1px solid var(--line)}
+.app-favorites__details{display:flex;flex-direction:column;gap:4px;min-width:0}
+.app-favorites__item-link{color:var(--text);font-weight:700;overflow-wrap:anywhere}
+.app-favorites__item-link:hover{color:var(--accent)}
+@media(max-width:639px){.app-favorites__item{flex-direction:column;align-items:stretch}
+ .app-favorites__item .button{align-self:flex-start}}

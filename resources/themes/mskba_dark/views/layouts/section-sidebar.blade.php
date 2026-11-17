@@ -85,9 +85,10 @@
                                         @endif
                                     </div>
 
-                                    @hasSection('section-heading-action')
+                                    @if($__env->hasSection('section-heading-action') || (auth()->check() && filled($entityEditUrl ?? null)))
                                         <div class="section-content-heading__action">
                                             @yield('section-heading-action')
+                                            @include('theme::partials.entity-edit-link', ['url' => $entityEditUrl ?? null])
                                         </div>
                                     @endif
                                 </div>

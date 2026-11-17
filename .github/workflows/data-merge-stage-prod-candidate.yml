@@ -1,0 +1,42 @@
+name: MSKBA stage verified merged DB without switching production
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-stage-prod-candidate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-data-merge-prod-db-stage
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    name: Restore verified merged snapshot into separate production DB
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate non-destructive production staging script
+        run: bash -n scripts/data-merge/stage-verified-candidate.sh
+      - name: Upload only reviewed staging script
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/stage-verified-candidate.sh
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Stage candidate in new DB only (leave live app untouched)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            bash /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/stage-verified-candidate.sh 44110069897 mskba_merge_stage_20261117

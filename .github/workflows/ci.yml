@@ -4,7 +4,47 @@ on:
   pull_request:
     branches:
       - main
+      - dev
+  push:
+    branches:
+      - dev
   workflow_dispatch:
+    inputs:
+      diagnose_ssh:
+        description: "Read-only SSH daemon diagnostics"
+        type: boolean
+        required: false
+        default: false
+      deploy_dev_now:
+        description: "Supervised deploy to staging after backups/marker are verified"
+        type: boolean
+        required: false
+        default: false
+      preflight_dev:
+        description: "Run read-only production-safe dev deploy preflight"
+        type: boolean
+        required: false
+        default: false
+      test_dev_ssh:
+        description: "Run read-only development SSH connectivity check"
+        type: boolean
+        required: false
+        default: false
+      activate_dev_rental_cashback:
+        description: "Explicit staging-only cashback activation after green CI"
+        type: boolean
+        required: false
+        default: false
+      enable_dev_rental_flow:
+        description: "Explicitly enable venue rental flow on dev only (never production)"
+        type: boolean
+        required: false
+        default: false
+      diagnose_dev_venue_booking:
+        description: "Read-only audit of Basketpoint rental/owner notifications on staging"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -16,18 +56,84 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      vendor_bundle_needed: ${{ steps.composer_change.outputs.changed }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Composer changes in this dev push
+        id: composer_change
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          if git rev-parse --verify "$before^{commit}" >/dev/null 2>&1 \
+             && git diff --quiet "$before" HEAD -- composer.json composer.lock; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      # Only docs, MSKBA App CSS and known static avatar WebP files may skip backend suites.
+      # Blade/PHP/JS, migrations, security/config/workflow files always run the full suite.
+      - name: Classify changed paths and check UI guideline trace
+        id: change_scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          full_suite=true
+          if [ -n "${BASE_SHA:-}" ] && git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git diff --name-only "${BASE_SHA}" HEAD > "$RUNNER_TEMP/changed-files.txt"
+            cat "$RUNNER_TEMP/changed-files.txt"
+            safe_only=true
+            ui_changed=false
+            ui_docs_changed=false
+            while IFS= read -r file; do
+              case "$file" in
+                docs/*|resources/themes/mskba_app/css/*.css|public/images/blank/avatar/body-male.webp|public/images/blank/avatar/body-female.webp) ;;
+                *) safe_only=false ;;
+              esac
+              case "$file" in
+                resources/themes/mskba_app/views/*.blade.php|resources/themes/mskba_app/css/*.css|resources/themes/mskba_app/js/*.js) ui_changed=true ;;
+                docs/mskba_app/tasks/*/description.md|docs/specification/ui-design-system.md) ui_docs_changed=true ;;
+              esac
+            done < "$RUNNER_TEMP/changed-files.txt"
+            if [ "$ui_changed" = true ] && [ "$ui_docs_changed" != true ]; then
+              echo '::error::UI changes require task description or design-system update in the same change.'
+              exit 1
+            fi
+            if [ "$safe_only" = true ] && [ -s "$RUNNER_TEMP/changed-files.txt" ]; then
+              full_suite=false
+              echo 'Safe CSS/static/docs change: skip PHP and DB; Vite build and deploy still run.'
+            fi
+          else
+            echo 'Unknown baseline: full suite required.'
+          fi
+          echo "full_suite=$full_suite" >> "$GITHUB_OUTPUT"
+      # Catch syntax errors before deploying a changed Nginx configuration.
+      - name: Validate application Nginx configuration
+        run: |
+          # The standalone lint container has no Compose service DNS.
+          docker run --rm \
+            --add-host reverb:127.0.0.1 --add-host phpfpm:127.0.0.1 \
+            -v "$PWD/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.27-alpine nginx -t
 
       - name: Setup PHP
+        if: steps.change_scope.outputs.full_suite == 'true'
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          extensions: mbstring, sqlite3, pdo_sqlite, gd, intl, zip
           coverage: none
-          ini-values: short_open_tag=1
+          ini-values: short_open_tag=1, display_errors=On, display_startup_errors=On, log_errors=On
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,6 +142,7 @@ jobs:
           cache: npm
 
       - name: Cache Composer packages
+        if: steps.change_scope.outputs.full_suite == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
@@ -44,21 +151,836 @@ jobs:
             composer-${{ runner.os }}-
 
       - name: Install PHP dependencies
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Archive tested PHP dependencies (Composer change only)
+        if: steps.change_scope.outputs.full_suite == 'true' && steps.composer_change.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p verified-php-dependencies
+          tar -czf verified-php-dependencies/vendor.tar.gz vendor
+          sha256sum verified-php-dependencies/vendor.tar.gz | cut -d ' ' -f 1 > verified-php-dependencies/vendor.sha256
+          cp composer.lock verified-php-dependencies/composer.lock
+
+      - name: Upload tested PHP dependencies
+        if: steps.change_scope.outputs.full_suite == 'true' && steps.composer_change.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-verified-php-dependencies
+          path: verified-php-dependencies/
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Prepare application
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: |
           cp .env.example .env
           php artisan key:generate
 
-      - name: Validate production compose
-        run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Validate production compose and Gotenberg release guard
+        if: steps.change_scope.outputs.full_suite == 'true'
+        run: |
+          docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+          docker compose -f compose.yaml -f compose.prod.yaml config --format json | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          command = data["services"]["gotenberg"].get("command", [])
+          required = ("--chromium-auto-start=false", "--chromium-idle-shutdown-timeout=15s")
+          missing = [flag for flag in required if flag not in command]
+          if missing:
+              sys.exit("Gotenberg lazy Chromium release guard: missing " + ", ".join(missing))
+          print("Gotenberg lazy Chromium flags verified")
+          '
+
+      - name: Validate isolated dev compose
+        if: steps.change_scope.outputs.full_suite == 'true'
+        run: |
+          DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
+          services="$(DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --services)"
+          printf '%s\n' "$services" | grep -qx queue || { echo "Dev main queue must be enabled by default"; exit 1; }
+          if printf '%s\n' "$services" | grep -qx scheduler; then
+            echo "Dev scheduler must remain optional"
+            exit 1
+          fi
 
       - name: Run PHP tests
+        if: steps.change_scope.outputs.full_suite == 'true'
         run: php artisan test
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
 
+      - name: Check DEV Page Builder bridge and personal widget ordering
+        run: node --test tests/JavaScript/page-builder-agent-bridge.test.mjs tests/JavaScript/dashboard-widget-order.test.mjs
+
+      - name: Test browser upload, operator tab resume, notification toasts and Reverb configuration
+        if: steps.change_scope.outputs.full_suite == 'true'
+        run: node --test tests/JavaScript/account-avatar-upload.test.mjs tests/JavaScript/avatar-manager-ajax.test.mjs tests/JavaScript/backoffice-chat-resume.test.mjs tests/JavaScript/notification-toasts.test.mjs tests/JavaScript/play-intent-editor-navigation.test.mjs tests/JavaScript/favorite-heart-action-label.test.mjs tests/JavaScript/favorite-header-count.test.mjs tests/JavaScript/venue-past-activities.test.mjs tests/JavaScript/venue-day-booking.test.mjs tests/JavaScript/venue-rental-review.test.mjs tests/JavaScript/venue-interest-group.test.mjs tests/JavaScript/group-offer-copy.test.mjs tests/JavaScript/contracts-workspace.test.mjs tests/JavaScript/account-collection-design.test.mjs tests/JavaScript/app-player-workspace.test.mjs tests/JavaScript/action-toasts.test.mjs tests/JavaScript/notification-topic-panels.test.mjs tests/JavaScript/contact-wizard-navigation.test.mjs tests/JavaScript/modal-dragging.test.mjs tests/JavaScript/reverb-browser-config.test.mjs tests/JavaScript/page-builder-ball-scroll.test.mjs tests/JavaScript/page-builder-hero-responsive.test.mjs tests/JavaScript/app-header-scroll.test.mjs tests/JavaScript/page-builder-venues-map-expand.test.mjs tests/JavaScript/page-builder-auto-lqip.test.mjs
+
+      - name: Validate dynamic Page Builder and theme-owned JavaScript syntax
+        if: steps.change_scope.outputs.full_suite == 'true'
+        run: |
+          node --check resources/page-builder/venues-map.js
+          node --check resources/themes/mskba_app/presets/mskba-classic.js
+
       - name: Build frontend
-        run: npm run build
+        # Do not bake localhost:8000 and sample Reverb credentials from .env.example
+        # into assets shipped to https://dev.mskba.ru. The app theme reads the
+        # actual (public) Reverb key from server-rendered HTML at runtime.
+        env:
+          VITE_REVERB_APP_KEY: ''
+          VITE_REVERB_PUBLIC_HOST: ''
+          VITE_REVERB_PUBLIC_PORT: ''
+          VITE_REVERB_PUBLIC_SCHEME: ''
+        run: |
+          npm run build
+          if grep -l -E 'mskba-local-key|localhost' public/build/assets/realtime-*.js; then
+            echo 'Unsafe local Reverb defaults leaked into the dev bundle'
+            exit 1
+          fi
+
+      - name: Preserve verified dev frontend bundle
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-vite-build
+          path: public/build/
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy_dev:
+    needs: test
+    if: >-
+      ${{ github.ref == 'refs/heads/dev' && ((github.event_name == 'push' && vars.ENABLE_DEV_DEPLOY == 'true') || (github.event_name == 'workflow_dispatch' && inputs.deploy_dev_now)) }}
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Download verified frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-vite-build
+          path: staged-build
+
+      - name: Download tested PHP dependencies
+        if: needs.test.outputs.vendor_bundle_needed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-verified-php-dependencies
+          path: verified-php-dependencies
+
+      - name: Stage tested PHP dependencies on development server
+        if: needs.test.outputs.vendor_bundle_needed == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: 'verified-php-dependencies/*'
+          target: '/home/deploy/mskba-dev-vendor/${{ github.sha }}'
+          strip_components: 1
+
+      # Reuse the exact production GitHub/OpenAI credentials. The OpenAI key
+      # stays exclusively on GitHub runners; only dispatch and callback secrets
+      # are sent to the dev server. Never print or upload their values.
+      - name: Verify shared production AI credentials for dev
+        shell: bash
+        env:
+          GITHUB_AI_DISPATCH_TOKEN: ${{ secrets.MSKBA_GITHUB_AI_TOKEN }}
+          GITHUB_AI_CALLBACK_SECRET: ${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}
+          OPENAI_RUNNER_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          set -euo pipefail
+          for name in GITHUB_AI_DISPATCH_TOKEN GITHUB_AI_CALLBACK_SECRET OPENAI_RUNNER_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required shared AI credential $name is unavailable in the development environment."
+              exit 1
+            fi
+          done
+          if [ "${#GITHUB_AI_CALLBACK_SECRET}" -lt 32 ]; then
+            echo '::error::Shared AI callback secret is unexpectedly short.'
+            exit 1
+          fi
+          workflow_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' \
+            --header "Authorization: Bearer ${GITHUB_AI_DISPATCH_TOKEN}" \
+            --header 'Accept: application/vnd.github+json' \
+            https://api.github.com/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml)"
+          if [ "$workflow_status" != 200 ]; then
+            echo "::error::Shared GitHub AI workflow is not readable (HTTP $workflow_status)."
+            exit 1
+          fi
+          # An explicitly authorized workflow GET checks PATs and GitHub App
+          # installation tokens alike; /user is not available to every token type.
+          echo 'Shared production AI credentials present and authorized workflow readable; no paid model request made.'
+
+      - name: Stage built assets on development server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: 'staged-build/*'
+          target: '/home/deploy/mskba-dev-assets/${{ github.sha }}'
+          strip_components: 1
+
+      - name: Deploy verified commit via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          VERIFIED_SHA: ${{ github.sha }}
+          VENDOR_BUNDLE_NEEDED: ${{ needs.test.outputs.vendor_bundle_needed }}
+          SHARED_GITHUB_AI_TOKEN: ${{ secrets.MSKBA_GITHUB_AI_TOKEN }}
+          SHARED_GITHUB_AI_CALLBACK_SECRET: ${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          envs: VERIFIED_SHA,VENDOR_BUNDLE_NEEDED,SHARED_GITHUB_AI_TOKEN,SHARED_GITHUB_AI_CALLBACK_SECRET
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            test -f .env || { echo 'Dev .env missing'; exit 1; }
+            grep -qx 'APP_THEME=mskba_app' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f compose.dev.local.yaml || { echo 'Verified local compose override missing'; exit 1; }
+            test "$(stat -c '%a' .env)" = '640' || { echo 'Dev .env must be mode 640'; exit 1; }
+            # Explicit fail-closed checks; never print secret values.
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_DEBUG=false' .env
+            # Initial superadmin provisioning requires a unique server-only dev secret.
+            grep -Eq '^SUPERADMIN_SEED_PASSWORD=[0-9a-f]{64}$' .env || { echo 'Dev superadmin seed secret missing/invalid'; exit 1; }
+            # Staging may use real provider credentials for supervised integration tests.
+            # A shared Telegram bot cannot have two independent webhook URLs:
+            # changing its webhook here would divert production updates.
+            grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            # Never auto-configure a Telegram webhook or start consumers from deploy.
+            test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
+            case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
+            test "${#VERIFIED_SHA}" -eq 40
+            ASSET_STAGE="/home/deploy/mskba-dev-assets/$VERIFIED_SHA"
+            test -f "$ASSET_STAGE/manifest.json" || { echo 'Verified frontend manifest missing'; exit 1; }
+            test -d "$ASSET_STAGE/assets" || { echo 'Verified frontend assets missing'; exit 1; }
+            # Verify essential local resources before any tracked file is replaced.
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            docker image inspect mskbanew-phpfpm:latest >/dev/null
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            test -f public/build/manifest.json
+            test -w storage && test -w bootstrap/cache
+            git fetch origin dev
+            test "$(git rev-parse origin/dev)" = "$VERIFIED_SHA" || {
+              echo 'Verified commit no longer matches dev HEAD; skip older deployment'; exit 0;
+            }
+            # Build artifacts may be regenerated by the previous successful deploy.
+            # Recover only a known, exact file left by an interrupted verified git reset.
+            # Never discard arbitrary server edits or bypass the tracked-drift guard.
+            ROLLING_BALL_DOC='docs/specification/page-builder-rolling-ball-temporary.md'
+            DIRTY_TRACKED="$(git diff --name-only HEAD -- . ':(exclude)public/build/**')"
+            if [ "$DIRTY_TRACKED" = "$ROLLING_BALL_DOC" ] \
+              && git show "$VERIFIED_SHA:$ROLLING_BALL_DOC" | cmp -s - "$ROLLING_BALL_DOC"; then
+              echo 'Recovering interrupted verified document checkout; all other files unchanged'
+              git restore --source=HEAD --staged --worktree -- "$ROLLING_BALL_DOC"
+            fi
+            # Protect every tracked source/config file outside public/build.
+            if ! git diff --quiet HEAD -- . ':(exclude)public/build/**'; then
+              echo 'Server has unexpected tracked modifications outside public/build'
+              git diff --name-only HEAD -- . ':(exclude)public/build/**'
+              exit 1
+            fi
+            # No git clean: preserve server-only .env, storage and compose override.
+            PREVIOUS_SHA="$(git rev-parse HEAD)"
+            # No dependency resolution or PHP builds take place on this low-RAM VDS.
+            # The CI-tested vendor tarball is used only for a verified Composer change.
+            COMPOSER_CHANGED=0
+            if ! git diff --quiet "$PREVIOUS_SHA" "$VERIFIED_SHA" -- composer.json composer.lock; then
+              COMPOSER_CHANGED=1
+              test "$VENDOR_BUNDLE_NEEDED" = 'true' || {
+                echo 'Composer changed, but this verified push has no tested vendor artifact'; exit 1;
+              }
+              VENDOR_STAGE="/home/deploy/mskba-dev-vendor/$VERIFIED_SHA"
+              test -f "$VENDOR_STAGE/vendor.tar.gz"
+              test -f "$VENDOR_STAGE/vendor.sha256"
+              test -f "$VENDOR_STAGE/composer.lock"
+              test "$(sha256sum "$VENDOR_STAGE/vendor.tar.gz" | cut -d ' ' -f 1)" = "$(cat "$VENDOR_STAGE/vendor.sha256")"
+              git show "$VERIFIED_SHA:composer.lock" | cmp - "$VENDOR_STAGE/composer.lock"
+              test ! -e "vendor.rollback.$VERIFIED_SHA"
+              test ! -e "vendor.prepared.$VERIFIED_SHA"
+              mkdir "vendor.prepared.$VERIFIED_SHA"
+              tar -xzf "$VENDOR_STAGE/vendor.tar.gz" --no-same-owner -C "vendor.prepared.$VERIFIED_SHA"
+              test -f "vendor.prepared.$VERIFIED_SHA/vendor/autoload.php"
+            fi
+
+            MANIFEST_BACKUP="public/build/manifest.json.rollback.$VERIFIED_SHA"
+            test ! -e "$MANIFEST_BACKUP"
+            cp public/build/manifest.json "$MANIFEST_BACKUP"
+            # Preserve the exact staging environment for rollback; never copy
+            # production .env or publish this private file as an artifact.
+            AI_ENV_BACKUP=".env.ai-rollback.$VERIFIED_SHA"
+            test ! -e "$AI_ENV_BACKUP"
+            ROLLBACK_ARMED=0
+            rollback_if_needed() {
+              code=$?
+              trap - EXIT
+              if [ "$code" -ne 0 ] && [ -f "$AI_ENV_BACKUP" ]; then
+                # Restore staging-only configuration before restarting old code.
+                cp -p "$AI_ENV_BACKUP" .env || true
+                # A restored 640 file may inherit deploy:deploy; PHP-FPM needs
+                # group www-data. Correct metadata only, never print .env.
+                if [ -f .env ] && [ "$(stat -c '%U:%G:%a' .env)" = 'deploy:deploy:640' ]; then
+                  chgrp www-data .env || $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env || true
+                fi
+                rm -f "$AI_ENV_BACKUP"
+              fi
+              if [ "$code" -ne 0 ] && [ "$ROLLBACK_ARMED" -eq 1 ]; then
+                echo 'Deploy failed: restoring previous source and PHP dependencies'
+                if [ -d "vendor.rollback.$VERIFIED_SHA" ]; then
+                  if [ -e vendor ]; then mv vendor "vendor.failed.$VERIFIED_SHA"; fi
+                  mv "vendor.rollback.$VERIFIED_SHA" vendor
+                fi
+                git reset --hard "$PREVIOUS_SHA" || true
+                if [ -f "$MANIFEST_BACKUP" ]; then mv "$MANIFEST_BACKUP" public/build/manifest.json; fi
+                $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue || true
+              fi
+              exit "$code"
+            }
+            trap rollback_if_needed EXIT
+
+            # Set only the generation-specific staging values from the existing
+            # production GitHub Actions secrets; preserve APP_URL, APP_KEY, DB,
+            # wallet, Telegram, and every other dev-only environment variable.
+            cp -p .env "$AI_ENV_BACKUP"
+            python3 - <<'PY'
+            import os
+            import re
+            from pathlib import Path
+
+            shared = {
+                "GITHUB_AI_TOKEN": os.environ.get("SHARED_GITHUB_AI_TOKEN", ""),
+                "GITHUB_AI_CALLBACK_SECRET": os.environ.get("SHARED_GITHUB_AI_CALLBACK_SECRET", ""),
+                "GITHUB_AI_REPOSITORY": "a2ice/mskba",
+                "GITHUB_AI_REF": "main",
+                "PLAYER_CHARACTER_AI_PROVIDER": "github_openai",
+            }
+            for key in ("GITHUB_AI_TOKEN", "GITHUB_AI_CALLBACK_SECRET"):
+                # The production credentials are printable opaque tokens; an
+                # unexpected quote/newline must not inject a second .env key.
+                if not re.fullmatch(r"[a-zA-Z0-9_+=./:-]{16,512}", shared[key]):
+                    raise SystemExit(f"Shared AI secret {key} is unavailable or unsafe for dotenv")
+
+            target = Path(".env")
+            with target.open("r+", encoding="utf-8") as stream:
+                lines = stream.read().splitlines()
+                updated = []
+                replaced = set()
+                for line in lines:
+                    match = re.match(r"^([A-Z][A-Z0-9_]*)=", line)
+                    key = match.group(1) if match else None
+                    if key in shared:
+                        if key not in replaced:
+                            updated.append(f"{key}={shared[key]}")
+                            replaced.add(key)
+                    else:
+                        updated.append(line)
+                for key, value in shared.items():
+                    if key not in replaced:
+                        updated.append(f"{key}={value}")
+                stream.seek(0)
+                stream.write("\n".join(updated) + "\n")
+                stream.truncate()
+                stream.flush()
+                os.fsync(stream.fileno())
+            PY
+            unset SHARED_GITHUB_AI_TOKEN SHARED_GITHUB_AI_CALLBACK_SECRET
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'PLAYER_CHARACTER_AI_PROVIDER=github_openai' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            AI_ENV_CHANGED=0
+            if ! cmp -s "$AI_ENV_BACKUP" .env; then AI_ENV_CHANGED=1; fi
+            echo 'Shared production generation credentials synchronized to staging (values hidden).'
+
+            git reset --hard "$VERIFIED_SHA"
+            ROLLBACK_ARMED=1
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              mv vendor "vendor.rollback.$VERIFIED_SHA"
+              mv "vendor.prepared.$VERIFIED_SHA/vendor" vendor
+              rmdir "vendor.prepared.$VERIFIED_SHA"
+            fi
+            # A safe-only cumulative server diff needs no database migrations,
+            # seeders or container recreation. Re-classify from the actual
+            # installed revision (not just the latest GitHub push), fail closed.
+            STATIC_ONLY=1
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                docs/*|resources/themes/mskba_app/css/*.css|public/images/blank/avatar/body-male.webp|public/images/blank/avatar/body-female.webp) ;;
+                *) STATIC_ONLY=0 ;;
+              esac
+            done < <(git diff --name-only "$PREVIOUS_SHA" "$VERIFIED_SHA")
+            if [ "$STATIC_ONLY" -eq 1 ] && [ "$AI_ENV_CHANGED" -eq 0 ]; then
+              echo 'Safe static-only deploy: publish verified assets without PHP/DB restart'
+              mkdir -p public/build
+              tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
+              cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
+              mv -f public/build/manifest.json.pending public/build/manifest.json
+              curl --fail --silent --show-error --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ >/dev/null
+              rm -rf -- "$ASSET_STAGE"
+              rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
+              ROLLBACK_ARMED=0
+              echo 'Safe-only static deployment completed; no migrations or restarts'
+              exit 0
+            fi
+            $COMPOSE config --quiet
+            test -f public/build/manifest.json
+            # This staging VDS has ~2 GiB RAM: never build PHP on the server.
+            $COMPOSE up -d --no-build db redis
+            test -f vendor/autoload.php || { echo 'Composer dependencies missing; stop before restarting'; exit 1; }
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan package:discover --ansi
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan filament:assets --no-interaction
+            fi
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
+            # Venues map initial installation is one-time, backup guarded and idempotent.
+            # Never rewrite later changes from Filament on subsequent deploys.
+            MAP_BACKUP='/home/deploy/mskba-page-builder-backups/venues-map-20261020-20261020T144814Z'
+            test -s "$MAP_BACKUP/mskba-dev-pre-venues-map.dump" || { echo '::error::Required pre-venues-map database backup missing'; exit 1; }
+            ( cd "$MAP_BACKUP" && sha256sum -c SHA256SUMS )
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan mskba:venues-map:publish --apply
+            # The map reveal is loaded from the app theme; Filament assets stay untouched.
+
+            # Import currently referenced Hero/Page Builder images into writable permanent storage.
+            # Run as www-data (the same owner as PHP-FPM uploads); importing is idempotent.
+            # Any absent Git/old-user asset is reported explicitly without blocking initial rollout.
+            $COMPOSE run --rm -T --no-deps --user www-data phpfpm php artisan site-media:import-hero --apply --skip-missing
+            # Filament's HTML/CSS/JS remains editor-owned. Never silently
+            # republish Arena v3 on every code deployment.
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
+            # Staging FAQ defaults: idempotent, never overwrite editorial content.
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\FaqContentSeeder' --force --no-interaction
+            # Public-disk photos must be accessible by the staging Nginx container.
+            # The seeder writes storage/app/public; on a fresh server /storage
+            # would otherwise be missing even though the product img src exists.
+            # Never replace an existing non-symlink entry or delete uploaded media.
+            if [ ! -L public/storage ]; then
+              test ! -e public/storage || { echo 'public/storage exists but is not a symlink'; exit 1; }
+              ln -s ../storage/app/public public/storage
+            fi
+            # Both conventional Laravel (absolute container) and relative links
+            # resolve inside Nginx. Reject unexpected targets, never silently rewire.
+            case "$(readlink public/storage)" in
+              '../storage/app/public'|'/var/www/html/storage/app/public') ;;
+              *) echo 'Unexpected public/storage link target'; exit 1 ;;
+            esac
+            # A single reference-only draft for validating the shop in staging.
+            # Idempotent; no placeholder photos/prices, no production changes.
+            $COMPOSE run --rm -T --no-deps --user www-data phpfpm php artisan db:seed --class='Database\Seeders\ShopOzonReferenceDemoSeeder' --force --no-interaction
+            # Copy hashed assets first, then atomically publish the new Vite manifest.
+            # Keep previous hashed assets, so in-flight browser requests remain valid.
+            mkdir -p public/build
+            tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
+            cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
+            mv -f public/build/manifest.json.pending public/build/manifest.json
+            $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue
+            ready=0
+            for attempt in $(seq 1 20); do
+              if curl --fail --silent --show-error --max-time 5 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null 2>&1; then
+                ready=1
+                echo "Dev HTTP ready on attempt $attempt"
+                break
+              fi
+              echo "Dev HTTP not ready ($attempt/20); retrying in 3s"
+              sleep 3
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo 'Dev HTTP failed to become ready'
+              $COMPOSE ps
+              exit 1
+            fi
+            # Check the actual Laravel-resolved gateway in the running staging
+            # PHP container. Never use config:show (would expose secrets).
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $gateway = $app->make(\App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway::class);
+              if (!($gateway instanceof \App\Modules\Ai\Infrastructure\Gateways\BillableGitHubOpenAiPlayerCharacterAiGateway)
+                  || config("app.url") !== "https://dev.mskba.ru") {
+                  fwrite(STDERR, "Staging player generation gateway is not ready.\n");
+                  exit(1);
+              }
+              $response = \Illuminate\Support\Facades\Http::withToken((string) config("services.github_openai.token"))
+                  ->acceptJson()->connectTimeout(10)->timeout(20)
+                  ->get("https://api.github.com/repos/a2ice/mskba/actions/workflows/openai-player-generate.yml");
+              if (!$response->ok()) {
+                  fwrite(STDERR, "Staging PHP container cannot access GitHub AI workflow (HTTP ".$response->status().").\n");
+                  exit(1);
+              }
+              echo "Staging GitHub/OpenAI generation gateway and authenticated GitHub API connection ready.\n";
+            '
+            # Check the actual public asset via Nginx, not just its DB reference.
+            # An HTTP 200 HTML catalog does not imply the /storage image exists.
+            SHOP_PHOTO_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/storage/shop/products/ozon-5041196075.webp)"
+            if [ "$SHOP_PHOTO_HTTP" != '200' ]; then
+              echo "Staging demo product photo is not reachable (HTTP $SHOP_PHOTO_HTTP)"
+              exit 1
+            fi
+            echo 'Staging demo product photo available (HTTP 200)'
+            # The panel must at least respond with HTTP 302 (portal login) to guests;
+            # a missing route or server error is a release failure.
+            BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
+            case "$BACKOFFICE_HTTP" in 200|302|303) ;; *) echo "Backoffice smoke HTTP: $BACKOFFICE_HTTP"; exit 1;; esac
+            if ! $COMPOSE ps --status running --services | grep -qx queue; then
+              echo 'Dev main queue worker is not running'
+              $COMPOSE logs --tail=50 queue
+              exit 1
+            fi
+            # Reward settlement MUST stay out of the confirming user's HTTP
+            # request. Inspect the live worker's resolved connection and
+            # listener dispatch semantics, without printing .env or secrets.
+            $COMPOSE exec -T queue php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $connection = config("queue.default");
+              $engine = $app->make(\App\Modules\Rewards\Application\Services\RewardEngine::class);
+              $listeners = [
+                  new \App\Modules\Rewards\Infrastructure\Listeners\ProcessUserAccountConfirmedRewards($engine),
+                  new \App\Modules\Rewards\Infrastructure\Listeners\ProcessVenueFirstApprovalReward($engine),
+              ];
+              if (!in_array($connection, ["database", "redis"], true)) {
+                  fwrite(STDERR, "Rewards require an asynchronous queue connection.\n");
+                  exit(1);
+              }
+              foreach ($listeners as $listener) {
+                  if (!($listener instanceof \Illuminate\Contracts\Queue\ShouldQueue)
+                      || $listener->afterCommit !== true) {
+                      fwrite(STDERR, "Reward listener must be queued after transaction commit.\n");
+                      exit(1);
+                  }
+              }
+              echo "Dev rewards queue is asynchronous and listeners are after-commit.\n";
+            '
+            rm -rf -- "$ASSET_STAGE"
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              rm -rf -- "vendor.rollback.$VERIFIED_SHA" "$VENDOR_STAGE"
+            fi
+            rm -f "$MANIFEST_BACKUP" "$AI_ENV_BACKUP"
+            ROLLBACK_ARMED=0
+            echo 'Dev deployment completed with verified frontend assets; production untouched'
+
+  activate_dev_rental_cashback:
+    needs: [test, deploy_dev]
+    # One-time guarded activation on a specially named merge commit; manual dispatch
+    # remains possible only with deploy_dev_now=true. Never before a green dev deploy.
+    if: >-
+      ${{ github.ref == 'refs/heads/dev'
+          && needs.test.result == 'success'
+          && needs.deploy_dev.result == 'success'
+          && (
+            (github.event_name == 'push' && github.event.head_commit.message == 'release(dev): activate rental cashback after PR #707')
+            || (github.event_name == 'workflow_dispatch' && inputs.activate_dev_rental_cashback)
+          ) }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 10
+    steps:
+      - name: Explicit staging-only activation and scanner verification
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = deploy
+            cd /var/www/mskba-dev-next
+            test -f .env
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test "$(git rev-parse HEAD)" = '${{ github.sha }}'
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE exec -T phpfpm php artisan rewards:enable-rental-cashback-dev
+            $COMPOSE exec -T phpfpm php artisan rewards:grant-completed-rentals
+            echo 'Staging cashback activated; production untouched'
+
+  enable_dev_rental_flow:
+    # The exact deployed SHA was previously verified by the dev push CI.
+    # Run this isolated, manual job immediately rather than repeating the
+    # entire test suite merely to change one staging-only environment flag.
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.enable_dev_rental_flow }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 10
+    steps:
+      - name: Enable rental flow on isolated dev only and verify Laravel runtime
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = deploy
+            cd /var/www/mskba-dev-next
+            test -f .dev-bootstrap-complete
+            test -f .env
+            test -f compose.dev.local.yaml
+            test "$(git rev-parse HEAD)" = '${{ github.sha }}'
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -qx 'APP_DEBUG=false' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            backup=".env.rental-flow-rollback.${{ github.run_id }}"
+            test ! -e "$backup"
+            cp -p .env "$backup"
+            restore_if_failed() {
+              status=$?
+              trap - EXIT
+              if [ "$status" -ne 0 ]; then
+                echo 'DEV rental flag activation failed; restoring prior staging environment'
+                cp -p "$backup" .env
+                # cp -p may restore an unreadable deploy:deploy group.
+                # Keep the dev .env readable by PHP-FPM, even after rollback.
+                if [ "$(stat -c '%U:%G:%a' .env)" = 'deploy:deploy:640' ]; then
+                  chgrp www-data .env || $COMPOSE exec -T --user 0:0 phpfpm chgrp www-data .env || true
+                fi
+                $COMPOSE exec -T phpfpm php artisan optimize:clear || true
+                $COMPOSE exec -T phpfpm php artisan config:cache || true
+                $COMPOSE restart phpfpm queue nginx || true
+              else
+                rm -f "$backup"
+              fi
+              exit "$status"
+            }
+            trap restore_if_failed EXIT
+            python3 - <<'PY'
+            import os
+            import re
+            from pathlib import Path
+            target = Path('.env')
+            with target.open('r+', encoding='utf-8') as stream:
+                lines = stream.read().splitlines()
+                # The requester and the responsible venue managers must be
+                # able to access both sides of the rental workflow on DEV.
+                for flag in ('FEATURE_VENUE_RENTAL_FLOW', 'FEATURE_VENUE_RENTAL_PORTAL', 'FEATURE_VENUE_RENTAL_CONVERSATIONS'):
+                    matches = [i for i, line in enumerate(lines) if re.match(r'^' + flag + '=', line)]
+                    if len(matches) > 1:
+                        raise SystemExit('Duplicate ' + flag + ' flags in staging .env')
+                    if matches:
+                        lines[matches[0]] = flag + '=true'
+                    else:
+                        lines.append(flag + '=true')
+                stream.seek(0)
+                stream.write('\n'.join(lines) + '\n')
+                stream.truncate()
+                stream.flush()
+                os.fsync(stream.fileno())
+            PY
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'FEATURE_VENUE_RENTAL_FLOW=true' .env
+            grep -qx 'FEATURE_VENUE_RENTAL_PORTAL=true' .env
+            grep -qx 'FEATURE_VENUE_RENTAL_CONVERSATIONS=true' .env
+            $COMPOSE exec -T phpfpm php artisan config:clear
+            $COMPOSE exec -T phpfpm php artisan config:cache
+            # Queue is long-lived; Nginx can retain a stale PHP-FPM upstream
+            # across service restarts (observed 502 on the first activation).
+            $COMPOSE restart phpfpm queue nginx
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              if (config("app.env") !== "staging" || config("app.url") !== "https://dev.mskba.ru") {
+                  fwrite(STDERR, "Unexpected Laravel environment; abort.\n");
+                  exit(1);
+              }
+              if (config("features.venue_rental.rental_flow") !== true || config("features.venue_rental.portal") !== true || config("features.venue_rental.conversations") !== true) {
+                  fwrite(STDERR, "Venue rental flow flag is not active in Laravel runtime.\n");
+                  exit(1);
+              }
+              echo "DEV rental flow, incoming portal and conversations flags ENABLED; rollout mode: ".config("features.venue_rental_rollout.mode").PHP_EOL;
+            '
+            for attempt in $(seq 1 15); do
+              if curl --fail --silent --show-error --output /dev/null --max-time 8 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/; then
+                echo "DEV HTTP healthy after rental flag update ($attempt)"
+                break
+              fi
+              if [ "$attempt" -eq 15 ]; then
+                echo 'DEV HTTP health failed after rental flag update'
+                exit 1
+              fi
+              sleep 3
+            done
+            echo 'Dev-only venue rental flow enabled and verified; production untouched'
+
+  ssh_smoke_dev:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_dev_ssh && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only SSH test
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 60s
+          script: |
+            set -eu
+            test "$(id -un)" = deploy
+            echo "Authenticated user: $(whoami)"
+            hostname
+            test -d /var/www/mskba-dev-next/.git
+            test -r /var/www/mskba-dev-next/compose.dev.yaml
+            echo 'SSH READ-ONLY TEST PASSED'
+
+  preflight_dev:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.preflight_dev && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only server deployment readiness
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 90s
+          script: |
+            set -eu
+            cd /var/www/mskba-dev-next
+            test "$(id -un)" = deploy
+            test -f .env
+            test -f compose.dev.local.yaml
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_DEBUG=false' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            test -z "$(git status --porcelain --untracked-files=no)"
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml config --quiet
+            docker image inspect mskbanew-phpfpm:latest --format '{{.Id}}' >/dev/null
+            test -f public/build/manifest.json
+            test -w storage && test -w bootstrap/cache
+            curl -fsS -o /dev/null --max-time 10 https://dev.mskba.ru/
+            curl -fsS -o /dev/null --max-time 10 https://mskba.ru/
+            echo 'READ-ONLY DEV PREFLIGHT PASSED'
+
+  diagnose_dev_venue_booking:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev' && inputs.diagnose_dev_venue_booking }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 8
+    steps:
+      - name: Inspect venue 26 rental, responsible recipients and notification readiness
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            test "$(id -un)" = deploy
+            cd /var/www/mskba-dev-next
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            test -f .dev-bootstrap-complete
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            printf 'services_running='
+            $COMPOSE ps --status running --services | tr '\n' ' '
+            printf '\n'
+            $COMPOSE exec -T phpfpm php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $venue = \App\Modules\Venue\Domain\Models\Venue::query()->findOrFail(26);
+              $court = $venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail();
+              $policy = \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+                  ->where("venue_id", $venue->id)->where("active_marker", true)->first();
+              $effective = app(\App\Modules\Venue\Application\Services\EffectiveCourtPolicy::class)
+                  ->resolve($venue, $court, $policy);
+              $permission = \App\Modules\Venue\Domain\Enums\VenuePermissionEnum::VIEW_BOOKING_REQUESTS;
+              $ids = app(\App\Modules\Venue\Application\Services\VenueMembershipAccess::class)
+                  ->allowedUserIdsForCourt($court, $permission);
+              $emailOk = 0;
+              $emailOptIn = 0;
+              foreach (\App\Modules\Identity\Domain\Models\User::query()->whereIn("id", $ids)->get() as $u) {
+                  $u = $u->canonical();
+                  if ($u->identityContactsQuery()->where("type", "email")->whereNotNull("verified_at")->exists()) {
+                      $emailOk++;
+                  }
+                  $pref = \App\Modules\Identity\Domain\Models\UserNotificationSetting::query()
+                      ->where("user_id", $u->id)->first()?->email_notifications
+                      ?? \App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum::ALL;
+                  if ($pref->allows(\App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum::REQUEST)) {
+                      $emailOptIn++;
+                  }
+              }
+              $summary = [
+                  "environment" => config("app.env"),
+                  "rental_flow" => config("features.venue_rental.rental_flow"),
+                  "rental_portal" => config("features.venue_rental.portal"),
+                  "rental_conversations" => config("features.venue_rental.conversations"),
+                  "rollout_mode" => config("features.venue_rental_rollout.mode"),
+                  "venue_id" => $venue->id,
+                  "court_id" => $court->id,
+                  "active_policy" => $policy !== null,
+                  "accepts_rental" => (bool) ($policy?->is_enabled && ($effective["rental_enabled"] ?? false)),
+                  "requires_approval" => $effective["requires_booking_approval"] ?? null,
+                  "responsible_with_view_permission" => count($ids),
+                  "responsible_verified_emails" => $emailOk,
+                  "responsible_email_request_opt_in" => $emailOptIn,
+                  "mail_transport" => config("mail.default"),
+                  "queue_transport" => config("queue.default"),
+                  "recent_booking_requests_count" => \App\Modules\VenueBooking\Domain\Models\VenueBooking::query()
+                      ->where("venue_id", 26)->where("flow", "rental")->where("created_at", ">=", now()->subDays(2))->count(),
+                  "pending_booking_outbox" => \App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage::query()
+                      ->where("status", "pending")->count(),
+              ];
+              echo json_encode($summary, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR).PHP_EOL;
+            '
+            $COMPOSE exec -T phpfpm php artisan venue-booking:diagnose --json
+            curl --fail --silent --show-error --output /dev/null --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/
+            echo 'DEV venue booking QA read-only completed; no booking or email was created'
+
+
+  diagnose_ssh:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnose_ssh && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only SSH daemon and network diagnostics
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 90s
+          script: |
+            set -u
+            echo '=== SSH DAEMON ==='
+            systemctl is-active ssh || true
+            systemctl show ssh -p ActiveState -p SubState -p MainPID --no-pager || true
+            echo '=== CONNECTIONS ==='
+            ss -tan '( sport = :22 )' | awk 'NR==1 || NR<=25 {print}' || true
+            echo '=== TCP STATES COUNT ==='
+            ss -tan '( sport = :22 )' | awk 'NR>1 {count[$1]++} END {for (state in count) print state, count[state]}' || true
+            echo '=== EFFECTIVE SSH LIMITS ==='
+            /usr/sbin/sshd -T 2>/dev/null | grep -Ei '^(maxstartups|maxsessions|persourcemaxstartups|logingracetime|usepam) ' || true
+            echo '=== MEMORY AND LOAD ==='
+            free -h; uptime; df -h /
+            echo '=== SSH LOGS (REDACTED) ==='
+            journalctl -u ssh --since '2 hours ago' --no-pager -n 80 2>/dev/null | sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/[IP]/g; s/(user |for )[^ ]+/(user )REDACTED/g' | tail -60 || true
+            echo 'READ-ONLY SSH DIAGNOSTICS COMPLETE'

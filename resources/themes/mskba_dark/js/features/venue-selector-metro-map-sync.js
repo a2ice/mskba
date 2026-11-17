@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import { venuePlacemark } from '../core/venue-map-pins.js';
 
 const initialized = new WeakSet();
 
@@ -115,14 +116,13 @@ function initMetroAwareMap(container) {
             });
 
             const placemarks = mapped.map((venue) => {
-                const placemark = new window.ymaps.Placemark(
+                const placemark = venuePlacemark(
                     [Number(venue.latitude), Number(venue.longitude)],
                     {
                         hintContent: venue.name,
                         balloonContentHeader: venue.name,
                         balloonContentBody: displayAddress(venue.address),
                     },
-                    { preset: 'islands#orangeSportIcon' },
                 );
 
                 placemark.events.add('click', () => selectVenueThroughCore(venue));

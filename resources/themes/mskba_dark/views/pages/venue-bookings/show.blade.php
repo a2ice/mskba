@@ -1,4 +1,8 @@
-@php $title = 'Заявка на аренду · '.$booking->venue->name; @endphp
+@php
+    $title = 'Заявка на аренду · '.$booking->venue->name;
+    $timezone = $booking->venue->schedule()->value('timezone') ?: 'Europe/Moscow';
+    $money = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
+@endphp
 
 @extends('theme::layouts.app', ['title' => $title])
 
@@ -12,6 +16,10 @@
     ><div class="inner">
         @include('theme::partials.breadcrumbs')
         <h1 class="section-title mb-4">{{ $title }}</h1>
+        @if($booking->pre_request_id)
+            <p>Создано представителем по предзаявке.
+                <a href="{{ route('account.venue-pre-requests.show', $booking->preRequest) }}">Переписка и согласование предложения</a></p>
+        @endif
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
@@ -22,6 +30,10 @@
         <div class="card mb-4 venue-booking-summary"><div class="card-body">
             <div class="venue-booking-summary__header">
                 <div>
+                    @if($special = data_get($booking->quote_snapshot, 'pricing.personal_discount'))
+                        <p><del>{{ number_format($special['original_amount_minor'] / 100, 2, ',', ' ') }}</del>
+                        <strong title="{{ $special['reason'] }}" tabindex="0">{{ number_format($special['final_amount_minor'] / 100, 2, ',', ' ') }} {{ data_get($booking->quote_snapshot, 'pricing.currency') }}</strong></p>
+                    @endif
                     <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
                     @if($statusReason)<p class="venue-booking-status-reason"><strong>Причина:</strong> {{ $statusReason }}</p>@endif
                     <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>
@@ -47,8 +59,8 @@
                     </div>
                 @endif
             </div>
-            @if($booking->hold_expires_at)<p>Удержание до {{ $booking->hold_expires_at->format('d.m.Y H:i') }}</p>@endif
-            @if($booking->effective_protection_until)<p>Текущий срок защиты слота: {{ $booking->effective_protection_until->format('d.m.Y H:i') }}</p>@endif
+            @if($booking->hold_expires_at)<p>Подтвердить бронь до (холд): {{ $booking->hold_expires_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>@endif
+            @if($booking->effective_protection_until)<p>Крайний срок подтверждения брони: {{ $booking->effective_protection_until->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>@endif
             <p class="text-muted">Серверное время: {{ now()->format('d.m.Y H:i:s') }}</p>
             <p class="text-muted">Версия состояния: {{ $booking->optimistic_version }}</p>
 
@@ -81,6 +93,13 @@
             </div>
         </div></div>
 
+        @if($interestLink)
+            <div class="alert alert-info mb-3">
+                Эта заявка связана с предварительным интересом к аренде.
+                Инициатор оформления: <strong>{{ $booking->interest_booking_initiator === 'venue' ? 'представитель площадки (предложение принял организатор)' : 'организатор' }}</strong>.
+                <a href="{{ $interestLink }}" class="fc-link">Открыть общую переписку и историю</a>
+            </div>
+        @endif
         @if($isRequester && config('features.venue_rental.conversations'))
             <button
                 class="venue-booking-message-notice {{ $conversationUnread ? 'is-unread' : '' }}"
@@ -197,10 +216,11 @@
                     @if($extension->decision_reason)<p class="text-muted">Комментарий: {{ $extension->decision_reason }}</p>@endif
                     @if($extension->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingExtensionStatus::PENDING)
                         <div class="venue-management-actions">
-                            @if($canDecideExtensions)
-                                @foreach(['approve' => 'Одобрить', 'reject' => 'Отклонить'] as $decision => $label)
-                                    <form method="POST" action="{{ route('account.venue-bookings.extensions.'.$decision, [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button></form>
-                                @endforeach
+                            @if($canApproveExtensions)
+                                <form method="POST" action="{{ route('account.venue-bookings.extensions.approve', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Одобрить</button></form>
+                            @endif
+                            @if($canRejectExtensions)
+                                <form method="POST" action="{{ route('account.venue-bookings.extensions.reject', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Отклонить</button></form>
                             @endif
                             @if($isRequester)<form method="POST" action="{{ route('account.venue-bookings.extensions.cancel', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Отменить запрос</button></form>@endif
                         </div>
@@ -211,7 +231,149 @@
             @endforelse
         </div></div>
 
-        @if(config('features.venue_rental.external_payment') && $canViewPayment && (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false))
+            @if($usesExternalHold)
+        <section class="card mb-4" aria-labelledby="external-hold-title">
+            <h2 id="external-hold-title">Удержание на стороне площадки</h2>
+            @if($booking->externalHold)
+                <p>{{ $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED ? 'Ранее подтверждённый внешний холд' : 'Подтверждённый внешний холд' }}: {{ $booking->externalHold->method }} · до {{ $booking->externalHold->expires_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки).</p>
+                @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                    <p>Это история удержания; аренда уже подтверждена, срок холда больше не является дедлайном бронирования.</p>
+                @endif
+                @if($booking->externalHold->note)<p>{{ $booking->externalHold->note }}</p>@endif
+            @elseif($canConfirmExternalHold)
+                <p>MSKBA создаст внутренний холд только после реального подтверждения.</p>
+                <form class="mb-3" method="POST" action="{{ route('account.venue-bookings.external-hold.confirm', $booking) }}">
+                    @csrf
+                    <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
+                    <label>Способ подтверждения
+                        <select name="method" required>
+                            <option value="phone">Телефон</option>
+                            <option value="messenger">Мессенджер</option>
+                            <option value="aggregator">Агрегатор</option>
+                            <option value="other">Другой способ</option>
+                        </select>
+                    </label>
+                    <label>Внешний холд действителен до
+                        <input type="datetime-local" name="expires_at" required
+                            value="{{ now()->addMinutes(min((int) data_get($booking->quote_snapshot, 'policy.hold_duration_minutes', 30), 30))->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
+                    </label>
+                    <label>Номер брони (если есть)<input name="reference" maxlength="190"></label>
+                    <label>Кто и как подтвердил удержание<textarea name="note" maxlength="2000" rows="2" required></textarea></label>
+                    <button class="btn btn--primary btn--sm" type="submit">Подтвердить внешний холд</button>
+                </form>
+            @else
+                <p>Ожидается подтверждение реального удержания слота.</p>
+            @endif
+        </section>
+    @endif
+
+    @if($usesInvoices)
+        <section class="card mb-4" aria-labelledby="invoice-chain-title">
+            <h2 id="invoice-chain-title">Счета и расчёты</h2>
+            <p><strong>Срок удержания слота и сроки финансовых расчётов — разные вещи.</strong> Плановая дата внутреннего счёта не продлевает удержание и не разрешает подтверждение брони после его окончания.</p>
+            @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD && $booking->effective_protection_until)
+                <p><strong>Подтвердить бронирование необходимо до {{ $booking->effective_protection_until->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки).</strong> До этого момента все обязательные счета должны быть оплачены или переведены в разрешённую постоплату. После истечения холда бронь подтвердить нельзя.</p>
+            @elseif($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                <p><strong>Бронирование подтверждено.</strong> Срок удержания больше не ограничивает погашение уже согласованной постоплаты; задолженность сохраняется до фактического расчёта.</p>
+            @endif
+            @if($canIssueBuyerInvoice && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD
+                && ! $booking->invoices->contains('kind', 'buyer'))
+                <form class="app-rental-inbox__fields" method="POST" action="{{ route('account.venue-bookings.invoices.issue', $booking) }}">
+                    @csrf
+                    <label>Шаблон счёта
+                        <select name="template_id">
+                            <option value="">Стандартный счёт</option>
+                            @foreach($invoiceTemplates as $template)
+                                <option value="{{ $template->id }}">{{ $template->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <button class="btn btn--primary btn--sm" type="submit">Выставить счёт покупателю</button>
+                </form>
+            @endif
+            @php
+                $invoiceLabels = [
+                    'buyer' => 'Счёт покупателю',
+                    'agent_portal' => 'Агент → MSKBA',
+                    'portal_venue' => 'MSKBA → площадка',
+                ];
+                $invoiceStatuses = [
+                    'issued' => 'Выставлен', 'claimed' => 'Оплата заявлена',
+                    'paid' => 'Оплачен', 'postpay' => 'Постоплата согласована',
+                    'void' => 'Отменён',
+                ];
+                $invoiceAgentId = data_get($booking->quote_snapshot, 'pricing.commissions.agent.user_id');
+            @endphp
+            @forelse($visibleInvoices as $invoice)
+                <article class="app-rental-inbox__summary" style="margin-top:1rem;padding:1rem;border:1px solid var(--color-border, #ddd);border-radius:8px">
+                    <h3>{{ $invoiceLabels[$invoice->kind] ?? 'Счёт' }} · {{ $invoice->number }}</h3>
+                    <p>{{ $invoiceStatuses[$invoice->status] ?? $invoice->status }} ·
+                        <strong>{{ $money->format($invoice->amount_minor, $invoice->currency) }} {{ $money->currencyLabel($invoice->currency) }}</strong>
+                    </p>
+                    @if($invoice->due_at)
+                        <p>{{ $invoice->kind === 'buyer' ? 'Срок оплаты покупателем (в пределах холда)' : 'Плановый срок взаиморасчёта (не продлевает холд)' }}: {{ $invoice->due_at->setTimezone($timezone)->format('d.m.Y H:i') }} (время площадки)</p>
+                    @endif
+                    @if($invoice->status === 'postpay')
+                        <p><strong>Открытая задолженность.</strong> Постоплата согласована, но средства ещё не получены. После подтверждения аренды погасить этот долг можно отдельно.</p>
+                    @elseif($invoice->kind !== 'buyer' && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD)
+                        <p>Для подтверждения аренды этот счёт нужно оплатить либо согласовать разрешённую постоплату до окончания холда, независимо от планового срока расчёта.</p>
+                    @endif
+                    @if($invoice->payment_instructions)<p>{{ $invoice->payment_instructions }}</p>@endif
+                    @if($invoice->settlement_note)<p>Основание: {{ $invoice->settlement_note }}</p>@endif
+                    @if($invoice->status === 'issued' && (($invoice->kind === 'buyer' && $isRequester)
+                        || ($invoice->kind === 'agent_portal' && $invoiceAgentId !== null && (int) $invoiceAgentId === (int) auth()->id())))
+                        <form method="POST" action="{{ route('account.venue-bookings.invoices.claim', [$booking, $invoice]) }}" class="app-rental-inbox__fields">
+                            @csrf
+                            <label>Комментарий об оплате<input name="note" maxlength="2000"></label>
+                            <button class="btn btn--outline-secondary btn--sm" type="submit">Сообщить об оплате</button>
+                        </form>
+                    @endif
+                    @php
+                        $canSettleInvoice = ($invoice->kind === 'buyer' && $canIssueBuyerInvoice)
+                            || ($invoice->kind !== 'buyer' && $canInvoicePortal);
+                        $canAgentAttest = $invoice->kind === 'agent_portal'
+                            && (bool) data_get($booking->quote_snapshot, 'policy.agent_portal_self_attestation_allowed', false)
+                            && $invoiceAgentId !== null && (int) $invoiceAgentId === (int) auth()->id();
+                    @endphp
+                    @if(($canSettleInvoice || $canAgentAttest) && in_array($invoice->status, ['issued', 'claimed', 'postpay'], true))
+                        <form method="POST" action="{{ route('account.venue-bookings.invoices.settle', [$booking, $invoice]) }}" class="app-rental-inbox__fields">
+                            @csrf
+                            <label>Решение по счёту
+                                <select name="decision" required>
+                                    @if($canSettleInvoice)
+                                        <option value="received">{{ $invoice->kind === 'portal_venue' ? 'Подтверждаю получение средств площадкой' : 'Подтверждаю получение оплаты' }}</option>
+                                        @if($invoice->status !== 'postpay')
+                                            <option value="postpay">Согласована постоплата</option>
+                                        @endif
+                                    @endif
+                                    @if($canAgentAttest)
+                                        <option value="self_attested">Доверенное подтверждение агента</option>
+                                    @endif
+                                </select>
+                            </label>
+                            <label>Способ оплаты
+                                <select name="method">
+                                    <option value="bank_transfer">Перевод</option>
+                                    <option value="cash">Наличные</option>
+                                    <option value="other">Другое</option>
+                                </select>
+                            </label>
+                            <label>Основание решения<textarea name="note" maxlength="2000" rows="2" required></textarea></label>
+                            <button class="btn btn--primary btn--sm" type="submit">Сохранить решение</button>
+                        </form>
+                    @endif
+                </article>
+            @empty
+                <p>Счета ещё не выставлены. После подтверждения удержания будет доступно выставление счёта покупателю.</p>
+            @endforelse
+            @if($canIssueBuyerInvoice || $canInvoicePortal)
+                <p><a href="{{ route('account.venues.invoice-templates.index', $booking->venue_id) }}">Настроить шаблоны счетов</a></p>
+            @endif
+        </section>
+    @endif
+
+
+        @if(! $usesInvoices && config('features.venue_rental.external_payment') && $canViewPayment && (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false))
             <div class="card mb-4"><div class="card-body">
                 <h2 class="h4">Внешняя оплата</h2>
                 <p><strong>Статус:</strong> {{ $booking->payment_state->value }}</p>

@@ -1,37 +1,58 @@
 <?php
 
+use App\Http\Controllers\Backoffice\OpenApiDocumentController;
+use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminAcquisitionController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminPageSeoController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminProfileChangeRequestsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
-use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
+use App\Modules\Content\Application\Services\PageBuilderRenderer;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
+use App\Modules\Content\Presentation\Http\PageBuilderController;
+use App\Modules\Content\Presentation\Http\PageBuilderScriptController;
+use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
+use App\Modules\Contract\Presentation\Http\Controllers\BackofficeContractVerificationController;
+use App\Modules\Contract\Presentation\Http\Controllers\ContractEvidenceController;
+use App\Modules\Contract\Presentation\Http\Controllers\ContractTemplateController;
+use App\Modules\Contract\Presentation\Http\Controllers\EntityContractController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardPreferencesController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
+use App\Modules\Event\Presentation\Http\Controllers\AccountMyGamesController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
+use App\Modules\Event\Presentation\Http\Controllers\EventVenueBookingController;
+use App\Modules\Event\Presentation\Http\Controllers\EventVenueInterestConversationController;
+use App\Modules\Event\Presentation\Http\Controllers\VenueEventInterestController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
+use App\Modules\Favorites\Presentation\Http\Controllers\FavoritesController;
 use App\Modules\Finance\Presentation\Http\Controllers\AccountWalletController;
 use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBonusGrantController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSearchController;
+use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
@@ -39,16 +60,40 @@ use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountControlle
 use App\Modules\Identity\Presentation\Http\Controllers\ParticipantCatalogController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerCharacterFaceReferencePreviewController;
+use App\Modules\Identity\Presentation\Http\Controllers\PlayerGenerationLogoController;
+use App\Modules\Identity\Presentation\Http\Controllers\ProfileChangeRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountNotificationSettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
+use App\Modules\Identity\Presentation\Http\Controllers\ConfirmPlayerProfileController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateWalletTransferRequestPrivacyController;
+use App\Modules\League\Presentation\Http\Controllers\LeagueController;
+use App\Modules\League\Presentation\Http\Controllers\LeagueManagementController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
+use App\Modules\Media\Presentation\Http\Controllers\EntityBannerController;
+use App\Modules\Media\Presentation\Http\Controllers\LeagueBannerManagementController;
+use App\Modules\Media\Presentation\Http\SiteMediaController;
+use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationRailController;
+use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
+use App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController;
+use App\Modules\Notification\Presentation\Http\Controllers\NotificationPopoverController;
+use App\Modules\Notification\Presentation\Http\Controllers\OperatorConversationsController;
+use App\Modules\Notification\Presentation\Http\Controllers\ProfileRequestThreadController;
+use App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\PlayIntentController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueGroupOfferController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueInterestGroupController;
+use App\Modules\PlayInterest\Presentation\Http\Controllers\VenueSubscriptionController;
+use App\Modules\Portal\Presentation\Http\Controllers\OperatorActivityHeartbeatController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Pricing\Presentation\Http\Controllers\AdminPricingController;
 use App\Modules\Rewards\Presentation\Http\Controllers\AdminRewardsController;
+use App\Modules\Shop\Presentation\Http\Controllers\ShopController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\AccountSportsSectionController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionCandidateController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionController;
@@ -76,9 +121,13 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchScheduli
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistrationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
+use App\Modules\Uniform\Presentation\Http\Controllers\UniformDesignController;
+use App\Modules\Venue\Presentation\Http\Controllers\BackofficeVenuePhotoOriginalController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueScheduleDayController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueMetroStationController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\BookingContributionController;
@@ -87,19 +136,128 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversat
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueExternalHoldController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalInvoiceController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalInvoiceTemplateController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenuePricingRuleController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueSpecialTermsController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
+use App\Presentation\Theming\DesignThemePreviewController;
+use App\Presentation\Theming\DesignThemeScriptController;
+use App\Presentation\Theming\DesignThemeStylesheetController;
+use App\Presentation\Theming\DesignThemeUiKitController;
+use App\Modules\Identity\Application\Services\HomepagePreference;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateHomepagePreferenceController;
 use App\Presentation\Theming\ThemeResolver;
+use App\Presentation\Theming\UpdateDesignThemePreferenceController;
+use Filament\Http\Middleware\SetUpPanel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 $themeResolver = app(ThemeResolver::class);
 
-Route::get('/', function () use ($themeResolver) {
-    return $themeResolver->page('welcome');
+Route::get('/', function (Request $request) use ($themeResolver) {
+    if ($request->user()) {
+        $destination = app(HomepagePreference::class)->destination($request->user());
+        if ($destination !== null) {
+            // Not a 301: the user's choice can change at any time.
+            return redirect($destination, 302)
+                ->header('Cache-Control', 'private, no-store')
+                ->header('Vary', 'Cookie');
+        }
+    }
+
+    // '/' is now personalized; prevent a proxy from caching the guest
+    // homepage and serving it instead of the redirect to a signed-in user.
+    $response = app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
+        ?? $themeResolver->page('welcome');
+
+    return $response->header('Cache-Control', 'private, no-store')
+        ->header('Vary', 'Cookie');
 })->name('welcome');
 
+// Explicit way to see the original themed/CMS homepage even if '/' redirects.
+// Never allow the Page Builder to replace this application-controlled URL.
+Route::get('/home', function () use ($themeResolver) {
+    $response = app(PageBuilderController::class)->home(app(PageBuilderRenderer::class))
+        ?? $themeResolver->page('welcome');
+
+    return $response
+        ->header('X-Robots-Tag', 'noindex, follow')
+        ->header('Link', '<'.route('welcome').'>; rel="canonical"')
+        ->header('Cache-Control', 'private, no-store');
+})->name('homepage.original');
+
+// Catalog-only storefront. Product route precedes category route.
+Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/shop/p/{product:slug}', [ShopController::class, 'product'])->name('shop.product');
+Route::get('/shop/create', [ShopController::class, 'create'])->name('shop.create');
+Route::get('/shop/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
+
+Route::get('/backoffice/venues/{venue}/photos/{photo}/original', BackofficeVenuePhotoOriginalController::class)
+    ->middleware(['auth', 'throttle:60,1'])
+    ->whereNumber('venue')
+    ->whereNumber('photo')
+    ->name('backoffice.venue-photos.original');
+
+Route::get('/backoffice/page-builder/preview/{page}', [PageBuilderController::class, 'preview'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('page-builder.preview')
+    ->whereNumber('page');
+
+// Isolated JS preview is authenticated and sandboxed by response CSP.
+// The published route accepts only the current enabled content hash.
+Route::get('/backoffice/page-builder/js-preview/{type}/{id}', [PageBuilderScriptController::class, 'preview'])
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('page-builder.js-preview')
+    ->where(['type' => 'page|template|component', 'id' => '[0-9]+']);
+Route::get('/page-builder/scripts/{type}/{id}/{hash}.js', [PageBuilderScriptController::class, 'show'])
+    ->middleware('throttle:120,1')
+    ->name('page-builder.script')
+    ->where(['type' => 'page|template|component', 'id' => '[0-9]+', 'hash' => '[a-f0-9]{64}']);
+
+Route::get('/page-builder/data/{source}', [PageBuilderController::class, 'data'])
+    ->middleware('throttle:60,1')->name('page-builder.data')
+    ->where('source', '[a-z_]+');
+
+// Uniform workshop is a Git-owned reusable editor; Page Builder only supplies a trigger.
+Route::get('/uniforms/workshop', [UniformDesignController::class, 'workshop'])->name('uniforms.workshop');
+Route::get('/uniforms/options', [UniformDesignController::class, 'options'])->middleware('throttle:60,1')->name('uniforms.options');
+Route::middleware('auth')->group(function (): void {
+    Route::get('/account/uniforms', [UniformDesignController::class, 'my'])->name('account.uniforms');
+    Route::get('/uniforms/projects', [UniformDesignController::class, 'index'])->name('uniforms.projects.index');
+    Route::post('/uniforms/projects', [UniformDesignController::class, 'store'])
+        ->middleware('throttle:12,1')->name('uniforms.projects.store');
+    Route::get('/uniforms/teams/{team}', [UniformDesignController::class, 'teamShow'])
+        ->middleware('throttle:60,1')->name('uniforms.teams.show');
+    Route::post('/uniforms/teams/{team}', [UniformDesignController::class, 'teamSave'])
+        ->middleware('throttle:24,1')->name('uniforms.teams.save');
+    Route::get('/uniforms/teams/{team}/logo', [UniformDesignController::class, 'teamLogo'])
+        ->name('uniforms.teams.logo');
+    Route::get('/uniforms/projects/{design}', [UniformDesignController::class, 'show'])->name('uniforms.projects.show');
+    Route::put('/uniforms/projects/{design}', [UniformDesignController::class, 'update'])
+        ->middleware('throttle:24,1')->name('uniforms.projects.update');
+    Route::delete('/uniforms/projects/{design}', [UniformDesignController::class, 'destroy'])
+        ->middleware('throttle:12,1')->name('uniforms.projects.destroy');
+    Route::get('/uniforms/projects/{design}/logo', [UniformDesignController::class, 'logo'])
+        ->name('uniforms.projects.logo');
+});
+
 Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
+
+Route::get('/assets/design-themes/{theme}/{revision}.css', DesignThemeStylesheetController::class)
+    ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('revision', '[a-f0-9]{16}')
+    ->name('design-themes.css');
+Route::get('/assets/design-themes/{theme}/{hash}.js', DesignThemeScriptController::class)
+    ->middleware('throttle:120,1')
+    ->where('theme', '[a-z][a-z0-9_]{2,59}')->where('hash', '[a-f0-9]{64}')
+    ->name('design-themes.script');
+Route::get('/backoffice/design-themes/preview/{theme}', DesignThemePreviewController::class)
+    ->middleware('auth')->name('design-themes.preview');
+Route::get('/backoffice/design-themes/ui-kit/{theme}', DesignThemeUiKitController::class)
+    ->middleware(['auth', 'throttle:60,1'])->name('design-themes.ui-kit');
 
 Route::post('/site-summary/heartbeat', SiteSummaryController::class)
     ->middleware('throttle:30,1')
@@ -202,8 +360,8 @@ Route::prefix('auth')->group(function () {
 
 });
 
-Route::prefix('admin/content')
-    ->middleware('auth', 'can:manage-content')
+Route::prefix('backoffice/content')
+    ->middleware('auth', 'can:manage-content', SetUpPanel::class.':backoffice')
     ->group(function () {
         Route::get('/', [AdminContentController::class, 'index'])
             ->name('admin.content')
@@ -227,7 +385,19 @@ Route::prefix('admin/content')
             ->name('admin.content.edit');
         Route::put('/{contentItem:alias}', [AdminContentController::class, 'update'])
             ->name('admin.content.update');
+        Route::post('/{contentItem:alias}/images', [AdminContentController::class, 'storeInlineImage'])
+            ->name('admin.content.images.store');
+        Route::delete('/{contentItem:alias}/images/{media}', [AdminContentController::class, 'destroyInlineImage'])
+            ->whereNumber('media')
+            ->name('admin.content.images.destroy');
     });
+
+Route::match(['GET', 'POST', 'PUT', 'DELETE'], '/admin/content/{path?}', function (Request $request) {
+    $path = substr($request->getPathInfo(), strlen('/admin/content'));
+    $query = $request->getQueryString();
+
+    return redirect('/backoffice/content'.$path.($query === null ? '' : '?'.$query), 307);
+})->where('path', '.*')->middleware('auth', 'can:manage-content');
 
 Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')
@@ -271,6 +441,12 @@ Route::prefix('admin')
                 ->whereNumber('campaign')
                 ->name('admin.acquisition.flyer.pdf');
         });
+        Route::get('/profile-change-requests', [AdminProfileChangeRequestsController::class, 'index'])
+            ->middleware('can:review-profile-changes')
+            ->name('admin.profile-change-requests')->defaults('breadcrumb', 'Заявки на изменение профиля');
+        Route::post('/profile-change-requests/{profileChangeRequest}/review', [AdminProfileChangeRequestsController::class, 'review'])
+            ->middleware('can:review-profile-changes')
+            ->name('admin.profile-change-requests.review');
         Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
         Route::get('/users/{user}/edit', [AdminUsersController::class, 'edit'])
             ->middleware('can:manage-users-as-superadmin')
@@ -369,6 +545,14 @@ Route::prefix('admin')
                     ->name('admin.rewards.destroy');
             });
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
+        Route::get('/account-dashboard', [AdminAccountDashboardController::class, 'index'])
+            ->name('admin.account-dashboard.index');
+        Route::post('/account-dashboard/widgets', [AdminAccountDashboardController::class, 'store'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.store');
+        Route::put('/account-dashboard/widgets/{widget}', [AdminAccountDashboardController::class, 'update'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.update');
+        Route::delete('/account-dashboard/widgets/{widget}', [AdminAccountDashboardController::class, 'destroy'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.destroy');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
         Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
             ->name('admin.telegram-chats')
@@ -379,6 +563,28 @@ Route::prefix('admin')
             ->name('admin.telegram-chats.update');
     });
 
+Route::prefix('leagues')->group(function () {
+    Route::get('/', [LeagueController::class, 'index'])->name('leagues.index')->defaults('breadcrumb', 'Лиги');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [LeagueManagementController::class, 'createLeague'])->name('leagues.create');
+        Route::post('/', [LeagueManagementController::class, 'storeLeague'])->middleware('throttle:10,1')->name('leagues.store');
+        Route::get('/{league}/edit', [LeagueManagementController::class, 'editLeague'])
+            ->whereNumber('league')->name('leagues.manage');
+        Route::put('/{league}', [LeagueManagementController::class, 'updateLeague'])
+            ->whereNumber('league')->name('leagues.update');
+        Route::get('/{league}/seasons/create', [LeagueManagementController::class, 'createSeason'])
+            ->whereNumber('league')->name('leagues.seasons.create');
+        Route::post('/{league}/seasons', [LeagueManagementController::class, 'storeSeason'])
+            ->whereNumber('league')->middleware('throttle:10,1')->name('leagues.seasons.store');
+        Route::get('/{league}/seasons/{season}/edit', [LeagueManagementController::class, 'editSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.manage');
+        Route::put('/{league}/seasons/{season}', [LeagueManagementController::class, 'updateSeason'])
+            ->whereNumber('league')->whereNumber('season')->name('leagues.seasons.update');
+    });
+    Route::get('/{league}', [LeagueController::class, 'show'])->name('leagues.show');
+    Route::get('/{league}/seasons/{season}', [LeagueController::class, 'season'])->whereNumber('season')->name('leagues.seasons.show');
+});
+
 Route::prefix('venues')->group(function () {
     Route::get('/', [VenueController::class, 'index'])
         ->name('venues')
@@ -386,6 +592,8 @@ Route::prefix('venues')->group(function () {
     Route::get('/search', [VenueController::class, 'search'])
         ->middleware('throttle:60,1')
         ->name('venues.search');
+    Route::get('/{alias}/nearby-map', [VenueController::class, 'nearbyMap'])
+        ->middleware('throttle:30,1')->name('venues.nearby-map');
     Route::get('/proximity-check', [VenueController::class, 'proximityCheck'])
         ->middleware('throttle:30,1')
         ->name('venues.proximity-check');
@@ -411,14 +619,24 @@ Route::prefix('venues')->group(function () {
         Route::post('/{venue}/rental/quote', [VenueRentalQuoteController::class, 'quote'])
             ->whereNumber('venue')
             ->name('venues.rental.quote');
+        Route::get('/{venue}/rental/quote/status', [VenueRentalQuoteController::class, 'status'])
+            ->whereNumber('venue')
+            ->middleware('throttle:60,1')
+            ->name('venues.rental.quote.status');
         Route::get('/{venue}/rental/availability', [VenueBookingProjectionController::class, 'availability'])
             ->middleware('venue-rental-feature:portal')
             ->whereNumber('venue')
             ->name('venues.rental.availability');
     });
+    Route::get('/{venue}/schedule/day', VenueScheduleDayController::class)
+        ->whereNumber('venue')
+        ->middleware('throttle:30,1')
+        ->name('venues.schedule.day');
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
         ->name('venues.preview');
+    Route::get('/{venue}/interest-group', VenueInterestGroupController::class)
+        ->whereNumber('venue')->name('venues.interest-group');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
@@ -429,6 +647,29 @@ Route::prefix('account/venue-ownership-claims')
             ->name('account.venue-ownership-claims.show');
         Route::post('/{venueOwnershipClaim}/cancel', [VenueOwnershipClaimController::class, 'cancel'])
             ->name('account.venue-ownership-claims.cancel');
+    });
+
+Route::middleware(['venue-rental-feature:rental_flow', 'auth'])->group(function (): void {
+    $controller = \App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalPreRequestController::class;
+    Route::post('/venues/{venue}/pre-requests', [$controller, 'store'])->middleware('throttle:20,1')->name('venues.pre-requests.store');
+    Route::get('/account/venue-pre-requests', [$controller, 'index'])->name('account.venue-pre-requests.index');
+    Route::get('/account/venue-pre-requests/{preRequest}', [$controller, 'show'])->name('account.venue-pre-requests.show');
+    Route::post('/account/venue-pre-requests/{preRequest}/offer', [$controller, 'offer'])->middleware('throttle:20,1')->name('account.venue-pre-requests.offer');
+    Route::post('/account/venue-pre-requests/{preRequest}/respond', [$controller, 'respond'])->name('account.venue-pre-requests.respond');
+    Route::post('/account/venue-pre-requests/{preRequest}/withdraw', [$controller, 'withdraw'])->name('account.venue-pre-requests.withdraw');
+    Route::middleware('venue-rental-feature:conversations')->group(function () use ($controller): void {
+        Route::post('/account/venue-pre-requests/{preRequest}/messages', [$controller, 'send'])->middleware('throttle:20,1')->name('account.venue-pre-requests.send');
+        Route::get('/account/venue-pre-requests/{preRequest}/files/{message}', [$controller, 'download'])->name('account.venue-pre-requests.download');
+    });
+});
+
+Route::prefix('account/venues/{venue}/invoice-templates')
+    ->middleware(['venue-rental-feature:invoices', 'auth'])
+    ->group(function (): void {
+        Route::get('/', [VenueRentalInvoiceTemplateController::class, 'index'])->name('account.venues.invoice-templates.index');
+        Route::post('/', [VenueRentalInvoiceTemplateController::class, 'store'])->name('account.venues.invoice-templates.store');
+        Route::put('/{template}', [VenueRentalInvoiceTemplateController::class, 'update'])->name('account.venues.invoice-templates.update');
+        Route::delete('/{template}', [VenueRentalInvoiceTemplateController::class, 'destroy'])->name('account.venues.invoice-templates.destroy');
     });
 
 Route::prefix('account/venue-bookings')
@@ -453,6 +694,15 @@ Route::prefix('account/venue-bookings')
             ->name('account.venue-bookings.show')
             ->defaults('breadcrumb', 'Заявка на аренду');
         Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
+        Route::middleware('venue-rental-feature:external_holds')->group(function (): void {
+            Route::post('/{venueBooking}/external-hold/confirm', [VenueExternalHoldController::class, 'confirm'])
+                ->name('account.venue-bookings.external-hold.confirm');
+        });
+        Route::middleware('venue-rental-feature:invoices')->group(function (): void {
+            Route::post('/{venueBooking}/invoices', [VenueRentalInvoiceController::class, 'issue'])->name('account.venue-bookings.invoices.issue');
+            Route::post('/{venueBooking}/invoices/{invoice}/claim', [VenueRentalInvoiceController::class, 'claim'])->name('account.venue-bookings.invoices.claim');
+            Route::post('/{venueBooking}/invoices/{invoice}/settle', [VenueRentalInvoiceController::class, 'settle'])->name('account.venue-bookings.invoices.settle');
+        });
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
         Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
@@ -476,6 +726,9 @@ Route::prefix('account/venue-bookings')
             Route::get('/{venueBooking}/conversation/messages/{message}/attachment', [VenueBookingConversationController::class, 'download'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.attachment');
             Route::post('/{venueBooking}/conversation/{conversation}/read', [VenueBookingConversationController::class, 'read'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.read');
         });
+        Route::get('/{venueBooking}/event/create', [VenueBookingEventController::class, 'create'])
+            ->middleware('venue-rental-feature:booking_events')
+            ->name('account.venue-bookings.event.create');
         Route::post('/{venueBooking}/event', [VenueBookingEventController::class, 'store'])
             ->middleware('venue-rental-feature:booking_events')
             ->name('account.venue-bookings.event.store');
@@ -548,6 +801,20 @@ Route::prefix('events')->group(function () {
             ->name('events.edit')
             ->defaults('breadcrumb', 'Редактирование мероприятия');
         Route::put('/{event}', [EventController::class, 'update'])->name('events.update');
+        Route::get('/{event}/interests/{interest}', [EventVenueInterestConversationController::class, 'show'])
+            ->whereNumber('interest')->name('events.interests.show');
+        Route::get('/{event}/interests/{interest}/messages', [EventVenueInterestConversationController::class, 'messages'])
+            ->whereNumber('interest')->name('events.interests.messages');
+        Route::post('/{event}/interests/{interest}/messages', [EventVenueInterestConversationController::class, 'send'])
+            ->whereNumber('interest')->middleware('throttle:20,1')->name('events.interests.messages.store');
+        Route::post('/{event}/interests/{interest}/proposals', [EventVenueInterestConversationController::class, 'propose'])
+            ->whereNumber('interest')->middleware('throttle:10,1')->name('events.interests.proposals.store');
+        Route::post('/{event}/interests/{interest}/proposals/{proposal}/decline', [EventVenueInterestConversationController::class, 'decline'])
+            ->whereNumber('interest')->whereNumber('proposal')->name('events.interests.proposals.decline');
+        Route::post('/{event}/booking/quote', [EventVenueBookingController::class, 'quote'])
+            ->middleware('throttle:20,1')->name('events.booking.quote');
+        Route::post('/{event}/booking', [EventVenueBookingController::class, 'store'])
+            ->middleware('throttle:10,1')->name('events.booking.store');
         Route::post('/{event}/participants', [EventController::class, 'join'])
             ->name('events.join');
         Route::delete('/{event}/participants/me', [EventController::class, 'leave'])
@@ -739,12 +1006,56 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::post('/presence/heartbeat',
+            OperatorActivityHeartbeatController::class)
+            ->middleware('throttle:20,1')->name('account.presence.heartbeat');
+
+        Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
+            ->middleware('throttle:30,1')->name('account.dashboard.widgets');
+        Route::patch('/dashboard/widgets/order', [AccountDashboardPreferencesController::class, 'reorder'])
+            ->middleware('throttle:20,1')->name('account.dashboard.widgets.order');
+        Route::get('/settings/dashboard', [AccountDashboardPreferencesController::class, 'index'])
+            ->name('account.settings.dashboard')->defaults('breadcrumb', 'Дашборд');
+        Route::post('/settings/dashboard', [AccountDashboardPreferencesController::class, 'update'])
+            ->middleware('throttle:12,1')->name('account.settings.dashboard.update');
+        Route::get('/profile', AccountProfileController::class)
+            ->name('account.profile')->defaults('breadcrumb', 'Профиль');
+        Route::patch('/profile', UpdateAccountProfileController::class)
+            ->middleware('throttle:20,1')
+            ->name('account.profile.update');
+        Route::get('/my-games', AccountMyGamesController::class)
+            ->name('account.my-games')->defaults('breadcrumb', 'Мои игры');
+        Route::get('/leagues', [LeagueManagementController::class, 'myLeagues'])
+            ->name('account.leagues.index')->defaults('breadcrumb', 'Мои лиги');
+        // Role-driven entry points in MSKBA App. Functional screens are introduced
+        // incrementally; legacy theme keeps its established account routes.
+        foreach ([
+            ['my-trainings', 'account.my-trainings', 'Мои тренировки', 'Твои тренировки и подбор новых занятий.'],
+            ['my-bookings', 'account.my-bookings', 'Бронирования', 'Запросы и бронирования площадок.'],
+            ['venue-schedule', 'account.venue-schedule', 'Расписание', 'Календарь и доступность твоих площадок.'],
+            ['my-events', 'account.my-events', 'Мои мероприятия', 'Мероприятия, в которых ты участвуешь или которые организуешь.'],
+            ['my-tournaments', 'account.my-tournaments', 'Мои турниры', 'Турниры и твоя роль в них.'],
+            ['referee-assignments', 'account.referee-assignments', 'Судейские назначения', 'Матчи, где требуется твоя работа судьи.'],
+            ['statistics', 'account.statistics', 'Статистика', 'Матчи и данные, с которыми ты работаешь.'],
+            ['my-materials', 'account.my-materials', 'Мои материалы', 'Твои публикации, фотографии и видео.'],
+        ] as [$path, $name, $heading, $subtitle]) {
+            Route::get('/'.$path, function () use ($heading, $subtitle) {
+                if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+                    return redirect()->route('account');
+                }
+
+                return ThemeResolver::page('account.role-section', compact('heading', 'subtitle'));
+            })->name($name)->defaults('breadcrumb', $heading);
+        }
         Route::get('/wallet', AccountWalletController::class)
             ->name('account.wallet')
             ->defaults('breadcrumb', 'Кошелёк');
         Route::get('/wallet/transfer-recipients', WalletTransferRecipientSearchController::class)
             ->middleware('throttle:60,1')
             ->name('account.wallet.transfer-recipients');
+        Route::post('/wallet/transfer-requests', WalletTransferRequestController::class)
+            ->middleware('throttle:5,1')
+            ->name('account.wallet.transfer-requests.store');
         Route::post('/wallet/transfers', WalletTransferController::class)
             ->middleware('throttle:20,1')
             ->name('account.wallet.transfers.store');
@@ -764,6 +1075,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:20,1')
             ->whereNumber('avatar')
             ->name('account.avatar.destroy');
+        Route::post('/profile/change-requests', [ProfileChangeRequestController::class, 'store'])
+            ->middleware('throttle:10,1')->name('account.profile-change-requests.store');
+        Route::post('/profile/change-requests/{profileChangeRequest}/cancel', [ProfileChangeRequestController::class, 'cancel'])
+            ->middleware('throttle:10,1')->name('account.profile-change-requests.cancel');
         Route::get('/confirmation', [AccountController::class, 'confirmation'])
             ->name('account.confirmation')
             ->defaults('breadcrumb', 'Подтверждение аккаунта');
@@ -782,10 +1097,18 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->defaults('breadcrumb', 'Роли в проекте');
         Route::patch('/roles', [AccountParticipationRolesController::class, 'update'])
             ->name('account.roles.update');
+        Route::patch('/roles/{role}', [AccountParticipationRolesController::class, 'updateOne'])
+            ->name('account.roles.update-one');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
+        Route::get('/participation/player/logos', [PlayerGenerationLogoController::class, 'index'])->name('account.player-character.logos.index');
+        Route::post('/participation/player/logos', [PlayerGenerationLogoController::class, 'store'])->middleware('throttle:6,1')->name('account.player-character.logos.store');
+        Route::get('/participation/player/logos/{media}/image', [PlayerGenerationLogoController::class, 'show'])->name('account.player-character.logos.show');
+        Route::delete('/participation/player/logos/{media}', [PlayerGenerationLogoController::class, 'destroy'])->middleware('throttle:10,1')->name('account.player-character.logos.destroy');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
             ->name('account.player-profile.update');
+        Route::post('/participation/player/confirmation', ConfirmPlayerProfileController::class)
+            ->middleware('throttle:10,1')->name('account.player.confirm');
         Route::get('/participation/player/face-reference/{slot}', PlayerCharacterFaceReferencePreviewController::class)
             ->where('slot', 'front|left|right')
             ->name('account.player-character.face-reference');
@@ -794,16 +1117,88 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/player/generations/{generation}/image', PlayerCharacterGenerationImageController::class)
             ->name('account.player-character.generations.image');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+        Route::patch('/settings/homepage', UpdateHomepagePreferenceController::class)
+            ->middleware('throttle:12,1')->name('account.settings.homepage.update');
+        Route::patch('/settings/appearance', UpdateDesignThemePreferenceController::class)
+            ->middleware('throttle:12,1')->name('account.settings.appearance.update');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
             ->name('account.settings.password.update');
+        Route::post('/settings/transfer-request-privacy', UpdateWalletTransferRequestPrivacyController::class)
+            ->middleware('throttle:15,1')
+            ->name('account.settings.transfer-request-privacy.update');
+        Route::put('/settings/notifications', UpdateAccountNotificationSettingsController::class)
+            ->middleware('throttle:12,1')
+            ->name('account.settings.notifications.update');
         Route::put('/settings/privacy', UpdateAccountPrivacySettingsController::class)
             ->middleware('throttle:20,1')
             ->name('account.settings.privacy.update');
         Route::get('/settings/privacy/users', SearchPrivacyUsersController::class)
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
-        Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
+        Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
+        Route::get('/notifications/rail', AccountConversationRailController::class)->middleware('throttle:30,1')->name('account.notifications.rail');
+        Route::get('/notifications/direct/test/users', [DirectMessagesController::class, 'testCandidates'])->middleware('throttle:30,1')->name('account.notifications.direct.test.users');
+        Route::get('/notifications/users/{user}/message-access', [DirectMessagesController::class, 'access'])
+            ->middleware('throttle:60,1')->name('account.notifications.direct.access');
+        Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
+            ->middleware('throttle:direct-messages')->name('account.notifications.direct.send');
+        Route::get('/notifications/threads/profile/{changeRequest}', [ProfileRequestThreadController::class, 'show'])->name('account.notifications.threads.profile')->defaults('breadcrumb', 'Изменение данных');
+        Route::get('/notifications/threads/profile/{changeRequest}/history', [ProfileRequestThreadController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.history');
+        Route::patch('/notifications/threads/profile/{changeRequest}/read', [ProfileRequestThreadController::class, 'read'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.read');
+        Route::post('/notifications/threads/profile/{changeRequest}/rescue', [ProfileRequestThreadController::class, 'rescue'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.rescue');
+        Route::post('/notifications/threads/profile/{changeRequest}/claim', [ProfileRequestThreadController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.claim');
+        Route::get('/notifications/threads/profile/{changeRequest}/candidates', [ProfileRequestThreadController::class, 'candidates'])->middleware('throttle:30,1')->name('account.notifications.threads.profile.candidates');
+        Route::post('/notifications/threads/profile/{changeRequest}/invite', [ProfileRequestThreadController::class, 'invite'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.invite');
+        Route::post('/notifications/threads/profile/{changeRequest}/transfer', [ProfileRequestThreadController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.transfer');
+        Route::post('/notifications/threads/profile/{changeRequest}/remove', [ProfileRequestThreadController::class, 'remove'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.remove');
+        Route::post('/notifications/threads/profile/{changeRequest}/messages', [ProfileRequestThreadController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.profile.messages');
+        // Operator-service conversations are distinct from personal DMs.
+        Route::get('/notifications/threads/operator/{conversation}', [OperatorConversationsController::class, 'show'])
+            ->name('account.notifications.threads.operator')->defaults('breadcrumb', 'Диалог с оператором');
+        Route::get('/notifications/threads/operator/{conversation}/history', [OperatorConversationsController::class, 'history'])
+            ->middleware('throttle:60,1')->name('account.notifications.threads.operator.history');
+        Route::get('/notifications/threads/operator/{conversation}/state', [OperatorConversationsController::class, 'state'])
+            ->middleware('throttle:30,1')->name('account.notifications.threads.operator.state');
+        Route::patch('/notifications/threads/operator/{conversation}/read', [OperatorConversationsController::class, 'read'])
+            ->name('account.notifications.threads.operator.read');
+        Route::post('/notifications/threads/operator/{conversation}/messages', [OperatorConversationsController::class, 'send'])
+            ->middleware('throttle:direct-messages')->name('account.notifications.threads.operator.messages');
+        Route::get('/notifications/threads/direct/{conversation}', [DirectMessagesController::class, 'show'])
+            ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
+        Route::post('/notifications/users/{user}/block', [DirectMessagesController::class, 'block'])->middleware('throttle:10,1')->name('account.notifications.direct.block');
+        Route::delete('/notifications/users/{user}/block', [DirectMessagesController::class, 'unblock'])->middleware('throttle:10,1')->name('account.notifications.direct.unblock');
+        Route::get('/notifications/threads/direct/{conversation}/state', [DirectMessagesController::class, 'state'])->name('account.notifications.threads.direct.state');
+        Route::get('/notifications/threads/direct/{conversation}/history', [DirectMessagesController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.direct.history');
+        Route::patch('/notifications/threads/direct/{conversation}/read', [DirectMessagesController::class, 'read'])
+            ->name('account.notifications.threads.direct.read');
+        Route::get('/notifications/threads/team/{joinRequest}', [AccountConversationsController::class, 'team'])
+            ->name('account.notifications.threads.team')->defaults('breadcrumb', 'Переписка по заявке');
+        Route::post('/notifications/threads/team/{joinRequest}/messages', [AccountConversationsController::class, 'sendTeam'])
+            ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
+        Route::patch('/notifications/threads/team/{joinRequest}/read', [AccountConversationsController::class, 'readTeam'])
+            ->name('account.notifications.threads.team.read');
+        Route::get('/notifications/support/start', [SupportTicketsController::class, 'start'])->name('account.notifications.support.start');
+        Route::post('/notifications/support', [SupportTicketsController::class, 'store'])->middleware('throttle:5,1')->name('account.notifications.support.store');
+        Route::get('/notifications/threads/support/{ticket}', [SupportTicketsController::class, 'show'])->name('account.notifications.threads.support')->defaults('breadcrumb', 'Техподдержка');
+        Route::get('/notifications/threads/support/{ticket}/history', [SupportTicketsController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.support.history');
+        Route::get('/notifications/threads/support/{ticket}/state', [SupportTicketsController::class, 'state'])->middleware('throttle:30,1')->name('account.notifications.threads.support.state');
+        Route::patch('/notifications/threads/support/{ticket}/read', [SupportTicketsController::class, 'read'])->name('account.notifications.threads.support.read');
+        Route::post('/notifications/threads/support/{ticket}/messages', [SupportTicketsController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.support.messages');
+        Route::post('/notifications/threads/support/{ticket}/claim', [SupportTicketsController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.support.claim');
+        Route::post('/notifications/threads/support/{ticket}/transfer', [SupportTicketsController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.support.transfer');
+        Route::post('/notifications/threads/support/{ticket}/close', [SupportTicketsController::class, 'close'])->middleware('throttle:10,1')->name('account.notifications.threads.support.close');
+        Route::post('/notifications/threads/support/{ticket}/reopen', [SupportTicketsController::class, 'reopen'])->middleware('throttle:10,1')->name('account.notifications.threads.support.reopen');
+        Route::get('/notifications/threads/system/history', [AccountConversationsController::class, 'historySystem'])->middleware('throttle:60,1')->name('account.notifications.threads.system.history');
+        Route::patch('/notifications/threads/system/read', [AccountConversationsController::class, 'readSystem'])
+            ->name('account.notifications.threads.system.read');
+        Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])
+            ->name('account.notifications.threads.system')->defaults('breadcrumb', 'Система MSKBA');
+        Route::get('/notifications/popover/notice/{id}', [NotificationPopoverController::class, 'notice'])
+            ->whereNumber('id')->middleware('throttle:20,1')->name('account.notifications.popover.notice');
+        Route::get('/notifications/popover/{kind}/{id}', NotificationPopoverController::class)
+            ->where('kind', 'support|direct|operator')->whereNumber('id')
+            ->middleware('throttle:30,1')->name('account.notifications.popover');
         Route::get('/notifications/new', [AccountController::class, 'newNotifications'])
             ->name('account.notifications.new');
         Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])
@@ -812,6 +1207,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.read');
         Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
         Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
+        Route::post('/contacts/provider-emulation', EmulateSocialContactController::class)
+            ->middleware('throttle:12,1')->name('account.contacts.provider-emulation');
         Route::patch('/contacts/{contact}/primary', [AccountController::class, 'setPrimaryContact'])
             ->name('account.contacts.primary');
         Route::delete('/contacts/{contact}', [AccountController::class, 'destroyContact'])
@@ -822,8 +1219,35 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmContactVerification'])
             ->middleware('throttle:20,1')
             ->name('account.contacts.verification.confirm');
-        Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
-        Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
+        Route::post('/backoffice-contracts/{contract}/verification', [BackofficeContractVerificationController::class, 'review'])
+            ->whereNumber('contract')->middleware('throttle:10,1')->name('backoffice.contracts.verification.review');
+        Route::get('/contracts', [AccountContractsWorkspaceController::class, 'index'])
+            ->name('account.contracts')->defaults('breadcrumb', 'Мои контракты');
+        // Must precede /contracts/{number}; this is the canonical venue collection.
+        Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
+            ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::post('/contracts/{contract}/evidence', [ContractEvidenceController::class, 'store'])
+            ->whereNumber('contract')->middleware('throttle:10,1')->name('account.contract-evidence.store');
+        Route::get('/contracts/{contract}/evidence/{document}', [ContractEvidenceController::class, 'download'])
+            ->whereNumber('contract')->whereNumber('document')->name('account.contract-evidence.download');
+        Route::get('/contracts/memberships/{membership}/manage', [EntityContractController::class, 'show'])
+            ->whereNumber('membership')->name('account.contracts.manage');
+        Route::post('/contracts/memberships/{membership}/templates', [ContractTemplateController::class, 'store'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contract-templates.store');
+        Route::put('/contracts/memberships/{membership}/templates/{template}', [ContractTemplateController::class, 'update'])
+            ->whereNumber('membership')->whereNumber('template')->middleware('throttle:10,1')->name('account.contract-templates.update');
+        Route::delete('/contracts/memberships/{membership}/templates/{template}', [ContractTemplateController::class, 'destroy'])
+            ->whereNumber('membership')->whereNumber('template')->name('account.contract-templates.destroy');
+        Route::post('/contracts/memberships/{membership}/invite', [EntityContractController::class, 'invite'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.invite');
+        Route::post('/contracts/memberships/{membership}/transfer', [EntityContractController::class, 'transfer'])
+            ->whereNumber('membership')->middleware('throttle:5,1')->name('account.contracts.transfer');
+        Route::post('/contracts/memberships/{membership}/respond', [EntityContractController::class, 'respond'])
+            ->whereNumber('membership')->middleware('throttle:10,1')->name('account.contracts.respond');
+        Route::delete('/contracts/memberships/{membership}/delegates/{target}', [EntityContractController::class, 'revoke'])
+            ->whereNumber('membership')->whereNumber('target')->name('account.contracts.revoke');
+        Route::get('/contracts/{number}', [AccountController::class, 'contract'])
+            ->name('account.contracts.show');
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
         Route::prefix('sections')->group(function () {
             Route::get('/', [AccountSportsSectionController::class, 'index'])->name('account.sports-sections.index')->defaults('breadcrumb', 'Мои секции');
@@ -857,9 +1281,21 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::post('/{sportsSection}/sessions/{session}/coaches', [TrainingSessionController::class, 'addCoach'])->whereNumber('session')->name('account.sports-sections.sessions.coaches.store');
             Route::delete('/{sportsSection}/sessions/{session}/coaches/{coach}', [TrainingSessionController::class, 'removeCoach'])->whereNumber('session')->whereNumber('coach')->name('account.sports-sections.sessions.coaches.destroy');
         });
-        Route::get('/venues', [AccountController::class, 'venues'])
+        Route::get('/venues/{venue}/group-offers', [VenueGroupOfferController::class, 'index'])
+            ->whereNumber('venue')->name('account.venues.group-offers.index');
+        Route::post('/venues/{venue}/group-offers', [VenueGroupOfferController::class, 'store'])
+            ->middleware('throttle:10,1')->whereNumber('venue')
+            ->name('account.venues.group-offers.store');
+        Route::post('/venues/{venue}/group-offers/{offer}/{action}', [VenueGroupOfferController::class, 'transition'])
+            ->middleware('throttle:20,1')->whereNumber('venue')->whereNumber('offer')
+            ->where('action', 'publish|pause|revoke')->name('account.venues.group-offers.transition');
+        // Backwards-compatible alias for saved links; only /contracts/venues is canonical.
+        Route::get('/venues', fn () => redirect()->route('account.contracts.venues', request()->query(), 302))
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/venues/{venue}/event-interests', [VenueEventInterestController::class, 'index'])
+            ->whereNumber('venue')->middleware('auth')->name('account.venues.interests.index');
+
         Route::prefix('venues/{venue}/commercial-memberships')
             ->middleware('venue-rental-feature:rental_flow')
             ->whereNumber('venue')
@@ -877,12 +1313,44 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             Route::put('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'update'])
                 ->whereNumber('venue')
                 ->name('account.venues.booking-policy.update');
+            Route::post('/venues/{venue}/calendar-prices', [VenueBookingPolicyController::class, 'storeCalendarPrice'])
+                ->whereNumber('venue')
+                ->name('account.venues.calendar-prices.store');
+            Route::delete('/venues/{venue}/calendar-prices/{price}', [VenueBookingPolicyController::class, 'destroyCalendarPrice'])
+                ->whereNumber('venue')->whereNumber('price')
+                ->name('account.venues.calendar-prices.destroy');
+            Route::get('/venues/{venue}/special-terms', [VenueSpecialTermsController::class, 'index'])
+                ->whereNumber('venue')->name('account.venues.special-terms.index');
+            Route::post('/venues/{venue}/special-terms', [VenueSpecialTermsController::class, 'store'])
+                ->whereNumber('venue')->name('account.venues.special-terms.store');
+            Route::post('/venues/{venue}/special-terms/preview', [VenueSpecialTermsController::class, 'preview'])
+                ->whereNumber('venue')->name('account.venues.special-terms.preview');
+            Route::post('/venues/{venue}/special-terms/{offer}/{action}', [VenueSpecialTermsController::class, 'transition'])
+                ->whereNumber('venue')->whereNumber('offer')->whereIn('action', ['publish', 'pause', 'revoke'])
+                ->name('account.venues.special-terms.transition');
+            Route::get('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'index'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.index');
+            Route::post('/venues/{venue}/pricing-rules', [VenuePricingRuleController::class, 'save'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.save');
+            Route::post('/venues/{venue}/pricing-rules/preview', [VenuePricingRuleController::class, 'preview'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.preview');
+            Route::post('/venues/{venue}/pricing-rules/exclude', [VenuePricingRuleController::class, 'exclude'])
+                ->whereNumber('venue')->name('account.venues.pricing-rules.exclude');
+            Route::post('/venues/{venue}/pricing-rules/{rule}/publish', [VenuePricingRuleController::class, 'publish'])
+                ->whereNumber('venue')->whereNumber('rule')->name('account.venues.pricing-rules.publish');
+            Route::delete('/venues/{venue}/pricing-rules/{rule}', [VenuePricingRuleController::class, 'destroy'])
+                ->whereNumber('venue')->whereNumber('rule')->name('account.venues.pricing-rules.destroy');
         });
-        Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
+        // Old account venue overview is no longer a separate workspace.
+        // Keep its named URL for existing bookmarks, but redirect to the canonical contract list.
+        Route::get('/venues/{alias}', fn () => redirect()->route('account.contracts.venues'))
+            ->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::get('/venues/{alias}/conditions', [VenueConditionsController::class, 'edit'])->name('account.venues.conditions.edit')->defaults('breadcrumb', 'Условия');
         Route::put('/venues/{alias}/conditions', [VenueConditionsController::class, 'update'])->name('account.venues.conditions.update');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
+        Route::put('/venues/{alias}/metro', [VenueMetroStationController::class, 'update'])
+            ->name('account.venues.metro.update');
         Route::get('/venues/{alias}/status', [VenueController::class, 'status'])
             ->name('account.venues.status')
             ->defaults('breadcrumb', 'Модерация площадки');
@@ -908,3 +1376,127 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.venues.schedule.update');
     });
 });
+
+// Stable public image identity; the actual blob changes without editing Page Builder links.
+Route::get('/media/site/{uuid}', [SiteMediaController::class, 'show'])
+    ->whereUuid('uuid')->name('site-media.show');
+Route::get('/media/site/{uuid}/lqip', [SiteMediaController::class, 'lqip'])
+    ->whereUuid('uuid')->name('site-media.lqip');
+Route::get('/backoffice/site-media/{uuid}/previous', [SiteMediaController::class, 'previous'])
+    ->middleware('auth:web')->whereUuid('uuid')->name('site-media.previous');
+
+// OpenAPI source is available only to confirmed, permitted Filament developers.
+// Unlike /api/v1/*, this is NOT a public API route.
+Route::get('/backoffice/rest-api/openapi.json',
+    OpenApiDocumentController::class)
+    ->middleware('auth:web')->name('backoffice.rest-api.openapi');
+
+// MSKBA App account page. Existing legacy account routes remain unchanged.
+Route::get('/account/subscriptions', function (ThemeResolver $themes) {
+    abort_unless($themes->active() === 'mskba_app', 404);
+
+    return ThemeResolver::page('account.play-interests', [
+        'breadcrumbs' => [
+            ['label' => 'Аккаунт', 'url' => route('account')],
+            ['label' => 'Мои подписки', 'url' => null],
+        ],
+    ]);
+})->middleware('auth:web')->name('play-intents.mine');
+
+Route::get('/account/play-interests', fn () => redirect()->route('play-intents.mine', [], 301))
+    ->middleware('auth:web')->name('play-intents.mine.legacy');
+
+// Polymorphic favorites: guest cookie plus authenticated account, with reversible trash.
+Route::get('/favorites/status',
+    [FavoritesController::class, 'status'])
+    ->middleware('throttle:60,1')->name('favorites.status');
+Route::get('/favorites/venue-statuses',
+    [FavoritesController::class, 'venueStatuses'])
+    ->middleware('throttle:60,1')->name('favorites.venue-statuses');
+Route::post('/favorites/toggle',
+    [FavoritesController::class, 'toggle'])
+    ->middleware('throttle:30,1')->name('favorites.toggle');
+Route::post('/favorites/preferences',
+    [FavoritesController::class, 'updatePreferences'])
+    ->middleware('throttle:30,1')->name('favorites.preferences');
+Route::get('/account/favorites/items',
+    [FavoritesController::class, 'index'])
+    ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.items');
+Route::get('/account/favorites/count',
+    [FavoritesController::class, 'count'])
+    ->middleware(['auth:web', 'throttle:60,1'])->name('favorites.count');
+
+Route::get('/account/favorites', function (ThemeResolver $themes) {
+    abort_unless($themes->active() === 'mskba_app', 404);
+
+    return ThemeResolver::page('account.favorites', [
+        'breadcrumbs' => [
+            ['label' => 'Аккаунт', 'url' => route('account')],
+            ['label' => 'Избранное', 'url' => null],
+        ],
+    ]);
+})->middleware('auth:web')->name('favorites.mine');
+
+// Task 286: JSON contract consumed by the venue and account UI. No extra public data.
+// Keep this outside legacy theme templates and behind ordinary web CSRF/session auth.
+Route::get('/play-intents/amenities',
+    [PlayIntentController::class, 'amenities'])
+    ->middleware('throttle:60,1')->name('play-intents.amenities');
+
+Route::get('/account/subscription-channels',
+    [VenueSubscriptionController::class, 'availability'])
+    ->middleware(['auth:web', 'throttle:30,1'])->name('subscriptions.channels');
+Route::patch('/account/venue-subscriptions/{venueSubscription}',
+    [VenueSubscriptionController::class, 'update'])
+    ->middleware(['auth:web', 'throttle:30,1'])->whereNumber('venueSubscription')
+    ->name('venue-subscriptions.update');
+
+Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])->group(function (): void {
+    $controller = PlayIntentController::class;
+    Route::get('/', [$controller, 'index'])->name('play-intents.index');
+    Route::post('/', [$controller, 'store'])->name('play-intents.store');
+    Route::put('/{playIntent}', [$controller, 'update'])->whereNumber('playIntent')->name('play-intents.update');
+    Route::patch('/{playIntent}/pause', [$controller, 'pause'])->whereNumber('playIntent')->name('play-intents.pause');
+    Route::patch('/{playIntent}/resume', [$controller, 'resume'])->whereNumber('playIntent')->name('play-intents.resume');
+    Route::patch('/{playIntent}/restore', [$controller, 'restore'])->whereNumber('playIntent')->name('play-intents.restore');
+    Route::delete('/{playIntent}', [$controller, 'destroy'])->whereNumber('playIntent')->name('play-intents.destroy');
+    Route::get('/{playIntent}/recommendations', [$controller, 'recommendations'])
+        ->whereNumber('playIntent')->name('play-intents.recommendations');
+    Route::get('/{playIntent}/slots', [$controller, 'slots'])
+        ->whereNumber('playIntent')->name('play-intents.slots');
+});
+
+/*
+ * Independent entity banners. Context selects the appropriate server-side
+ * permission policy: Filament edit permission or delegated owner/editor access.
+ */
+Route::middleware('auth:web')
+    ->prefix('entity-banners/{context}/{type}/{id}')
+    ->where(['context' => 'account|backoffice', 'type' => 'league|season|tournament|team|venue|user', 'id' => '[0-9]+'])
+    ->group(function (): void {
+        Route::get('/source', [EntityBannerController::class, 'source'])
+            ->name('entity-banners.source');
+        Route::post('/', [EntityBannerController::class, 'update'])
+            ->middleware('throttle:10,1')->name('entity-banners.update');
+        Route::delete('/', [EntityBannerController::class, 'destroy'])
+            ->middleware('throttle:10,1')->name('entity-banners.destroy');
+    });
+
+Route::middleware('auth:web')->group(function (): void {
+    Route::get('/account/leagues/{league}/banner',
+        [LeagueBannerManagementController::class, 'league'])
+        ->whereNumber('league')->name('account.leagues.banner');
+    Route::get('/account/leagues/{league}/seasons/{season}/banner',
+        [LeagueBannerManagementController::class, 'season'])
+        ->whereNumber('league')->whereNumber('season')->name('account.leagues.seasons.banner');
+});
+
+// Only run after ALL explicit routes (including routes in other files).
+// Laravel prioritizes fallback routes after normal matching.
+Route::fallback(function (Request $request, PageBuilderRenderer $renderer) {
+    abort_unless($request->isMethod('GET') || $request->isMethod('HEAD'), 404);
+    $slug = $request->path();
+    abort_unless(preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/D', $slug) === 1, 404);
+
+    return app(PageBuilderController::class)->dynamic($slug, $renderer);
+})->name('page-builder.dynamic');

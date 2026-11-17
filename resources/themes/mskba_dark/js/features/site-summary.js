@@ -73,9 +73,8 @@ const bindSiteTooltip = (target, text, { label = false } = {}) => {
     // Keep the tooltip custom and icon-free instead of relying on a native title.
     target.removeAttribute('title');
 
-    if (!target.matches('button, a, input, select, textarea, [tabindex]')) {
-        target.setAttribute('tabindex', '0');
-    }
+    // Tooltips on static text must not make labels keyboard tab stops.
+    // Actual buttons/links already participate in keyboard navigation.
 
     if (label) {
         target.setAttribute('aria-label', text);

@@ -1,0 +1,2 @@
+.mskba-graphiql-root { height: min(70vh, 900px); min-height: 560px; overflow: hidden; border: 1px solid var(--gray-300, #d1d5db); border-radius: 12px; }
+.mskba-graphiql-root .graphiql-container { height: 100%; }

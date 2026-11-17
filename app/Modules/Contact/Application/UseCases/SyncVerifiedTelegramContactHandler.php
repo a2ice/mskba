@@ -25,7 +25,12 @@ final class SyncVerifiedTelegramContactHandler
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-            $hasActiveContacts = $lockedUser->contacts()->exists();
+            $hasVerifiedPrimaryContact = $lockedUser->identityContactsQuery()
+                ->where('is_primary', true)->whereNotNull('verified_at')->exists();
+            if (! $hasVerifiedPrimaryContact) {
+                $lockedUser->identityContactsQuery()->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
             $contact = $lockedUser->contacts()
                 ->withTrashed()
                 ->where('type', ContactTypeEnum::TELEGRAM->value)
@@ -38,7 +43,7 @@ final class SyncVerifiedTelegramContactHandler
                 $contact = new Contact([
                     'type' => ContactTypeEnum::TELEGRAM,
                     'value' => (string) $telegramUserId,
-                    'is_primary' => ! $hasActiveContacts,
+                    'is_primary' => ! $hasVerifiedPrimaryContact,
                     'is_public' => false,
                 ]);
                 $contact->contactable()->associate($lockedUser);
@@ -49,7 +54,7 @@ final class SyncVerifiedTelegramContactHandler
             $becameVerified = ! $contact->hasBeenVerified();
 
             $contact->forceFill([
-                'is_primary' => $wasDeleted ? ! $hasActiveContacts : $contact->is_primary,
+                'is_primary' => ! $hasVerifiedPrimaryContact || (! $wasDeleted && $contact->is_primary),
                 'is_public' => $wasDeleted ? false : $contact->is_public,
                 'verified_at' => $contact->verified_at ?? now(),
                 'meta' => [

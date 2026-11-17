@@ -52,7 +52,7 @@
             </div>
         </header>
 
-        <div class="modal__body" data-modal-body tabindex="0">
+        <div class="modal__body" data-modal-body>
             {{ $slot }}
         </div>
 

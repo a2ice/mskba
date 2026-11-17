@@ -78,7 +78,7 @@
                 >{{ $avatars->count() }}</button>
             @endif
         </div>
-        <p class="avatar-upload__hint">JPEG, PNG или WebP · до 5 МБ</p>
+        <p class="avatar-upload__hint">JPEG, PNG или WebP · до 10 МБ</p>
     </div>
 
     <h5 class="card-title">{{ $displayName }}</h5>

@@ -39,7 +39,7 @@ class SetUserSystemRoleCommandTest extends TestCase
             'role' => 'unknown',
             'username' => 'role_user',
         ])
-            ->expectsOutput('Unknown system role [unknown]. Available roles: superadmin, admin, user, moderator, editor, system.')
+            ->expectsOutput('Unknown system role [unknown]. Available roles: superadmin, admin, manager, user, moderator, editor, system.')
             ->assertFailed();
     }
 

@@ -29,6 +29,12 @@ services:
 
   gotenberg:
     container_name: mskbanew-gotenberg
+    # The API stays ready while the costly Chromium subprocess is created only
+    # for PDF jobs and released after idle. No Docker socket access from Laravel.
+    command:
+      - gotenberg
+      - --chromium-auto-start=false
+      - --chromium-idle-shutdown-timeout=15s
 
   db:
     container_name: mskbanew-db
