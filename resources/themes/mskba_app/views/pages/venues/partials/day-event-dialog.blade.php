@@ -15,6 +15,9 @@
             <div data-venue-day-event-status-row hidden>
                 <dt>Статус</dt><dd data-venue-day-event-status></dd>
             </div>
+            <div data-venue-day-booking-requester-row hidden>
+                <dt>Заказчик:</dt><dd data-venue-day-booking-requester></dd>
+            </div>
             <div data-venue-day-event-count-row hidden>
                 <dt>Участники</dt><dd data-venue-day-event-count></dd>
             </div>
@@ -28,6 +31,8 @@
                 </dd>
             </div>
         </dl>
+        <a class="button secondary" data-venue-day-booking-request-link
+            target="_blank" rel="noopener noreferrer" hidden>Перейти в заявку</a>
         <p class="app-venue-day-event-dialog__private-note" data-venue-day-event-private-note hidden>
             Подробности доступны только приглашённым участникам.
         </p>
