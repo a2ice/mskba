@@ -68,7 +68,6 @@ if (root) {
             currentError = document.createElement('p');
             currentError.className = 'mskba-onboarding-dialog__error';
             currentError.setAttribute('role', 'alert');
-            currentError.tabIndex = -1;
             body.prepend(currentError);
         }
         currentError.textContent = message;
@@ -194,8 +193,7 @@ if (root) {
             if (!response.ok) {
                 const issues = Object.values(result.errors || {}).flat().filter(Boolean);
                 showError(issues.join(' ') || result.message || 'Не удалось сохранить настройки.');
-                currentError.focus({ preventScroll: true });
-                body.scrollTo({ top: 0 });
+                    body.scrollTo({ top: 0 });
                 return;
             }
             if (result.completed !== true) throw new Error('Not confirmed by server');
