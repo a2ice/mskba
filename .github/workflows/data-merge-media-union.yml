@@ -1,0 +1,36 @@
+name: MSKBA private storage media union
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-media-union.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check media union script
+        run: python3 -m py_compile scripts/data-merge/union-storage.py
+      - name: Stage union script outside webroots
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: scripts/data-merge/union-storage.py
+          target: /home/deploy/mskba-data-merge-tools/${{ github.run_id }}
+      - name: Create lossless protected media union with no source writes
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            python3 /home/deploy/mskba-data-merge-tools/${{ github.run_id }}/scripts/data-merge/union-storage.py ${{ github.run_id }}
