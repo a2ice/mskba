@@ -5,7 +5,7 @@ if (workspace) {
     if (playerChangeDialog && playerChangeTrigger) {
         playerChangeTrigger.addEventListener('click', () => {
             playerChangeDialog.showModal();
-            playerChangeDialog.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+            playerChangeDialog.querySelector('[data-player-change-request-close]')?.focus({ preventScroll: true });
         });
         playerChangeDialog.querySelectorAll('[data-player-change-request-close]').forEach(button => {
             button.addEventListener('click', () => playerChangeDialog.close());
@@ -30,18 +30,18 @@ if (workspace) {
     const personalInfo = workspace.querySelector('[data-player-personal-dialog]');
     const genderTrigger = workspace.querySelector('[data-player-gender-open]');
     if (genderInfo && personalInfo && genderTrigger) {
-        const focusHeading = dialog => {
+        const openProfileDialog = dialog => {
             dialog.showModal();
-            dialog.querySelector('h2[tabindex="-1"]')?.focus({preventScroll:true});
+            dialog.querySelector('[data-player-gender-close], [data-player-personal-close]')?.focus({preventScroll:true});
         };
-        genderTrigger.addEventListener('click', () => focusHeading(genderInfo));
+        genderTrigger.addEventListener('click', () => openProfileDialog(genderInfo));
         genderInfo.querySelectorAll('[data-player-gender-close]').forEach(button =>
             button.addEventListener('click', () => genderInfo.close()));
         personalInfo.querySelectorAll('[data-player-personal-close]').forEach(button =>
             button.addEventListener('click', () => personalInfo.close()));
         genderInfo.querySelector('[data-player-personal-open]')?.addEventListener('click', () => {
             genderInfo.close();
-            focusHeading(personalInfo);
+            openProfileDialog(personalInfo);
         });
         personalInfo.addEventListener('close', () => {
             if (genderTrigger.isConnected) genderTrigger.focus({preventScroll:true});
@@ -94,7 +94,7 @@ if (workspace) {
             rightInput.checked = values.includes(group.dataset.equipmentRight);
             equipmentTitle.textContent = group.dataset.equipmentName + ': выбор стороны';
             equipmentDialog.showModal();
-            equipmentTitle.focus({preventScroll:true});
+            equipmentDialog.querySelector('[data-player-equipment-cancel]')?.focus({preventScroll:true});
         };
 
         workspace.querySelectorAll('[data-player-equipment-group]').forEach(group => {
