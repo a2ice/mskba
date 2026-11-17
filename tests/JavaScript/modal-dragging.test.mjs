@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { constrainModalMove, visualModalViewport, initModalDragging } from
     '../../resources/themes/mskba_app/js/modal-dragging.js';
 
@@ -213,4 +215,35 @@ test('all draggable modal shells display the same noninteractive grab indicator 
     assert.match(light, /app-venue-overlay__header,\.account-venue-price-dialog__head\)::before/);
     assert.match(dark, /modal__header::before/);
     assert.match(dark, /account-venue-price-dialog__head::before/);
+});
+
+
+test('all app-theme headings remain inert: never tabindex or programmatically focus static modal text', () => {
+    const root = fileURLToPath(new URL('../../resources/themes/mskba_app/', import.meta.url));
+    const problems = [];
+    function walk(folder) {
+        for (const entry of readdirSync(folder, { withFileTypes: true })) {
+            const path = join(folder, entry.name);
+            if (entry.isDirectory()) { walk(path); continue; }
+            if (!/\.(?:js|vue|blade\.php)$/.test(entry.name)) continue;
+            const source = readFileSync(path, 'utf8');
+            if (/<h[1-6]\b[^>]*\btabindex\s*=/is.test(source)) {
+                problems.push(path.replace(root, '') + ': focusable informational heading');
+            }
+            if (/(?:heading|Heading|stepTitle|equipmentTitle)\.value\?\.focus\s*\(|(?:heading|Heading|stepTitle|equipmentTitle)\.focus\s*\(/.test(source)) {
+                problems.push(path.replace(root, '') + ': script focusing static title');
+            }
+            if (/querySelector\(['"][^'"]*(?:h[1-6]\[tabindex|#\S*-title)[^'"]*['"]\)\?\.focus\s*\(/.test(source)) {
+                problems.push(path.replace(root, '') + ': scripted heading selector');
+            }
+        }
+    }
+    walk(root);
+    assert.deepEqual(problems, [], problems.join('\n'));
+    const auth = readFileSync(join(root, 'js/components/AuthDialog.vue'), 'utf8');
+    const play = readFileSync(join(root, 'js/components/PlayIntentDialog.vue'), 'utf8');
+    const context = readFileSync(join(root, 'js/context-dialogs.js'), 'utf8');
+    assert.match(auth, /closeButton\.value\?\.focus\(\{ preventScroll: true \}\)/);
+    assert.match(play, /closeButton\.value\?\.focus\(\{preventScroll:true\}\)/);
+    assert.match(context, /data-context-placeholder-close\], \[data-context-help-close/);
 });
