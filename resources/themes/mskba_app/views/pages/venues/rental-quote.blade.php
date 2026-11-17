@@ -172,6 +172,9 @@
     </form>
 </dialog>
 @include('theme::pages.venues.partials.day-event-dialog')
+@auth
+    @include('theme::pages.account.partials.direct-message-dialog')
+@endauth
 @if($quote)
     <dialog class="app-venue-overlay app-rental-pricing__conflict-dialog" data-rental-conflict-dialog
         aria-labelledby="rental-conflict-heading">
