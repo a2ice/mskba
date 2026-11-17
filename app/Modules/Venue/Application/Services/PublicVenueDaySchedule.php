@@ -383,6 +383,7 @@ final readonly class PublicVenueDaySchedule
             // must only be returned to a currently authorized participant.
             $bookingUrl = null;
             $requesterLogin = null;
+            $requesterIsViewer = false;
             if ($booking !== null && $booking->status === VenueBookingStatusEnum::CONFIRMED
                 && $viewer !== null && $viewerActor !== null) {
                 $isRequester = in_array((int) $booking->requester_user_id, $viewerIdentityIds, true);
@@ -396,6 +397,7 @@ final readonly class PublicVenueDaySchedule
                         $this->bookingAuthorization->assertCanView($viewerActor, $booking, $venue);
                         $bookingUrl = route('account.venue-bookings.show', $booking);
                         $requesterLogin = $booking->requester?->canonical()->username;
+                        $requesterIsViewer = $isRequester;
                     } catch (VenueBookingTransitionException) {
                         // Booking details stay private, even in a public timetable.
                     }
@@ -412,7 +414,7 @@ final readonly class PublicVenueDaySchedule
                         : null,
                     'request_url' => $bookingUrl,
                     'requester_login' => $requesterLogin,
-                    'requester_is_viewer' => $bookingUrl !== null && $isRequester,
+                    'requester_is_viewer' => $requesterIsViewer,
                 ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
