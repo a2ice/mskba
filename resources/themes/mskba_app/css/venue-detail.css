@@ -465,6 +465,10 @@
 .app-venue-day-dialog__nav[data-venue-day-nav="1"]{right:10px}
 .app-venue-day-dialog__grid{padding-left:54px;padding-right:54px}
 .app-venue-day-dialog__slot.is-booking-group{min-height:56px}
+.app-venue-day-dialog__slot.has-attached-event{cursor:pointer}
+.app-venue-day-dialog__slot.has-attached-event:hover{
+    background:color-mix(in srgb,var(--slot-booked-color,#d54747) 11%,var(--surface,#fff));
+}
 .app-venue-day-dialog__slot.is-public-event{
     cursor:pointer;border-color:var(--slot-booked-color,#d54747);
 }
@@ -485,6 +489,23 @@ dialog.app-venue-day-event-dialog:not([open]){display:none!important}
 dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
 .app-venue-day-event-dialog__body{display:grid;gap:16px;padding:0 22px 22px}
 .app-venue-day-event-dialog__time{margin:0;color:var(--muted);font-weight:700}
+.app-venue-day-event-dialog__access{
+    font-size:13px;font-weight:650;color:var(--muted);
+}
+.app-venue-day-event-dialog__private-note{
+    font-size:13px;color:var(--muted);line-height:1.5;
+}
+.app-venue-day-event-dialog__participation{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.app-venue-day-event-dialog__participation>[role="status"]{
+    flex:1 1 100%;margin:0;font-size:13px;color:var(--muted);
+}
+.app-venue-day-event-dialog__participation>form{
+    width:auto;display:block;flex:0 0 auto;margin:0;
+}
+.app-venue-day-event-dialog__participation>form>.button{margin:0}
+
 .app-venue-day-event-dialog__body>p{margin:0;line-height:1.5;overflow-wrap:anywhere}
 .app-venue-day-event-dialog__body dl{display:grid;gap:10px;margin:0}
 .app-venue-day-event-dialog__body dl>div{
