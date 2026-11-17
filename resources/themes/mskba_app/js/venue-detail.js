@@ -503,8 +503,12 @@ if (dayBookingDialog) {
                         reconfirm: 'Условия изменились. Требуется повторное подтверждение участия.',
                         open: 'Набор участников открыт.',
                     };
-                    info('[data-venue-day-event-join-state]').textContent =
-                        participation ? (messages[joinState] || messages.unavailable) : '';
+                    const guestCannotRespondTentative = joinState === 'full'
+                        && !info('[data-venue-day-event-tentative-form]');
+                    info('[data-venue-day-event-join-state]').textContent = participation
+                        ? (guestCannotRespondTentative
+                            ? 'Все места заняты. После входа можно ответить «Думаю», но это не резервирует место.'
+                            : (messages[joinState] || messages.unavailable)) : '';
 
                     const joinForm = info('[data-venue-day-event-join-form]');
                     const tentativeForm = info('[data-venue-day-event-tentative-form]');
