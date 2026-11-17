@@ -80,7 +80,7 @@ function bindProfileDialog(triggerSelector, panelSelector, closeSelector) {
 
     trigger.addEventListener('click', () => {
         dialog.showModal();
-        dialog.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+        dialog.querySelector(closeSelector)?.focus({ preventScroll: true });
     });
     dialog.querySelectorAll(closeSelector).forEach(button => {
         button.addEventListener('click', () => dialog.close());
