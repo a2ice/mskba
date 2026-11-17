@@ -185,12 +185,12 @@ test('schedule dialog remains fixed to viewport center on iOS Safari', () => {
     const shared = readFileSync(
         new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
     );
-    assert.match(shared, /dialog\\{/);
+    assert.match(shared, /dialog\{/);
     // Override the global 50% + transform centering with fixed insets and
     // auto margins, so scrolling the page or changing Safari chrome does not
     // send the schedule (including its booking footer) offscreen.
-    assert.match(css, /dialog\\.app-venue-day-dialog\\s*\\{[^}]*position:fixed;[^}]*inset:0;[^}]*margin:auto;[^}]*transform:none;[^}]*height:min\\(86dvh,860px\\)/s);
-    assert.match(css, /dialog\\.app-venue-day-dialog\\{[^}]*height:91dvh;max-height:91dvh/s);
+    assert.match(css, /dialog\.app-venue-day-dialog\s*\{[^}]*position:fixed;[^}]*inset:0;[^}]*margin:auto;[^}]*transform:none;[^}]*height:min\(86dvh,860px\)/s);
+    assert.match(css, /dialog\.app-venue-day-dialog\{[^}]*height:91dvh;max-height:91dvh/s);
 });
 
 test('event details stay hidden outside an explicitly opened event modal', () => {
