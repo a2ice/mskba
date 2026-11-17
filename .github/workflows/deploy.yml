@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout release for 51-URL post-deploy check
+        uses: actions/checkout@v4
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
