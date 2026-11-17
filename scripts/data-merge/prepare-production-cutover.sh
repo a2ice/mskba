@@ -97,7 +97,18 @@ created=0
 with tarfile.open(source,'r:gz') as arc:
  for entry,destination in entries:
   if destination.exists():continue
+  newly_created=[]
+  parent=destination.parent
+  while not parent.exists():
+    newly_created.append(parent)
+    parent=parent.parent
   destination.parent.mkdir(parents=True,exist_ok=True)
+  # The cutover uses umask 077 for PRIVATE backups. New directories in
+  # the PUBLIC image disk must instead be traversable by the Nginx UID.
+  # Do not chmod any existing directory or storage/app/private.
+  if destination.relative_to(root).parts[:3]==('storage','app','public'):
+    for public_parent in newly_created:
+      os.chmod(public_parent,0o755)
   with tempfile.NamedTemporaryFile(dir=destination.parent,delete=False) as tmp:
    path=tmp.name
    stream=arc.extractfile(entry)
