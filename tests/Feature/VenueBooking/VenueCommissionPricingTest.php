@@ -306,7 +306,8 @@ final class VenueCommissionPricingTest extends TestCase
         $first = collect($slots)->firstWhere('starts_at', '12:00');
         $second = collect($slots)->firstWhere('starts_at', '12:30');
         $this->assertSame('booked', $first['status']);
-        $this->assertSame($booking->public_id, $first['booking_group']['key']);
+        $this->assertNotEmpty($first['booking_group']['key']);
+        $this->assertNotSame($booking->public_id, $first['booking_group']['key']);
         $this->assertSame($first['booking_group']['key'], $second['booking_group']['key']);
         $this->assertTrue($first['booking_group']['has_event']);
         $this->assertNull($first['booking_group']['event']);
