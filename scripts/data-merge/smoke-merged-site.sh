@@ -96,7 +96,7 @@ docker run --rm -d --network "$NET" --network-alias preview-app --name "$APP" \
 
 # Fail early on a wrong Laravel DB host or unavailable candidate connection.
 # The direct PDO rights importer already proved that the Docker network works.
-if ! docker exec "$APP" php -r '
+if docker exec "$APP" php -r '
 require "/var/www/html/vendor/autoload.php";
 $app = require "/var/www/html/bootstrap/app.php";
 $app->make("Illuminate\\Contracts\\Console\\Kernel")->bootstrap();
@@ -106,6 +106,8 @@ if (config("database.default") !== "pgsql" ||
 try { $app->make("db")->select("SELECT 1"); }
 catch (Throwable $e) { exit(3); }
 ' >/dev/null 2>&1; then
+ :
+else
  result=$?
  echo "SMOKE_BLOCKED isolated Laravel DB preflight exit_code=$result"
  exit 5
