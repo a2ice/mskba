@@ -31,6 +31,10 @@
         <p class="app-venue-day-event-dialog__private-note" data-venue-day-event-private-note hidden>
             Подробности доступны только приглашённым участникам.
         </p>
+        <div class="app-venue-day-event-dialog__booking-access" data-venue-day-booking-access hidden>
+            <p data-venue-day-booking-customer-row hidden>Заказчик: <strong data-venue-day-booking-customer></strong></p>
+            <a class="button secondary" data-venue-day-booking-page target="_blank" rel="noopener noreferrer">Перейти в заявку</a>
+        </div>
         <div class="app-venue-day-event-dialog__booking-actions" data-venue-day-booking-actions hidden>
             <p data-venue-day-booking-action-status role="status"></p>
             <a class="button primary" data-venue-day-booking-create-event hidden>Создать мероприятие</a>
