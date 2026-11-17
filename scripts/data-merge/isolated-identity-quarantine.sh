@@ -33,7 +33,7 @@ docker exec -i "$DB" pg_restore -U postgres -d candidate --no-owner --no-acl --e
 docker exec "$DB" createdb -U postgres dev_snapshot
 docker exec -i "$DB" pg_restore -U postgres -d dev_snapshot --no-owner --no-acl --exit-on-error < "$DEV" > "$DEST/dev-restore.log" 2>&1 || { echo 'QUARANTINE_BLOCKED dev restore';exit 5; }
 sql() { docker exec "$DB" psql -XAt -v ON_ERROR_STOP=1 -U postgres -d candidate -c "$1"; }
-prod_hash="$(sql "SELECT md5(string_agg(id::text || ':' || coalesce(password,''), ',' ORDER BY id)) FROM users WHERE id IN (SELECT id FROM users WHERE id <= 46)")"
+before_hash="$(sql "SELECT md5(string_agg(id::text || ':' || coalesce(password,''), ',' ORDER BY id)) FROM users")"
 before_users="$(sql 'SELECT count(*) FROM users')"
 run_import(){
  docker run --rm --network "$NET" -v "$SCRIPT:/tmp/quarantine.php:ro" \
@@ -47,7 +47,7 @@ after_users="$(sql 'SELECT count(*) FROM users')"
 [[ "$after_users" -eq "$((before_users + 1))" ]] || { echo 'QUARANTINE_BLOCKED account count mismatch';exit 8; }
 [[ "$(sql "SELECT count(*) FROM data_merge_actor_map WHERE target_actor_id IS NULL")" -eq 0 ]] || { echo 'QUARANTINE_BLOCKED incomplete actor maps';exit 9; }
 [[ "$(sql "SELECT count(*) FROM data_merge_user_map WHERE target_user_id IS NULL")" -eq 0 ]] || { echo 'QUARANTINE_BLOCKED incomplete user maps';exit 10; }
-[[ "$prod_hash" == "$(sql "SELECT md5(string_agg(id::text || ':' || coalesce(password,''), ',' ORDER BY id)) FROM users WHERE id IN (SELECT id FROM users WHERE id <= 46)")" ]] || { echo 'QUARANTINE_BLOCKED prod credentials changed';exit 11; }
+[[ "$before_hash" == "$(sql "SELECT md5(string_agg(id::text || ':' || coalesce(password,''), ',' ORDER BY id)) FROM users WHERE id NOT IN (SELECT target_user_id FROM data_merge_user_map WHERE resolution='quarantined')")" ]] || { echo 'QUARANTINE_BLOCKED existing credentials changed';exit 11; }
 docker exec "$DB" pg_dump -U postgres -d candidate --format=custom --no-owner --no-acl > "$DEST/quarantined-candidate.pgdump.part"
 test -s "$DEST/quarantined-candidate.pgdump.part"
 mv "$DEST/quarantined-candidate.pgdump.part" "$DEST/quarantined-candidate.pgdump"
