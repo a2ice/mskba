@@ -60,10 +60,10 @@ final readonly class VenueBookingAuthorization
 
     public function assertCanView(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
-        if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
-            return;
-        }
         if ($booking->pre_request_id !== null) {
+            if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
+                return;
+            }
             app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest);
             return;
         }
@@ -72,19 +72,23 @@ final readonly class VenueBookingAuthorization
         }
 
         $user = $actor->user;
-        if ($user === null || (! $this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
-            && ! $this->backoffice->canView($user))) {
-            throw new VenueBookingTransitionException('Недостаточно прав для просмотра заявки.', 'BOOKING_FORBIDDEN');
+        if ($user !== null && (
+            $this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
+            || $this->backoffice->canView($user)
+            || $this->isConfirmingRepresentative($actor, $booking, $venue)
+        )) {
+            return;
         }
+        throw new VenueBookingTransitionException('Недостаточно прав для просмотра заявки.', 'BOOKING_FORBIDDEN');
     }
 
     /** Read-only support may inspect conversations, but cannot post as a participant. */
     public function assertCanWriteConversation(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
-        if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
-            return;
-        }
         if ($booking->pre_request_id !== null) {
+            if ($this->isConfirmingRepresentative($actor, $booking, $venue)) {
+                return;
+            }
             app(VenueRentalPreRequests::class)->assertCan($actor, $booking->preRequest, 'write');
             return;
         }
@@ -92,8 +96,11 @@ final readonly class VenueBookingAuthorization
             return;
         }
         $user = $actor->user;
-        if ($user !== null && ($this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
-            || $this->backoffice->canManage($user))) {
+        if ($user !== null && (
+            $this->allowsBooking($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS, $booking)
+            || $this->backoffice->canManage($user)
+            || $this->isConfirmingRepresentative($actor, $booking, $venue)
+        )) {
             return;
         }
         throw new VenueBookingTransitionException('Недостаточно прав для переписки по заявке.', 'BOOKING_FORBIDDEN');
