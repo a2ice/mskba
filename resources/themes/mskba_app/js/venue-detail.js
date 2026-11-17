@@ -501,12 +501,25 @@ if (dayBookingDialog) {
                     // actions below; do not repeat that no event is attached.
                     note.hidden = !hasEvent || isPublic;
                     note.textContent = 'Подробности доступны только приглашённым участникам.';
+                    // The server returns this URL only for the customer,
+                    // superadmin, or the representative who confirmed the booking.
+                    const bookingPageUrl = slot.booking_group?.booking_page_url || null;
+                    const bookingAccess = info('[data-venue-day-booking-access]');
+                    bookingAccess.hidden = !bookingPageUrl;
+                    const bookingPage = info('[data-venue-day-booking-page]');
+                    if (bookingPageUrl) bookingPage.href = bookingPageUrl;
+                    else bookingPage.removeAttribute('href');
+                    const customerLogin = bookingPageUrl
+                        ? (slot.booking_group?.requester_username || '') : '';
+                    info('[data-venue-day-booking-customer-row]').hidden = !customerLogin;
+                    info('[data-venue-day-booking-customer]').textContent = customerLogin;
+
                     const bookingActions = info('[data-venue-day-booking-actions]');
                     const bookingStatus = info('[data-venue-day-booking-action-status]');
                     const createEvent = info('[data-venue-day-booking-create-event]');
                     const loginButton = info('[data-venue-day-booking-login]');
-                    bookingActions.hidden = hasEvent;
                     const createUrl = !hasEvent ? slot.booking_group?.create_event_url : null;
+                    bookingActions.hidden = hasEvent || (!!bookingPageUrl && !createUrl);
                     createEvent.hidden = !createUrl;
                     if (createUrl) createEvent.href = createUrl;
                     else createEvent.removeAttribute('href');
