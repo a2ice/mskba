@@ -153,13 +153,13 @@ test('event details stay hidden outside an explicitly opened public booking moda
         new URL('../../resources/themes/mskba_app/views/pages/venues/partials/day-event-dialog.blade.php', import.meta.url), 'utf8',
     );
     // A closed native dialog must not render as a large visible block above the schedule.
-    assert.match(css, /dialog\\.app-venue-day-event-dialog:not\\(\\[open\\]\\)\\s*\\{\\s*display:none!important\\s*\\}/);
-    assert.match(css, /dialog\\.app-venue-day-event-dialog\\[open\\]\\s*\\{\\s*display:flex/);
-    assert.match(template, /<dialog\\b[^>]*data-venue-day-event-dialog/);
-    assert.doesNotMatch(template, /<dialog\\b[^>]*\\sopen(?:\\s|=|>)/);
-    assert.match(dayBookingModule, /const eventInfo = slot\\.booking_group\\?\\.event \\|\\| null;/);
-    assert.match(dayBookingModule, /if \\(eventInfo\\) \\{/);
-    assert.match(dayBookingModule, /eventInfoDialog\\.showModal\\(\\);/);
+    assert.match(css, /dialog\.app-venue-day-event-dialog:not\(\[open\]\)\s*\{\s*display:none!important\s*\}/);
+    assert.match(css, /dialog\.app-venue-day-event-dialog\[open\]\s*\{\s*display:flex/);
+    assert.match(template, /<dialog\b[^>]*data-venue-day-event-dialog/);
+    assert.doesNotMatch(template, /<dialog\b[^>]*\sopen(?:\s|=|>)/);
+    assert.match(dayBookingModule, /const eventInfo = slot\.booking_group\?\.event \|\| null;/);
+    assert.match(dayBookingModule, /if \(eventInfo\) \{/);
+    assert.match(dayBookingModule, /eventInfoDialog\.showModal\(\);/);
 });
 
 for (const audience of ['авторизованный пользователь', 'гость']) {
