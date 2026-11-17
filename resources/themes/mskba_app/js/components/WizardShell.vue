@@ -12,7 +12,6 @@ const emit = defineEmits(['submit', 'invalid', 'step-change']);
 const activeId = ref(props.steps[0]?.id);
 const issues = ref({});
 const content = ref(null);
-const stepTitle = ref(null);
 const nextButton = ref(null);
 const attention = ref(false);
 const visibleSteps = computed(() => props.steps.filter(step => !step.visibleWhen || step.visibleWhen(props.values)));
@@ -77,7 +76,9 @@ async function go(id) {
     previousNextLabel = nextLabel.value;
     await nextTick();
     if (content.value) content.value.scrollTop = 0;
-    stepTitle.value?.focus({ preventScroll: true });
+    // Step changes are announced by the live progress indicator.
+    // Keep keyboard focus on an actual action instead of outlining the heading.
+    nextButton.value?.focus({ preventScroll: true });
 }
 function back() {
     if (index.value > 0 && !props.busy) go(visibleSteps.value[index.value - 1].id);
@@ -108,8 +109,8 @@ defineExpose({ applyErrors, reset });
             <progress :value="index + 1" :max="visibleSteps.length" aria-label="Прогресс мастера" />
             <span role="status" aria-live="polite">ШАГ {{ index + 1 }} / {{ visibleSteps.length }}</span>
         </header>
-        <div ref="content" class="mskba-modal__body mskba-scroll mskba-wizard__body" role="region" aria-label="Содержимое шага" tabindex="0">
-            <h3 ref="stepTitle" class="wizard-step-title" tabindex="-1">{{ step?.title }}</h3>
+        <div ref="content" class="mskba-modal__body mskba-scroll mskba-wizard__body" role="region" aria-label="Содержимое шага">
+            <h3 class="wizard-step-title">{{ step?.title }}</h3>
             <p v-if="step?.hint" class="wizard-step-hint">{{ step.hint }}</p>
             <div class="wizard-step">
                 <slot :name="step?.id" :values="values" :errors="issues" :changed="valueChanged" />

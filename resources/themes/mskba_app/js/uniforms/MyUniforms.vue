@@ -110,7 +110,7 @@ async function remove() {
     <dialog ref="dialog" class="mskba-modal mskba-uniform-action-dialog"
       aria-labelledby="mskba-uniform-action-title" @click="backdrop">
       <header class="mskba-modal__header app-profile__request-header">
-        <h2 id="mskba-uniform-action-title" tabindex="-1">
+        <h2 id="mskba-uniform-action-title">
           {{ action === 'delete' ? 'Удалить форму?' : 'Изготовление формы' }}
         </h2>
         <button type="button" class="app-profile__dialog-close" aria-label="Закрыть" @click="close">×</button>

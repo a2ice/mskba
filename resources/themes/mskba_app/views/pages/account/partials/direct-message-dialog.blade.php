@@ -4,7 +4,7 @@
      @if ($directTestEntry ?? false) data-test-search-url="{{ route('account.notifications.direct.test.users') }}" @endif>
     <dialog class="mskba-modal app-contact-wizard__dialog app-messages__direct-dialog" aria-labelledby="direct-message-dialog-title">
         <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
-            <h2 id="direct-message-dialog-title" class="eyebrow accent mskba-auth-heading" tabindex="-1">Личное сообщение</h2>
+            <h2 id="direct-message-dialog-title" class="eyebrow accent mskba-auth-heading">Личное сообщение</h2>
             <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close" data-direct-dialog-close aria-label="Закрыть окно">
                 <svg aria-hidden="true"><use href="#close"/></svg>
             </button>

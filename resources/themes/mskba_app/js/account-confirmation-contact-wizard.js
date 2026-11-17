@@ -129,7 +129,7 @@ if (root) {
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
-        dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
+        dialog.querySelector('[data-wizard-close]')?.focus({ preventScroll: true });
         showStep(contactId ? 'code' : 'method');
         emulator.reset();
     }

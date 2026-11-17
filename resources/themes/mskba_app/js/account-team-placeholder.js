@@ -26,7 +26,7 @@ if (root) {
         placeholderOverflow = document.body.style.overflow;
         placeholder.showModal();
         document.body.style.overflow = 'hidden';
-        placeholderHeading.focus({ preventScroll: true });
+        placeholder.querySelector('[data-team-placeholder-close]')?.focus({ preventScroll: true });
     }
 
     function restorePlaceholderFocus() {
@@ -110,7 +110,7 @@ if (root) {
         gateOverflow = document.body.style.overflow;
         gate.showModal();
         document.body.style.overflow = 'hidden';
-        gateHeading.focus({ preventScroll: true });
+        gate.querySelector('[data-team-gate-cancel]')?.focus({ preventScroll: true });
     }
 
     function cancelGate() {

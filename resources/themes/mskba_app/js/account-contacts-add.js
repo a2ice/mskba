@@ -70,7 +70,7 @@ if (root) {
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
-        dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
+        dialog.querySelector('[data-contact-add-close]')?.focus({ preventScroll: true });
         emulator.reset();
         methodLocked = Boolean(skipMethod && radio && !radio.disabled);
         // From a + button the contact kind is already known. Do not ask the

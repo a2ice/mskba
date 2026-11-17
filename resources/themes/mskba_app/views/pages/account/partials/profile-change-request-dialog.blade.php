@@ -10,7 +10,7 @@
         <dialog class="mskba-modal app-profile__request-dialog" data-profile-change-request-dialog
                 aria-labelledby="app-profile-request-heading">
             <div class="mskba-modal__header app-profile__request-header">
-                <h2 id="app-profile-request-heading" tabindex="-1">Изменение данных</h2>
+                <h2 id="app-profile-request-heading">Изменение данных</h2>
                 <button type="button" class="app-profile__dialog-close" data-profile-change-request-close aria-label="Закрыть">×</button>
             </div>
             <div class="mskba-modal__body mskba-scroll app-profile__request-body">

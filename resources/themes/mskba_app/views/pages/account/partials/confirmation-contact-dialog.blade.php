@@ -24,7 +24,7 @@
 
     <dialog class="mskba-modal app-contact-wizard__dialog" aria-labelledby="contact-wizard-title">
         <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
-            <h2 id="contact-wizard-title" tabindex="-1" class="eyebrow accent mskba-auth-heading">Добавить контакт</h2>
+            <h2 id="contact-wizard-title" class="eyebrow accent mskba-auth-heading">Добавить контакт</h2>
             <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close" data-wizard-close aria-label="Закрыть окно"><svg aria-hidden="true"><use href="#close"/></svg></button>
         </header>
         <div class="mskba-modal__body mskba-scroll app-contact-wizard__body">

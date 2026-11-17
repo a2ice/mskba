@@ -3,7 +3,7 @@
         data-account-confirmation-guide-dialog
         aria-labelledby="account-confirmation-guide-heading">
     <div class="mskba-modal__header app-account-confirm-dialog__header">
-        <h2 id="account-confirmation-guide-heading" tabindex="-1">Как подтвердить аккаунт</h2>
+        <h2 id="account-confirmation-guide-heading">Как подтвердить аккаунт</h2>
         <button type="button" class="app-account-confirm-dialog__close"
                 data-account-confirmation-guide-close aria-label="Закрыть">×</button>
     </div>

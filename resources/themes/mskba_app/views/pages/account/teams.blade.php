@@ -141,7 +141,7 @@
 
         <dialog class="mskba-modal app-team-registration-gate" data-team-registration-gate aria-labelledby="team-registration-gate-title">
             <header class="mskba-modal__header app-team-placeholder-dialog__header">
-                <h2 id="team-registration-gate-title" tabindex="-1">Завершение регистрации</h2>
+                <h2 id="team-registration-gate-title">Завершение регистрации</h2>
                 <button type="button" class="icon-button" data-team-gate-cancel aria-label="Закрыть окно">
                     <svg aria-hidden="true"><use href="#close"/></svg>
                 </button>
@@ -171,7 +171,7 @@
 
         <dialog class="mskba-modal app-team-placeholder-dialog" data-team-placeholder-dialog aria-labelledby="team-placeholder-title">
             <header class="mskba-modal__header app-team-placeholder-dialog__header">
-                <h2 id="team-placeholder-title" tabindex="-1" data-team-placeholder-title>Функция готовится</h2>
+                <h2 id="team-placeholder-title" data-team-placeholder-title>Функция готовится</h2>
                 <button type="button" class="icon-button" data-team-placeholder-close aria-label="Закрыть окно">
                     <svg aria-hidden="true"><use href="#close"/></svg>
                 </button>

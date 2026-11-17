@@ -82,7 +82,7 @@ document.querySelectorAll('[data-confirm-review-dialog]').forEach(dialog => {
     const openDialog = target => {
         if (!target?.showModal) return;
         target.showModal();
-        target.querySelector('h2[tabindex="-1"]')?.focus({preventScroll: true});
+        target.querySelector('[data-confirm-review-close], [data-confirm-missing-close]')?.focus({preventScroll: true});
     };
     const refreshReview = () => {
         dialog.querySelectorAll('[data-confirm-review-live]').forEach(target => {
