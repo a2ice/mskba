@@ -1,0 +1,44 @@
+name: MSKBA pre-release production URL baseline
+
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-seo-baseline.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build canonical historical URL set
+        run: |
+          python3 - <<'PY'
+          import csv
+          from pathlib import Path
+          source=Path('docs/tasks/316/baseline/production-url-snapshot-2026-11-12.csv')
+          with source.open(encoding='utf-8', newline='') as handle:
+            paths={row['path'] for row in csv.DictReader(handle) if row.get('source_status')=='200'}
+          Path('legacy-url-paths.txt').write_text('\n'.join(sorted(paths))+'\n', encoding='utf-8')
+          print('Historical canonical paths queued:',len(paths))
+          PY
+      - name: Read-only crawl of current mskba.ru before switching
+        run: |
+          python3 scripts/seo/production_url_gate.py capture \
+            --origin https://mskba.ru \
+            --output pre-release-mskba-current.csv \
+            --extra-paths legacy-url-paths.txt \
+            --workers 4 --timeout 15
+      - name: Preserve current public URL evidence for release comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mskba-production-url-baseline
+          path: |
+            pre-release-mskba-current.csv
+            legacy-url-paths.txt
+          if-no-files-found: warn
+          retention-days: 7
