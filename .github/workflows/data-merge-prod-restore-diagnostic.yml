@@ -1,0 +1,55 @@
+name: MSKBA private candidate PostgreSQL restore diagnostic
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/data-merge-prod-restore-diagnostic.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Classify failed restore of NEW candidate without exposing backup data
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 2m
+          script: |
+            set -euo pipefail
+            python3 - <<'PY'
+            import re
+            from pathlib import Path
+            p=Path('/home/deploy/mskba-data-merge-candidates/44113647452-web-smoke/production-stage-restore.log')
+            if not p.is_file():
+                print('restore_log_exists=false')
+                raise SystemExit(1)
+            print('restore_log_exists=true')
+            lines=p.read_text(encoding='utf8',errors='replace').splitlines()
+            errors=[line for line in lines if ('ERROR:' in line or 'pg_restore: error:' in line or 'FATAL:' in line)]
+            print('restore_error_lines='+str(len(errors)))
+            categories={
+              'existing_object':r'already exists|duplicate object|multiple primary keys',
+              'permission':r'permission denied|must be owner|superuser',
+              'missing_role':r'role .* does not exist',
+              'missing_relation':r'relation .* does not exist|column .* does not exist',
+              'missing_extension':r'extension .* is not available|extension .* does not exist',
+              'connection':r'could not connect|connection refused|password authentication failed',
+              'foreign_key':r'foreign key constraint|violates foreign key|violates check constraint',
+              'sequence':r'sequence .* does not exist|setval',
+              'duplicate_key':r'duplicate key value violates unique constraint',
+              'data_parse':r'invalid input syntax|invalid byte sequence',
+              'function':r'function .* does not exist',
+            }
+            first=errors[:6]
+            for i,line in enumerate(first):
+                matching=[name for name,pat in categories.items() if re.search(pat,line,re.I)]
+                print('restore_error_'+str(i+1)+'_category='+(','.join(matching) if matching else 'unclassified'))
+                m=re.search(r'(?:relation|table|extension|index|constraint) "([a-zA-Z_][a-zA-Z0-9_]{1,70})"',line)
+                if m:
+                    print('restore_error_'+str(i+1)+'_schema_object='+m.group(1))
+            print('candidate_db_restore_failed_only=true')
+            PY
