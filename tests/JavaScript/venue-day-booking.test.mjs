@@ -549,6 +549,7 @@ test('персональная цена показывает зачёркнут�
     assert.equal(page.summary.children[0].tagName, 'del');
     assert.match(page.summary.children[0].textContent, /8\s*000/);
     assert.equal(page.summary.children.at(-1).title, reason);
-    assert.equal(page.summary.children.at(-1).tabIndex, 0);
+    assert.equal(page.summary.children.at(-1).tabIndex, undefined,
+        'Explanatory discount text must not be in the keyboard tab order');
     assert.equal(page.summary.children.at(-1).innerHTML, undefined);
 });
