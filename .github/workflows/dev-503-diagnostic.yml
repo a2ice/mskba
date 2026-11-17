@@ -12,6 +12,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
+    environment: development
     timeout-minutes: 6
     steps:
       - name: Identify exact failing dev deployment guard without exposing secrets
