@@ -14,10 +14,14 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use Illuminate\Support\Str;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
@@ -59,6 +63,7 @@ final readonly class PublicVenueDaySchedule
             throw new InvalidArgumentException('Некорректная дата.');
         }
 
+        $viewer = $viewer?->canonical();
         $today = CarbonImmutable::now('Europe/Moscow')->startOfDay();
         if ($day->lessThan($today) || $day->greaterThan($today->addDays(8))) {
             throw new InvalidArgumentException('Доступен просмотр текущего дня и следующих восьми дней.');
@@ -89,6 +94,12 @@ final readonly class PublicVenueDaySchedule
             ->where('starts_at', '<', $rangeEnd->utc())
             ->where('ends_at', '>', $rangeStart->utc())
             ->with(['event.organizerActor.user.profile', 'event.participants'])
+            ->when($viewer !== null, fn ($query) => $query->with([
+                'requester',
+                'transitions' => fn ($query) => $query
+                    ->where('to_status', VenueBookingStatusEnum::CONFIRMED->value)
+                    ->with('actor.user'),
+            ]))
             ->orderBy('starts_at')
             ->limit(500)
             ->get();
@@ -97,6 +108,39 @@ final readonly class PublicVenueDaySchedule
             ->with(['organizerActor.user.profile', 'participants'])
             ->get()
             ->keyBy('booking_id');
+        // The public occupancy feed stays anonymous. Expose a booking link only
+        // for its customer, a superadmin, or the representative who confirmed it,
+        // and only when the booking page's authorization also allows access.
+        $bookingAccess = [];
+        if ($viewer !== null) {
+            $viewerActor = app(CurrentActorResolver::class)->resolve($viewer, null);
+            $authorization = app(VenueBookingAuthorization::class);
+            if ($viewerActor !== null) {
+                foreach ($bookings as $candidate) {
+                    if ($candidate->status !== VenueBookingStatusEnum::CONFIRMED
+                        || blank($candidate->public_id) || $candidate->requester === null) {
+                        continue;
+                    }
+                    $isRequester = $candidate->requester->canonical()->id === $viewer->id;
+                    $isSuperadmin = $viewer->isConfirmed() && $viewer->hasSystemRole(UserSystemRoleEnum::SUPERADMIN);
+                    $isConfirmer = $candidate->transitions->contains(
+                        fn ($transition): bool => $transition->actor?->user?->canonical()->id === $viewer->id,
+                    );
+                    if (! $isRequester && ! $isSuperadmin && ! $isConfirmer) {
+                        continue;
+                    }
+                    try {
+                        $authorization->assertCanView($viewerActor, $candidate, $venue);
+                    } catch (VenueBookingTransitionException|\\Symfony\\Component\\HttpKernel\\Exception\\HttpExceptionInterface) {
+                        continue;
+                    }
+                    $bookingAccess[$candidate->id] = [
+                        'url' => route('account.venue-bookings.show', $candidate),
+                        'username' => $isRequester ? null : $candidate->requester->canonical()->username,
+                    ];
+                }
+            }
+        }
         $policy = VenueBookingPolicy::query()->where('venue_id', $venue->id)
             ->where('active_marker', true)->first();
         $effective = $this->policies->resolve($venue, $court, $policy);
@@ -171,8 +215,6 @@ final readonly class PublicVenueDaySchedule
         $endIndex = (int) ceil($maxMinute / $step);
         $slots = [];
         $publicEventCache = [];
-        $viewer = $viewer?->canonical();
-
         for ($index = $startIndex; $index < $endIndex; $index++) {
             $start = $day->addMinutes($index * $step);
             $end = $start->addMinutes($step);
@@ -372,6 +414,8 @@ final readonly class PublicVenueDaySchedule
                     'create_event_url' => $canCreateEvent
                         ? route('account.venue-bookings.event.create', $booking)
                         : null,
+                    'booking_page_url' => $bookingAccess[$booking->id]['url'] ?? null,
+                    'requester_username' => $bookingAccess[$booking->id]['username'] ?? null,
                 ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
