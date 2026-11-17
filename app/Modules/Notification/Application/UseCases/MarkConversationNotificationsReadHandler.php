@@ -38,8 +38,10 @@ final class MarkConversationNotificationsReadHandler
         } else {
             $query->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
                 ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id')
-                ->whereNull('payload->operator_conversation_id')->whereNull('payload->booking_id')
-                ->whereNull('payload->pre_request_id');
+                ->whereNull('payload->operator_conversation_id');
+            if (config('features.venue_rental.rental_flow') && config('features.venue_rental.conversations')) {
+                $query->whereNull('payload->booking_id')->whereNull('payload->pre_request_id');
+            }
         }
 
         $updated = $query->update([
