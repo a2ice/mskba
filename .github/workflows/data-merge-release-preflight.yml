@@ -1,0 +1,53 @@
+name: MSKBA production cutover preflight (read only)
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-release-preflight.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read-only live and staged DB + backup preflight
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            test -f .env
+            grep -Fxq 'APP_URL=https://mskba.ru' .env
+            grep -Fxq 'APP_ENV=production' .env
+            test -s /home/deploy/mskba-data-merge-candidates/44113647452-web-smoke/web-approved-candidate.pgdump
+            test -s /home/deploy/mskba-data-merge-candidates/44032038961-media-union/storage-app-combined.tar.gz
+            ( cd /home/deploy/mskba-data-merge-candidates/44113647452-web-smoke && sha256sum -c --status SHA256SUMS )
+            ( cd /home/deploy/mskba-data-merge-candidates/44032038961-media-union && sha256sum -c --status SHA256SUMS )
+            test -n "$(grep '^APP_KEY=.' .env)"
+            olddb="$(grep '^DB_DATABASE=' .env | tail -1 | cut -d= -f2-)"
+            [[ "$olddb" =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ]]
+            test "$olddb" != mskba_unified_20261117_v2
+            compose=(docker compose -f compose.yaml -f compose.prod.yaml)
+            query() {
+              "${compose[@]}" exec -T db sh -ceu 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -XAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1" -c "$2"' sh "$1" "$2"
+            }
+            for spec in 'users|46|55' 'venues|14|18' 'venue_courts|17|24' 'venue_bookings|23|23' 'teams|13|13' 'games|12|12';do
+              IFS='|' read -r table oldexpect newexpect <<< "$spec"
+              [[ "$(query "$olddb" "SELECT count(*) FROM $table")" == "$oldexpect" ]]
+              [[ "$(query mskba_unified_20261117_v2 "SELECT count(*) FROM $table")" == "$newexpect" ]]
+            done
+            [[ "$(query mskba_unified_20261117_v2 'SELECT count(*) FROM migrations')" == 286 ]]
+            [[ "$(query mskba_unified_20261117_v2 "SELECT count(*) FROM data_merge_actor_map WHERE target_actor_id IS NULL")" == 0 ]]
+            test -x /home/deploy/bin/mskba-production-cron-tick.sh
+            crontab -l | grep -Fq '/home/deploy/bin/mskba-production-cron-tick.sh'
+            free="$(df -Pm /var/www/mskba | awk 'END {print $4}')"
+            [[ "$free" -ge 2048 ]]
+            echo "CUTOVER_PREFLIGHT_PASS=true"
+            echo "free_mb=$free"
+            echo "current_prod_commit=$(git rev-parse HEAD)"
+            echo "staged_candidate=mskba_unified_20261117_v2"
+            echo "live_production_unchanged=true"
