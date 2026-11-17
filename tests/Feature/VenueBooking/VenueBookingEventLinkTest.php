@@ -108,6 +108,22 @@ final class VenueBookingEventLinkTest extends TestCase
         $this->assertTrue($booking->ends_at->equalTo($event->ends_at));
     }
 
+    public function test_superadmin_as_booking_requester_can_create_event_without_emergency_reason(): void
+    {
+        $owner = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $booking = $this->booking($this->venue(), $owner, $actor);
+        $event = app(CreateEventFromConfirmedVenueBookingHandler::class)->handle(
+            $booking->id, $actor,
+            ['title' => 'Личная бронь', 'type' => 'training', 'visibility' => 'public'],
+        );
+        $this->assertSame($booking->id, $event->booking_id);
+        $this->assertNull($event->booking_snapshot['emergency_reason']);
+    }
+
     public function test_booking_event_creation_page_rejects_guest_other_user_unconfirmed_and_started_booking(): void
     {
         [$user, $actor] = $this->userAndActor();
