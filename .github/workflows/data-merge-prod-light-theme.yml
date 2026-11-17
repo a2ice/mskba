@@ -58,8 +58,43 @@ jobs:
             [[ "$CURRENT_ID" =~ ^[0-9]+$ ]]
             [ "$(query 'SELECT count(*) FROM design_theme_settings WHERE id=1')" = 1 ]
 
-            # No full redeploy: change just the theme renderer env setting and
-            # the globally selected published palette. Never clear user preferences.
+            verify_live() {
+              local check_dir verified attempt
+              check_dir="$(mktemp -d)"
+              verified=0
+              for attempt in 1 2 3 4 5 6; do
+                if curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' \
+                     -o "$check_dir/home.html" "https://mskba.ru/?theme_verify=$attempt-$(date +%s)" &&
+                   curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' \
+                     -o "$check_dir/shop.html" "https://mskba.ru/shop?theme_verify=$attempt-$(date +%s)" &&
+                   grep -Fq 'data-design-theme="court_day"' "$check_dir/home.html" &&
+                   grep -Fq 'data-appearance-mode="light"' "$check_dir/home.html" &&
+                   grep -Fq 'data-design-theme="court_day"' "$check_dir/shop.html" &&
+                   grep -Fq 'data-appearance-mode="light"' "$check_dir/shop.html" &&
+                   grep -Fq 'Магазин · Каталог MSKBA' "$check_dir/shop.html"; then
+                  verified=1
+                  break
+                fi
+                sleep 2
+              done
+              rm -rf "$check_dir"
+              [ "$verified" -eq 1 ]
+            }
+
+            # The previous attempt applied both settings but its check failed
+            # because it assigned a full HTML document to exported Bash HOME.
+            # Already-aligned production must be verified, NOT restarted again.
+            if [ "$CURRENT_ID" = "$TARGET_ID" ] && [ "$OLD_APP_THEME" = mskba_app ]; then
+              verify_live
+              echo 'PRODUCTION_ALREADY_ALIGNED_NO_WRITE=true'
+              echo 'PRODUCTION_APP_THEME=mskba_app'
+              echo 'PRODUCTION_DEFAULT_DESIGN_THEME=court_day'
+              echo 'PRODUCTION_APPEARANCE_MODE=light'
+              echo 'PRODUCTION_SHOP_APP_LAYOUT_VERIFIED=true'
+              exit 0
+            fi
+
+            # Fall back to a reversible one-time update only if not yet aligned.
             BACKUP_ENV="$RELEASE/pre-light-theme-$(date -u +%Y%m%dT%H%M%SZ).env"
             test ! -e "$BACKUP_ENV"
             cp -p .env "$BACKUP_ENV"
@@ -96,22 +131,7 @@ jobs:
             $COMPOSE exec -T phpfpm php artisan optimize:clear >/dev/null
             $COMPOSE exec -T phpfpm php artisan config:cache >/dev/null
             $COMPOSE restart phpfpm >/dev/null
-
-            # Guest HTML must select both the same renderer and light palette
-            # as dev. The shop title is theme-specific and catches legacy fallback.
-            VERIFIED=0
-            for ATTEMPT in 1 2 3 4 5; do
-              HOME="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/?theme_verify=$ATTEMPT-$(date +%s)" || true)"
-              SHOP="$(curl -fsSL --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "https://mskba.ru/shop?theme_verify=$ATTEMPT-$(date +%s)" || true)"
-              if [[ "$HOME" == *'data-design-theme="court_day"'* && "$HOME" == *'data-appearance-mode="light"'* &&
-                    "$SHOP" == *'data-design-theme="court_day"'* && "$SHOP" == *'data-appearance-mode="light"'* &&
-                    "$SHOP" == *'Магазин · Каталог MSKBA'* ]]; then
-                VERIFIED=1
-                break
-              fi
-              sleep 3
-            done
-            test "$VERIFIED" -eq 1
+            verify_live
             echo 'PRODUCTION_APP_THEME=mskba_app'
             echo 'PRODUCTION_DEFAULT_DESIGN_THEME=court_day'
             echo 'PRODUCTION_APPEARANCE_MODE=light'
