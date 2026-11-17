@@ -251,6 +251,17 @@ jobs:
             # container and potentially assigned it a different network IP.
             $COMPOSE exec -T nginx nginx -s reload
 
+            # Task 325 cutover: the previously deployed site was intentionally
+            # placed in maintenance while preserving its original DB. Only
+            # lift maintenance after new code, DB, assets and workers are up.
+            CUTOVER_DIR=/home/deploy/mskba-cutover-backups/release-20261117
+            if [ -f "$CUTOVER_DIR/CUTOVER_STATE" ] && [ ! -f "$CUTOVER_DIR/RELEASE_COMPLETE" ]; then
+              grep -Fxq 'CUTOVER_PREPARED=true' "$CUTOVER_DIR/CUTOVER_STATE"
+              grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+              $COMPOSE exec -T phpfpm php artisan up
+              echo 'PROTECTED_CUTOVER_APPLICATION_RESUMED=true'
+            fi
+
             # Verify a real HTTP request through nginx -> PHP-FPM -> Laravel.
             # Any 1xx-4xx response means the application stack answered;
             # 5xx/502 or a connection failure must fail the deployment.
