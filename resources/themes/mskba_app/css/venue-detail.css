@@ -455,6 +455,7 @@
 .app-venue-day-dialog__calendar{
     grid-template-columns:minmax(0,1fr);
     padding-left:20px;padding-right:20px;
+    padding-top:5px;
 }
 .app-venue-day-dialog__nav{
     position:absolute;top:52%;transform:translateY(-50%);
@@ -465,6 +466,12 @@
 .app-venue-day-dialog__nav[data-venue-day-nav="1"]{right:10px}
 .app-venue-day-dialog__grid{padding-left:54px;padding-right:54px}
 .app-venue-day-dialog__slot.is-booking-group{min-height:56px}
+.app-venue-day-dialog__slot.has-booking-details{
+    cursor:pointer;
+}
+.app-venue-day-dialog__slot.has-booking-details:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;
+}
 .app-venue-day-dialog__slot.has-attached-event{cursor:pointer}
 .app-venue-day-dialog__slot.has-attached-event:hover{
     background:color-mix(in srgb,var(--slot-booked-color,#d54747) 11%,var(--surface,#fff));
