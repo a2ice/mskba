@@ -202,14 +202,18 @@ if (root) {
         conversationId=id;
         root.dataset.rentalConversationId=id;
         subscribePrivate('venue-booking-conversations.'+id,'.booking.message.sent',()=>{void refresh()});
+        subscribePrivate('venue-booking-conversations.'+id,'.interest.message.sent',()=>{void refresh()});
     };
     // The booking event also reports the first message before a conversation exists.
     if(bookingMode&&root.dataset.rentalBookingId){
         subscribePrivate('venue-bookings.'+root.dataset.rentalBookingId,'.booking.message.sent',()=>{void refresh()});
         subscribePrivate('venue-bookings.'+root.dataset.rentalBookingId,'.booking.updated',()=>{void refresh()});
     }
-    if(conversationId)subscribePrivate('venue-booking-conversations.'+conversationId,
-        '.booking.message.sent',()=>{void refresh()});
+    if(conversationId){
+        subscribePrivate('venue-booking-conversations.'+conversationId,'.booking.message.sent',()=>{void refresh()});
+        // Pre-request messages use the existing interest broadcast on this same private channel.
+        subscribePrivate('venue-booking-conversations.'+conversationId,'.interest.message.sent',()=>{void refresh()});
+    }
 
     const refreshRail = async () => {
         if(!railList)return;
