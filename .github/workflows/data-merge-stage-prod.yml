@@ -60,14 +60,24 @@ jobs:
           echo 'STAGE_DEV_ARCHIVE_VERIFIED=true'
           "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cd '$DEV_MEDIA' && sha256sum -c --status SHA256SUMS && test -s storage-app-combined.tar.gz"
           echo 'STAGE_DEV_MEDIA_VERIFIED=true'
-          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; mkdir -p '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && chmod 700 '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && test ! -e '$PROD_SRC/web-approved-candidate.pgdump' && test ! -e '$PROD_MEDIA/storage-app-combined.tar.gz'"
+          "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; mkdir -p '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN' && chmod 700 '$PROD_SRC' '$PROD_MEDIA' '/home/deploy/mskba-data-merge-tools/$RUN'"
           echo 'STAGE_PROD_DIR_READY=true'
           # Only streaming via two encrypted SSH sessions; never store the
           # private database dump or media in runner filesystem/artifacts.
-          "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_SRC/web-approved-candidate.pgdump'" |
-            "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; cat > '$PROD_SRC/web-approved-candidate.pgdump.part' && mv '$PROD_SRC/web-approved-candidate.pgdump.part' '$PROD_SRC/web-approved-candidate.pgdump'"
-          "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_MEDIA/storage-app-combined.tar.gz'" |
-            "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; cat > '$PROD_MEDIA/storage-app-combined.tar.gz.part' && mv '$PROD_MEDIA/storage-app-combined.tar.gz.part' '$PROD_MEDIA/storage-app-combined.tar.gz'"
+          if "${PROD_SSH[@]}" "deploy@$PROD_HOST" "test -s '$PROD_SRC/web-approved-candidate.pgdump'"; then
+            echo 'STAGE_PROD_DB_ARCHIVE_ALREADY_PRESENT_VERIFYING=true'
+          else
+            "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_SRC/web-approved-candidate.pgdump'" |
+              "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; test ! -e '$PROD_SRC/web-approved-candidate.pgdump' && cat > '$PROD_SRC/web-approved-candidate.pgdump.part' && mv '$PROD_SRC/web-approved-candidate.pgdump.part' '$PROD_SRC/web-approved-candidate.pgdump'"
+          fi
+          echo 'STAGE_PROD_DB_ARCHIVE_READY=true'
+          if "${PROD_SSH[@]}" "deploy@$PROD_HOST" "test -s '$PROD_MEDIA/storage-app-combined.tar.gz'"; then
+            echo 'STAGE_PROD_MEDIA_ALREADY_PRESENT_VERIFYING=true'
+          else
+            "${DEV_SSH[@]}" "deploy@$DEV_HOST" "cat '$DEV_MEDIA/storage-app-combined.tar.gz'" |
+              "${PROD_SSH[@]}" "deploy@$PROD_HOST" "umask 077; test ! -e '$PROD_MEDIA/storage-app-combined.tar.gz' && cat > '$PROD_MEDIA/storage-app-combined.tar.gz.part' && mv '$PROD_MEDIA/storage-app-combined.tar.gz.part' '$PROD_MEDIA/storage-app-combined.tar.gz'"
+          fi
+          echo 'STAGE_PROD_MEDIA_READY=true'
           for spec in "$DEV_SRC|web-approved-candidate.pgdump" "$DEV_MEDIA|storage-app-combined.tar.gz"; do
             IFS='|' read -r src_dir filename <<< "$spec"
             source_digest="$("${DEV_SSH[@]}" "deploy@$DEV_HOST" "sha256sum '$src_dir/$filename' | cut -d' ' -f1")"
