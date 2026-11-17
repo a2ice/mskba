@@ -75,6 +75,81 @@ final class VenueBookingEventLinkTest extends TestCase
         $this->assertSame('Восстановление после сбоя.', $emergencyEvent->booking_snapshot['emergency_reason']);
     }
 
+    public function test_requester_can_open_event_creation_page_with_booking_context_and_submit_to_existing_handler(): void
+    {
+        [$user, $actor] = $this->userAndActor();
+        $venue = $this->venue();
+        $booking = $this->booking($venue, $user, $actor);
+
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(\App\Presentation\Theming\ThemeResolver::class);
+        \Illuminate\Support\Facades\View::replaceNamespace(
+            'theme', resource_path('themes/mskba_app/views'),
+        );
+
+        $this->actingAs($user)->get(route('account.venue-bookings.event.create', $booking))
+            ->assertOk()
+            ->assertSee('Создать мероприятие')
+            ->assertSee($venue->name)
+            ->assertSee($booking->public_id)
+            ->assertSee(route('account.venue-bookings.event.store', $booking), false);
+
+        $this->actingAs($user)->post(route('account.venue-bookings.event.store', $booking), [
+            'title' => 'Игра по подтверждённой брони',
+            'type' => 'training',
+            'visibility' => 'public',
+            'max_participants' => 12,
+        ])->assertRedirect();
+
+        $event = \App\Modules\Event\Domain\Models\Event::query()->where('booking_id', $booking->id)->sole();
+        $this->assertSame($booking->venue_id, $event->venue_id);
+        if ($booking->venue_court_id !== null) {
+            $this->assertSame($booking->venue_court_id, $event->venue_court_id);
+        } else {
+            // A whole-venue rental does not carry a court ID; the existing
+            // event model may resolve the venue's default court.
+            $this->assertSame($booking->venue_id, $event->court?->venue_id);
+        }
+        $this->assertTrue($booking->starts_at->equalTo($event->starts_at));
+        $this->assertTrue($booking->ends_at->equalTo($event->ends_at));
+    }
+
+    public function test_superadmin_as_booking_requester_can_create_event_without_emergency_reason(): void
+    {
+        $owner = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $booking = $this->booking($this->venue(), $owner, $actor);
+        $event = app(CreateEventFromConfirmedVenueBookingHandler::class)->handle(
+            $booking->id, $actor,
+            ['title' => 'Личная бронь', 'type' => 'training', 'visibility' => 'public'],
+        );
+        $this->assertSame($booking->id, $event->booking_id);
+        $this->assertNull($event->booking_snapshot['emergency_reason']);
+    }
+
+    public function test_booking_event_creation_page_rejects_guest_other_user_unconfirmed_and_started_booking(): void
+    {
+        [$user, $actor] = $this->userAndActor();
+        $venue = $this->venue();
+        $booking = $this->booking($venue, $user, $actor);
+        $url = route('account.venue-bookings.event.create', $booking);
+
+        $this->get($url)->assertRedirect();
+        [$another] = $this->userAndActor();
+        $this->actingAs($another)->get($url)->assertForbidden();
+
+        $this->actingAs($user)->get($url)->assertOk();
+        $booking->forceFill(['starts_at' => CarbonImmutable::now()->subMinutes(30)])->save();
+        $this->actingAs($user)->get($url)->assertStatus(409);
+
+        $held = $this->booking($venue, $user, $actor, VenueBookingStatusEnum::HELD);
+        $this->actingAs($user)->get(route('account.venue-bookings.event.create', $held))
+            ->assertStatus(409);
+    }
+
     public function test_reschedule_updates_booking_and_event_atomically_and_rechecks_conflict(): void
     {
         [$user, $actor] = $this->userAndActor();

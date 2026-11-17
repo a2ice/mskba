@@ -352,6 +352,54 @@ final class VenueCommissionPricingTest extends TestCase
         $this->assertNull($draft['participation']);
     }
 
+    public function test_daily_schedule_exposes_booking_event_action_only_to_owner_of_future_confirmed_booking(): void
+    {
+        config()->set('features.venue_rental.booking_events', true);
+        [$admin, $venue, $court] = $this->scenario();
+        $date = CarbonImmutable::now('Europe/Moscow')->addDay()->startOfDay();
+        $venue->schedule()->firstOrFail()->intervals()->create([
+            'day_of_week' => $date->dayOfWeekIso,
+            'starts_at' => '07:00',
+            'ends_at' => '23:59',
+            'sort_order' => 0,
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($admin, null);
+        $booking = VenueBooking::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'flow' => 'rental',
+            'venue_id' => $venue->id,
+            'venue_court_id' => $court->id,
+            'created_by_actor_id' => $actor->id,
+            'requester_user_id' => $admin->id,
+            'quote_snapshot' => ['pricing' => ['amount_minor' => 100000, 'currency' => 'RUB']],
+            'status' => VenueBookingStatusEnum::CONFIRMED,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'payment_state' => VenueBookingPaymentState::NOT_REQUIRED,
+            'optimistic_version' => 1,
+            'starts_at' => $date->setTime(12, 0),
+            'ends_at' => $date->setTime(13, 0),
+            'requested_at' => now(),
+            'confirmed_at' => now(),
+        ]);
+        $days = app(PublicVenueDaySchedule::class);
+
+        $guest = $days->forDate($venue, $court, $date->toDateString());
+        $this->assertFalse($guest['viewer_authenticated']);
+        $this->assertNull(collect($guest['slots'])->firstWhere('starts_at', '12:00')
+            ['booking_group']['create_event_url']);
+
+        $owned = $days->forDate($venue, $court, $date->toDateString(), viewer: $admin);
+        $this->assertTrue($owned['viewer_authenticated']);
+        $this->assertSame(route('account.venue-bookings.event.create', $booking),
+            collect($owned['slots'])->firstWhere('starts_at', '12:00')
+                ['booking_group']['create_event_url']);
+
+        $stranger = $this->activeUser();
+        $other = $days->forDate($venue, $court, $date->toDateString(), viewer: $stranger);
+        $this->assertNull(collect($other['slots'])->firstWhere('starts_at', '12:00')
+            ['booking_group']['create_event_url']);
+    }
+
     public function test_fixed_fees_rounding_and_zero_prices(): void
     {
         [$admin, $venue, $court] = $this->scenario();

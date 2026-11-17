@@ -519,6 +519,16 @@ dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
     display:grid;grid-template-columns:minmax(100px,.6fr) minmax(0,1fr);
     gap:8px;padding-bottom:9px;border-bottom:1px solid var(--line);
 }
+.app-venue-day-event-dialog__body dl>div.app-venue-day-event-dialog__type-row{
+    display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;
+}
+.app-venue-day-event-dialog__booking-actions{
+    display:grid;gap:12px;justify-items:start;
+}
+.app-venue-day-event-dialog__booking-actions p{
+    margin:0;font-size:14px;line-height:1.5;color:var(--muted);
+}
+.app-venue-day-event-dialog__body [hidden]{display:none!important}
 .app-venue-day-event-dialog__body dt{color:var(--muted);font-size:13px}
 .app-venue-day-event-dialog__body dd{margin:0;font-weight:650;overflow-wrap:anywhere}
 .app-venue-day-event-dialog__contact{

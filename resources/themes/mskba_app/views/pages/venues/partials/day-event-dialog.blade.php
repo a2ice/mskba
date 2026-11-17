@@ -11,7 +11,7 @@
         <p class="app-venue-day-event-dialog__access" data-venue-day-event-access></p>
         <p data-venue-day-event-description hidden></p>
         <dl>
-            <div><dt>Тип</dt><dd data-venue-day-event-type></dd></div>
+            <div class="app-venue-day-event-dialog__type-row"><dt>Тип:</dt><dd data-venue-day-event-type></dd></div>
             <div data-venue-day-event-status-row hidden>
                 <dt>Статус</dt><dd data-venue-day-event-status></dd>
             </div>
@@ -31,6 +31,13 @@
         <p class="app-venue-day-event-dialog__private-note" data-venue-day-event-private-note hidden>
             Подробности доступны только приглашённым участникам.
         </p>
+        <div class="app-venue-day-event-dialog__booking-actions" data-venue-day-booking-actions hidden>
+            <p data-venue-day-booking-action-status role="status"></p>
+            <a class="button primary" data-venue-day-booking-create-event hidden>Создать мероприятие</a>
+            @guest
+                <button class="button primary" type="button" data-venue-day-booking-login hidden>Войти</button>
+            @endguest
+        </div>
         <div class="app-venue-day-event-dialog__participation" data-venue-day-event-participation hidden>
             <p role="status" data-venue-day-event-join-state></p>
             @auth

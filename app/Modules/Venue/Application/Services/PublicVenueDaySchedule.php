@@ -353,11 +353,25 @@ final readonly class PublicVenueDaySchedule
                 $eventDetails = $publicEventCache[$event->id];
             }
 
+            // Never reveal ownership or a booking identifier to another user.
+            // The existing event-from-booking handler enforces these rules again.
+            $canCreateEvent = $booking !== null && $event === null
+                && $viewer !== null
+                && $booking->requester_user_id === $viewer->id
+                && $booking->flow === 'rental'
+                && $booking->status === VenueBookingStatusEnum::CONFIRMED
+                && $booking->starts_at->isFuture()
+                && $booking->event_id === null
+                && config('features.venue_rental.booking_events', false);
+
             $slots[] = [
                 'booking_group' => $booking === null ? null : [
                     'key' => substr(hash_hmac('sha256', $date.'|'.$booking->id, (string) config('app.key')), 0, 24),
                     'has_event' => $event !== null,
                     'event' => $eventDetails,
+                    'create_event_url' => $canCreateEvent
+                        ? route('account.venue-bookings.event.create', $booking)
+                        : null,
                 ],
                 'starts_at' => $startTime,
                 'ends_at' => $endTime,
@@ -413,6 +427,7 @@ final readonly class PublicVenueDaySchedule
         }
 
         return [
+            'viewer_authenticated' => $viewer !== null,
             'price_preview' => $preview,
             'date' => $date,
             'venue_court_id' => $court->id,
