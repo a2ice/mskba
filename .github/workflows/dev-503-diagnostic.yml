@@ -1,0 +1,61 @@
+name: MSKBA dev availability diagnostic (read-only)
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/dev-503-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Identify exact failing dev deployment guard without exposing secrets
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 4m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            check() {
+              local label="$1"
+              shift
+              if "$@" >/dev/null 2>&1; then
+                echo "DEV_CHECK_${label}=PASS"
+              else
+                echo "DEV_CHECK_${label}=FAIL"
+              fi
+            }
+            check ENV_PRESENT test -f .env
+            check APP_THEME grep -qx 'APP_THEME=mskba_app' .env
+            check APP_URL grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            check APP_ENV grep -qx 'APP_ENV=staging' .env
+            check APP_DEBUG grep -qx 'APP_DEBUG=false' .env
+            check DEV_COMPOSE_OVERRIDE test -f compose.dev.local.yaml
+            check ENV_PERMISSIONS test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            check SUPERADMIN_SEED grep -Eq '^SUPERADMIN_SEED_PASSWORD=[0-9a-f]{64}$' .env
+            check MAIL_MAILER grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
+            check TELEGRAM_DISABLED grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            check BOOTSTRAP_MARKER test -f .dev-bootstrap-complete
+            check PHP_IMAGE docker image inspect mskbanew-phpfpm:latest
+            check FRONTEND_MANIFEST test -f public/build/manifest.json
+            check WRITABLE_STORAGE test -w storage
+            check WRITABLE_CACHE test -w bootstrap/cache
+            check LOCAL_COMPOSE_CONFIG docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml config --quiet
+            check TRACKED_WORKTREE_CLEAN git diff --quiet HEAD -- . ':(exclude)public/build/**'
+            if test -f storage/framework/down; then
+              echo 'DEV_LARAVEL_DOWN_MARKER=PRESENT'
+            else
+              echo 'DEV_LARAVEL_DOWN_MARKER=ABSENT'
+            fi
+            echo 'DEV_GIT_SHA='$(git rev-parse --short HEAD)
+            echo 'DEV_SERVICES_BEGIN'
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml ps --status running --services 2>/dev/null | head -30 || true
+            echo 'DEV_SERVICES_END'
