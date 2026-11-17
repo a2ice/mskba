@@ -43,12 +43,12 @@ if (root) {
         dialog.innerHTML =
             '<header class="mskba-modal__header mskba-onboarding-dialog__header">' +
             '  <div><p class="eyebrow accent">MSKBA / ПОСЛЕДНИЙ ШАГ</p>' +
-            '  <h2 id="mskba-onboarding-dialog-title" tabindex="-1">Завершите регистрацию</h2></div>' +
+            '  <h2 id="mskba-onboarding-dialog-title">Завершите регистрацию</h2></div>' +
             '  <button type="button" class="icon-button" data-onboarding-close aria-label="Закрыть настройку">' +
             '    <svg aria-hidden="true"><use href="#close"/></svg></button>' +
             '</header>' +
             '<div class="mskba-modal__body mskba-scroll mskba-onboarding-dialog__body"' +
-            ' role="region" aria-label="Настройки приватности" tabindex="0">' +
+            ' role="region" aria-label="Настройки приватности">' +
             '  <p role="status">Загружаем настройки…</p></div>' +
             '<footer class="mskba-modal__footer mskba-onboarding-dialog__footer"></footer>';
         document.body.append(dialog);
@@ -140,7 +140,7 @@ if (root) {
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
-        dialog.querySelector('#mskba-onboarding-dialog-title')?.focus({ preventScroll: true });
+        dialog.querySelector('[data-onboarding-close]')?.focus({ preventScroll: true });
         if (!form) loadForm();
     }
 
