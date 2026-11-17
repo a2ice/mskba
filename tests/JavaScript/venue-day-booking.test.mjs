@@ -185,7 +185,7 @@ test('schedule dialog remains fixed to viewport center on iOS Safari', () => {
     const shared = readFileSync(
         new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
     );
-    assert.match(shared, /dialog\{/);
+    assert.match(shared, /dialog\s*\{/);
     // Override the global 50% + transform centering with fixed insets and
     // auto margins, so scrolling the page or changing Safari chrome does not
     // send the schedule (including its booking footer) offscreen.
