@@ -19,3 +19,12 @@
     .app-messages__rental-actions>.button{padding:9px 10px}
     .app-messages--thread .app-messages__compose-footer>.button{padding:9px 11px}
 }
+
+/* Narrow phones: the main action, attachment picker and Send must never
+   compete for one unbreakable row. Keep the requested 5px outer inset. */
+@media(max-width:680px){
+    [data-rental-chat-root] .app-messages__compose-footer{flex-wrap:wrap;gap:5px;padding:5px}
+    [data-rental-chat-root] .app-messages__rental-file-name{flex:1 1 70px;max-width:120px}
+    [data-rental-chat-root] .app-messages__rental-actions{flex:0 1 auto;flex-wrap:wrap;margin-left:auto}
+    [data-rental-chat-root] [data-rental-send]{margin-left:auto}
+}
