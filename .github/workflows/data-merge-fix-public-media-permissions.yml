@@ -1,0 +1,110 @@
+name: MSKBA restore public venue-media access on production
+on:
+  push:
+    branches: [dev]
+    paths: [.github/workflows/data-merge-fix-public-media-permissions.yml]
+permissions:
+  contents: read
+concurrency:
+  group: mskba-prod-public-media-permissions
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Fix only public gallery directory traversal after verified cutover
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            RELEASE=/home/deploy/mskba-cutover-backups/release-20261117
+            test -f "$RELEASE/RELEASE_COMPLETE"
+            test ! -f "$RELEASE/ROLLED_BACK"
+            test "$(git rev-parse HEAD)" = 101ce9745da4152983143f373eab945b711aa98e
+            grep -Fxq 'APP_ENV=production' .env
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            grep -Fxq 'APP_THEME=mskba_app' .env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            # The media cutover used umask 077. Its Python copier explicitly
+            # chmod'd files 0644 but let newly created parent directories
+            # inherit 0700, inaccessible to Nginx's independent unprivileged UID.
+            # Only directory permissions under PUBLIC storage are adjusted.
+            # Private originals, storage/app/private, files and DB are untouched.
+            $COMPOSE exec -T --user 0:0 phpfpm sh -euc '
+              DIR=/var/www/html/storage/app/public
+              test -d "$DIR"
+              BEFORE="$(find "$DIR" -type d ! -perm /o+x | wc -l)"
+              echo "PUBLIC_MEDIA_INACCESSIBLE_DIRECTORIES_BEFORE=$BEFORE"
+              test "$BEFORE" -gt 0
+              find "$DIR" -type d -exec chmod a+rx {} +
+              AFTER="$(find "$DIR" -type d ! -perm /o+x | wc -l)"
+              echo "PUBLIC_MEDIA_INACCESSIBLE_DIRECTORIES_AFTER=$AFTER"
+              test "$AFTER" -eq 0
+            '
+      - name: Verify every production gallery file through Nginx
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 6m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            grep -Fxq 'DB_DATABASE=mskba_unified_20261117_v2' .env
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+            $COMPOSE exec -T phpfpm php <<'PHP'
+            <?php
+            declare(strict_types=1);
+            use App\Modules\Media\Domain\Models\Media;
+            use App\Modules\Venue\Domain\Models\Venue;
+            use Illuminate\Support\Facades\Storage;
+            require '/var/www/html/vendor/autoload.php';
+            $app=require '/var/www/html/bootstrap/app.php';
+            $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            if (config('database.connections.pgsql.database') !== 'mskba_unified_20261117_v2') exit(2);
+            $items=Media::query()->whereIn('mediable_type',['venue','venue_court'])
+                ->where('collection','gallery')->get();
+            $missing=0;$broken=0;$checkedHttp=0;
+            foreach($items as $media){
+                if(!Storage::disk($media->disk)->exists($media->path)){
+                    echo "MEDIA_FILE_NOT_FOUND_ID={$media->id}\n";
+                    $missing++;
+                    continue;
+                }
+                if($media->disk!=='public') continue;
+                $ctx=stream_context_create(['http'=>[
+                    'method'=>'HEAD','timeout'=>8,'ignore_errors'=>true,
+                    'follow_location'=>0,
+                    'header'=>"Host: mskba.ru\r\nConnection: close\r\n",
+                ]]);
+                $headers=@get_headers('http://nginx'.$media->publicUrl(),false,$ctx);
+                $status=(is_array($headers) && preg_match('/^HTTP\/[0-9.]+\s+([0-9]{3})/',(string)($headers[0]??''),$m))
+                    ? (int)$m[1] : 0;
+                $checkedHttp++;
+                if($status!==200){
+                    echo "MEDIA_PUBLIC_HTTP_BAD_ID={$media->id}:{$status}\n";
+                    $broken++;
+                }
+            }
+            $noRepresentative=[];
+            foreach(Venue::query()->with('media','courts.media')->get() as $venue){
+                if($venue->trashed())continue;
+                if($venue->representativePhoto()===null)$noRepresentative[]=(int)$venue->id;
+            }
+            echo "GALLERY_RECORDS=".$items->count()."\n";
+            echo "GALLERY_PUBLIC_HTTP_CHECKED=$checkedHttp\n";
+            echo "GALLERY_PHYSICAL_MISSING=$missing\n";
+            echo "GALLERY_PUBLIC_HTTP_ERRORS=$broken\n";
+            echo "VENUES_WITHOUT_REPRESENTATIVE_PHOTO=".implode(',',$noRepresentative)."\n";
+            if($missing!==0 || $broken!==0)exit(3);
+            PHP
+            STATUS="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 25 https://mskba.ru/venues || true)"
+            test "$STATUS" = 200
+            echo "PRODUCTION_VENUE_PUBLIC_MEDIA_RESTORED=true"
