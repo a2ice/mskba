@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Application\Services\BookingConversationCards;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\OperatorConversation;
@@ -27,6 +28,7 @@ final class ListAccountConversationsHandler
         private readonly TeamManagementAccess $teamAccess,
         private readonly ProfileRequestThreadAccess $profileAccess,
         private readonly SupportTicketAccess $supportAccess,
+        private readonly BookingConversationCards $bookingCards,
     ) {}
 
     /** @return Collection<int, array<string, mixed>> */
@@ -228,7 +230,8 @@ final class ListAccountConversationsHandler
             ];
         });
 
-        return $teamConversations->concat($directConversations)
+        return $teamConversations->concat($this->bookingCards->handle($user, $actor))
+            ->concat($directConversations)
             ->concat($operatorCards)->concat($profileConversations)->concat($supportConversations)
             ->sortByDesc('date')->values();
     }

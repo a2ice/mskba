@@ -22,6 +22,10 @@ final class GetSystemConversationPreviewHandler
             ->whereNull('payload->join_request_id')
             ->whereNull('payload->direct_conversation_id')
             ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id');
+        // Disabled rental conversations must not make existing notices disappear.
+        if (config('features.venue_rental.rental_flow') && config('features.venue_rental.conversations')) {
+            $base->whereNull('payload->booking_id')->whereNull('payload->pre_request_id');
+        }
 
         $last = (clone $base)->orderByDesc('created_at')->orderByDesc('id')->first();
         if ($last === null) {

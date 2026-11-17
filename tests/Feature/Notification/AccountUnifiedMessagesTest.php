@@ -69,6 +69,31 @@ final class AccountUnifiedMessagesTest extends TestCase
             ->assertOk()->assertSee('Новая заявка в команду');
     }
 
+    public function test_team_chat_uses_responsive_workspace_and_manager_actions_are_contextual(): void
+    {
+        $applicant = $this->user();
+        $request = $this->teamRequest($applicant);
+        $owner = User::query()->findOrFail($request->team->createdByActor->user_id);
+        $url = route('account.notifications.threads.team', $request->id);
+
+        $this->actingAs($applicant)->get($url)->assertOk()
+            ->assertSee('app-message-workspace', false)
+            ->assertSee('app-messages__thread-participants', false)
+            ->assertSee('app-messages__compose-footer', false)
+            ->assertDontSee('data-team-review-trigger="accept"', false);
+        $this->actingAs($owner)->get($url)->assertOk()
+            ->assertSee('data-team-review-trigger="accept"', false)
+            ->assertSee('data-team-review-trigger="reject"', false);
+        $this->getJson(route('account.notifications.threads.team.state', $request->id))
+            ->assertOk()->assertJsonPath('can_write', true);
+        $request->update(['status' => TeamJoinRequestStatusEnum::BLOCKED]);
+        $blockedState = $this->getJson(route('account.notifications.threads.team.state', $request->id))
+            ->assertOk()->assertJsonPath('can_write', false);
+        $this->assertStringContainsString('data-team-review-trigger="unblock"', $blockedState->json('actions_html'));
+        $this->actingAs($this->user())->getJson(route('account.notifications.threads.team.state', $request->id))
+            ->assertForbidden();
+    }
+
     public function test_two_team_applications_are_two_threads_and_system_notifications_are_not_duplicates(): void
     {
         $applicant = $this->user();
@@ -89,9 +114,9 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->assertStringNotContainsString('data-conversation="system"', $response->getContent());
 
         $this->get(route('account.notifications.threads.team', $redRequest->id))
-            ->assertOk()->assertSee($redRequest->team->name)->assertDontSee($blue->name);
+            ->assertOk()->assertSee('<h2>Заявка в команду «'.$redRequest->team->name.'»</h2>', false);
         $this->get(route('account.notifications.threads.team', $blueRequest->id))
-            ->assertOk()->assertSee($blue->name)->assertDontSee($redRequest->team->name);
+            ->assertOk()->assertSee('<h2>Заявка в команду «'.$blue->name.'»</h2>', false);
     }
 
     public function test_opening_system_chat_does_not_mark_application_notifications_read(): void
@@ -152,7 +177,7 @@ final class AccountUnifiedMessagesTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_team_thread_stays_newest_first_and_direct_chat_displays_chronological_messages(): void
+    public function test_team_and_direct_chat_display_chronological_messages(): void
     {
         $applicant = $this->user();
         $request = $this->teamRequest($applicant);
@@ -164,7 +189,7 @@ final class AccountUnifiedMessagesTest extends TestCase
             ->assertRedirect();
 
         $this->get(route('account.notifications.threads.team', $request->id))->assertOk()
-            ->assertSeeTextInOrder(['Второй вопрос по заявке', 'Первый вопрос по заявке']);
+            ->assertSeeTextInOrder(['Первый вопрос по заявке', 'Второй вопрос по заявке']);
 
         $receiver = $this->user();
         $receiver->privacySettings()->create([
