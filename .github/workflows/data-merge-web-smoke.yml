@@ -5,6 +5,8 @@ on:
     branches: [dev]
     paths:
       - .github/workflows/data-merge-web-smoke.yml
+      - scripts/data-merge/smoke-merged-site.sh
+      - scripts/data-merge/restore-imported-managers.php
   workflow_dispatch:
 
 permissions:
