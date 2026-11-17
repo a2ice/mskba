@@ -3,7 +3,12 @@ name: MSKBA offline final candidate reconciler
 on:
   push:
     branches: [dev]
-    paths: [.github/workflows/data-merge-finalize-candidate.yml]
+    paths:
+      - .github/workflows/data-merge-finalize-candidate.yml
+      - scripts/data-merge/import-dev-media-relations.php
+      - scripts/data-merge/quarantine-unmatched-identities.php
+      - scripts/data-merge/import-dev-content.php
+      - scripts/data-merge/isolated-finalize-candidate.sh
   workflow_dispatch:
 
 permissions:

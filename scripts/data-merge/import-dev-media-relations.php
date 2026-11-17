@@ -20,13 +20,13 @@ $dst->beginTransaction();
 function rows(PDO $db,string $sql,array $args=[]):array {
  $s=$db->prepare($sql);$s->execute($args);return $s->fetchAll();
 }
-function key(string $name):string {
+function sqlIdent(string $name):string {
  if(!preg_match('/^[a-z][a-z0-9_]*$/',$name))throw new RuntimeException('Invalid SQL name');
  return '"'.$name.'"';
 }
 function put(PDO $db,string $table,array $row):int {
  unset($row['id']);$cols=array_keys($row);
- $q=$db->prepare('INSERT INTO '.key($table).' ('.implode(',',array_map('key',$cols)).
+ $q=$db->prepare('INSERT INTO '.sqlIdent($table).' ('.implode(',',array_map('sqlIdent',$cols)).
    ') VALUES ('.implode(',',array_fill(0,count($cols),'?')).') RETURNING id');
  foreach(array_values($row) as $i=>$value){
   $q->bindValue($i+1,$value,match(true){
@@ -42,7 +42,7 @@ function required(array $map,int $sourceId,string $type):int {
 }
 function mapRows(PDO $db,string $table,string $old,string $new):array {
  $map=[];
- foreach(rows($db,'SELECT '.key($old).','.key($new).' FROM '.key($table)) as $r){
+ foreach(rows($db,'SELECT '.key($old).','.key($new).' FROM '.sqlIdent($table)) as $r){
   if($r[$new]!==null)$map[(int)$r[$old]]=(int)$r[$new];
  }
  return $map;
