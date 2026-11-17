@@ -236,6 +236,56 @@ test('occupied MSKBA booking without event opens truthful booking details', asyn
     assert.equal(page.eventFields['[data-venue-day-event-participation]'].hidden, true);
 });
 
+test('confirmed booking popup links to a request only for authorized viewers', async () => {
+    const requestUrl = '/account/venue-bookings/book-123';
+    const permitted = mountDayBooking({ customSlots: [
+        { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
+          booking_group: {
+              key: 'owned-booking', has_event: false, event: null,
+              request_url: requestUrl, requester_login: 'booking_customer_demo',
+          }, price_minor: null },
+    ] });
+    await permitted.open(1);
+    permitted.grid.children[0].click();
+    assert.equal(permitted.eventFields['[data-venue-day-booking-request-link]'].hidden, false);
+    assert.equal(permitted.eventFields['[data-venue-day-booking-request-link]'].href, requestUrl);
+    assert.equal(permitted.eventFields['[data-venue-day-booking-requester-row]'].hidden, false);
+    assert.equal(permitted.eventFields['[data-venue-day-booking-requester]'].textContent, 'booking_customer_demo');
+    assert.equal(permitted.eventFields['[data-venue-day-booking-actions]'].hidden, true);
+
+    const client = mountDayBooking({ customSlots: [
+        { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
+          booking_group: {
+              key: 'client-booking', has_event: false, event: null,
+              request_url: requestUrl, requester_login: null,
+          }, price_minor: null },
+    ] });
+    await client.open(1);
+    client.grid.children[0].click();
+    assert.equal(client.eventFields['[data-venue-day-booking-request-link]'].hidden, false);
+    assert.equal(client.eventFields['[data-venue-day-booking-requester-row]'].hidden, true);
+    assert.equal(client.eventFields['[data-venue-day-booking-requester]'].textContent, '');
+
+    const outsider = mountDayBooking({ customSlots: [
+        { starts_at: '10:00', ends_at: '11:00', status: 'booked', selectable: false,
+          booking_group: {
+              key: 'foreign-booking', has_event: false, event: null,
+              request_url: null, requester_login: null,
+          }, price_minor: null },
+    ] });
+    await outsider.open(1);
+    outsider.grid.children[0].click();
+    assert.equal(outsider.eventFields['[data-venue-day-booking-request-link]'].hidden, true);
+    assert.equal(outsider.eventFields['[data-venue-day-booking-request-link]'].href, undefined);
+    assert.equal(outsider.eventFields['[data-venue-day-booking-requester-row]'].hidden, true);
+    assert.equal(outsider.eventFields['[data-venue-day-booking-action-status]'].textContent, 'Действия недоступны.');
+
+    const template = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/partials/day-event-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(template, /data-venue-day-booking-request-link\s+target="_blank" rel="noopener noreferrer"/);
+});
+
 test('occupied imported interval opens generic details but not a fabricated event', async () => {
     const page = mountDayBooking({ customSlots: [
         { starts_at: '08:00', ends_at: '08:30', status: 'booked', selectable: false,
