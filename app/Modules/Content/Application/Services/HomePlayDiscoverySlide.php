@@ -110,7 +110,7 @@ final class HomePlayDiscoverySlide
             'mobile_min_height' => 600,
             'elements' => [
                 $layer('text', 'Вступление', 'slider-eyebrow',
-                    '01 · ТВОЯ ИГРА НАЧИНАЕТСЯ ЗДЕСЬ', 6, 18, 85, 16, 88, 0),
+                    'ТВОЯ ИГРА НАЧИНАЕТСЯ ЗДЕСЬ', 6, 18, 85, 16, 88, 0),
                 $layer('heading', 'Главный посыл', 'slider-heading',
                     'НАЙДИ СВОЮ ИГРУ', 6, 28, 89, 27, 92, 18),
                 $layer('text', 'С кем, где, когда', 'slider-accent',
