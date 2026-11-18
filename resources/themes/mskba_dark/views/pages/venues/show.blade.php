@@ -184,7 +184,9 @@
 
 @section('section-content')
 @if(isset($venue))
-    @php($bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id))
+    @php
+    $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+@endphp
     @include('components.entity-public-banner', [
         'bannerUrl' => $bannerVenue?->bannerUrl(),
         'bannerMode' => $bannerVenue?->banner_display_mode,
