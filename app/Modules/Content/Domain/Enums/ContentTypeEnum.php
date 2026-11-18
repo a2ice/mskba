@@ -9,6 +9,7 @@ enum ContentTypeEnum: string
     case VENUE = 'venue';
     case USER = 'user';
     case FAQ = 'faq';
+    case SYSTEM_UPDATE = 'system_update';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum ContentTypeEnum: string
             self::VENUE => 'О площадке',
             self::USER => 'Для пользователей',
             self::FAQ => 'FAQ',
+            self::SYSTEM_UPDATE => 'Обновления платформы',
         };
     }
 
@@ -25,7 +27,7 @@ enum ContentTypeEnum: string
     {
         return match ($this) {
             self::EVENT, self::VENUE, self::USER => true,
-            self::MATERIAL, self::FAQ => false,
+            self::MATERIAL, self::FAQ, self::SYSTEM_UPDATE => false,
         };
     }
 
@@ -33,7 +35,7 @@ enum ContentTypeEnum: string
     {
         return match ($this) {
             self::EVENT, self::VENUE => true,
-            self::MATERIAL, self::USER, self::FAQ => false,
+            self::MATERIAL, self::USER, self::FAQ, self::SYSTEM_UPDATE => false,
         };
     }
 }

@@ -25,7 +25,8 @@
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Новости</h2>
         <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item active"><a class="nav-link active" href="{{ route('news.index') }}">Все материалы</a></li>
+            <li class="nav-item @if(!request('type')) active @endif"><a class="nav-link @if(!request('type')) active @endif" href="{{ route('news.index') }}">Все материалы</a></li>
+            <li class="nav-item @if(request('type') === 'system_update') active @endif"><a class="nav-link @if(request('type') === 'system_update') active @endif" href="{{ route('news.index', ['type' => 'system_update']) }}">Обновления платформы</a></li>
         </ul>
     </div>
 @endsection

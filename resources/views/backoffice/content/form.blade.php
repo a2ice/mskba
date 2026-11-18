@@ -119,7 +119,7 @@
                     </select>
                     @error('type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
-                <div class="col-md-6 form-group field" data-content-related-field @if(in_array($selectedType, ['material', 'faq'], true)) hidden @endif>
+                <div class="col-md-6 form-group field" data-content-related-field @if(in_array($selectedType, ['material', 'faq', 'system_update'], true)) hidden @endif>
                     <label class="form-label" for="contentRelatedId">Связанная сущность</label>
                     <select id="contentRelatedId" class="form-select @error('related_id') is-invalid @enderror" name="related_id" data-content-related>
                         <option value="">Выберите</option>
@@ -157,6 +157,48 @@
             @endif
         </section>
 
+
+        <section class="content-admin-section" data-content-project-update @if($selectedType !== 'system_update') hidden @endif>
+            <h2 class="content-admin-section__title">Внутренние сведения об обновлении</h2>
+            <p class="form-text mb-3">Технические ссылки видны только в админке и не отображаются в публичной новости.</p>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="updatePr">Влитый GitHub PR</label>
+                <input id="updatePr" class="form-control @error('project_update_pr_url') is-invalid @enderror" type="url"
+                    name="project_update_pr_url" maxlength="2048"
+                    value="{{ old('project_update_pr_url', $projectUpdate?->pr_url) }}" placeholder="https://github.com/a2ice/mskba/pull/123">
+                @error('project_update_pr_url') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="updateTask">Задача</label>
+                <input id="updateTask" class="form-control" name="project_update_task_reference"
+                    maxlength="80" value="{{ old('project_update_task_reference', $projectUpdate?->task_reference) }}" placeholder="327">
+                @error('project_update_task_reference') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="updateDocs">Документация (по одному пути в строке)</label>
+                <textarea id="updateDocs" class="form-control" name="project_update_documentation" rows="4"
+                    placeholder="docs/project.md">{{ old('project_update_documentation', implode("\n", $projectUpdate?->documentation_paths ?? [])) }}</textarea>
+                @error('project_update_documentation') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            @if($editing && $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::SYSTEM_UPDATE)
+                <p class="form-text">Источник: {{ $projectUpdate?->source ?? 'вручную' }}.
+                    @if($projectUpdate?->source_key) ID: <code>{{ $projectUpdate->source_key }}</code>. @endif
+                </p>
+                @if($projectUpdate?->pr_url)
+                    <p><a href="{{ $projectUpdate->pr_url }}" target="_blank" rel="noopener noreferrer">Перейти к GitHub PR</a></p>
+                @endif
+                @foreach($projectUpdate?->documentation_paths ?? [] as $docPath)
+                    <p><a href="https://github.com/a2ice/mskba/blob/main/{{ $docPath }}" target="_blank" rel="noopener noreferrer">{{ $docPath }}</a></p>
+                @endforeach
+                <p class="form-text">
+                    @if($projectUpdate?->production_verified_at)
+                        <strong>Production подтверждён:</strong> {{ $projectUpdate->production_verified_at->format('d.m.Y H:i') }}.
+                    @else
+                        <strong>Production пока не подтверждён.</strong> Публичная публикация заблокирована.
+                    @endif
+                </p>
+            @endif
+        </section>
         <section class="content-admin-section">
             <h2 class="content-admin-section__title">SEO материала</h2>
             <p class="form-text mb-3">Если оставить поля пустыми, будут использованы название и краткое описание материала.</p>
@@ -240,6 +282,25 @@
         <x-filament::button type="submit">{{ $editing ? 'Сохранить' : 'Создать материал' }}</x-filament::button>
     </form>
 
+
+    @if($editing && $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::SYSTEM_UPDATE && ! $projectUpdate?->production_verified_at)
+        <section class="content-admin-section mt-4">
+            <h2 class="content-admin-section__title">Подтверждение выпуска</h2>
+            @if(config('app.env') === 'production' && auth()->user()?->isAdmin())
+                <p class="form-text">Сначала сохрани сведения и проверь фактический production-релиз.</p>
+                @error('project_update') <div class="alert alert-danger mb-3">{{ $message }}</div> @enderror
+                <form method="POST" action="{{ route('admin.content.project-update.verify-production', $contentItem->alias) }}">
+                    @csrf
+                    <label class="content-chat-option mb-2"><input class="fi-checkbox-input" type="checkbox" name="confirmed_merged_pr" value="1" required><span>GitHub PR влит</span></label>
+                    <label class="content-chat-option mb-3"><input class="fi-checkbox-input" type="checkbox" name="confirmed_production_deploy" value="1" required><span>Production-деплой подтверждён</span></label>
+                    <x-filament::button type="submit">Подтвердить production</x-filament::button>
+                </form>
+            @else
+                <p class="form-text">Подтверждение выполняет администратор на production. На dev можно подготовить черновик.</p>
+            @endif
+        </section>
+    @endif
+
     @if($editing)
         <section class="content-admin-section content-inline-images mt-4">
             <h2 class="content-admin-section__title">Изображения материала</h2>
@@ -310,6 +371,7 @@
             const selected = form.querySelector('[data-content-related-selected]')?.value || '';
             const options = JSON.parse(form.querySelector('[data-content-related-options]')?.textContent || '{}');
             const publication = form.querySelector('[data-content-publication-section]');
+            const projectUpdate = form.querySelector('[data-content-project-update]');
             const faqSections = form.querySelector('[data-content-faq-sections]');
             const faqPublicationNote = form.parentElement.querySelector('[data-content-faq-publication-note]');
             const feedToggle = form.querySelector('[type="checkbox"][name="publish_in_feed"]');
@@ -327,7 +389,7 @@
                     option.selected = String(entry.id) === String(value);
                     select.append(option);
                 });
-                field.hidden = type.value === 'material' || type.value === 'faq';
+                field.hidden = type.value === 'material' || type.value === 'faq' || type.value === 'system_update';
                 select.disabled = field.hidden;
                 select.required = type.value === 'event' || type.value === 'venue';
                 help.textContent = type.value === 'user'
@@ -337,6 +399,10 @@
 
             const syncPublication = () => {
                 const isFaq = type.value === 'faq';
+                if (projectUpdate) {
+                    projectUpdate.hidden = type.value !== 'system_update';
+                    projectUpdate.querySelectorAll('input, textarea').forEach(el => { el.disabled = projectUpdate.hidden; });
+                }
                 faqSections.hidden = !isFaq;
                 faqSections.disabled = !isFaq;
                 publication.hidden = isFaq || status.value !== 'published';
