@@ -36,7 +36,11 @@ final class AdminBulkChangeUserDeletionStateHandler
                 }
             }
 
-            $users->each->delete();
+            $users->each(function (User $user): void {
+                // Administrative deletion never grants self-service restoration.
+                $user->forceFill(['self_deleted_at' => null])->save();
+                $user->delete();
+            });
 
             return $users->count();
         });
@@ -50,7 +54,10 @@ final class AdminBulkChangeUserDeletionStateHandler
 
         return DB::transaction(function () use ($userIds): int {
             $users = User::query()->onlyTrashed()->whereKey($userIds)->lockForUpdate()->get();
-            $users->each->restore();
+            $users->each(function (User $user): void {
+                $user->restore();
+                $user->forceFill(['self_deleted_at' => null])->save();
+            });
 
             return $users->count();
         });
