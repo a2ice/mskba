@@ -74,19 +74,28 @@ final class PasswordRecoveryTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    public function test_ambiguous_verified_email_is_never_used_to_reset_multiple_accounts(): void
+    public function test_ambiguous_verified_telegram_username_is_never_used_to_reset_multiple_accounts(): void
     {
-        config()->set('mail.default', 'smtp');
-        Mail::fake();
+        config()->set('telegram.bot_token', 'test-token');
+        Http::fake();
         $first = $this->person();
         $second = $this->person();
-        $this->contact($first, 'ambiguous@example.test');
-        $this->contact($second, 'ambiguous@example.test');
 
-        $this->postJson(route('auth.restore'), ['contact' => 'ambiguous@example.test'])->assertOk();
+        foreach ([$first, $second] as $index => $user) {
+            Contact::query()->create([
+                'contactable_type' => 'user',
+                'contactable_id' => $user->id,
+                'type' => ContactTypeEnum::TELEGRAM,
+                'value' => (string) (123456780 + $index),
+                'verified_at' => now(),
+                'meta' => ['username' => 'ambiguousplayer'],
+            ]);
+        }
+
+        $this->postJson(route('auth.restore'), ['contact' => '@ambiguousplayer'])->assertOk();
         $this->assertTrue(Hash::check('OldStrong1!', $first->fresh()->password));
         $this->assertTrue(Hash::check('OldStrong1!', $second->fresh()->password));
-        Mail::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     public function test_unavailable_mail_transport_does_not_rotate_credentials(): void
