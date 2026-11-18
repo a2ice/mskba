@@ -714,6 +714,14 @@ if (dayBookingDialog) {
 
     async function showDay(date, resumeBooking = null) {
         if (!date) return;
+        // The venue overview may have many halls with different free slots.
+        // Never silently book the first hall when no explicit selection exists.
+        if (!dayBookingDialog.dataset.courtId) {
+            window.dispatchEvent(new CustomEvent('mskba:venue-court-selection-required', {
+                detail: {date},
+            }));
+            return;
+        }
         ++previewSequence;
         loading?.abort();
         loading = new AbortController();
@@ -787,6 +795,22 @@ if (dayBookingDialog) {
     dayBookingDialog.addEventListener('mskba:choose-court', event => {
         const nextCourt = Number(event.detail?.courtId);
         if (Number.isInteger(nextCourt) && nextCourt > 0) {
+            if (String(nextCourt) !== dayBookingDialog.dataset.courtId) {
+                // The overview calendar describes the venue, not an arbitrary
+                // court. Remove its percentages/hours until each court-specific
+                // day is loaded from the authoritative schedule endpoint.
+                dateButtons.forEach(button => {
+                    const item = button.closest('[data-day-date]');
+                    const hours = button.querySelector('.app-venue-day-dialog__date-hours');
+                    const progress = item?.querySelector('[data-day-occupancy]');
+                    if (hours) hours.textContent = 'Выберите дату';
+                    if (progress) {
+                        progress.classList.add('is-unknown');
+                        progress.setAttribute('aria-label', 'Занятость для этого зала ещё не загружена');
+                        progress.querySelector('[data-day-occupancy-booked]')?.style.setProperty('width', '0%');
+                    }
+                });
+            }
             dayBookingDialog.dataset.courtId = String(nextCourt);
         }
         const preferredDate = event.detail?.date;
