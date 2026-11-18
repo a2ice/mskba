@@ -80,6 +80,22 @@ async function go(id) {
     // Keep keyboard focus on an actual action instead of outlining the heading.
     nextButton.value?.focus({ preventScroll: true });
 }
+// Enter moves through the visible controls of this step instead of submitting
+// the entire wizard. The final field focuses "Далее" without activating it.
+function handleInputEnter(event) {
+    const input = event.target;
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229 ||
+        input?.tagName !== 'INPUT' ||
+        !['text', 'email', 'password', 'search', 'tel', 'url', 'number'].includes(input.type)) return;
+
+    event.preventDefault();
+    if (props.busy) return;
+    const fields = [...(content.value?.querySelectorAll('input, select, textarea') || [])]
+        .filter(field => !field.disabled && field.type !== 'hidden' && field.getClientRects().length);
+    const currentIndex = fields.indexOf(input);
+    if (currentIndex < 0) return;
+    (fields[currentIndex + 1] || nextButton.value)?.focus({ preventScroll: true });
+}
 function back() {
     if (index.value > 0 && !props.busy) go(visibleSteps.value[index.value - 1].id);
 }
@@ -104,7 +120,7 @@ defineExpose({ applyErrors, reset });
 </script>
 
 <template>
-    <form class="mskba-wizard" novalidate @submit.prevent="forward">
+    <form class="mskba-wizard" novalidate @submit.prevent="forward" @keydown.enter="handleInputEnter">
         <header class="mskba-wizard__progress">
             <progress :value="index + 1" :max="visibleSteps.length" aria-label="Прогресс мастера" />
             <span role="status" aria-live="polite">ШАГ {{ index + 1 }} / {{ visibleSteps.length }}</span>
