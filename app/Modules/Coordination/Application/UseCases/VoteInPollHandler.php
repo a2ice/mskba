@@ -8,6 +8,7 @@ use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\Poll;
 use App\Modules\Coordination\Domain\Models\PollBallot;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\PlayInterest\Domain\Models\PlayGroupAssembly;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -28,6 +29,14 @@ final class VoteInPollHandler
         $ballot = DB::transaction(function () use ($pollId, $user, $identityIds, $optionIds): PollBallot {
             /** @var Poll $poll */
             $poll = Poll::query()->lockForUpdate()->findOrFail($pollId);
+
+            $groupAssembly = PlayGroupAssembly::query()
+                ->where('coordination_session_id', $poll->session_id)
+                ->with('opportunity')->first();
+            if ($groupAssembly !== null
+                && $groupAssembly->opportunity?->hasActiveMember($user) !== true) {
+                abort(403, 'Голосовать могут только действующие участники этой группы.');
+            }
 
             if ($poll->status !== PollStatusEnum::OPEN || $poll->closes_at->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('Голосование уже закрыто.');

@@ -27,6 +27,24 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('play-opportunities:sync {--max=400}', function (
+    \App\Modules\PlayInterest\Application\Services\SynchronizePlayOpportunities $matcher
+) {
+    $result=$matcher->sync((int)$this->option('max'));
+    $this->info('Обработано игровых подписок: '.$result['intents']
+        .'; обновлено групп: '.$result['groups_touched'].'.');
+})->purpose('Обновляет группы совместимых игровых интересов');
+
+Artisan::command('play-opportunities:close-elections', function (
+    \App\Modules\PlayInterest\Application\Services\PlayGroupGovernance $governance
+) {
+    \App\Modules\PlayInterest\Domain\Models\PlayOpportunity::query()
+        ->whereHas('elections',fn($q)=>$q->where('status','open'))
+        ->chunkById(100,function($groups) use($governance):void {
+            foreach($groups as $group)$governance->finalizeDue($group);
+        });
+})->purpose('Завершает голосования по срокам и большинству');
+
 Artisan::command('coordination:close-expired', function (CloseExpiredPollsHandler $handler) {
     $this->info('Закрыто опросов: '.$handler->handle());
 })->purpose('Закрывает опросы с истёкшим дедлайном');
@@ -201,6 +219,10 @@ Artisan::command('rewards:grant-completed-rentals', function (RewardEngine $engi
 
     $this->info('Обработано прав по завершённым арендам: '.$count);
 })->purpose('Проверяет завершённые оплаченные аренды и идемпотентно начисляет фиксированные бонусы');
+
+Schedule::command('play-opportunities:sync')->everyTenMinutes()->onOneServer()->withoutOverlapping();
+
+Schedule::command('play-opportunities:close-elections')->everyMinute()->onOneServer()->withoutOverlapping();
 
 Schedule::command('coordination:close-expired')
     ->everyMinute()

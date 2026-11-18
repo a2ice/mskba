@@ -409,3 +409,9 @@ dialog.app-subscription-details::backdrop{background:rgba(28,38,53,.55);backdrop
 
 .app-play-dialog__notification-topic--collapsed{grid-template-columns:minmax(0,1fr)}
 
+
+/* Task 336: match previews on existing subscription cards. */
+.app-play-interests__matches{display:grid;gap:7px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-raised);margin:12px 0}
+.app-play-interests__matches strong{font-size:13px}
+.app-play-interests__match-link{display:block;min-height:38px;padding:9px 10px;border:1px solid var(--control-line);border-radius:8px;color:var(--text);overflow-wrap:anywhere;font-size:13px}
+.app-play-interests__match-link:hover{border-color:var(--accent);color:var(--accent)}

@@ -392,6 +392,8 @@
                 @endif
             </section>
 
+            @include('theme::pages.events.partials.social-wall')
+
             <div class="event-participants-surface" data-event-participants-surface data-max-participants="{{ $event->max_participants }}" data-image-upload-surface>
                 @include('theme::partials.image-upload-loading', ['text' => 'Обновляем список участников…'])
             @foreach([

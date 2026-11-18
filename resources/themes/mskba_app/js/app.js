@@ -39,6 +39,7 @@ import AuthDialog from './components/AuthDialog.vue';
 import PlayIntentDialog from './components/PlayIntentDialog.vue';
 import './play-interest-continuation.js';
 import './play-interest-mine.js';
+import './play-opportunity.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
 import './venue-choice.js';
