@@ -123,7 +123,11 @@ final class AccountInvitationManager
             }
             $record->increment('views_count');
             if ($record->viewed_at === null) {
-                $record->forceFill(['viewed_at' => now(), 'progress' => 'viewed'])->save();
+                $fields = ['viewed_at' => now()];
+                if (in_array($record->progress, ['created', 'sent'], true)) {
+                    $fields['progress'] = 'viewed';
+                }
+                $record->forceFill($fields)->save();
                 $this->event($record, 'viewed');
             }
         });
@@ -206,6 +210,23 @@ final class AccountInvitationManager
             );
         }
         return $this->complete($invitation);
+    }
+
+    /**
+     * Called from the existing evidence-backed ownership approval transaction.
+     * Acceptance of an invitation alone never grants the owner contract.
+     */
+    public function finishOwnership(int $venueId, int $ownerUserId): void
+    {
+        $records = AccountInvitation::query()
+            ->where('scope_type', 'venue')->where('scope_id', $venueId)
+            ->where('role', 'owner')->where('accepted_user_id', $ownerUserId)
+            ->whereNotNull('contact_verified_at')->where('status', 'pending')
+            ->lockForUpdate()->get();
+
+        foreach ($records as $record) {
+            $this->complete($record);
+        }
     }
 
     private function complete(AccountInvitation $invitation): AccountInvitation
