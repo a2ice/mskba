@@ -17,6 +17,27 @@
     let desiredDate = null;
     let favoriteState = 'unknown';
     let busy = false;
+    const favoriteResumeKey = 'mskba:venue-favorite-auth-resume';
+    let awaitingFavoriteAuth = false;
+    const authenticated = () => favorite.dataset.authenticated === '1'
+        || document.querySelector('meta[name="mskba-authenticated"]')?.content === '1';
+    const saveFavoriteResume = () => {
+        try {
+            sessionStorage.setItem(favoriteResumeKey, JSON.stringify({
+                path: location.pathname, venueId, savedAt: Date.now(),
+            }));
+        } catch { /* optional browser storage */ }
+    };
+    const clearFavoriteResume = () => {
+        try {sessionStorage.removeItem(favoriteResumeKey);} catch { /* optional */ }
+    };
+    const readFavoriteResume = () => {
+        try {
+            const entry = JSON.parse(sessionStorage.getItem(favoriteResumeKey) || 'null');
+            return entry?.path === location.pathname && entry?.venueId === venueId
+                && Date.now() - entry.savedAt < 20 * 60 * 1000;
+        } catch {return false;}
+    };
 
     const notify = (message, failed = false) => window.dispatchEvent(
         new CustomEvent('mskba:action-toast', {detail: {message, failed}})
@@ -55,6 +76,18 @@
         close(document.querySelector('[data-venue-interests-dialog]') || choice);
         if (!choice.open) choice.showModal();
     }
+    function requestFavorite() {
+        close(choice);
+        if (!authenticated()) {
+            awaitingFavoriteAuth = true;
+            saveFavoriteResume();
+            window.dispatchEvent(new CustomEvent('mskba:auth:open', {
+                detail: {mode: 'login', stayOnPage: true},
+            }));
+            return;
+        }
+        void openFavorite();
+    }
     async function openFavorite() {
         close(choice);
         favoriteState = 'unknown';
@@ -91,8 +124,25 @@
     favoriteOption.addEventListener('toggle', () => {
         if (!favoriteOption.open || !choice.open) return;
         favoriteOption.open = false;
+        requestFavorite();
+    });
+    favorite.querySelector('[data-venue-favorite-back]')?.addEventListener('click', () => {
+        close(favorite);
+        openChoice();
+    });
+    window.addEventListener('mskba:auth:success', () => {
+        if (!awaitingFavoriteAuth && !readFavoriteResume()) return;
+        awaitingFavoriteAuth = false;
+        favorite.dataset.authenticated = '1';
+        clearFavoriteResume();
         void openFavorite();
     });
+    // Registration and external authentication can redirect back to this page.
+    // Resume the confirmation, never silently add a favorite.
+    if (authenticated() && readFavoriteResume()) {
+        clearFavoriteResume();
+        queueMicrotask(() => void openFavorite());
+    }
     choice.querySelectorAll('[data-venue-choice-close]').forEach(button =>
         button.addEventListener('click', () => close(choice)));
     favorite.querySelectorAll('[data-venue-favorite-close]').forEach(button =>
