@@ -70,9 +70,14 @@ async function focusError(field) {
     input?.scrollIntoView({ block: 'nearest' });
 }
 function fieldControls() {
+    const names = new Set();
     return [...(content.value?.querySelectorAll('input[name], select[name], textarea[name]') || [])]
-        .filter(field => !field.disabled && !field.closest('[inert]') &&
-            field.type !== 'hidden' && field.getClientRects().length);
+        .filter(field => {
+            if (field.disabled || field.closest('[inert]') || field.type === 'hidden' ||
+                !field.getClientRects().length || names.has(field.name)) return false;
+            names.add(field.name);
+            return true;
+        });
 }
 async function go(id, focusFirstField = false) {
     stopAttention();
@@ -130,7 +135,7 @@ function handleInputEnter(event) {
             .includes(input.type) || event.isComposing || event.keyCode === 229 ||
         props.busy) return;
     const fields = fieldControls();
-    const currentIndex = fields.indexOf(input);
+    const currentIndex = fields.findIndex(field => field.name === input.name);
     if (currentIndex < 0 || !input.name) return;
     event.preventDefault();
     if (!validateEnteredField(input.name)) return;
