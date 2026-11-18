@@ -15,6 +15,7 @@ use App\Filament\Backoffice\Resources\ContractTemplates\ContractTemplateResource
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
 use App\Filament\Backoffice\Resources\DesignThemes\DesignThemeResource;
 use App\Filament\Backoffice\Resources\Events\EventResource;
+use App\Filament\Backoffice\Resources\PlayOpportunities\PlayOpportunityResource;
 use App\Filament\Backoffice\Resources\FaqSections\FaqSectionResource;
 use App\Filament\Backoffice\Resources\Geography\CityResource;
 use App\Filament\Backoffice\Resources\Geography\DistrictResource;
@@ -93,6 +94,7 @@ final class BackofficePanelProvider extends PanelProvider
                 NavigationGroup::make('География')->collapsed(),
                 NavigationGroup::make('Аренда и документы')->collapsed(),
                 NavigationGroup::make('Соревнования')->collapsed(),
+                NavigationGroup::make('Сообщества')->collapsed(),
                 NavigationGroup::make('Магазин')->collapsed(),
                 NavigationGroup::make('Лояльность')->collapsed(),
                 NavigationGroup::make('Поддержка')->collapsed(),
@@ -174,6 +176,7 @@ final class BackofficePanelProvider extends PanelProvider
                 RentalInvoiceTemplateResource::class,
                 VenueRentalInterestResource::class,
                 EventResource::class,
+                PlayOpportunityResource::class,
                 FaqSectionResource::class,
                 TeamResource::class,
                 LeagueResource::class,

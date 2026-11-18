@@ -209,20 +209,23 @@ final class PlayGroupGovernance
             if ($newName !== null && mb_strlen($newName) > 80) {
                 throw new InvalidArgumentException('Слишком длинное название группы.');
             }
+            $adminChanged = $oldAdmin !== $target?->canonical()->id;
             $group->update([
                 'admin_user_id' => $target?->canonical()->id,
-                'admin_assigned_at' => $target ? now() : null,
-                'admin_source' => 'staff_override',
+                'admin_assigned_at' => $adminChanged ? ($target ? now() : null) : $group->admin_assigned_at,
+                'admin_source' => $adminChanged ? 'staff_override' : $group->admin_source,
                 'custom_title' => $newName === '' ? null : $newName,
             ]);
-            PlayGroupElection::query()->where('opportunity_id', $group->id)
-                ->where('status','open')->update(['status'=>'cancelled', 'finished_at'=>now()]);
-            $this->wall->appendSystem('play_opportunity', $group->id, $operator,
-                'group_admin_staff_override', [
-                    'previous_admin_user_id' => $oldAdmin,
-                    'new_admin_user_id' => $group->admin_user_id,
-                    'reason' => $reason,
-                ], $target);
+            if ($adminChanged) {
+                PlayGroupElection::query()->where('opportunity_id', $group->id)
+                    ->where('status','open')->update(['status'=>'cancelled', 'finished_at'=>now()]);
+                $this->wall->appendSystem('play_opportunity', $group->id, $operator,
+                    'group_admin_staff_override', [
+                        'previous_admin_user_id' => $oldAdmin,
+                        'new_admin_user_id' => $group->admin_user_id,
+                        'reason' => $reason,
+                    ], $target);
+            }
             if ($oldName !== $group->custom_title) {
                 $this->wall->appendSystem('play_opportunity', $group->id, $operator,
                     'group_title_changed', ['previous' => $oldName ?: $group->generated_title,
