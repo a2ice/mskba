@@ -21,7 +21,7 @@ final class ReferralSourcePageTest extends TestCase
         ]);
 
         $this->get(route('referral.entry', [
-            'username' => $inviter->username,
+            'username' => strtoupper($inviter->username),
             'source_page' => '/account/player/avatar?private=not-stored',
         ]))->assertRedirect(route('acquisition.join'));
 
