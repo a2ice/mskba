@@ -27,7 +27,7 @@ final class EventSocialWallController extends Controller
         $after = isset($data['after_id']) ? (int) $data['after_id'] : null;
         return response()->json([
             'entries' => $wall->latestForEvent($item, 50, $after)
-                ->map(fn ($entry) => $wall->present($entry))->values(),
+                ->map(fn ($entry) => $this->present($entry, $item, $request, $wall))->values(),
             'counts' => $wall->eventCounts($item),
             'can_post' => $wall->canCommentOnEvent($item, $request->user()),
         ])->header('Cache-Control', 'private, no-store');
@@ -54,7 +54,7 @@ final class EventSocialWallController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        return response()->json(['entry' => $wall->present($entry)], 201);
+        return response()->json(['entry' => $this->present($entry, $item, $request, $wall)], 201);
     }
 
     public function destroy(Request $request, string $event, int $entry, SocialWallService $wall): JsonResponse
@@ -70,6 +70,25 @@ final class EventSocialWallController extends Controller
                 'retry_after' => $exception->retryAfter,
             ], 429)->header('Retry-After', (string) $exception->retryAfter);
         }
-        return response()->json(['entry' => $wall->present($deleted)]);
+        return response()->json(['entry' => $this->present($deleted, $item, $request, $wall)]);
     }
+    private function present(
+        \App\Modules\Social\Domain\Models\SocialWallEntry $entry,
+        Event $event,
+        Request $request,
+        SocialWallService $wall,
+    ): array {
+        $payload = $wall->present($entry);
+        $viewer = $request->user()?->canonical();
+        $canDelete = $viewer !== null
+            && $payload['system'] === false
+            && $payload['deleted'] === false
+            && $entry->actor_user_id === $viewer->id;
+        $payload['can_delete'] = $canDelete;
+        $payload['delete_url'] = $canDelete
+            ? route('events.wall.delete', [$event->routeIdentifier(), $entry->id]) : null;
+
+        return $payload;
+    }
+
 }
