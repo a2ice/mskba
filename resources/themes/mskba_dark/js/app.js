@@ -104,6 +104,7 @@ import './features/tournament-application.js';
 import './features/tournament-management.js';
 import './features/tournament-check-in.js';
 import './features/event-show.js';
+import './features/event-social-wall.js';
 import './features/game-shot-quick-action.js';
 import './features/game-control.js';
 import './features/game-lifecycle.js';

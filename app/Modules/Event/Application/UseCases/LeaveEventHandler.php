@@ -8,6 +8,8 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Social\Application\Services\SocialActionLimiter;
+use App\Modules\Social\Application\Services\SocialWallService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -15,13 +17,20 @@ final class LeaveEventHandler
 {
     public function __construct(
         private readonly EventIdentityParticipationService $identityParticipation,
+        private readonly SocialActionLimiter $socialActions,
+        private readonly SocialWallService $wall,
     ) {}
 
     public function handle(string $identifier, User $user): Event
     {
         $user = $user->canonical();
 
-        $event = DB::transaction(function () use ($identifier, $user): Event {
+        $eventId = Event::query()->whereRouteIdentifier($identifier)->firstOrFail()->id;
+        $changed = false;
+        $event = $this->socialActions->run($user, 'event', $eventId, 'rsvp', function () use (
+            $identifier, $user, &$changed
+        ): array {
+            $event = DB::transaction(function () use ($identifier, $user, &$changed): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $participant = $this->identityParticipation->effectiveParticipant($event, $user);
 
@@ -37,6 +46,7 @@ final class LeaveEventHandler
                 throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
+            $previousStatus = $participant->status;
             $participant->update([
                 'status' => EventParticipantStatusEnum::LEFT,
                 'left_at' => now(),
@@ -49,10 +59,21 @@ final class LeaveEventHandler
             ]);
             $participant->responsibilityPermissions()->delete();
 
+            $this->wall->appendSystem('event', $event->id, $user, 'event_rsvp_changed', [
+                'from' => $previousStatus->value,
+                'to' => EventParticipantStatusEnum::LEFT->value,
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+            $changed = true;
             return $event;
+            });
+
+            return ['changed' => $changed, 'value' => $event];
         });
 
-        event(new EventChanged($event->id));
+        if ($changed) {
+            event(new EventChanged($event->id));
+        }
 
         return $event;
     }

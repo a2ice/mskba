@@ -24,6 +24,7 @@
 @import './pages/admin';
 @import './pages/integrations';
 @import './pages/events';
+@import './pages/event-social-wall.css';
 @import './pages/coordination';
 @import './pages/content';
 @import './pages/sports-sections';

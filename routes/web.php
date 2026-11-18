@@ -823,6 +823,10 @@ Route::prefix('events')->group(function () {
             ->name('events.leave');
         Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
             ->name('events.participation');
+        Route::post('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'store'])
+            ->name('events.wall.store');
+        Route::delete('/{event}/wall/{entry}', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'destroy'])
+            ->whereNumber('entry')->name('events.wall.delete');
         Route::get('/{event}/participants/candidates', [EventController::class, 'participantCandidates'])
             ->middleware('throttle:60,1')
             ->name('events.participants.candidates');
@@ -870,6 +874,8 @@ Route::prefix('events')->group(function () {
         Route::put('/{event}/games/{game}/lineup', [NestedGameController::class, 'lineup'])->whereNumber('game')->name('events.games.lineup.update');
     });
 
+    Route::get('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'index'])
+        ->name('events.wall.index')->middleware('throttle:90,1');
     Route::get('/{event}', [EventController::class, 'show'])
         ->name('events.show');
 });
