@@ -177,8 +177,8 @@ final class SynchronizePlayOpportunities
                 if($start===null || $end===null)continue;
                 if(!empty($window['end_next_day']))$end+=1440;
                 if($end<=$start || $end-$start>480)continue;
-                if($day===0 && $start<(int)$today->now($timezone)->format('H')*60
-                    +(int)$today->now($timezone)->format('i'))continue;
+                if($day===0 && $start<(int)CarbonImmutable::now($timezone)->format('H')*60
+                    +(int)CarbonImmutable::now($timezone)->format('i'))continue;
                 $result[]=['date'=>$dayString,'start'=>$start,'end'=>$end];
             }
         }
@@ -256,6 +256,13 @@ final class SynchronizePlayOpportunities
                     'common_time'=>$time,
                 ]
             );
+            if ($group->status !== 'active') {
+                $group->update([
+                    'status'=>'active',
+                    'common_venue_ids'=>array_slice($venues,0,7),
+                    'common_time'=>$time,
+                ]);
+            }
             $this->upsertMember($group,$a);
             $this->upsertMember($group,$b);
 

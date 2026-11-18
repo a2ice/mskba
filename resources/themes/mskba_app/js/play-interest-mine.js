@@ -302,6 +302,20 @@ if (root) {
                     card.append(make('p','Поиск без конкретной площадки','muted'));
                 }
                 card.append(make('p',summary(intent),'muted'));
+                if (intent.subscription_type!=='venue' && intent.effective_status==='active') {
+                    const matches=make('section',null,'app-play-interests__matches');
+                    const list=Array.isArray(intent.matches)?intent.matches:[];
+                    matches.append(make('strong',list.length
+                        ? 'Совпадения интересов · '+list.length+' групп'
+                        : 'Совпадения пока не найдены'));
+                    if (!list.length)matches.append(make('p','Когда найдутся пользователи со сходными условиями, здесь появятся группы для обсуждения.','muted'));
+                    for(const item of list.slice(0,3)){
+                        const link=make('a',item.name+' · Обсудить игру','app-play-interests__match-link');
+                        link.href=item.url;
+                        matches.append(link);
+                    }
+                    card.append(matches);
+                }
                 const actions=make('div',null,'app-play-interests__actions account-collection__actions');
                 const viewButton=button('Посмотреть',()=>editSubscription(intent));
                 viewButton.classList.add('account-collection__action','account-collection__action--primary');

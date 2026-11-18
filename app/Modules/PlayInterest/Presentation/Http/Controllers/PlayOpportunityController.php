@@ -41,7 +41,11 @@ final class PlayOpportunityController extends Controller
                 'supporters' => $ratings->filter(fn ($score) => $score >= 7)->count(),
                 'not_suitable' => $votes->where('unsuitable', true)->count(),
             ];
-        })->sortByDesc('supporters')->sortByDesc('average')->values();
+        })->sort(function (array $a, array $b):int {
+            return $b['supporters'] <=> $a['supporters']
+                ?: ($b['average'] ?? -1) <=> ($a['average'] ?? -1)
+                ?: $a['venue']->id <=> $b['venue']->id;
+        })->values();
 
         $wall = SocialWallEntry::query()->where('scope_type', 'play_opportunity')
             ->where('scope_id', $opportunity->id)

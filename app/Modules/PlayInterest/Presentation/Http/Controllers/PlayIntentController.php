@@ -8,6 +8,8 @@ use App\Modules\PlayInterest\Application\Services\PlayIntentManager;
 use App\Modules\PlayInterest\Application\Services\RecommendPlayableSlots;
 use App\Modules\PlayInterest\Application\Services\RecommendVenuesForIntent;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
+use App\Modules\PlayInterest\Domain\Models\PlayOpportunityMember;
+use App\Modules\PlayInterest\Application\Jobs\RecomputePlayOpportunities;
 use App\Modules\PlayInterest\Presentation\Http\Requests\SavePlayIntentRequest;
 use App\Modules\Venue\Domain\Models\Amenity;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +29,24 @@ final class PlayIntentController extends Controller
         $status = $filters['status'] ?? 'all';
         $page = (int) ($filters['page'] ?? 1);
         // Every subscription, including the one created from a favorite, is a PlayIntent.
+        // A canonical user can have multiple criteria inside one same opportunity.
+        $opportunities = [];
+        $memberships = PlayOpportunityMember::query()
+            ->where('user_id', $user->id)->where('status','active')
+            ->with('opportunity')->get();
+        foreach($memberships as $membership) {
+            $group = $membership->opportunity;
+            if($group === null || $group->status !== 'active')continue;
+            $entry=[
+                'id'=>$group->public_id,
+                'name'=>$group->displayTitle(),
+                'url'=>route('play.opportunities.show',$group),
+                'status'=>$group->status,
+            ];
+            foreach((array)$membership->play_intent_ids as $intentId) {
+                $opportunities[(int)$intentId][$group->id]=$entry;
+            }
+        }
         // The optional type filter describes search scope, not a separate data model.
         $items = collect();
         $query = PlayIntent::query()->where('user_id', $user->id)->with('venue');
@@ -34,6 +54,7 @@ final class PlayIntentController extends Controller
         // 'play' includes all PlayIntent searches, including venue-anchored ones.
         foreach ($query->get() as $intent) {
             $item = $this->serialize($intent);
+            $item['matches'] = array_values($opportunities[(int)$intent->id] ?? []);
             if ($status !== 'all' && $item['effective_status'] !== $status) continue;
             $item['updated_sort'] = $intent->updated_at?->getTimestamp() ?? 0;
             $items->push($item);
@@ -72,52 +93,52 @@ final class PlayIntentController extends Controller
 
     public function store(SavePlayIntentRequest $request, PlayIntentManager $manager): JsonResponse
     {
-        return response()->json([
-            'data' => $this->serialize($manager->save($this->viewer($request), $request->validated())),
-        ], 201);
+        $saved=$manager->save($this->viewer($request), $request->validated());
+        RecomputePlayOpportunities::dispatch()->afterCommit();
+        return response()->json(['data'=>$this->serialize($saved)], 201);
     }
 
     public function update(SavePlayIntentRequest $request, PlayIntent $playIntent, PlayIntentManager $manager): JsonResponse
     {
         $this->owned($request, $playIntent);
 
-        return response()->json([
-            'data' => $this->serialize($manager->save($this->viewer($request), $request->validated(), $playIntent)),
-        ]);
+        $saved=$manager->save($this->viewer($request), $request->validated(), $playIntent);
+        RecomputePlayOpportunities::dispatch()->afterCommit();
+        return response()->json(['data'=>$this->serialize($saved)]);
     }
 
     public function pause(Request $request, PlayIntent $playIntent, PlayIntentManager $manager): JsonResponse
     {
         $this->owned($request, $playIntent);
 
-        return response()->json([
-            'data' => $this->serialize($manager->setPaused($this->viewer($request), $playIntent, true)),
-        ]);
+        $saved=$manager->setPaused($this->viewer($request), $playIntent, true);
+        RecomputePlayOpportunities::dispatch()->afterCommit();
+        return response()->json(['data'=>$this->serialize($saved)]);
     }
 
     public function resume(Request $request, PlayIntent $playIntent, PlayIntentManager $manager): JsonResponse
     {
         $this->owned($request, $playIntent);
 
-        return response()->json([
-            'data' => $this->serialize($manager->setPaused($this->viewer($request), $playIntent, false)),
-        ]);
+        $saved=$manager->setPaused($this->viewer($request), $playIntent, false);
+        RecomputePlayOpportunities::dispatch()->afterCommit();
+        return response()->json(['data'=>$this->serialize($saved)]);
     }
 
     public function restore(Request $request, PlayIntent $playIntent, PlayIntentManager $manager): JsonResponse
     {
         $this->owned($request, $playIntent);
 
-        return response()->json([
-            'data' => $this->serialize($manager->restoreExpired($this->viewer($request), $playIntent)),
-        ]);
+        $saved=$manager->restoreExpired($this->viewer($request), $playIntent);
+        RecomputePlayOpportunities::dispatch()->afterCommit();
+        return response()->json(['data'=>$this->serialize($saved)]);
     }
 
     public function destroy(Request $request, PlayIntent $playIntent): JsonResponse
     {
         $this->owned($request, $playIntent);
         $playIntent->forceFill(['status' => 'cancelled'])->save();
-
+        RecomputePlayOpportunities::dispatch()->afterCommit();
         return response()->json(['message' => 'Подписка отменена.']);
     }
 
