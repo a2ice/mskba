@@ -90,6 +90,8 @@ final class AccountInvitationResource extends Resource
                 Action::make('issue')->label('Создать аккаунт и пригласить пользователя')
                     ->icon('heroicon-o-user-plus')->modalWidth('lg')
                     ->schema([
+                        Select::make('scope_type')->label('Контекст')->required()->default('venue')
+                            ->options(['venue' => 'Площадка']),
                         Select::make('scope_id')->label('Площадка')->required()->searchable()
                             ->getSearchResultsUsing(fn (string $search): array =>
                                 Venue::query()->whereNull('deleted_at')
@@ -104,8 +106,8 @@ final class AccountInvitationResource extends Resource
                                 'booking_operator' => 'Регистрация оператора бронирований',
                             ]),
                         TextInput::make('email')->label('Email получателя')->email()->required()->maxLength(255),
-                        TextInput::make('title')->label('Название приглашения')->required()->maxLength(160)
-                            ->default('Приглашение в MSKBA'),
+                        TextInput::make('title')->label('Название приглашения')->maxLength(160)
+                            ->helperText('Необязательно: по умолчанию будет сформировано из роли и названия площадки.'),
                         Textarea::make('description')->label('Описание для получателя')
                             ->maxLength(2000)->rows(3),
                         Select::make('days')->label('Срок действия ссылки')->required()->default(7)
@@ -115,9 +117,9 @@ final class AccountInvitationResource extends Resource
                         abort_unless(self::canViewAny(), 403);
                         try {
                             [$invitation, $url] = app(AccountInvitationManager::class)->create(
-                                auth('web')->user(), (string) $data['email'], 'venue',
+                                auth('web')->user(), (string) $data['email'], (string) $data['scope_type'],
                                 (int) $data['scope_id'], (string) $data['role'],
-                                (string) $data['title'], $data['description'] ?? null, (int) $data['days']
+                                (string) ($data['title'] ?? ''), $data['description'] ?? null, (int) $data['days']
                             );
                             Notification::make()->success()
                                 ->title('Приглашение #'.$invitation->id.' отправлено')
