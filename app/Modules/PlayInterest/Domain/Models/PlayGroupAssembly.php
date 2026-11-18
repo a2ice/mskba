@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Modules\PlayInterest\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+final class PlayGroupAssembly extends Model
+{
+    protected $table = 'play_group_assemblies';
+    protected $fillable = [
+        'opportunity_id','created_by_user_id','coordination_session_id','event_id','status',
+    ];
+    public function opportunity(): BelongsTo
+    {
+        return $this->belongsTo(PlayOpportunity::class,'opportunity_id');
+    }
+}
