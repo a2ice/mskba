@@ -399,7 +399,7 @@
             <p>Выбери зал и время для аренды или сохрани эту площадку в избранном.</p>
             <button type="button" class="button primary full" data-venue-choice-open
                 @disabled(!$canStartInterest)>Хочу здесь играть</button>
-            <a class="button secondary full" href="{{ $createEventUrl }}" data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
+            <a class="button secondary full" href="{{ $createEventUrl }}" data-venue-create-event-link data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
         </aside>
     </div>
 </section>
