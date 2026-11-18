@@ -249,7 +249,7 @@
                         @unless($venue->isCourtPage)
                             <div class="app-venue-schedule__court-header">
                                 <h3>{{ $scheduleGroup['name'] }}</h3>
-                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">О зале</a>
+                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
                             </div>
                         @endunless
                         @if(count($scheduleGroup['days']))
@@ -425,10 +425,10 @@
         <p class="muted">Для сохранения избранного потребуется вход в аккаунт. После авторизации вернёмся к подтверждению.</p>
     @endguest
     <p class="error" data-venue-favorite-error role="alert" hidden></p>
+    </div>
     <div class="app-venue-overlay__actions">
         <button type="button" class="button secondary" data-venue-favorite-close>Отмена</button>
         <button type="button" class="button primary" data-venue-favorite-submit disabled>Проверяем…</button>
-    </div>
     </div>
 </dialog>
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
