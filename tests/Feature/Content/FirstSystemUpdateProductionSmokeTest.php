@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 final class FirstSystemUpdateProductionSmokeTest extends TestCase
@@ -45,8 +46,8 @@ final class FirstSystemUpdateProductionSmokeTest extends TestCase
             ),
         ]);
 
-        $this->artisan('project-updates:publish-task-329', ['--confirm-release' => true])
-            ->assertExitCode(0);
+        $firstExit = Artisan::call('project-updates:publish-task-329', ['--confirm-release' => true]);
+        $this->assertSame(0, $firstExit, Artisan::output());
 
         $item = ContentItem::query()->sole();
         $this->assertSame(ContentStatusEnum::PUBLISHED, $item->status);
@@ -60,8 +61,8 @@ final class FirstSystemUpdateProductionSmokeTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
 
         // A later production push does not produce a duplicate article.
-        $this->artisan('project-updates:publish-task-329', ['--confirm-release' => true])
-            ->assertExitCode(0);
+        $secondExit = Artisan::call('project-updates:publish-task-329', ['--confirm-release' => true]);
+        $this->assertSame(0, $secondExit, Artisan::output());
         $this->assertDatabaseCount('content_items', 1);
         $this->assertDatabaseCount('project_update_details', 1);
     }
