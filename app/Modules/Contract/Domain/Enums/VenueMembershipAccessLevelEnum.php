@@ -98,7 +98,7 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::VIEW_EVENT_INTERESTS,
                 VenuePermissionEnum::PROPOSE_EVENT_BOOKING,
                 VenuePermissionEnum::VIEW_BOOKING_REQUESTS,
-            ])),
+            ], SORT_REGULAR)),
         };
     }
 

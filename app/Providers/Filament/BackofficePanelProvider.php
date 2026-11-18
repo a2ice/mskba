@@ -9,6 +9,7 @@ use App\Filament\Backoffice\Pages\ProjectUpdatesAgentAccess;
 use App\Filament\Backoffice\Pages\RestApiExplorer;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
+use App\Filament\Backoffice\Resources\AccountInvitations\AccountInvitationResource;
 use App\Filament\Backoffice\Resources\Contracts\ContractResource;
 use App\Filament\Backoffice\Resources\ContractTemplates\ContractTemplateResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
@@ -188,6 +189,7 @@ final class BackofficePanelProvider extends PanelProvider
                 MetroStationResource::class,
                 VenueDuplicateResource::class,
                 BackofficeUserResource::class,
+                AccountInvitationResource::class,
                 SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,
                 ShopCategoryResource::class,
