@@ -56,9 +56,9 @@
                 <label for="eventVenue">Площадка</label>
                 <span class="select-control">
                     <select id="eventVenue" name="venue_id" required data-event-venue>
-                        <option value="" disabled @selected(!old('venue_id'))>Выберите площадку</option>
+                        <option value="" disabled @selected(!old('venue_id', $selectedVenueId))>Выберите площадку</option>
                         @foreach($venues as $venue)
-                            <option value="{{ $venue->id }}" @selected((string) old('venue_id') === (string) $venue->id)>
+                            <option value="{{ $venue->id }}" @selected((string) old('venue_id', $selectedVenueId) === (string) $venue->id)>
                                 {{ $venue->name }}{{ $venue->raw_address ? ' — '.$venue->raw_address : '' }}
                             </option>
                         @endforeach
@@ -74,7 +74,7 @@
                         @foreach($venues as $venue)
                             @foreach($venue->courts as $court)
                                 <option value="{{ $court->id }}" data-venue-id="{{ $venue->id }}"
-                                    @selected((string) old('venue_court_id') === (string) $court->id)>{{ $court->name }}</option>
+                                    @selected((string) old('venue_court_id', $selectedCourtId) === (string) $court->id)>{{ $court->name }}</option>
                             @endforeach
                         @endforeach
                     </select>
