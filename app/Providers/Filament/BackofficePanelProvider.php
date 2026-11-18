@@ -148,7 +148,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.navigation-state'))
             ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
-                '<link rel="stylesheet" href="'.e(asset('css/backoffice-dashboard.css').'?v=20261118-1').'">'
+                '<link rel="stylesheet" href="'.e(asset('css/backoffice-dashboard.css').'?v=20261118-2').'">'
             ))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => request()->routeIs('admin.content', 'admin.content.*')
                 ? view('backoffice.content.head')
