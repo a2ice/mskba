@@ -383,6 +383,8 @@ Route::prefix('backoffice/content')
             ->name('admin.content.store');
         Route::get('/{contentItem:alias}', [AdminContentController::class, 'edit'])
             ->name('admin.content.edit');
+        Route::post('/{contentItem:alias}/project-update/verify-production', [AdminContentController::class, 'verifyProjectUpdateProduction'])
+            ->name('admin.content.project-update.verify-production');
         Route::put('/{contentItem:alias}', [AdminContentController::class, 'update'])
             ->name('admin.content.update');
         Route::post('/{contentItem:alias}/images', [AdminContentController::class, 'storeInlineImage'])
