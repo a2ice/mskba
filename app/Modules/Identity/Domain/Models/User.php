@@ -62,6 +62,7 @@ class User extends Authenticatable implements FilamentUser, HasName
             'first_logged_in_at' => 'datetime',
             'personal_data_distribution_required_at' => 'immutable_datetime',
             'personal_data_distribution_setup_completed_at' => 'immutable_datetime',
+            'self_deleted_at' => 'immutable_datetime',
             'registration_channel' => UserRegistrationChannelEnum::class,
             'system_role' => UserSystemRoleEnum::class,
             'status' => UserStatusEnum::class,
