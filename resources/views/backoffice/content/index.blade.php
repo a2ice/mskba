@@ -7,6 +7,8 @@
 
 @section('section-heading-action')
     <div class="content-admin-actions">
+        <x-filament::button tag="a" color="gray" href="{{ route('admin.content', ['type' => 'system_update']) }}">Обновления проекта</x-filament::button>
+        <x-filament::button tag="a" color="gray" href="{{ route('admin.content.create', ['type' => 'system_update']) }}">Добавить обновление</x-filament::button>
         <x-filament::button tag="a" color="gray" href="{{ route('admin.content.seo') }}">SEO страниц</x-filament::button>
         <x-filament::button tag="a" href="{{ route('admin.content.create') }}">Добавить материал</x-filament::button>
     </div>
