@@ -642,15 +642,6 @@ dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
 .app-venue-favorite-dialog>.app-venue-overlay__actions{
     flex:0 0 auto;margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
 }
-.app-venue-favorite-dialog__heading{display:grid;gap:7px;min-width:0}
-.app-venue-favorite-dialog__back{
-    width:max-content;padding:0;border:0;background:none;color:var(--accent);
-    font-size:13px;line-height:1.45;font-weight:650;cursor:pointer;
-}
-.app-venue-favorite-dialog__back:hover{text-decoration:underline}
-.app-venue-favorite-dialog__back:focus-visible{
-    outline:2px solid var(--accent);outline-offset:4px;border-radius:3px;
-}
 .app-venue-choice-dialog__body>.muted{line-height:1.55;margin:0 0 16px}
 @media(max-width:480px){
     dialog.app-venue-choice-dialog,dialog.app-venue-favorite-dialog{
