@@ -23,17 +23,20 @@ final class SocialWallService
 
     public function canViewEvent(Event $event, ?User $user): bool
     {
-        if ($event->visibility === EventVisibilityEnum::PUBLIC) {
-            return true;
-        }
-
-        if ($user === null) {
+        if ($user === null || $user->canonical()->trashed() || $user->canonical()->isBlocked()) {
             return false;
         }
 
+        // Public visibility of the Event does not publish conversations.
+        // The discussion remains scoped to actual or tentative members.
         $identityIds = $user->canonical()->identityIds();
 
-        return $event->participants()->whereIn('user_id', $identityIds)->exists()
+        return $event->participants()
+                ->whereIn('user_id', $identityIds)
+                ->whereIn('status', [
+                    EventParticipantStatusEnum::CONFIRMED->value,
+                    EventParticipantStatusEnum::TENTATIVE->value,
+                ])->exists()
             || $event->organizerActor()->whereIn('user_id', $identityIds)->exists();
     }
 
@@ -167,6 +170,19 @@ final class SocialWallService
             }
         }
 
+        $otherStatuses = $event->participants()
+            ->with('user:id,canonical_user_id,username')
+            ->where('confirmation_version', $event->participation_confirmation_version)
+            ->whereIn('status', [
+                EventParticipantStatusEnum::CONFIRMED->value,
+                EventParticipantStatusEnum::TENTATIVE->value,
+            ])->get();
+        foreach ($otherStatuses as $participant) {
+            if ($participant->user !== null) {
+                unset($left[$participant->user->canonical()->id]);
+            }
+        }
+
         return [...$known, 'left' => count($left)];
     }
 
@@ -188,10 +204,13 @@ final class SocialWallService
             },
             'group_admin_nominated' => $name.' подал заявку на администратора группы.',
             'group_admin_vote_cast' => $name.' подтвердил назначение '.$targetName.' администратором группы.',
-            'group_admin_vote_changed' => $name.' изменил голос в пользу '.$targetName.'.',
+            'group_admin_vote_changed' => $name.' изменил выбор и поддержал назначение '.$targetName.' администратором группы.',
             'group_admin_vote_retracted' => $name.' отозвал голос за администратора группы.',
             'group_admin_elected' => $targetName.' избран администратором группы.',
             'group_admin_replaced' => 'Администратором группы стал '.$targetName.'.',
+            'group_admin_staff_override' => 'Администратор MSKBA изменил руководство группы.',
+            'group_election_cancelled' => 'Выборы отменены из-за изменения состава участников.',
+            'group_election_closed' => 'Выборы завершены без победителя.',
             'group_title_changed' => $name.' изменил название группы.',
             default => $name.' выполнил действие.',
         };

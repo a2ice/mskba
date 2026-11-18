@@ -51,6 +51,10 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($user)->patch($url, ['status' => 'confirmed'])->assertRedirect();
         $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
         $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
+            ->assertNotFound();
+        // A user who left cannot read the participant discussion; organizers can.
+        $organizer = $event->organizerActor->user;
+        $this->actingAs($organizer)->getJson(route('events.wall.index', $event->routeIdentifier()))
             ->assertOk()->assertJsonPath('counts.confirmed', 0)
             ->assertJsonPath('counts.left', 1)
             ->assertJsonCount(2, 'entries')
@@ -109,7 +113,7 @@ final class EventSocialWallTest extends TestCase
             ->assertOk()->assertJsonPath('entry.deleted', true)
             ->assertJsonPath('entry.text', 'В пятницу после семи');
 
-        $this->getJson(route('events.wall.index', $event->routeIdentifier()))
+        $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
             ->assertOk()->assertJsonPath('entries.1.deleted', true)
             ->assertJsonPath('entries.1.text', 'В пятницу после семи');
 

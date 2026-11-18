@@ -102,7 +102,9 @@ final class PlayGroupGovernance
                 ->where('status', 'open')->lockForUpdate()->firstOrFail();
 
             if (now()->greaterThanOrEqualTo($round->closes_at)) {
-                $this->finalizeLocked($group, $round);
+                // Do not write a closure and then throw in the same DB
+                // transaction: the exception would roll back finalization.
+                // The scheduled reconciler closes expired rounds.
                 throw new InvalidArgumentException('Время голосования истекло.');
             }
             if (! in_array($user->id, $round->electorate_user_ids, true)) {
