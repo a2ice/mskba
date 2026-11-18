@@ -204,3 +204,9 @@ label.wizard-required-label.is-tooltip-dismissed::after {
     .mskba-wizard .wizard-actions { gap:10px; }
     .mskba-wizard .wizard-next { --wizard-next-pulse-scale: 1.06; }
 }
+
+/* Error visibility for non-text wizard controls matches form-field validation. */
+.mskba-wizard input:is([type="checkbox"],[type="radio"])[aria-invalid="true"] {
+  outline:2px solid var(--danger);
+  outline-offset:2px;
+}
