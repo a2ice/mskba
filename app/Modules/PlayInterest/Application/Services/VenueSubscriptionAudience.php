@@ -2,6 +2,7 @@
 
 namespace App\Modules\PlayInterest\Application\Services;
 
+use App\Modules\Favorites\Domain\Models\Favorite;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -44,6 +45,29 @@ final class VenueSubscriptionAudience
             // the player's profile for this venue; private subscriptions remain
             // counted but must not veto a different explicit public opt-in.
             $byUser[$id]['public'] = $byUser[$id]['public'] || (bool) $subscription->show_on_venue;
+        }
+
+        // A favorite is a direct venue interest in its own right. It does not
+        // require a PlayIntent, which represents a separate game-preference search.
+        // Preserve direct historical subscriptions for backward compatibility,
+        // and deduplicate both kinds by the canonical user.
+        $favorites = Favorite::query()
+            ->where('entity_type', 'venue')
+            ->where('entity_id', $venue->id)
+            ->whereNull('trashed_at')
+            ->whereNotNull('user_id')
+            ->with(['user.profile.activeAvatar', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment'])
+            ->get();
+        foreach ($favorites as $favorite) {
+            $user = $favorite->user;
+            if ($user === null || $user->isBlocked() || $user->canonical()->isBlocked()) {
+                continue;
+            }
+            $id = (int) $user->canonical()->id;
+            $byUser[$id] ??= ['direct' => false, 'public' => false, 'user' => $user];
+            $byUser[$id]['direct'] = true;
+            // Saving a favorite is not consent to reveal the player's avatar
+            // or sporting characteristics to others.
         }
 
         $directUsers = [];
