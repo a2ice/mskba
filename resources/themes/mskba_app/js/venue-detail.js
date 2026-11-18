@@ -634,7 +634,11 @@ if (dayBookingDialog) {
         heading.title = data.last_updated_at
             ? 'up: ' + data.last_updated_at.slice(0, 16) + ' (UTC +3)'
             : '';
-        const warning = data.refresh_state === 'failed' ? data.refresh_message : null;
+        // An unavailable freshness check must never look like a clickable
+        // free slot. Keep the reason visible instead of a silent disabled CTA.
+        const warning = data.stale
+            ? (data.refresh_message || 'Расписание устарело. Выбор времени временно недоступен.')
+            : (data.refresh_state === 'failed' ? data.refresh_message : null);
         status.textContent = warning || '';
         status.hidden = !warning;
         updateDayOccupancy(data.date, data.slots);
