@@ -800,7 +800,7 @@ if (dayBookingDialog) {
                 // court. Remove its percentages/hours until each court-specific
                 // day is loaded from the authoritative schedule endpoint.
                 dateButtons.forEach(button => {
-                    const item = button.closest('[data-day-date]');
+                    const item = button.closest?.('[data-day-date]');
                     const hours = button.querySelector('.app-venue-day-dialog__date-hours');
                     const progress = item?.querySelector('[data-day-occupancy]');
                     if (hours) hours.textContent = 'Выберите дату';
