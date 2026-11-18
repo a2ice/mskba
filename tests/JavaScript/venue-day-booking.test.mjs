@@ -47,7 +47,7 @@ function node() {
 
 function mountDayBooking({
     previewFails = false, customSlots = null, personalDiscount = null,
-    viewerAuthenticated = true, sessionStore = null,
+    viewerAuthenticated = true, sessionStore = null, stale = false,
 } = {}) {
     const status = node();
     const heading = node();
@@ -125,7 +125,8 @@ function mountDayBooking({
             step_minutes: 30,
             minimum_minutes: 60,
             maximum_minutes: 180,
-            refresh_state: 'cached',
+            refresh_state: stale ? 'updated' : 'cached',
+            stale,
         }) };
     };
     const document = {
@@ -164,7 +165,7 @@ function mountDayBooking({
     }, { filename: 'venue-detail.js' });
     return {
         dialog, eventDialog, eventFields, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
-        window, windowEvents, storage,
+        window, windowEvents, storage, status,
         async open(expectedCards = 2) {
             await opener.listeners.click();
             assert.equal(grid.children.length, expectedCards);
@@ -177,6 +178,14 @@ function mountDayBooking({
         },
     };
 }
+
+test('stale FindSport data explains why free slots are not bookable', async () => {
+    const page = mountDayBooking({stale: true});
+    await page.open(2);
+    assert.equal(page.status.hidden, false);
+    assert.match(page.status.textContent, /Расписание устарело/);
+    assert.equal(page.bookingButton.disabled, true);
+});
 
 test('schedule dialog remains fixed to viewport center on iOS Safari', () => {
     const css = readFileSync(
