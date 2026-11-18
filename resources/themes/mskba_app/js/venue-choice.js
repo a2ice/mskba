@@ -60,7 +60,7 @@
         favoriteState = 'unknown';
         favoriteSubmit.disabled = true;
         favoriteSubmit.textContent = 'Проверяем…';
-        favoriteDescription.textContent = 'Сохрани площадку, чтобы быстро возвращаться к её расписанию. Это не заявка на аренду.';
+        favoriteDescription.textContent = 'Сохрани площадку, чтобы быстро возвращаться к её расписанию. Для вошедших пользователей это прямой интерес: другие посетители увидят логин, но не аватар или игровые характеристики без отдельного согласия. Это не заявка на аренду.';
         setFavoriteError('');
         if (!favorite.open) favorite.showModal();
         try {
@@ -72,7 +72,7 @@
             const saved = favoriteState === 'active';
             favoriteDescription.textContent = saved
                 ? 'Площадка уже у тебя в избранном. При желании её можно убрать.'
-                : 'Добавь площадку в избранное, чтобы вернуться к ней позже. Бронирование при этом не создаётся.';
+                : 'Добавь площадку в избранное, чтобы вернуться к ней позже. Для вошедших пользователей это также прямой интерес; логин будет виден другим посетителям. Бронирование при этом не создаётся.';
             favoriteSubmit.textContent = saved ? 'Убрать из избранного' : 'Добавить в избранное';
             favoriteSubmit.disabled = false;
         } catch (error) {
