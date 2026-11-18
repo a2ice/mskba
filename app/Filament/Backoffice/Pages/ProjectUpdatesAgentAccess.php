@@ -63,12 +63,11 @@ final class ProjectUpdatesAgentAccess extends Page
 
         $dev = User::query()->where('username', 'dev')
             ->where('system_role', UserSystemRoleEnum::SYSTEM)
-            ->where('status', UserStatusEnum::CONFIRMED)
             ->whereNull('deleted_at')->first();
 
-        if ($dev === null) {
+        if ($dev === null || $dev->isBlocked()) {
             $this->password = '';
-            $this->addError('password', 'Системный пользователь dev должен существовать и быть подтверждён.');
+            $this->addError('password', 'Системный пользователь dev должен существовать, иметь роль system и не быть заблокирован.');
             return;
         }
 
