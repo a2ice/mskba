@@ -27,7 +27,7 @@
     <meta name="theme-color" content="#10120f">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $status }} · {{ $title }} · {{ config('app.name', 'MSKBA') }}</title>
-    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    @include('partials.branding.favicon')
     <style>
         :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
         * { box-sizing: border-box; }

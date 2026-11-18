@@ -41,6 +41,27 @@ final class SeoAppThemeMigrationTest extends TestCase
             ->assertDontSee('<meta name="robots" content="noindex', false);
     }
 
+    public function test_favicon_is_branded_only_on_production_hosts(): void
+    {
+        $favicon = public_path('favicon-production-32.png');
+        $this->assertFileExists($favicon);
+        $this->assertSame([32, 32], array_slice(getimagesize($favicon), 0, 2));
+
+        $this->get('https://mskba.ru/venues')
+            ->assertOk()
+            ->assertSee('favicon-production-32.png?v=20261118', false)
+            ->assertDontSee('favicon.ico', false);
+
+        $this->get('https://www.mskba.ru/venues')
+            ->assertOk()
+            ->assertSee('favicon-production-32.png?v=20261118', false);
+
+        $this->get('https://dev.mskba.ru/venues')
+            ->assertOk()
+            ->assertSee('favicon.ico', false)
+            ->assertDontSee('favicon-production-32.png', false);
+    }
+
     public function test_app_theme_home_keeps_organization_schema(): void
     {
         $this->get('https://mskba.ru/')
