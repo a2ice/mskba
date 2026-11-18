@@ -17,7 +17,7 @@
 @extends('theme::layouts.category')
 
 @section('category-heading-action')
-    <a class="button primary" href="{{ route('events.create') }}">+ Создать мероприятие</a>
+    <a class="button primary" href="{{ route('events.create') }}" data-quick-event-open>+ Создать мероприятие</a>
 @endsection
 
 @section('category-sidebar')
@@ -55,6 +55,7 @@
 @endsection
 
 @section('category-items')
+    @include('theme::pages.events.partials.quick-create')
     @forelse($events as $event)
         @php
             $eventUrl = route('events.show', $event->routeIdentifier());

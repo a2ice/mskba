@@ -366,10 +366,11 @@
             <p>Выбери зал и время для аренды или сохрани эту площадку в избранном.</p>
             <button type="button" class="button primary full" data-venue-choice-open
                 @disabled(!$canStartInterest)>Хочу здесь играть</button>
-            <a class="button secondary full" href="{{ $createEventUrl }}" data-venue-create-event-link>Создать мероприятие</a>
+            <a class="button secondary full" href="{{ $createEventUrl }}" data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
         </aside>
     </div>
 </section>
+@include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id])
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog
     aria-labelledby="app-venue-choice-title">
@@ -382,6 +383,7 @@
     <div class="app-venue-choice-dialog__body mskba-scroll">
     <p class="muted">Расскажи, что именно ты хочешь сделать на этой площадке.</p>
     <div class="app-venue-choice-dialog__options">
+        <a class="button secondary full" href="{{ $createEventUrl }}" data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
         <details data-venue-choice-rental>
             <summary>Аренда площадки</summary>
             <div class="app-venue-choice-dialog__option-body">
