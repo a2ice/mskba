@@ -152,6 +152,12 @@ async function post(endpoint, form) {
         });
         let result = {};
         try { result = await response.json(); } catch { /* non-JSON upstream error */ }
+        if (response.ok && mode.value === 'restore') {
+            transientMessage.value = true;
+            message.value = result.message || 'Если контакт подтверждён, новый пароль отправлен.';
+            restoreForm.contact = '';
+            return;
+        }
         if (response.ok && result.redirect_url) {
             // The help dialog can request an in-place password login. Do not
             // bypass registration/privacy onboarding or redirect on normal logins.
@@ -320,12 +326,12 @@ onBeforeUnmount(() => {
 
             <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
                 <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">
-                    <label>Email
-                        <input v-model.trim="restoreForm.contact" type="email" autocomplete="email"
-                            required :disabled="busy" />
+                    <label>Подтверждённый email или Telegram @username
+                        <input v-model.trim="restoreForm.contact" type="text" name="contact" autocomplete="username"
+                            required maxlength="255" :disabled="busy" />
                         <span v-if="errors.contact" class="mskba-auth-field-error">{{ errors.contact[0] }}</span>
                     </label>
-                    <p class="mskba-auth-small">Восстановление пока недоступно: сервер предложит обратиться в поддержку.</p>
+                    <p class="mskba-auth-small">Укажите контакт, ранее подтверждённый в аккаунте. Если доставка на него доступна, придёт новый временный пароль. После входа смените его в настройках.</p>
                     <p v-if="message" role="alert" class="mskba-auth-message">{{ message }}</p>
                 </div>
                 <footer class="mskba-modal__footer mskba-auth-footer-actions">
