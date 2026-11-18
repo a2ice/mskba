@@ -40,6 +40,7 @@ final class AccountInvitationManager
         $issuer = $this->authorizeIssuer($issuer);
         $email = (new ContactValue(ContactTypeEnum::EMAIL, $email))->value();
         $this->assertTarget($scopeType, $scopeId, $role);
+        $title = trim($title) ?: $this->defaultTitle($scopeId, $role);
         if ($days < 1 || $days > 30) {
             throw ValidationException::withMessages(['days' => 'Срок ссылки должен быть от 1 до 30 дней.']);
         }
@@ -244,6 +245,17 @@ final class AccountInvitationManager
             $invitation->forceFill(['progress' => $stage])->save();
             $this->event($invitation, $stage);
         }
+    }
+
+    private function defaultTitle(int $venueId, string $role): string
+    {
+        $prefix = match ($role) {
+            'owner' => 'Регистрация владельца площадки',
+            'manager' => 'Регистрация менеджера площадки',
+            'booking_operator' => 'Регистрация оператора бронирований',
+            default => 'Регистрация сотрудника площадки',
+        };
+        return mb_substr($prefix.' «'.Venue::query()->findOrFail($venueId)->name.'»', 0, 160);
     }
 
     private function assertTarget(string $scopeType, int $scopeId, string $role): void
