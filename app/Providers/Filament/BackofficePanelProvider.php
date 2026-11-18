@@ -52,8 +52,9 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
-use Filament\Pages\Dashboard;
+use App\Filament\Backoffice\Pages\BackofficeDashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -79,6 +80,19 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
+            ->navigationGroups([
+                NavigationGroup::make('Контент')->collapsed(),
+                NavigationGroup::make('Сайт и дизайн')->collapsed(),
+                NavigationGroup::make('Пользователи и доступ')->collapsed(),
+                NavigationGroup::make('Площадки')->collapsed(),
+                NavigationGroup::make('География')->collapsed(),
+                NavigationGroup::make('Аренда и документы')->collapsed(),
+                NavigationGroup::make('Соревнования')->collapsed(),
+                NavigationGroup::make('Магазин')->collapsed(),
+                NavigationGroup::make('Лояльность')->collapsed(),
+                NavigationGroup::make('Поддержка')->collapsed(),
+                NavigationGroup::make('Разработка')->collapsed(),
+            ])
             ->navigationItems([
                 NavigationItem::make('Материалы и FAQ')
                     ->group('Контент')
@@ -132,6 +146,10 @@ final class BackofficePanelProvider extends PanelProvider
                 VenueRewardOverrideResource::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.navigation-state'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
+                '<link rel="stylesheet" href="'.e(asset('css/backoffice-dashboard.css').'?v=20261118-1').'">'
+            ))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => request()->routeIs('admin.content', 'admin.content.*')
                 ? view('backoffice.content.head')
                 : '')
@@ -174,7 +192,7 @@ final class BackofficePanelProvider extends PanelProvider
 })();
 </script>
 HTML))
-            ->pages([Dashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class])
+            ->pages([BackofficeDashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class,
