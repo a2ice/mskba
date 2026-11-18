@@ -631,6 +631,9 @@ dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
     flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
     overscroll-behavior:contain;padding-right:4px;
 }
+.app-venue-favorite-dialog>.app-venue-overlay__actions{
+    flex:0 0 auto;margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
+}
 .app-venue-favorite-dialog__heading{display:grid;gap:7px;min-width:0}
 .app-venue-favorite-dialog__back{
     width:max-content;padding:0;border:0;background:none;color:var(--accent);
