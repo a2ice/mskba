@@ -47,7 +47,7 @@ final class AccountInvitationWorkflowTest extends TestCase
     {
         [, , $invitation, $token] = $this->invite();
         Mail::assertSent(AccountInvitationMail::class);
-        $this->get(route('account-invitations.show', $token))->assertOk()
+        $this->followingRedirects()->get(route('account-invitations.show', $token))->assertOk()
             ->assertSee('Приглашение в зал');
 
         $invitation->refresh();
@@ -63,13 +63,14 @@ final class AccountInvitationWorkflowTest extends TestCase
     {
         [, $venue, $invitation, $token] = $this->invite();
 
-        $this->post(route('account-invitations.register', $token), [
+        $this->get(route('account-invitations.show', $token))->assertRedirect(route('account-invitations.continue'));
+        $this->post(route('account-invitations.register'), [
             'username' => 'venue_invitee',
             'password' => 'SafePass#2026',
             'password_confirmation' => 'SafePass#2026',
             'privacy_consent' => '1',
             'accept_invitation' => '1',
-        ])->assertRedirect(route('account-invitations.show', $token));
+        ])->assertRedirect(route('account-invitations.continue'));
 
         $invitation->refresh();
         $user = User::findOrFail($invitation->accepted_user_id);
@@ -101,12 +102,12 @@ final class AccountInvitationWorkflowTest extends TestCase
     {
         [, , $invitation, $token] = $this->invite('existing@example.test');
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
-        $this->actingAs($user)->get(route('account-invitations.show', $token))->assertOk();
+        $this->actingAs($user)->followingRedirects()->get(route('account-invitations.show', $token))->assertOk();
         $this->assertFalse($user->hasVerifiedPrimaryContact());
 
-        $this->post(route('account-invitations.accept', $token), [
+        $this->post(route('account-invitations.accept'), [
             'accept_invitation' => '1',
-        ])->assertRedirect(route('account-invitations.show', $token));
+        ])->assertRedirect(route('account-invitations.continue'));
 
         $this->assertTrue($user->hasVerifiedPrimaryContact());
         $this->assertSame($user->id, $invitation->fresh()->accepted_user_id);
@@ -117,10 +118,11 @@ final class AccountInvitationWorkflowTest extends TestCase
         [, , $invitation, $token] = $this->invite();
         $one = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
         $two = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
-        $this->actingAs($one)->post(route('account-invitations.accept', $token), [
+        $this->get(route('account-invitations.show', $token));
+        $this->actingAs($one)->post(route('account-invitations.accept'), [
             'accept_invitation' => '1',
         ])->assertRedirect();
-        $this->actingAs($two)->post(route('account-invitations.accept', $token), [
+        $this->actingAs($two)->post(route('account-invitations.accept'), [
             'accept_invitation' => '1',
         ])->assertForbidden();
         $this->assertSame($one->id, $invitation->fresh()->accepted_user_id);
@@ -134,7 +136,7 @@ final class AccountInvitationWorkflowTest extends TestCase
         $newToken = basename(parse_url($newUrl, PHP_URL_PATH));
         $this->assertNotSame($oldToken, $newToken);
         $this->get(route('account-invitations.show', $oldToken))->assertNotFound();
-        $this->get(route('account-invitations.show', $newToken))->assertOk();
+        $this->followingRedirects()->get(route('account-invitations.show', $newToken))->assertOk();
     }
 
     public function test_employee_role_waits_for_account_confirmation(): void
@@ -142,7 +144,8 @@ final class AccountInvitationWorkflowTest extends TestCase
         [, $venue, $invitation, $token] = $this->invite('staff@example.test', 'staff');
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
 
-        $this->actingAs($user)->post(route('account-invitations.accept', $token), [
+        $this->get(route('account-invitations.show', $token));
+        $this->actingAs($user)->post(route('account-invitations.accept'), [
             'accept_invitation' => '1',
         ])->assertRedirect();
 
@@ -156,7 +159,7 @@ final class AccountInvitationWorkflowTest extends TestCase
             'birth_date' => '1990-01-01', 'gender' => 'male',
         ]);
         $user->confirmAccount();
-        $this->get(route('account-invitations.show', $token))->assertOk();
+        $this->followingRedirects()->get(route('account-invitations.show', $token))->assertOk();
         $this->assertSame('completed', $invitation->fresh()->status);
         $this->assertDatabaseHas('contract_memberships', [
             'scope_type' => 'venue', 'scope_id' => $venue->id,
