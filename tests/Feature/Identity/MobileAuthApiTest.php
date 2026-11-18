@@ -64,6 +64,37 @@ final class MobileAuthApiTest extends TestCase
             ->assertJsonMissingPath('data.system_role');
     }
 
+    public function test_mobile_and_browser_username_login_ignore_case_and_spaces_but_password_does_not(): void
+    {
+        $user = $this->account('case_match_user');
+
+        $this->assertSame($user->id, $this->login('  CaSe_MaTcH_UsEr  ')['user']['id']);
+
+        $this->post(route('auth.login'), [
+            'login' => 'CASE_MATCH_USER',
+            'password' => 'Secret#pass123',
+        ])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+
+        $this->postJson(route('api.v1.auth.login'), [
+            'login' => 'CASE_MATCH_USER',
+            'password' => 'secret#pass123',
+        ])->assertUnauthorized();
+    }
+
+    public function test_legacy_mixed_case_login_is_supported_without_guessing_when_accounts_collide(): void
+    {
+        $legacy = $this->account('Legacy_Mixed');
+        $this->assertSame($legacy->id, $this->login('legacy_mixed')['user']['id']);
+
+        $this->account('legacy_mixed', 'Different#pass123');
+
+        $this->postJson(route('api.v1.auth.login'), [
+            'login' => 'LEGACY_MIXED',
+            'password' => 'Secret#pass123',
+        ])->assertUnauthorized();
+    }
+
     public function test_missing_or_invalid_token_is_unauthorized(): void
     {
         $this->getJson(route('api.v1.me'))->assertUnauthorized();
