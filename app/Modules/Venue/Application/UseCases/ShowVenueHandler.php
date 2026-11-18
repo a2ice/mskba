@@ -192,6 +192,33 @@ final class ShowVenueHandler
             $day['occupancyPercent'] = $percentages[$day['date']] ?? null;
         }
         unset($day);
+        // Venue-level schedules are not court availability. Keep each
+        // court's effective hours and booked percentage independent.
+        $courtSchedules = [];
+        foreach ($courts as $court) {
+            if ($courtIdentifier !== null && $court->id !== $selectedCourt->id) {
+                continue;
+            }
+            $courtDays = $courtIdentifier !== null
+                ? array_slice($scheduleDays, 0, 9)
+                : array_slice($this->scheduleDays($venue, $court), 0, 9);
+            if ($courtIdentifier === null && $courtDays !== []) {
+                $courtPercentages = $this->scheduleOccupancy->forDays(
+                    $venue, $court, $courtDays,
+                    (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow')),
+                );
+                foreach ($courtDays as &$courtDay) {
+                    $courtDay['occupancyPercent'] = $courtPercentages[$courtDay['date']] ?? null;
+                }
+                unset($courtDay);
+            }
+            $courtSchedules[] = [
+                'id' => (int) $court->id,
+                'name' => $court->publicName(),
+                'routeIdentifier' => $court->routeIdentifier(),
+                'days' => $courtDays,
+            ];
+        }
         $openingState = $this->openingState($venue, $scheduleContextCourt);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
         $rentalPolicy = VenueBookingPolicy::query()
@@ -264,6 +291,7 @@ final class ShowVenueHandler
             ),
             sections: $sections,
             courts: $courtPayloads,
+            courtSchedules: $courtSchedules,
             isCourtPage: $courtIdentifier !== null,
             selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
             effectiveCourtPolicy: $this->courtPolicies->resolve($venue, $selectedCourt, $rentalPolicy),
