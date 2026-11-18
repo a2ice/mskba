@@ -20,15 +20,6 @@
     $venueAddress = $venue->address?->display ?: $venue->rawAddress;
     $isConfirmedVenue = $venue->statusSlug === 'confirmed';
     $canStartInterest = $isConfirmedVenue;
-    $viewer = auth()->user()?->canonical();
-    $viewerVenueInterest = $viewer
-        ? \App\Modules\PlayInterest\Domain\Models\PlayIntent::query()
-            ->where('venue_id', $venue->id)
-            ->where('status', 'active')
-            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->where('user_id', $viewer->id)->orderByDesc('id')->first()
-        : null;
-    $viewerHasVenueInterest = $viewerVenueInterest !== null;
     $venueAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
         ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
     $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']));
@@ -252,6 +243,9 @@
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2></header>
+                @if(!$venue->isCourtPage && count($venue->courts) > 1)
+                    <p class="muted app-venue-schedule__court-note">Это общие часы площадки. Чтобы увидеть свободные и занятые слоты, сначала выбери конкретный зал или корт.</p>
+                @endif
                 @if($scheduledDays->isNotEmpty())
                     <div class="app-venue-schedule">
                         @foreach($scheduledDays as $day)
