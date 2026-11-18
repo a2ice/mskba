@@ -84,12 +84,12 @@ async function go(id) {
 // the entire wizard. The final field focuses "Далее" without activating it.
 function handleInputEnter(event) {
     const input = event.target;
-    if (event.defaultPrevented || event.isComposing || event.keyCode === 229 ||
-        input?.tagName !== 'INPUT' ||
+    if (event.defaultPrevented || input?.tagName !== 'INPUT' ||
         !['text', 'email', 'password', 'search', 'tel', 'url', 'number'].includes(input.type)) return;
 
+    // IME confirmation must not inadvertently submit the step or jump fields.
     event.preventDefault();
-    if (props.busy) return;
+    if (event.isComposing || event.keyCode === 229 || props.busy) return;
     const fields = [...(content.value?.querySelectorAll('input, select, textarea') || [])]
         .filter(field => !field.disabled && field.type !== 'hidden' && field.getClientRects().length);
     const currentIndex = fields.indexOf(input);
