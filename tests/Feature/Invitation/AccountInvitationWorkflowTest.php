@@ -105,7 +105,9 @@ final class AccountInvitationWorkflowTest extends TestCase
     {
         [, , $invitation, $token] = $this->invite('existing@example.test');
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
-        $this->actingAs($user)->followingRedirects()->get(route('account-invitations.show', $token))->assertOk();
+        $this->actingAs($user)->get(route('account-invitations.show', $token))
+            ->assertRedirect(route('account-invitations.continue'));
+        $this->get(route('account-invitations.continue'))->assertOk();
         $this->assertFalse($user->hasVerifiedPrimaryContact());
 
         $this->post(route('account-invitations.accept'), [
