@@ -56,7 +56,8 @@ class AccountInvitation extends Model
 
     public function effectiveStatus(): string
     {
-        return $this->status === 'pending' && $this->isExpired() ? 'expired' : $this->status;
+        return $this->status === 'pending' && $this->accepted_user_id === null && $this->isExpired()
+            ? 'expired' : $this->status;
     }
 
     public function statusLabel(): string
