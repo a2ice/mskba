@@ -19,7 +19,11 @@ class SuperadminSeeder extends Seeder
             return;
         }
 
-        $existing = User::withTrashed()->where('username', 'superadmin')->first();
+        $matches = User::withTrashed()->whereRaw('LOWER(username) = ?', ['superadmin'])->get();
+        if ($matches->count() > 1) {
+            throw new RuntimeException('Conflicting superadmin usernames require manual review.');
+        }
+        $existing = $matches->first();
 
         if ($existing !== null) {
             // Never restore a deleted account or promote an unrelated account.
