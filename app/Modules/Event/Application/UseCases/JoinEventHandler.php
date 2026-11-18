@@ -10,6 +10,8 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Social\Application\Services\SocialActionLimiter;
+use App\Modules\Social\Application\Services\SocialWallService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -18,13 +20,20 @@ final class JoinEventHandler
 {
     public function __construct(
         private readonly EventIdentityParticipationService $identityParticipation,
+        private readonly SocialActionLimiter $socialActions,
+        private readonly SocialWallService $wall,
     ) {}
 
     public function handle(string $identifier, User $user): Event
     {
         $user = $user->canonical();
 
-        $event = DB::transaction(function () use ($identifier, $user): Event {
+        $eventId = Event::query()->whereRouteIdentifier($identifier)->firstOrFail()->id;
+        $changed = false;
+        $event = $this->socialActions->run($user, 'event', $eventId, 'rsvp', function () use (
+            $identifier, $user, &$changed
+        ): array {
+            $event = DB::transaction(function () use ($identifier, $user, &$changed): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
 
             if ($event->status !== EventStatusEnum::PUBLISHED || $event->visibility !== EventVisibilityEnum::PUBLIC) {
@@ -37,10 +46,12 @@ final class JoinEventHandler
 
             $participant = $this->identityParticipation->effectiveParticipant($event, $user);
 
-            if ($participant?->status === EventParticipantStatusEnum::CONFIRMED) {
+            if ($participant?->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version) {
                 return $event;
             }
 
+            $previousStatus = $participant?->status;
             // Accepting an existing invitation preserves the chosen functions.
             // Ordinary "Пойду" without an invitation is a player signup.
             $roles = $participant?->participation_roles ?: [UserParticipationRoleEnum::PLAYER->value];
@@ -79,10 +90,21 @@ final class JoinEventHandler
                 ]);
             }
 
+            $this->wall->appendSystem('event', $event->id, $user, 'event_rsvp_changed', [
+                'from' => $previousStatus?->value,
+                'to' => EventParticipantStatusEnum::CONFIRMED->value,
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+            $changed = true;
             return $event->load('participants.user');
+            });
+
+            return ['changed' => $changed, 'value' => $event];
         });
 
-        event(new EventChanged($event->id));
+        if ($changed) {
+            event(new EventChanged($event->id));
+        }
 
         return $event;
     }
