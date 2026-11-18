@@ -205,6 +205,10 @@ jobs:
             exit 1
           fi
 
+      - name: Preflight system update production smoke
+        if: steps.change_scope.outputs.full_suite == 'true'
+        run: php artisan test tests/Feature/Content/FirstSystemUpdateProductionSmokeTest.php
+
       - name: Run PHP tests
         if: steps.change_scope.outputs.full_suite == 'true'
         run: php artisan test
