@@ -232,6 +232,10 @@ Backend не доверяет данным Telegram-пользователя с 
 
 ## Площадки
 
+### Режимы баннера площадки
+`venues.banner_display_mode` хранит `top` (по умолчанию) или `background`; `venues.banner_overlay_opacity` — число 0–100 (по умолчанию 50). Администратор выбирает эти настройки в `VenueResource`, `VenueBackofficeEditor` валидирует их при сохранении; миграция задаёт безопасные значения существующим площадкам. Обе публичные темы площадок передают настройки общему `components.entity-public-banner`, который применяет `entity-public-banner--background` только при выборе режима: `position:fixed`, `object-fit:cover`, затемнение `::after` и `pointer-events:none`. Соседние контентные элементы получают `position:relative;z-index:1`, но не глобальные z-index. ЛК и `VenueBannerDraftManager` не меняются. [Задача 332](tasks/332/description.md).
+
+
 ### Кадрирование фотографий площадки в Filament
 
 В PhotosRelationManager действие cropPhoto открывает модальное окно непосредственно по нажатию на ImageColumn. Рамка поддерживает 8 направлений растягивания, перемещение и pinch на мобильных устройствах. После завершения жеста Livewire вызывает saveVenuePhotoCropDraft.
