@@ -20,9 +20,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueDuplicateResource extends Resource
 {
     protected static ?string $model = VenueDuplicate::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-duplicate';
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string { return 'Дубли площадок'; }
     public static function getModelLabel(): string { return 'кандидат дубля'; }

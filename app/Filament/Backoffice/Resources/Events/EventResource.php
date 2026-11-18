@@ -53,9 +53,9 @@ use Illuminate\Database\Eloquent\Model;
 final class EventResource extends Resource
 {
     protected static ?string $model = Event::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Соревнования';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function getNavigationLabel(): string { return 'Мероприятия'; }

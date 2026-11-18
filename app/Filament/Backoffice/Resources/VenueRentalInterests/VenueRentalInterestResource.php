@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueRentalInterestResource extends Resource
 {
     protected static ?string $model = EventVenueInterest::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Аренда и документы';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string { return 'Предзаявки'; }
     public static function getModelLabel(): string { return 'предзаявка'; }

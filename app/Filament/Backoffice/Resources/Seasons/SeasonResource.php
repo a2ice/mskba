@@ -34,9 +34,9 @@ final class SeasonResource extends Resource
     // Seasons are managed from the related League; keep legacy routes for bookmarks.
     protected static bool $shouldRegisterNavigation = false;
     protected static ?string $recordTitleAttribute = 'name';
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Соревнования';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 5;
 
     public static function getNavigationLabel(): string { return 'Сезоны'; }
     public static function getModelLabel(): string { return 'сезон'; }

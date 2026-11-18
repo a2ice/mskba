@@ -37,9 +37,9 @@ final class DesignThemeResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-paint-brush';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string
     {

@@ -34,9 +34,9 @@ final class BuilderComponentResource extends Resource
     use BuilderPermissions;
 
     protected static ?string $model = PageBuilderComponent::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string { return 'Компоненты'; }
     public static function getModelLabel(): string { return 'компонент'; }

@@ -20,9 +20,9 @@ use Illuminate\Support\Str;
 final class SiteMediaFolderResource extends Resource
 {
     protected static ?string $model = SiteMediaFolder::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-folder';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 8;
 
     public static function getNavigationLabel(): string { return 'Папки медиа'; }
     public static function getModelLabel(): string { return 'папка медиа'; }

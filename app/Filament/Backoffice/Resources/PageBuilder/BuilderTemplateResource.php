@@ -23,9 +23,9 @@ final class BuilderTemplateResource extends Resource
     use BuilderPermissions;
 
     protected static ?string $model = PageBuilderTemplate::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-square-3-stack-3d';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string { return 'Шаблоны'; }
     public static function getModelLabel(): string { return 'шаблон'; }

@@ -31,9 +31,9 @@ final class OperatorUserResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-signal';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Операторский центр';
+    protected static string|\UnitEnum|null $navigationGroup = 'Поддержка';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string
     {

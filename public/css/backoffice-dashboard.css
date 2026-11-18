@@ -1,0 +1,45 @@
+/* Navigation cards complement the native Filament section styling. */
+.mskba-bo-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 1.25rem;
+}
+.mskba-bo-dashboard-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: .2rem;
+}
+.mskba-bo-dashboard-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .6rem .7rem;
+    border-radius: .5rem;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+    transition: background-color .12s ease;
+}
+.mskba-bo-dashboard-link:hover {
+    background-color: color-mix(in srgb, currentColor 7%, transparent);
+}
+.mskba-bo-dashboard-link:focus-visible {
+    outline: 2px solid #ea580c;
+    outline-offset: 2px;
+}
+.mskba-bo-dashboard-arrow {
+    flex: none;
+    opacity: .45;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+@media (max-width: 1200px) {
+    .mskba-bo-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+    .mskba-bo-dashboard-grid { grid-template-columns: minmax(0, 1fr); gap: .85rem; }
+}
