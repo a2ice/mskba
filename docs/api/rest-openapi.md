@@ -7,7 +7,7 @@ are not expanded or changed by this feature.
 ## Using the explorer on DEV
 
 1. Sign in to `https://dev.mskba.ru/backoffice` with a confirmed staff account.
-2. Open **Разработка → REST API · Swagger** or
+2. Open **Сайт и дизайн → REST API · Swagger** or
    `/backoffice/rest-api-explorer`.
 3. Expand an endpoint (including `POST /api/v1/auth/register` for mobile sign-up), click **Try it out**, enter parameters, then
    **Execute** to run a real request against DEV.
@@ -50,7 +50,7 @@ Separate permission:
   existing **Пользователи и права → Filament** editor.
 - Requires `backoffice.access` as well. Page and JSON export both enforce
   the same permission; direct URL is not a bypass.
-- Disabled outside local/staging/testing environments (including production).
+- Disabled outside local/staging/testing environments (including production). Production backoffice offers permission-gated links marked **DEV**, opening a separate authenticated tab on `dev.mskba.ru`. It does not enable Swagger or the OpenAPI JSON export on production.
 - The Explorer's permissions do **not** change `/api/v1` authorization:
   public resources remain public; private ones require scoped Sanctum tokens.
 
