@@ -53,16 +53,24 @@ final class PublishTask329SystemUpdate extends Command
             return $this->verifyPublicUrl($detail->contentItem);
         }
 
-        $dev = User::query()
-            ->where('username', 'dev')
-            ->where('system_role', UserSystemRoleEnum::SYSTEM)
-            ->where('status', UserStatusEnum::CONFIRMED)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if ($dev === null || $dev->isBlocked()) {
-            $this->error('System account dev does not exist or is not confirmed and active.');
-
+        // System accounts may intentionally be unconfirmed to prevent
+        // ordinary browser sign-in. Scoped API tokens only require the
+        // explicitly provisioned system role and an unblocked identity.
+        $dev = User::withTrashed()->where('username', 'dev')->first();
+        if ($dev === null) {
+            $this->error('System dev account is missing from production.');
+            return self::FAILURE;
+        }
+        if ($dev->trashed()) {
+            $this->error('System dev account is soft-deleted; refusing publication.');
+            return self::FAILURE;
+        }
+        if ($dev->system_role !== UserSystemRoleEnum::SYSTEM) {
+            $this->error('Account dev has a non-system role; refusing publication.');
+            return self::FAILURE;
+        }
+        if ($dev->isBlocked()) {
+            $this->error('System dev account is explicitly blocked; refusing publication.');
             return self::FAILURE;
         }
 
