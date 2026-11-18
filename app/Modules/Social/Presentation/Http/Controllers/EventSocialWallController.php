@@ -18,7 +18,7 @@ final class EventSocialWallController extends Controller
         return Event::query()->whereRouteIdentifier($id)->firstOrFail();
     }
 
-    public function index(string $event, Request $request, SocialWallService $wall): JsonResponse
+    public function index(Request $request, string $event, SocialWallService $wall): JsonResponse
     {
         $item = $this->event($event);
         abort_unless($wall->canViewEvent($item, $request->user()), 404);
@@ -33,7 +33,7 @@ final class EventSocialWallController extends Controller
         ])->header('Cache-Control', 'private, no-store');
     }
 
-    public function store(string $event, Request $request, SocialWallService $wall): JsonResponse
+    public function store(Request $request, string $event, SocialWallService $wall): JsonResponse
     {
         $data = $request->validate([
             'body' => ['required', 'string', 'max:200'],
@@ -57,7 +57,7 @@ final class EventSocialWallController extends Controller
         return response()->json(['entry' => $wall->present($entry)], 201);
     }
 
-    public function destroy(string $event, int $entry, Request $request, SocialWallService $wall): JsonResponse
+    public function destroy(Request $request, string $event, int $entry, SocialWallService $wall): JsonResponse
     {
         $item = $this->event($event);
         $user = $request->user();
