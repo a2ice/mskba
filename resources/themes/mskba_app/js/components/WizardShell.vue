@@ -69,40 +69,85 @@ async function focusError(field) {
     input?.focus({ preventScroll: true });
     input?.scrollIntoView({ block: 'nearest' });
 }
-async function go(id) {
+function fieldControls() {
+    return [...(content.value?.querySelectorAll('input[name], select[name], textarea[name]') || [])]
+        .filter(field => !field.disabled && !field.closest('[inert]') &&
+            field.type !== 'hidden' && field.getClientRects().length);
+}
+async function go(id, focusFirstField = false) {
     stopAttention();
     if (activeId.value !== id) emit('step-change', id);
     activeId.value = id;
     previousNextLabel = nextLabel.value;
     await nextTick();
     if (content.value) content.value.scrollTop = 0;
-    // Step changes are announced by the live progress indicator.
-    // Keep keyboard focus on an actual action instead of outlining the heading.
-    nextButton.value?.focus({ preventScroll: true });
+    // Enter advances to the first field, whereas button/Back navigation
+    // retains the original action-focused keyboard behavior.
+    (focusFirstField ? fieldControls()[0] || nextButton.value : nextButton.value)
+        ?.focus({ preventScroll: true });
 }
-// Enter moves through the visible controls of this step instead of submitting
-// the entire wizard. The final field focuses "Далее" without activating it.
+function validateEnteredField(field) {
+    const issue = props.validateField(
+        field, props.values, step.value.required?.includes(field) || false,
+    );
+    if (!issue) {
+        delete issues.value[field];
+        return true;
+    }
+    issues.value = { ...issues.value, [field]: issue };
+    void focusError(field);
+    return false;
+}
+async function validateAllForSubmit() {
+    const errors = {};
+    let firstInvalidStep = null;
+    let firstInvalidField = null;
+    for (const candidate of visibleSteps.value) {
+        for (const field of candidate.fields) {
+            const issue = props.validateField(
+                field, props.values, candidate.required?.includes(field) || false,
+            );
+            if (!issue) continue;
+            errors[field] = issue;
+            if (!firstInvalidStep) {
+                firstInvalidStep = candidate;
+                firstInvalidField = field;
+            }
+        }
+    }
+    issues.value = { ...issues.value, ...errors };
+    if (!firstInvalidStep) return true;
+    if (firstInvalidStep.id !== activeId.value) await go(firstInvalidStep.id);
+    await focusError(firstInvalidField);
+    return false;
+}
+// Enter is field-first: validate the current value before moving focus.
+// Selects, textareas and native pickers keep their established keyboard behavior.
 function handleInputEnter(event) {
     const input = event.target;
     if (event.defaultPrevented || input?.tagName !== 'INPUT' ||
-        !['text', 'email', 'password', 'search', 'tel', 'url', 'number'].includes(input.type)) return;
-
-    // IME confirmation must not inadvertently submit the step or jump fields.
-    event.preventDefault();
-    if (event.isComposing || event.keyCode === 229 || props.busy) return;
-    const fields = [...(content.value?.querySelectorAll('input, select, textarea') || [])]
-        .filter(field => !field.disabled && field.type !== 'hidden' && field.getClientRects().length);
+        ['hidden', 'button', 'submit', 'reset', 'file', 'image', 'range', 'color']
+            .includes(input.type) || event.isComposing || event.keyCode === 229 ||
+        props.busy) return;
+    const fields = fieldControls();
     const currentIndex = fields.indexOf(input);
-    if (currentIndex < 0) return;
-    (fields[currentIndex + 1] || nextButton.value)?.focus({ preventScroll: true });
+    if (currentIndex < 0 || !input.name) return;
+    event.preventDefault();
+    if (!validateEnteredField(input.name)) return;
+    const next = fields[currentIndex + 1];
+    if (next) next.focus({ preventScroll: true });
+    else void forward(true);
 }
 function back() {
     if (index.value > 0 && !props.busy) go(visibleSteps.value[index.value - 1].id);
 }
-function forward() {
+async function forward(focusFirstField = false) {
     if (props.busy || !step.value || !validateCurrent()) return;
-    if (lastStep.value) emit('submit');
-    else go(visibleSteps.value[index.value + 1].id);
+    if (lastStep.value) {
+        if (await validateAllForSubmit()) emit('submit');
+    } else {
+        await go(visibleSteps.value[index.value + 1].id, focusFirstField);
+    }
 }
 async function applyErrors(errors) {
     issues.value = { ...issues.value, ...errors };
@@ -120,7 +165,7 @@ defineExpose({ applyErrors, reset });
 </script>
 
 <template>
-    <form class="mskba-wizard" novalidate @submit.prevent="forward" @keydown.enter="handleInputEnter">
+    <form class="mskba-wizard" novalidate @submit.prevent="forward()" @keydown.enter="handleInputEnter">
         <header class="mskba-wizard__progress">
             <progress :value="index + 1" :max="visibleSteps.length" aria-label="Прогресс мастера" />
             <span role="status" aria-live="polite">ШАГ {{ index + 1 }} / {{ visibleSteps.length }}</span>
