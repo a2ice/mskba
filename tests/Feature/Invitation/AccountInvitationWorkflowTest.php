@@ -11,6 +11,7 @@ use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
 use App\Modules\Invitation\Presentation\Mail\AccountInvitationMail;
 use App\Modules\Venue\Application\UseCases\SubmitVenueOwnershipClaimHandler;
+use App\Modules\Venue\Application\UseCases\ReviewVenueOwnershipClaimHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -61,7 +62,7 @@ final class AccountInvitationWorkflowTest extends TestCase
 
     public function test_registration_explicitly_verifies_invited_email_but_does_not_grant_ownership(): void
     {
-        [, $venue, $invitation, $token] = $this->invite();
+        [$issuer, $venue, $invitation, $token] = $this->invite();
 
         $this->get(route('account-invitations.show', $token))->assertRedirect(route('account-invitations.continue'));
         $this->post(route('account-invitations.register'), [
@@ -96,6 +97,8 @@ final class AccountInvitationWorkflowTest extends TestCase
             $venue, $user, 'Я уполномоченный представитель площадки и подтверждаю владение.',
         );
         $this->assertSame($user->id, $claim->applicant_user_id);
+        app(ReviewVenueOwnershipClaimHandler::class)->approve($claim, $issuer, 'Документы проверены');
+        $this->assertSame('completed', $invitation->fresh()->status);
     }
 
     public function test_an_existing_user_must_explicitly_accept_before_email_is_verified(): void
@@ -166,4 +169,25 @@ final class AccountInvitationWorkflowTest extends TestCase
             'user_id' => $user->id, 'access_level' => 'staff',
         ]);
     }
+    public function test_expired_and_revoked_links_cannot_verify_contact(): void
+    {
+        [$issuer, , $invitation, $token] = $this->invite();
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $invitation->forceFill(['expires_at' => now()->subMinute()])->save();
+
+        $this->actingAs($user)->post(route('account-invitations.accept'), [
+            'accept_invitation' => '1',
+        ])->assertStatus(410);
+        $this->assertFalse($user->hasVerifiedPrimaryContact());
+
+        $newUrl = app(AccountInvitationManager::class)->renew($invitation, $issuer);
+        $this->get($newUrl)->assertRedirect();
+        app(AccountInvitationManager::class)->revoke($invitation, $issuer);
+        $this->post(route('account-invitations.accept'), [
+            'accept_invitation' => '1',
+        ])->assertStatus(410);
+        $this->assertFalse($user->hasVerifiedPrimaryContact());
+    }
+
 }
