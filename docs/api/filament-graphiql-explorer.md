@@ -3,7 +3,7 @@
 GraphiQL is embedded in **Filament 5**, not a publicly accessible `/graphiql` page.
 
 - UI: `https://dev.mskba.ru/backoffice/graphql-explorer`
-- Menu: **Разработка → GraphQL Explorer**
+- Menu: **Сайт и дизайн → GraphQL Explorer**
 - Endpoint used by the IDE: `POST /api/graphql` (unchanged)
 - Bundled dependencies: local Vite entry with GraphiQL 5, React 19,
   GraphQL and the GraphiQL toolkit; no public CDN or remote executable JS.
@@ -26,7 +26,7 @@ A dedicated operational permission controls the Filament UI:
 - Unconfirmed, blocked, ordinary USER and SYSTEM accounts cannot use Filament.
 - Navigation and direct page visits both use `GraphQLExplorer::canAccess()`.
   Filament's Livewire page middleware checks permissions again on hydration.
-- Available only for `APP_ENV=local|staging|testing`; production disabled.
+- Available only for `APP_ENV=local|staging|testing`; production disabled. The production dashboard/sidebar can show a permission-gated **GraphQL Explorer (DEV)** shortcut to the separately authenticated `dev.mskba.ru` tool, without enabling GraphiQL locally.
 
 ## Using the editor
 

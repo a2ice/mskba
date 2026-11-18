@@ -180,3 +180,24 @@
     .mskba-bo-dashboard-link,
     .mskba-bo-dashboard-arrow { transition: none; }
 }
+
+/* Subgroup of authorized integration and API links inside the Site card. */
+.mskba-bo-dashboard-subsection {
+    margin-top: .7rem;
+    padding-top: .85rem;
+    border-top: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+}
+.mskba-bo-dashboard-subheading {
+    margin: 0 0 .35rem;
+    padding-inline: .65rem;
+    color: inherit;
+    font-size: .8125rem;
+    font-weight: 650;
+    line-height: 1.5;
+}
+.mskba-bo-dashboard-tool-hint {
+    margin: -.15rem .65rem .35rem;
+    font-size: .72rem;
+    line-height: 1.5;
+    opacity: .66;
+}
