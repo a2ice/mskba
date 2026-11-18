@@ -31,7 +31,7 @@ final class BuilderPageResource extends Resource
     use BuilderPermissions;
 
     protected static ?string $model = PageBuilderPage::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-duplicate';
     protected static ?int $navigationSort = 1;
 

@@ -28,9 +28,9 @@ final class DashboardButtonStyleResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-swatch';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 5;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
 
     public static function getNavigationLabel(): string
     {
