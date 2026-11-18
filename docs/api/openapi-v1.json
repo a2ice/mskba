@@ -1100,6 +1100,112 @@
           }
         }
       }
+    },
+    "/api/v1/account/restore/request": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Запрос кода восстановления собственного удалённого аккаунта",
+        "operationId": "requestAccountRestoration",
+        "description": "Публичный запрос. Нужен ранее подтверждённый email. Bearer не требуется; ответ не раскрывает существование аккаунта. До 3 отправок в час на контакт, минимум 60 секунд между кодами. Только для самостоятельного удаления. SMS/Telegram-каналы пока не реализованы.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Одинаковый ответ для найденного и неизвестного контакта",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса или подтверждения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса или подтверждения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/restore/confirm": {
+      "post": {
+        "tags": [
+          "Авторизация"
+        ],
+        "summary": "Подтвердить восстановление удалённого аккаунта",
+        "operationId": "confirmAccountRestoration",
+        "description": "Не требует Bearer: подтверждение одноразовым кодом по ранее верифицированному email. 6 цифр, 10 минут, максимум 5 попыток. Восстанавливается canonical identity с aliases и прежним ID; новые токены не выдаются.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreAccountConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Аккаунт восстановлен; войдите заново",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreAccountResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка запроса или подтверждения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка запроса или подтверждения",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2094,6 +2200,71 @@
           },
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "RestoreAccountRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contact"
+        ],
+        "properties": {
+          "contact": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "example": "user@example.com"
+          }
+        }
+      },
+      "RestoreAccountConfirmRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contact",
+          "code"
+        ],
+        "properties": {
+          "contact": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "example": "user@example.com"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9]{6}$",
+            "example": "123456"
+          }
+        }
+      },
+      "RestoreRequestResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Если аккаунт доступен для восстановления, код отправлен на подтверждённый контакт."
+          }
+        }
+      },
+      "RestoreAccountResponse": {
+        "type": "object",
+        "required": [
+          "restored",
+          "message"
+        ],
+        "properties": {
+          "restored": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Аккаунт восстановлен. Теперь войдите заново."
           }
         }
       }
