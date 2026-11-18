@@ -115,6 +115,7 @@
                 <p class="quick-event-dialog__hint">Публикация не означает бронирование площадки. Для аренды используйте существующий процесс после согласования с участниками. Место и время пока обязательны.</p>
             </div>
             <div class="quick-event-dialog__actions">
+                <a class="{{ $quickSecondary }}" href="{{ $quickApp ? route('events.create') : route('events.wizard') }}">Расширенная форма</a>
                 <button type="button" class="{{ $quickSecondary }}" data-quick-event-close>Отмена</button>
                 <button type="submit" class="{{ $quickPrimary }}">Создать мероприятие</button>
             </div>
