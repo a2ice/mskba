@@ -515,7 +515,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             $source, $actor, $this->report($source),
         );
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('только на тестовом сервере');
+        $this->expectExceptionMessage('отключено конфигурацией сервера');
         app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
     }
 
