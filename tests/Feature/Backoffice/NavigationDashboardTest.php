@@ -90,6 +90,9 @@ final class NavigationDashboardTest extends TestCase
 
     public function test_production_site_card_points_to_dev_without_enabling_production_explorers(): void
     {
+        // Production-only rendering path must not require the build manifest
+        // before the CI job reaches the frontend build stage.
+        $this->withoutVite();
         $this->actingAs($this->admin(UserSystemRoleEnum::SUPERADMIN));
         app()->detectEnvironment(fn (): string => 'production');
 
