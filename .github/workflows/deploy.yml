@@ -479,3 +479,27 @@ jobs:
             touch "$DIR/RELEASE_COMPLETE"
             chmod 600 "$DIR/RELEASE_COMPLETE"
             echo 'CUTOVER_RELEASE_VERIFIED=true'
+
+
+  publish-first-system-update:
+    # Run only if the full production deploy and its public-URL checks passed.
+    # The command is idempotent: later releases only recheck the public URL.
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: One-time task 329 Content/API acceptance after verified production release
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            # Task 329 was released via PR #821. Never publish a release
+            # note on an older deployment or a different deployment target.
+            git merge-base --is-ancestor 1ca609de70739cae12b20b0fdb5ba22a4a022a53 HEAD
+            test -f app/Console/Commands/PublishTask329SystemUpdate.php
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm \
+              php artisan project-updates:publish-task-329 --confirm-release
