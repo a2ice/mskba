@@ -55,6 +55,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'full_description',
     'raw_address',
     'content_version',
+    'banner_display_mode',
+    'banner_overlay_opacity',
+    'banner_overlay_color',
 ])]
 #[Hidden([])]
 class Venue extends Model
@@ -68,6 +71,8 @@ class Venue extends Model
         'requires_booking_approval' => false,
         'content_version' => 0,
         'is_published' => true,
+        'banner_display_mode' => 'top',
+        'banner_overlay_opacity' => 50,
         'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
     ];
 
@@ -98,7 +103,7 @@ class Venue extends Model
 
     public function isPubliclyVisible(): bool
     {
-        return $this->is_published && $this->status->isPubliclyVisible();
+        return $this->canonical_venue_id === null && $this->is_published && $this->status->isPubliclyVisible();
     }
 
     public function allowsDetailsEditing(): bool
@@ -137,6 +142,12 @@ class Venue extends Model
         return \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
             ->where('venue_id', $this->id)->where('active_marker', true)
             ->value('currency') ?: 'RUB';
+    }
+
+    /** CSS overlay from backoffice, with legacy opacity preserved as fallback. */
+    public function bannerOverlayCss(): string
+    {
+        return $this->banner_overlay_color ?? 'rgba(0,0,0,'.(((int) ($this->banner_overlay_opacity ?? 50)) / 100).')';
     }
 
     public function hasFreeAccess(): bool
@@ -430,6 +441,7 @@ class Venue extends Model
             'is_published' => 'boolean',
             'canonical_venue_id' => 'integer',
             'content_version' => 'integer',
+            'banner_overlay_opacity' => 'integer',
         ];
     }
 }

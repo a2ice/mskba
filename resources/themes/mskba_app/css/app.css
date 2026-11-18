@@ -50,6 +50,7 @@
 @import './account-favorites.css';
 @import './my-games.css';
 @import './public-content.css';
+@import './mobile-primary-bar.css';
 
 .app-shell { min-height: 100dvh; }
 

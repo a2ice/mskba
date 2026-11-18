@@ -83,6 +83,11 @@ final readonly class ReviewVenueOwnershipClaimHandler
                 'decided_at' => $decidedAt,
             ])->save();
 
+            // Keep an accepted registration invitation in sync with the
+            // independently reviewed and verified owner contract.
+            app(\App\Modules\Invitation\Application\Services\AccountInvitationManager::class)
+                ->finishOwnership($venue->id, $claim->applicant_user_id);
+
             $superseded = VenueOwnershipClaim::query()
                 ->where('venue_id', $venue->id)
                 ->whereKeyNot($claim->id)

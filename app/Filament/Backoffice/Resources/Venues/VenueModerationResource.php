@@ -27,9 +27,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueModerationResource extends Resource
 {
     protected static ?string $model = ModerationRequest::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string { return 'Модерация площадок'; }
     public static function getModelLabel(): string { return 'заявка на модерацию площадки'; }

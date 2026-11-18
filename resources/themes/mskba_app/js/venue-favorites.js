@@ -144,10 +144,19 @@
                 notify_upcoming_events:Boolean(result.notify_upcoming_events),
                 count:Number(result.count??known.get(id)?.count??0),
             });
+            window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
+                detail:{venueId:id,state:result.state,count:result.count},
+            }));
             if(result.state==='active') {
-                window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
-                    detail:{source:'favorite',type:'venue',id},
-                }));
+                if (document.querySelector('[data-venue-favorite-dialog][data-venue-id="'+id+'"]')) {
+                    // On a venue page the dedicated chooser owns game vs. favorite
+                    // intent; never reopen the obsolete game-subscription wizard.
+                    toast(contextNames.venue.added);
+                } else {
+                    window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
+                        detail:{source:'favorite',type:'venue',id},
+                    }));
+                }
             } else {
                 toast(contextNames.venue.removed);
             }

@@ -5,10 +5,12 @@ namespace App\Filament\Backoffice\Resources\Venues;
 use App\Filament\Backoffice\Resources\Venues\Pages\ListVenueDuplicates;
 use App\Modules\Venue\Application\UseCases\BackofficeVenueModerationHandler;
 use App\Modules\Venue\Application\UseCases\MergeVenueDuplicateHandler;
+use App\Modules\Venue\Application\Services\VenueDuplicateContractRights;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
@@ -20,9 +22,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueDuplicateResource extends Resource
 {
     protected static ?string $model = VenueDuplicate::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-duplicate';
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string { return 'Дубли площадок'; }
     public static function getModelLabel(): string { return 'кандидат дубля'; }
@@ -72,10 +74,24 @@ final class VenueDuplicateResource extends Resource
                     && $record->status === VenueDuplicateStatusEnum::PENDING)
                 ->schema([
                     Select::make('canonical_venue_id')->label('Какая площадка останется основной?')
-                        ->required()->options(fn (VenueDuplicate $record): array => [
+                        ->required()->live()->options(fn (VenueDuplicate $record): array => [
                             $record->venue_id => $record->venue?->name.' (#'.$record->venue_id.')',
                             $record->duplicate_venue_id => $record->duplicateVenue?->name.' (#'.$record->duplicate_venue_id.')',
                         ]),
+                    Select::make('contract_resolution')->label('Договорные права при объединении')
+                        ->required()->default(VenueDuplicateContractRights::KEEP)
+                        ->options([
+                            VenueDuplicateContractRights::KEEP => 'Не изменять права (отказать, если на дубле есть действующие)',
+                            VenueDuplicateContractRights::TRANSFER => 'Перенести действующие роли с дубля на основную',
+                            VenueDuplicateContractRights::RETIRE => 'Сохранить права основной, завершить действующие роли дубля',
+                        ])
+                        ->helperText(function (Get $get, VenueDuplicate $record): string {
+                            $main = (int) $get('canonical_venue_id');
+                            $duplicate = $main === (int) $record->venue_id
+                                ? (int) $record->duplicate_venue_id : (int) $record->venue_id;
+                            return app(VenueDuplicateContractRights::class)->summary($main, $duplicate)
+                                .' Перенос или завершение требует прав суперадминистратора и не затрагивает историю.';
+                        }),
                 ])->requiresConfirmation()
                 ->action(function (VenueDuplicate $record, array $data): void {
                     abort_unless(self::canView($record), 403);
@@ -86,7 +102,8 @@ final class VenueDuplicateResource extends Resource
                         ? (int) $record->duplicate_venue_id : (int) $record->venue_id;
                     try {
                         app(MergeVenueDuplicateHandler::class)->handle(
-                            $record, $canonicalId, $otherId, auth('web')->user());
+                            $record, $canonicalId, $otherId, auth('web')->user(),
+                            (string) ($data['contract_resolution'] ?? VenueDuplicateContractRights::KEEP));
                         Notification::make()->success()->title('Кандидат дубля объединён')->send();
                     } catch (\InvalidArgumentException $e) {
                         Notification::make()->danger()->title($e->getMessage())->send();

@@ -10,17 +10,18 @@ final class DeleteOwnAccountTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_account_page_exposes_confirmed_soft_delete_action(): void
+    public function test_account_settings_exposes_branded_soft_delete_confirmation(): void
     {
         $user = User::factory()->create();
         $user->createProfile([]);
 
         $this->actingAs($user)
-            ->get(route('account'))
+            ->get(route('account.settings'))
             ->assertOk()
             ->assertSee(route('account.destroy'), false)
             ->assertSee('Удалить аккаунт')
-            ->assertSee("onsubmit=\"return confirm('вы уверены что хотите удалить аккаунт')\"", false);
+            ->assertSee('data-account-delete-dialog', false)
+            ->assertSee('Вы уверены, что хотите удалить аккаунт?');
     }
 
     public function test_user_can_soft_delete_own_account_and_is_logged_out(): void
@@ -48,5 +49,23 @@ final class DeleteOwnAccountTest extends TestCase
 
         $this->assertSoftDeleted('users', ['id' => $canonical->id]);
         $this->assertSoftDeleted('users', ['id' => $alias->id]);
+    }
+    public function test_deleted_identity_has_no_tokens_or_public_profile(): void
+    {
+        $canonical = User::factory()->create(['username' => 'removed_member']);
+        $canonical->createProfile([]);
+        $alias = User::factory()->create(['canonical_user_id' => $canonical->id]);
+        $canonical->createToken('phone', ['profile:read', 'account:delete']);
+        $alias->createToken('tablet', ['profile:read']);
+        $this->assertDatabaseCount('personal_access_tokens', 2);
+
+        $this->actingAs($canonical)->delete(route('account.destroy'))
+            ->assertRedirect(route('welcome'));
+
+        $this->assertSoftDeleted('users', ['id' => $canonical->id]);
+        $this->assertSoftDeleted('users', ['id' => $alias->id]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->get(route('users.id.show', $canonical->id))->assertNotFound();
+        $this->get(route('users.show', 'removed_member'))->assertNotFound();
     }
 }

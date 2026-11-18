@@ -229,14 +229,16 @@ final class SupportTicketsTest extends TestCase
         $this->actingAs($customer);
         $page = $this->get(route('account.notifications'))->assertOk()
             ->assertSee('data-conversation-group="support"', false)
+            ->assertSee('data-app-mobile-primary', false)
+            ->assertSee('data-app-mobile-primary-panel', false)
             ->assertSee('Техподдержка')
             ->assertSee('data-conversation="support-'.$first->id.'"', false)
             ->assertSee('data-conversation="support-'.$second->id.'"', false)
             ->assertSee('Непрочитанных сообщений в группе: 1');
         $this->assertSame(1, substr_count($page->getContent(), 'data-conversation-group="support"'));
         preg_match_all('/<details class="app-messages__group"[^>]*>/', $page->getContent(), $details);
-        $this->assertCount(1, array_filter($details[0], fn (string $tag): bool => str_contains($tag, ' open')));
-        $this->assertStringContainsString(' open', $details[0][0]);
+        $this->assertNotEmpty($details[0]);
+        $this->assertCount(0, array_filter($details[0], fn (string $tag): bool => str_contains($tag, ' open')));
         $this->assertSame(2, SupportTicket::query()->count());
 
         $threadPage = $this->get(route('account.notifications.threads.support', $first))->assertOk()

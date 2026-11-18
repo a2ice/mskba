@@ -137,6 +137,15 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $recorder = app(ExternalAvailabilitySnapshotRecorder::class);
 
         $snapshot = $recorder->record($source, $actor, $report);
+        // PostgreSQL timestamptz cannot infer that a bare wall-clock string
+        // represents UTC. Persist the offset explicitly even when the DB's
+        // session timezone is Europe/Moscow.
+        $this->assertSame('Y-m-d H:i:sP', $snapshot->getDateFormat());
+        $this->assertSame(
+            CarbonImmutable::parse($report['observed_at'])->utc()->toIso8601String(),
+            $snapshot->fresh()->observed_at->utc()->toIso8601String(),
+        );
+        $this->assertFalse($snapshot->fresh()->isStale(now()->addMinutes(1)));
         $this->assertTrue($snapshot->complete);
         $this->assertSame($source->id, $snapshot->venue_integration_source_id);
         $this->assertSame($venue->id, $snapshot->venue_id);
@@ -515,7 +524,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             $source, $actor, $this->report($source),
         );
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('только на тестовом сервере');
+        $this->expectExceptionMessage('отключено конфигурацией сервера');
         app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
     }
 
@@ -652,6 +661,49 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $this->assertNull($applied->applied_by_user_id);
         $this->assertDatabaseCount('venue_court_external_schedule_imports', 1);
         $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
+    public function test_production_requires_approved_source_for_native_import_and_public_refresh(): void
+    {
+        config()->set('venue_integrations.apply_findsport_native_enabled', true);
+        config()->set('venue_integrations.public_schedule_refresh_enabled', true);
+        config()->set('venue_integrations.findsport_preview_enabled', true);
+
+        $actor = $this->actor();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $source = $this->source($actor, $venue);
+        $snapshot = app(ExternalAvailabilitySnapshotRecorder::class)->record(
+            $source, $actor, $this->report($source),
+        );
+        $court = $venue->courts()->firstOrFail();
+        $originalEnvironment = app()->environment();
+        app()->detectEnvironment(static fn (): string => 'production');
+
+        try {
+            $this->assertSame('not_configured', app(FindSportOnDemandRefresh::class)
+                ->forCourt($court, $snapshot->observed_at->addMinute())['state']);
+            try {
+                app(ApplyFindSportSnapshotToNativeSchedule::class)->apply($source, $snapshot, $actor);
+                $this->fail('A testing-only source must never modify production schedules.');
+            } catch (RuntimeException $exception) {
+                $this->assertStringContainsString('проверенный', $exception->getMessage());
+            }
+
+            $source->update(['permission_status' => 'mskba_allowed']);
+            $applied = app(ApplyFindSportSnapshotToNativeSchedule::class)->apply(
+                $source, $snapshot, $actor,
+            );
+            $this->assertSame($snapshot->id, $applied->external_availability_snapshot_id);
+            $this->assertSame('cached', app(FindSportOnDemandRefresh::class)
+                ->forCourt($court, $snapshot->observed_at->addMinute())['state']);
+
+            config()->set('venue_integrations.public_schedule_refresh_enabled', false);
+            $this->assertSame('disabled', app(FindSportOnDemandRefresh::class)
+                ->forCourt($court, $snapshot->observed_at->addMinute())['state']);
+            $this->assertDatabaseCount('venue_bookings', 0);
+        } finally {
+            app()->detectEnvironment(static fn (): string => $originalEnvironment);
+        }
     }
 
     public function test_public_day_endpoint_rejects_another_court_and_out_of_range_date(): void

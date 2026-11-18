@@ -7,25 +7,23 @@ return [
     // network request from this task's code.
     'live_source_execution_enabled' => false,
 
-    // A separate, single-click, read-only diagnostic. Off on all environments
-    // except on the isolated staging environment. It never enables polling or booking.
-    // Staging-only explicit import into native hours, per-date prices and
-    // blocking availability. No automatic network execution.
-    // On opening the public day calendar, refresh an already applied
-    // FindSport source no more often than every 300 seconds, for all visitors.
-    // Disabled outside staging by default; public requests cannot pick URLs.
+    // FindSport read-only preview and explicit native import are available on
+    // staging and production. The ordinary integration execution engine above
+    // stays disabled. Public refresh is limited to an already-applied, verified
+    // source, at most once every 300 seconds per source across all visitors.
+    // Each feature has its own emergency off switch in the server's .env.
     'public_schedule_refresh_enabled' => (bool) env(
         'VENUE_INTEGRATIONS_PUBLIC_SCHEDULE_REFRESH_ENABLED',
-        env('APP_ENV') === 'staging',
+        in_array(env('APP_ENV'), ['staging', 'production'], true),
     ),
 
     'apply_findsport_native_enabled' => (bool) env(
         'VENUE_INTEGRATIONS_APPLY_FINDSPORT_NATIVE_ENABLED',
-        env('APP_ENV') === 'staging',
+        in_array(env('APP_ENV'), ['staging', 'production'], true),
     ),
 
     'findsport_preview_enabled' => (bool) env(
         'VENUE_INTEGRATIONS_FINDSPORT_PREVIEW_ENABLED',
-        env('APP_ENV') === 'staging',
+        in_array(env('APP_ENV'), ['staging', 'production'], true),
     ),
 ];

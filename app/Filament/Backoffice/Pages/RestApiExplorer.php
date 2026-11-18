@@ -12,7 +12,7 @@ final class RestApiExplorer extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-command-line';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Разработка';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
 
     protected static ?int $navigationSort = 9;
 

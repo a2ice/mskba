@@ -47,7 +47,7 @@ function node() {
 
 function mountDayBooking({
     previewFails = false, customSlots = null, personalDiscount = null,
-    viewerAuthenticated = true, sessionStore = null,
+    viewerAuthenticated = true, sessionStore = null, stale = false,
 } = {}) {
     const status = node();
     const heading = node();
@@ -125,7 +125,8 @@ function mountDayBooking({
             step_minutes: 30,
             minimum_minutes: 60,
             maximum_minutes: 180,
-            refresh_state: 'cached',
+            refresh_state: stale ? 'updated' : 'cached',
+            stale,
         }) };
     };
     const document = {
@@ -164,7 +165,7 @@ function mountDayBooking({
     }, { filename: 'venue-detail.js' });
     return {
         dialog, eventDialog, eventFields, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
-        window, windowEvents, storage,
+        window, windowEvents, storage, status,
         async open(expectedCards = 2) {
             await opener.listeners.click();
             assert.equal(grid.children.length, expectedCards);
@@ -177,6 +178,14 @@ function mountDayBooking({
         },
     };
 }
+
+test('stale FindSport data explains why free slots are not bookable', async () => {
+    const page = mountDayBooking({stale: true});
+    await page.open(2);
+    assert.equal(page.status.hidden, false);
+    assert.match(page.status.textContent, /Расписание устарело/);
+    assert.equal(page.bookingButton.disabled, true);
+});
 
 test('schedule dialog remains fixed to viewport center on iOS Safari', () => {
     const css = readFileSync(
@@ -509,6 +518,23 @@ test('Стрелки и даты изменяют день в пределах �
     assert.equal(page.next.disabled, true);
     page.previous.listeners.click();
     await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
+});
+
+test('multi-court overview never requests slots before selecting a hall', async () => {
+    const page = mountDayBooking();
+    page.dialog.dataset.courtId = '';
+    await page.opener.listeners.click();
+    assert.equal(page.requests.length, 0, 'no first-hall fallback is allowed');
+    assert.equal(page.dialog.open, false);
+    assert.equal(page.windowEvents.at(-1).type, 'mskba:venue-court-selection-required');
+    assert.equal(page.windowEvents.at(-1).detail.date, '2026-11-15');
+
+    page.dialog.listeners['mskba:choose-court']({
+        detail: {courtId: 99, date: '2026-11-16'},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('venue_court_id'), '99');
     assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
 });
 

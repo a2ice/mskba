@@ -23,9 +23,9 @@ use Illuminate\Validation\ValidationException;
 final class VenueRewardOverrideResource extends Resource
 {
     protected static ?string $model = VenueRewardOverride::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Лояльность';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office';
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 3;
 
     // Cashback overrides are managed in Venues → Edit → Cashback.
     // Keep existing URLs accessible for bookmarks, but avoid a duplicate menu.

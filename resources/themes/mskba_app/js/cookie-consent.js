@@ -1,10 +1,45 @@
-// The form remains functional without JS; AJAX only avoids a full error-page navigation.
-function initCookieConsent() {
-    const banner = document.querySelector('[data-cookie-consent-banner]');
+// Consent is saved by the server; the page no longer needs to reload after AJAX.
+// The non-JS POST/redirect flow stays available as progressive enhancement.
+function syncMetrikaConsent(banner, choice, doc, host) {
+    const id = Number(banner.dataset.metrikaCounterId);
+    if (!Number.isSafeInteger(id) || id <= 0) return;
+
+    // The official Yandex opt-out flag also works when a user changes
+    // a previously accepted setting in the footer without navigation.
+    host[`disableYaCounter${id}`] = choice !== 'accepted';
+    if (choice !== 'accepted') return;
+
+    const src = 'https://mc.yandex.ru/metrika/tag.js';
+    if (doc.querySelector(`script[src="${src}"]`)) return;
+
+    // On a first visit there is no server-rendered tag. Start it only
+    // AFTER the successful opt-in response; use the existing init options.
+    const ym = host.ym || function () {
+        (ym.a = ym.a || []).push(arguments);
+    };
+    host.ym = ym;
+    ym.l = Number(new Date());
+
+    const script = doc.createElement('script');
+    script.async = true;
+    script.src = src;
+    doc.head.append(script);
+    ym(id, 'init', {
+        referrer: doc.referrer,
+        url: host.location.href,
+        clickmap: true,
+        trackLinks: true,
+        accurateTrackBounce: true,
+        webvisor: true,
+    });
+}
+
+export function initCookieConsent(doc = document, host = window, fetchRequest = fetch) {
+    const banner = doc.querySelector('[data-cookie-consent-banner]');
     const form = banner?.querySelector('[data-cookie-consent-form]');
     if (!banner || !form) return;
 
-    document.querySelectorAll('[data-cookie-consent-open]').forEach((trigger) => {
+    doc.querySelectorAll('[data-cookie-consent-open]').forEach((trigger) => {
         trigger.addEventListener('click', () => {
             banner.hidden = false;
             banner.querySelector('button[name="analytics"]')?.focus();
@@ -21,29 +56,51 @@ function initCookieConsent() {
         if (error) error.hidden = true;
         buttons.forEach((button) => { button.disabled = true; });
 
+        const notify = (message, failed = false) => host.dispatchEvent(
+            new CustomEvent('mskba:action-toast', { detail: { message, failed } })
+        );
+
         try {
-            const response = await fetch(form.action, {
+            const response = await fetchRequest(form.action, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': form.querySelector('input[name="_token"]')?.value || '',
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ analytics: choice }),
             });
             if (!response.ok) throw new Error('Consent request failed');
-            // Reload guarantees that Metrika starts only after the server has accepted
-            // consent, and stops loading on every subsequent page after revocation.
-            window.location.reload();
+            const saved = await response.json();
+            if (saved?.analytics !== choice) throw new Error('Consent response mismatch');
+
+            banner.dataset.cookieConsentState = choice;
+            banner.hidden = true;
+            // Persistence succeeded. Analytics is best-effort; it must not turn a
+            // saved decision into a misleading "failed" toast if its script is blocked.
+            try {
+                syncMetrikaConsent(banner, choice, doc, host);
+            } catch {
+                // A later navigation will use the server-rendered consent state.
+            }
+            notify(choice === 'accepted' ? 'Все cookie приняты' : 'Выбраны только необходимые cookie');
         } catch {
+            // Keep the banner visible and the decision unchanged on ANY failure.
+            banner.hidden = false;
             if (error) error.hidden = false;
+            notify('Не удалось сохранить настройки cookie. Попробуйте ещё раз.', true);
+        } finally {
             buttons.forEach((button) => { button.disabled = false; });
         }
     });
 }
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCookieConsent, { once: true });
-} else {
-    initCookieConsent();
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initCookieConsent(), { once: true });
+    } else {
+        initCookieConsent();
+    }
 }

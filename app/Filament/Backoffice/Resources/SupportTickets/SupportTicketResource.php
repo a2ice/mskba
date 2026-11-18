@@ -28,7 +28,7 @@ final class SupportTicketResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-lifebuoy';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Обращения';
+    protected static string|\UnitEnum|null $navigationGroup = 'Поддержка';
 
     protected static ?int $navigationSort = 1;
 

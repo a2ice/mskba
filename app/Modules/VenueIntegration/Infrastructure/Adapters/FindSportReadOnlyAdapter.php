@@ -39,7 +39,8 @@ final class FindSportReadOnlyAdapter
     {
         if (! config('venue_integrations.apply_findsport_native_enabled', false)
             || ! config('venue_integrations.public_schedule_refresh_enabled', false)
-            || ! FindSportSourceIdentity::matches($source)) {
+            || ! FindSportSourceIdentity::matches($source)
+            || (app()->isProduction() && $source->permission_status !== 'mskba_allowed')) {
             throw new RuntimeException('Публичное обновление FindSport отключено.');
         }
 

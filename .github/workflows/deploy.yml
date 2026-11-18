@@ -166,6 +166,19 @@ jobs:
               --optimize-autoloader \
               </dev/null
 
+            # Filament CSS/JS are gitignored, outside Vite, and must be
+            # republished from the locked Composer dependencies on every deploy.
+            # composer.json intentionally does not run filament:upgrade on dump.
+            $COMPOSE run -T --rm phpfpm php artisan filament:assets --no-interaction </dev/null
+            test -s public/css/filament/filament/app.css || {
+              echo "::error::Filament panel CSS was not published" >&2
+              exit 1
+            }
+            test -s public/js/filament/filament/app.js || {
+              echo "::error::Filament panel JS was not published" >&2
+              exit 1
+            }
+
             # npm occasionally loses the VDS outbound connection with ECONNRESET.
             # Retry the complete clean install + Vite build before treating that
             # transient network failure as a failed production deployment.
@@ -466,3 +479,27 @@ jobs:
             touch "$DIR/RELEASE_COMPLETE"
             chmod 600 "$DIR/RELEASE_COMPLETE"
             echo 'CUTOVER_RELEASE_VERIFIED=true'
+
+
+  publish-first-system-update:
+    # Run only if the full production deploy and its public-URL checks passed.
+    # The command is idempotent: later releases only recheck the public URL.
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: One-time task 329 Content/API acceptance after verified production release
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+            # Task 329 was released via PR #821. Never publish a release
+            # note on an older deployment or a different deployment target.
+            git merge-base --is-ancestor 1ca609de70739cae12b20b0fdb5ba22a4a022a53 HEAD
+            test -f app/Console/Commands/PublishTask329SystemUpdate.php
+            docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm \
+              php artisan project-updates:publish-task-329 --confirm-release

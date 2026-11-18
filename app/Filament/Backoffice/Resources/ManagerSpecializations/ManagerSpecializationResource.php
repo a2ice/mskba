@@ -23,8 +23,9 @@ use Illuminate\Validation\ValidationException;
 final class ManagerSpecializationResource extends Resource
 {
     protected static ?string $model = ManagerSpecialization::class;
+    protected static string|\UnitEnum|null $navigationGroup = 'Пользователи и доступ';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-identification';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string { return 'Специализации'; }
     public static function getModelLabel(): string { return 'специализация'; }

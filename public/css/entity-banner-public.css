@@ -1,3 +1,33 @@
 .entity-public-banner { position:relative; width:100%; margin:0 0 20px; overflow:hidden; aspect-ratio:3/1; border-radius:12px; background:rgba(128,128,128,.09); }
 .entity-public-banner img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; }
-@media (max-width:640px) { .entity-public-banner { border-radius:9px; margin-bottom:14px; } }
+
+/* Venue background mode is confined to the page, never other entity banners. */
+.entity-public-banner--background {
+    position:fixed;
+    inset:0;
+    z-index:0;
+    width:100%;
+    height:100vh;
+    height:100dvh;
+    margin:0;
+    aspect-ratio:auto;
+    border-radius:0;
+    pointer-events:none;
+}
+.entity-public-banner--background::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    background:var(--entity-banner-overlay-css,rgba(0,0,0,.5));
+}
+/* Raise only regular content, never override the anchor bar's sticky positioning. */
+.entity-public-banner--background ~ .app-venue-page__hero-grid,
+.entity-public-banner--background ~ .app-venue-page__columns,
+.entity-public-banner--background ~ .venue-show {
+    position:relative;
+    z-index:1;
+}
+.entity-public-banner--background ~ .app-venue-page__anchors {
+    z-index:18;
+}
+@media (max-width:640px) { .entity-public-banner:not(.entity-public-banner--background) { border-radius:9px; margin-bottom:14px; } }

@@ -78,6 +78,36 @@
         </div>
     </section>
 
+    <section class="panel app-appearance-settings app-settings-panel" aria-labelledby="password-settings-heading">
+        <h2 id="password-settings-heading">Пароль и безопасность</h2>
+        <p class="muted">{{ $canonicalUser?->password ? 'Для смены пароля укажите текущий пароль.' : 'Для этого аккаунта пароль ещё не установлен. Установите его для входа по логину или подтверждённому контакту.' }}</p>
+        <form action="{{ route('account.settings.password.update') }}" method="POST" class="app-settings-panel__password-form">
+            @csrf
+            @method('PUT')
+            <div class="app-settings-panel__grid">
+                @if($canonicalUser?->password)
+                    <div class="app-settings-panel__field">
+                        <label for="settings-current-password">Текущий пароль</label>
+                        <input id="settings-current-password" type="password" name="current_password" autocomplete="current-password" required maxlength="255">
+                        @error('current_password') <p class="error" role="alert">{{ $message }}</p> @enderror
+                    </div>
+                @endif
+                <div class="app-settings-panel__field">
+                    <label for="settings-new-password">Новый пароль</label>
+                    <input id="settings-new-password" type="password" name="password" autocomplete="new-password" required minlength="{{ \App\Modules\Identity\Domain\ValueObjects\PasswordVO::MIN_LENGTH }}" maxlength="{{ \App\Modules\Identity\Domain\ValueObjects\PasswordVO::MAX_LENGTH }}">
+                    @error('password') <p class="error" role="alert">{{ $message }}</p> @enderror
+                </div>
+                <div class="app-settings-panel__field">
+                    <label for="settings-password-confirmation">Повторите новый пароль</label>
+                    <input id="settings-password-confirmation" type="password" name="password_confirmation" autocomplete="new-password" required minlength="{{ \App\Modules\Identity\Domain\ValueObjects\PasswordVO::MIN_LENGTH }}" maxlength="{{ \App\Modules\Identity\Domain\ValueObjects\PasswordVO::MAX_LENGTH }}">
+                    @error('password_confirmation') <p class="error" role="alert">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            <p class="muted">Не менее {{ \App\Modules\Identity\Domain\ValueObjects\PasswordVO::MIN_LENGTH }} символов: заглавная и строчная латинские буквы, цифра и специальный символ.</p>
+            <button class="button primary" type="submit">{{ $canonicalUser?->password ? 'Изменить пароль' : 'Установить пароль' }}</button>
+        </form>
+    </section>
+
     <section class="panel app-appearance-settings app-settings-panel" aria-labelledby="notification-settings-heading">
         <h2 id="notification-settings-heading">Уведомления</h2>
         <p class="muted">Выберите типы уведомлений для подключённых каналов. Доставка доступна только на подтверждённые контакты.</p>
@@ -136,4 +166,34 @@
             <button class="button primary" type="submit">Сохранить</button>
         </form>
     </section>
+
+    <section class="panel app-appearance-settings app-settings-panel" aria-labelledby="account-delete-heading">
+        <h2 id="account-delete-heading">Удаление аккаунта</h2>
+        <p class="muted">После удаления профиль исчезнет с сайта, а доступ будет закрыт на всех устройствах. История бронирований, переписки и операций сохранится. Восстановить аккаунт сможет администратор.</p>
+        <form action="{{ route('account.destroy') }}" method="POST" data-account-delete-form>
+            @csrf
+            @method('DELETE')
+            <button type="button" class="button danger" data-account-delete-open>Удалить аккаунт</button>
+        </form>
+    </section>
+
+    <dialog class="mskba-modal app-contact-wizard__dialog app-account-contacts__delete-dialog"
+            data-account-delete-dialog aria-labelledby="account-delete-dialog-heading"
+            aria-describedby="account-delete-dialog-description">
+        <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
+            <h2 id="account-delete-dialog-heading" class="eyebrow accent mskba-auth-heading">Удаление аккаунта</h2>
+            <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close"
+                    data-account-delete-cancel aria-label="Закрыть окно">
+                <svg aria-hidden="true"><use href="#close"/></svg>
+            </button>
+        </header>
+        <div class="mskba-modal__body app-contact-wizard__body">
+            <p id="account-delete-dialog-description">Вы уверены, что хотите удалить аккаунт?</p>
+            <p class="muted">Вы сразу выйдете из системы на всех устройствах, а ваш профиль исчезнет из публичных разделов MSKBA.</p>
+        </div>
+        <footer class="mskba-modal__footer app-contact-wizard__footer app-account-contacts__delete-footer">
+            <button type="button" class="button secondary" data-account-delete-cancel>Отмена</button>
+            <button type="button" class="button danger" data-account-delete-confirm>Да, удалить аккаунт</button>
+        </footer>
+    </dialog>
 @endsection

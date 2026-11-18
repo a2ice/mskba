@@ -1,0 +1,231 @@
+/* One-row, theme-owned mobile navigation. The former statistics strip is intentionally absent. */
+.app-mobile-primary,
+.app-mobile-primary-backdrop { display: none; }
+
+@media (max-width: 768px) {
+    :root { --app-mobile-primary-height: 72px; }
+
+    body {
+        padding-bottom: calc(var(--app-mobile-primary-height) + 22px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Account navigation moves into the dock's context menu on phones.
+       Keep the original sticky/sidebar navigation untouched on tablets and desktop. */
+    .app-account-layout__aside { display: none !important; }
+    .app-header-mobile { display: none !important; }
+
+    .app-mobile-primary-backdrop:not([hidden]) {
+        position: fixed;
+        inset: 0;
+        z-index: 89;
+        display: block;
+        background: var(--backdrop-bg);
+        -webkit-backdrop-filter: blur(3px);
+        backdrop-filter: blur(3px);
+    }
+
+    .app-mobile-primary {
+        position: fixed;
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        left: 50%;
+        z-index: 90;
+        display: block;
+        width: min(540px, calc(100vw - 16px));
+        transform: translateX(-50%);
+    }
+    .app-mobile-primary [hidden],
+    .app-mobile-primary-backdrop[hidden] { display: none !important; }
+
+    .app-mobile-primary__bar {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: stretch;
+        min-height: var(--app-mobile-primary-height);
+        padding: 5px 6px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: color-mix(in srgb, var(--surface) 95%, transparent);
+        -webkit-backdrop-filter: blur(18px) saturate(1.1);
+        backdrop-filter: blur(18px) saturate(1.1);
+        box-shadow: 0 5px 28px var(--ambient-shadow);
+    }
+    .app-mobile-primary__action {
+        display: flex;
+        min-width: 0;
+        min-height: 60px;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 3px;
+        padding: 6px 1px;
+        border: 0;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font: inherit;
+        font-size: clamp(10px, 2.65vw, 12px);
+        font-weight: 700;
+        line-height: 1.2;
+        text-align: center;
+        text-decoration: none;
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .app-mobile-primary__action svg {
+        display: block;
+        width: 23px;
+        height: 23px;
+        flex: 0 0 23px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+    .app-mobile-primary__action:is(:hover,[aria-current="page"]),
+    .app-mobile-primary__action--menu[aria-expanded="true"] { color: var(--accent); }
+    .app-mobile-primary__action--home { padding: 0; }
+    .app-mobile-primary__home-mark {
+        display: block;
+        width: 46px;
+        height: 46px;
+        border: 2px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+        border-radius: 50%;
+        background: var(--surface) url('../assets/images/logo-mark-100.png') center / 41px 41px no-repeat;
+    }
+    .app-mobile-primary__action--home[aria-current="page"] .app-mobile-primary__home-mark {
+        border-color: var(--accent);
+    }
+
+    .app-mobile-primary__panel {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 10px);
+        left: 0;
+        max-height: min(68dvh, 580px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0 12px 12px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: 0 18px 45px var(--shadow-menu);
+        scrollbar-width: thin;
+    }
+    .app-mobile-primary__panel-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 60px;
+        padding: 10px 4px 10px 10px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+    }
+    .app-mobile-primary__panel-header h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.3;
+    }
+    .app-mobile-primary__close {
+        display: grid;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+    }
+    .app-mobile-primary__close:hover { background: var(--surface-raised); color: var(--text); }
+    .app-mobile-primary__close svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+    }
+
+    .app-mobile-primary__account-nav {
+        gap: 3px;
+        max-height: none;
+        overflow: visible;
+        padding: 10px 0;
+    }
+    .app-mobile-primary__site-section {
+        margin-top: 3px;
+        border-top: 1px solid var(--line);
+    }
+    .app-mobile-primary__site-section:only-of-type { border-top: 0; }
+    .app-mobile-primary__site-trigger,
+    .app-mobile-primary__site-link,
+    .app-mobile-primary__site-children a {
+        display: flex;
+        width: 100%;
+        min-height: 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.35;
+        text-decoration: none;
+        cursor: pointer;
+        list-style: none;
+    }
+    .app-mobile-primary__site-trigger { color: var(--text); font-weight: 750; }
+    .app-mobile-primary__site-trigger::-webkit-details-marker,
+    .app-mobile-primary__site-link::-webkit-details-marker { display: none; }
+    .app-mobile-primary__site-trigger::marker,
+    .app-mobile-primary__site-link::marker { content: ''; }
+    .app-mobile-primary__site-trigger svg,
+    .app-mobile-primary__site-link svg {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        transition: transform .16s;
+    }
+    .app-mobile-primary__site-section[open] > summary svg,
+    .app-mobile-primary__site-group[open] > summary svg { transform: rotate(180deg); }
+    .app-mobile-primary__site-links { display: flex; flex-direction: column; gap: 3px; padding-bottom: 4px; }
+    .app-mobile-primary__site-children {
+        display: grid;
+        gap: 3px;
+        margin-left: 12px;
+        padding-left: 10px;
+        border-left: 1px solid var(--line);
+    }
+    .app-mobile-primary__site-link:hover,
+    .app-mobile-primary__site-children a:hover { background: var(--surface-raised); color: var(--text); }
+    .app-mobile-primary__site-link[aria-current="page"],
+    .app-mobile-primary__site-children a[aria-current="page"] { color: var(--accent); background: var(--subtle-accent-bg); }
+    body.app-mobile-primary-open { overflow: hidden; }
+}
+
+@media (max-width: 360px) {
+    .app-mobile-primary__bar { padding-inline: 3px; }
+    .app-mobile-primary__action { font-size: 10px; }
+    .app-mobile-primary__home-mark { width: 42px; height: 42px; background-size: 37px 37px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app-mobile-primary__site-trigger svg,
+    .app-mobile-primary__site-link svg { transition: none; }
+}

@@ -24,9 +24,9 @@ use Illuminate\Validation\Rule;
 final class MetroLineResource extends Resource
 {
     protected static ?string $model = MetroLine::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'География';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 3;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Линии метро'; }
