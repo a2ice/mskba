@@ -110,13 +110,13 @@ final class ResolveTelegramUserHandler
     {
         $base = "tg_{$telegramUserId}";
 
-        if (! User::query()->where('username', $base)->exists()) {
+        if (! User::withTrashed()->whereRaw('LOWER(username) = ?', [$base])->exists()) {
             return $base;
         }
 
         do {
             $username = $base.'_'.Str::lower(Str::random(6));
-        } while (User::query()->where('username', $username)->exists());
+        } while (User::withTrashed()->whereRaw('LOWER(username) = ?', [$username])->exists());
 
         return $username;
     }
