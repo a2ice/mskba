@@ -93,7 +93,7 @@ final class AccountInvitationResource extends Resource
                         Select::make('scope_id')->label('Площадка')->required()->searchable()
                             ->getSearchResultsUsing(fn (string $search): array =>
                                 Venue::query()->whereNull('deleted_at')
-                                    ->where('name', 'ilike', '%'.$search.'%')
+                                    ->where('name', 'like', '%'.$search.'%')
                                     ->limit(30)->pluck('name', 'id')->all())
                             ->getOptionLabelUsing(fn ($value): ?string => Venue::query()->find($value)?->name),
                         Select::make('role')->label('Цель приглашения')->required()->default('owner')
