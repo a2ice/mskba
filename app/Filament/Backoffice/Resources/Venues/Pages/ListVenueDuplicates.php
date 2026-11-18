@@ -4,6 +4,7 @@ namespace App\Filament\Backoffice\Resources\Venues\Pages;
 
 use App\Filament\Backoffice\Resources\Venues\VenueDuplicateResource;
 use App\Modules\Venue\Application\UseCases\MergeVenueDuplicateHandler;
+use App\Modules\Venue\Application\Services\VenueDuplicateContractRights;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateMatchTypeEnum;
@@ -139,11 +140,32 @@ final class ListVenueDuplicates extends ListRecords
                             )->all())
                         ->helperText('Выбери минимум две площадки, связанные как кандидаты дублей.'),
                     Select::make('canonical_venue_id')->label('Основная площадка')->required()
+                        ->live()
                         ->options(fn (Get $get): array => Venue::query()
                             ->whereIn('id', (array) ($get('venue_ids') ?? []))
                             ->get()->mapWithKeys(
                                 fn (Venue $venue): array => [$venue->id => $venue->name.' (#'.$venue->id.')']
                             )->all()),
+                    Select::make('contract_resolution')->label('Договорные права при объединении')
+                        ->required()->default(VenueDuplicateContractRights::KEEP)
+                        ->options([
+                            VenueDuplicateContractRights::KEEP => 'Не изменять права (отказать при действующих)',
+                            VenueDuplicateContractRights::TRANSFER => 'Перенести действующие роли дублей на основную',
+                            VenueDuplicateContractRights::RETIRE => 'Сохранить права основной, завершить действующие роли дублей',
+                        ])
+                        ->helperText(function (Get $get): string {
+                            $main = (int) $get('canonical_venue_id');
+                            $ids = array_filter(array_map('intval', (array) ($get('venue_ids') ?? [])),
+                                fn (int $id): bool => $id !== $main);
+                            if ($main <= 0 || $ids === []) {
+                                return 'Выбери основную площадку и дубли для просмотра договорных прав.';
+                            }
+
+                            return implode(' ', array_map(
+                                fn (int $id): string => app(VenueDuplicateContractRights::class)->summary($main, $id),
+                                array_values($ids),
+                            )).' Перенос и завершение доступны только суперадминистратору.';
+                        }),
                 ])->requiresConfirmation()
                 ->action(function (array $data): void {
                     abort_unless(VenueDuplicateResource::canViewAny(), 403);
@@ -151,7 +173,8 @@ final class ListVenueDuplicates extends ListRecords
                     abort_unless(count($ids) >= 2 && in_array((int) $data['canonical_venue_id'], $ids, true), 422);
                     try {
                         app(MergeVenueDuplicateHandler::class)->handleBatch(
-                            $ids, (int) $data['canonical_venue_id'], auth('web')->user());
+                            $ids, (int) $data['canonical_venue_id'], auth('web')->user(),
+                            (string) ($data['contract_resolution'] ?? VenueDuplicateContractRights::KEEP));
                         Notification::make()->success()->title('Группа дублей объединена')->send();
                     } catch (\InvalidArgumentException $e) {
                         Notification::make()->danger()->title($e->getMessage())->send();
