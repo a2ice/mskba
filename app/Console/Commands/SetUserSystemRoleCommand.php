@@ -15,7 +15,7 @@ class SetUserSystemRoleCommand extends Command
     public function handle(): int
     {
         $roleValue = (string) $this->argument('role');
-        $username = (string) $this->argument('username');
+        $username = trim((string) $this->argument('username'));
 
         $role = UserSystemRoleEnum::tryFrom($roleValue);
 
@@ -30,7 +30,7 @@ class SetUserSystemRoleCommand extends Command
         }
 
         $user = User::query()
-            ->where('username', $username)
+            ->whereRaw('LOWER(username) = ?', [mb_strtolower($username)])
             ->first();
 
         if ($user === null) {
