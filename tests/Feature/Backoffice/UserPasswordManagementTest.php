@@ -66,9 +66,6 @@ final class UserPasswordManagementTest extends TestCase
         $admin = $this->person(UserSystemRoleEnum::ADMIN);
         $target = $this->person(UserSystemRoleEnum::USER);
         $this->actingAs($admin);
-        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
-
-        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
-            ->assertActionHidden('setUserPassword');
+        $this->assertFalse(\App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource::canEdit($target));
     }
 }
