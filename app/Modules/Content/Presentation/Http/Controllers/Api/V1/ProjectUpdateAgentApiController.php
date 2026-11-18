@@ -12,6 +12,7 @@ use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Validation\ValidationException;
 
 final class ProjectUpdateAgentApiController extends Controller
 {
@@ -28,6 +29,21 @@ final class ProjectUpdateAgentApiController extends Controller
             'documentation' => ['required', 'array', 'min:1', 'max:12'],
             'documentation.*' => ['required', 'string', 'distinct', 'max:400', 'regex:~\Adocs/[a-zA-Z0-9_./-]+\.md\z~'],
         ]);
+
+        foreach (['title', 'summary', 'content'] as $field) {
+            if (preg_match('~github\\.com/|docs/[a-zA-Z0-9_./-]+\\.md~i', $data[$field])) {
+                throw ValidationException::withMessages([
+                    $field => 'Технические ссылки разрешены только в закрытых метаданных.',
+                ]);
+            }
+        }
+        foreach ($data['documentation'] as $document) {
+            if (str_contains($document, '../') || str_contains($document, '//')) {
+                throw ValidationException::withMessages([
+                    'documentation' => 'Недопустимый путь документации.',
+                ]);
+            }
+        }
 
         $item = $drafts->upsert($data, $actor);
 
