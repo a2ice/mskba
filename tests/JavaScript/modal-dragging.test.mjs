@@ -297,6 +297,10 @@ test('backdrop closes only for a complete click begun and ended outside a native
 
 test('legacy modal backdrop has the same press-and-release requirement', () => {
     const h = harness(true);
+    // The generic harness uses substring matching; override the shell so it
+    // is never mistaken for its own .modal__dialog child.
+    h.shell.matches = selector => selector.split(',').some(part =>
+        part.trim() === '.modal' || part.trim().startsWith('.modal.'));
     const event = (target, pointerId=8) => ({
         target, clientX:100, clientY:90, button:0, pointerId, isPrimary:true,
         preventDefault(){this.blocked=true;},
