@@ -81,4 +81,25 @@ final class EventVenuePrefillTest extends TestCase
             ->assertSee('name="venue_id"', false)
             ->assertSee('Выберите площадку');
     }
+    public function test_court_cannot_be_preselected_without_its_parent_venue(): void
+    {
+        $this->signIn();
+        $court = Venue::factory()->create()->primaryCourt()->firstOrFail();
+
+        foreach (['events.wizard', 'events.create'] as $route) {
+            $this->get(route($route, ['venue_court_id' => $court->id]))
+                ->assertSessionHasErrors('venue_id');
+        }
+    }
+
+    public function test_nonexistent_venue_cannot_be_preselected(): void
+    {
+        $this->signIn();
+
+        foreach (['events.wizard', 'events.create'] as $route) {
+            $this->get(route($route, ['venue_id' => 2147483647]))
+                ->assertSessionHasErrors('venue_id');
+        }
+    }
+
 }
