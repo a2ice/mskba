@@ -40,13 +40,21 @@ final class EventWizardController extends Controller
     {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'venue_id' => ['nullable', 'integer', 'exists:venues,id'],
+            'venue_court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
+                ->where('venue_id', (int) $request->input('venue_id'))
+                ->whereNull('deleted_at')],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $defaultStartsAt = $now->ceilMinute();
 
         if (app(ThemeResolver::class)->active() === 'mskba_app') {
-            return redirect()->route('events.create', ['type' => $selectedType->value]);
+            return redirect()->route('events.create', array_filter([
+                'type' => $selectedType->value,
+                'venue_id' => $validated['venue_id'] ?? null,
+                'venue_court_id' => $validated['venue_court_id'] ?? null,
+            ], static fn ($value): bool => $value !== null));
         }
 
         return ThemeResolver::page('events.wizard', [
