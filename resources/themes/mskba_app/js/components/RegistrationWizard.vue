@@ -238,7 +238,7 @@ defineExpose({ hasEnteredData });
                     last_name: 'Фамилия', first_name: 'Имя', middle_name: 'Отчество',
                 })[field] }}</label>
                 <input :id="'mskba-register-' + field" v-model="form[field]" :name="field"
-                    :disabled="busy" maxlength="255" @input="changed(field)" />
+                    :disabled="busy" maxlength="255" :aria-invalid="!!errors[field]" @input="changed(field)" />
                 <p v-if="errors[field]" class="error" role="alert">{{ errors[field] }}</p>
             </div>
         </template>
