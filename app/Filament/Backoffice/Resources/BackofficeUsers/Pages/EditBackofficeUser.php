@@ -30,6 +30,9 @@ use App\Modules\Identity\Application\UseCases\AdminRevertUserPermissionSnapshotH
 use App\Modules\Identity\Application\UseCases\AdminEditParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminAssignParticipationRoleHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Application\UseCases\SetUserPasswordHandler;
+use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
+use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Application\UseCases\AdminRevertParticipationRoleHandler;
@@ -55,6 +58,7 @@ use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
@@ -94,6 +98,80 @@ final class EditBackofficeUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('setUserPassword')
+                ->label('Установить пароль')
+                ->icon('heroicon-o-key')
+                ->visible(function (): bool {
+                    $actor = auth('web')->user()?->canonical();
+
+                    return $actor !== null
+                        && $actor->isConfirmed()
+                        && $actor->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+                        && BackofficeUserResource::canEdit($this->getRecord());
+                })
+                ->modalHeading('Установить новый пароль')
+                ->modalDescription('Только для подтверждённого superadmin. Текущий пароль пользователя не требуется. Новый пароль становится временным, прежний перестанет работать.')
+                ->modalSubmitActionLabel('Установить пароль')
+                ->schema([
+                    TextInput::make('admin_password')
+                        ->label('Ваш текущий пароль superadmin')
+                        ->password()->required()->maxLength(PasswordVO::MAX_LENGTH),
+                    TextInput::make('new_password')
+                        ->label('Новый пароль пользователя')
+                        ->password()->required()->minLength(PasswordVO::MIN_LENGTH)->maxLength(PasswordVO::MAX_LENGTH),
+                    TextInput::make('new_password_confirmation')
+                        ->label('Подтверждение нового пароля')
+                        ->password()->required()->maxLength(PasswordVO::MAX_LENGTH),
+                    Textarea::make('reason')
+                        ->label('Основание установки')
+                        ->required()->minLength(10)->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user()?->canonical();
+                    $target = $this->getRecord();
+                    abort_unless($actor !== null
+                        && $actor->isConfirmed()
+                        && $actor->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+                        && BackofficeUserResource::canEdit($target), 403);
+
+                    $validAdminCredential = User::query()
+                        ->whereIn('id', $actor->identityIds())
+                        ->get()
+                        ->contains(fn (User $identity): bool => $identity->password !== null
+                            && Hash::check((string) ($data['admin_password'] ?? ''), $identity->password));
+
+                    if (! $validAdminCredential) {
+                        throw ValidationException::withMessages(['admin_password' => 'Текущий пароль superadmin неверен.']);
+                    }
+
+                    if ((string) ($data['new_password'] ?? '') !== (string) ($data['new_password_confirmation'] ?? '')) {
+                        throw ValidationException::withMessages(['new_password_confirmation' => 'Пароли не совпадают.']);
+                    }
+
+                    try {
+                        DB::transaction(function () use ($actor, $target, $data): void {
+                            app(SetUserPasswordHandler::class)->handleAdministrator(
+                                $actor,
+                                $target,
+                                (string) $data['new_password'],
+                            );
+                            AuditLog::query()->create([
+                                'actor_id' => $actor->id,
+                                'auditable_type' => User::class,
+                                'auditable_id' => $target->canonical()->id,
+                                'event' => 'admin_user_password_set',
+                                'old_values' => [],
+                                'new_values' => ['is_temporary_password' => true],
+                                'metadata' => ['reason' => (string) $data['reason']],
+                            ]);
+                        });
+                    } catch (InvalidIdentityValueException $exception) {
+                        throw ValidationException::withMessages(['new_password' => $exception->getMessage()]);
+                    }
+
+                    $target->refresh();
+                    Notification::make()->success()->title('Временный пароль пользователя установлен')->send();
+                }),
             // Hidden in the main page header: buttons in the Wallet tab
             // mount these guarded actions without leaving the user editor.
             Action::make('grantOwnWalletBonus')
