@@ -24,7 +24,7 @@ final class FirstSystemUpdateProductionSmokeTest extends TestCase
         $dev = User::factory()->create([
             'username' => 'dev',
             'system_role' => UserSystemRoleEnum::SYSTEM,
-            'status' => UserStatusEnum::CONFIRMED,
+            'status' => UserStatusEnum::UNCONFIRMED,
         ]);
         $payload = [
             'source_key' => 'mskba-pr821-task329',
