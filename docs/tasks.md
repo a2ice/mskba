@@ -254,3 +254,4 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 - [ ] 323 - Самостоятельная предзаявка аренды без мероприятия ([описание](tasks/323/description.md))
 - [ ] 325 - Объединение production и dev данных: аккаунты, команды, игры, турниры, площадки ([план и инструменты аудита](tasks/325/description.md))
 - [ ] 326 - Восстановить Filament CSS/JS в production-деплое после переноса ([описание](tasks/326/description.md))
+- [ ] 327 - Группы навигации Filament и заполнение главного дашборда ([описание](tasks/327/description.md))
