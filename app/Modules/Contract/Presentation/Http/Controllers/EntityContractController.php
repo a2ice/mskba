@@ -76,7 +76,7 @@ final class EntityContractController extends Controller
             'legal_nature' => ['sometimes', 'in:technical,evidence_backed,legal_agreement'],
             'permissions.*' => ['required', 'string', 'distinct'],
         ]);
-        $target = User::query()->where('username', trim($data['username']))->first();
+        $target = User::query()->whereRaw('LOWER(username) = ?', [mb_strtolower(trim($data['username']))])->first();
         if ($target === null) {
             return back()->withErrors(['username' => 'Пользователь не найден.'])->withInput();
         }
@@ -112,7 +112,7 @@ final class EntityContractController extends Controller
     {
         $this->authorizeManage($request, $membership, $contracts);
         $data = $request->validate(['username' => ['required', 'string', 'max:150']]);
-        $target = User::query()->where('username', trim($data['username']))->first();
+        $target = User::query()->whereRaw('LOWER(username) = ?', [mb_strtolower(trim($data['username']))])->first();
         if ($target === null) {
             return back()->withErrors(['username' => 'Пользователь не найден.']);
         }

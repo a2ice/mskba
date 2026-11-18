@@ -28,7 +28,7 @@ final class ListAdminUsersHandler
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
-            $query->where('username', 'like', '%'.$search.'%');
+            $query->whereRaw('LOWER(username) LIKE ?', ['%'.mb_strtolower($search).'%']);
         }
 
         $status = UserStatusEnum::tryFrom((string) ($filters['status'] ?? ''));

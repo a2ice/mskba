@@ -26,12 +26,14 @@ final class UserLoginResolver
     public function resolveCandidates(string $login): Collection
     {
         $login = trim($login);
-        $userIds = [];
 
-        $usernameUser = User::query()->where('username', $login)->first();
-        if ($usernameUser !== null) {
-            $userIds[] = (int) $usernameUser->getKey();
-        }
+        // Include legacy mixed-case usernames and let the canonical-identity
+        // check below reject ambiguous matches rather than picking one account.
+        $userIds = User::query()
+            ->whereRaw('LOWER(username) = ?', [mb_strtolower($login)])
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
 
         foreach ($this->contactCandidates($login) as [$type, $value]) {
             array_push($userIds, ...$this->contactUserIds($type, $value));

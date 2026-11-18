@@ -97,6 +97,16 @@ final class MobileRegistrationApiTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
+    public function test_registration_rejects_existing_legacy_mixed_case_username(): void
+    {
+        User::factory()->create(['username' => 'Legacy_Mixed_Login']);
+
+        $this->postJson(route('api.v1.auth.register'), $this->payload([
+            'username' => 'legacy_mixed_login',
+        ]))->assertUnprocessable()->assertJsonValidationErrors('username');
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
     public function test_registration_rejects_missing_consent_and_invalid_player_data_without_creating_account(): void
     {
         $this->postJson(route('api.v1.auth.register'), $this->payload([
