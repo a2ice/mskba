@@ -372,10 +372,10 @@ class VenueController extends Controller
         FindNearbyVenuesHandler $findNearbyVenues,
         CurrentActorResolver $actors,
         PageSeoResolver $pageSeo,
-    ): Response|\\Illuminate\\Http\\RedirectResponse {
+    ): Response|\Illuminate\Http\RedirectResponse {
         // Preserve historic numeric venue URLs when a duplicate is linked.
         // Never redirect ambiguous slug-only routes or unpublished canonicals.
-        if (preg_match('/^(\\d+)(?:-|$)/', $alias, $match) === 1) {
+        if (preg_match('/^(\d+)(?:-|$)/', $alias, $match) === 1) {
             $old = Venue::query()->whereKey((int) $match[1])
                 ->whereNotNull('canonical_venue_id')->with('canonicalVenue')->first();
             if ($old?->canonicalVenue?->isPubliclyVisible()) {
