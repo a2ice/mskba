@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
+use App\Modules\Identity\Application\UseCases\RecoverUserPasswordHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
@@ -14,6 +15,10 @@ use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -136,21 +141,31 @@ class AuthController extends Controller
         return redirect()->to($redirectTo)->with('success', 'Аккаунт создан. Завершите настройку приватности.');
     }
 
-    public function restore(): void
-    {
-        $message = 'В данный момент мы работаем над восстановлением доступа. Пожалуйста, обратитесь в поддержку для получения помощи.';
+    public function restore(
+        Request $request,
+        RecoverUserPasswordHandler $recover,
+    ): RedirectResponse|JsonResponse {
+        $data = $request->validate([
+            'contact' => ['required', 'string', 'max:255'],
+        ]);
+        $contact = trim((string) $data['contact']);
 
-        if (request()->expectsJson() || request()->ajax() || request()->wantsJson()) {
-            response()->json([
-                'status' => 'error',
-                'message' => $message,
-            ], 503)->send();
-            exit;
+        // Do not disclose whether the contact exists, is verified or whether
+        // the selected delivery channel is available.
+        $key = 'auth:password-recovery:'.hash_hmac('sha256', mb_strtolower($contact), (string) config('app.key'));
+        try {
+            RateLimiter::attempt($key, 3, fn () => $recover->handle($contact), 3600);
+        } catch (Throwable $exception) {
+            Log::warning('Password recovery delivery failed', ['exception' => $exception::class]);
         }
 
-        redirect()->route('login')->with('error', $message)->send();
+        $message = 'Если этот контакт подтверждён и доставка доступна, на него отправлен новый временный пароль.';
 
-        exit;
+        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            return response()->json(['status' => 'success', 'message' => $message]);
+        }
+
+        return redirect()->route('login')->with('status', $message);
     }
 
     private function shouldReturnJson(LoginRequest|RegisterRequest $request): bool
