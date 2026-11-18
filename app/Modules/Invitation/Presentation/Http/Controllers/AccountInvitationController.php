@@ -5,6 +5,7 @@ namespace App\Modules\Invitation\Presentation\Http\Controllers;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
+use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
@@ -12,7 +13,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -58,7 +58,7 @@ final class AccountInvitationController
 
     public function register(
         RegisterRequest $request, AccountInvitationManager $manager,
-        RegisterUserHandler $register
+        RegisterUserHandler $register, AuthHandler $authHandler
     ): RedirectResponse {
         $token = (string) $request->session()->get('account_invitation_token', '');
         $invitation = $manager->findByToken($token);
@@ -102,8 +102,10 @@ final class AccountInvitationController
             throw ValidationException::withMessages(['username' => $e->getMessage()]);
         }
 
-        Auth::login($user);
-        $request->session()->regenerate();
+        // Reuse the normal browser login path: canonical identity resolution,
+        // first-login tracking and session regeneration remain consistent.
+        $login = $authHandler->login($user->username, $data['password'], false);
+        abort_if($login->status === 'error', 401);
 
         return redirect()->route('account-invitations.continue')
             ->with('status', 'Аккаунт создан, приглашение принято. Email подтверждён.');
