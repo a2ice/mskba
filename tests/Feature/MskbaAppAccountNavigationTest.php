@@ -337,13 +337,13 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $xpath = new \DOMXPath($dom);
         // The group trigger is a summary (never an anchor to /account/roles).
         $groupPath = '//details[summary/span[@class="app-account-nav__label"][text()="Роли в проекте"]]';
-        $this->assertSame(2, $xpath->query($groupPath.'[@open]')->length); // desktop + mobile
-        $this->assertSame(2, $xpath->query($groupPath.'/summary')->length);
+        $this->assertSame(3, $xpath->query($groupPath.'[@open]')->length); // desktop + mobile + dock
+        $this->assertSame(3, $xpath->query($groupPath.'/summary')->length);
         $this->assertSame(0, $xpath->query($groupPath.'/summary//a')->length);
-        $this->assertSame(2, $xpath->query($groupPath.'//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
+        $this->assertSame(3, $xpath->query($groupPath.'//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
         $this->assertSame(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
         $this->assertSame(1, $xpath->query('//details[contains(@class,"app-account-nav--mobile")]/summary/span/span[@class="app-account-nav__current-dot"]')->length);
-        $this->assertSame(2, $xpath->query('//details[summary/span[@class="app-account-nav__label"][text()="Профиль"]][@open]')->length);
+        $this->assertSame(3, $xpath->query('//details[summary/span[@class="app-account-nav__label"][text()="Профиль"]][@open]')->length);
     }
 
     public function test_roles_index_highlights_all_roles_inside_expanded_group(): void
@@ -359,8 +359,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
-        $this->assertSame(2, $xpath->query('//a[@href="'.route('account.roles').'"][@aria-current="page"]')->length);
-        $this->assertSame(2, $xpath->query('//details[summary/span[text()="Роли в проекте"]][@open]')->length);
+        $this->assertSame(3, $xpath->query('//a[@href="'.route('account.roles').'"][@aria-current="page"]')->length);
+        $this->assertSame(3, $xpath->query('//details[summary/span[text()="Роли в проекте"]][@open]')->length);
     }
 
     public function test_role_parameters_have_roles_page_as_breadcrumb_parent(): void
@@ -454,8 +454,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
         $nestedRoles = '//details[contains(@class,"app-account-nav__group--nested")][summary/span[text()="Роли в проекте"]]';
-        $this->assertSame(2, $xpath->query($nestedRoles.'[@open]')->length);
-        $this->assertSame(2, $xpath->query($nestedRoles.'//a[@aria-current="page"]')->length);
+        $this->assertSame(3, $xpath->query($nestedRoles.'[@open]')->length);
+        $this->assertSame(3, $xpath->query($nestedRoles.'//a[@aria-current="page"]')->length);
     }
 
     public function test_new_role_pages_do_not_change_legacy_theme(): void
