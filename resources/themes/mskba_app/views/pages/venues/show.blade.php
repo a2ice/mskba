@@ -70,8 +70,15 @@
         ->unique('promotion_code')
         ->values();
 @endphp
+@php
+    $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+@endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
-    @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
+    @include('components.entity-public-banner', [
+        'bannerUrl' => $bannerVenue?->bannerUrl(),
+        'bannerMode' => $bannerVenue?->banner_display_mode,
+        'overlayOpacity' => $bannerVenue?->banner_overlay_opacity,
+    ])
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
             @if(count($venue->featuredMedia))

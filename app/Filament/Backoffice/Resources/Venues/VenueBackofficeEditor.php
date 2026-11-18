@@ -56,6 +56,8 @@ final class VenueBackofficeEditor
             ...app(VenueRentalCashbackSettings::class)->formFields($venue),
             ...app(VenueRentalPolicyEditor::class)->fields($venue),
             'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
+            'banner_display_mode' => $venue->banner_display_mode ?: 'top',
+            'banner_overlay_opacity' => $venue->banner_overlay_opacity ?? 50,
             'tags_text' => $venue->tags->pluck('name')->implode(', '),
             'amenity_ids' => $venue->amenities->pluck('id')->all(),
             'characteristics' => [
@@ -181,6 +183,26 @@ final class VenueBackofficeEditor
                 'raw_address' => $rawAddress !== '' ? $rawAddress : null,
                 'location_id' => $location?->id,
             ];
+            // Banner presentation is backoffice-owned; account uploads still
+            // follow the existing moderation and venue revision pipeline.
+            if (array_key_exists('banner_display_mode', $data)) {
+                $mode = (string) $data['banner_display_mode'];
+                if (! in_array($mode, ['top', 'background'], true)) {
+                    throw ValidationException::withMessages([
+                        'data.banner_display_mode' => 'Выберите допустимый вариант размещения баннера.',
+                    ]);
+                }
+                $attributes['banner_display_mode'] = $mode;
+            }
+            if (array_key_exists('banner_overlay_opacity', $data) && $data['banner_overlay_opacity'] !== null) {
+                $opacity = filter_var($data['banner_overlay_opacity'], FILTER_VALIDATE_INT);
+                if ($opacity === false || $opacity < 0 || $opacity > 100) {
+                    throw ValidationException::withMessages([
+                        'data.banner_overlay_opacity' => 'Укажите затемнение от 0 до 100%.',
+                    ]);
+                }
+                $attributes['banner_overlay_opacity'] = $opacity;
+            }
             // Avoid changing publication or the internal note when a caller
             // submits only the fields it knows about.
             if (array_key_exists('is_published', $data)) {

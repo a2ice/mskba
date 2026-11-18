@@ -171,6 +171,22 @@ final class VenueResource extends Resource
                         Textarea::make('full_description')->label('Полное описание')->maxLength(10000)->rows(6)->columnSpanFull(),
                         TextInput::make('tags_text')->label('Теги')->maxLength(1000)->columnSpanFull()
                             ->helperText('Через запятую. Связанные теги сохраняются в стандартной таблице площадки.'),
+                        Select::make('banner_display_mode')
+                            ->label('Размещение баннера')
+                            ->options([
+                                'top' => 'Широкая плашка над содержимым',
+                                'background' => 'Фиксированный фон на всю страницу',
+                            ])
+                            ->default('top')->required()->live()
+                            ->helperText('Настройка относится только к странице этой площадки и не меняет изображения галереи.')
+                            ->columnSpanFull(),
+                        TextInput::make('banner_overlay_opacity')
+                            ->label('Затемнение фонового баннера, %')
+                            ->integer()->numeric()->minValue(0)->maxValue(100)->default(50)
+                            ->required(fn (Get $get): bool => $get('banner_display_mode') === 'background')
+                            ->visible(fn (Get $get): bool => $get('banner_display_mode') === 'background')
+                            ->helperText('50% по умолчанию. 0% — без затемнения, 100% — полностью тёмный слой.')
+                            ->columnSpanFull(),
                         View::make('filament.backoffice.entity-banner')
                             ->visible(fn (?Venue $record): bool => $record !== null && self::canEdit($record))
                             ->columnSpanFull(),
