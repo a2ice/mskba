@@ -1,6 +1,7 @@
 <h2>Приглашение в MSKBA</h2>
 <p>{{ $invitation->title }}</p>
 <p>Площадка: <strong>{{ $invitation->targetName() }}</strong></p>
+<p>Цель: <strong>{{ match($invitation->role) { 'owner' => 'Регистрация владельца площадки', 'manager' => 'Регистрация менеджера площадки', 'booking_operator' => 'Регистрация оператора бронирований', default => 'Регистрация сотрудника площадки' } }}</strong></p>
 @if($invitation->description)
 <p>{{ $invitation->description }}</p>
 @endif
