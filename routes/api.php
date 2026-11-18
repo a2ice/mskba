@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Content\Presentation\Http\Controllers\Api\V1\PageBuilderAgentApiController;
+use App\Modules\Content\Presentation\Http\Controllers\Api\V1\ProjectUpdateAgentApiController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationCallbackController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationManifestController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationReferenceController;
@@ -100,4 +101,20 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])
         Route::post('/{kind}/{key}/rollback', [PageBuilderAgentApiController::class, 'rollback'])
             ->middleware('throttle:6,1')
             ->name('api.internal.page-builder.rollback');
+    });
+
+
+/*
+ * Only dedicated short-lived scoped tokens belonging to the system user dev
+ * may create/update unpublished project updates. Public publishing is never
+ * available through this integration. Works on dev and production.
+ */
+Route::middleware(['auth:sanctum', 'throttle:15,1'])
+    ->prefix('v1/internal/project-updates')
+    ->group(function (): void {
+        Route::post('/', [ProjectUpdateAgentApiController::class, 'store'])
+            ->name('api.internal.project-updates.store');
+        Route::get('/{contentItem}', [ProjectUpdateAgentApiController::class, 'show'])
+            ->whereNumber('contentItem')
+            ->name('api.internal.project-updates.show');
     });
