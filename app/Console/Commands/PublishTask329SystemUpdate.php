@@ -135,7 +135,14 @@ final class PublishTask329SystemUpdate extends Command
 
     private function verifyPublicUrl(ContentItem $content): int
     {
-        $url = $content->publicUrl();
+        // Build from the site's canonical host rather than Laravel's
+        // process-local URL generator (which CI may cache as localhost).
+        $path = parse_url($content->publicUrl(), PHP_URL_PATH);
+        if (! is_string($path) || ! str_starts_with($path, '/feed/')) {
+            $this->error('Unexpected system update route.');
+            return self::FAILURE;
+        }
+        $url = 'https://mskba.ru'.$path;
         try {
             $response = Http::timeout(20)->get($url);
             if (! $response->successful()
