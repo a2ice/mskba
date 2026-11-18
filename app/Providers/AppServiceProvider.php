@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Modules\Event\Application\Listeners\RecalculatePlayerObjectiveAssessments;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
+use App\Modules\PlayInterest\Application\Listeners\NotifyMatchingEventSubscribers;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
@@ -75,6 +77,8 @@ class AppServiceProvider extends ServiceProvider
             GameStatisticsConfirmed::class,
             RecalculatePlayerObjectiveAssessments::class,
         );
+
+        EventFacade::listen(EventChanged::class, NotifyMatchingEventSubscribers::class);
 
         // Register the theme's view namespace
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());

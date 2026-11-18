@@ -47,6 +47,7 @@
 
 @section('category-navigation')
     @include('theme::pages.events.partials.catalog-navigation')
+    @include('theme::pages.events.partials.quick-create')
 @endsection
 
 @section('category-filters-desktop')
@@ -81,7 +82,7 @@
 @endsection
 
 @section('category-toolbar-actions')
-    <a class="btn btn--primary default-category-toolbar__action-button" href="{{ $createRedirectUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
+    <a class="btn btn--primary default-category-toolbar__action-button" data-quick-event-open href="{{ $createRedirectUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
 @endsection
 
 @section('category-results-cards')

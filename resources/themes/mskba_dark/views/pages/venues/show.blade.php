@@ -114,6 +114,9 @@
             @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
         </div>
     @endif
+    @if(isset($venue))
+        @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id])
+    @endif
 @endsection
 
 @section('section-mobile-sticky-navigation')
@@ -534,6 +537,8 @@
                     <div>
                         <span class="venue-activities__eyebrow">На этой площадке</span>
                         <h2>Игры и мероприятия</h2>
+                        <a class="btn btn--secondary btn--sm" href="{{ route('events.wizard', ['venue_id' => $venue->id]) }}"
+                            data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
                     </div>
                     <span class="venue-section-state" data-venue-activities-state>Загрузка…</span>
                 </div>
