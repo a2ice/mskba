@@ -1,4 +1,5 @@
 import './header.js';
+import './mobile-primary-bar.js';
 import './cookie-consent.js';
 import './features/appearance-preferences.js';
 import './notification-counts.js';
