@@ -275,8 +275,7 @@ final class AccountInvitationManager
     private function send(AccountInvitation $invitation, string $token): void
     {
         $mailer = (string) config('mail.default', 'log');
-        $transport = (string) config("mail.mailers.{$mailer}.transport", $mailer);
-        if (in_array($transport, ['log', 'array', 'null'], true)) {
+        if ($this->containsNonDeliveringTransport($mailer)) {
             throw ValidationException::withMessages(['email' => 'Почтовый транспорт не настроен для настоящей отправки. Приглашение сохранено; настройте SMTP и обновите ссылку.']);
         }
         Mail::to($invitation->contact_value)->send(new AccountInvitationMail(
@@ -284,6 +283,30 @@ final class AccountInvitationManager
         ));
         $invitation->forceFill(['sent_at' => now(), 'progress' => $invitation->progress === 'created' ? 'sent' : $invitation->progress])->save();
         $this->event($invitation, 'sent');
+    }
+
+    /**
+     * A failover to log/array/null isn't a real delivery. Reject the chain
+     * instead of reporting "sent" when SMTP fails.
+     */
+    private function containsNonDeliveringTransport(string $mailer, array $seen = []): bool
+    {
+        if (in_array($mailer, $seen, true)) {
+            return false;
+        }
+        $seen[] = $mailer;
+        $transport = (string) config("mail.mailers.{$mailer}.transport", $mailer);
+        if (in_array($transport, ['log', 'array', 'null'], true)) {
+            return true;
+        }
+        if (in_array($transport, ['failover', 'roundrobin'], true)) {
+            foreach ((array) config("mail.mailers.{$mailer}.mailers", []) as $fallback) {
+                if ($this->containsNonDeliveringTransport((string) $fallback, $seen)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private function event(AccountInvitation $invitation, string $event, array $details = []): void
