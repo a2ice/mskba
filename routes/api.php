@@ -14,6 +14,7 @@ use App\Modules\Tournament\Presentation\Http\Controllers\Api\V1\HomepageTourname
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnsureActiveMobileApiUser;
 use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileAuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileDeleteAccountController;
+use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\RestoreAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/integrations/telegram/webhook', TelegramWebhookController::class)
@@ -70,6 +71,15 @@ Route::post('/v1/auth/login', [MobileAuthController::class, 'login'])
 Route::post('/v1/auth/register', [MobileAuthController::class, 'register'])
     ->middleware('throttle:5,1')
     ->name('api.v1.auth.register');
+
+// Restoration is public because all Bearer tokens were revoked on deletion.
+// A one-time code sent to a previously verified email is mandatory.
+Route::post('/v1/account/restore/request', [RestoreAccountController::class, 'requestCode'])
+    ->middleware('throttle:5,1')
+    ->name('api.v1.account.restore.request');
+Route::post('/v1/account/restore/confirm', [RestoreAccountController::class, 'confirm'])
+    ->middleware('throttle:10,1')
+    ->name('api.v1.account.restore.confirm');
 
 Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(function (): void {
     Route::get('/v1/me', [MobileAuthController::class, 'me'])
