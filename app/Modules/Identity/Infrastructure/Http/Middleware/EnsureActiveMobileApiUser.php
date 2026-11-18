@@ -18,7 +18,11 @@ final class EnsureActiveMobileApiUser
     {
         try {
             $this->authorizer->authenticatedUser(
-                $request->routeIs('api.v1.auth.logout') ? 'auth:logout' : 'profile:read',
+                match (true) {
+                    $request->routeIs('api.v1.auth.logout') => 'auth:logout',
+                    $request->routeIs('api.v1.me.destroy') => 'account:delete',
+                    default => 'profile:read',
+                },
             );
         } catch (AuthenticationException $exception) {
             return response()->json(['message' => $exception->getMessage()], 401);

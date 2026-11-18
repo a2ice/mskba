@@ -86,7 +86,7 @@ final class MobileAuthController extends Controller
     ): JsonResponse {
         $token = $user->createToken(
             'mskba-client:'.$deviceName,
-            ['profile:read', 'auth:logout'],
+            ['profile:read', 'auth:logout', 'account:delete'],
             now()->addDays(30),
         );
         $credentials->recordFirstLogin($user);
