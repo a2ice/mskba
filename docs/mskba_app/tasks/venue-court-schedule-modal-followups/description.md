@@ -21,3 +21,17 @@
 `ShowVenueHandler` и `VenueDetailsDTO`, `show.blade.php`, `venue-detail.js`, `venue-choice.js`, `venue-detail.css`, feature-тест отображения по залам.
 
 Статус: PR #827, целевая ветка `main`; production-деплой только после зелёного CI.
+
+## Hotfix 332 — восстановление сетки дней (18.11.2026)
+
+После добавления `.app-venue-schedule__court` общая родительская секция
+`.app-venue-block` с `align-items:flex-start` перестала растягивать
+новый промежуточный контейнер по горизонтали. Поэтому существующая сетка
+`grid-template-columns:repeat(auto-fit,minmax(145px,1fr))` получила ширину
+одной карточки и все дни выстроились вертикально даже на desktop.
+
+**Контракт:** каждый непосредственный `.app-venue-schedule__court` внутри
+`.app-venue-block` должен иметь `align-self:stretch;width:100%;min-width:0`.
+Внутри него остаётся прежний адаптивный grid: несколько карточек в ряд
+на desktop, автоматический перенос на узких экранах. Изменять часы,
+занятость и серверное расписание ради этой CSS-правки не требуется.
