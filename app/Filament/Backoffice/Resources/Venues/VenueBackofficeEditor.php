@@ -57,7 +57,7 @@ final class VenueBackofficeEditor
             ...app(VenueRentalPolicyEditor::class)->fields($venue),
             'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
             'banner_display_mode' => $venue->banner_display_mode ?: 'top',
-            'banner_overlay_opacity' => $venue->banner_overlay_opacity ?? 50,
+            'banner_overlay_color' => $venue->bannerOverlayCss(),
             'tags_text' => $venue->tags->pluck('name')->implode(', '),
             'amenity_ids' => $venue->amenities->pluck('id')->all(),
             'characteristics' => [
@@ -194,14 +194,10 @@ final class VenueBackofficeEditor
                 }
                 $attributes['banner_display_mode'] = $mode;
             }
-            if (array_key_exists('banner_overlay_opacity', $data) && $data['banner_overlay_opacity'] !== null) {
-                $opacity = filter_var($data['banner_overlay_opacity'], FILTER_VALIDATE_INT);
-                if ($opacity === false || $opacity < 0 || $opacity > 100) {
-                    throw ValidationException::withMessages([
-                        'data.banner_overlay_opacity' => 'Укажите затемнение от 0 до 100%.',
-                    ]);
-                }
-                $attributes['banner_overlay_opacity'] = $opacity;
+            if (array_key_exists('banner_overlay_color', $data)) {
+                // Store CSS literally. The public view passes this value through
+                // an escaped data attribute and a single style.setProperty call.
+                $attributes['banner_overlay_color'] = (string) ($data['banner_overlay_color'] ?? '');
             }
             // Avoid changing publication or the internal note when a caller
             // submits only the fields it knows about.
