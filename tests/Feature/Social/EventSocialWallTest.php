@@ -34,7 +34,7 @@ final class EventSocialWallTest extends TestCase
         ]);
     }
 
-    private function post(Event $event, string $text, ?string $requestId = null): \Illuminate\Testing\TestResponse
+    private function postWall(Event $event, string $text, ?string $requestId = null): \Illuminate\Testing\TestResponse
     {
         return $this->postJson(route('events.wall.store', $event->routeIdentifier()), [
             'body' => $text,
@@ -79,9 +79,9 @@ final class EventSocialWallTest extends TestCase
         ])->assertRedirect();
 
         $id = (string) Str::uuid();
-        $this->post($event, 'Встречаемся у входа', $id)->assertCreated();
-        $this->post($event, 'Встречаемся у входа', $id)->assertCreated(); // idempotent
-        $this->post($event, 'Беру с собой мяч')->assertCreated();
+        $this->postWall($event, 'Встречаемся у входа', $id)->assertCreated();
+        $this->postWall($event, 'Встречаемся у входа', $id)->assertCreated(); // idempotent
+        $this->postWall($event, 'Беру с собой мяч')->assertCreated();
 
         $this->actingAs($user)->patchJson(route('events.participation', $other->routeIdentifier()), [
             'status' => 'tentative',
@@ -103,8 +103,8 @@ final class EventSocialWallTest extends TestCase
             'status' => 'tentative',
         ])->assertRedirect();
 
-        $post = $this->post($event, 'В пятницу после семи')->assertCreated()->json('entry');
-        $this->actingAs($other)->deleteJson($post['delete_url'])->assertForbidden();
+        $post = $this->postWall($event, 'В пятницу после семи')->assertCreated()->json('entry');
+        $this->actingAs($other)->deleteJson($post['delete_url'])->assertNotFound();
         $this->actingAs($user)->deleteJson($post['delete_url'])
             ->assertOk()->assertJsonPath('entry.deleted', true)
             ->assertJsonPath('entry.text', 'В пятницу после семи');
@@ -126,7 +126,7 @@ final class EventSocialWallTest extends TestCase
             'body' => str_repeat('Я', 201), 'client_request_id' => (string) Str::uuid(),
         ])->assertUnprocessable();
 
-        $this->post($event, 'Без участия нельзя')->assertForbidden();
+        $this->postWall($event, 'Без участия нельзя')->assertForbidden();
 
         $event->update(['visibility' => EventVisibilityEnum::PRIVATE]);
         $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
