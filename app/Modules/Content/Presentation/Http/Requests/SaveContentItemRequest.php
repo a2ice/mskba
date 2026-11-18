@@ -6,6 +6,7 @@ use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\ProjectUpdateDetail;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -53,6 +54,9 @@ final class SaveContentItemRequest extends FormRequest
             'faq_section_ids.*' => ['integer', 'distinct', Rule::exists('faq_sections', 'id')],
             'tags' => ['nullable', 'string', 'max:3000'],
             'link_url' => ['nullable', 'string', 'max:2048'],
+            'project_update_pr_url' => ['nullable', 'url:https', 'max:2048', 'regex:~\\Ahttps://github\\.com/a2ice/mskba/pull/[1-9][0-9]*/?\\z~'],
+            'project_update_task_reference' => ['nullable', 'string', 'max:80'],
+            'project_update_documentation' => ['nullable', 'string', 'max:5000'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:320'],
             'meta_keywords' => ['nullable', 'string', 'max:1000'],
@@ -85,6 +89,42 @@ final class SaveContentItemRequest extends FormRequest
                 $content = $this->route('contentItem');
                 if ($content?->system_key && $type !== ContentTypeEnum::FAQ) {
                     $validator->errors()->add('type', 'Системная инструкция должна оставаться материалом FAQ.');
+                }
+
+                if ($content?->type === ContentTypeEnum::SYSTEM_UPDATE
+                    && $type !== ContentTypeEnum::SYSTEM_UPDATE) {
+                    $validator->errors()->add('type', 'Системное обновление нельзя преобразовать в другой тип материала.');
+                }
+
+                if ($type === ContentTypeEnum::SYSTEM_UPDATE) {
+                    $newPr = trim((string) $this->input('project_update_pr_url'));
+                    $newDocs = preg_split('/\\R/u', (string) $this->input('project_update_documentation', '')) ?: [];
+                    $newDocs = array_values(array_unique(array_filter(array_map('trim', $newDocs))));
+                    foreach ($newDocs as $document) {
+                        if (! preg_match('~\\Adocs/(?!.*\\.\\./)[a-zA-Z0-9_./-]+\\.md\\z~', $document)) {
+                            $validator->errors()->add('project_update_documentation', 'Документы указываются путями docs/.../*.md, по одному в строке.');
+                            break;
+                        }
+                    }
+
+                    foreach (['title', 'short_description', 'full_description', 'meta_title', 'meta_description', 'meta_keywords'] as $publicField) {
+                        if (preg_match('~github\\.com/|docs/[a-zA-Z0-9_./-]+\\.md~i', (string) $this->input($publicField))) {
+                            $validator->errors()->add($publicField, 'Технические ссылки должны быть только в закрытых полях обновления.');
+                        }
+                    }
+                    if ($this->filled('link_url')) {
+                        $validator->errors()->add('link_url', 'Системные обновления не допускают отдельной технической ссылки действия.');
+                    }
+
+                    $detail = $content?->exists
+                        ? ProjectUpdateDetail::query()->where('content_item_id', $content->id)->first()
+                        : null;
+                    $published = $this->input('status', $content?->status?->value ?? 'draft') === 'published';
+                    if ($published && (blank($newPr) || count($newDocs) === 0
+                        || $detail?->production_verified_at === null || $detail->pr_url !== $newPr
+                        || ($detail->documentation_paths ?? []) !== $newDocs)) {
+                        $validator->errors()->add('status', 'Сначала проверь merged PR, документацию и production-деплой через подтверждение в админке.');
+                    }
                 }
 
                 if ($type?->requiresRelatedEntity() && ! $this->filled('related_id')) {
