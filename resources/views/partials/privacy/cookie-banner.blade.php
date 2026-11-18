@@ -1,9 +1,19 @@
 @php
     $cookieConsentState = \App\Support\Privacy\CookieConsent::state();
+    $rawMetrikaId = config('services.yandex_metrika.id');
+    $metrikaId = (is_int($rawMetrikaId) || (is_string($rawMetrikaId) && ctype_digit($rawMetrikaId)))
+        ? (int) $rawMetrikaId
+        : 0;
+    $metrikaHostAllowed = in_array(
+        strtolower(request()->getHost()),
+        array_map('strtolower', (array) config('seo.indexable_hosts', ['mskba.ru'])),
+        true,
+    );
 @endphp
 
 <section class="mskba-cookie-consent" data-cookie-consent-banner
          aria-labelledby="mskba-cookie-consent-title"
+         @if($metrikaHostAllowed && $metrikaId > 0) data-metrika-counter-id="{{ $metrikaId }}" @endif
          @if($cookieConsentState !== null) hidden @endif>
     <div class="container mskba-cookie-consent__inner">
         <div class="mskba-cookie-consent__copy">
@@ -27,7 +37,7 @@
             </button>
             <button class="mskba-cookie-consent__button mskba-cookie-consent__button--primary"
                     type="submit" name="analytics" value="accepted">
-                Разрешить аналитику
+                Принять все
             </button>
         </form>
     </div>
