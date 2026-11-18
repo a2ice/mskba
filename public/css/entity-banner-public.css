@@ -18,11 +18,16 @@
     content:"";
     position:absolute;
     inset:0;
-    background:rgba(0,0,0,var(--entity-banner-overlay-opacity,.5));
+    background:var(--entity-banner-overlay-css,rgba(0,0,0,.5));
 }
-/* Keep cards, tabs and booking controls above the image without negative z-index. */
-.entity-public-banner--background ~ :not(dialog) {
+/* Raise only regular content, never override the anchor bar's sticky positioning. */
+.entity-public-banner--background ~ .app-venue-page__hero-grid,
+.entity-public-banner--background ~ .app-venue-page__columns,
+.entity-public-banner--background ~ .venue-show {
     position:relative;
     z-index:1;
+}
+.entity-public-banner--background ~ .app-venue-page__anchors {
+    z-index:18;
 }
 @media (max-width:640px) { .entity-public-banner:not(.entity-public-banner--background) { border-radius:9px; margin-bottom:14px; } }

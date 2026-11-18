@@ -180,12 +180,11 @@ final class VenueResource extends Resource
                             ->default('top')->required()->live()
                             ->helperText('Настройка относится только к странице этой площадки и не меняет изображения галереи.')
                             ->columnSpanFull(),
-                        TextInput::make('banner_overlay_opacity')
-                            ->label('Затемнение фонового баннера, %')
-                            ->integer()->numeric()->minValue(0)->maxValue(100)->default(50)
-                            ->required(fn (Get $get): bool => $get('banner_display_mode') === 'background')
+                        TextInput::make('banner_overlay_color')
+                            ->label('Наложение поверх фонового баннера (CSS)')
+                            ->default('rgba(0,0,0,0.5)')
                             ->visible(fn (Get $get): bool => $get('banner_display_mode') === 'background')
-                            ->helperText('50% по умолчанию. 0% — без затемнения, 100% — полностью тёмный слой.')
+                            ->helperText('Без проверки цвета: rgba(0,0,0,0.25), rgba(255,255,255,0.5), #ffffff80, linear-gradient(...).')
                             ->columnSpanFull(),
                         View::make('filament.backoffice.entity-banner')
                             ->visible(fn (?Venue $record): bool => $record !== null && self::canEdit($record))

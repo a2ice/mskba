@@ -77,7 +77,7 @@
     @include('components.entity-public-banner', [
         'bannerUrl' => $bannerVenue?->bannerUrl(),
         'bannerMode' => $bannerVenue?->banner_display_mode,
-        'overlayOpacity' => $bannerVenue?->banner_overlay_opacity,
+        'overlayCss' => $bannerVenue?->bannerOverlayCss(),
     ])
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
