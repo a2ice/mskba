@@ -595,3 +595,57 @@ dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
 .app-venue-choice-dialog__footnote a{color:var(--accent,#c34c00);font-weight:650}
 .app-venue-favorite-dialog .app-venue-overlay__actions{margin-top:18px}
 @media(max-width:480px){.app-venue-choice-dialog,.app-venue-favorite-dialog{padding:18px;border-radius:16px}.app-venue-choice-dialog__option-body .button,.app-venue-favorite-dialog .app-venue-overlay__actions .button{width:100%}.app-venue-favorite-dialog .app-venue-overlay__actions{display:grid}}
+
+
+/* Multiple courts share one venue panel, but not working hours or occupancy. */
+.app-venue-schedule__court+.app-venue-schedule__court{
+    margin-top:24px;padding-top:22px;border-top:1px solid var(--line);
+}
+.app-venue-schedule__court-header{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:12px;flex-wrap:wrap;
+}
+.app-venue-schedule__court-header h3{font-size:16px;line-height:1.3;margin:0;font-weight:750}
+.app-venue-schedule__court-header a{
+    font-size:13px;color:var(--accent);font-weight:650;text-decoration:none;
+}
+.app-venue-schedule__court-header a:hover{text-decoration:underline}
+
+/* Native top-layer dialogs: reset specimen offsets and keep the title
+   reachable even when expanding a long section or opening on mobile. */
+dialog.app-venue-choice-dialog,dialog.app-venue-favorite-dialog{
+    position:fixed;inset:0;margin:auto;transform:none;
+    box-sizing:border-box;min-height:0;height:fit-content;
+    width:min(530px,calc(100vw - 24px));max-width:calc(100vw - 24px);
+    max-height:min(90dvh,720px);overflow:hidden;
+}
+dialog.app-venue-choice-dialog:not([open]),dialog.app-venue-favorite-dialog:not([open]){
+    display:none!important;
+}
+dialog.app-venue-choice-dialog[open],dialog.app-venue-favorite-dialog[open]{
+    display:flex;flex-direction:column;
+}
+dialog.app-venue-choice-dialog>.app-venue-overlay__header,
+dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
+.app-venue-choice-dialog__body,.app-venue-favorite-dialog__body{
+    flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+    overscroll-behavior:contain;padding-right:4px;
+}
+.app-venue-favorite-dialog>.app-venue-overlay__actions{
+    flex:0 0 auto;margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
+}
+.app-venue-favorite-dialog__heading{display:grid;gap:7px;min-width:0}
+.app-venue-favorite-dialog__back{
+    width:max-content;padding:0;border:0;background:none;color:var(--accent);
+    font-size:13px;line-height:1.45;font-weight:650;cursor:pointer;
+}
+.app-venue-favorite-dialog__back:hover{text-decoration:underline}
+.app-venue-favorite-dialog__back:focus-visible{
+    outline:2px solid var(--accent);outline-offset:4px;border-radius:3px;
+}
+.app-venue-choice-dialog__body>.muted{line-height:1.55;margin:0 0 16px}
+@media(max-width:480px){
+    dialog.app-venue-choice-dialog,dialog.app-venue-favorite-dialog{
+        max-height:calc(100dvh - 24px);
+    }
+}

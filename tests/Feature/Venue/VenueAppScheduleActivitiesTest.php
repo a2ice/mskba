@@ -95,6 +95,53 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $response->assertSee('Открытая тренировка');
     }
 
+    public function test_venue_overview_shows_separate_court_schedules_but_court_page_shows_only_its_own(): void
+    {
+        [$venue] = $this->venueAndBooking();
+        $first = $venue->primaryCourt()->firstOrFail();
+        $second = $venue->courts()->create([
+            'name' => 'Второй зал',
+            'alias' => 'second-hall',
+            'sort_order' => 20,
+            'allows_whole' => true,
+        ]);
+        $first->schedule()->create([
+            'weekly_intervals' => [
+                ['day_of_week' => 2, 'starts_at' => '08:00', 'ends_at' => '12:00'],
+            ],
+        ]);
+        $second->schedule()->create([
+            'weekly_intervals' => [
+                ['day_of_week' => 2, 'starts_at' => '15:00', 'ends_at' => '22:00'],
+            ],
+        ]);
+
+        $response = $this->get(route('venues.show', $venue->routeIdentifier()))->assertOk();
+        $html = $response->getContent();
+        $section = explode('id="app-venue-schedule">', $html, 2)[1] ?? '';
+        $section = explode('id="app-venue-about">', $section, 2)[0];
+        $this->assertSame(2, substr_count($section, 'data-venue-schedule-court="'));
+        $this->assertStringContainsString('data-venue-schedule-court="'.$first->id.'"', $section);
+        $this->assertStringContainsString('data-venue-schedule-court="'.$second->id.'"', $section);
+        $firstGroup = explode('data-venue-schedule-court="'.$first->id.'"', $section, 2)[1] ?? '';
+        $firstGroup = explode('data-venue-schedule-court="'.$second->id.'"', $firstGroup, 2)[0];
+        $secondGroup = explode('data-venue-schedule-court="'.$second->id.'"', $section, 2)[1] ?? '';
+        $this->assertStringContainsString('08:00–12:00', $firstGroup);
+        $this->assertStringNotContainsString('15:00–22:00', $firstGroup);
+        $this->assertStringContainsString('15:00–22:00', $secondGroup);
+        $this->assertStringNotContainsString('08:00–12:00', $secondGroup);
+        $this->assertStringContainsString('data-court-id="'.$second->id.'"', $secondGroup);
+
+        $detail = $this->get(route('venues.courts.show', [
+            $venue->routeIdentifier(), $second->routeIdentifier(),
+        ]))->assertOk()->getContent();
+        $courtSchedule = explode('id="app-venue-schedule">', $detail, 2)[1] ?? '';
+        $courtSchedule = explode('id="app-venue-about">', $courtSchedule, 2)[0];
+        $this->assertSame(1, substr_count($courtSchedule, 'data-venue-schedule-court="'));
+        $this->assertStringContainsString('15:00–22:00', $courtSchedule);
+        $this->assertStringNotContainsString('08:00–12:00', $courtSchedule);
+    }
+
     public function test_public_booked_event_card_shows_type_description_and_canonical_status_counts(): void
     {
         [$venue, $booking, $actorId] = $this->venueAndBooking();
