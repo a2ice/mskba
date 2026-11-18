@@ -12,11 +12,13 @@ use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\ProjectUpdateDetail;
 use App\Modules\Content\Domain\Models\FaqSection;
 use App\Modules\Content\Presentation\Http\Requests\SaveContentItemRequest;
 use App\Modules\Content\Presentation\Http\Requests\StoreContentInlineImageRequest;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -79,7 +81,8 @@ final class AdminContentController extends Controller
     {
         return response()->view('backoffice.content.form', [
             ...$this->formData(),
-            'contentItem' => new ContentItem(['type' => ContentTypeEnum::MATERIAL, 'status' => ContentStatusEnum::DRAFT]),
+            'contentItem' => new ContentItem(['type' => request('type') === 'system_update' ? ContentTypeEnum::SYSTEM_UPDATE : ContentTypeEnum::MATERIAL, 'status' => ContentStatusEnum::DRAFT]),
+            'projectUpdate' => null,
             'selectedChatIds' => [],
         ]);
     }
@@ -108,6 +111,7 @@ final class AdminContentController extends Controller
                     'feed_published_at' => $publishInFeed ? now() : null,
                 ]);
 
+                $this->syncProjectUpdateDetail($content, $request);
                 $tags->sync($content, $request->string('tags')->toString());
                 if ($type === ContentTypeEnum::FAQ && $request->has('faq_section_ids')) {
                     $content->faqSections()->sync($request->validated('faq_section_ids'));
@@ -143,6 +147,7 @@ final class AdminContentController extends Controller
         return response()->view('backoffice.content.form', [
             ...$this->formData(),
             'contentItem' => $contentItem,
+            'projectUpdate' => ProjectUpdateDetail::query()->where('content_item_id', $contentItem->id)->first(),
             'selectedChatIds' => $contentItem->telegramPublications
                 ->where('is_enabled', true)
                 ->pluck('chat_id')
@@ -177,6 +182,7 @@ final class AdminContentController extends Controller
                     'feed_published_at' => $publishInFeed ? ($wasPublished ?? now()) : null,
                 ]);
 
+                $this->syncProjectUpdateDetail($contentItem, $request);
                 $tags->sync($contentItem, $request->string('tags')->toString());
                 if ($type !== ContentTypeEnum::FAQ) {
                     $contentItem->faqSections()->detach();
@@ -210,6 +216,74 @@ final class AdminContentController extends Controller
                 'content' => 'Не удалось сохранить материал. Попробуйте ещё раз.',
             ]);
         }
+    }
+
+    /**
+     * Production confirmation is deliberately not an agent API operation.
+     * The editor checks the merged PR and the actual production deployment.
+     */
+    public function verifyProjectUpdateProduction(Request $request, ContentItem $contentItem): RedirectResponse
+    {
+        abort_unless(config('app.env') === 'production'
+            && $request->user()?->isAdmin(), 403);
+        abort_unless($contentItem->type === ContentTypeEnum::SYSTEM_UPDATE, 404);
+
+        $request->validate([
+            'confirmed_merged_pr' => ['required', 'accepted'],
+            'confirmed_production_deploy' => ['required', 'accepted'],
+        ]);
+
+        DB::transaction(function () use ($contentItem, $request): void {
+            $item = ContentItem::query()->whereKey($contentItem->id)->lockForUpdate()->firstOrFail();
+            $detail = ProjectUpdateDetail::query()->where('content_item_id', $item->id)
+                ->lockForUpdate()->firstOrFail();
+
+            if ($item->status !== ContentStatusEnum::DRAFT
+                || blank($detail->pr_url) || empty($detail->documentation_paths)) {
+                throw ValidationException::withMessages([
+                    'project_update' => 'Для подтверждения нужен черновик, ссылка на merged PR и документация.',
+                ]);
+            }
+
+            $detail->forceFill([
+                'production_verified_at' => now(),
+                'production_verified_by_user_id' => $request->user()->id,
+            ])->save();
+        });
+
+        return redirect()->route('admin.content.edit', $contentItem->alias)
+            ->with('status', 'Production подтверждён. Проверь публичный текст и опубликуй материал.');
+    }
+
+    private function syncProjectUpdateDetail(ContentItem $content, SaveContentItemRequest $request): void
+    {
+        if ($content->type !== ContentTypeEnum::SYSTEM_UPDATE) {
+            return;
+        }
+
+        $detail = ProjectUpdateDetail::query()
+            ->where('content_item_id', $content->id)->lockForUpdate()->first()
+            ?? new ProjectUpdateDetail(['content_item_id' => $content->id]);
+
+        $prUrl = trim((string) $request->input('project_update_pr_url')) ?: null;
+        $task = trim((string) $request->input('project_update_task_reference')) ?: null;
+        $paths = preg_split('/\\R/u', (string) $request->input('project_update_documentation', '')) ?: [];
+        $paths = array_values(array_unique(array_filter(array_map('trim', $paths))));
+
+        $evidenceChanged = $detail->exists && ($detail->pr_url !== $prUrl
+            || $detail->task_reference !== $task
+            || ($detail->documentation_paths ?? []) !== $paths);
+
+        $detail->fill([
+            'pr_url' => $prUrl,
+            'task_reference' => $task,
+            'documentation_paths' => $paths,
+            'source' => $detail->source ?? 'backoffice',
+            'production_verified_at' => $evidenceChanged ? null : $detail->production_verified_at,
+            'production_verified_by_user_id' => $evidenceChanged ? null : $detail->production_verified_by_user_id,
+        ]);
+        $detail->content_item_id = $content->id;
+        $detail->save();
     }
 
     public function storeInlineImage(
@@ -353,7 +427,7 @@ final class AdminContentController extends Controller
             ContentTypeEnum::EVENT => Event::query()->whereKey($relatedId)->exists(),
             ContentTypeEnum::VENUE => Venue::query()->whereKey($relatedId)->exists(),
             ContentTypeEnum::USER => User::query()->whereKey($relatedId)->exists(),
-            ContentTypeEnum::MATERIAL, ContentTypeEnum::FAQ => true,
+            ContentTypeEnum::MATERIAL, ContentTypeEnum::FAQ, ContentTypeEnum::SYSTEM_UPDATE => true,
         };
 
         if (! $exists) {
