@@ -111,8 +111,8 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
-        $this->assertSame(3, $xpath->query('//*[@data-notification-count]')->length);
-        $this->assertSame(3, $xpath->query('//*[@data-notification-count][@hidden]')->length);
+        $this->assertSame(4, $xpath->query('//*[@data-notification-count]')->length);
+        $this->assertSame(4, $xpath->query('//*[@data-notification-count][@hidden]')->length);
         $this->assertSame(1, $xpath->query('//header[@data-notification-user-id="'.$user->id.'"]')->length);
         $this->assertStringContainsString('data-notification-sync-url="'.route('account.notifications.new').'"', $html);
 
@@ -124,9 +124,9 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
-        $this->assertSame(3, $xpath->query('//*[@data-notification-count]')->length);
+        $this->assertSame(4, $xpath->query('//*[@data-notification-count]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-notification-count][@hidden]')->length);
-        $this->assertSame(3, $xpath->query('//*[@data-notification-count][normalize-space(.)="2"]')->length);
+        $this->assertSame(4, $xpath->query('//*[@data-notification-count][normalize-space(.)="2"]')->length);
         $this->assertStringContainsString('class="app-header-account-label">my_login</span>', $html);
     }
 
@@ -143,7 +143,7 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         @$dom->loadHTML($response->getContent());
         $xpath = new \DOMXPath($dom);
         $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@data-unread-count="9" and normalize-space(.)="9"]')->length);
-        $this->assertSame(2, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="9"]')->length);
+        $this->assertSame(3, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="9"]')->length);
 
         $this->createNotifications($user, 1);
         app(UserNotificationCounterStore::class)->forget($user->id);
@@ -152,7 +152,7 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         @$dom->loadHTML($response->getContent());
         $xpath = new \DOMXPath($dom);
         $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@data-unread-count="10" and normalize-space(.)="∞"]')->length);
-        $this->assertSame(2, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="10"]')->length);
+        $this->assertSame(3, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="10"]')->length);
         $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@aria-label="Непрочитанных уведомлений: 10"]')->length);
     }
 
@@ -171,8 +171,8 @@ final class MskbaAppHeaderAvatarTest extends TestCase
 
         $this->assertSame(0, $xpath->query('//a[contains(@class,"app-header-notifications")]')->length);
         $this->assertSame(1, $xpath->query('//section[@data-message-toast-region][@hidden][@aria-label="Непрочитанные сообщения"]')->length);
-        // Account sidebar appears twice in the markup (desktop and mobile).
-        $this->assertSame(2, $xpath->query('//nav[@aria-label="Разделы аккаунта"]//a[@href="'.route('account.notifications').'"][span[text()="Сообщения"]]')->length);
+        // Account links are present in desktop, tablet/mobile accordion and phone dock.
+        $this->assertSame(3, $xpath->query('//nav[@aria-label="Разделы аккаунта"]//a[@href="'.route('account.notifications').'"][span[text()="Сообщения"]]')->length);
         $this->assertSame(1, $xpath->query('//a[contains(@class,"app-header-mobile-account")][text()="Сообщения"]')->length +
             $xpath->query('//div[contains(@class,"app-header-mobile-account")]//a[normalize-space(.)="Сообщения"]')->length);
     }
