@@ -406,7 +406,8 @@ if (dayBookingDialog) {
     // Update the clicked card after its on-demand five-minute refresh.
     function updateDayOccupancy(date, slots) {
         const cards = [
-            document.querySelector('[data-venue-day-entry][data-day-date="' + date + '"]'),
+            document.querySelector('[data-venue-schedule-court="' + dayBookingDialog.dataset.courtId
+                + '"] [data-venue-day-entry][data-day-date="' + date + '"]'),
             dateButtons.find(button => button.dataset.venueDayDate === date)?.parentElement,
         ];
         const known = slots.filter(slot =>
@@ -734,7 +735,9 @@ if (dayBookingDialog) {
         setActiveDate(date);
         const label = dateButtons.find(button => button.dataset.venueDayDate === date)
             ?.querySelector('strong')?.textContent || date;
-        heading.textContent = 'Расписание · ' + label;
+        heading.textContent = 'Расписание · '
+            + (dayBookingDialog.dataset.courtName ? dayBookingDialog.dataset.courtName + ' · ' : '')
+            + label;
         status.hidden = false;
         status.textContent = 'Проверяем расписание…';
         if (!dayBookingDialog.open) dayBookingDialog.showModal();
@@ -770,7 +773,16 @@ if (dayBookingDialog) {
     }
 
     document.querySelectorAll('[data-venue-day-open]').forEach(button => {
-        button.addEventListener('click', () => showDay(button.dataset.dayDate));
+        button.addEventListener('click', () => {
+            const courtId = Number(button.dataset.courtId);
+            if (Number.isSafeInteger(courtId) && courtId > 0) {
+                dayBookingDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
+                    detail: {courtId, date: button.dataset.dayDate},
+                }));
+            } else {
+                void showDay(button.dataset.dayDate);
+            }
+        });
     });
     dateButtons.forEach(button => {
         button.addEventListener('click', () => void showDay(button.dataset.venueDayDate));
@@ -785,33 +797,59 @@ if (dayBookingDialog) {
     // original priced quote is not replaced until the visitor confirms slots.
     // Restore the same booking popup after normal login, social login or
     // registration redirect; the fresh day request resolves new owner rights.
+    // Populate the date strip for the selected court, rather than using
+    // common venue hours or the primary court's percentage for every hall.
+    function syncCourtDates(courtId) {
+        const group = document.querySelector('[data-venue-schedule-court="' + courtId + '"]');
+        if (group) dayBookingDialog.dataset.courtName = group.dataset.courtName || '';
+        dateButtons.forEach(button => {
+            const source = group?.querySelector('[data-venue-day-entry][data-day-date="'
+                + button.dataset.venueDayDate + '"]');
+            const hours = button.querySelector('.app-venue-day-dialog__date-hours');
+            const item = button.closest?.('[data-day-date]');
+            const target = item?.querySelector('[data-day-occupancy]');
+            const sourceProgress = source?.querySelector('[data-day-occupancy]');
+            const sourceBooked = sourceProgress?.querySelector('[data-day-occupancy-booked]');
+            if (hours) hours.textContent = source
+                ? (source.querySelector('.app-venue-schedule__hours span')?.textContent?.trim()
+                    || 'Не работает') : 'Время уточняется';
+            if (target) {
+                const unknown = !sourceProgress || sourceProgress.classList.contains('is-unknown');
+                const label = unknown ? 'Нет данных о занятости'
+                    : (sourceProgress.getAttribute('aria-label') || 'Нет данных о занятости');
+                target.classList.toggle('is-unknown', unknown);
+                target.setAttribute('aria-label', label);
+                target.title = label;
+                const bar = target.querySelector('[data-day-occupancy-booked]');
+                if (bar) bar.style.width = unknown ? '0%' : (sourceBooked?.style.width || '0%');
+            }
+        });
+    }
+    if (dayBookingDialog.dataset.courtId) syncCourtDates(dayBookingDialog.dataset.courtId);
+
     const pendingResume = readBookingResume();
     if (pendingResume && dateValues.includes(pendingResume.date)) {
         try { window.sessionStorage?.removeItem(bookingResumeKey); } catch { /* optional */ }
-        if (pendingResume.courtId) dayBookingDialog.dataset.courtId = pendingResume.courtId;
+        if (pendingResume.courtId) {
+            dayBookingDialog.dataset.courtId = pendingResume.courtId;
+            syncCourtDates(pendingResume.courtId);
+        }
         void showDay(pendingResume.date, pendingResume);
     }
 
     dayBookingDialog.addEventListener('mskba:choose-court', event => {
         const nextCourt = Number(event.detail?.courtId);
-        if (Number.isInteger(nextCourt) && nextCourt > 0) {
+        if (Number.isSafeInteger(nextCourt) && nextCourt > 0) {
             if (String(nextCourt) !== dayBookingDialog.dataset.courtId) {
-                // The overview calendar describes the venue, not an arbitrary
-                // court. Remove its percentages/hours until each court-specific
-                // day is loaded from the authoritative schedule endpoint.
-                dateButtons.forEach(button => {
-                    const item = button.closest?.('[data-day-date]');
-                    const hours = button.querySelector('.app-venue-day-dialog__date-hours');
-                    const progress = item?.querySelector('[data-day-occupancy]');
-                    if (hours) hours.textContent = 'Выберите дату';
-                    if (progress) {
-                        progress.classList.add('is-unknown');
-                        progress.setAttribute('aria-label', 'Занятость для этого зала ещё не загружена');
-                        progress.querySelector('[data-day-occupancy-booked]')?.style.setProperty('width', '0%');
-                    }
-                });
+                // Invalidate every day cell before requesting this court's slots.
+                loading?.abort();
+                response = null;
+                selection = [];
+                bookingButton.disabled = true;
+                grid.replaceChildren();
+                dayBookingDialog.dataset.courtId = String(nextCourt);
+                syncCourtDates(nextCourt);
             }
-            dayBookingDialog.dataset.courtId = String(nextCourt);
         }
         const preferredDate = event.detail?.date;
         void showDay(dateValues.includes(preferredDate) ? preferredDate
