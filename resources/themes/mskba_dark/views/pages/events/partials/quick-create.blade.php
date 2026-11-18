@@ -39,11 +39,13 @@
             <div class="quick-event-dialog__body">
                 <label class="quick-event-dialog__field">
                     <span>Тип мероприятия</span>
+                    @if($quickApp)<span class="select-control">@endif
                     <select name="type" class="{{ $quickApp ? '' : 'form-select' }}" required data-quick-type>
                         @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
                             <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                         @endforeach
                     </select>
+                    @if($quickApp)<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>@endif
                 </label>
                 <label class="quick-event-dialog__field">
                     <span>Название</span>
@@ -52,6 +54,7 @@
                 </label>
                 <label class="quick-event-dialog__field">
                     <span>Площадка</span>
+                    @if($quickApp)<span class="select-control">@endif
                     <select name="venue_id" class="{{ $quickApp ? '' : 'form-select' }}"
                         required data-quick-venue>
                         <option value="">Выберите площадку</option>
@@ -59,6 +62,7 @@
                             <option value="{{ $place->id }}" @selected($quickSelectedVenue === (int) $place->id)>{{ $place->name }}</option>
                         @endforeach
                     </select>
+                    @if($quickApp)<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>@endif
                 </label>
                 <div class="quick-event-dialog__grid">
                     <label class="quick-event-dialog__field">
@@ -68,28 +72,34 @@
                     </label>
                     <label class="quick-event-dialog__field">
                         <span>Продолжительность</span>
-                        <select name="duration_minutes" required class="{{ $quickApp ? '' : 'form-select' }}">
+                        @if($quickApp)<span class="select-control">@endif
+                    <select name="duration_minutes" required class="{{ $quickApp ? '' : 'form-select' }}">
                             @foreach(range(30, 480, 30) as $duration)
                                 <option value="{{ $duration }}" @selected($duration === 90)>{{ $duration }} мин.</option>
                             @endforeach
                         </select>
+                    @if($quickApp)<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>@endif
                     </label>
                 </div>
                 <label class="quick-event-dialog__field" data-quick-game-fields>
                     <span>Формат игры</span>
+                    @if($quickApp)<span class="select-control">@endif
                     <select name="game_format" class="{{ $quickApp ? '' : 'form-select' }}" data-quick-format>
                         <option value="streetball_3x3">3×3</option>
                         <option value="basketball_5x5">5×5</option>
                         <option value="streetball_1x1">1×1</option>
                     </select>
+                    @if($quickApp)<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>@endif
                 </label>
                 <div class="quick-event-dialog__grid">
                     <label class="quick-event-dialog__field">
                         <span>Видимость</span>
-                        <select name="visibility" required class="{{ $quickApp ? '' : 'form-select' }}">
+                        @if($quickApp)<span class="select-control">@endif
+                    <select name="visibility" required class="{{ $quickApp ? '' : 'form-select' }}">
                             <option value="public">Открытое для всех</option>
                             <option value="private">По приглашению</option>
                         </select>
+                    @if($quickApp)<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>@endif
                     </label>
                     <label class="quick-event-dialog__field">
                         <span>Максимум участников</span>

@@ -37,6 +37,12 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
             return;
         }
 
+        // A public game can still reject new player applications.
+        if ($event->type === EventTypeEnum::GAME
+            && ($event->primaryGame === null || ! $event->primaryGame->accepts_applications)) {
+            return;
+        }
+
         $venue = $event->venue;
         $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
         $start = $event->starts_at->setTimezone($timezone);
