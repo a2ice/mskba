@@ -253,7 +253,7 @@
                             </div>
                         @endunless
                         @if(count($scheduleGroup['days']))
-                            <div class="app-venue-schedule" role="group" aria-label="Расписание: {{ $scheduleGroup['name'] }}">
+                            <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
                                 @foreach($scheduleGroup['days'] as $day)
                                     @php
                                         $occupancy = $day['occupancyPercent'] ?? null;
