@@ -3,13 +3,7 @@
 const venueSummary = document.querySelector('[data-play-venue-interest-summary]');
 if (venueSummary) {
     let latestRequest = 0;
-    window.addEventListener('mskba:play-intent:saved', async (event) => {
-        const root = document.querySelector('[data-mskba-play-intent-root][data-options]');
-        if (!root) return;
-        // A subscription without a fixed venue changes the venue aggregate too: refresh even
-        // when its new venue_id is null. Only this page listens to the event.
-        if (!event.detail?.id) return;
-
+    async function refreshAudience() {
         const request = ++latestRequest;
         try {
             const response = await fetch(location.pathname, {
@@ -37,7 +31,14 @@ if (venueSummary) {
                 if (freshList && liveList) liveList.replaceChildren(...[...freshList.childNodes].map(node => document.importNode(node, true)));
             }
         } catch {
-            // The subscription is already saved; the aggregate updates on reload.
+            // The underlying favorite or subscription is already saved; reload also refreshes.
         }
+    }
+    window.addEventListener('mskba:play-intent:saved', event => {
+        if (event.detail?.id) void refreshAudience();
+    });
+    window.addEventListener('mskba:venue-favorite:updated', event => {
+        const id = Number(document.querySelector('[data-venue-favorite-dialog]')?.dataset.venueId);
+        if (id > 0 && Number(event.detail?.venueId) === id) void refreshAudience();
     });
 }
