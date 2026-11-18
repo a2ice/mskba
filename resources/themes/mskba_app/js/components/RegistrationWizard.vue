@@ -125,7 +125,7 @@ defineExpose({ hasEnteredData });
                         <div class="wizard-choice-set">
                             <label v-for="role in group.roles" :key="role" class="wizard-choice">
                                 <input type="radio" name="role" :value="role" :checked="form.role === role"
-                                    :disabled="busy" @change="selectRole(role, changed)" />
+                                    :aria-invalid="!!errors.role" :disabled="busy" @change="selectRole(role, changed)" />
                                 <span><strong>{{ displayName(role) }}</strong>
                                     <small>{{ ({
                                         player: 'Играю в баскетбол, участвую в играх и тренировках',
@@ -158,7 +158,7 @@ defineExpose({ hasEnteredData });
                 <label for="mskba-register-gender">Пол</label>
                 <span class="select-control">
                     <select id="mskba-register-gender" v-model="form.gender" name="gender"
-                        :disabled="busy" @change="changed('gender', true)">
+                        :aria-invalid="!!errors.gender" :disabled="busy" @change="changed('gender', true)">
                         <option value="">Не указывать</option>
                         <option value="male">Мужской</option><option value="female">Женский</option>
                     </select>
@@ -196,7 +196,7 @@ defineExpose({ hasEnteredData });
                 <label for="mskba-register-position">Игровая позиция</label>
                 <span class="select-control">
                     <select id="mskba-register-position" v-model="form.position" name="position"
-                        :disabled="busy" @change="changed('position', true)">
+                        :aria-invalid="!!errors.position" :disabled="busy" @change="changed('position', true)">
                         <option value="">Выберу позже</option>
                         <option value="point_guard">Разыгрывающий</option>
                         <option value="shooting_guard">Атакующий защитник</option>
@@ -211,7 +211,7 @@ defineExpose({ hasEnteredData });
                 <label for="mskba-register-body">Телосложение</label>
                 <span class="select-control">
                     <select id="mskba-register-body" v-model="form.body_type" name="body_type"
-                        :disabled="busy" @change="changed('body_type', true)">
+                        :aria-invalid="!!errors.body_type" :disabled="busy" @change="changed('body_type', true)">
                         <option value="">Не указывать</option>
                         <option value="slim">Худощавое</option>
                         <option value="athletic">Атлетичное</option>
@@ -289,7 +289,7 @@ defineExpose({ hasEnteredData });
                 @pointerleave="dismissedRequiredHint = ''"
                 @click="toggleRequiredHint('privacy_consent')">
                 <input v-model="form.privacy_consent" type="checkbox" name="privacy_consent"
-                    required :disabled="busy" @change="changed('privacy_consent', true)" />
+                    required :aria-invalid="!!errors.privacy_consent" :disabled="busy" @change="changed('privacy_consent', true)" />
                 <span>Я даю <a :href="options.consent" @click.prevent.stop="emit('legal-open', 'consent', $event.currentTarget)">согласие на обработку персональных данных</a>
                     <span class="wizard-required" aria-hidden="true">*</span></span>
             </label>
