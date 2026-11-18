@@ -785,6 +785,28 @@ Route::get('/users/{user:username}', [PublicUserProfileController::class, 'show'
 Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class, 'show'])
     ->where('role', 'player|coach|referee|statistician|media|venue_related')->name('users.role');
 
+
+// Task 336: participants-only opportunity workspace. The group election is a
+// governance protocol, not an organizer-created Coordination poll.
+Route::middleware('auth')->prefix('play/opportunities')->group(function (): void {
+    Route::get('/{opportunity}', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayOpportunityController::class, 'show'])
+        ->name('play.opportunities.show');
+    Route::post('/{opportunity}/candidates', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'nominate'])
+        ->name('play.opportunities.candidates.store');
+    Route::put('/{opportunity}/election/vote', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'vote'])
+        ->name('play.opportunities.elections.vote');
+    Route::delete('/{opportunity}/election/vote', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'retract'])
+        ->name('play.opportunities.elections.retract');
+    Route::patch('/{opportunity}/title', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'title'])
+        ->name('play.opportunities.title.update');
+    Route::post('/{opportunity}/wall', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupWallController::class, 'store'])
+        ->name('play.opportunities.wall.store');
+    Route::delete('/{opportunity}/wall/{entry}', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupWallController::class, 'destroy'])
+        ->whereNumber('entry')->name('play.opportunities.wall.delete');
+    Route::put('/{opportunity}/venues/{venue}/rating', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupVenueController::class, 'rate'])
+        ->whereNumber('venue')->name('play.opportunities.venues.rate');
+});
+
 Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])
         ->name('events.index')
