@@ -166,6 +166,19 @@ jobs:
               --optimize-autoloader \
               </dev/null
 
+            # Filament CSS/JS are gitignored, outside Vite, and must be
+            # republished from the locked Composer dependencies on every deploy.
+            # composer.json intentionally does not run filament:upgrade on dump.
+            $COMPOSE run -T --rm phpfpm php artisan filament:assets --no-interaction </dev/null
+            test -s public/css/filament/filament/app.css || {
+              echo "::error::Filament panel CSS was not published" >&2
+              exit 1
+            }
+            test -s public/js/filament/filament/app.js || {
+              echo "::error::Filament panel JS was not published" >&2
+              exit 1
+            }
+
             # npm occasionally loses the VDS outbound connection with ECONNRESET.
             # Retry the complete clean install + Vite build before treating that
             # transient network failure as a failed production deployment.
