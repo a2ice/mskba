@@ -124,10 +124,10 @@
 </dialog>
 @once
 <style>
-.quick-event-dialog {width:min(640px, calc(100vw - 24px));max-width:100%;max-height:min(94dvh, 900px);overflow:auto;padding:0;border:1px solid var(--border-color, #545b63);border-radius:18px;background:var(--surface, #181c23);color:var(--text-color, inherit);box-shadow:0 24px 85px #0008}
-.quick-event-dialog--app {background:var(--panel-bg, #fff);color:var(--text-primary, #20242a)}
+.quick-event-dialog {width:min(640px, calc(100vw - 24px));max-width:100%;max-height:min(94dvh, 900px);overflow:auto;padding:0;border:1px solid var(--line, #545b63);border-radius:18px;background:var(--surface, #181c23);color:var(--text-color, inherit);box-shadow:0 24px 85px #0008}
+.quick-event-dialog--app {background:var(--surface, #141618);color:var(--text, #f5f6f7)}
 .quick-event-dialog::backdrop {background:rgba(0,0,0,.64)}
-.quick-event-dialog__heading {display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 24px 14px;border-bottom:1px solid var(--border-color, #7774)}
+.quick-event-dialog__heading {display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 24px 14px;border-bottom:1px solid var(--line, #7774)}
 .quick-event-dialog__heading h2 {margin:2px 0 6px;font-size:clamp(20px,2vw,26px)}
 .quick-event-dialog__eyebrow {font-size:12px;text-transform:uppercase;letter-spacing:.1em;opacity:.68}
 .quick-event-dialog__close {cursor:pointer;border:0;background:transparent;color:inherit;font-size:32px;line-height:1;padding:0 5px}
@@ -136,8 +136,8 @@
 .quick-event-dialog__field>span {font-weight:600;font-size:14px}
 .quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea {width:100%;min-width:0;max-width:100%;min-height:42px;border-radius:8px;padding:9px 12px;box-sizing:border-box}
 .quick-event-dialog__field textarea {min-height:85px;resize:vertical}
-.quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea {border:1px solid var(--border-color, #8b949e);background:var(--input-bg, #252a31);color:inherit}
-.quick-event-dialog--app .quick-event-dialog__field input,.quick-event-dialog--app .quick-event-dialog__field select,.quick-event-dialog--app .quick-event-dialog__field textarea {background:var(--input-bg, #fff);color:var(--text-primary, #20242a)}
+.quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea {border:1px solid var(--control-line, #8b949e);background:var(--field, #252a31);color:inherit}
+.quick-event-dialog--app .quick-event-dialog__field input,.quick-event-dialog--app .quick-event-dialog__field select,.quick-event-dialog--app .quick-event-dialog__field textarea {background:var(--field, #0e1012);color:var(--text, #f5f6f7)}
 .quick-event-dialog__grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__hint {margin:0;font-size:13px;line-height:1.5;opacity:.75}
 .quick-event-dialog__actions {display:flex;justify-content:flex-end;gap:12px;padding:16px 24px 22px}
