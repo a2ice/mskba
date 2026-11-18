@@ -21,7 +21,8 @@ class CookieConsentTest extends TestCase
         $response->assertOk()
             ->assertSee('data-cookie-consent-banner', false)
             ->assertSee('Только необходимые')
-            ->assertSee('Разрешить аналитику')
+            ->assertSee('Принять все')
+            ->assertDontSee('Разрешить аналитику')
             ->assertSee(route('privacy.policy'));
     }
 
