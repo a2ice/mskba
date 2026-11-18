@@ -407,7 +407,7 @@
         <details data-venue-choice-create-event>
             <summary>Создать игру или мероприятие</summary>
             <div class="app-venue-choice-dialog__option-body">
-                <p>Укажи название и условия встречи, пригласи игроков, а бронирование оформи отдельно. Площадка${$venue->isCourtPage ? ' и выбранный зал' : ''} будут подставлены автоматически.</p>
+                <p>Укажи название и условия встречи, пригласи игроков, а бронирование оформи отдельно. Площадка{{ $venue->isCourtPage ? ' и выбранный зал' : '' }} будут подставлены автоматически.</p>
                 <a class="button primary" href="{{ $createEventUrl }}">Создать мероприятие</a>
             </div>
         </details>
