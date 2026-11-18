@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Explicit staging-only native import. Replaces that court's working hours,
+ * Explicit, permission-gated native import. Replaces that court's working hours,
  * calendar prices and active external occupancy in one transaction, without
  * creating a fictitious MSKBA booking or exposing a new public widget.
  */
@@ -57,12 +57,13 @@ final class ApplyFindSportSnapshotToNativeSchedule
         ?User $actor,
     ): VenueCourtExternalScheduleImport {
         if (! config('venue_integrations.apply_findsport_native_enabled', false)) {
-            throw new RuntimeException('Импорт в штатное расписание разрешён только на тестовом сервере.');
+            throw new RuntimeException('Применение снимка FindSport отключено конфигурацией сервера.');
         }
 
         if (! FindSportSourceIdentity::matches($source)
             || $source->integration?->mode !== 'test'
             || ! in_array($source->permission_status, ['testing_only', 'mskba_allowed'], true)
+            || (app()->isProduction() && $source->permission_status !== 'mskba_allowed')
             || ! $source->access_reviewed_at || blank($source->permission_reference)
             || $source->courtMappings()->count() !== 1
             || ! in_array('availability', $source->capabilities ?? [], true)
