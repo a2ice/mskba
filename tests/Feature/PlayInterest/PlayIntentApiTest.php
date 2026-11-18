@@ -30,6 +30,38 @@ final class PlayIntentApiTest extends TestCase
         ];
     }
 
+    public function test_favoriting_a_venue_creates_direct_interest_without_play_subscription(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $user = User::factory()->create(['username' => 'favorite-only-player']);
+
+        $this->actingAs($user)->postJson(route('favorites.toggle'), [
+            'type' => 'venue', 'id' => $venue->id,
+        ])->assertOk()->assertJsonPath('state', 'active');
+
+        $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue);
+        $this->assertSame(1, $audience['total']);
+        $this->assertSame(1, $audience['direct_count']);
+        $this->assertSame(0, $audience['matched_count']);
+        $this->assertSame('favorite-only-player', $audience['direct'][0]['name']);
+        $this->assertFalse($audience['direct'][0]['public']);
+        $this->assertDatabaseCount('play_intents', 0);
+
+        $this->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+        ])->assertCreated();
+        $this->assertSame(1, app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue)['total']);
+
+        $this->postJson(route('favorites.toggle'), [
+            'type' => 'venue', 'id' => $venue->id,
+        ])->assertOk()->assertJsonPath('state', 'trashed');
+        // The separate active game subscription remains a direct legacy interest.
+        $this->assertSame(1, app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue)['total']);
+    }
+
     public function test_mskba_app_venue_page_exposes_real_interest_dialog_entry_point(): void
     {
         config()->set('themes.active', 'mskba_app');
@@ -52,7 +84,11 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('data-venue-create-event-dialog', false)
             ->assertDontSee('В разработке')
             ->assertSee('>Расписание</a>', false)
-            ->assertSee('data-mskba-play-intent-root', false);
+            ->assertSee('data-mskba-play-intent-root', false)
+            ->assertSee('data-venue-choice-court', false)
+            ->assertSee('data-venue-favorite-dialog', false)
+            ->assertSee('Аренда площадки')
+            ->assertSee('Добавить в избранное');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
@@ -276,7 +312,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('напрямую ·')
             ->assertDontSee('Без данных профиля')
             ->assertSee('href="'.route('play-intents.mine').'"', false)
-            ->assertSee('Вы подписаны')
+            ->assertSee('data-venue-choice-dialog', false)
             ->assertDontSee('Отображается только число интересов')
             ->assertSee('private-interest-other')
             ->assertSee('private-interest-test');
@@ -342,7 +378,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
         $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
-        $this->assertSame(3, substr_count($ownHtml, 'Вы подписаны'));
+        $this->assertSame(3, substr_count($ownHtml, 'data-venue-choice-open'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
         auth()->logout();

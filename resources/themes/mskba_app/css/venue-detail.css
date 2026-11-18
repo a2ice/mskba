@@ -573,3 +573,25 @@ dialog.app-venue-day-event-dialog[open]{display:flex;flex-direction:column}
     .app-venue-day-dialog__nav[data-venue-day-nav="1"]{right:7px}
     .app-venue-day-event-dialog__body{padding:0 14px 18px}
 }
+
+/* Court-first rental/favorite chooser. Only the two new dialogs use these rules. */
+.app-venue-choice-dialog,.app-venue-favorite-dialog{position:fixed;inset:0;margin:auto;width:min(530px,calc(100vw - 24px));max-height:min(85dvh,720px);overflow-y:auto}
+.app-venue-choice-dialog>.muted,.app-venue-favorite-dialog>p{line-height:1.55;margin:0 0 16px}
+.app-venue-choice-dialog__options{display:grid;gap:10px;margin:20px 0 14px}
+.app-venue-choice-dialog__options>details{border:1px solid var(--line);border-radius:14px;background:var(--surface-raised,var(--surface,#fff));overflow:hidden}
+.app-venue-choice-dialog__options>details[open]{border-color:var(--accent,#c34c00)}
+.app-venue-choice-dialog__options summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;font-weight:700;padding:17px 18px;list-style:none}
+.app-venue-choice-dialog__options summary::-webkit-details-marker{display:none}
+.app-venue-choice-dialog__options summary:after{content:'⌄';font-size:22px;font-weight:400;line-height:1;transition:transform .15s}
+.app-venue-choice-dialog__options details[open] summary:after{transform:rotate(180deg)}
+.app-venue-choice-dialog__options summary:focus-visible{outline:2px solid var(--accent,#c34c00);outline-offset:-4px}
+.app-venue-choice-dialog__option-body{display:grid;gap:14px;padding:0 18px 18px}
+.app-venue-choice-dialog__option-body p{margin:0;line-height:1.55;font-size:14px}
+.app-venue-choice-dialog__option-body>.field-group{display:grid;gap:7px;font-weight:600}
+.app-venue-choice-dialog__option-body .select-control,.app-venue-choice-dialog__option-body .select-control select{width:100%}
+.app-venue-choice-dialog__option-body .button{justify-self:start}
+.app-venue-choice-dialog__option-body .error{color:var(--danger,#cc3333)}
+.app-venue-choice-dialog__footnote{font-size:13px;line-height:1.6;color:var(--muted);margin:0}
+.app-venue-choice-dialog__footnote a{color:var(--accent,#c34c00);font-weight:650}
+.app-venue-favorite-dialog .app-venue-overlay__actions{margin-top:18px}
+@media(max-width:480px){.app-venue-choice-dialog,.app-venue-favorite-dialog{padding:18px;border-radius:16px}.app-venue-choice-dialog__option-body .button,.app-venue-favorite-dialog .app-venue-overlay__actions .button{width:100%}.app-venue-favorite-dialog .app-venue-overlay__actions{display:grid}}

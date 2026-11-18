@@ -512,6 +512,23 @@ test('Стрелки и даты изменяют день в пределах �
     assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
 });
 
+test('multi-court overview never requests slots before selecting a hall', async () => {
+    const page = mountDayBooking();
+    page.dialog.dataset.courtId = '';
+    await page.opener.listeners.click();
+    assert.equal(page.requests.length, 0, 'no first-hall fallback is allowed');
+    assert.equal(page.dialog.open, false);
+    assert.equal(page.windowEvents.at(-1).type, 'mskba:venue-court-selection-required');
+    assert.equal(page.windowEvents.at(-1).detail.date, '2026-11-15');
+
+    page.dialog.listeners['mskba:choose-court']({
+        detail: {courtId: 99, date: '2026-11-16'},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(page.requests.at(-1).searchParams.get('venue_court_id'), '99');
+    assert.equal(page.requests.at(-1).searchParams.get('date'), '2026-11-16');
+});
+
 test('При переключении зала открывается тот же календарь с выбранным hall id', async () => {
     const page = mountDayBooking();
     await page.open();

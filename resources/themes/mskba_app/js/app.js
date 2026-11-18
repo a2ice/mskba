@@ -40,6 +40,7 @@ import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
+import './venue-choice.js';
 import './venue-rental-review.js';
 import './venue-editor.js';
 import './group-offer-copy.js';
