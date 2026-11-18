@@ -58,7 +58,10 @@ final class NavigationDashboardTest extends TestCase
         Livewire::test(NavigationOverview::class)
             ->assertSee('Соревнования')
             ->assertSee('Площадки')
-            ->assertSee('Аренда и документы');
+            ->assertSee('Аренда и документы')
+            ->assertSee('mskba-bo-dashboard-icon', escape: false)
+            ->assertSee('mskba-bo-dashboard-count', escape: false)
+            ->assertSee('mskba-bo-dashboard-card', escape: false);
     }
 
     public function test_dashboard_does_not_show_links_with_denied_permissions(): void

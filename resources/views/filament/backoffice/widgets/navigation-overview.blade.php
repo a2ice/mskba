@@ -1,12 +1,22 @@
 <x-filament-widgets::widget>
     <div class="mskba-bo-dashboard-grid">
         @foreach ($groups as $group)
-            <x-filament::section>
-                <x-slot name="heading">{{ $group->getLabel() }}</x-slot>
+            <div class="mskba-bo-dashboard-card">
+                <x-filament::section>
+                    <x-slot name="heading">
+                        <span class="mskba-bo-dashboard-heading">
+                            <span class="mskba-bo-dashboard-icon" aria-hidden="true">
+                                {{ \Filament\Support\generate_icon_html($group['icon']) }}
+                            </span>
+                            <span class="mskba-bo-dashboard-heading-label">{{ $group['label'] }}</span>
+                            <span class="mskba-bo-dashboard-count" aria-label="Разделов: {{ $group['count'] }}">
+                                {{ $group['count'] }}
+                            </span>
+                        </span>
+                    </x-slot>
 
-                <ul class="mskba-bo-dashboard-links">
-                    @foreach ($group->getItems() as $item)
-                        @if ($item->getUrl())
+                    <ul class="mskba-bo-dashboard-links">
+                        @foreach ($group['items'] as $item)
                             <li>
                                 <a class="mskba-bo-dashboard-link" href="{{ $item->getUrl() }}"
                                     @if ($item->shouldOpenUrlInNewTab()) target="_blank" rel="noopener noreferrer" @endif>
@@ -14,21 +24,10 @@
                                     <span aria-hidden="true" class="mskba-bo-dashboard-arrow">›</span>
                                 </a>
                             </li>
-                        @endif
-                        @foreach ($item->getChildItems() as $child)
-                            @if ($child->getUrl())
-                                <li>
-                                    <a class="mskba-bo-dashboard-link" href="{{ $child->getUrl() }}"
-                                        @if ($child->shouldOpenUrlInNewTab()) target="_blank" rel="noopener noreferrer" @endif>
-                                        <span>{{ $child->getLabel() }}</span>
-                                        <span aria-hidden="true" class="mskba-bo-dashboard-arrow">›</span>
-                                    </a>
-                                </li>
-                            @endif
                         @endforeach
-                    @endforeach
-                </ul>
-            </x-filament::section>
+                    </ul>
+                </x-filament::section>
+            </div>
         @endforeach
     </div>
 </x-filament-widgets::widget>
