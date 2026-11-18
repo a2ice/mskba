@@ -75,9 +75,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueResource extends Resource
 {
     protected static ?string $model = Venue::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Площадки'; }

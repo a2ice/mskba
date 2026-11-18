@@ -24,9 +24,9 @@ use Illuminate\Validation\Rule;
 final class DistrictResource extends Resource
 {
     protected static ?string $model = District::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'География';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-map';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 2;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Районы'; }
