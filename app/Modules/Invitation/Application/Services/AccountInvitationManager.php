@@ -54,6 +54,9 @@ final class AccountInvitationManager
         $token = bin2hex(random_bytes(32));
         $invitation = DB::transaction(function () use ($issuer, $email, $scopeType, $scopeId, $role, $title, $description, $days, $token) {
             $record = AccountInvitation::query()->create([
+                'status' => 'pending',
+                'progress' => 'created',
+                'views_count' => 0,
                 'public_id' => (string) Str::uuid(),
                 'token_hash' => hash('sha256', $token),
                 'contact_type' => ContactTypeEnum::EMAIL->value,
@@ -281,7 +284,7 @@ final class AccountInvitationManager
         Mail::to($invitation->contact_value)->send(new AccountInvitationMail(
             $invitation, route('account-invitations.show', $token)
         ));
-        $invitation->forceFill(['sent_at' => now(), 'progress' => $invitation->progress === 'created' ? 'sent' : $invitation->progress])->save();
+        $invitation->forceFill(['sent_at' => now(), 'progress' => in_array($invitation->progress, [null, 'created'], true) ? 'sent' : $invitation->progress])->save();
         $this->event($invitation, 'sent');
     }
 
