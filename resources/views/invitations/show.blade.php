@@ -58,7 +58,7 @@
                 <form method="POST" action="{{ route('account-invitations.register') }}" class="app-invitation-form">
                     @csrf
                     <div><label for="inv-username">Логин</label><input id="inv-username" name="username" value="{{ old('username') }}" required minlength="3" maxlength="32" autocomplete="username"></div>
-                    <div><label for="inv-password">Пароль</label><input id="inv-password" name="password" type="password" required minlength="6" autocomplete="new-password"></div>
+                    <div><label for="inv-password">Пароль (от 6 символов, заглавная и строчная буквы, цифра и спецсимвол)</label><input id="inv-password" name="password" type="password" required minlength="6" autocomplete="new-password"></div>
                     <div><label for="inv-password-repeat">Повтор пароля</label><input id="inv-password-repeat" name="password_confirmation" type="password" required autocomplete="new-password"></div>
                     <div><label for="inv-first-name">Имя (необязательно)</label><input id="inv-first-name" name="first_name" value="{{ old('first_name') }}" maxlength="255"></div>
                     <div><label for="inv-last-name">Фамилия (необязательно)</label><input id="inv-last-name" name="last_name" value="{{ old('last_name') }}" maxlength="255"></div>
