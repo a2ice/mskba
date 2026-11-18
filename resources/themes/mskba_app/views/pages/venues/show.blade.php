@@ -50,6 +50,14 @@
     $scheduledDays = collect($venue->about->scheduleDays)->take(9);
     // The event area is not the booking-occupancy feed. Only
     // bookings with an actual attached event belong here.
+    // Public upcoming events without a held rental must be visible on the
+    // venue page too; occupancyDays only reflects occupied booking slots.
+    $plannedVenueEvents = \App\Modules\Event\Domain\Models\Event::query()
+        ->where('venue_id', $venue->id)
+        ->where('status', 'published')->where('visibility', 'public')
+        ->where('booking_deferred', true)->whereNull('booking_id')
+        ->where('ends_at', '>', now())
+        ->orderBy('starts_at')->limit(15)->get();
     $activityDays = collect($venue->occupancyDays)
         ->map(function (array $day): array {
             $day['slots'] = collect($day['slots'] ?? [])
@@ -163,7 +171,7 @@
     </div>
 
     <nav class="app-venue-page__anchors" aria-label="Разделы площадки" data-venue-section-nav>
-        @if($activityDays->isNotEmpty())
+        @if($activityDays->isNotEmpty() || $plannedVenueEvents->isNotEmpty())
             <a href="#app-venue-activities">Игры</a>
         @endif
         <a href="#app-venue-interest">Интересы игроков</a>
@@ -173,6 +181,31 @@
 
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
+            @if($plannedVenueEvents->isNotEmpty())
+            <section class="panel app-venue-block" id="{{ $activityDays->isEmpty() ? 'app-venue-activities' : 'app-venue-planned-events' }}">
+                <header class="app-venue-block__header"><h2>Предстоящие мероприятия</h2></header>
+                <p class="muted">Открытые мероприятия, на которые можно записаться. Площадка для них пока не забронирована.</p>
+                <ul class="app-venue-activities__list">
+                    @foreach($plannedVenueEvents as $planned)
+                        @php
+                            $timeZone = $planned->venue?->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+                            $localTime = $planned->starts_at->setTimezone($timeZone);
+                        @endphp
+                        <li class="app-venue-activities__item">
+                            <a class="app-venue-activity" href="{{ route('events.show', $planned->routeIdentifier()) }}">
+                                <span class="app-venue-activity__meta">
+                                    <span>{{ $localTime->format('d.m.Y H:i') }}</span>
+                                    <span class="app-venue-activity__type">{{ $planned->type->label() }}</span>
+                                </span>
+                                <strong class="app-venue-activity__title">{{ $planned->title }}</strong>
+                                <span class="app-venue-activity__description">Сбор участников · аренда ещё не оформлена</span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+            @endif
+
             @if($activityDays->isNotEmpty())
             <section class="panel app-venue-block" id="app-venue-activities">
                 <header class="app-venue-block__header"><h2>Игры и мероприятия</h2></header>

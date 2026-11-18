@@ -125,6 +125,8 @@
 .quick-event-dialog__field>span {font-weight:600;font-size:14px}
 .quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea {width:100%;min-width:0;max-width:100%;min-height:42px;border-radius:8px;padding:9px 12px;box-sizing:border-box}
 .quick-event-dialog__field textarea {min-height:85px;resize:vertical}
+.quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea {border:1px solid var(--border-color, #8b949e);background:var(--input-bg, #252a31);color:inherit}
+.quick-event-dialog--app .quick-event-dialog__field input,.quick-event-dialog--app .quick-event-dialog__field select,.quick-event-dialog--app .quick-event-dialog__field textarea {background:var(--input-bg, #fff);color:var(--text-primary, #20242a)}
 .quick-event-dialog__grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__hint {margin:0;font-size:13px;line-height:1.5;opacity:.75}
 .quick-event-dialog__actions {display:flex;justify-content:flex-end;gap:12px;padding:16px 24px 22px}
