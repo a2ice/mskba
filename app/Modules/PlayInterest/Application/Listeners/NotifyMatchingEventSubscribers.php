@@ -32,7 +32,7 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
         if ($event === null || $event->venue === null
             || $event->status !== EventStatusEnum::PUBLISHED
             || $event->visibility !== EventVisibilityEnum::PUBLIC
-            || $event->ends_at->lessThanOrEqualTo(now())
+            || $event->starts_at->lessThanOrEqualTo(now())
             || ! in_array($event->type, [EventTypeEnum::GAME, EventTypeEnum::GAME_TRAINING], true)) {
             return;
         }
