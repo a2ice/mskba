@@ -98,7 +98,7 @@ class Venue extends Model
 
     public function isPubliclyVisible(): bool
     {
-        return $this->is_published && $this->status->isPubliclyVisible();
+        return $this->canonical_venue_id === null && $this->is_published && $this->status->isPubliclyVisible();
     }
 
     public function allowsDetailsEditing(): bool
