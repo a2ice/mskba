@@ -14,8 +14,6 @@ const panel = ref(null);
 const telegramContainer = ref(null);
 const legalDialog = ref(null);
 const registration = ref(null);
-const discardDialog = ref(null);
-const discardTarget = ref('');
 const busy = ref(false);
 const message = ref('');
 const transientMessage = ref(false);
@@ -26,7 +24,6 @@ let restoreFocus = null;
 let previousOverflow = '';
 let currentRequest = null;
 let inlineAuth = false;
-let focusBeforeDiscard = null;
 const redirectAfterAuth = ref(null);
 
 const title = computed(() => ({
@@ -88,50 +85,16 @@ function openLegalDocument(kind, trigger) {
     if (mode.value === 'register' && opened.value && !busy.value) legalDialog.value?.openDocument(kind, trigger);
 }
 
-function showDiscardConfirmation(target = '') {
-    if (discardDialog.value?.open) return;
-    discardTarget.value = target;
-    focusBeforeDiscard = document.activeElement;
-    discardDialog.value?.showModal();
-    discardDialog.value?.querySelector('[data-auth-discard-cancel]')?.focus({ preventScroll: true });
-}
-
 function requestClose() {
-    if (busy.value) return;
-    if (mode.value === 'register' && registration.value?.hasEnteredData()) {
-        showDiscardConfirmation();
-        return;
-    }
-    closeDialog();
+    if (!busy.value) closeDialog();
 }
 
 function requestModeChange(nextMode) {
-    if (busy.value) return;
-    if (mode.value === 'register' && registration.value?.hasEnteredData()) {
-        showDiscardConfirmation(nextMode);
-        return;
-    }
-    selectMode(nextMode);
-}
-
-function cancelDiscard() {
-    discardDialog.value?.close();
-    discardTarget.value = '';
-    nextTick(() => focusBeforeDiscard?.focus?.({ preventScroll: true }));
-}
-
-function confirmDiscard() {
-    const nextMode = discardTarget.value;
-    discardDialog.value?.close();
-    discardTarget.value = '';
-    if (nextMode) selectMode(nextMode);
-    else closeDialog();
+    if (!busy.value) selectMode(nextMode);
 }
 
 function closeDialog() {
     if (busy.value) return;
-    if (discardDialog.value?.open) discardDialog.value.close();
-    discardTarget.value = '';
     redirectAfterAuth.value = null;
     legalDialog.value?.closeDocument();
     if (panel.value?.open) panel.value.close();
@@ -145,8 +108,7 @@ function closeDialog() {
 
 function onDialogBackdropClick(event) {
     const dialog = panel.value;
-    // Registration contains a multi-step draft. Never dismiss it via backdrop.
-    if (!dialog || event.target !== dialog || mode.value === 'register') return;
+    if (!dialog || event.target !== dialog) return;
     const rect = dialog.getBoundingClientRect();
     if (event.clientX < rect.left || event.clientX > rect.right ||
         event.clientY < rect.top || event.clientY > rect.bottom) requestClose();
@@ -318,7 +280,7 @@ onBeforeUnmount(() => {
 
 <template>
     <Teleport to="body">
-        <dialog v-if="opened" ref="panel" class="mskba-modal mskba-auth-dialog" :class="{ 'mskba-auth-register': mode === 'register' }"
+        <dialog v-show="opened" ref="panel" class="mskba-modal mskba-auth-dialog" :class="{ 'mskba-auth-register': mode === 'register' }"
             aria-labelledby="mskba-auth-title" :aria-busy="busy"
             @cancel.prevent="requestClose" @click="onDialogBackdropClick">
             <header class="mskba-modal__header mskba-auth-top">
@@ -329,7 +291,7 @@ onBeforeUnmount(() => {
                 </button>
             </header>
 
-            <form v-if="mode === 'login'" class="mskba-auth-form" @submit.prevent="submitLogin">
+            <form v-show="mode === 'login'" class="mskba-auth-form" @submit.prevent="submitLogin">
                 <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля входа" tabindex="0">
                     <label>Логин или подтверждённый контакт
                         <input v-model.trim="loginForm.login" type="text" name="login" autocomplete="username"
@@ -365,13 +327,13 @@ onBeforeUnmount(() => {
                 </footer>
             </form>
 
-            <RegistrationWizard v-else-if="mode === 'register'" ref="registration"
+            <RegistrationWizard v-show="mode === 'register'" ref="registration"
                 :initial-role="preferredRole" :options="options" :busy="busy" :server-errors="errors" :message="message"
                 @submit="submitRegister" @login="requestModeChange('login')"
                 @legal-open="openLegalDocument"
                 @step-change="dismissTransientMessage" />
 
-            <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
+            <form v-show="mode === 'restore'" class="mskba-auth-form" @submit.prevent="submitRestore">
                 <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">
                     <label>Подтверждённый email или Telegram @username
                         <input v-model.trim="restoreForm.contact" type="text" name="contact" autocomplete="username"
@@ -390,26 +352,6 @@ onBeforeUnmount(() => {
                     </p>
                 </footer>
             </form>
-        </dialog>
-        <dialog v-if="opened" ref="discardDialog" class="mskba-modal mskba-auth-dialog"
-            aria-labelledby="mskba-register-discard-title"
-            aria-describedby="mskba-register-discard-description"
-            @cancel.prevent="cancelDiscard">
-            <header class="mskba-modal__header mskba-auth-top">
-                <h2 id="mskba-register-discard-title" class="eyebrow accent mskba-auth-heading">Прервать регистрацию?</h2>
-            </header>
-            <div class="mskba-modal__body mskba-scroll mskba-auth-scroll">
-                <p id="mskba-register-discard-description">
-                    Ты уже заполнил часть формы. Если выйти сейчас, введённые данные будут потеряны.
-                </p>
-            </div>
-            <footer class="mskba-modal__footer mskba-auth-footer-actions">
-                <button type="button" class="button secondary" data-auth-discard-cancel
-                    @click="cancelDiscard">Продолжить регистрацию</button>
-                <button type="button" class="button danger" @click="confirmDiscard">
-                    {{ discardTarget ? 'Перейти ко входу' : 'Закрыть без сохранения' }}
-                </button>
-            </footer>
         </dialog>
         <LegalDocumentDialog ref="legalDialog" :options="options" />
     </Teleport>
