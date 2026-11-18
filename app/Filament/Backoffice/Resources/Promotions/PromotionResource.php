@@ -26,9 +26,9 @@ use Illuminate\Database\Eloquent\Model;
 final class PromotionResource extends Resource
 {
     protected static ?string $model = Promotion::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Лояльность';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string { return 'Акции'; }
     public static function getModelLabel(): string { return 'акция'; }

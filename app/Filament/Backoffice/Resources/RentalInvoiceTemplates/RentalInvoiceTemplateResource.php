@@ -28,9 +28,9 @@ use Illuminate\Database\Eloquent\Model;
 final class RentalInvoiceTemplateResource extends Resource
 {
     protected static ?string $model = VenueRentalInvoiceTemplate::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Аренда и документы';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 5;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Шаблоны счетов'; }
