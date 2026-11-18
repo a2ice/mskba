@@ -15,9 +15,9 @@ final class ProjectUpdatesAgentAccess extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-key';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Разработка';
+    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 3;
 
     protected static ?string $navigationLabel = 'Доступ агента · Новости проекта';
 
