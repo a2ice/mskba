@@ -780,7 +780,8 @@ if (dayBookingDialog) {
                     detail: {courtId, date: button.dataset.dayDate},
                 }));
             } else {
-                void showDay(button.dataset.dayDate);
+                // Preserve the Promise for callers (including booking tests).
+                return showDay(button.dataset.dayDate);
             }
         });
     });
