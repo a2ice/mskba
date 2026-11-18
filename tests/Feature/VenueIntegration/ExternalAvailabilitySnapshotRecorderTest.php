@@ -137,6 +137,15 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
         $recorder = app(ExternalAvailabilitySnapshotRecorder::class);
 
         $snapshot = $recorder->record($source, $actor, $report);
+        // PostgreSQL timestamptz cannot infer that a bare wall-clock string
+        // represents UTC. Persist the offset explicitly even when the DB's
+        // session timezone is Europe/Moscow.
+        $this->assertSame('Y-m-d H:i:sP', $snapshot->getDateFormat());
+        $this->assertSame(
+            CarbonImmutable::parse($report['observed_at'])->utc()->toIso8601String(),
+            $snapshot->fresh()->observed_at->utc()->toIso8601String(),
+        );
+        $this->assertFalse($snapshot->fresh()->isStale(now()->addMinutes(1)));
         $this->assertTrue($snapshot->complete);
         $this->assertSame($source->id, $snapshot->venue_integration_source_id);
         $this->assertSame($venue->id, $snapshot->venue_id);
