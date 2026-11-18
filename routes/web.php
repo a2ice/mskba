@@ -791,6 +791,8 @@ Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class,
 Route::middleware('auth')->prefix('play/opportunities')->group(function (): void {
     Route::get('/{opportunity}', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayOpportunityController::class, 'show'])
         ->name('play.opportunities.show');
+    Route::post('/{opportunity}/assemble', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupAssemblyController::class, 'store'])
+        ->name('play.opportunities.assemble');
     Route::post('/{opportunity}/candidates', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'nominate'])
         ->name('play.opportunities.candidates.store');
     Route::put('/{opportunity}/election/vote', [\App\Modules\PlayInterest\Presentation\Http\Controllers\PlayGroupElectionController::class, 'vote'])

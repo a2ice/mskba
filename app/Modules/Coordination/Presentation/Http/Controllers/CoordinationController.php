@@ -31,6 +31,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\PlayInterest\Domain\Models\PlayGroupAssembly;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
@@ -156,6 +157,13 @@ final class CoordinationController extends Controller
         AddressDisplayFormatter $addressFormatter,
         TelegramChatRegistry $telegramChats,
     ): Response {
+        $groupAssembly = PlayGroupAssembly::query()
+            ->where('coordination_session_id',$coordination->id)->with('opportunity')->first();
+        if ($groupAssembly !== null) {
+            $viewer=$request->user()?->canonical();
+            abort_unless($viewer !== null
+                && $groupAssembly->opportunity?->hasActiveMember($viewer) === true, 404);
+        }
         $coordination->load([
             'organizerActor.user.profile.activeAvatar',
             'decisions.poll',

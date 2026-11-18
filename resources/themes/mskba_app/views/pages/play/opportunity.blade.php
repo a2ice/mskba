@@ -116,14 +116,23 @@
                             <article class="app-play-opportunity__event">
                                 @if($assembly->event)
                                     <a href="{{ route('events.show', $assembly->event->routeIdentifier()) }}">{{ $assembly->event->title }}</a>
-                                    <small>Мероприятие: {{ $assembly->event->status->value }}</small>
+                                    <small>Мероприятие: {{ $assembly->event->status->value }} · Бронь: {{ $assembly->event->booking?->status?->label() ?? 'Не забронировано' }}</small>
                                 @else
-                                    <strong>Сбор участников</strong><small>{{ $assembly->status }} · мероприятие ещё не создано</small>
+                                    <strong>Сбор участников</strong>
+                                    <small>{{ $assembly->status }} · мероприятие ещё не создано</small>
+                                    @if($assembly->coordination_session_id)
+                                        <a href="{{ route('coordination.show',$assembly->coordination_session_id) }}">Перейти к согласованию</a>
+                                    @endif
                                 @endif
                             </article>
                         @endforeach
                     @endif
-                    @if($isGroupAdmin)
+                    @if($isGroupAdmin && $assemblies->where('status','active')->isEmpty())
+                        <form method="POST" action="{{ route('play.opportunities.assemble', $opportunity) }}">
+                            @csrf
+                            <button type="submit" class="button primary">Начать согласование игры</button>
+                            <p class="muted">Система создаст один официальный опрос по площадке, затем можно будет перейти к созданию мероприятия и оформлению аренды.</p>
+                        </form>
                         <details class="app-play-opportunity__form-details">
                             <summary>Изменить название группы</summary>
                             <form method="POST" action="{{ route('play.opportunities.title.update', $opportunity) }}">

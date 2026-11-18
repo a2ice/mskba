@@ -13,6 +13,8 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\PlayInterest\Domain\Models\PlayGroupAssembly;
+use App\Modules\Social\Application\Services\SocialWallService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -21,6 +23,7 @@ final class CreateEventFromCoordinationHandler
     public function __construct(
         private readonly CoordinationAccess $access,
         private readonly CreateEventHandler $createEvent,
+        private readonly SocialWallService $wall,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -62,6 +65,13 @@ final class CreateEventFromCoordinationHandler
             }
 
             $event = $this->createEvent->handle($actor, $data);
+            $assembly = PlayGroupAssembly::query()
+                ->where('coordination_session_id',$session->id)->lockForUpdate()->first();
+            if ($assembly !== null) {
+                $assembly->update(['event_id'=>$event->id, 'status'=>'completed']);
+                $this->wall->appendSystem('play_opportunity',$assembly->opportunity_id,$actor->user,
+                    'group_event_created',['event_id'=>$event->id,'coordination_session_id'=>$session->id]);
+            }
             $this->addSelectedParticipants($session, $event, $actor, $data['participant_user_ids'] ?? []);
 
             CoordinationEventTransition::query()->create([

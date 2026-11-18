@@ -212,6 +212,8 @@ final class SocialWallService
             'group_election_cancelled' => 'Выборы отменены из-за изменения состава участников.',
             'group_election_closed' => 'Выборы завершены без победителя.',
             'group_title_changed' => $name.' изменил название группы.',
+            'group_assembly_started' => $name.' начал согласование предстоящей игры.',
+            'group_event_created' => $name.' создал мероприятие по итогам согласования.',
             default => $name.' выполнил действие.',
         };
         $hidden = $entry->hidden_at !== null;
