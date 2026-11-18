@@ -6,6 +6,8 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +20,10 @@ final class EventSocialWallTest extends TestCase
 
     private function event(): Event
     {
+        $organizer = $this->confirmedUser();
+        $actor = Actor::factory()->create(['type' => ActorTypeEnum::USER->value, 'user_id' => $organizer->id]);
         return Event::factory()->create([
+            'organizer_actor_id' => $actor->id,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'starts_at' => now()->addDays(4),
