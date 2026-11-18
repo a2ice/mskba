@@ -5,6 +5,7 @@ namespace App\Modules\PlayInterest\Application\Listeners;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
@@ -39,7 +40,8 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
 
         // A public game can still reject new player applications.
         if ($event->type === EventTypeEnum::GAME
-            && ($event->primaryGame === null || ! $event->primaryGame->accepts_applications)) {
+            && ($event->primaryGame === null || ! $event->primaryGame->accepts_applications
+                || $event->primaryGame->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT)) {
             return;
         }
 
