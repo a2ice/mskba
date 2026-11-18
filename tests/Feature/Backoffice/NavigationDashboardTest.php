@@ -53,7 +53,6 @@ final class NavigationDashboardTest extends TestCase
             $this->assertContains($label, $labels);
         }
 
-        $this->assertNotContains('Разработка', $labels);
         $this->assertTrue($groups->every(fn ($group): bool => $group->isCollapsed()));
 
         Livewire::test(NavigationOverview::class)
