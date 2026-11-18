@@ -48,9 +48,11 @@ final class CreateUserNotificationHandler
             } else {
                 UserNotificationCreated::dispatch($notification->id);
             }
-        } else {
-            // An external-only subscription should not create a new message
-            // or realtime toast in the site's personal messenger.
+        }
+
+        // Explicitly selected external channels also deliver when in_app is on.
+        // The recipient jobs independently enforce confirmed contacts and settings.
+        if (is_array($selected)) {
             if (in_array('email', $selected, true)) {
                 SendUserNotificationEmailJob::dispatch($notification->id)->afterCommit();
             }
