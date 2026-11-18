@@ -141,7 +141,7 @@ final class EventController extends Controller
     ): Response {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
-            'venue_id' => ['nullable', 'integer', 'exists:venues,id'],
+            'venue_id' => ['required_with:venue_court_id', 'nullable', 'integer', 'exists:venues,id'],
             'venue_court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
                 ->where('venue_id', (int) $request->input('venue_id'))
                 ->whereNull('deleted_at')],
