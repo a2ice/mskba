@@ -4,6 +4,7 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Finance\Application\Services\BackofficeUserWalletFunding;
 use App\Modules\Finance\Application\Services\RubleAmountParser;
 use App\Modules\Finance\Application\Services\SuperadminWalletBonusGrant;
@@ -156,7 +157,7 @@ final class EditBackofficeUser extends EditRecord
                                 (string) $data['new_password'],
                             );
                             AuditLog::query()->create([
-                                'actor_id' => $actor->id,
+                                'actor_id' => app(CurrentActorResolver::class)->resolveForRequest(request())?->id,
                                 'auditable_type' => User::class,
                                 'auditable_id' => $target->canonical()->id,
                                 'event' => 'admin_user_password_set',
