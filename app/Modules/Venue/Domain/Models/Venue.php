@@ -57,6 +57,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'content_version',
     'banner_display_mode',
     'banner_overlay_opacity',
+    'banner_overlay_color',
 ])]
 #[Hidden([])]
 class Venue extends Model
@@ -141,6 +142,12 @@ class Venue extends Model
         return \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
             ->where('venue_id', $this->id)->where('active_marker', true)
             ->value('currency') ?: 'RUB';
+    }
+
+    /** CSS overlay from backoffice, with legacy opacity preserved as fallback. */
+    public function bannerOverlayCss(): string
+    {
+        return $this->banner_overlay_color ?? 'rgba(0,0,0,'.(((int) ($this->banner_overlay_opacity ?? 50)) / 100).')';
     }
 
     public function hasFreeAccess(): bool
