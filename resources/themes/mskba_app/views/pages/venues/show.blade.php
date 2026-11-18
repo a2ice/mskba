@@ -266,15 +266,18 @@
                                             aria-label="{{ $scheduleGroup['name'] }}: расписание и бронирование {{ $day['label'] ?? $day['date'] }}">
                                             <strong @class(['app-venue-schedule__date', 'is-weekend' => $isWeekend])>{{ $day['label'] ?? $day['date'] }}</strong>
                                             @if(count($day['intervals'] ?? []))
+                                                @php
+                                                    // Cards show only the overall opening span, not each break.
+                                                    // Actual slot availability remains in the day booking dialog.
+                                                    $firstHours = $day['intervals'][0];
+                                                    $lastHours = $day['intervals'][array_key_last($day['intervals'])];
+                                                @endphp
                                                 <p class="app-venue-schedule__hours" aria-label="Часы работы">
                                                     <svg aria-hidden="true"><use href="#clock"/></svg>
-                                                    <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
+                                                    <span>{{ $firstHours['startsAt'] }}–{{ in_array($lastHours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $lastHours['endsAt'] }}</span>
                                                 </p>
                                             @else
                                                 <p class="app-venue-schedule__closed">Не работает</p>
-                                            @endif
-                                            @if(!empty($day['isException']))
-                                                <span class="app-venue-schedule__exception">{{ !empty($day['isClosed']) ? 'Исключение: выходной' : 'Исключение: изменённые часы' }}</span>
                                             @endif
                                         </button>
                                         <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null])
