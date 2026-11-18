@@ -421,23 +421,20 @@
     data-authenticated="{{ auth()->check() ? '1' : '0' }}"
     aria-labelledby="app-venue-favorite-title">
     <div class="app-venue-overlay__header">
-        <div class="app-venue-favorite-dialog__heading">
-            <button type="button" class="app-venue-favorite-dialog__back" data-venue-favorite-back>← Назад</button>
-            <h2 id="app-venue-favorite-title">Площадка в избранном</h2>
-        </div>
+        <h2 id="app-venue-favorite-title">Площадка в избранном</h2>
         <button type="button" data-venue-favorite-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>
     <div class="app-venue-favorite-dialog__body mskba-scroll">
-    <p data-venue-favorite-description>Сохрани площадку в избранном, чтобы легко возвращаться к её расписанию.</p>
+    <p data-venue-favorite-description>Добавь площадку в избранное, чтобы вернуться к ней позже.</p>
     @guest
         <p class="muted">Для сохранения избранного потребуется вход в аккаунт. После авторизации вернёмся к подтверждению.</p>
     @endguest
     <p class="error" data-venue-favorite-error role="alert" hidden></p>
     </div>
     <div class="app-venue-overlay__actions">
-        <button type="button" class="button secondary" data-venue-favorite-close>Отмена</button>
+        <button type="button" class="button secondary" data-venue-favorite-back>Назад</button>
         <button type="button" class="button primary" data-venue-favorite-submit disabled>Проверяем…</button>
     </div>
 </dialog>
