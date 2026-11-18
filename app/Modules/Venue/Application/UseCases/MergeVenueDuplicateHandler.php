@@ -17,6 +17,9 @@ use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
+use App\Modules\Venue\Domain\Models\VenueOwnership;
+use App\Modules\Venue\Domain\Models\VenueUserRestriction;
+use App\Modules\Venue\Application\Services\VenueDuplicateContractRights;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -29,6 +32,7 @@ final class MergeVenueDuplicateHandler
         int $canonicalVenueId,
         int $duplicateVenueId,
         ?User $resolvedBy,
+        string $contractResolution = VenueDuplicateContractRights::KEEP,
     ): void {
         if ($canonicalVenueId === $duplicateVenueId) {
             throw new InvalidArgumentException('Каноническая площадка и дубль должны отличаться.');
@@ -44,13 +48,13 @@ final class MergeVenueDuplicateHandler
             throw new InvalidArgumentException('Выбранные площадки не относятся к этому кандидату дубля.');
         }
 
-        $this->handleBatch([$canonicalVenueId, $duplicateVenueId], $canonicalVenueId, $resolvedBy);
+        $this->handleBatch([$canonicalVenueId, $duplicateVenueId], $canonicalVenueId, $resolvedBy, $contractResolution);
     }
 
     /**
      * @param  array<int, int>  $venueIds
      */
-    public function handleBatch(array $venueIds, int $canonicalVenueId, ?User $resolvedBy): void
+    public function handleBatch(array $venueIds, int $canonicalVenueId, ?User $resolvedBy, string $contractResolution = VenueDuplicateContractRights::KEEP): void
     {
         $venueIds = collect($venueIds)
             ->map(fn (mixed $venueId): int => (int) $venueId)
@@ -70,7 +74,7 @@ final class MergeVenueDuplicateHandler
             ->reject(fn (int $venueId): bool => $venueId === $canonicalVenueId)
             ->values();
 
-        DB::transaction(function () use ($venueIds, $canonicalVenueId, $duplicateVenueIds, $resolvedBy): void {
+        DB::transaction(function () use ($venueIds, $canonicalVenueId, $duplicateVenueIds, $resolvedBy, $contractResolution): void {
             $venues = Venue::query()
                 ->whereIn('id', $venueIds->all())
                 ->orderBy('id')
@@ -118,6 +122,8 @@ final class MergeVenueDuplicateHandler
                 // or rental settings whose relationships would become orphaned
                 // from the public-facing canonical venue.
                 $this->assertSafeToLink($duplicate);
+                $modifiedMemberships = app(VenueDuplicateContractRights::class)
+                    ->resolve($canonical, $duplicate, $contractResolution, $resolvedBy);
 
                 $duplicateOldValues = [
                     'canonical_venue_id' => $duplicate->getRawOriginal('canonical_venue_id'),
@@ -131,7 +137,7 @@ final class MergeVenueDuplicateHandler
 
                 $candidate = $this->candidateForDuplicate($candidates, $duplicate->id);
 
-                $this->writeMergeAuditLog($canonical, $duplicate, $candidate, $duplicateOldValues);
+                $this->writeMergeAuditLog($canonical, $duplicate, $candidate, $duplicateOldValues, $contractResolution, $modifiedMemberships);
             }
         });
     }
@@ -168,10 +174,19 @@ final class MergeVenueDuplicateHandler
         if (VenueBooking::query()->where('venue_id', $duplicate->id)->exists()) {
             $blockers[] = 'бронирования';
         }
-        if (ContractMembership::query()
-            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
-            ->where('scope_id', $duplicate->id)->exists()) {
-            $blockers[] = 'договорные права';
+        if (VenueOwnership::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'история подтверждённого владения';
+        }
+        if (VenueUserRestriction::query()->where('venue_id', $duplicate->id)
+            ->where('active_marker', true)->exists()) {
+            $blockers[] = 'действующие ограничения пользователей';
+        }
+        $courtIds = $duplicate->courts()->pluck('id');
+        if ($courtIds->isNotEmpty() && ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE_COURT->value)
+            ->whereIn('scope_id', $courtIds)
+            ->whereHas('contract', fn ($q) => $q->where('status', 'active'))->exists()) {
+            $blockers[] = 'договорные права на отдельные залы';
         }
         if (VenueRentalPreRequest::query()->where('venue_id', $duplicate->id)->exists()) {
             $blockers[] = 'предзаявки аренды';
@@ -279,6 +294,8 @@ final class MergeVenueDuplicateHandler
         Venue $duplicate,
         VenueDuplicate $candidate,
         array $duplicateOldValues,
+        string $contractResolution,
+        array $modifiedMemberships,
     ): void {
         if (! (bool) config('audit.enabled', true) || ! Schema::hasTable('audit_logs')) {
             return;
@@ -303,6 +320,8 @@ final class MergeVenueDuplicateHandler
                 'duplicate_venue_id' => $duplicate->id,
                 'venue_duplicate_id' => $candidate->id,
                 'route' => $request?->route()?->getName(),
+                'contract_resolution' => $contractResolution,
+                'resolved_contract_membership_ids' => $modifiedMemberships,
             ],
         ]);
     }
