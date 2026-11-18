@@ -84,7 +84,11 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('data-venue-create-event-dialog', false)
             ->assertDontSee('В разработке')
             ->assertSee('>Расписание</a>', false)
-            ->assertSee('data-mskba-play-intent-root', false);
+            ->assertSee('data-mskba-play-intent-root', false)
+            ->assertSee('data-venue-choice-court', false)
+            ->assertSee('data-venue-favorite-dialog', false)
+            ->assertSee('Аренда площадки')
+            ->assertSee('Добавить в избранное');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
@@ -308,7 +312,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('напрямую ·')
             ->assertDontSee('Без данных профиля')
             ->assertSee('href="'.route('play-intents.mine').'"', false)
-            ->assertSee('Вы подписаны')
+            ->assertSee('data-venue-choice-dialog', false)
             ->assertDontSee('Отображается только число интересов')
             ->assertSee('private-interest-other')
             ->assertSee('private-interest-test');
@@ -374,7 +378,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
         $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
-        $this->assertSame(3, substr_count($ownHtml, 'Вы подписаны'));
+        $this->assertSame(3, substr_count($ownHtml, 'data-venue-choice-open'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
         auth()->logout();
