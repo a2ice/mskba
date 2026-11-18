@@ -46,7 +46,7 @@
             @elseif($currentUser)
                 <h2>Принять приглашение</h2>
                 <p>Вы вошли как <strong>{{ $currentUser->username }}</strong>. При принятии адрес <strong>{{ $invitation->contact_value }}</strong>, на который было отправлено письмо, будет привязан к вашему аккаунту и подтверждён.</p>
-                <form method="POST" action="{{ route('account-invitations.accept', $token) }}">
+                <form method="POST" action="{{ route('account-invitations.accept') }}">
                     @csrf
                     <p><label><input type="checkbox" name="accept_invitation" value="1" required> Я принимаю приглашение, подтверждаю, что этот email принадлежит мне, и согласен на его привязку к моему аккаунту.</label></p>
                     <button class="button primary" type="submit">Принять и подтвердить email</button>
@@ -55,7 +55,7 @@
                 <h2>Создайте аккаунт для принятия приглашения</h2>
                 <p>Персональная ссылка подтверждает доступ к адресу <strong>{{ $invitation->contact_value }}</strong> после отправки формы. Другой адрес здесь использовать нельзя.</p>
                 <p>Уже есть аккаунт MSKBA? <a href="{{ route('login') }}">Войдите</a> и повторно откройте ссылку из письма.</p>
-                <form method="POST" action="{{ route('account-invitations.register', $token) }}" class="app-invitation-form">
+                <form method="POST" action="{{ route('account-invitations.register') }}" class="app-invitation-form">
                     @csrf
                     <div><label for="inv-username">Логин</label><input id="inv-username" name="username" value="{{ old('username') }}" required minlength="3" maxlength="32" autocomplete="username"></div>
                     <div><label for="inv-password">Пароль</label><input id="inv-password" name="password" type="password" required minlength="6" autocomplete="new-password"></div>
