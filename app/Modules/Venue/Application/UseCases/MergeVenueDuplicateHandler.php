@@ -5,6 +5,14 @@ namespace App\Modules\Venue\Application\UseCases;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\VenueBooking\Domain\Models\VenueRentalPreRequest;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
+use App\Modules\PlayInterest\Domain\Models\VenueSubscription;
+use App\Modules\PlayInterest\Domain\Models\VenueGroupOffer;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -105,12 +113,20 @@ final class MergeVenueDuplicateHandler
                     throw new InvalidArgumentException('Нельзя создать циклическую связь дублей.');
                 }
 
+                // This is an identity link, not a destructive data migration.
+                // Don't hide a record that owns transactions, events, contracts
+                // or rental settings whose relationships would become orphaned
+                // from the public-facing canonical venue.
+                $this->assertSafeToLink($duplicate);
+
                 $duplicateOldValues = [
                     'canonical_venue_id' => $duplicate->getRawOriginal('canonical_venue_id'),
+                    'is_published' => $duplicate->getRawOriginal('is_published'),
                 ];
 
                 $duplicate->forceFill([
                     'canonical_venue_id' => $canonical->id,
+                    'is_published' => false,
                 ])->save();
 
                 $candidate = $this->candidateForDuplicate($candidates, $duplicate->id);
@@ -133,8 +149,55 @@ final class MergeVenueDuplicateHandler
             return;
         }
 
-        if ($confirmedVenues->count() > 1 || $canonical->status !== VenueStatusEnum::CONFIRMED) {
+        if ($canonical->status !== VenueStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('В группе уже есть подтвержденная площадка, она должна остаться главной.');
+        }
+    }
+
+    /**
+     * A human-reviewed pair may contain two confirmed venues. Keep their
+     * records intact, and disallow hiding a venue whose operational data
+     * requires a deliberate separate migration.
+     */
+    private function assertSafeToLink(Venue $duplicate): void
+    {
+        $blockers = [];
+        if (Event::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'мероприятия';
+        }
+        if (VenueBooking::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'бронирования';
+        }
+        if (ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('scope_id', $duplicate->id)->exists()) {
+            $blockers[] = 'договорные права';
+        }
+        if (VenueRentalPreRequest::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'предзаявки аренды';
+        }
+        if (VenueOwnershipClaim::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'заявки на владение';
+        }
+        if (VenueSubscription::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'подписки пользователей';
+        }
+        if (VenueGroupOffer::query()->where('venue_id', $duplicate->id)->exists()) {
+            $blockers[] = 'специальные условия и предложения';
+        }
+        if ($duplicate->integrations()->exists()) {
+            $blockers[] = 'интеграции расписания';
+        }
+        if ($duplicate->courts()->whereHas('schedule')->exists()) {
+            $blockers[] = 'расписания залов';
+        }
+
+        if ($blockers !== []) {
+            throw new InvalidArgumentException(
+                'Нельзя скрыть дубль #'.$duplicate->id.': есть связанные '
+                .implode(', ', $blockers)
+                .'. Выбери основную площадку с этими данными либо сначала перенеси связи отдельной операцией.'
+            );
         }
     }
 
@@ -233,6 +296,7 @@ final class MergeVenueDuplicateHandler
             'old_values' => $duplicateOldValues,
             'new_values' => [
                 'canonical_venue_id' => $canonical->id,
+                'is_published' => false,
             ],
             'metadata' => [
                 'canonical_venue_id' => $canonical->id,

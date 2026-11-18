@@ -3,6 +3,7 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -387,6 +388,123 @@ class VenueDuplicateWorkflowTest extends TestCase
             'id' => $duplicate->id,
             'canonical_venue_id' => $duplicate->id,
         ]);
+    }
+
+
+    public function test_two_confirmed_venues_can_be_linked_and_noncanonical_is_hidden_without_deletion(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $canonical = $this->venue([
+            'name' => 'Кампус на Яхромской',
+            'alias' => 'campus-yakhromskaya',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'is_published' => true,
+        ]);
+        $duplicate = $this->venue([
+            'name' => 'Кампус на Яхромской',
+            'alias' => 'campus-yakhromskaya-copy',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'is_published' => true,
+        ]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => $canonical->id,
+            'duplicate_venue_id' => $duplicate->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 100,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.duplicates.merge', $candidate), [
+                'canonical_venue_id' => $canonical->id,
+                'duplicate_venue_id' => $duplicate->id,
+            ])
+            ->assertRedirect(route('admin.venues.duplicates'));
+
+        $this->assertDatabaseHas('venues', [
+            'id' => $canonical->id,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'canonical_venue_id' => null,
+            'is_published' => true,
+        ]);
+        $this->assertDatabaseHas('venues', [
+            'id' => $duplicate->id,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'canonical_venue_id' => $canonical->id,
+            'is_published' => false,
+        ]);
+        $this->assertDatabaseHas('venue_duplicates', [
+            'id' => $candidate->id,
+            'status' => VenueDuplicateStatusEnum::MERGED->value,
+        ]);
+
+        $this->assertFalse($duplicate->fresh()->isPubliclyVisible());
+        $this->get(route('venues.show', $duplicate->routeIdentifier()))
+            ->assertRedirect(route('venues.show', $canonical->routeIdentifier()));
+        $this->assertDatabaseCount('venues', 2);
+    }
+
+    public function test_confirmed_duplicate_with_an_event_is_not_hidden(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $canonical = $this->venue([
+            'name' => 'Кампус А',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $duplicate = $this->venue([
+            'name' => 'Кампус Б',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        Event::factory()->create(['venue_id' => $duplicate->id]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => $canonical->id,
+            'duplicate_venue_id' => $duplicate->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 100,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.duplicates.merge', $candidate), [
+                'canonical_venue_id' => $canonical->id,
+                'duplicate_venue_id' => $duplicate->id,
+            ])
+            ->assertRedirect(route('admin.venues.duplicates'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('venues', [
+            'id' => $duplicate->id,
+            'canonical_venue_id' => null,
+            'is_published' => true,
+        ]);
+        $this->assertDatabaseHas('venue_duplicates', [
+            'id' => $candidate->id,
+            'status' => VenueDuplicateStatusEnum::PENDING->value,
+        ]);
+    }
+
+    public function test_proximity_detector_does_not_reopen_manually_resolved_pair(): void
+    {
+        $canonical = $this->venue(['status' => VenueStatusEnum::CONFIRMED]);
+        $duplicate = $this->venue(['status' => VenueStatusEnum::CONFIRMED]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => min($canonical->id, $duplicate->id),
+            'duplicate_venue_id' => max($canonical->id, $duplicate->id),
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::MERGED,
+            'score' => 100,
+        ]);
+
+        app(VenueDuplicateDetector::class)->detectFor($duplicate);
+        $candidate->refresh();
+        $this->assertSame(VenueDuplicateStatusEnum::MERGED, $candidate->status);
+        $this->assertSame(VenueDuplicateMatchTypeEnum::MANUAL, $candidate->matched_by);
     }
 
     /**

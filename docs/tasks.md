@@ -255,3 +255,4 @@ planned / deferred / needs-verification`. Ничего не закрываем �
 - [ ] 325 - Объединение production и dev данных: аккаунты, команды, игры, турниры, площадки ([план и инструменты аудита](tasks/325/description.md))
 - [ ] 326 - Восстановить Filament CSS/JS в production-деплое после переноса ([описание](tasks/326/description.md))
 - [x] 328 - Группы навигации Filament и заполнение главного дашборда ([описание](tasks/328/description.md))
+- [ ] 329 - Ручное назначение и безопасное объединение дублей площадок на production ([описание](tasks/329/description.md))
