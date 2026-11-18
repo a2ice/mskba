@@ -20,7 +20,7 @@ final class ReferralEntryController extends Controller
             ->whereNull('canonical_user_id')
             ->whereNull('deleted_at')
             ->where('status', UserStatusEnum::CONFIRMED->value)
-            ->where('username', $username)
+            ->whereRaw('LOWER(username) = ?', [mb_strtolower(trim($username))])
             ->firstOrFail();
 
         $referrals->capture($request, $referrer);

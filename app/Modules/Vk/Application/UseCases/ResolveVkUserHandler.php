@@ -97,16 +97,16 @@ final class ResolveVkUserHandler
 
     private function uniqueUsername(string $vkUserId): string
     {
-        $safeId = preg_replace('/[^0-9A-Za-z_-]/', '', $vkUserId) ?: 'user';
+        $safeId = Str::lower(preg_replace('/[^0-9A-Za-z_-]/', '', $vkUserId) ?: 'user');
         $base = "vk_{$safeId}";
 
-        if (! User::query()->where('username', $base)->exists()) {
+        if (! User::withTrashed()->whereRaw('LOWER(username) = ?', [$base])->exists()) {
             return $base;
         }
 
         do {
             $username = $base.'_'.Str::lower(Str::random(6));
-        } while (User::query()->where('username', $username)->exists());
+        } while (User::withTrashed()->whereRaw('LOWER(username) = ?', [$username])->exists());
 
         return $username;
     }

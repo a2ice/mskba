@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
 use Carbon\CarbonImmutable;
@@ -34,7 +35,7 @@ class RegisterRequest extends FormRequest
                 'string',
                 'min:'.UsernameVO::MIN_LENGTH,
                 'max:'.UsernameVO::MAX_LENGTH,
-                Rule::unique('users', 'username'),
+                $this->caseInsensitiveUniqueUsernameRule(),
                 $this->domainUsernameRule(),
             ],
             'password' => [
@@ -208,6 +209,17 @@ class RegisterRequest extends FormRequest
         return $date instanceof CarbonImmutable
             ? $date->startOfDay()
             : null;
+    }
+
+    private function caseInsensitiveUniqueUsernameRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (is_string($value) && User::withTrashed()
+                ->whereRaw('LOWER(username) = ?', [mb_strtolower(trim($value))])
+                ->exists()) {
+                $fail('Этот логин уже занят.');
+            }
+        };
     }
 
     private function domainUsernameRule(): \Closure
