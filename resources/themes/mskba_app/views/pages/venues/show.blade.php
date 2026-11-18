@@ -70,7 +70,9 @@
         ->unique('promotion_code')
         ->values();
 @endphp
-@php($bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id))
+@php
+    $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+@endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
     @include('components.entity-public-banner', [
         'bannerUrl' => $bannerVenue?->bannerUrl(),
