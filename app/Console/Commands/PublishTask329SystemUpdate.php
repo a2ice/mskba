@@ -35,7 +35,7 @@ final class PublishTask329SystemUpdate extends Command
     public function handle(): int
     {
         if (! $this->option('confirm-release')
-            || ! app()->environment('production')
+            || config('app.env') !== 'production'
             || rtrim((string) config('app.url'), '/') !== 'https://mskba.ru') {
             $this->error('Refusing publication: explicit verified production release is required.');
 
