@@ -59,7 +59,7 @@ final class TournamentOnSiteRegistrationController extends Controller
             return response()->json(['available' => false, 'message' => $exception->getMessage()], 422);
         }
 
-        $available = ! User::query()->where('username', $username)->exists();
+        $available = ! User::withTrashed()->whereRaw('LOWER(username) = ?', [$username])->exists();
 
         return response()->json(['available' => $available, 'username' => $username, 'message' => $available ? 'Логин свободен.' : 'Этот логин уже занят.'], $available ? 200 : 422);
     }
@@ -76,7 +76,16 @@ final class TournamentOnSiteRegistrationController extends Controller
         }
         $guestRules = $request->user() === null
             ? [
-                'username' => ['required', 'string', 'max:32', 'unique:users,username'],
+                'username' => [
+                    'required', 'string', 'max:32',
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (User::withTrashed()
+                            ->whereRaw('LOWER(username) = ?', [mb_strtolower(trim((string) $value))])
+                            ->exists()) {
+                            $fail('Этот логин уже занят.');
+                        }
+                    },
+                ],
                 'privacy_consent' => ['required', 'accepted'],
             ]
             : [];
