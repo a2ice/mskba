@@ -19,8 +19,22 @@ use InvalidArgumentException;
 
 final class AccountInvitationController
 {
-    public function show(Request $request, string $token, AccountInvitationManager $manager): Response
+    // Exchange the bearer token for a server-side session before rendering the
+    // page. Theme scripts, metrics and outbound links never see it in the URL.
+    public function entry(Request $request, string $token, AccountInvitationManager $manager): RedirectResponse
     {
+        $manager->findByToken($token);
+        $request->session()->put('account_invitation_token', $token);
+
+        return redirect()->route('account-invitations.continue')
+            ->withHeaders(['Referrer-Policy' => 'no-referrer',
+                'Cache-Control' => 'private, no-store, max-age=0',
+                'X-Robots-Tag' => 'noindex, nofollow, noarchive']);
+    }
+
+    public function show(Request $request, AccountInvitationManager $manager): Response
+    {
+        $token = (string) $request->session()->get('account_invitation_token', '');
         $invitation = $manager->findByToken($token);
         $manager->seen($invitation);
         $invitation->refresh();
@@ -43,14 +57,15 @@ final class AccountInvitationController
     }
 
     public function register(
-        RegisterRequest $request, string $token, AccountInvitationManager $manager,
+        RegisterRequest $request, AccountInvitationManager $manager,
         RegisterUserHandler $register
     ): RedirectResponse {
+        $token = (string) $request->session()->get('account_invitation_token', '');
         $invitation = $manager->findByToken($token);
         abort_unless($invitation->status === 'pending'
             && ! $invitation->isExpired() && $invitation->accepted_user_id === null, 410);
         if ($request->user() !== null) {
-            return redirect()->route('account-invitations.show', $token)
+            return redirect()->route('account-invitations.continue')
                 ->with('warning', 'Вы уже вошли в аккаунт. Примите приглашение для текущего пользователя.');
         }
         $request->validate(['accept_invitation' => ['accepted']]);
@@ -90,13 +105,14 @@ final class AccountInvitationController
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('account-invitations.show', $token)
+        return redirect()->route('account-invitations.continue')
             ->with('status', 'Аккаунт создан, приглашение принято. Email подтверждён.');
     }
 
-    public function accept(Request $request, string $token, AccountInvitationManager $manager): RedirectResponse
+    public function accept(Request $request, AccountInvitationManager $manager): RedirectResponse
     {
         $request->validate(['accept_invitation' => ['accepted']]);
+        $token = (string) $request->session()->get('account_invitation_token', '');
         $user = $request->user();
         abort_unless($user !== null, 401);
 
@@ -106,7 +122,7 @@ final class AccountInvitationController
             throw ValidationException::withMessages(['accept_invitation' => $e->getMessage()]);
         }
 
-        return redirect()->route('account-invitations.show', $token)
+        return redirect()->route('account-invitations.continue')
             ->with('status', 'Приглашение принято. Указанный email подтверждён.');
     }
 }
