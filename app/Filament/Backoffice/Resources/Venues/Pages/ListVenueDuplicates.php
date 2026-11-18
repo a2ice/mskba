@@ -88,7 +88,7 @@ final class ListVenueDuplicates extends ListRecords
                             $venues = Venue::query()->whereIn('id', [$first, $second])
                                 ->lockForUpdate()->get();
                             if ($venues->count() !== 2 || $venues->contains(fn (Venue $venue): bool => $venue->canonical_venue_id !== null)) {
-                                throw new \\InvalidArgumentException('Обе площадки должны существовать и ещё не быть назначенными дублями.');
+                                throw new \InvalidArgumentException('Обе площадки должны существовать и ещё не быть назначенными дублями.');
                             }
 
                             $candidate = VenueDuplicate::query()
@@ -97,7 +97,7 @@ final class ListVenueDuplicates extends ListRecords
                                 ->lockForUpdate()->first();
 
                             if ($candidate !== null && $candidate->status === VenueDuplicateStatusEnum::MERGED) {
-                                throw new \\InvalidArgumentException('Эта пара уже объединена.');
+                                throw new \InvalidArgumentException('Эта пара уже объединена.');
                             }
 
                             VenueDuplicate::query()->updateOrCreate([
@@ -118,7 +118,7 @@ final class ListVenueDuplicates extends ListRecords
                         Notification::make()->success()->title('Кандидат дубля создан')
                             ->body('Теперь можно выбрать основную площадку и выполнить объединение.')
                             ->send();
-                    } catch (\\InvalidArgumentException $e) {
+                    } catch (\InvalidArgumentException $e) {
                         Notification::make()->danger()->title($e->getMessage())->send();
                     }
                 }),
