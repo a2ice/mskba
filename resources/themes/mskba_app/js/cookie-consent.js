@@ -78,7 +78,13 @@ export function initCookieConsent(doc = document, host = window, fetchRequest = 
 
             banner.dataset.cookieConsentState = choice;
             banner.hidden = true;
-            syncMetrikaConsent(banner, choice, doc, host);
+            // Persistence succeeded. Analytics is best-effort; it must not turn a
+            // saved decision into a misleading "failed" toast if its script is blocked.
+            try {
+                syncMetrikaConsent(banner, choice, doc, host);
+            } catch {
+                // A later navigation will use the server-rendered consent state.
+            }
             notify(choice === 'accepted' ? 'Все cookie приняты' : 'Выбраны только необходимые cookie');
         } catch {
             // Keep the banner visible and the decision unchanged on ANY failure.
