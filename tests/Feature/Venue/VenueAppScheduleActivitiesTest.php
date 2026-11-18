@@ -64,6 +64,11 @@ final class VenueAppScheduleActivitiesTest extends TestCase
             'ends_at' => '14:00',
             'sort_order' => 1,
         ]);
+        $shift->intervals()->create([
+            'starts_at' => '17:00',
+            'ends_at' => '20:00',
+            'sort_order' => 2,
+        ]);
 
         Event::factory()->create([
             'venue_id' => $venue->id,
@@ -86,9 +91,11 @@ final class VenueAppScheduleActivitiesTest extends TestCase
         $this->assertStringContainsString('<h2>Расписание</h2>', $scheduleSection);
         $this->assertStringNotContainsString('<h2>Часы работы</h2>', $scheduleSection);
         $this->assertStringContainsString('09:00–21:00', $scheduleSection);
-        $this->assertStringContainsString('12:00–14:00', $scheduleSection);
-        $this->assertStringContainsString('Исключение: выходной', $scheduleSection);
-        $this->assertStringContainsString('Исключение: изменённые часы', $scheduleSection);
+        // Day cards show only first opening to last closing, even with breaks.
+        $this->assertStringContainsString('12:00–20:00', $scheduleSection);
+        $this->assertStringNotContainsString('12:00–14:00', $scheduleSection);
+        $this->assertStringNotContainsString('17:00–20:00', $scheduleSection);
+        $this->assertStringNotContainsString('Исключение:', $scheduleSection);
         $this->assertStringNotContainsString('19:00–21:00', $scheduleSection);
         $this->assertStringNotContainsString('data-venue-slot-open', $scheduleSection);
         $this->assertStringNotContainsString('Слоты', $scheduleSection);
