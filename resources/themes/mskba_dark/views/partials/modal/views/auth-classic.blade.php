@@ -96,8 +96,8 @@
 
         <form class="auth-form" data-auth-classic-form data-auth-classic-kind="restore" action="{{ route('auth.restore', [], false) }}" method="POST">
             <label class="auth-form__field">
-                <span>Email</span>
-                <input type="email" name="contact" autocomplete="email" required autofocus>
+                <span>Подтверждённый email или Telegram @username</span>
+                <input type="text" name="contact" autocomplete="username" maxlength="255" required autofocus>
             </label>
 
             <div class="auth-form__message form-message"></div>

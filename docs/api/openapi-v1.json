@@ -372,6 +372,65 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Профиль"
+        ],
+        "summary": "Soft-delete own account",
+        "operationId": "deleteOwnAccount",
+        "description": "Requires bearer token with account:delete; revokes all devices; soft-deletes the canonical user and aliases. Throttle 5/minute.",
+        "security": [
+          {
+            "sanctumBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAccountResponse"
+                },
+                "example": {
+                  "deleted": true,
+                  "message": "Аккаунт удалён."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bearer token required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient token rights",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/venues": {
@@ -2021,6 +2080,22 @@
           "password_confirmation",
           "privacy_consent"
         ]
+      },
+      "DeleteAccountResponse": {
+        "type": "object",
+        "required": [
+          "deleted",
+          "message"
+        ],
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
       }
     }
   }

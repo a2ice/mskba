@@ -18,7 +18,11 @@ final class DeleteOwnAccountHandler
                 ->lockForUpdate()
                 ->get();
 
-            $users->each->delete();
+            $users->each(function (User $account): void {
+                // Revoke every device before hiding this member of the identity.
+                $account->tokens()->delete();
+                $account->delete();
+            });
         });
     }
 }

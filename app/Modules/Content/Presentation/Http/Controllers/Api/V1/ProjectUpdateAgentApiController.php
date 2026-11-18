@@ -67,7 +67,7 @@ final class ProjectUpdateAgentApiController extends Controller
             $actor instanceof User
             && $actor->username === 'dev'
             && $actor->system_role === UserSystemRoleEnum::SYSTEM
-            && $actor->isConfirmed() && ! $actor->isBlocked() && ! $actor->trashed()
+            && ! $actor->isBlocked() && ! $actor->trashed()
             && $token instanceof PersonalAccessToken
             && str_starts_with((string) $token->name, 'mskba-project-updates:')
             && $token->expires_at !== null

@@ -165,7 +165,8 @@ final class VenueCourtDetailInheritanceTest extends TestCase
 
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()]))
             ->assertOk()->assertSee('10:00–18:00')
-            ->assertSee('Исключение: выходной');
+            ->assertSee('Не работает')
+            ->assertDontSee('Исключение:');
 
         $court->schedule()->delete();
         $court->unsetRelation('schedule');

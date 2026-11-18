@@ -63,6 +63,26 @@ final class ProjectUpdatesTest extends TestCase
             ->postJson($uri, $this->payload())->assertForbidden();
     }
 
+
+    public function test_unconfirmed_system_dev_can_use_scoped_api_but_explicitly_blocked_dev_cannot(): void
+    {
+        $dev = User::factory()->create([
+            'username' => 'dev',
+            'system_role' => UserSystemRoleEnum::SYSTEM,
+            'status' => UserStatusEnum::UNCONFIRMED,
+        ]);
+        $token = $dev->createToken('mskba-project-updates:unconfirmed-test', ['project-updates:write'], now()->addDay());
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/v1/internal/project-updates', $this->payload())
+            ->assertOk();
+
+        $dev->forceFill(['status' => UserStatusEnum::BLOCKED])->save();
+        app('auth')->forgetGuards();
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/v1/internal/project-updates/'.ContentItem::query()->sole()->id)
+            ->assertForbidden();
+    }
+
     public function test_ingest_is_idempotent_and_private_metadata_does_not_leak_into_feed(): void
     {
         $uri = '/api/v1/internal/project-updates';

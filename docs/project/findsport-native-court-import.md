@@ -45,8 +45,11 @@
   `venue_bookings` или `events`.
 - Из-за текущего формата HTML `time` край 24:00 приводится к 23:59.
   Бронирование с переходом через полночь в MSKBA и раньше не поддерживалось.
-- Применение доступно по умолчанию только при `APP_ENV=staging`:
-  `VENUE_INTEGRATIONS_APPLY_FINDSPORT_NATIVE_ENABLED` — отдельный флаг.
-  На production по умолчанию выключено.
+- Начиная с выпуска 18.11.2026 применение доступно на `APP_ENV=staging`
+  и `APP_ENV=production`: `VENUE_INTEGRATIONS_APPLY_FINDSPORT_NATIVE_ENABLED`
+  — отдельный выключатель. В production применять снимок можно только у
+  источника с проверенным `permission_status=mskba_allowed` и заполненным
+  основанием доступа. Ручной preview и публичный refresh имеют отдельные
+  выключатели. См. [production-выпуск](findsport-production-rollout.md).
 - Публичный слой PR #700 откачен в этой ветке: стандартная публичная
   страница осталась без отдельного блока FindSport.

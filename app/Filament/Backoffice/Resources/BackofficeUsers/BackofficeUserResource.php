@@ -44,9 +44,10 @@ final class BackofficeUserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'username';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Пользователи и доступ';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string
     {

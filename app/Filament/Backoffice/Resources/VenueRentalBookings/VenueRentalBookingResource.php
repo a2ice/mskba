@@ -14,9 +14,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueRentalBookingResource extends Resource
 {
     protected static ?string $model = VenueBooking::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Аренда и документы';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string { return 'Заявки на аренду'; }
     public static function getModelLabel(): string { return 'заявка на аренду'; }

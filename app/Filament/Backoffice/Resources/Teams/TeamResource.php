@@ -44,9 +44,9 @@ final class TeamResource extends Resource
 {
     protected static ?string $model = Team::class;
     protected static ?string $recordTitleAttribute = 'name';
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Соревнования';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-user-group';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string { return 'Команды'; }
     public static function getModelLabel(): string { return 'команда'; }

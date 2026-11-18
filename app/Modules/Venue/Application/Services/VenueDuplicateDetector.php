@@ -29,6 +29,19 @@ final class VenueDuplicateDetector
 
                 [$venueId, $duplicateVenueId] = $this->orderedPair((int) $venue->id, (int) $candidate->id);
 
+                // Never reopen a resolved pair or overwrite a moderator's
+                // manual classification during periodic proximity checks.
+                $existing = VenueDuplicate::query()
+                    ->where('venue_id', $venueId)
+                    ->where('duplicate_venue_id', $duplicateVenueId)
+                    ->first();
+                if ($existing !== null && (
+                    $existing->status !== VenueDuplicateStatusEnum::PENDING
+                    || $existing->matched_by === VenueDuplicateMatchTypeEnum::MANUAL
+                )) {
+                    return;
+                }
+
                 VenueDuplicate::query()->updateOrCreate(
                     [
                         'venue_id' => $venueId,

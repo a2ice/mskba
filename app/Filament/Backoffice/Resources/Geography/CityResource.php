@@ -24,9 +24,9 @@ use Illuminate\Validation\Rule;
 final class CityResource extends Resource
 {
     protected static ?string $model = City::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'География';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Города'; }

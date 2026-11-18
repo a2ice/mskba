@@ -75,9 +75,9 @@ use Illuminate\Database\Eloquent\Model;
 final class VenueResource extends Resource
 {
     protected static ?string $model = Venue::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-map-pin';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationLabel(): string { return 'Площадки'; }
@@ -171,6 +171,21 @@ final class VenueResource extends Resource
                         Textarea::make('full_description')->label('Полное описание')->maxLength(10000)->rows(6)->columnSpanFull(),
                         TextInput::make('tags_text')->label('Теги')->maxLength(1000)->columnSpanFull()
                             ->helperText('Через запятую. Связанные теги сохраняются в стандартной таблице площадки.'),
+                        Select::make('banner_display_mode')
+                            ->label('Размещение баннера')
+                            ->options([
+                                'top' => 'Широкая плашка над содержимым',
+                                'background' => 'Фиксированный фон на всю страницу',
+                            ])
+                            ->default('top')->required()->live()
+                            ->helperText('Настройка относится только к странице этой площадки и не меняет изображения галереи.')
+                            ->columnSpanFull(),
+                        TextInput::make('banner_overlay_color')
+                            ->label('Наложение поверх фонового баннера (CSS)')
+                            ->default('rgba(0,0,0,0.5)')
+                            ->visible(fn (Get $get): bool => $get('banner_display_mode') === 'background')
+                            ->helperText('Без проверки цвета: rgba(0,0,0,0.25), rgba(255,255,255,0.5), #ffffff80, linear-gradient(...).')
+                            ->columnSpanFull(),
                         View::make('filament.backoffice.entity-banner')
                             ->visible(fn (?Venue $record): bool => $record !== null && self::canEdit($record))
                             ->columnSpanFull(),

@@ -20,15 +20,6 @@
     $venueAddress = $venue->address?->display ?: $venue->rawAddress;
     $isConfirmedVenue = $venue->statusSlug === 'confirmed';
     $canStartInterest = $isConfirmedVenue;
-    $viewer = auth()->user()?->canonical();
-    $viewerVenueInterest = $viewer
-        ? \App\Modules\PlayInterest\Domain\Models\PlayIntent::query()
-            ->where('venue_id', $venue->id)
-            ->where('status', 'active')
-            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->where('user_id', $viewer->id)->orderByDesc('id')->first()
-        : null;
-    $viewerHasVenueInterest = $viewerVenueInterest !== null;
     $venueAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
         ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
     $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']));
@@ -79,8 +70,15 @@
         ->unique('promotion_code')
         ->values();
 @endphp
+@php
+    $bannerVenue = \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id);
+@endphp
 <section class="container app-venue-page" aria-labelledby="app-venue-title">
-    @include('components.entity-public-banner', ['bannerUrl' => \App\Modules\Venue\Domain\Models\Venue::query()->find($venue->id)?->bannerUrl()])
+    @include('components.entity-public-banner', [
+        'bannerUrl' => $bannerVenue?->bannerUrl(),
+        'bannerMode' => $bannerVenue?->banner_display_mode,
+        'overlayCss' => $bannerVenue?->bannerOverlayCss(),
+    ])
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
             @if(count($venue->featuredMedia))
@@ -157,12 +155,8 @@
             @endif
             @if($venue->shortDescription)<p class="app-venue-intro__copy">{{ $venue->shortDescription }}</p>@endif
             <div class="app-venue-intro__actions">
-                @if($viewerHasVenueInterest)
-                    <a class="button primary large" href="{{ route('play-intents.mine') }}">Вы подписаны</a>
-                @else
-                    <button type="button" class="button primary large" data-play-intent-open data-venue-interest-action
-                        @disabled(!$canStartInterest)>Хочу здесь играть</button>
-                @endif
+                <button type="button" class="button primary large" data-venue-choice-open
+                    @disabled(!$canStartInterest)>Хочу здесь играть</button>
                 <a class="button secondary large" href="#app-venue-schedule">Расписание</a>
             </div>
         </div>
@@ -172,7 +166,7 @@
         @if($activityDays->isNotEmpty())
             <a href="#app-venue-activities">Игры</a>
         @endif
-        <a href="#app-venue-interest">Подписки игроков</a>
+        <a href="#app-venue-interest">Интересы игроков</a>
         <a href="#app-venue-schedule">Расписание</a>
         <a href="#app-venue-about">О площадке</a>
     </nav>
@@ -256,45 +250,58 @@
             </section>
             <section class="panel app-venue-block" id="app-venue-schedule">
                 <header class="app-venue-block__header"><h2>Расписание</h2></header>
-                @if($scheduledDays->isNotEmpty())
-                    <div class="app-venue-schedule">
-                        @foreach($scheduledDays as $day)
-                            @php
-                                $occupancy = $day['occupancyPercent'] ?? null;
-                                $isWeekend = in_array($day['weekday'] ?? '', ['Сб', 'Вс'], true);
-                            @endphp
-                            <div class="app-venue-schedule__entry" data-venue-day-entry data-day-date="{{ $day['date'] }}">
-                                <button type="button" class="app-venue-schedule__day app-venue-schedule__day--interactive"
-                                    data-venue-day-open data-day-date="{{ $day['date'] }}"
-                                    aria-label="Расписание и бронирование: {{ $day['label'] ?? $day['date'] }}">
-                                    <strong @class(['app-venue-schedule__date', 'is-weekend' => $isWeekend])>{{ $day['label'] ?? $day['date'] }}</strong>
-                                    @if(count($day['intervals'] ?? []))
-                                        <p class="app-venue-schedule__hours" aria-label="Часы работы">
-                                            <svg aria-hidden="true"><use href="#clock"/></svg>
-                                            <span>@foreach($day['intervals'] as $hours){{ $hours['startsAt'] }}–{{ in_array($hours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $hours['endsAt'] }}@unless($loop->last), @endunless @endforeach</span>
-                                        </p>
-                                    @else
-                                        <p class="app-venue-schedule__closed">Не работает</p>
-                                    @endif
-                                    @if(!empty($day['isException']))
-                                        <span class="app-venue-schedule__exception">{{ !empty($day['isClosed']) ? 'Исключение: выходной' : 'Исключение: изменённые часы' }}</span>
-                                    @endif
-                                </button>
-                                <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null])
-                                    data-day-occupancy
-                                    role="img"
-                                    aria-label="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}"
-                                    title="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}">
-                                    <span class="app-venue-schedule__occupancy-booked"
-                                        data-day-occupancy-booked
-                                        style="width: {{ (int) ($occupancy ?? 0) }}%"></span>
-                                </div>
+                @foreach($venue->courtSchedules as $scheduleGroup)
+                    <div class="app-venue-schedule__court" data-venue-schedule-court="{{ $scheduleGroup['id'] }}"
+                        data-court-name="{{ $scheduleGroup['name'] }}">
+                        @unless($venue->isCourtPage)
+                            <div class="app-venue-schedule__court-header">
+                                <h3>{{ $scheduleGroup['name'] }}</h3>
+                                <a href="{{ route('venues.courts.show', [$venue->routeIdentifier(), $scheduleGroup['routeIdentifier']]) }}">Подробнее</a>
                             </div>
-                        @endforeach
+                        @endunless
+                        @if(count($scheduleGroup['days']))
+                            <div class="app-venue-schedule" role="group" aria-label="Дни и часы работы зала {{ $scheduleGroup['name'] }}">
+                                @foreach($scheduleGroup['days'] as $day)
+                                    @php
+                                        $occupancy = $day['occupancyPercent'] ?? null;
+                                        $isWeekend = in_array($day['weekday'] ?? '', ['Сб', 'Вс'], true);
+                                    @endphp
+                                    <div class="app-venue-schedule__entry" data-venue-day-entry data-day-date="{{ $day['date'] }}">
+                                        <button type="button" class="app-venue-schedule__day app-venue-schedule__day--interactive"
+                                            data-venue-day-open data-court-id="{{ $scheduleGroup['id'] }}"
+                                            data-day-date="{{ $day['date'] }}"
+                                            aria-label="{{ $scheduleGroup['name'] }}: расписание и бронирование {{ $day['label'] ?? $day['date'] }}">
+                                            <strong @class(['app-venue-schedule__date', 'is-weekend' => $isWeekend])>{{ $day['label'] ?? $day['date'] }}</strong>
+                                            @if(count($day['intervals'] ?? []))
+                                                @php
+                                                    // Cards show only the overall opening span, not each break.
+                                                    // Actual slot availability remains in the day booking dialog.
+                                                    $firstHours = $day['intervals'][0];
+                                                    $lastHours = $day['intervals'][array_key_last($day['intervals'])];
+                                                @endphp
+                                                <p class="app-venue-schedule__hours" aria-label="Часы работы">
+                                                    <svg aria-hidden="true"><use href="#clock"/></svg>
+                                                    <span>{{ $firstHours['startsAt'] }}–{{ in_array($lastHours['endsAt'], ['23:59', '24:00'], true) ? '00:00' : $lastHours['endsAt'] }}</span>
+                                                </p>
+                                            @else
+                                                <p class="app-venue-schedule__closed">Не работает</p>
+                                            @endif
+                                        </button>
+                                        <div @class(['app-venue-schedule__occupancy', 'is-unknown' => $occupancy === null])
+                                            data-day-occupancy role="img"
+                                            aria-label="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}"
+                                            title="{{ $occupancy === null ? 'Нет данных о занятости' : 'Занято '.$occupancy.'%' }}">
+                                            <span class="app-venue-schedule__occupancy-booked" data-day-occupancy-booked
+                                                style="width: {{ (int) ($occupancy ?? 0) }}%"></span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="muted">Расписание для этого зала пока не установлено.</p>
+                        @endif
                     </div>
-                @else
-                    <p class="muted">Расписание работы площадки ещё не установлено.</p>
-                @endif
+                @endforeach
             </section>
             <section class="panel app-venue-block" id="app-venue-about">
                 <header class="app-venue-block__header"><h2>{{ $venue->isCourtPage ? ($isOutdoorCourt ? 'О корте' : 'О зале') : 'О площадке' }}</h2></header>
@@ -356,21 +363,88 @@
         </div>
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
             <strong>Хочешь здесь играть?</strong>
-            <p>Укажи время и подходящий формат. MSKBA сохранит твою подписку без обязательств.</p>
-            @if($viewerHasVenueInterest)
-                <a class="button primary full" href="{{ route('play-intents.mine') }}">Вы подписаны</a>
-            @else
-                <button type="button" class="button primary full" data-play-intent-open data-venue-interest-action
-                    @disabled(!$canStartInterest)>Хочу здесь играть</button>
-            @endif
+            <p>Выбери зал и время для аренды или сохрани эту площадку в избранном.</p>
+            <button type="button" class="button primary full" data-venue-choice-open
+                @disabled(!$canStartInterest)>Хочу здесь играть</button>
             <a class="button secondary full" href="{{ $createEventUrl }}" data-venue-create-event-link>Создать мероприятие</a>
         </aside>
     </div>
 </section>
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
+<dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog
+    aria-labelledby="app-venue-choice-title">
+    <div class="app-venue-overlay__header">
+        <h2 id="app-venue-choice-title">Отличный выбор!</h2>
+        <button type="button" data-venue-choice-close aria-label="Закрыть">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
+        </button>
+    </div>
+    <div class="app-venue-choice-dialog__body mskba-scroll">
+    <p class="muted">Расскажи, что именно ты хочешь сделать на этой площадке.</p>
+    <div class="app-venue-choice-dialog__options">
+        <details data-venue-choice-rental>
+            <summary>Аренда площадки</summary>
+            <div class="app-venue-choice-dialog__option-body">
+                <p>Выбери зал, затем дату и свободные интервалы. После выбора времени войди в аккаунт или зарегистрируйся, если ещё не авторизован, и пройди обычное оформление и подтверждение аренды.</p>
+                <label class="field-group" for="app-venue-choice-court">Зал или корт
+                    <span class="select-control">
+                        <select id="app-venue-choice-court" data-venue-choice-court required>
+                            @if(!$venue->isCourtPage && count($venue->courts) > 1)
+                                <option value="">Выберите зал или корт</option>
+                            @endif
+                            @foreach($venue->courts as $court)
+                                <option value="{{ $court['id'] }}"
+                                    @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($venue->courts) === 1)>{{ $court['name'] }}</option>
+                            @endforeach
+                        </select>
+                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                    </span>
+                </label>
+                <p class="error" data-venue-choice-error role="alert" hidden>Выбери зал, чтобы посмотреть его расписание.</p>
+                <button type="button" class="button primary" data-venue-choice-date>Выбрать дату</button>
+            </div>
+        </details>
+        <details data-venue-choice-favorite>
+            <summary>Добавить в избранное</summary>
+            <div class="app-venue-choice-dialog__option-body">
+                <p>Сохрани площадку, чтобы быстро к ней возвращаться. Для авторизованных пользователей это также прямой интерес в списке «Площадкой интересуются».</p>
+            </div>
+        </details>
+    </div>
+    <p class="app-venue-choice-dialog__footnote">Расширенные условия поиска игр и похожих площадок настраиваются в <a href="{{ route('play-intents.mine') }}">«Моих подписках»</a>.</p>
+    </div>
+</dialog>
+<dialog class="app-venue-overlay app-venue-favorite-dialog" data-venue-favorite-dialog
+    data-venue-id="{{ $venue->id }}"
+    data-status-url="{{ route('favorites.venue-statuses') }}"
+    data-toggle-url="{{ route('favorites.toggle') }}"
+    data-authenticated="{{ auth()->check() ? '1' : '0' }}"
+    aria-labelledby="app-venue-favorite-title">
+    <div class="app-venue-overlay__header">
+        <div class="app-venue-favorite-dialog__heading">
+            <button type="button" class="app-venue-favorite-dialog__back" data-venue-favorite-back>← Назад</button>
+            <h2 id="app-venue-favorite-title">Площадка в избранном</h2>
+        </div>
+        <button type="button" data-venue-favorite-close aria-label="Закрыть">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
+        </button>
+    </div>
+    <div class="app-venue-favorite-dialog__body mskba-scroll">
+    <p data-venue-favorite-description>Сохрани площадку в избранном, чтобы легко возвращаться к её расписанию.</p>
+    @guest
+        <p class="muted">Для сохранения избранного потребуется вход в аккаунт. После авторизации вернёмся к подтверждению.</p>
+    @endguest
+    <p class="error" data-venue-favorite-error role="alert" hidden></p>
+    </div>
+    <div class="app-venue-overlay__actions">
+        <button type="button" class="button secondary" data-venue-favorite-close>Отмена</button>
+        <button type="button" class="button primary" data-venue-favorite-submit disabled>Проверяем…</button>
+    </div>
+</dialog>
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
     data-day-url="{{ route('venues.schedule.day', $venue->id) }}"
-    data-court-id="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : ($venue->courts[0]['id'] ?? '') }}"
+    data-court-id="{{ $venue->isCourtPage ? $venue->selectedCourt['id'] : (count($venue->courts) === 1 ? $venue->courts[0]['id'] : '') }}"
+    data-court-name="{{ $venue->isCourtPage ? $venue->selectedCourt['name'] : (count($venue->courts) === 1 ? $venue->courts[0]['name'] : '') }}"
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>
@@ -410,11 +484,7 @@
     </div>
     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
     <a class="button secondary" href="{{ route('venues.interest-group', ['venue' => $venue->id]) }}">Перейти на страницу группы</a>
-    @if($viewerHasVenueInterest)
-        <a class="button primary" href="{{ route('play-intents.mine') }}">Вы подписаны</a>
-    @else
-        <button type="button" class="button primary" data-venue-interest-action data-play-intent-open>Тоже хочу здесь играть</button>
-    @endif
+    <button type="button" class="button primary" data-venue-choice-open>Тоже хочу здесь играть</button>
 </dialog>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">

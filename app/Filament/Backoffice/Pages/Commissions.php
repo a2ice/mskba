@@ -27,8 +27,8 @@ final class Commissions extends Page implements HasTable
 
     protected static ?string $slug = 'commissions';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-receipt-percent';
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
-    protected static ?int $navigationSort = 3;
+    protected static string|\UnitEnum|null $navigationGroup = 'Аренда и документы';
+    protected static ?int $navigationSort = 6;
     protected static ?string $navigationLabel = 'Комиссии';
     protected string $view = 'filament.backoffice.pages.commissions';
 

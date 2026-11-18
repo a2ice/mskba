@@ -34,9 +34,9 @@ final class ContractResource extends Resource
 {
     protected static ?string $model = Contract::class;
     protected static ?string $recordTitleAttribute = 'name';
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Аренда и документы';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string { return 'Контракты'; }
     public static function getModelLabel(): string { return 'контракт'; }

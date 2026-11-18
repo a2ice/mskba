@@ -56,6 +56,8 @@ final class VenueBackofficeEditor
             ...app(VenueRentalCashbackSettings::class)->formFields($venue),
             ...app(VenueRentalPolicyEditor::class)->fields($venue),
             'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
+            'banner_display_mode' => $venue->banner_display_mode ?: 'top',
+            'banner_overlay_color' => $venue->bannerOverlayCss(),
             'tags_text' => $venue->tags->pluck('name')->implode(', '),
             'amenity_ids' => $venue->amenities->pluck('id')->all(),
             'characteristics' => [
@@ -181,6 +183,22 @@ final class VenueBackofficeEditor
                 'raw_address' => $rawAddress !== '' ? $rawAddress : null,
                 'location_id' => $location?->id,
             ];
+            // Banner presentation is backoffice-owned; account uploads still
+            // follow the existing moderation and venue revision pipeline.
+            if (array_key_exists('banner_display_mode', $data)) {
+                $mode = (string) $data['banner_display_mode'];
+                if (! in_array($mode, ['top', 'background'], true)) {
+                    throw ValidationException::withMessages([
+                        'data.banner_display_mode' => 'Выберите допустимый вариант размещения баннера.',
+                    ]);
+                }
+                $attributes['banner_display_mode'] = $mode;
+            }
+            if (array_key_exists('banner_overlay_color', $data)) {
+                // Store CSS literally. The public view passes this value through
+                // an escaped data attribute and a single style.setProperty call.
+                $attributes['banner_overlay_color'] = (string) ($data['banner_overlay_color'] ?? '');
+            }
             // Avoid changing publication or the internal note when a caller
             // submits only the fields it knows about.
             if (array_key_exists('is_published', $data)) {

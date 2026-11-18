@@ -9,6 +9,7 @@ use App\Filament\Backoffice\Pages\ProjectUpdatesAgentAccess;
 use App\Filament\Backoffice\Pages\RestApiExplorer;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
+use App\Filament\Backoffice\Resources\AccountInvitations\AccountInvitationResource;
 use App\Filament\Backoffice\Resources\Contracts\ContractResource;
 use App\Filament\Backoffice\Resources\ContractTemplates\ContractTemplateResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
@@ -49,12 +50,16 @@ use App\Filament\Backoffice\Resources\VenueRentalBookings\VenueRentalBookingReso
 use App\Filament\Backoffice\Resources\RentalInvoiceTemplates\RentalInvoiceTemplateResource;
 use App\Filament\Backoffice\Resources\VenueRentalInterests\VenueRentalInterestResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Models\User;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
-use Filament\Pages\Dashboard;
+use App\Filament\Backoffice\Pages\BackofficeDashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -80,6 +85,18 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
+            ->navigationGroups([
+                NavigationGroup::make('Контент')->collapsed(),
+                NavigationGroup::make('Сайт и дизайн')->collapsed(),
+                NavigationGroup::make('Пользователи и доступ')->collapsed(),
+                NavigationGroup::make('Площадки')->collapsed(),
+                NavigationGroup::make('География')->collapsed(),
+                NavigationGroup::make('Аренда и документы')->collapsed(),
+                NavigationGroup::make('Соревнования')->collapsed(),
+                NavigationGroup::make('Магазин')->collapsed(),
+                NavigationGroup::make('Лояльность')->collapsed(),
+                NavigationGroup::make('Поддержка')->collapsed(),
+            ])
             ->navigationItems([
                 NavigationItem::make('Материалы и FAQ')
                     ->group('Контент')
@@ -88,6 +105,60 @@ final class BackofficePanelProvider extends PanelProvider
                     ->url(fn (): string => route('admin.content'))
                     ->isActiveWhen(fn (): bool => request()->routeIs('admin.content', 'admin.content.*'))
                     ->visible(fn (): bool => Gate::allows('manage-content')),
+
+                NavigationItem::make('Интеграции площадок')
+                    ->key('backoffice.venue-integrations')
+                    ->group('Сайт и дизайн')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->sort(85)
+                    ->url(fn (): string => VenueResource::getUrl())
+                    ->visible(fn (): bool => VenueResource::canViewAny()
+                        && ($user = auth('web')->user()) instanceof User
+                        && app(BackofficePermissionManager::class)->allows(
+                            $user, Permission::BACKOFFICE_VENUE_INTEGRATIONS_VIEW,
+                        )),
+                NavigationItem::make('OpenAPI 3.1 JSON')
+                    ->key('backoffice.openapi')
+                    ->group('Сайт и дизайн')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->sort(91)
+                    ->url(fn (): string => route('backoffice.rest-api.openapi'), true)
+                    ->visible(fn (): bool => RestApiExplorer::canAccess()),
+                // Production does not enable Swagger / GraphiQL: these links
+                // lead to the separately authenticated development environment.
+                NavigationItem::make('REST API · Swagger (DEV)')
+                    ->key('backoffice.dev.swagger')
+                    ->group('Сайт и дизайн')
+                    ->icon('heroicon-o-command-line')
+                    ->sort(90)
+                    ->url('https://dev.mskba.ru/backoffice/rest-api-explorer', true)
+                    ->visible(fn (): bool => app()->environment('production')
+                        && ($user = auth('web')->user()) instanceof User
+                        && app(BackofficePermissionManager::class)->allows(
+                            $user, Permission::BACKOFFICE_REST_API_EXPLORER_VIEW,
+                        )),
+                NavigationItem::make('OpenAPI 3.1 JSON (DEV)')
+                    ->key('backoffice.dev.openapi')
+                    ->group('Сайт и дизайн')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->sort(91)
+                    ->url('https://dev.mskba.ru/backoffice/rest-api/openapi.json', true)
+                    ->visible(fn (): bool => app()->environment('production')
+                        && ($user = auth('web')->user()) instanceof User
+                        && app(BackofficePermissionManager::class)->allows(
+                            $user, Permission::BACKOFFICE_REST_API_EXPLORER_VIEW,
+                        )),
+                NavigationItem::make('GraphQL Explorer (DEV)')
+                    ->key('backoffice.dev.graphql')
+                    ->group('Сайт и дизайн')
+                    ->icon('heroicon-o-code-bracket-square')
+                    ->sort(92)
+                    ->url('https://dev.mskba.ru/backoffice/graphql-explorer', true)
+                    ->visible(fn (): bool => app()->environment('production')
+                        && ($user = auth('web')->user()) instanceof User
+                        && app(BackofficePermissionManager::class)->allows(
+                            $user, Permission::BACKOFFICE_GRAPHQL_EXPLORER_VIEW,
+                        )),
             ])
             ->resources([
                 AccountDashboardWidgetResource::class,
@@ -118,6 +189,7 @@ final class BackofficePanelProvider extends PanelProvider
                 MetroStationResource::class,
                 VenueDuplicateResource::class,
                 BackofficeUserResource::class,
+                AccountInvitationResource::class,
                 SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,
                 ShopCategoryResource::class,
@@ -133,6 +205,10 @@ final class BackofficePanelProvider extends PanelProvider
                 VenueRewardOverrideResource::class,
             ])
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.code-editor-styles'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.backoffice.navigation-state'))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => new HtmlString(
+                '<link rel="stylesheet" href="'.e(asset('css/backoffice-dashboard.css').'?v=20261118-3').'">'
+            ))
             ->renderHook(PanelsRenderHook::HEAD_END, fn () => request()->routeIs('admin.content', 'admin.content.*')
                 ? view('backoffice.content.head')
                 : '')
@@ -175,7 +251,7 @@ final class BackofficePanelProvider extends PanelProvider
 })();
 </script>
 HTML))
-            ->pages([Dashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class, ProjectUpdatesAgentAccess::class])
+            ->pages([BackofficeDashboard::class, Commissions::class, GraphQLExplorer::class, RestApiExplorer::class, PageBuilderAgentAccess::class, ProjectUpdatesAgentAccess::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
                 StartSession::class, AuthenticateSession::class,

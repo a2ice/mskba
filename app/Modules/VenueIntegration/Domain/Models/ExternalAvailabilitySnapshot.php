@@ -22,6 +22,12 @@ final class ExternalAvailabilitySnapshot extends Model
 {
     public $timestamps = false;
 
+    // PostgreSQL timestamptz must receive an explicit UTC offset. Laravel's
+    // default Y-m-d H:i:s silently loses it; on a Europe/Moscow DB session
+    // every fresh observation gets stored three hours in the past and
+    // immediately fails the safety freshness gate.
+    protected $dateFormat = 'Y-m-d H:i:sP';
+
     protected static function booted(): void
     {
         static::updating(static function (): never {

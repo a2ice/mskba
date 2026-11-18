@@ -24,9 +24,9 @@ use Illuminate\Database\Eloquent\Model;
 final class SiteMediaAssetResource extends Resource
 {
     protected static ?string $model = SiteMediaAsset::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Сайт';
+    protected static string|\UnitEnum|null $navigationGroup = 'Сайт и дизайн';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-photo';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 7;
 
     public static function getNavigationLabel(): string { return 'Медиафайлы'; }
     public static function getModelLabel(): string { return 'изображение сайта'; }

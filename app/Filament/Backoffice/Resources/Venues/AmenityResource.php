@@ -23,9 +23,9 @@ use Illuminate\Database\Eloquent\Model;
 final class AmenityResource extends Resource
 {
     protected static ?string $model = Amenity::class;
-    protected static string|\UnitEnum|null $navigationGroup = 'Контент';
+    protected static string|\UnitEnum|null $navigationGroup = 'Площадки';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-check-badge';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string { return 'Удобства площадок'; }
     public static function getModelLabel(): string { return 'удобство'; }

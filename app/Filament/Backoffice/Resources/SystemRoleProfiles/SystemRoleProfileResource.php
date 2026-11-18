@@ -22,8 +22,9 @@ use Illuminate\Validation\ValidationException;
 final class SystemRoleProfileResource extends Resource
 {
     protected static ?string $model = SystemRolePermissionProfile::class;
+    protected static string|\UnitEnum|null $navigationGroup = 'Пользователи и доступ';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string { return 'Профили системных ролей'; }
     public static function getModelLabel(): string { return 'профиль роли'; }

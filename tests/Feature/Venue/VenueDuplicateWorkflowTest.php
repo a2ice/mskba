@@ -3,6 +3,12 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Venue\Application\Services\VenueDuplicateContractRights;
+use App\Modules\Venue\Application\UseCases\MergeVenueDuplicateHandler;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -386,6 +392,283 @@ class VenueDuplicateWorkflowTest extends TestCase
         $this->assertDatabaseMissing('venues', [
             'id' => $duplicate->id,
             'canonical_venue_id' => $duplicate->id,
+        ]);
+    }
+
+
+    public function test_two_confirmed_venues_can_be_linked_and_noncanonical_is_hidden_without_deletion(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $canonical = $this->venue([
+            'name' => 'Кампус на Яхромской',
+            'alias' => 'campus-yakhromskaya',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'is_published' => true,
+        ]);
+        $duplicate = $this->venue([
+            'name' => 'Кампус на Яхромской',
+            'alias' => 'campus-yakhromskaya-copy',
+            'status' => VenueStatusEnum::CONFIRMED,
+            'is_published' => true,
+        ]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => $canonical->id,
+            'duplicate_venue_id' => $duplicate->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 100,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.duplicates.merge', $candidate), [
+                'canonical_venue_id' => $canonical->id,
+                'duplicate_venue_id' => $duplicate->id,
+            ])
+            ->assertRedirect(route('admin.venues.duplicates'));
+
+        $this->assertDatabaseHas('venues', [
+            'id' => $canonical->id,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'canonical_venue_id' => null,
+            'is_published' => true,
+        ]);
+        $this->assertDatabaseHas('venues', [
+            'id' => $duplicate->id,
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'canonical_venue_id' => $canonical->id,
+            'is_published' => false,
+        ]);
+        $this->assertDatabaseHas('venue_duplicates', [
+            'id' => $candidate->id,
+            'status' => VenueDuplicateStatusEnum::MERGED->value,
+        ]);
+
+        $this->assertFalse($duplicate->fresh()->isPubliclyVisible());
+        $this->get(route('venues.show', $duplicate->routeIdentifier()))
+            ->assertRedirect(route('venues.show', $canonical->routeIdentifier()));
+        $this->assertDatabaseCount('venues', 2);
+    }
+
+    public function test_confirmed_duplicate_with_an_event_is_not_hidden(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $canonical = $this->venue([
+            'name' => 'Кампус А',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $duplicate = $this->venue([
+            'name' => 'Кампус Б',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        Event::factory()->create(['venue_id' => $duplicate->id]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => $canonical->id,
+            'duplicate_venue_id' => $duplicate->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 100,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.duplicates.merge', $candidate), [
+                'canonical_venue_id' => $canonical->id,
+                'duplicate_venue_id' => $duplicate->id,
+            ])
+            ->assertRedirect(route('admin.venues.duplicates'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('venues', [
+            'id' => $duplicate->id,
+            'canonical_venue_id' => null,
+            'is_published' => true,
+        ]);
+        $this->assertDatabaseHas('venue_duplicates', [
+            'id' => $candidate->id,
+            'status' => VenueDuplicateStatusEnum::PENDING->value,
+        ]);
+    }
+
+    public function test_proximity_detector_does_not_reopen_manually_resolved_pair(): void
+    {
+        $canonical = $this->venue(['status' => VenueStatusEnum::CONFIRMED]);
+        $duplicate = $this->venue(['status' => VenueStatusEnum::CONFIRMED]);
+        $candidate = VenueDuplicate::query()->create([
+            'venue_id' => min($canonical->id, $duplicate->id),
+            'duplicate_venue_id' => max($canonical->id, $duplicate->id),
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::MERGED,
+            'score' => 100,
+        ]);
+
+        app(VenueDuplicateDetector::class)->detectFor($duplicate);
+        $candidate->refresh();
+        $this->assertSame(VenueDuplicateStatusEnum::MERGED, $candidate->status);
+        $this->assertSame(VenueDuplicateMatchTypeEnum::MANUAL, $candidate->matched_by);
+    }
+
+
+    public function test_inactive_historical_contract_does_not_block_duplicate_merge(): void
+    {
+        [$main, $duplicate, $pair] = $this->confirmedDuplicatePair();
+        $historical = $this->venueContract($duplicate, 'primary_manager', ContractStatusEnum::INACTIVE);
+
+        app(MergeVenueDuplicateHandler::class)->handle(
+            $pair, $main->id, $duplicate->id, null,
+        );
+
+        $this->assertSame($main->id, $duplicate->fresh()->canonical_venue_id);
+        $this->assertFalse($duplicate->fresh()->is_published);
+        $this->assertSame($duplicate->id, $historical->fresh()->scope_id);
+        $this->assertSame(ContractStatusEnum::INACTIVE, $historical->contract->fresh()->status);
+    }
+
+    public function test_explicit_retirement_preserves_canonical_manager_and_contract_history(): void
+    {
+        [$main, $duplicate, $pair] = $this->confirmedDuplicatePair();
+        $superadmin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $mainManager = $this->venueContract($main, 'primary_manager');
+        $oldManager = $this->venueContract($duplicate, 'primary_manager');
+
+        // Default never silently revokes or transfers contract rights.
+        try {
+            app(MergeVenueDuplicateHandler::class)->handle(
+                $pair, $main->id, $duplicate->id, $superadmin,
+            );
+            $this->fail('Expected an explicit contract resolution choice.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('договорные права', $e->getMessage());
+        }
+        $this->assertNull($duplicate->fresh()->canonical_venue_id);
+        $this->assertSame(ContractStatusEnum::ACTIVE, $oldManager->contract->fresh()->status);
+
+        app(MergeVenueDuplicateHandler::class)->handle(
+            $pair, $main->id, $duplicate->id, $superadmin, VenueDuplicateContractRights::RETIRE,
+        );
+
+        $this->assertSame($main->id, $duplicate->fresh()->canonical_venue_id);
+        $this->assertFalse($duplicate->fresh()->is_published);
+        $this->assertSame(ContractStatusEnum::ACTIVE, $mainManager->contract->fresh()->status);
+        $this->assertSame(ContractStatusEnum::INACTIVE, $oldManager->contract->fresh()->status);
+        $this->assertSame($duplicate->id, $oldManager->fresh()->scope_id);
+        $this->assertNotNull($oldManager->contract->fresh()->expires_at);
+        $this->assertDatabaseHas('venue_duplicates', [
+            'id' => $pair->id, 'status' => VenueDuplicateStatusEnum::MERGED->value,
+        ]);
+        $log = AuditLog::query()->where('auditable_type', Venue::class)
+            ->where('auditable_id', $duplicate->id)->where('event', 'merged')->firstOrFail();
+        $this->assertSame('retire', $log->metadata['contract_resolution']);
+        $this->assertContains($oldManager->id, $log->metadata['resolved_contract_membership_ids']);
+    }
+
+    public function test_contract_transfer_to_main_preserves_active_role_and_contract_id(): void
+    {
+        [$main, $duplicate, $pair] = $this->confirmedDuplicatePair();
+        $superadmin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $membership = $this->venueContract($duplicate, 'booking_operator');
+
+        app(MergeVenueDuplicateHandler::class)->handle(
+            $pair, $main->id, $duplicate->id, $superadmin, VenueDuplicateContractRights::TRANSFER,
+        );
+
+        $this->assertSame($main->id, $membership->fresh()->scope_id);
+        $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->fresh()->status);
+        $this->assertSame($main->id, $duplicate->fresh()->canonical_venue_id);
+        $this->assertSame($membership->contract_id, $membership->fresh()->contract_id);
+    }
+
+    public function test_conflicting_primary_managers_abort_transfer_atomically(): void
+    {
+        [$main, $duplicate, $pair] = $this->confirmedDuplicatePair();
+        $superadmin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $this->venueContract($main, 'primary_manager');
+        $old = $this->venueContract($duplicate, 'primary_manager');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('пересекающаяся активная роль');
+        try {
+            app(MergeVenueDuplicateHandler::class)->handle(
+                $pair, $main->id, $duplicate->id, $superadmin, VenueDuplicateContractRights::TRANSFER,
+            );
+        } finally {
+            $this->assertNull($duplicate->fresh()->canonical_venue_id);
+            $this->assertSame($duplicate->id, $old->fresh()->scope_id);
+            $this->assertSame(ContractStatusEnum::ACTIVE, $old->contract->fresh()->status);
+            $this->assertSame(VenueDuplicateStatusEnum::PENDING, $pair->fresh()->status);
+        }
+    }
+
+    public function test_only_superadmin_can_retire_other_users_active_venue_rights(): void
+    {
+        [$main, $duplicate, $pair] = $this->confirmedDuplicatePair();
+        $admin = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::ADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $old = $this->venueContract($duplicate, 'primary_manager');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('только суперадминистратору');
+        try {
+            app(MergeVenueDuplicateHandler::class)->handle(
+                $pair, $main->id, $duplicate->id, $admin, VenueDuplicateContractRights::RETIRE,
+            );
+        } finally {
+            $this->assertNull($duplicate->fresh()->canonical_venue_id);
+            $this->assertSame(ContractStatusEnum::ACTIVE, $old->contract->fresh()->status);
+        }
+    }
+
+    /** @return array{Venue,Venue,VenueDuplicate} */
+    private function confirmedDuplicatePair(): array
+    {
+        $main = $this->venue(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        $duplicate = $this->venue(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
+        $pair = VenueDuplicate::query()->create([
+            'venue_id' => $main->id,
+            'duplicate_venue_id' => $duplicate->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::MANUAL,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 100,
+        ]);
+        return [$main, $duplicate, $pair];
+    }
+
+    private function venueContract(
+        Venue $venue,
+        string $role,
+        ContractStatusEnum $status = ContractStatusEnum::ACTIVE,
+    ): ContractMembership {
+        $user = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $contract = Contract::query()->create([
+            'family' => 'membership',
+            'status' => $status,
+            'assigner' => 'flow',
+            'starts_at' => now()->subDay(),
+        ]);
+        return ContractMembership::query()->create([
+            'contract_id' => $contract->id,
+            'scope_type' => 'venue',
+            'scope_id' => $venue->id,
+            'user_id' => $user->id,
+            'access_level' => $role,
         ]);
     }
 
