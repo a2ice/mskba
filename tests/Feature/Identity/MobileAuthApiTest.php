@@ -50,7 +50,7 @@ final class MobileAuthApiTest extends TestCase
 
         $stored = $user->tokens()->sole();
         $this->assertSame('mskba-client:test-ios', $stored->name);
-        $this->assertSame(['profile:read', 'auth:logout'], $stored->abilities);
+        $this->assertSame(['profile:read', 'auth:logout', 'account:delete'], $stored->abilities);
         $this->assertNotSame($result['access_token'], $stored->token);
         $this->assertNotNull($stored->expires_at);
         $this->assertTrue($stored->expires_at->greaterThan(now()->addDays(29)));
@@ -178,5 +178,34 @@ final class MobileAuthApiTest extends TestCase
         $token = $user->createToken('restricted', ['auth:logout'])->plainTextToken;
         $this->withToken($token)->getJson(route('api.v1.me'))->assertForbidden();
         $this->withToken($token)->postJson(route('api.v1.auth.logout'))->assertOk();
+    }
+    public function test_delete_my_account_revokes_all_devices_and_login(): void
+    {
+        $user = $this->account();
+        $one = $this->login()['access_token'];
+        $two = $this->login()['access_token'];
+
+        $this->withToken($one)->deleteJson(route('api.v1.me.destroy'))
+            ->assertOk()->assertJsonPath('deleted', true);
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+        $this->assertNull(\Laravel\Sanctum\PersonalAccessToken::findToken($one));
+        $this->assertNull(\Laravel\Sanctum\PersonalAccessToken::findToken($two));
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($two)->getJson(route('api.v1.me'))->assertUnauthorized();
+        $this->postJson(route('api.v1.auth.login'), [
+            'login' => 'mobile_tester', 'password' => 'Secret#pass123',
+        ])->assertUnauthorized();
+    }
+
+    public function test_delete_my_account_requires_bearer_and_permission(): void
+    {
+        $user = $this->account();
+        $this->deleteJson(route('api.v1.me.destroy'))->assertUnauthorized();
+        $restricted = $user->createToken('read-only', ['profile:read'])->plainTextToken;
+        $this->withToken($restricted)->deleteJson(route('api.v1.me.destroy'))->assertForbidden();
+        $this->assertNotSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseCount('personal_access_tokens', 1);
     }
 }

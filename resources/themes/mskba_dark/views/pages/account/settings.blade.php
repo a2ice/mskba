@@ -202,6 +202,45 @@
             </form>
         </section>
 
+        <section class="account-settings-card" aria-labelledby="legacy-delete-account-title">
+            <h2 id="legacy-delete-account-title" class="h3 mb-3">Удаление аккаунта</h2>
+            <p>Профиль исчезнет с сайта, доступ будет закрыт на всех устройствах. История заявок сохранится. Для восстановления обратитесь к администратору.</p>
+            <form action="{{ route('account.destroy') }}" method="POST" data-account-delete-form>
+                @csrf
+                @method('DELETE')
+                <button type="button" class="btn btn--danger btn--sm" data-account-delete-open>Удалить аккаунт</button>
+            </form>
+        </section>
+
+        <dialog class="account-settings-card" data-account-delete-dialog
+                aria-labelledby="legacy-delete-dialog-title" aria-describedby="legacy-delete-dialog-description"
+                style="width:min(440px,calc(100% - 32px));max-height:90dvh;padding:24px;border-radius:16px">
+            <h2 class="h3" id="legacy-delete-dialog-title">Удаление аккаунта</h2>
+            <p id="legacy-delete-dialog-description">Вы уверены, что хотите удалить аккаунт? Доступ будет закрыт на всех устройствах.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn--secondary btn--sm" data-account-delete-cancel>Отмена</button>
+                <button type="button" class="btn btn--danger btn--sm" data-account-delete-confirm>Да, удалить аккаунт</button>
+            </div>
+        </dialog>
+        <script>
+        (() => {
+            const dialog = document.querySelector('[data-account-delete-dialog]');
+            const form = document.querySelector('[data-account-delete-form]');
+            const opener = document.querySelector('[data-account-delete-open]');
+            if (!dialog || !form || !opener || !dialog.showModal) return;
+            opener.addEventListener('click', () => dialog.showModal());
+            dialog.querySelectorAll('[data-account-delete-cancel]').forEach(button =>
+                button.addEventListener('click', () => dialog.close()));
+            dialog.addEventListener('click', event => {
+                if (event.target === dialog) dialog.close();
+            });
+            dialog.querySelector('[data-account-delete-confirm]').addEventListener('click', event => {
+                event.currentTarget.disabled = true;
+                form.submit();
+            });
+        })();
+        </script>
+
     @endif
 
 @endsection

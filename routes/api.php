@@ -13,6 +13,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\Api\V1\HomepageVenueMapContr
 use App\Modules\Tournament\Presentation\Http\Controllers\Api\V1\HomepageTournamentsSceneController;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnsureActiveMobileApiUser;
 use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileAuthController;
+use App\Modules\Identity\Presentation\Http\Controllers\Api\V1\MobileDeleteAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/integrations/telegram/webhook', TelegramWebhookController::class)
@@ -74,6 +75,10 @@ Route::middleware(['auth:sanctum', EnsureActiveMobileApiUser::class])->group(fun
     Route::get('/v1/me', [MobileAuthController::class, 'me'])
         ->middleware('throttle:60,1')
         ->name('api.v1.me');
+
+    Route::delete('/v1/me', MobileDeleteAccountController::class)
+        ->middleware('throttle:5,1')
+        ->name('api.v1.me.destroy');
 
     Route::post('/v1/auth/logout', [MobileAuthController::class, 'logout'])
         ->middleware('throttle:20,1')
