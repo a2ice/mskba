@@ -110,9 +110,14 @@ final class CreateEventHandler
             $endsAt = $localStart->addMinutes($durationMinutes)->setTimezone($databaseTimezone);
 
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
-
             $bookingDeferred = (bool) ($data['defer_booking'] ?? false);
+
+            // Planning an event must not imply a reserved or available slot.
+            // Availability is authoritative only when actually requesting a booking.
+            // The booking workflow will recheck availability under its own locks.
+            if (! $bookingDeferred) {
+                $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
+            }
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
                 : VenueBookingStatusEnum::PENDING;

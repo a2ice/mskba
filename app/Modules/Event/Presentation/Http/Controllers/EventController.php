@@ -143,6 +143,10 @@ final class EventController extends Controller
     ): Response {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'venue_id' => ['required_with:venue_court_id', 'nullable', 'integer', 'exists:venues,id'],
+            'venue_court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
+                ->where('venue_id', (int) $request->input('venue_id'))
+                ->whereNull('deleted_at')],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
@@ -152,6 +156,8 @@ final class EventController extends Controller
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle()->load('courts'),
+            'selectedVenueId' => $validated['venue_id'] ?? null,
+            'selectedCourtId' => $validated['venue_court_id'] ?? null,
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,

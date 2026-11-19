@@ -56,9 +56,9 @@
                 <label for="eventVenue">Площадка</label>
                 <span class="select-control">
                     <select id="eventVenue" name="venue_id" required data-event-venue>
-                        <option value="" disabled @selected(!old('venue_id'))>Выберите площадку</option>
+                        <option value="" disabled @selected(!old('venue_id', $selectedVenueId))>Выберите площадку</option>
                         @foreach($venues as $venue)
-                            <option value="{{ $venue->id }}" @selected((string) old('venue_id') === (string) $venue->id)>
+                            <option value="{{ $venue->id }}" @selected((string) old('venue_id', $selectedVenueId) === (string) $venue->id)>
                                 {{ $venue->name }}{{ $venue->raw_address ? ' — '.$venue->raw_address : '' }}
                             </option>
                         @endforeach
@@ -74,7 +74,7 @@
                         @foreach($venues as $venue)
                             @foreach($venue->courts as $court)
                                 <option value="{{ $court->id }}" data-venue-id="{{ $venue->id }}"
-                                    @selected((string) old('venue_court_id') === (string) $court->id)>{{ $court->name }}</option>
+                                    @selected((string) old('venue_court_id', $selectedCourtId) === (string) $court->id)>{{ $court->name }}</option>
                             @endforeach
                         @endforeach
                     </select>
@@ -185,11 +185,11 @@
                 <textarea id="eventDescription" rows="4" maxlength="5000" name="description">{{ old('description') }}</textarea>
             </div>
             <h2>Планирование аренды</h2>
-            <p>Если у площадки предусмотрена аренда, мероприятие будет опубликовано без бронирования. Предзаявка — необязательный сигнал площадке для планирования и переписки, она не занимает слот.</p>
+            <p>Если для площадки настроена аренда, создание мероприятия само по себе не бронирует время. Предварительный интерес можно отправить отдельно — он не занимает слот и не гарантирует аренду.</p>
             <input type="hidden" name="send_pre_request" value="0">
             <label class="check-label">
                 <input type="checkbox" name="send_pre_request" value="1"
-                    @checked((string) old('send_pre_request', '1') === '1')>
+                    @checked((string) old('send_pre_request', '0') === '1')>
                 <span>Сообщить площадке о предварительном интересе</span>
             </label>
             <div class="app-rental-pricing__actions">
