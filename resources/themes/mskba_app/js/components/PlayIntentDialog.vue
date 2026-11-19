@@ -484,7 +484,25 @@ function onClick(e){
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
-    editingId.value=null;step.value=accountCreate?'type':'form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
+    editingId.value=null;step.value=accountCreate?'type':'form';
+    manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';
+    selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;
+    selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';
+    venueSearch.value=selectedVenueName.value;venueMenu.value=false;venueSuggestions.value=[];
+    latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';
+    similar.value=false;radius.value=10;excludedVenues.value=[];excludedSearch.value='';excludedSuggestions.value=[];
+    excludedMenu.value=false;venueNotice.value='';
+    cadence.value='flexible';dayIds.value=[];dates.value=[];dateMode.value='range';dateInput.value='';period.value='14';
+    formats.value=[];duration.value='';access.value='any';venueKind.value='any';
+    for(const key of Object.keys(priority))delete priority[key];
+    for(const key of Object.keys(windows))delete windows[key];
+    windows.all=[{part:'any',from:'',to:''}];
+    showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;
+    gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];
+    interestName.value=suggestedName.value;requestId=null;success.value=null;error.value='';errors.value={};
+    expanded.value=false;matchingOpen.value=false;matchingVenues.value=[];matchingError.value='';
+    void openDialog().then(()=>void syncFavorite());
+}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
