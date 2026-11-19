@@ -8,7 +8,6 @@
     const description=modal.querySelector('[data-venue-favorite-description]');
     const error=modal.querySelector('[data-venue-favorite-error]');
     const submit=modal.querySelector('[data-venue-favorite-submit]');
-    const cancel=modal.querySelector('[data-venue-favorite-cancel]');
     let state='unknown', mode='info', busy=false;
     const request=async(url,method='GET',body=null)=>{
         const res=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{
@@ -31,12 +30,11 @@
     const fail=message=>{error.textContent=message||'';error.hidden=!message;};
     const show=(nextMode)=>{
         mode=nextMode;fail('');
-        title.textContent=mode==='info'?'Площадка добавлена в избранное':'Убрать площадку из избранного?';
+        title.textContent=mode==='info'?'Площадка теперь в избранном':'Убрать из избранного?';
         description.textContent=mode==='info'
             ?'Добавь площадку в избранное, чтобы вернуться к ней позже.'
-            :'Вы уверены, что хотите убрать площадку из избранного? Базовый интерес будет приостановлен, а настроенные вами интересы останутся в личном кабинете.';
-        cancel.hidden=mode==='info';
-        submit.textContent=mode==='info'?'Понятно':'Убрать из избранного';
+            :'Вы уверены, что хотите убрать площадку из избранного?';
+        submit.textContent=mode==='info'?'Понятно':'Убрать';
         if(!modal.open)modal.showModal();
     };
     const toggle=async()=>{
@@ -77,7 +75,6 @@
         if(busy)return;
         if(mode==='confirm')void toggle();else modal.close();
     });
-    cancel.addEventListener('click',()=>modal.close());
     modal.querySelector('[data-venue-favorite-close]').addEventListener('click',()=>modal.close());
     window.addEventListener('mskba:venue-favorite:updated',event=>{
         if(Number(event.detail?.venueId)!==id)return;
@@ -86,5 +83,6 @@
     let downOutside=false;
     modal.addEventListener('pointerdown',event=>{downOutside=event.target===modal;});
     modal.addEventListener('pointerup',event=>{if(downOutside&&event.target===modal)modal.close();downOutside=false;});
+    modal.addEventListener('pointercancel',()=>{downOutside=false;});
     void ensureStatus().catch(()=>{});
 })();
