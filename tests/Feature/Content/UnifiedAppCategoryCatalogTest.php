@@ -142,6 +142,53 @@ final class UnifiedAppCategoryCatalogTest extends TestCase
             ->assertSee('Публикации не найдены');
     }
 
+    public function test_system_updates_are_accessible_only_from_their_sidebar_category(): void
+    {
+        $owner = User::factory()->create();
+        foreach ([
+            ['title' => 'Обычная новость о турнире', 'type' => 'material', 'alias' => 'general-feed-tournament'],
+            ['title' => 'Системная запись об обновлении', 'type' => 'system_update', 'alias' => 'system-update-feed-visibility'],
+        ] as $item) {
+            ContentItem::query()->create([
+                'created_by_user_id' => $owner->id,
+                'updated_by_user_id' => $owner->id,
+                'status' => 'published',
+                'short_description' => 'Описание публикации.',
+                'full_description' => 'Текст публикации.',
+                'publish_in_feed' => true,
+                'publish_in_telegram' => false,
+                'feed_published_at' => now()->subMinute(),
+                ...$item,
+            ]);
+        }
+
+        $general = $this->get(route('news.index'))
+            ->assertOk()
+            ->assertSee('Обычная новость о турнире')
+            ->assertDontSee('Системная запись об обновлении')
+            ->assertSee('href="'.route('news.index', ['type' => 'system_update']).'"', false);
+        $this->assertStringNotContainsString('<option value="system_update"', $general->getContent());
+
+        $this->get(route('news.index', ['q' => 'Системная запись']))
+            ->assertOk()
+            ->assertDontSee('Системная запись об обновлении');
+
+        $updates = $this->get(route('news.index', ['type' => 'system_update']))
+            ->assertOk()
+            ->assertSee('Системная запись об обновлении')
+            ->assertDontSee('Обычная новость о турнире')
+            ->assertSee('name="type" value="system_update"', false);
+        $this->assertStringNotContainsString('<option value="system_update"', $updates->getContent());
+
+        $this->get(route('news.index', ['type' => 'system_update', 'q' => 'Системная запись']))
+            ->assertOk()
+            ->assertSee('Системная запись об обновлении');
+
+        $this->get(route('news.show', 'system-update-feed-visibility'))
+            ->assertOk()
+            ->assertSee('Системная запись об обновлении');
+    }
+
     public function test_event_type_filter_and_tournament_section_data_use_live_models(): void
     {
         Event::factory()->create([
