@@ -870,5 +870,6 @@ test('homepage and wizard map cards share one renderer and visual contract', () 
     assert.match(appCss, /venue-map-info-card\.css/);
     assert.match(darkCss, /venue-map-info-card\.css/);
     assert.match(sharedCss, /--venue-map-card-scale:\.9/);
+    assert.match(sharedCss, /\.mskba-venues-map__venue-card\.mskba-venue-map-card--compact\s*\{\s*--venue-map-card-scale:\.9/);
     assert.match(sharedCss, /font-size:calc\(16px \* var\(--venue-map-card-scale\)\)/);
 });

@@ -71,7 +71,7 @@
     color:#ea6400;background:#fffaf5;border-color:#ffbc86;
 }
 .mskba-venue-map-card .mskba-venues-map__card-link svg {width:17px;height:17px}
-.mskba-venue-map-card--compact {
+.mskba-venues-map__venue-card.mskba-venue-map-card--compact {
     --venue-map-card-scale:.9;
     padding:9px;border-radius:13px;
 }
