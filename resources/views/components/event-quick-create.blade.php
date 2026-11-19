@@ -277,6 +277,7 @@
 }
 
 /* Task 337: one canonical predictive venue field and native MSKBA map dialog. */
+.quick-event-dialog__field>label{font-size:14px;line-height:20px;font-weight:600}
 .quick-event-dialog__venue-selector{position:relative;min-width:0}
 .quick-event-dialog__venue-selector>input[type=search]{padding-right:48px;appearance:none;-webkit-appearance:none}
 .quick-event-dialog__venue-selector>input[type=search]::-webkit-search-cancel-button{display:none}
