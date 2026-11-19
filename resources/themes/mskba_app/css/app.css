@@ -46,6 +46,7 @@
 @import './site-media-lqip.css';
 @import './page-builder-native-lqip.css';
 @import '../../mskba_dark/css/venue-pin.css';
+@import '../../../css/venue-map-info-card.css';
 @import './venue-favorites.css';
 @import './account-favorites.css';
 @import './my-games.css';

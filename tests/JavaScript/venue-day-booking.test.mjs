@@ -780,14 +780,16 @@ test('venue map opens a preview card before selecting, with simplified instructi
     );
     assert.match(tpl, /Нажмите на площадку на карте\./);
     assert.match(tpl, /data-quick-venue-map-preview/);
-    assert.match(tpl, /data-quick-venue-map-preview-name/);
-    assert.match(tpl, /data-quick-venue-map-preview-address/);
-    assert.match(tpl, /data-quick-venue-map-preview-metro/);
-    assert.match(tpl, /data-quick-venue-map-select>Выбрать/);
+    assert.doesNotMatch(tpl, /data-quick-venue-map-preview-label/);
+    assert.doesNotMatch(tpl, /data-quick-venue-map-preview-name/);
+    assert.match(tpl, /data-quick-venue-map-preview[\s\S]*?hidden><\/div>/);
     assert.match(tpl, /data-quick-venue-map-nearby[\s\S]*?Рядом со мной/);
     assert.match(source, /marker\.events\.add\('click',\(\)=>showPreview\(venue\)\)/);
-    assert.match(source, /previewSelect\.addEventListener\('click',\(\)=>\{/);
-    assert.match(source, /selected\(cardVenue\)/);
+    assert.match(source, /renderVenueMapInfoCard\(combined,\{/);
+    assert.match(source, /showBadge:false/);
+    assert.match(source, /compact:true/);
+    assert.match(source, /onSelect:chosen=>\{selected\(chosen\);mapDialog\.close\(\);\}/);
+    assert.match(source, /fetch\(url\.href,\{headers:\{Accept:'application\/json'/);
     assert.doesNotMatch(source, /marker\.events\.add\('click',[\s\S]{0,90}selected\(venue\)/);
 });
 
@@ -827,4 +829,46 @@ test('nearby venue bounds include the user at their center and only closest pins
     assert.ok(Math.abs((maxLon+minLon)/2-user.longitude)<1e-9);
     assert.equal(nearbyVenueBounds(user,[],5),null);
     assert.equal(nearbyVenueBounds({latitude:100,longitude:0},venues),null);
+});
+
+
+test('homepage and wizard map cards share one renderer and visual contract', () => {
+    const shared = readFileSync(
+        new URL('../../resources/js/components/venue-map-info-card.js', import.meta.url), 'utf8',
+    );
+    const homepage = readFileSync(
+        new URL('../../resources/js/page-builder.js', import.meta.url), 'utf8',
+    );
+    const wizard = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    const pageCss = readFileSync(
+        new URL('../../resources/css/page-builder.css', import.meta.url), 'utf8',
+    );
+    const appCss = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/app.css', import.meta.url), 'utf8',
+    );
+    const darkCss = readFileSync(
+        new URL('../../resources/themes/mskba_dark/css/app.css', import.meta.url), 'utf8',
+    );
+    const sharedCss = readFileSync(
+        new URL('../../resources/css/venue-map-info-card.css', import.meta.url), 'utf8',
+    );
+    assert.match(shared, /export function renderVenueMapInfoCard\(/);
+    assert.match(shared, /export function attachSharedHomeVenueCards\(/);
+    assert.match(shared, /mskba-venue-map-card--compact/);
+    assert.match(shared, /venue\.image_url/);
+    assert.match(shared, /mskba-venues-map__card-address/);
+    assert.match(shared, /mskba-venues-map__card-tags/);
+    assert.match(shared, /mskba-venues-map__card-link/);
+    assert.match(shared, /data\.venueMapChoose|dataset\.venueMapChoose/);
+    assert.match(homepage, /attachSharedHomeVenueCards/);
+    assert.match(wizard, /renderVenueMapInfoCard/);
+    assert.match(wizard, /item\.preview_url/);
+    assert.match(wizard, /payload\?\.venue/);
+    assert.match(pageCss, /venue-map-info-card\.css/);
+    assert.match(appCss, /venue-map-info-card\.css/);
+    assert.match(darkCss, /venue-map-info-card\.css/);
+    assert.match(sharedCss, /--venue-map-card-scale:\.9/);
+    assert.match(sharedCss, /font-size:calc\(16px \* var\(--venue-map-card-scale\)\)/);
 });
