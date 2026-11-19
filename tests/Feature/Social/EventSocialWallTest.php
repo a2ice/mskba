@@ -26,8 +26,8 @@ final class EventSocialWallTest extends TestCase
         return Event::factory()->create([
             'organizer_actor_id' => $actor->id,
             'status' => EventStatusEnum::PUBLISHED,
-            // The generic factory chooses a random event type. A GAME requires
-            // its own primaryGame; this suite exercises the shared event wall.
+            // Keep the generic social-wall fixtures independent of the
+            // optional nested Game model.
             'type' => EventTypeEnum::TRAINING,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'starts_at' => now()->addDays(4),
