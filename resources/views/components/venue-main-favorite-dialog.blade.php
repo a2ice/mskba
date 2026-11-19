@@ -13,7 +13,7 @@
         <button type="button" data-venue-favorite-close aria-label="Закрыть">×</button>
     </header>
     <div class="venue-main-favorite-dialog__body">
-        <p data-venue-favorite-description></p>
+        <p data-venue-favorite-description>Добавь площадку в избранное, чтобы вернуться к ней позже.</p>
         <p class="venue-main-favorite-dialog__error" data-venue-favorite-error role="alert" hidden></p>
     </div>
     <footer class="venue-main-favorite-dialog__actions">
