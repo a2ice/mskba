@@ -2,6 +2,7 @@
 // MSKBA placemarks for both themes. A typed string is NOT a selected venue ID.
 import { loadYandexMaps } from '../../mskba_dark/js/core/yandex-maps.js';
 import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
+import { renderVenueMapInfoCard } from '../../../js/components/venue-map-info-card.js';
 import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-map-geo.js';
 
 (() => {
@@ -146,12 +147,6 @@ import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-ma
     // The map is a two-step chooser: marker -> information card -> "Выбрать".
     // The card mirrors the venue map card on the MSKBA homepage.
     const preview=mapDialog.querySelector('[data-quick-venue-map-preview]');
-    const previewName=mapDialog.querySelector('[data-quick-venue-map-preview-name]');
-    const previewAddress=mapDialog.querySelector('[data-quick-venue-map-preview-address]');
-    const previewMetro=mapDialog.querySelector('[data-quick-venue-map-preview-metro]');
-    const previewTags=mapDialog.querySelector('[data-quick-venue-map-preview-tags]');
-    const previewSelect=mapDialog.querySelector('[data-quick-venue-map-select]');
-    const previewClose=mapDialog.querySelector('[data-quick-venue-map-preview-close]');
     const nearbyButton=mapDialog.querySelector('[data-quick-venue-map-nearby]');
     let cardVenue=null;
     let plottedVenues=[];
@@ -167,34 +162,57 @@ import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-ma
             &&Number.isFinite(lat)&&Number.isFinite(lon)
             &&Math.abs(lat)<=90&&Math.abs(lon)<=180&&!(lat===0&&lon===0);
     };
-    const dismissPreview=()=>{cardVenue=null;preview.hidden=true;};
+    let previewEpoch=0;
+    const dismissPreview=()=>{
+        ++previewEpoch;cardVenue=null;
+        preview.hidden=true;preview.replaceChildren();
+    };
+    const cardActionClass=dialog.classList.contains('quick-event-dialog--app')
+        ? 'button primary' : 'btn btn--primary';
     function showPreview(venue){
         const item=normalize(venue);
-        cardVenue=item;
-        previewName.textContent=text(item.name)||'Баскетбольная площадка';
-        previewAddress.textContent=text(item.address)||'Адрес не указан';
-        const metro=metroNames(item).join(', ');
-        previewMetro.textContent=metro?'Метро: '+metro:'';
-        previewMetro.hidden=!metro;
-        previewTags.replaceChildren();
-        const labels=[
-            item.has_free_court ? (item.has_paid_court?'Есть бесплатные залы':'Бесплатно') : null,
-            item.has_paid_court ? (item.has_free_court?'Есть платные залы':'Платно') : null,
-            item.has_approval_court ? 'Есть залы с подтверждением' : null,
-        ].filter(Boolean);
-        labels.forEach(label=>{
-            const tag=document.createElement('span');
-            tag.textContent=label;
-            previewTags.appendChild(tag);
-        });
-        preview.hidden=false;
+        const requestEpoch=++previewEpoch;
+        const render=(details)=>{
+            if(requestEpoch!==previewEpoch||!mapDialog.open)return;
+            // Preserve availability and linked venue identifiers from search;
+            // the per-venue preview endpoint enriches the same card with image.
+            const combined=normalize({
+                ...item,...details,id:item.id,
+                url:item.url||details.url||item.venue_url,
+                has_free_court:item.has_free_court,
+                has_paid_court:item.has_paid_court,
+                has_approval_court:item.has_approval_court,
+                court_access:item.court_access,
+                matched_court:item.matched_court,
+                surfaces:item.surfaces,
+                amenities:item.amenities,
+            });
+            cardVenue=combined;
+            preview.replaceChildren(renderVenueMapInfoCard(combined,{
+                compact:true,
+                showBadge:false,
+                actionClass:cardActionClass,
+                onClose:dismissPreview,
+                onSelect:chosen=>{selected(chosen);mapDialog.close();},
+            }));
+            preview.hidden=false;
+        };
+        render(item);
+        if(!item.preview_url)return;
+        try{
+            const url=new URL(item.preview_url,location.origin);
+            if(url.origin!==location.origin||!/^\/venues\/[^/]+\/preview\/?$/.test(url.pathname))return;
+            void fetch(url.href,{headers:{Accept:'application/json'},credentials:'same-origin'})
+                .then(response=>{
+                    if(!response.ok)throw new Error('Preview unavailable');
+                    return response.json();
+                })
+                .then(payload=>{
+                    if(payload?.venue)render(payload.venue);
+                })
+                .catch(()=>{/* The original search details remain visible. */});
+        }catch{/* Do not load an invalid preview URL. */}
     }
-    previewClose.addEventListener('click',dismissPreview);
-    previewSelect.addEventListener('click',()=>{
-        if(!cardVenue)return;
-        selected(cardVenue);
-        mapDialog.close();
-    });
 
     const addFallback=venues=>{
         fallback.replaceChildren();
