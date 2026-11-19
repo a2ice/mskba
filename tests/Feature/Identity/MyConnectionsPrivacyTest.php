@@ -10,6 +10,7 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
@@ -17,12 +18,33 @@ use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class MyConnectionsPrivacyTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = config('themes.active');
+        config()->set('themes.active', 'mskba_app');
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/mskba_app/views'));
+    }
+
+    protected function tearDown(): void
+    {
+        config()->set('themes.active', $this->previousTheme);
+        View::replaceNamespace('theme', resource_path('themes/'.$this->previousTheme.'/views'));
+        app()->forgetInstance(ThemeResolver::class);
+        parent::tearDown();
+    }
 
     public function test_onboarding_persists_my_connections_for_both_interaction_settings(): void
     {
@@ -202,6 +224,7 @@ final class MyConnectionsPrivacyTest extends TestCase
             'name' => 'Подтверждение участия',
             'status' => ContractStatusEnum::ACTIVE,
             'verification_requirement' => 'none',
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
         ]);
 
         return $contract->membership()->create([
