@@ -1017,7 +1017,7 @@ final class CoordinationWorkflowTest extends TestCase
         return [
             'venue_id' => $venue->id,
             'title' => 'Игра после опроса',
-            'type' => 'game_training',
+            'type' => 'training',
             'visibility' => 'public',
             'description' => 'Согласованный вариант: 20:00',
             'starts_at' => $startsAt->format('Y-m-d\TH:i'),

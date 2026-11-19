@@ -10,8 +10,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#050505">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-        <link rel="icon" href="{{ asset('favicon-32x32.png') }}" type="image/png">
+        @include('partials.branding.favicon', ['includeLegacyPng' => true])
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <title>{{ $pageTitle }}</title>

@@ -97,6 +97,13 @@ function submit() {
     }
     emit('submit', payload);
 }
+// Used only to guard explicit dismissal; no draft (especially passwords) is persisted.
+function hasEnteredData() {
+    const initialRole = props.initialRole === 'player' ? 'player' : '';
+    return Object.entries(form).some(([field, value]) => field === 'role'
+        ? value !== initialRole : value !== '' && value !== false);
+}
+defineExpose({ hasEnteredData });
 </script>
 
 <template>

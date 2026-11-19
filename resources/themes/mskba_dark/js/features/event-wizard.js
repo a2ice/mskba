@@ -87,7 +87,6 @@ function initEventWizard(form) {
 
     const typeLabels = {
         game: 'Игра',
-        game_training: 'Игровая тренировка',
         training: 'Тренировка',
     };
     const formatLabels = {
@@ -393,7 +392,7 @@ function initEventWizard(form) {
         if (submitButton) {
             submitButton.textContent = type === 'game'
                 ? 'Создать игру'
-                : (type === 'game_training' ? 'Создать игровую тренировку' : 'Создать тренировку');
+                : 'Создать тренировку';
         }
         updateReviewWarning();
     }

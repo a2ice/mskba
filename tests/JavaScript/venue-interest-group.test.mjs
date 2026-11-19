@@ -4,14 +4,15 @@ import {readFileSync} from 'node:fs';
 
 const file = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-test('venue interest group is linked from the popup and has stable venue ID URL', () => {
+test('venue popup uses the event-first funnel while the old interest group URL stays stable', () => {
     const routes = file('../../routes/web.php');
     const popup = file('../../resources/themes/mskba_app/views/pages/venues/show.blade.php');
     const page = file('../../resources/themes/mskba_app/views/pages/venues/interest-group.blade.php');
     const controller = file('../../app/Modules/PlayInterest/Presentation/Http/Controllers/VenueInterestGroupController.php');
     assert.match(routes, /venues\.interest-group/);
-    assert.match(popup, /Перейти на страницу группы/);
-    assert.match(popup, /venue' => \$venue->id/);
+    assert.match(popup, /data-venue-play-open/);
+    assert.match(popup, /data-venue-favorite-main/);
+    assert.doesNotMatch(popup, /Перейти на страницу группы/);
     assert.match(controller, /whereKey\(\$venue\)/);
     assert.match(controller, /private, no-store/);
     assert.match(page, /venueAudience\['total'\]/);

@@ -4,6 +4,8 @@ namespace App\Modules\Favorites\Application\Services;
 
 use App\Modules\Favorites\Domain\Models\Favorite;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\PlayInterest\Application\Services\FavoritePlayIntentService;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -14,7 +16,10 @@ final class FavoritesManager
 {
     public const COOKIE_NAME = 'mskba_guest_favorites';
 
-    public function __construct(private readonly FavoriteCountService $counts) {}
+    public function __construct(
+        private readonly FavoriteCountService $counts,
+        private readonly FavoritePlayIntentService $interests,
+    ) {}
 
 
     private function guestHash(Request $request): ?string
@@ -163,6 +168,15 @@ final class FavoritesManager
         });
 
         if ($claimed) {
+            // Claiming guest favorites on login creates the same basic interests
+            // that an authenticated click creates. Do not touch inactive items.
+            $venueIds = $this->owned($request)->where('entity_type', 'venue')
+                ->whereNull('trashed_at')->pluck('entity_id');
+            $visible = Venue::query()->whereIn('id', $venueIds)->get()
+                ->filter(fn (Venue $venue): bool => $venue->status->isPubliclyVisible());
+            foreach ($visible as $venue) {
+                $this->interests->ensure($user, (int) $venue->id);
+            }
             $this->counts->changed($user);
         }
 

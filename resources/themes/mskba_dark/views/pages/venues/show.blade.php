@@ -103,16 +103,16 @@
                     @endif
                 </div>
             @endif
-            @if(isset($rentalUrl))
-                <div class="venue-management-actions mt-3">
-                    <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
-                </div>
-            @endif
         </div>
     @else
         <div class="section-sidebar-block">
             @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
         </div>
+    @endif
+    @if(isset($venue))
+        @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
+        @include('components.venue-play-funnel')
+        @include('components.venue-main-favorite-dialog')
     @endif
 @endsection
 
@@ -155,11 +155,6 @@
 @section('section-heading-action')
     @if(!empty($venue))
         <div class="venue-heading-actions">
-            <button type="button" class="mskba-favorite-heart"
-                data-favorite-venue="{{ $venue->id }}" aria-label="Добавить в избранное"
-                title="Добавить в избранное" aria-pressed="false">
-                <svg aria-hidden="true"><use href="#heart"/></svg>
-            </button>
             <div
                 class="venue-star-rating"
                 role="img"
@@ -254,6 +249,10 @@
                 </div>
 
                 <div class="venue-hero__summary">
+                    <div class="venue-play-hero-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                        <button type="button" class="btn btn--primary" data-venue-play-open>Хочу здесь играть</button>
+                        <button type="button" class="btn btn--secondary" data-venue-favorite-main aria-pressed="false">В избранное</button>
+                    </div>
                     <div class="venue-hero__details">
                         <div>
                             <span class="venue-hero__detail-label">Часы работы</span>
@@ -534,6 +533,8 @@
                     <div>
                         <span class="venue-activities__eyebrow">На этой площадке</span>
                         <h2>Игры и мероприятия</h2>
+                        <a class="btn btn--secondary btn--sm" href="{{ route('events.wizard', ['venue_id' => $venue->id]) }}"
+                            data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
                     </div>
                     <span class="venue-section-state" data-venue-activities-state>Загрузка…</span>
                 </div>
@@ -608,7 +609,12 @@
                         <h2>Расписание</h2>
                         <p class="venue-show-section__caption">Нажмите на день, чтобы посмотреть интервалы.</p>
                     </div>
-                    <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
+                    <div class="venue-management-actions">
+                        @if(isset($rentalUrl))
+                            <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
+                        @endif
+                        <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
+                    </div>
                 </div>
 
                 @if($venue->about->scheduleDays !== [])

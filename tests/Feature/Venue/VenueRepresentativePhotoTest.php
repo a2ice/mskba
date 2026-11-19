@@ -37,6 +37,13 @@ final class VenueRepresentativePhotoTest extends TestCase
         $map = $this->getJson(route('api.v1.home.venues-map'))->assertOk();
         $data = collect($map->json('data'))->firstWhere('id', $venue->id);
         $this->assertSame(url($fallback->publicUrl()), $data['image_url']);
+
+        // The event wizard map reuses the same card and representative image.
+        $preview = $this->getJson(route('venues.preview', $venue->routeIdentifier()))
+            ->assertOk()->json('venue');
+        $this->assertSame($data['image_url'], $preview['image_url']);
+        $this->assertArrayHasKey('surfaces', $preview);
+        $this->assertArrayHasKey('amenities', $preview);
     }
 
     public function test_venue_gallery_photo_always_takes_precedence_over_court_photo(): void

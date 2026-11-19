@@ -30,7 +30,7 @@ final class PlayIntentApiTest extends TestCase
         ];
     }
 
-    public function test_favoriting_a_venue_creates_direct_interest_without_play_subscription(): void
+    public function test_favoriting_a_venue_creates_a_default_play_subscription_with_direct_audience(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $user = User::factory()->create(['username' => 'favorite-only-player']);
@@ -46,7 +46,7 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame(0, $audience['matched_count']);
         $this->assertSame('favorite-only-player', $audience['direct'][0]['name']);
         $this->assertFalse($audience['direct'][0]['public']);
-        $this->assertDatabaseCount('play_intents', 0);
+        $this->assertDatabaseCount('play_intents', 1);
 
         $this->postJson(route('play-intents.store'), [
             ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
@@ -79,16 +79,33 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Хочу здесь играть')
             ->assertSee('Хочешь здесь играть?')
             ->assertSee('Создать мероприятие')
-            ->assertSee('data-venue-create-event-link', false)
-            ->assertSee(route('events.wizard', ['venue_id' => $venue->id]), false)
-            ->assertDontSee('data-venue-create-event-dialog', false)
+            ->assertSee('data-venue-play-dialog', false)
+            ->assertSee('data-quick-event-form', false)
+            ->assertSee(route('events.funnel.store'), false)
+            ->assertDontSee('data-venue-create-event-link', false)
             ->assertDontSee('В разработке')
             ->assertSee('>Расписание</a>', false)
             ->assertSee('data-mskba-play-intent-root', false)
             ->assertSee('data-venue-choice-court', false)
             ->assertSee('data-venue-favorite-dialog', false)
-            ->assertSee('Аренда площадки')
-            ->assertSee('Добавить в избранное');
+            ->assertSee('data-venue-favorite-submit', false)
+            ->assertSee('Избранное')
+            ->assertSee('mskba-modal venue-main-favorite-dialog', false)
+            ->assertSee('mskba-modal venue-play-dialog', false)
+            ->assertSee('mskba-modal quick-event-dialog', false)
+            ->assertSee('mskba-modal__footer venue-play-dialog__footer', false)
+            ->assertSee('data-venue-play-step="list"', false)
+            ->assertSee('data-venue-play-step="detail"', false)
+            ->assertSee('data-venue-play-list-footer', false)
+            ->assertSee('На этой площадке пока нет предстоящих мероприятий.')
+            ->assertDontSee('data-venue-favorite-cancel', false)
+            ->assertDontSee('venue-play-dialog__eyebrow', false)
+            ->assertDontSee('MSKBA · играем вместе')
+            ->assertDontSee('data-venue-favorite-back', false)
+            ->assertDontSee('data-venue-favorite-close>Отмена', false)
+            ->assertSee('Площадка добавлена в избранное.')
+            ->assertSee('Арендовать площадку')
+            ->assertSee('В избранное');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
@@ -311,7 +328,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('Подходят по условиям')
             ->assertDontSee('напрямую ·')
             ->assertDontSee('Без данных профиля')
-            ->assertSee('href="'.route('play-intents.mine').'"', false)
+            ->assertSee('data-venue-favorite-dialog', false)
             ->assertSee('data-venue-choice-dialog', false)
             ->assertDontSee('Отображается только число интересов')
             ->assertSee('private-interest-other')
@@ -378,7 +395,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-player-details-open', false)
             ->getContent();
         $this->assertGreaterThanOrEqual(2, substr_count($ownHtml, 'src="/storage/avatars/hidden-self-unique.jpg"'));
-        $this->assertSame(3, substr_count($ownHtml, 'data-venue-choice-open'));
+        $this->assertSame(3, substr_count($ownHtml, 'data-venue-play-open'));
         $this->assertStringNotContainsString('Отменить подписку', $ownHtml);
 
         auth()->logout();

@@ -1,0 +1,109 @@
+/* One venue info-card UI for both Page Builder homepage and venue selection maps.
+ * Card typography is 90% in the compact wizard preview; the homepage keeps
+ * its original scale. Modifiers change layout, not the semantic card content. */
+.mskba-venues-map__venue-card.mskba-venue-map-card {
+    --venue-map-card-scale:1;
+    position:relative;box-sizing:border-box;border-radius:18px;padding:12px;
+    background:#fff;color:#111b2a;
+    border:1px solid rgba(58,77,104,.1);
+    box-shadow:0 18px 50px rgba(19,40,63,.21),0 3px 9px rgba(19,40,63,.09);
+    animation:mskba-venue-map-card-pop .22s ease-out both;
+}
+@keyframes mskba-venue-map-card-pop {
+    from {opacity:0;transform:translateY(8px) scale(.98)}
+    to {opacity:1;transform:translateY(0) scale(1)}
+}
+.mskba-venue-map-card .mskba-venues-map__card-close {
+    position:absolute;z-index:3;top:-11px;right:-12px;
+    width:37px;height:37px;display:grid;place-items:center;
+    border-radius:50%;border:0;color:#233951;background:#fff;
+    box-shadow:0 4px 17px rgba(20,50,80,.14);cursor:pointer;
+}
+.mskba-venue-map-card .mskba-venues-map__card-close:hover {color:#e76200}
+.mskba-venue-map-card .mskba-venues-map__card-close svg {width:20px;height:20px}
+.mskba-venue-map-card .mskba-venues-map__card-media {
+    position:relative;height:140px;overflow:hidden;border-radius:11px;
+    background:linear-gradient(145deg,#183a55,#1a5f76 60%,#dd6e17);
+}
+.mskba-venue-map-card .mskba-venues-map__card-media img {
+    width:100%;height:100%;object-fit:cover;
+}
+.mskba-venue-map-card .mskba-venues-map__card-media img[hidden] {display:none}
+.mskba-venue-map-card__media-loading {
+    position:absolute;inset:0;display:grid;place-items:center;
+    background:rgba(12,30,47,.68);backdrop-filter:blur(3px);
+}
+.mskba-venue-map-card__media-loading .image-upload-loading__spinner {
+    flex:none;width:34px;height:34px;border-color:rgba(255,255,255,.38);
+    border-right-color:#ff791f;
+}
+.mskba-venue-map-card .mskba-venues-map__card-media-placeholder {
+    width:100%;height:100%;display:flex;align-items:center;
+    justify-content:center;flex-direction:column;gap:8px;color:#edf5fb;
+    font-size:calc(12px * var(--venue-map-card-scale));
+    font-weight:600;background:radial-gradient(ellipse at 75% 25%,rgba(255,131,20,.38),transparent 48%),#172e46;
+}
+.mskba-venue-map-card .mskba-venues-map__card-media-placeholder svg {width:48px;height:48px;opacity:.75}
+.mskba-venue-map-card .mskba-venues-map__card-label {
+    position:absolute;right:9px;top:9px;border-radius:999px;padding:5px 10px;
+    background:rgba(11,33,50,.77);color:#fff;font-size:10px;font-weight:800;line-height:1.3;
+}
+.mskba-venue-map-card .mskba-venues-map__card-body {padding:13px 2px 2px}
+.mskba-venue-map-card .mskba-venues-map__card-name {
+    margin:0 0 7px;color:#0f1926;
+    font-size:calc(16px * var(--venue-map-card-scale));line-height:1.28;
+    font-weight:850;letter-spacing:-.018em;
+}
+.mskba-venue-map-card .mskba-venues-map__card-address {
+    margin:0 0 13px;display:flex;align-items:flex-start;gap:7px;
+    color:#55708d;font-size:calc(12px * var(--venue-map-card-scale));line-height:1.45;
+}
+.mskba-venue-map-card .mskba-venues-map__card-address svg {
+    flex:0 0 15px;width:15px;height:15px;color:#233c5e;
+}
+.mskba-venue-map-card .mskba-venues-map__card-tags {
+    display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;
+}
+.mskba-venue-map-card .mskba-venues-map__card-tag {
+    border-radius:9px;background:#f2f6fa;color:#3d5977;
+    padding:6px 9px;font-size:calc(11px * var(--venue-map-card-scale));
+    font-weight:650;line-height:1.2;
+}
+.mskba-venue-map-card .mskba-venues-map__card-actions {display:flex;gap:8px;align-items:stretch}
+.mskba-venue-map-card .mskba-venues-map__card-link {
+    flex:1;display:inline-flex;justify-content:space-between;align-items:center;gap:8px;
+    min-height:39px;padding:9px 13px;border:1px solid #dce3ea;border-radius:10px;
+    color:#19263a;font-size:calc(12px * var(--venue-map-card-scale));
+    font-weight:800;text-decoration:none;background:#fff;
+}
+.mskba-venue-map-card .mskba-venues-map__card-link:hover {
+    color:#ea6400;background:#fffaf5;border-color:#ffbc86;
+}
+.mskba-venue-map-card .mskba-venues-map__card-link svg {width:17px;height:17px}
+.mskba-venues-map__venue-card.mskba-venue-map-card--compact {
+    --venue-map-card-scale:.9;
+    padding:9px;border-radius:13px;
+}
+.mskba-venue-map-card--compact .mskba-venues-map__card-close {
+    top:7px;right:7px;width:34px;height:34px;border-radius:10px;
+    border:1px solid #e0e4ea;box-shadow:none;
+}
+.mskba-venue-map-card--compact .mskba-venues-map__card-media {height:clamp(78px,14dvh,118px)}
+.mskba-venue-map-card--compact .mskba-venues-map__card-body {padding:9px 2px 2px}
+.mskba-venue-map-card--compact .mskba-venues-map__card-name {padding-right:4px;margin-bottom:6px}
+.mskba-venue-map-card--compact .mskba-venues-map__card-address {margin-bottom:7px}
+.mskba-venue-map-card--compact .mskba-venues-map__card-tags {gap:4px;margin-bottom:9px}
+.mskba-venue-map-card--compact .mskba-venues-map__card-tag {padding:4px 6px}
+.mskba-venue-map-card--compact .mskba-venues-map__card-actions {flex-wrap:wrap}
+.mskba-venue-map-card--compact .mskba-venues-map__card-actions :is(a,button) {
+    flex:1 1 110px;min-height:44px;
+    font-size:calc(12px * var(--venue-map-card-scale));justify-content:center;
+}
+.mskba-venue-map-card--compact .mskba-venues-map__card-actions [data-venue-map-choose] {
+    border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;
+}
+@media(max-width:1199px) {
+    .mskba-page-builder .mskba-venue-map-card {padding:9px}
+    .mskba-page-builder .mskba-venue-map-card .mskba-venues-map__card-media {height:110px}
+    .mskba-page-builder .mskba-venue-map-card .mskba-venues-map__card-body {padding-top:8px}
+}

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { displayClock } from '../../resources/themes/mskba_app/js/venue-time-label.js';
 import { groupDayBookingSlots } from '../../resources/themes/mskba_app/js/venue-day-booking-groups.js';
+import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from '../../resources/themes/mskba_app/js/quick-event-venue-map-geo.js';
 
 const source = readFileSync(
     new URL('../../resources/themes/mskba_app/js/venue-detail.js', import.meta.url),
@@ -578,4 +579,344 @@ test('персональная цена показывает зачёркнут�
     assert.equal(page.summary.children.at(-1).tabIndex, undefined,
         'Explanatory discount text must not be in the keyboard tab order');
     assert.equal(page.summary.children.at(-1).innerHTML, undefined);
+});
+
+
+test('Rental CTA skips court chooser for a single court, preserving calendar pipeline', () => {
+    const choiceSource = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-choice.js', import.meta.url), 'utf8',
+    );
+    const run = courtIds => {
+        const handlers = {};
+        const dispatches = [];
+        const select = {
+            options: courtIds.map(id => ({value:String(id)})),
+            value: courtIds.length === 1 ? String(courtIds[0]) : '',
+            addEventListener() {}, focus() {}, setAttribute() {}, removeAttribute() {},
+        };
+        const close = {addEventListener() {}};
+        const dateButton = {addEventListener() {}};
+        const choice = {
+            open:false, opened:0, listeners:{},
+            querySelector:selector => ({
+                '[data-venue-choice-court]':select,
+                '[data-venue-choice-error]':{hidden:true},
+            })[selector],
+            querySelectorAll:()=>[close],
+            addEventListener(type,callback){this.listeners[type]=callback;},
+            showModal(){this.open=true;this.opened++;},
+            close(){this.open=false;},
+        };
+        choice.querySelector=selector=>({
+            '[data-venue-choice-court]':select,
+            '[data-venue-choice-error]':{hidden:true},
+            '[data-venue-choice-date]':dateButton,
+        })[selector];
+        const day = {dispatchEvent:e=>dispatches.push(e.detail)};
+        runInNewContext(choiceSource,{
+            document:{
+                querySelector:selector=>selector==='[data-venue-choice-dialog]'?choice:day,
+                addEventListener:(type,handler)=>{handlers[type]=handler;},
+            },
+            window:{addEventListener:(type,handler)=>{handlers['window:'+type]=handler;}},
+            CustomEvent:class {constructor(type,{detail}){this.type=type;this.detail=detail;}},
+            Number,
+        });
+        handlers.click({target:{closest:selector=>selector==='[data-venue-rental-open]'?{}:null},
+            preventDefault(){}});
+        return {choice,dispatches,select,handlers};
+    };
+    const single=run([13]);
+    assert.equal(single.choice.opened,0);
+    assert.equal(single.dispatches.length,1);
+    assert.equal(single.dispatches[0].courtId,13);
+    const multiple=run([13,14]);
+    assert.equal(multiple.choice.opened,1);
+    assert.equal(multiple.dispatches.length,0);
+});
+
+
+test('venue popup retains minimal event list and opens full inline event details', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/venue-play-funnel.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /На этой площадке пока нет предстоящих мероприятий\./);
+    assert.match(tpl, /data-venue-play-step="list"/);
+    assert.match(tpl, /data-venue-play-preview="{{ \$upcoming->id }}"/);
+    assert.match(tpl, /data-venue-play-list-footer/);
+    assert.match(tpl, /data-venue-play-step="detail" hidden/);
+    assert.match(tpl, /data-venue-play-pane="{{ \$upcoming->id }}"/);
+    assert.match(tpl, /data-venue-play-rsvp="confirmed"/);
+    assert.match(tpl, /data-venue-play-rsvp="tentative"/);
+    assert.match(tpl, /data-venue-play-rsvp="left"/);
+    assert.match(tpl, /data-venue-play-messages/);
+    assert.match(tpl, /data-venue-play-message-form/);
+    assert.match(tpl, /data-venue-play-back/);
+    assert.match(tpl, /data-venue-play-auth-notice/);
+    assert.doesNotMatch(tpl, /venue-play-dialog__eyebrow|Текущие мероприятия|Выбери ближайшее мероприятие/);
+    // Clickable list items are buttons, not links away from the popup.
+    assert.doesNotMatch(tpl, /<a class="venue-play-dialog__event"/);
+    const js = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-play-funnel.js', import.meta.url), 'utf8',
+    );
+    assert.match(js, /data-venue-play-preview/);
+    assert.match(js, /showEvent\(button\.dataset\.venuePlayPreview\)/);
+    assert.match(js, /listFooter\.hidden=true/);
+    assert.match(js, /listFooter\.hidden=false/);
+    assert.match(js, /refreshWall\(pane\)/);
+    assert.match(js, /guestResponse\(status\)/);
+});
+
+test('event creation select controls reuse the branded native select, not custom compact fields', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /mskba-modal quick-event-dialog/);
+    assert.match(tpl, /mskba-modal__footer quick-event-dialog__actions/);
+    assert.match(tpl, /min-height:48px/);
+    assert.match(tpl, /border-radius:12px/);
+    assert.match(tpl, /font-size:16px;line-height:24px/);
+    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 5);
+    assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
+});
+
+
+test('favorite modals preserve exact acceptance copy, one action and approved close icon', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/venue-main-favorite-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-favorite-main.js', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /data-venue-favorite-title>Избранное/);
+    assert.match(tpl, /Площадка добавлена в избранное\./);
+    assert.match(source, /title\.textContent='Избранное'/);
+    assert.match(source, /Вы уверены, что хотите убрать площадку из избранного\?/);
+    assert.match(source, /'Убрать'/);
+    assert.doesNotMatch(tpl, /data-venue-favorite-cancel/);
+    assert.equal((tpl.match(/data-venue-favorite-submit/g) || []).length, 1);
+    assert.match(tpl, /M18 6l-12 12/);
+});
+
+test('rental court selection is a semantic standard select with branded arrow', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/show.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /<label for="app-venue-choice-court">Зал или корт<\/label>/);
+    assert.match(tpl, /data-venue-choice-court required aria-describedby="app-venue-choice-error"/);
+    assert.match(tpl, /<use href="#chevron-down"\/>/);
+    const css = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
+    );
+    assert.match(css, /\.select-control>svg\{[^}]*width:20px;height:20px/);
+});
+
+
+test('event creation uses predictive venue search, map selection, and location-based title', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /data-quick-venue-selector/);
+    assert.match(tpl, /data-quick-venue-search/);
+    assert.match(tpl, /data-quick-venue-results/);
+    assert.match(tpl, /data-quick-venue-map-open>На карте/);
+    assert.match(tpl, /data-quick-venue-map-dialog/);
+    assert.doesNotMatch(tpl, /<select name="venue_id"/);
+    assert.match(tpl, /EventTypeEnum::creatable\(\)/);
+    const app = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/app.js', import.meta.url), 'utf8',
+    );
+    const dark = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/app.js', import.meta.url), 'utf8',
+    );
+    assert.match(app, /quick-event-venue-selector\.js/);
+    assert.match(dark, /quick-event-venue-selector\.js/);
+    const predictor = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(predictor, /venues\.search|dataset\.searchUrl/);
+    assert.match(predictor, /venuePlacemark\(/);
+    assert.match(predictor, /hidden\.dispatchEvent\(/);
+    const wizard = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/event-quick-create.js', import.meta.url), 'utf8',
+    );
+    assert.match(wizard, /data-quick-venue-search/);
+    assert.match(wizard, /place\?\.primary_metro/);
+    assert.match(wizard, /'на м\. '/);
+    assert.match(wizard, /'ул\. '/);
+    assert.match(wizard, /if\(editingTitle\)return/);
+    assert.match(wizard, /const place=venueSearch\.value\.trim\(\)/);
+});
+
+test('game_training remains a legacy readable type, but is not in creation UI', () => {
+    const enumSource = readFileSync(
+        new URL('../../app/Modules/Event/Domain/Enums/EventTypeEnum.php', import.meta.url), 'utf8',
+    );
+    assert.match(enumSource, /case GAME_TRAINING = 'game_training'/);
+    assert.match(enumSource, /return \[self::GAME, self::TRAINING\]/);
+    const menu = readFileSync(
+        new URL('../../app/Presentation/Navigation/Menus/MainMenu.php', import.meta.url), 'utf8',
+    );
+    assert.doesNotMatch(menu, /'Игровые тренировки'/);
+    const oldHome = readFileSync(
+        new URL('../../resources/themes/mskba_dark/views/pages/welcome.blade.php', import.meta.url), 'utf8',
+    );
+    assert.doesNotMatch(oldHome, /Создать игровую тренировку/);
+    const categories = readFileSync(
+        new URL('../../app/Modules/Event/Presentation/Http/Controllers/EventController.php', import.meta.url), 'utf8',
+    );
+    assert.match(categories, /\$typeFilter/);
+    assert.match(categories, /EventTypeEnum::creatable\(\)/);
+    assert.match(categories, /EventTypeEnum::GAME_TRAINING/);
+});
+
+
+test('venue map opens a preview card before selecting, with simplified instruction', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /Нажмите на площадку на карте\./);
+    assert.match(tpl, /data-quick-venue-map-preview/);
+    assert.doesNotMatch(tpl, /data-quick-venue-map-preview-label/);
+    assert.doesNotMatch(tpl, /data-quick-venue-map-preview-name/);
+    assert.match(tpl, /data-quick-venue-map-preview[\s\S]*?hidden><\/div>/);
+    assert.match(tpl, /data-quick-venue-map-nearby[\s\S]*?Рядом со мной/);
+    assert.match(source, /marker\.events\.add\('click',\(\)=>showPreview\(venue\)\)/);
+    assert.match(source, /renderVenueMapInfoCard\(combined,\{/);
+    assert.match(source, /showBadge:false/);
+    assert.match(source, /compact:true/);
+    assert.match(source, /onSelect:chosen=>\{selected\(chosen\);mapDialog\.close\(\);\}/);
+    assert.match(source, /fetch\(url\.href,\{headers:\{Accept:'application\/json'/);
+    assert.doesNotMatch(source, /marker\.events\.add\('click',[\s\S]{0,90}selected\(venue\)/);
+});
+
+test('nearby location mode is optional, reversible and never uploads the position', () => {
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(source, /navigator\.geolocation\.getCurrentPosition/);
+    assert.match(source, /nearbyButton\.hidden=false/);
+    assert.match(source, /nearbyButton\.textContent='Показать все'/);
+    assert.match(source, /nearbyButton\.textContent='Рядом со мной'/);
+    assert.match(source, /nearbyButton\.addEventListener\('click',displayNearby\)/);
+    assert.match(source, /originalBounds=clusterer\.getBounds\(\)/);
+    assert.match(source, /nearbyVenueBounds\(userCoords,plottedVenues\)/);
+    assert.match(source, /map\.geoObjects\.add\(userMarker\)/);
+    assert.match(source, /preset:'islands#blueCircleDotIcon'/);
+    const apiFetch = source.slice(source.indexOf('async function fetchVenues'), source.indexOf('function renderResults'));
+    assert.doesNotMatch(apiFetch, /userCoords|latitude|longitude|geolocation/);
+    assert.ok(NEARBY_ZOOM_MARGIN_PX >= 48, 'Map edge padding must clear 28px pin + 20px gutter');
+});
+
+test('nearby venue bounds include the user at their center and only closest pins', () => {
+    const user = {latitude:55.751, longitude:37.618};
+    const venues = [
+        {id:1, latitude:55.757, longitude:37.618},
+        {id:2, latitude:55.751, longitude:37.638},
+        {id:3, latitude:55.71, longitude:37.60},
+        {id:4, latitude:59.93, longitude:30.3},
+        {id:5, latitude:null, longitude:37.6},
+    ];
+    const result = nearbyVenueBounds(user, venues, 2);
+    assert.deepEqual(result.nearest.map(point=>point.id), [1,2]);
+    const [[minLat,minLon],[maxLat,maxLon]] = result.bounds;
+    assert.ok(minLat <= user.latitude && maxLat >= user.latitude);
+    assert.ok(minLon <= user.longitude && maxLon >= user.longitude);
+    assert.ok(Math.abs((maxLat+minLat)/2-user.latitude)<1e-9);
+    assert.ok(Math.abs((maxLon+minLon)/2-user.longitude)<1e-9);
+    assert.equal(nearbyVenueBounds(user,[],5),null);
+    assert.equal(nearbyVenueBounds({latitude:100,longitude:0},venues),null);
+});
+
+
+test('homepage and wizard map cards share one renderer and visual contract', () => {
+    const shared = readFileSync(
+        new URL('../../resources/js/components/venue-map-info-card.js', import.meta.url), 'utf8',
+    );
+    const homepage = readFileSync(
+        new URL('../../resources/js/page-builder.js', import.meta.url), 'utf8',
+    );
+    const wizard = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    const pageCss = readFileSync(
+        new URL('../../resources/css/page-builder.css', import.meta.url), 'utf8',
+    );
+    const appCss = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/app.css', import.meta.url), 'utf8',
+    );
+    const darkCss = readFileSync(
+        new URL('../../resources/themes/mskba_dark/css/app.css', import.meta.url), 'utf8',
+    );
+    const sharedCss = readFileSync(
+        new URL('../../resources/css/venue-map-info-card.css', import.meta.url), 'utf8',
+    );
+    assert.match(shared, /export function renderVenueMapInfoCard\(/);
+    assert.match(shared, /export function attachSharedHomeVenueCards\(/);
+    assert.match(shared, /mskba-venue-map-card--compact/);
+    assert.match(shared, /venue\.image_url/);
+    assert.match(shared, /mskba-venues-map__card-address/);
+    assert.match(shared, /mskba-venues-map__card-tags/);
+    assert.match(shared, /mskba-venues-map__card-link/);
+    assert.match(shared, /data\.venueMapChoose|dataset\.venueMapChoose/);
+    assert.match(homepage, /attachSharedHomeVenueCards/);
+    assert.match(wizard, /renderVenueMapInfoCard/);
+    assert.match(wizard, /item\.preview_url/);
+    assert.match(wizard, /payload\?\.venue/);
+    assert.match(pageCss, /venue-map-info-card\.css/);
+    assert.match(appCss, /venue-map-info-card\.css/);
+    assert.match(darkCss, /venue-map-info-card\.css/);
+    assert.match(sharedCss, /--venue-map-card-scale:\.9/);
+    assert.match(sharedCss, /\.mskba-venues-map__venue-card\.mskba-venue-map-card--compact\s*\{\s*--venue-map-card-scale:\.9/);
+    assert.match(sharedCss, /font-size:calc\(16px \* var\(--venue-map-card-scale\)\)/);
+});
+
+
+test('one-finger drag is standard on touch maps while homepage remains cooperative', () => {
+    const core = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/core/yandex-maps.js', import.meta.url), 'utf8',
+    );
+    const home = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/features/home-venue-section.js', import.meta.url), 'utf8',
+    );
+    const pageBuilder = readFileSync(
+        new URL('../../resources/page-builder/venues-map.js', import.meta.url), 'utf8',
+    );
+    assert.match(core, /const touchMode = element\.dataset\.mapTouchMode \|\| 'default'/);
+    assert.match(core, /if \(touchMode === 'cooperative'\)/);
+    assert.match(core, /map\.behaviors\.enable\('drag'\)/);
+    assert.match(core, /map\.behaviors\.enable\('multiTouch'\)/);
+    assert.match(core, /touchMode === 'static'/);
+    assert.match(home, /canvas\.dataset\.mapTouchMode = 'cooperative'/);
+    assert.match(pageBuilder, /map\.behaviors\.disable\('drag'\)/);
+});
+
+test('venue preview uses existing loader and reuses fetched details and loaded card images', () => {
+    const shared = readFileSync(
+        new URL('../../resources/js/components/venue-map-info-card.js', import.meta.url), 'utf8',
+    );
+    const css = readFileSync(
+        new URL('../../resources/css/venue-map-info-card.css', import.meta.url), 'utf8',
+    );
+    const chooser = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(shared, /function mediaLoadingLayer\(/);
+    assert.match(shared, /image-upload-loading__spinner/);
+    assert.match(shared, /options\.mediaPending \? mediaLoadingLayer\(\) : placeholder\(\)/);
+    assert.match(shared, /img\.loading = 'eager'/);
+    assert.match(shared, /img\.addEventListener\('load', showImage/);
+    assert.match(shared, /img\.addEventListener\('error'/);
+    assert.match(shared, /const cachedCards = new Map\(\)/);
+    assert.match(css, /mskba-venue-map-card__media-loading/);
+    assert.match(chooser, /const previewResponses=new Map\(\)/);
+    assert.match(chooser, /const previewCards=new Map\(\)/);
+    assert.match(chooser, /render\(item,Boolean\(item\.preview_url&&!item\.image_url\)\)/);
+    assert.match(chooser, /if\(cached\?\.details\)/);
+    assert.match(chooser, /let promise=cached\?\.promise/);
+    assert.match(chooser, /preview\.replaceChildren\(entry\.node\)/);
+    assert.match(chooser, /\.catch\(\(\)=>render\(item,false\)\)/);
 });

@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
@@ -106,7 +107,7 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Вечерняя игра')
             ->assertSee('Вы организатор');
-        $this->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+        $this->get(route('events.index', ['type' => EventTypeEnum::TRAINING->value]))
             ->assertOk()
             ->assertSee('Вечерняя игра')
             ->assertSee('catalog-toolbar events-catalog-filters__toolbar', false)
@@ -115,7 +116,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('catalog-card event-catalog-card', false)
             ->assertSee('catalog-card__title', false)
             ->assertSee('catalog-card__badge event-type-badge', false);
-        $this->get(route('events.index', ['q' => 'Вечерняя', 'type' => EventTypeEnum::GAME_TRAINING->value]))
+        $this->get(route('events.index', ['q' => 'Вечерняя', 'type' => EventTypeEnum::TRAINING->value]))
             ->assertOk()
             ->assertSee('Вечерняя игра')
             ->assertDontSee('Мини-игры:');
@@ -148,7 +149,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Занятые слоты')
             ->assertSee('data-day-date="'.$slotStart->format('Y-m-d').'"', false)
             ->assertSee($slotStart->format('H:i').'–'.$slotEnd->format('H:i'))
-            ->assertSee('Игровая тренировка · ✅ Подтверждено');
+            ->assertSee('Тренировка · ✅ Подтверждено');
     }
 
     public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void
@@ -290,35 +291,30 @@ final class EventWorkflowTest extends TestCase
             ->assertSessionHas('status', 'Ответ «Не пойду» сохранён.');
     }
 
-    public function test_selected_event_type_is_used_by_create_action_and_form(): void
+    public function test_retired_game_training_is_readable_but_cannot_be_selected_for_creation(): void
     {
-        $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
         $user = User::factory()->create();
         Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $legacy = Event::factory()->create([
+            'type' => EventTypeEnum::GAME_TRAINING,
+            'title' => 'Старая игровая тренировка',
+            'ends_at' => now()->addDays(2),
+        ]);
 
         $this->actingAs($user)
-            ->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->get(route('events.index'))
             ->assertOk()
-            ->assertSee('Создать')
-            ->assertSee(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]), false);
+            ->assertSee('Старая игровая тренировка')
+            ->assertDontSee('name="type" value="game_training"', false);
 
         $this->actingAs($user)
-            ->get(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->getJson(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+
+        $this->actingAs($user)
+            ->get(route('events.create', ['type' => EventTypeEnum::TRAINING->value]))
             ->assertOk()
-            ->assertSee('Новая игровая тренировка')
-            ->assertSee('Выберите площадку и свободное время.')
-            ->assertDontSee('Без расписания площадка доступна круглосуточно.')
-            ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
-            ->assertSee('Игровая тренировка - 20260722')
-            ->assertSee('value="2026-07-22T12:00"', false)
-            ->assertSee('min="2026-07-22T11:59"', false)
-            ->assertSee('name="duration_minutes"', false)
-            ->assertSee('value="60" selected', false)
-            ->assertSee('1,5 часа')
-            ->assertSee('8 часов')
-            ->assertDontSee('name="ends_at"', false)
-            ->assertSee('Избранные площадки')
-            ->assertSee('Функционал находится в разработке.');
+            ->assertSee('Новая тренировка');
     }
 
     public function test_tournament_cannot_be_selected_or_created_as_an_event(): void
@@ -394,7 +390,7 @@ final class EventWorkflowTest extends TestCase
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(5)->startOfDay()->setTime(21, 0);
         $end = $start->addHours(2);
         $payload = $this->payload($venue, $start, $end);
-        $payload['type'] = EventTypeEnum::GAME_TRAINING->value;
+        $payload['type'] = EventTypeEnum::TRAINING->value;
 
         $this->actingAs($user)
             ->get(route('events.create'))
@@ -409,7 +405,7 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
 
         $event = $venue->events()->firstOrFail();
-        $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
+        $this->assertSame(EventTypeEnum::TRAINING, $event->type);
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
         $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $event->booking->status);
     }
@@ -1042,6 +1038,9 @@ final class EventWorkflowTest extends TestCase
         $gamePayload['title'] = 'Игра для фильтра';
         $this->actingAs($organizer)->post(route('events.store'), $gamePayload);
         $game = $gameVenue->events()->firstOrFail();
+        // Seed one historical event without allowing a new game_training
+        // through the public creation route.
+        $game->forceFill(['type' => EventTypeEnum::GAME_TRAINING])->save();
 
         $trainingPayload = $this->payload($trainingVenue, $start, $end);
         $trainingPayload['title'] = 'Тренировка для фильтра';
@@ -1199,10 +1198,12 @@ final class EventWorkflowTest extends TestCase
             route('events.store'),
             [
                 ...$this->payload($venue, $start, $end),
-                'type' => EventTypeEnum::GAME_TRAINING->value,
+                'type' => EventTypeEnum::TRAINING->value,
             ],
         );
         $event = $venue->events()->firstOrFail();
+        // Existing historical game_training records retain their nested-game capabilities.
+        $event->forceFill(['type' => EventTypeEnum::GAME_TRAINING])->save();
 
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
@@ -1377,7 +1378,7 @@ final class EventWorkflowTest extends TestCase
         return [
             'venue_id' => $venue->id,
             'title' => 'Вечерняя игра',
-            'type' => EventTypeEnum::GAME_TRAINING->value,
+            'type' => EventTypeEnum::TRAINING->value,
             'visibility' => 'public',
             'description' => 'Собираемся играть в баскетбол.',
             'starts_at' => $start->format('Y-m-d\TH:i'),

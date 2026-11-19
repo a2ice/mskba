@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Modules\Event\Application\Listeners\RecalculatePlayerObjectiveAssessments;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
+use App\Modules\PlayInterest\Application\Listeners\NotifyMatchingEventSubscribers;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
@@ -76,6 +78,8 @@ class AppServiceProvider extends ServiceProvider
             RecalculatePlayerObjectiveAssessments::class,
         );
 
+        EventFacade::listen(EventChanged::class, NotifyMatchingEventSubscribers::class);
+
         // Register the theme's view namespace
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
         View::composer([
@@ -87,7 +91,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('theme::pages.events.game-show', function ($view): void {
             $game = $view->getData()['game'] ?? null;
 
-            if ($game?->recruitment_mode === null) {
+            if ($game !== null && $game->recruitment_mode === null) {
                 $game->setAttribute('recruitment_mode', GameRecruitmentModeEnum::PREFORMED_TEAMS->value);
             }
         });

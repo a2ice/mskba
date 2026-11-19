@@ -43,6 +43,8 @@ use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Social\Application\Exceptions\SocialActionRateLimitException;
+use App\Modules\Social\Application\Services\SocialWallService;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
@@ -116,7 +118,7 @@ final class EventController extends Controller
                 $hasMiniGames,
                 $search,
             ),
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::creatable(),
             'selectedType' => $type,
             'typeFilter' => $typeFilter,
             'period' => $period,
@@ -140,7 +142,7 @@ final class EventController extends Controller
         TelegramChatRegistry $telegramChats,
     ): Response {
         $validated = $request->validate([
-            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'type' => ['nullable', Rule::in(EventTypeEnum::creatableValues())],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
@@ -213,6 +215,7 @@ final class EventController extends Controller
         GameStatisticsFields $statisticsFields,
         PageSeoResolver $pageSeo,
         TournamentEntryRosterResolver $entryRosters,
+        SocialWallService $wall,
     ): Response|RedirectResponse {
         $actor = $actors->resolveForRequest($request);
         $eventExists = Event::query()->whereRouteIdentifier($event)->exists();
@@ -231,6 +234,9 @@ final class EventController extends Controller
             return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
         }
         $item = $events->handle($event, $actor);
+        if ($item->starts_at === null) {
+            return ThemeResolver::page('events.unscheduled', ['event' => $item]);
+        }
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
         $currentParticipant = $item->participants->first(
             fn (EventParticipant $participant): bool => in_array((int) $participant->user_id, $identityIds, true),
@@ -252,11 +258,17 @@ final class EventController extends Controller
         );
         $seoDescription = $item->description ?: $generatedDescription;
 
-        return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
+        return ThemeResolver::page($item->type === EventTypeEnum::GAME && $item->primaryGame !== null
+                ? 'events.game-show' : 'events.show', [
             'event' => $item,
             'game' => $item->primaryGame,
             'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
             'currentParticipant' => $currentParticipant,
+            'eventWallCanView' => $wall->canViewEvent($item, $request->user()),
+            'eventWallCanPost' => $wall->canCommentOnEvent($item, $request->user()),
+            'eventWallEntries' => $wall->canViewEvent($item, $request->user())
+                ? $wall->latestForEvent($item) : collect(),
+            'eventWallCounts' => $wall->eventCounts($item),
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
@@ -679,7 +691,7 @@ final class EventController extends Controller
     {
         try {
             $events->handle($event, $request->user());
-        } catch (InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException|SocialActionRateLimitException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
@@ -690,7 +702,7 @@ final class EventController extends Controller
     {
         try {
             $events->handle($event, $request->user());
-        } catch (InvalidArgumentException $exception) {
+        } catch (InvalidArgumentException|SocialActionRateLimitException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
@@ -701,7 +713,8 @@ final class EventController extends Controller
         Request $request,
         string $event,
         SetEventParticipationHandler $events,
-    ): RedirectResponse {
+        SocialWallService $wall,
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'status' => [
                 'required',
@@ -715,9 +728,25 @@ final class EventController extends Controller
         $status = EventParticipantStatusEnum::from($validated['status']);
 
         try {
-            $events->handle($event, $request->user(), $status);
-        } catch (InvalidArgumentException $exception) {
+            $updated = $events->handle($event, $request->user(), $status);
+        } catch (SocialActionRateLimitException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage(),
+                    'retry_after' => $exception->retryAfter], 429)
+                    ->header('Retry-After', (string) $exception->retryAfter);
+            }
             return back()->with('error', $exception->getMessage());
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 409)
+                : back()->with('error', $exception->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => $status->value,
+                'counts' => $wall->eventCounts($updated),
+            ]);
         }
 
         return back()->with('status', match ($status) {

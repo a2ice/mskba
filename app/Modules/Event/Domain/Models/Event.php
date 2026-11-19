@@ -50,6 +50,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'participation_confirmation_version',
     'planned_booking_scope',
     'booking_deferred',
+    'proposed_time_options',
     'creation_key',
 ])]
 class Event extends Model
@@ -199,6 +200,7 @@ class Event extends Model
             'participation_confirmation_version' => 'integer',
             'planned_booking_scope' => \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::class,
             'booking_deferred' => 'boolean',
+            'proposed_time_options' => 'array',
         ];
     }
 }

@@ -37,7 +37,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_public_event_link_is_rendered_with_type_and_status_icon_tooltip_without_event_title(): void
+    public function test_public_event_link_keeps_generic_occupancy_tooltip_and_event_is_discoverable(): void
     {
         [$venue, $booking, $actorId] = $this->venueAndBooking();
         $event = Event::factory()->create([
@@ -62,7 +62,9 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->assertSee('is-confirmed', false)
             ->assertSee('Тренировка')
             ->assertSee('aria-label="19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
-            ->assertDontSee('Автогенерируемое название события 123')
+            // Public titles now appear in the event-first discovery dialog, not in
+            // the occupancy icon tooltip (which is asserted immediately above).
+            ->assertSee('Автогенерируемое название события 123')
             ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertSee('target="_blank"', false)
             ->assertSee('data-venue-occupancy-prev', false)

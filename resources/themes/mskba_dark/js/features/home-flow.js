@@ -2,7 +2,7 @@ import $ from 'jquery';
 
 const eventWizards = new WeakMap();
 const venueWizards = new WeakMap();
-const EVENT_TYPE_VALUES = ['any', 'game', 'training', 'game_training', 'tournament'];
+const EVENT_TYPE_VALUES = ['any', 'game', 'training', 'tournament'];
 const EVENT_STEP_COPY = [
     ['Выберите тип мероприятия', 'После выбора сразу перейдём к локации.'],
     ['Где хотите играть?', 'Укажите площадку, адрес, район или метро. Можно оставить любую локацию.'],

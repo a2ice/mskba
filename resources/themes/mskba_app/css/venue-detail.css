@@ -642,18 +642,68 @@ dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
 .app-venue-favorite-dialog>.app-venue-overlay__actions{
     flex:0 0 auto;margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
 }
-.app-venue-favorite-dialog__heading{display:grid;gap:7px;min-width:0}
-.app-venue-favorite-dialog__back{
-    width:max-content;padding:0;border:0;background:none;color:var(--accent);
-    font-size:13px;line-height:1.45;font-weight:650;cursor:pointer;
-}
-.app-venue-favorite-dialog__back:hover{text-decoration:underline}
-.app-venue-favorite-dialog__back:focus-visible{
-    outline:2px solid var(--accent);outline-offset:4px;border-radius:3px;
-}
 .app-venue-choice-dialog__body>.muted{line-height:1.55;margin:0 0 16px}
 @media(max-width:480px){
     dialog.app-venue-choice-dialog,dialog.app-venue-favorite-dialog{
         max-height:calc(100dvh - 24px);
     }
 }
+
+
+/* Task 337 acceptance: one aligned modal header/close and breathing room in
+   rental's court step. The shared modal-dragging controller owns movement. */
+.app-venue-overlay__header{align-items:center}
+dialog.app-venue-choice-dialog>.app-venue-overlay__header,
+dialog.app-venue-day-dialog>.app-venue-overlay__header{
+    display:grid;
+    grid-template-columns:16px minmax(0,1fr) 44px;
+    align-items:center;
+    gap:12px;
+}
+dialog.app-venue-choice-dialog>.app-venue-overlay__header h2,
+dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
+    min-width:0;
+    overflow-wrap:anywhere;
+}
+.app-venue-overlay__header button.icon-button{
+    justify-self:end;
+    display:inline-flex;
+    width:44px;
+    height:44px;
+    padding:0;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--text);
+}
+.app-venue-overlay__header button.icon-button:hover{background:var(--surface-raised)}
+.app-venue-choice-dialog__body{display:grid;gap:18px}
+.app-venue-choice-dialog__body>.muted{margin:0 0 2px;line-height:1.5}
+.app-venue-choice-dialog__body>.field-group{display:grid;gap:9px;margin:0}
+.app-venue-choice-dialog__body .select-control,
+.app-venue-choice-dialog__body .select-control select{width:100%}
+.app-venue-choice-dialog__body>[data-venue-choice-date]{justify-self:start;margin-top:8px}
+@media(max-width:480px){
+    dialog.app-venue-choice-dialog>.app-venue-overlay__header,
+    dialog.app-venue-day-dialog>.app-venue-overlay__header{
+        grid-template-columns:16px minmax(0,1fr) 44px;
+        gap:10px;
+    }
+}
+
+/* The booking calendar uses the UI Kit .skeleton primitive during requests. */
+.app-venue-day-dialog__slot-skeleton{
+    box-sizing:border-box;
+    display:grid;
+    align-content:center;
+    gap:9px;
+    min-height:81px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:11px;
+    background:var(--surface);
+}
+.app-venue-day-dialog__slot-skeleton span{height:10px;border-radius:6px}
+.app-venue-day-dialog__slot-skeleton span:first-child{height:16px;width:75%}
+.app-venue-day-dialog__slot-skeleton span:last-child{width:55%}
+@media(max-width:640px){.app-venue-day-dialog__slot-skeleton{min-height:76px}}

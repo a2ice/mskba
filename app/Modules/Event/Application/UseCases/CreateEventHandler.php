@@ -94,9 +94,16 @@ final class CreateEventHandler
                 throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
             }
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
-            $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
-            $durationMinutes = (int) $data['duration_minutes'];
-
+            // The event-first funnel may create an unscheduled draft. Other
+            // creation flows retain their obligatory date/time requirement.
+            $funnel = (bool) ($data['event_first_funnel'] ?? false);
+            $localStart = filled($data['starts_at'] ?? null)
+                ? CarbonImmutable::parse($data['starts_at'], $timezone)
+                : null;
+            if ($localStart === null && ! $funnel) {
+                throw new InvalidArgumentException('Выберите дату и время мероприятия.');
+            }
+            $durationMinutes = (int) ($data['duration_minutes'] ?? 90);
             if ($durationMinutes < 1 || $durationMinutes > 1440) {
                 throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
@@ -106,13 +113,17 @@ final class CreateEventHandler
             // timezone *before* binding, otherwise a venue using Moscow time
             // with a UTC connection is stored three hours later.
             $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
-            $startsAt = $localStart->setTimezone($databaseTimezone);
-            $endsAt = $localStart->addMinutes($durationMinutes)->setTimezone($databaseTimezone);
+            $startsAt = $localStart?->setTimezone($databaseTimezone);
+            $endsAt = $localStart?->addMinutes($durationMinutes)->setTimezone($databaseTimezone);
 
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
+            // Preliminary time preferences do not occupy the venue schedule.
+            // The manager verifies availability before a real booking is made.
+            if (! $funnel && $startsAt !== null) {
+                $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
+            }
 
-            $bookingDeferred = (bool) ($data['defer_booking'] ?? false);
+            $bookingDeferred = $funnel || (bool) ($data['defer_booking'] ?? false);
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
                 : VenueBookingStatusEnum::PENDING;
@@ -128,13 +139,14 @@ final class CreateEventHandler
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
                 'type' => EventTypeEnum::from($data['type']),
-                'status' => $bookingDeferred || $bookingStatus === VenueBookingStatusEnum::CONFIRMED
-                    ? EventStatusEnum::PUBLISHED
-                    : EventStatusEnum::DRAFT,
+                'status' => $startsAt === null ? EventStatusEnum::DRAFT
+                    : ($bookingDeferred || $bookingStatus === VenueBookingStatusEnum::CONFIRMED
+                        ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT),
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
                 'description' => $data['description'] ?? null,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
+                'proposed_time_options' => $funnel ? ($data['proposed_time_options'] ?? []) : null,
                 'max_participants' => $data['max_participants'] ?? null,
             ]);
 
@@ -161,7 +173,11 @@ final class CreateEventHandler
                 'confirmation_version' => $event->participation_confirmation_version,
             ]);
 
-            if ($event->type === EventTypeEnum::GAME) {
+            // Event remains a valid container even when no Game is created.
+            // Legacy creation routes retain their previous automatic-game behavior;
+            // the event-first wizard explicitly controls this optional child.
+            $createGame = ! $funnel || (bool) ($data['create_game'] ?? true);
+            if ($event->type === EventTypeEnum::GAME && $createGame) {
                 $game = $this->standaloneGames->initialize(
                     $event,
                     $actor,

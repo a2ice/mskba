@@ -55,7 +55,7 @@ final class VenueCourtDetailInheritanceTest extends TestCase
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $other->routeIdentifier()]))
             ->assertOk()->assertSee($otherPhoto, false)
             ->assertDontSee($common, false)->assertDontSee($primaryPhoto, false)
-            ->assertSee('venue_court_id='.$other->id, false);
+            ->assertSee('data-initial-court-id="'.$other->id.'"', false);
 
         $other->media()->delete();
         $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $other->routeIdentifier()]))

@@ -12,6 +12,7 @@
 @import './address-suggest';
 @import './venue-selector';
 @import './venue-pin.css';
+@import '../../../css/venue-map-info-card.css';
 @import './form-controls';
 @import './creation-guide';
 @import './catalog-card';
@@ -24,6 +25,7 @@
 @import './pages/admin';
 @import './pages/integrations';
 @import './pages/events';
+@import './pages/event-social-wall.css';
 @import './pages/coordination';
 @import './pages/content';
 @import './pages/sports-sections';

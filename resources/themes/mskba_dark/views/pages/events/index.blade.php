@@ -11,7 +11,10 @@
         filled($venueId),
         $hasMiniGames,
     ])->filter()->count();
-    $createQuery = array_filter(['type' => $selectedType?->value]);
+    // A legacy game_training filter may still be opened by an old link, but
+    // its Create action must lead to a currently supported event type.
+    $createQuery = array_filter(['type' => in_array($selectedType, \App\Modules\Event\Domain\Enums\EventTypeEnum::creatable(), true)
+        ? $selectedType?->value : null]);
     $createUrl = route('events.create', $createQuery);
     $createRedirectUrl = route('events.create', $createQuery, false);
     $mapEvents = collect($events->items())
@@ -47,6 +50,7 @@
 
 @section('category-navigation')
     @include('theme::pages.events.partials.catalog-navigation')
+    @include('theme::pages.events.partials.quick-create')
 @endsection
 
 @section('category-filters-desktop')
@@ -81,7 +85,7 @@
 @endsection
 
 @section('category-toolbar-actions')
-    <a class="btn btn--primary default-category-toolbar__action-button" href="{{ $createRedirectUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
+    <a class="btn btn--primary default-category-toolbar__action-button" data-quick-event-open href="{{ $createRedirectUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
 @endsection
 
 @section('category-results-cards')

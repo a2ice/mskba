@@ -52,6 +52,8 @@ function initInlineMap() {
 
     const canvas = document.createElement('div');
     canvas.className = 'home-venue-map-preview__canvas';
+    // The homepage section alone keeps cooperative two-finger navigation.
+    canvas.dataset.mapTouchMode = 'cooperative';
 
     const status = document.createElement('p');
     status.className = 'home-venue-map-preview__status';

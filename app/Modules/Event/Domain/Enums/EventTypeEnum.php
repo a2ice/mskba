@@ -6,7 +6,18 @@ enum EventTypeEnum: string
 {
     case GAME = 'game';
     case TRAINING = 'training';
-    case GAME_TRAINING = 'game_training';
+    case GAME_TRAINING = 'game_training'; // Legacy: read/edit existing events; never create new ones.
+
+    /** @return list<self> Only types offered for new events. Keep cases() for legacy data. */
+    public static function creatable(): array
+    {
+        return [self::GAME, self::TRAINING];
+    }
+
+    public static function creatableValues(): array
+    {
+        return array_map(static fn (self $type): string => $type->value, self::creatable());
+    }
 
     public function label(): string
     {

@@ -10,13 +10,16 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Modules\Social\Application\Services\SocialActionLimiter;
+use App\Modules\Social\Application\Services\SocialWallService;
 use InvalidArgumentException;
 
 final class SetEventParticipationHandler
 {
     public function __construct(
         private readonly EventIdentityParticipationService $identityParticipation,
+        private readonly SocialActionLimiter $socialActions,
+        private readonly SocialWallService $wall,
     ) {}
 
     public function handle(
@@ -26,7 +29,11 @@ final class SetEventParticipationHandler
     ): Event {
         $user = $user->canonical();
 
-        $event = DB::transaction(function () use ($identifier, $user, $status): Event {
+        $eventId = Event::query()->whereRouteIdentifier($identifier)->firstOrFail()->id;
+        $changed = false;
+        $event = $this->socialActions->run($user, 'event', $eventId, 'rsvp', function () use (
+            $identifier, $user, $status, &$changed
+        ): array {
             $event = Event::query()
                 ->whereRouteIdentifier($identifier)
                 ->lockForUpdate()
@@ -46,6 +53,12 @@ final class SetEventParticipationHandler
                 throw new InvalidArgumentException('Организатор не может изменить участие в собственном мероприятии.');
             }
 
+            if ($participant?->status === $status
+                && $participant->confirmation_version === $event->participation_confirmation_version) {
+                return ['changed' => false, 'value' => $event];
+            }
+
+            $previousStatus = $participant?->status;
             $roles = $participant?->participation_roles ?: ['player'];
             if ($status === EventParticipantStatusEnum::CONFIRMED
                 && $participant?->status !== EventParticipantStatusEnum::CONFIRMED
@@ -85,11 +98,19 @@ final class SetEventParticipationHandler
                 ]);
             }
 
-            return $event->load('participants.user');
+            $this->wall->appendSystem('event', $event->id, $user, 'event_rsvp_changed', [
+                'from' => $previousStatus?->value,
+                'to' => $status->value,
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+            $changed = true;
+            return ['changed' => true, 'value' => $event];
         });
 
-        event(new EventChanged($event->id));
+        if ($changed) {
+            event(new EventChanged($event->id));
+        }
 
-        return $event;
+        return $event->load('participants.user');
     }
 }

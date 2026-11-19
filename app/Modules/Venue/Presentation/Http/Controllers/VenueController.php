@@ -23,6 +23,7 @@ use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -194,7 +195,9 @@ class VenueController extends Controller
             limit: isset($validated['limit']) ? (int) $validated['limit'] : 20,
         );
 
-        $hoopsByVenue = Venue::query()->with('characteristics')->whereKey(collect($venues)->pluck('id'))->get()
+        $searchVenueModels = Venue::query()->with(['characteristics', 'location.address', 'location.metroStations'])
+            ->whereKey(collect($venues)->pluck('id'))->get()->keyBy('id');
+        $hoopsByVenue = $searchVenueModels
             ->mapWithKeys(fn (Venue $venue): array => [$venue->id => (int) ($venue->characteristics?->hoops_count ?? 1)]);
 
         return response()->json([
@@ -207,6 +210,11 @@ class VenueController extends Controller
                 'description' => $venue->shortDescription,
                 'address' => $venue->displayAddress,
                 'raw_address' => $venue->rawAddress,
+                // Structured street for human-readable event titles; no address guessing on the client.
+                'street' => $searchVenueModels->get($venue->id)?->location?->address?->street,
+                'primary_metro' => $searchVenueModels->get($venue->id)?->location?->metroStations
+                    ?->sortBy(fn ($station) => $station->pivot?->distance_meters ?? PHP_INT_MAX)
+                    ->first()?->name,
                 'requires_payment' => $venue->hasPaidCourt() && ! $venue->hasFreeCourt()
                     ? true : ($venue->hasFreeCourt() && ! $venue->hasPaidCourt() ? false : null),
                 'requires_booking_approval' => $venue->hasApprovalCourt(),
@@ -275,6 +283,19 @@ class VenueController extends Controller
             return response()->json(['message' => $exception->getMessage()], $status);
         }
 
+        // The venue preview powers the same map card as the homepage.
+        // Match its representative-photo fallback, surface and amenity rules.
+        $mapVenue = Venue::query()->with(['courts.media', 'media', 'amenities'])
+            ->findOrFail($venue->id);
+        $mapPhoto = $mapVenue->representativePhoto();
+        $surfaces = $mapVenue->courts
+            ->map(fn ($court): ?array => $court->surface_type instanceof VenueSurfaceTypeEnum
+                ? ['value' => $court->surface_type->value, 'label' => $court->surface_type->label()]
+                : null)
+            ->filter()->unique('value')->values()->all();
+        $amenities = $mapVenue->amenities->filter(fn ($amenity): bool => (bool) $amenity->is_active)
+            ->pluck('name')->values()->all();
+
         return response()->json([
             'venue' => [
                 'id' => $venue->id,
@@ -290,7 +311,9 @@ class VenueController extends Controller
                     'line_name' => $station->lineName,
                     'line_color' => $station->lineColor,
                 ])->all(),
-                'image_url' => $venue->featuredMedia[0]['url'] ?? null,
+                'image_url' => $mapPhoto === null ? null : url($mapPhoto->publicUrl()),
+                'surfaces' => $surfaces,
+                'amenities' => $amenities,
                 'url' => route('venues.show', $venue->routeIdentifier()),
             ],
         ]);

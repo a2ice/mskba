@@ -204,7 +204,10 @@ final readonly class EventVenueInterestService
                         userId: $recipient->id,
                         type: UserNotificationTypeEnum::SYSTEM,
                         title: 'Предварительный интерес к аренде',
-                        body: 'Планируется мероприятие «'.$event->title.'» на площадке «'.$venue->name.'» — '.$start.'. Это не бронь и не обязательство.',
+                        body: 'Планируется мероприятие «'.$event->title.'» на площадке «'.$venue->name.'» — '.$start.'. '
+                            .(count($event->proposed_time_options ?? []) > 1
+                                ? 'Есть '.count($event->proposed_time_options).' альтернативных варианта времени. ' : '')
+                            .'Это не бронь и не обязательство.',
                         actionUrl: $url,
                         actionText: 'Посмотреть интерес',
                         payload: [

@@ -60,7 +60,8 @@ final class AddEventParticipantHandler
 
             if (! $viewer instanceof User
                 || $user->status === UserStatusEnum::BLOCKED
-                || ! $this->privacy->allows($user, $viewer, UserPrivacySettingTypeEnum::DISCOVERABILITY)) {
+                || ! $this->privacy->allows($user, $viewer, UserPrivacySettingTypeEnum::DISCOVERABILITY)
+                || ! $this->privacy->allows($user, $viewer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
                 throw new InvalidArgumentException('Этот пользователь недоступен для добавления.');
             }
 

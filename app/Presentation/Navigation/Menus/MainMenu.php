@@ -67,12 +67,6 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
-                'label' => 'Игровые тренировки',
-                'url' => route('events.index', ['type' => 'game_training']),
-                'active' => $this->isActiveRoute('events.*') && request('type') === 'game_training',
-                'visible' => true,
-            ],
-            [
                 'label' => 'Секции',
                 'url' => $this->routeUrl('sports-sections.index'),
                 'active' => $this->isActiveRoute('sports-sections.*'),

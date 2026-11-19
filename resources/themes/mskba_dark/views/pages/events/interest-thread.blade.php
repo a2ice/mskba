@@ -32,6 +32,17 @@
         Предзаявка — информационный интерес к выбранному времени, не бронь и не обязательство.
         Переписка сохраняется при создании заявки и последующих решениях.
     </div>
+    @if(count($event->proposed_time_options ?? []) > 1)
+        <section class="panel mb-3" aria-label="Варианты времени">
+            <h2>Предложенные варианты времени</h2>
+            <p>Это альтернативные пожелания одного мероприятия. Нужно согласовать один вариант, прежде чем оформлять бронь.</p>
+            <ol>
+                @foreach($event->proposed_time_options as $option)
+                    <li>{{ \Carbon\CarbonImmutable::parse($option['starts_at'], $timezone)->format('d.m.Y H:i') }} · {{ $option['duration_minutes'] }} мин.</li>
+                @endforeach
+            </ol>
+        </section>
+    @endif
     <article class="card mb-3"><div class="card-body">
         <h2 class="h5 mb-2">{{ $interest->venue->name }} · {{ $interest->court?->name ?? 'Зал' }}</h2>
         <p class="mb-2">
