@@ -59,15 +59,15 @@
             </label>
             <div class="quick-event-dialog__field" data-quick-venue-field>
                 <label for="quick-event-venue-search">Площадка</label>
-                <div class="quick-event-dialog__venue-selector" data-quick-venue-selector data-search-url="{{ route('venues.search') }}" data-confirmed-only="1">
-                    <input id="quick-event-venue-search" type="search" required autocomplete="off"
+                <div class="quick-event-dialog__venue-selector predictive-search__input-wrap" data-quick-venue-selector data-search-url="{{ route('venues.search') }}" data-confirmed-only="1">
+                    <input id="quick-event-venue-search" class="predictive-search__input" type="search" required autocomplete="off"
                         placeholder="Название, адрес или метро" role="combobox" aria-autocomplete="list"
                         aria-expanded="false" aria-controls="quick-event-venue-results"
                         value="{{ $quickInitialVenue?->name ?? '' }}" data-quick-venue-search>
                     <input type="hidden" name="venue_id" value="{{ $quickSelectedVenue ?: '' }}" data-quick-venue>
-                    <button type="button" class="quick-event-dialog__venue-clear" data-quick-venue-clear
-                        aria-label="Очистить площадку" @if(!$quickInitialVenue) hidden @endif>×</button>
-                    <div id="quick-event-venue-results" class="quick-event-dialog__venue-results" role="listbox"
+                    <button type="button" class="quick-event-dialog__venue-clear predictive-search__control" data-quick-venue-clear
+                        aria-label="Очистить площадку" @if(!$quickInitialVenue) hidden @endif></button>
+                    <div id="quick-event-venue-results" class="quick-event-dialog__venue-results predictive-search__list" role="listbox"
                         data-quick-venue-results hidden></div>
                 </div>
                 <p class="quick-event-dialog__hint" data-quick-venue-message role="status" hidden></p>
@@ -281,10 +281,9 @@
 .quick-event-dialog__venue-selector>input[type=search]{padding-right:48px;appearance:none;-webkit-appearance:none}
 .quick-event-dialog__venue-selector>input[type=search]::-webkit-search-cancel-button{display:none}
 .quick-event-dialog__venue-clear{
-    position:absolute;right:8px;top:50%;transform:translateY(-50%);
-    width:36px;height:36px;border:0;border-radius:9px;
-    background:transparent;color:var(--muted,#6f7780);
-    font-size:24px;line-height:1;cursor:pointer;
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    width:26px;height:26px;padding:0;border:0;border-radius:50%;
+    background:transparent;color:var(--muted,#6f7780);cursor:pointer;
 }
 .quick-event-dialog__venue-clear[hidden]{display:none}
 .quick-event-dialog__venue-clear:hover{background:var(--surface-raised,#e8ebed)}
