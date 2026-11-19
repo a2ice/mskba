@@ -173,7 +173,11 @@ final class CreateEventHandler
                 'confirmation_version' => $event->participation_confirmation_version,
             ]);
 
-            if ($event->type === EventTypeEnum::GAME) {
+            // Event remains a valid container even when no Game is created.
+            // Legacy creation routes retain their previous automatic-game behavior;
+            // the event-first wizard explicitly controls this optional child.
+            $createGame = ! $funnel || (bool) ($data['create_game'] ?? true);
+            if ($event->type === EventTypeEnum::GAME && $createGame) {
                 $game = $this->standaloneGames->initialize(
                     $event,
                     $actor,
