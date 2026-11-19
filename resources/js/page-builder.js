@@ -1,4 +1,12 @@
 import '../css/page-builder-today-event-map.css';
+import { attachSharedHomeVenueCards } from './components/venue-map-info-card.js';
+
+const initializeSharedMapCards = () => attachSharedHomeVenueCards();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeSharedMapCards, {once:true});
+} else {
+    initializeSharedMapCards();
+}
 import './page-builder-today-event-map.js';
 // Hero Slider component runtime remains shared; homepage ball JS belongs to Filament.
 import './page-builder-hero-slider.js';
