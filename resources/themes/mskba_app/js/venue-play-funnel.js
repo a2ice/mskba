@@ -81,6 +81,8 @@
     function showEvent(id){
         const pane=getPane(id);if(!pane)return;
         selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;
+        // Different event cards must open at the start of their own detail view.
+        detail.scrollTop=0;
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});
         title.textContent='Мероприятие';
         paintButtons(pane);
