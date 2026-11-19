@@ -41,6 +41,7 @@ import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
         const item=normalize(venue);
         known[String(item.id)]=item;
         hidden.value=String(item.id);
+        hydratedId=String(item.id);
         input.value=text(item.name);
         input.setCustomValidity('');
         input.removeAttribute('aria-invalid');
@@ -68,12 +69,12 @@ import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
         searchResults=venues;list.replaceChildren();
         venues.forEach((venue,index)=>{
             const option=document.createElement('button');
-            option.type='button';option.setAttribute('role','option');
+            option.type='button';option.className='predictive-search__item';option.setAttribute('role','option');
             option.dataset.quickVenueOption=String(index);
-            const name=document.createElement('strong');name.textContent=text(venue.name);
+            const name=document.createElement('strong');name.className='predictive-search__label';name.textContent=text(venue.name);
             option.append(name);
             const description=[text(venue.address),metroNames(venue).join(', ')].filter(Boolean).join(' · ');
-            if(description){const small=document.createElement('small');small.textContent=description;option.append(small);}
+            if(description){const small=document.createElement('small');small.className='predictive-search__meta';small.textContent=description;option.append(small);}
             list.append(option);
         });
         list.hidden=!venues.length;
