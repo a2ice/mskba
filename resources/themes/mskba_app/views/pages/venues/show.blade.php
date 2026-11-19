@@ -517,9 +517,6 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>
-    <div class="app-venue-day-dialog__wizard-back" data-venue-day-wizard-back-wrap hidden>
-        <button type="button" class="button secondary" data-venue-day-back>Назад</button>
-    </div>
     @include('theme::pages.venues.partials.day-calendar')
     <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
         data-venue-day-status hidden></p>
@@ -531,6 +528,9 @@
         <input type="hidden" name="starts_at" data-venue-day-start>
         <input type="hidden" name="duration_minutes" data-venue-day-duration>
         <input type="hidden" name="scope" value="whole">
+    <div class="app-venue-day-dialog__wizard-back" data-venue-day-wizard-back-wrap hidden>
+        <button type="button" class="button secondary" data-venue-day-back>Назад</button>
+    </div>
         <div class="app-venue-day-dialog__selection">
             <strong data-venue-day-summary>Выберите время</strong>
             <span data-venue-day-minimum></span>
