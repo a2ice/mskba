@@ -189,7 +189,7 @@
             <input type="hidden" name="send_pre_request" value="0">
             <label class="check-label">
                 <input type="checkbox" name="send_pre_request" value="1"
-                    @checked((string) old('send_pre_request', '1') === '1')>
+                    @checked((string) old('send_pre_request', '0') === '1')>
                 <span>Сообщить площадке о предварительном интересе</span>
             </label>
             <div class="app-rental-pricing__actions">
