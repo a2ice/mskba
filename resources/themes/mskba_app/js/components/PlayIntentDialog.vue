@@ -480,7 +480,8 @@ function onClick(e){
     }
     pendingSuccessToast=null;
     subscriptionType.value=accountCreate?null:'play';
-    contextSource.value=accountCreate?'subscriptions':'play';contextType.value='venue';contextId.value=props.options.venueId??null;
+    contextSource.value='play'; // Preserve the standard venue game-interest entry point.
+    if(accountCreate)contextSource.value='subscriptions';contextType.value='venue';contextId.value=props.options.venueId??null;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
