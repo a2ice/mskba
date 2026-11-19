@@ -38,7 +38,7 @@ final class AccountVenueContractCaseController extends Controller
         $reviewer = $user->isConfirmed() && $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
         $invitation = AccountInvitation::query()
             ->whereIn('accepted_user_id', $ids)->where('scope_type', 'venue')
-            ->where('scope_id', $venue->id)->latest('id')->first();
+            ->where('scope_id', $venue->id)->where('role', 'owner')->latest('id')->first();
         $claims = VenueOwnershipClaim::query()
             ->where('venue_id', $venue->id)
             ->whereIn('applicant_user_id', $ids)
@@ -105,7 +105,8 @@ final class AccountVenueContractCaseController extends Controller
         abort_unless($user->isConfirmed() || $user->hasVerifiedPrimaryContact(), 403);
         $ids = $user->identityIds();
         $allowed = AccountInvitation::query()->whereIn('accepted_user_id', $ids)
-            ->where('scope_type', 'venue')->where('scope_id', $venue->id)->exists()
+            ->where('scope_type', 'venue')->where('scope_id', $venue->id)
+            ->where('role', 'owner')->exists()
             || VenueOwnershipClaim::query()->where('venue_id', $venue->id)
                 ->whereIn('applicant_user_id', $ids)->exists()
             || in_array($venue->id, $venueAccess->bootstrapOwnedVenueIdsFor($user), true);
