@@ -137,7 +137,10 @@
 <style>
 .venue-play-dialog{width:min(690px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:92dvh;padding:0;overflow:hidden;color:var(--text,#fff)}
 
-.venue-play-dialog__header{display:grid;grid-template-columns:16px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line,#59606a)}
+.venue-play-dialog:not(.venue-play-dialog--app){border:1px solid var(--line,#59606a);border-radius:16px;background:var(--surface,#1b1f27);box-shadow:0 20px 85px #0008}
+.venue-play-dialog:not(.venue-play-dialog--app)::backdrop{background:rgba(0,0,0,.64)}
+.venue-play-dialog[open]>.venue-play-dialog__header::before{content:"⠿";align-self:center;justify-self:center;color:var(--muted,#929aa4);font-size:1rem;line-height:1;pointer-events:none}
+.venue-play-dialog__header{display:grid;grid-template-columns:16px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line,#59606a);cursor:grab;touch-action:none;user-select:none}
 .venue-play-dialog__header h2{margin:0;font-size:clamp(19px,2vw,25px);min-width:0;line-height:1.3}
 .venue-play-dialog__header .venue-play-dialog__close{width:44px;height:44px;display:flex;align-items:center;justify-content:center;justify-self:end;border:1px solid var(--line,#59606a);border-radius:12px;background:var(--surface,#1b1f27);color:inherit;cursor:pointer}
 .venue-play-dialog__close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
