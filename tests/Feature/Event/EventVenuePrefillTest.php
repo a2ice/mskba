@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
@@ -39,7 +40,7 @@ final class EventVenuePrefillTest extends TestCase
     public function test_wizard_preserves_selected_venue_and_court_in_app_create_form(): void
     {
         $this->signIn();
-        $venue = Venue::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
         $court = $venue->primaryCourt()->firstOrFail();
 
         $parameters = [
