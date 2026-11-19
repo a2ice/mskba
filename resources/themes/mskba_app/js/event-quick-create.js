@@ -15,6 +15,9 @@
     const venue=form.querySelector('[data-quick-venue]');
     const court=form.querySelector('[data-quick-court]');
     const format=form.querySelector('[data-quick-format]');
+    const createGame=form.querySelector('[data-quick-create-game]');
+    const createGameRow=form.querySelector('[data-quick-create-game-row]');
+    const createGameHint=form.querySelector('[data-quick-create-game-hint]');
     const time=form.querySelector('[data-quick-time]');
     const date=form.querySelector('[data-quick-date]');
     const duration=form.querySelector('[data-quick-duration]');
@@ -77,7 +80,10 @@
         form.querySelector('[data-quick-timing]').value=fields[2];
     };
     const syncType=()=>{
-        form.querySelector('[data-quick-game-fields]').hidden=type.value!=='game';
+        const isGame=type.value==='game';
+        createGameRow.hidden=!isGame;
+        createGameHint.hidden=!isGame;
+        form.querySelector('[data-quick-game-fields]').hidden=!isGame||!createGame.checked;
         if(!editingTitle)title.value=type.value ? (type.selectedOptions?.[0]?.textContent||'Игра')+' на площадке' : '';
     };
     const syncCourts=()=>{
@@ -92,6 +98,7 @@
         availability.hidden=true;
     };
     type.addEventListener('change',syncType);
+    createGame.addEventListener('change',syncType);
     format.addEventListener('change',syncFormat);
     title.addEventListener('input',()=>{editingTitle=true;});
     venue.addEventListener('change',()=>{
@@ -173,6 +180,13 @@
         const place=venue.selectedOptions[0]?.textContent||'Площадка';
         info.textContent=kind+' · '+(title.value.trim()||kind)+' · '+place;
         node.append(info);
+        if(type.value==='game'){
+            const gameInfo=document.createElement('p');
+            gameInfo.textContent=createGame.checked
+                ? 'Внутри мероприятия также будет создана одна игра с начальными настройками.'
+                : 'Мероприятие будет создано без игры. Её можно добавить позднее.';
+            node.append(gameInfo);
+        }
         const details=document.createElement('p');
         if(!slots.length)details.textContent='Без даты: создаётся черновик. Позже можно выбрать время и опубликовать мероприятие.';
         else if(slots.length>1&&form.elements.namedItem('schedule_mode').value==='separate')
@@ -233,11 +247,12 @@
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
-            if(name==='slots'||name==='schedule_mode')continue;
+            if(name==='slots'||name==='schedule_mode'||name==='create_game')continue;
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
         editingTitle=true;
+        createGame.checked=saved.draft.create_game!=='0';
         syncType();syncFormat();syncCourts();
         const data=saved.draft;
         if(data.venue_court_id)court.value=String(data.venue_court_id);
