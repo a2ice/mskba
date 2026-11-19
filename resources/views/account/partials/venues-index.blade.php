@@ -46,7 +46,14 @@
                         <h2><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
                     </div>
                     <span class="account-contracts-workspace__status {{ $card['effective'] ? 'is-active' : '' }}">
-                        {{ $card['effective'] ? 'Контракт действует' : ($card['contracts'] !== [] ? 'Контракт не действует' : 'Без контракта') }}
+                        @if($card['restriction'])Заблокировано
+                        @elseif($card['effective'])Контракт действует
+                        @elseif($card['claim']?->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::PENDING)На рассмотрении
+                        @elseif($card['claim']?->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::DRAFT)Черновик заявки
+                        @elseif($card['claim']?->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::REJECTED)Отклонено — можно подать повторно
+                        @elseif($card['contracts'] !== [])Контракт не действует
+                        @else Требуется подтверждение
+                        @endif
                     </span>
                 </div>
                 @if($venue->raw_address)
@@ -65,6 +72,7 @@
                 <div class="account-contracts-workspace__actions">
                     <a class="account-contracts-workspace__primary" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Открыть</a>
                     <button type="button" class="account-contracts-workspace__secondary" data-contract-dialog-open="venue-contract-{{ $venue->id }}">Контракт</button>
+                    <a class="account-contracts-workspace__secondary" href="{{ route('account.venue-contracts.show', $venue->id) }}">Полная карточка</a>
                     @if($editUrl !== null)
                         <a class="account-contracts-workspace__secondary" href="{{ $editUrl }}">Редактировать</a>
                     @endif
