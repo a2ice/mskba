@@ -7,7 +7,11 @@
     if (!choice || !favorite || !dayDialog) return;
 
     const rental = choice.querySelector('[data-venue-choice-rental]');
-    const favoriteOption = choice.querySelector('[data-venue-choice-favorite]');
+    const eventOption = choice.querySelector('[data-venue-choice-event]');
+    const interestOption = choice.querySelector('[data-venue-choice-interest]');
+    const eventVenue = choice.querySelector('[data-venue-choice-event-venue]');
+    const eventType = choice.querySelector('[data-venue-choice-type]');
+    const eventError = choice.querySelector('[data-venue-choice-event-error]');
     const courtSelect = choice.querySelector('[data-venue-choice-court]');
     const courtError = choice.querySelector('[data-venue-choice-error]');
     const favoriteError = favorite.querySelector('[data-venue-favorite-error]');
@@ -67,11 +71,13 @@
     function close(dialog) {
         if (dialog.open) dialog.close();
     }
-    function openChoice(date = null, expandRental = false) {
+    function openChoice(date = null, expandRental = false, expand = null) {
         desiredDate = date;
-        rental.open = expandRental;
-        favoriteOption.open = false;
+        rental.open = expandRental || expand === 'rental';
+        eventOption.open = expand === 'event';
+        interestOption.open = expand === 'interest';
         courtError.hidden = true;
+        eventError.hidden = true;
         // Nested dialogs are not left stacked above the selected action.
         close(document.querySelector('[data-venue-interests-dialog]') || choice);
         if (!choice.open) choice.showModal();
@@ -121,10 +127,37 @@
     window.addEventListener('mskba:venue-court-selection-required', event => {
         openChoice(event.detail?.date || null, true);
     });
-    favoriteOption.addEventListener('toggle', () => {
-        if (!favoriteOption.open || !choice.open) return;
-        favoriteOption.open = false;
-        requestFavorite();
+    // The three options are first steps, not implicit actions on accordion expand.
+    choice.querySelector('[data-venue-choice-event-next]')?.addEventListener('click', () => {
+        const selectedVenueId = Number(eventVenue?.value);
+        if (!Number.isSafeInteger(selectedVenueId) || selectedVenueId < 1) {
+            eventError.hidden = false;
+            eventVenue?.focus();
+            return;
+        }
+        eventError.hidden = true;
+        close(choice);
+        window.dispatchEvent(new CustomEvent('mskba:quick-event:open', {
+            detail: {venueId: selectedVenueId, type: eventType?.value || 'game', fromVenueChoice: true},
+        }));
+    });
+    eventVenue?.addEventListener('change', () => {eventError.hidden = true;});
+    choice.querySelector('[data-venue-choice-interest-next]')?.addEventListener('click', () => {
+        // The same click bubbles to PlayIntentDialog's delegated opener.
+        close(choice);
+    });
+    window.addEventListener('mskba:venue-choice:return', event => {
+        openChoice(desiredDate, false, event.detail?.section || 'event');
+    });
+    const dayBack = dayDialog.querySelector('[data-venue-day-back]');
+    const dayBackWrap = dayDialog.querySelector('[data-venue-day-wizard-back-wrap]');
+    dayBack?.addEventListener('click', () => {
+        close(dayDialog);
+        if (dayBackWrap) dayBackWrap.hidden = true;
+        openChoice(desiredDate, true);
+    });
+    dayDialog.addEventListener('close', () => {
+        if (dayBackWrap) dayBackWrap.hidden = true;
     });
     favorite.querySelector('[data-venue-favorite-back]')?.addEventListener('click', () => {
         close(favorite);
@@ -148,9 +181,15 @@
     favorite.querySelectorAll('[data-venue-favorite-close]').forEach(button =>
         button.addEventListener('click', () => close(favorite)));
     for (const dialog of [choice, favorite]) {
-        dialog.addEventListener('click', event => {
-            if (event.target === dialog) close(dialog);
+        let beganOnBackdrop = false;
+        dialog.addEventListener('pointerdown', event => {
+            beganOnBackdrop = event.target === dialog;
         });
+        dialog.addEventListener('pointerup', event => {
+            if (beganOnBackdrop && event.target === dialog) close(dialog);
+            beganOnBackdrop = false;
+        });
+        dialog.addEventListener('pointercancel', () => {beganOnBackdrop = false;});
     }
     courtSelect?.addEventListener('change', () => {courtError.hidden = true;});
     choice.querySelector('[data-venue-choice-date]')?.addEventListener('click', () => {
@@ -161,6 +200,8 @@
             return;
         }
         close(choice);
+        const dayBackWrap = dayDialog.querySelector('[data-venue-day-wizard-back-wrap]');
+        if (dayBackWrap) dayBackWrap.hidden = false;
         dayDialog.dispatchEvent(new CustomEvent('mskba:choose-court', {
             detail: {courtId, date: desiredDate},
         }));
