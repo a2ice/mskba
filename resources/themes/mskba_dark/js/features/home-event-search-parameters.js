@@ -29,12 +29,6 @@ const EVENT_TYPES = [
         tooltip: 'Тренировочное мероприятие без обязательного полноценного матча между командами.',
     },
     {
-        value: 'game_training',
-        label: 'Игровая тренировка',
-        icon: 'ti ti-users-group',
-        tooltip: 'Тренировка, в которой основная часть занятия строится вокруг игровых упражнений или матчей.',
-    },
-    {
         value: 'tournament',
         label: 'Турнир',
         icon: 'ti ti-trophy',
@@ -317,9 +311,7 @@ function prepareEventSearchFlow(flow) {
                 description.textContent = 'Выберите конкретный тип на предыдущем шаге или пропустите этот шаг.';
             } else {
                 title.textContent = 'Дополнительных параметров пока нет';
-                description.textContent = state.typeValue === 'training'
-                    ? 'Для тренировок этот шаг пока не содержит дополнительных фильтров.'
-                    : 'Для игровых тренировок этот шаг пока не содержит дополнительных фильтров.';
+                description.textContent = 'Для этого типа пока нет дополнительных фильтров.';
             }
         }
 
@@ -532,7 +524,7 @@ function prepareEventSearchFlow(flow) {
 
         canSkip(step) {
             if (step === 1) {
-                return ['any', 'training', 'game_training'].includes(state.typeValue);
+                return ['any', 'training'].includes(state.typeValue);
             }
             return step === 2;
         },
