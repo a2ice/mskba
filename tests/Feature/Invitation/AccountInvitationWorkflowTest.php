@@ -171,6 +171,59 @@ final class AccountInvitationWorkflowTest extends TestCase
             'user_id' => $user->id, 'access_level' => 'staff',
         ]);
     }
+
+    public function test_invalid_registration_returns_to_invitation_instead_of_previous_js_asset(): void
+    {
+        [, , $invitation, $token] = $this->invite();
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->withSession([
+            '_previous' => ['url' => url('/assets/design-themes/court_day/example.js')],
+        ])->post(route('account-invitations.register'), [
+            'username' => 'invalid username',
+            'password' => 'weak',
+            'password_confirmation' => 'weak',
+            'privacy_consent' => '1',
+            'accept_invitation' => '1',
+        ])->assertRedirect(route('account-invitations.continue'))
+            ->assertSessionHasErrors(['username', 'password']);
+
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+        $this->get(route('account-invitations.continue'))->assertOk()
+            ->assertDontSee('MSKBA / ПРИГЛАШЕНИЕ')
+            ->assertSee('app-invitation__title');
+    }
+
+    public function test_unchecked_acceptance_returns_to_invitation_without_referer(): void
+    {
+        [, , $invitation, $token] = $this->invite();
+        $this->get(route('account-invitations.show', $token))->assertRedirect();
+        $this->withSession([
+            '_previous' => ['url' => url('/assets/design-themes/court_day/example.js')],
+        ])->post(route('account-invitations.register'), [
+            'username' => 'valid_invited_user',
+            'password' => 'SafePass#2026',
+            'password_confirmation' => 'SafePass#2026',
+            'privacy_consent' => '1',
+        ])->assertRedirect(route('account-invitations.continue'))
+            ->assertSessionHasErrors(['accept_invitation']);
+
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+    }
+
+    public function test_invalid_existing_user_acceptance_returns_to_invitation(): void
+    {
+        [, , $invitation, $token] = $this->invite();
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($user)->get(route('account-invitations.show', $token));
+        $this->withSession([
+            '_previous' => ['url' => url('/assets/design-themes/court_day/example.js')],
+        ])->post(route('account-invitations.accept'), [])
+            ->assertRedirect(route('account-invitations.continue'))
+            ->assertSessionHasErrors(['accept_invitation']);
+
+        $this->assertNull($invitation->fresh()->accepted_user_id);
+    }
+
     public function test_expired_and_revoked_links_cannot_verify_contact(): void
     {
         [$issuer, , $invitation, $token] = $this->invite();
