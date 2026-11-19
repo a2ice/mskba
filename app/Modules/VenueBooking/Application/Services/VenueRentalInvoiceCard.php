@@ -59,6 +59,7 @@ final readonly class VenueRentalInvoiceCard
             'details' => $details,
             'copy_text' => $copy,
             'reference' => $canSeeDetails ? $invoice->payment_reference : null,
+            'claim_note' => $canSeeDetails ? $invoice->payment_claim_note : null,
             'due_at' => $invoice->due_at?->setTimezone('Europe/Moscow')->format('d.m.Y H:i').' МСК',
             'claim_url' => $isPayer && $invoice->status === 'issued' && $invoice->due_at?->isFuture()
                 ? route('account.venue-bookings.invoices.claim', [$booking, $invoice]) : null,
