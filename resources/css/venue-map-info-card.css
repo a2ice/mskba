@@ -28,6 +28,15 @@
 .mskba-venue-map-card .mskba-venues-map__card-media img {
     width:100%;height:100%;object-fit:cover;
 }
+.mskba-venue-map-card .mskba-venues-map__card-media img[hidden] {display:none}
+.mskba-venue-map-card__media-loading {
+    position:absolute;inset:0;display:grid;place-items:center;
+    background:rgba(12,30,47,.68);backdrop-filter:blur(3px);
+}
+.mskba-venue-map-card__media-loading .image-upload-loading__spinner {
+    flex:none;width:34px;height:34px;border-color:rgba(255,255,255,.38);
+    border-right-color:#ff791f;
+}
 .mskba-venue-map-card .mskba-venues-map__card-media-placeholder {
     width:100%;height:100%;display:flex;align-items:center;
     justify-content:center;flex-direction:column;gap:8px;color:#edf5fb;
