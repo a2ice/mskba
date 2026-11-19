@@ -813,7 +813,7 @@ test('nearby venue bounds include the user at their center and only closest pins
     const user = {latitude:55.751, longitude:37.618};
     const venues = [
         {id:1, latitude:55.757, longitude:37.618},
-        {id:2, latitude:55.751, longitude:37.628},
+        {id:2, latitude:55.751, longitude:37.638},
         {id:3, latitude:55.71, longitude:37.60},
         {id:4, latitude:59.93, longitude:30.3},
         {id:5, latitude:null, longitude:37.6},
