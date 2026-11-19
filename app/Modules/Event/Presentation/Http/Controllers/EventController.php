@@ -119,7 +119,7 @@ final class EventController extends Controller
                 $search,
             ),
             'types' => EventTypeEnum::cases(),
-            'selectedType' => $type,
+            'selectedType' => $type === EventTypeEnum::GAME_TRAINING ? EventTypeEnum::TRAINING : $type,
             'typeFilter' => $typeFilter,
             'period' => $period,
             'dateFrom' => $dateFrom,
