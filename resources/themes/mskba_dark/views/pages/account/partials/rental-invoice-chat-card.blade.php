@@ -12,6 +12,7 @@
         @if(!empty($invoiceCard['details']['purpose']))<p>Комментарий к переводу: {{ $invoiceCard['details']['purpose'] }}</p>@endif
     @endif
     @if($invoiceCard['reference'])<p>Номер операции: {{ $invoiceCard['reference'] }}</p>@endif
+    @if($invoiceCard['claim_note'])<p>Комментарий плательщика: {{ $invoiceCard['claim_note'] }}</p>@endif
     <div class="app-rental-invoice-card__actions">
         @if($invoiceCard['copy_text'])
             <button class="button secondary btn btn--secondary btn--sm" type="button" data-rental-invoice-copy="{{ $invoiceCard['copy_text'] }}">Скопировать реквизиты</button>
