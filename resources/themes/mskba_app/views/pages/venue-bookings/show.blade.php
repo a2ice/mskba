@@ -340,6 +340,10 @@
                             <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->setTimezone($timezone)->format('d.m.Y H:i') }}</time>
                         </div>
                         <p>{{ $message->body }}</p>
+                        @if($message->type === 'invoice')
+                            @php($invoiceCard = app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceCard::class)->forMessage($message, $invoiceCardViewer))
+                            @include('theme::pages.account.partials.rental-invoice-chat-card')
+                        @endif
                         @if($message->attachment_path)
                             <a href="{{ route('account.venue-bookings.conversation.attachment', [$booking, $message]) }}">Скачать: {{ $message->attachment_name }}</a>
                         @endif
