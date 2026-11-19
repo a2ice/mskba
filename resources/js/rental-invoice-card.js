@@ -21,6 +21,7 @@ export function renderRentalInvoiceCard(data) {
         if (details[key]) card.append(create('p', '', label + ': ' + details[key]));
     }
     if (data.reference) card.append(create('p', '', 'Номер операции: ' + data.reference));
+    if (data.claim_note) card.append(create('p', '', 'Комментарий плательщика: ' + data.claim_note));
     const actions = create('div', 'app-rental-invoice-card__actions');
     if (data.copy_text) {
         const button = create('button', 'button secondary', 'Скопировать реквизиты');
