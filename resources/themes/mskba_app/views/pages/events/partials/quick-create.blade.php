@@ -44,8 +44,7 @@
                     <span>Тип мероприятия</span>
                     @if($quickApp)<span class="select-control">@endif
                     <select name="type" class="{{ $quickApp ? '' : 'form-select' }}" required data-quick-type>
-                        @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
-                            @continue($kind === \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME_TRAINING)
+                        @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::availableForCreation() as $kind)
                             <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                         @endforeach
                     </select>
