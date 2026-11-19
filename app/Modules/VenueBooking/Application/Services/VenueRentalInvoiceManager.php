@@ -342,8 +342,7 @@ final readonly class VenueRentalInvoiceManager
             'client_id' => (string) Str::uuid(),
             'type' => 'system',
             'body' => 'Покупатель сообщил об оплате счёта '.$invoice->number
-                .'. Номер операции: '.($invoice->payment_reference ?: 'не указан')
-                .'. Получение денег ещё не подтверждено.',
+                .'. Реквизиты операции переданы получателю. Получение денег ещё не подтверждено.',
         ]);
         DB::afterCommit(static function () use ($booking, $conversation, $message): void {
             event(new VenueBookingMessageSent($booking->id, $conversation->id, $message->id));
