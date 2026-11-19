@@ -13,6 +13,7 @@
     const type=form.elements.namedItem('type');
     const title=form.querySelector('[data-quick-title]');
     const venue=form.querySelector('[data-quick-venue]');
+    const venueSearch=form.querySelector('[data-quick-venue-search]');
     const court=form.querySelector('[data-quick-court]');
     const format=form.querySelector('[data-quick-format]');
     const createGame=form.querySelector('[data-quick-create-game]');
@@ -31,6 +32,7 @@
     let authenticated=dialog.dataset.authenticated==='1';
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const courts=(()=>{try{return JSON.parse(dialog.dataset.courts||'{}');}catch{return {};}})();
+    const venueMeta=(()=>{try{return JSON.parse(dialog.dataset.venueMeta||'{}');}catch{return {};}})();
     const report=text=>{feedback.textContent=text;feedback.hidden=!text;};
     const clearValidation=field=>{
         field.removeAttribute('aria-invalid');
@@ -84,8 +86,20 @@
         createGameRow.hidden=!isGame;
         createGameHint.hidden=!isGame;
         form.querySelector('[data-quick-game-fields]').hidden=!isGame||!createGame.checked;
-        if(!editingTitle)title.value=type.value ? (type.selectedOptions?.[0]?.textContent||'Игра')+' на площадке' : '';
+        updateAutoTitle();
     };
+    const locationPhrase=()=>{
+        const place=venueMeta[venue.value];
+        const metro=String(place?.primary_metro || place?.metro_stations?.[0] || '').trim();
+        if(metro)return 'на м. '+metro;
+        const street=String(place?.street||'').trim();
+        if(street)return 'на '+(/^(?:ул\.|улица\b)/iu.test(street)?street:'ул. '+street);
+        return 'на площадке';
+    };
+    function updateAutoTitle(){
+        if(editingTitle)return;
+        title.value=type.value ? (type.selectedOptions?.[0]?.textContent||'Игра')+' '+locationPhrase() : '';
+    }
     const syncCourts=()=>{
         const remembered=court.value;
         court.replaceChildren();
@@ -101,7 +115,9 @@
     createGame.addEventListener('change',syncType);
     format.addEventListener('change',syncFormat);
     title.addEventListener('input',()=>{editingTitle=true;});
-    venue.addEventListener('change',()=>{
+    venue.addEventListener('change',event=>{
+        if(event.detail?.venue)venueMeta[venue.value]=event.detail.venue;
+        updateAutoTitle();
         syncCourts();
         if(slots.length){slots=[];renderSlots();}
     });
@@ -131,7 +147,7 @@
         }
     }
     function addSlot(){
-        if(!validate(venue))return;
+        if(!validate(venueSearch))return;
         if(!date.value){date.setCustomValidity('Выберите дату.');validate(date);date.setCustomValidity('');return;}
         if(!time.value){time.setCustomValidity('Выберите время.');validate(time);time.setCustomValidity('');return;}
         const item={starts_at:date.value+'T'+time.value,duration_minutes:Number(duration.value)};
@@ -177,7 +193,7 @@
         const node=form.querySelector('[data-quick-review]');node.replaceChildren();
         const info=document.createElement('p');
         const kind=type.selectedOptions[0]?.textContent||'Мероприятие';
-        const place=venue.selectedOptions[0]?.textContent||'Площадка';
+        const place=venueSearch.value.trim()||'Площадка';
         info.textContent=kind+' · '+(title.value.trim()||kind)+' · '+place;
         node.append(info);
         if(type.value==='game'){
@@ -202,6 +218,7 @@
     }
     const goNext=()=>{
         if(step===0){
+            if(!venue.value){venueSearch.setCustomValidity('Выберите площадку из списка.');}
             for(const field of sections[0].querySelectorAll('input:not([type=hidden]),select,textarea')){
                 if(field.disabled||field.closest('[hidden]'))continue;
                 if(!validate(field))return;
@@ -252,6 +269,7 @@
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
         editingTitle=true;
+        if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
         createGame.checked=saved.draft.create_game!=='0';
         syncType();syncFormat();syncCourts();
         const data=saved.draft;
@@ -293,7 +311,8 @@
         event.preventDefault();
         const fromVenue=trigger.dataset.quickEventVenueId;
         if(fromVenue){
-            venue.value=fromVenue;syncCourts();
+            venue.value=fromVenue;
+            venue.dispatchEvent(new Event('change',{bubbles:true}));
             const fromCourt=trigger.dataset.quickEventCourtId||dialog.dataset.initialCourtId;
             if(fromCourt && [...court.options].some(option=>option.value===fromCourt))court.value=fromCourt;
         }

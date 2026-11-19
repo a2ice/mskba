@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const presetType = new URLSearchParams(window.location.search).get('type');
-    if (!['game', 'game_training', 'training'].includes(presetType)) return;
+    if (!['game', 'training'].includes(presetType)) return;
 
     document.querySelectorAll('[data-event-wizard]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.presetEntryAdvanced === '1') return;

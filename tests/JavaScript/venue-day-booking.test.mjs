@@ -675,7 +675,7 @@ test('event creation select controls reuse the branded native select, not custom
     assert.match(tpl, /min-height:48px/);
     assert.match(tpl, /border-radius:12px/);
     assert.match(tpl, /font-size:16px;line-height:24px/);
-    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 6);
+    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 5);
     assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
 });
 
@@ -687,7 +687,9 @@ test('favorite modals preserve exact acceptance copy, one action and approved cl
     const source = readFileSync(
         new URL('../../resources/themes/mskba_app/js/venue-favorite-main.js', import.meta.url), 'utf8',
     );
-    assert.match(tpl, /Площадка теперь в избранном/);
+    assert.match(tpl, /data-venue-favorite-title>Избранное/);
+    assert.match(tpl, /Площадка добавлена в избранное\./);
+    assert.match(source, /title\.textContent='Избранное'/);
     assert.match(source, /Вы уверены, что хотите убрать площадку из избранного\?/);
     assert.match(source, /'Убрать'/);
     assert.doesNotMatch(tpl, /data-venue-favorite-cancel/);
@@ -706,4 +708,63 @@ test('rental court selection is a semantic standard select with branded arrow', 
         new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
     );
     assert.match(css, /\.select-control>svg\{[^}]*width:20px;height:20px/);
+});
+
+
+test('event creation uses predictive venue search, map selection, and location-based title', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /data-quick-venue-selector/);
+    assert.match(tpl, /data-quick-venue-search/);
+    assert.match(tpl, /data-quick-venue-results/);
+    assert.match(tpl, /data-quick-venue-map-open>На карте/);
+    assert.match(tpl, /data-quick-venue-map-dialog/);
+    assert.doesNotMatch(tpl, /<select name="venue_id"/);
+    assert.match(tpl, /EventTypeEnum::creatable\(\)/);
+    const app = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/app.js', import.meta.url), 'utf8',
+    );
+    const dark = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/app.js', import.meta.url), 'utf8',
+    );
+    assert.match(app, /quick-event-venue-selector\.js/);
+    assert.match(dark, /quick-event-venue-selector\.js/);
+    const predictor = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(predictor, /venues\.search|dataset\.searchUrl/);
+    assert.match(predictor, /venuePlacemark\(/);
+    assert.match(predictor, /hidden\.dispatchEvent\(/);
+    const wizard = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/event-quick-create.js', import.meta.url), 'utf8',
+    );
+    assert.match(wizard, /data-quick-venue-search/);
+    assert.match(wizard, /place\?\.primary_metro/);
+    assert.match(wizard, /'на м\. '/);
+    assert.match(wizard, /'ул\. '/);
+    assert.match(wizard, /if\(editingTitle\)return/);
+    assert.match(wizard, /const place=venueSearch\.value\.trim\(\)/);
+});
+
+test('game_training remains a legacy readable type, but is not in creation UI', () => {
+    const enumSource = readFileSync(
+        new URL('../../app/Modules/Event/Domain/Enums/EventTypeEnum.php', import.meta.url), 'utf8',
+    );
+    assert.match(enumSource, /case GAME_TRAINING = 'game_training'/);
+    assert.match(enumSource, /return \[self::GAME, self::TRAINING\]/);
+    const menu = readFileSync(
+        new URL('../../app/Presentation/Navigation/Menus/MainMenu.php', import.meta.url), 'utf8',
+    );
+    assert.doesNotMatch(menu, /'Игровые тренировки'/);
+    const oldHome = readFileSync(
+        new URL('../../resources/themes/mskba_dark/views/pages/welcome.blade.php', import.meta.url), 'utf8',
+    );
+    assert.doesNotMatch(oldHome, /Создать игровую тренировку/);
+    const categories = readFileSync(
+        new URL('../../app/Modules/Event/Presentation/Http/Controllers/EventController.php', import.meta.url), 'utf8',
+    );
+    assert.match(categories, /\$typeFilter/);
+    assert.match(categories, /EventTypeEnum::creatable\(\)/);
+    assert.match(categories, /EventTypeEnum::GAME_TRAINING/);
 });

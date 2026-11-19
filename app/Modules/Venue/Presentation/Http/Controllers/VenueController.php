@@ -194,7 +194,9 @@ class VenueController extends Controller
             limit: isset($validated['limit']) ? (int) $validated['limit'] : 20,
         );
 
-        $hoopsByVenue = Venue::query()->with('characteristics')->whereKey(collect($venues)->pluck('id'))->get()
+        $searchVenueModels = Venue::query()->with(['characteristics', 'location.address', 'location.metroStations'])
+            ->whereKey(collect($venues)->pluck('id'))->get()->keyBy('id');
+        $hoopsByVenue = $searchVenueModels
             ->mapWithKeys(fn (Venue $venue): array => [$venue->id => (int) ($venue->characteristics?->hoops_count ?? 1)]);
 
         return response()->json([
@@ -207,6 +209,11 @@ class VenueController extends Controller
                 'description' => $venue->shortDescription,
                 'address' => $venue->displayAddress,
                 'raw_address' => $venue->rawAddress,
+                // Structured street for human-readable event titles; no address guessing on the client.
+                'street' => $searchVenueModels->get($venue->id)?->location?->address?->street,
+                'primary_metro' => $searchVenueModels->get($venue->id)?->location?->metroStations
+                    ?->sortBy(fn ($station) => $station->pivot?->distance_meters ?? PHP_INT_MAX)
+                    ->first()?->name,
                 'requires_payment' => $venue->hasPaidCourt() && ! $venue->hasFreeCourt()
                     ? true : ($venue->hasFreeCourt() && ! $venue->hasPaidCourt() ? false : null),
                 'requires_booking_approval' => $venue->hasApprovalCourt(),

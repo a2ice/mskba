@@ -77,7 +77,7 @@ class VenueShowPageTest extends TestCase
             ->assertSee('section-sidebar-layout__mobile-sticky-navigation', false)
             ->assertSee('venue-mobile-sticky-nav', false)
             ->assertSee('data-venue-anchor-link', false)
-            ->assertDontSee('На карте')
+            ->assertSee('data-quick-venue-map-open', false)
             ->assertSee('Маршрут')
             ->assertDontSee('Открыть в Яндекс Картах')
             ->assertDontSee('<dt>Индекс</dt>', false)

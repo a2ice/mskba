@@ -11,7 +11,10 @@
         filled($venueId),
         $hasMiniGames,
     ])->filter()->count();
-    $createQuery = array_filter(['type' => $selectedType?->value]);
+    // A legacy game_training filter may still be opened by an old link, but
+    // its Create action must lead to a currently supported event type.
+    $createQuery = array_filter(['type' => in_array($selectedType, \App\Modules\Event\Domain\Enums\EventTypeEnum::creatable(), true)
+        ? $selectedType?->value : null]);
     $createUrl = route('events.create', $createQuery);
     $createRedirectUrl = route('events.create', $createQuery, false);
     $mapEvents = collect($events->items())

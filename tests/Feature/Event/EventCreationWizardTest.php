@@ -257,7 +257,7 @@ final class EventCreationWizardTest extends TestCase
         $this->assertSame('preformed_teams', $game->recruitment_mode->value);
     }
 
-    public function test_game_training_can_book_a_half_independently_of_game_format(): void
+    public function test_legacy_game_training_cannot_be_created_again(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
@@ -286,10 +286,8 @@ final class EventCreationWizardTest extends TestCase
                 'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
             ]);
 
-        $event = Event::query()->where('title', 'Игровая тренировка на половине')->firstOrFail();
-        $response->assertRedirect(route('events.show', $event->routeIdentifier()));
-        $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
-        $this->assertSame(VenueBookingScopeEnum::HALF_A, $event->booking->scope);
+        $response->assertSessionHasErrors(['type']);
+        $this->assertDatabaseMissing('events', ['title' => 'Игровая тренировка на половине']);
     }
 
     public function test_wizard_preserves_selected_venue_id_after_server_validation_redirect(): void

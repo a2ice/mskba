@@ -72,7 +72,7 @@ final class CreateEventRequest extends FormRequest
             ],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],
-            'type' => ['required', Rule::enum(EventTypeEnum::class)],
+            'type' => ['required', Rule::in(EventTypeEnum::creatableValues())],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
             'starts_at' => ['required', 'date'],

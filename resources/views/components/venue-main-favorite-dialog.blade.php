@@ -9,11 +9,11 @@
     data-toggle-url="{{ route('favorites.toggle') }}"
     aria-labelledby="venue-main-favorite-title">
     <header class="mskba-modal__header venue-main-favorite-dialog__header">
-        <h2 id="venue-main-favorite-title" data-venue-favorite-title>Площадка теперь в избранном</h2>
+        <h2 id="venue-main-favorite-title" data-venue-favorite-title>Избранное</h2>
         <button type="button" class="icon-button venue-main-favorite-dialog__close" data-venue-favorite-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </header>
     <div class="mskba-modal__body venue-main-favorite-dialog__body">
-        <p data-venue-favorite-description>Добавь площадку в избранное, чтобы вернуться к ней позже.</p>
+        <p data-venue-favorite-description>Площадка добавлена в избранное.</p>
         <p class="venue-main-favorite-dialog__error" data-venue-favorite-error role="alert" hidden></p>
     </div>
     <footer class="mskba-modal__footer venue-main-favorite-dialog__actions">
