@@ -8,6 +8,12 @@ enum EventTypeEnum: string
     case TRAINING = 'training';
     case GAME_TRAINING = 'game_training';
 
+    /** New UI choices; keep GAME_TRAINING for historical records and API compatibility. */
+    public static function availableForCreation(): array
+    {
+        return [self::GAME, self::TRAINING];
+    }
+
     public function label(): string
     {
         return match ($this) {

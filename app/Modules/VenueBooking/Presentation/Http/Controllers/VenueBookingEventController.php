@@ -49,7 +49,7 @@ final class VenueBookingEventController extends Controller
 
         return ThemeResolver::page('venue-bookings.event-create', [
             'booking' => $venueBooking,
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::availableForCreation(),
             'visibilities' => EventVisibilityEnum::cases(),
         ]);
     }

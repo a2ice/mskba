@@ -40,17 +40,29 @@ final class EventWizardController extends Controller
     {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'venue_id' => ['required_with:venue_court_id', 'nullable', 'integer',
+                Rule::exists('venues', 'id')->where('status', 'confirmed')->where('is_published', true)],
+            'venue_court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
+                ->where('venue_id', (int) $request->input('venue_id'))
+                ->whereNull('deleted_at')],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
+        if ($selectedType === EventTypeEnum::GAME_TRAINING) {
+            $selectedType = EventTypeEnum::TRAINING;
+        }
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $defaultStartsAt = $now->ceilMinute();
 
         if (app(ThemeResolver::class)->active() === 'mskba_app') {
-            return redirect()->route('events.create', ['type' => $selectedType->value]);
+            return redirect()->route('events.create', array_filter([
+                'type' => $selectedType->value,
+                'venue_id' => $validated['venue_id'] ?? null,
+                'venue_court_id' => $validated['venue_court_id'] ?? null,
+            ], static fn ($value): bool => $value !== null));
         }
 
         return ThemeResolver::page('events.wizard', [
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::availableForCreation(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),

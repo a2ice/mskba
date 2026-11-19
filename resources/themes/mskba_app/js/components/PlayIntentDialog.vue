@@ -14,7 +14,8 @@ const cadence=ref('flexible'), dayIds=ref([]), dates=ref([]), period=ref('14'), 
 const formats=ref([]), duration=ref(''), similar=ref(false), radius=ref(10), access=ref('any'), venueKind=ref('any');
 const editingId=ref(null), selectedVenueId=ref(props.options.venueId ?? null), venueDisabled=ref(false);
 const contextSource=ref('play'), contextType=ref('venue'), contextId=ref(props.options.venueId??null);
-const favoriteOpen=ref(false), favoriteSelected=ref(true), favoriteState=ref('unknown'), favoriteBusy=ref(false);
+const favoriteOpen=ref(false), favoriteSelected=ref(false), favoriteState=ref('unknown'), favoriteBusy=ref(false);
+const fromVenueChoice=ref(false);
 const favoriteError=ref(''), alreadySubscribed=ref(false), playOpen=ref(true);
 const hasFavorite=computed(()=>Number(contextId.value)>0 && !!contextType.value);
 // Each entity can expose its own optional module. Unconfigured types show
@@ -96,7 +97,8 @@ async function syncFavorite(){
         const item=venue?data.data?.[String(contextId.value)]:data;
         favoriteState.value=item?.state||'none';
         alreadySubscribed.value=Boolean(item?.subscribed);
-        if(contextSource.value==='edit')favoriteSelected.value=favoriteState.value==='active';
+        if(contextSource.value==='edit' || (contextSource.value==='play' && favoriteState.value==='active'))
+            favoriteSelected.value=favoriteState.value==='active';
         if(contextSource.value==='favorite'&&favoriteState.value!=='active')
             favoriteError.value='Не удалось подтвердить добавление в избранное.';
     }catch(e){favoriteState.value='unknown';favoriteError.value=e.message;}
@@ -350,15 +352,32 @@ function next(){
     void refreshChannels();
 }
 
-function unlinkVenue(){
-    // Preserve the anchor and allow restoring it before saving.
-    venueDisabled.value=!venueDisabled.value;
-    if(venueDisabled.value) similar.value=false;
-    if(contextSource.value==='play') {
-        contextId.value=venueDisabled.value?null:selectedVenueId.value;
-        if(!venueDisabled.value)void syncFavorite();
+function toggleVenueSelection(enabled) {
+    venueDisabled.value=!enabled;
+    if(!enabled) {
+        // No hidden venue association should survive an unchecked checkbox.
+        selectedVenueId.value=null;
+        selectedVenueName.value='';
+        selectedVenueUrl.value='';
+        venueSearch.value='';
+        venueSuggestions.value=[];
+        venueMenu.value=false;
+        similar.value=false;
+        excludedVenues.value=[];
+        contextId.value=null;
+        favoriteSelected.value=false;
+        favoriteState.value='unknown';
     }
     venueNotice.value='';
+}
+function backFromInterest() {
+    if(fromVenueChoice.value && !editingId.value && !success.value) {
+        close();
+        window.dispatchEvent(new CustomEvent('mskba:venue-choice:return',
+            {detail:{section:'interest'}}));
+        return;
+    }
+    close();
 }
 function readPending(){
     try{
@@ -453,9 +472,14 @@ async function resume(){
 }
 function authSuccess(){isAuth.value=true;void resume();}
 function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+    const viaChoice=Boolean(e.target.closest('[data-venue-choice-interest-next]'));
+    if(viaChoice && fromVenueChoice.value && contextSource.value==='play' && !success.value && !editingId.value) {
+        void openDialog();return;
+    }
+    fromVenueChoice.value=viaChoice;
     pendingSuccessToast=null;
     contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
-    favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
+    favoriteOpen.value=false;favoriteSelected.value=false;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
     editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
@@ -486,10 +510,11 @@ function onEdit(event){
     }
     void openDialog().then(()=>{void hydrateExcluded(intent.excluded_venue_ids);void syncFavorite();});
 }
-function onBackdrop(e){
-    if(e.target!==el.value)return;
-    const r=el.value.getBoundingClientRect();
-    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
+let beganOnBackdrop=false;
+function onBackdropDown(e){beganOnBackdrop=e.target===el.value;}
+function onBackdropUp(e){
+    if(beganOnBackdrop && e.target===el.value)close();
+    beganOnBackdrop=false;
 }
 onMounted(()=>{window.addEventListener('mskba:subscription-dialog:open',contextOpen);window.addEventListener('mskba:contact:updated',refreshChannels);document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
 onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open',contextOpen);window.removeEventListener('mskba:contact:updated',refreshChannels);document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
@@ -497,7 +522,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
 <template>
 <Teleport to="body">
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
- aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
+ aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @pointerdown="onBackdropDown" @pointerup="onBackdropUp" @pointercancel="beganOnBackdrop=false">
     <header class="mskba-modal__header app-play-dialog__header">
         <div><p class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
@@ -562,10 +587,13 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                 </div>
                 <div class="app-play-dialog__venue-picker field-group">
                     <label class="app-play-dialog__field-label" for="app-play-venue-search">Выбранная площадка</label>
+                    <label class="check-label app-play-dialog__venue-checkbox">
+                        <input type="checkbox" :checked="!venueDisabled" @change="toggleVenueSelection($event.target.checked)">
+                        Указать конкретную площадку
+                    </label>
                     <div class="app-play-dialog__venue-picker-header">
                         <span v-if="chosenVenueId" class="app-play-dialog__hint">Поиск по названию, адресу и метро</span>
-                        <span v-else class="app-play-dialog__hint">Поиск без привязки к площадке</span>
-                        <button v-if="selectedVenueId" type="button" class="app-play-dialog__text-button" @click="unlinkVenue">{{venueDisabled?'Вернуть площадку':'Без конкретной площадки'}}</button>
+                        <span v-else class="app-play-dialog__hint">{{venueDisabled?'Без конкретной площадки':'Выбери площадку или отключи привязку'}}</span>
                     </div>
                     <div class="app-play-dialog__autocomplete">
                         <input id="app-play-venue-search" v-model="venueSearch" class="app-play-dialog__venue-input" type="text" autocomplete="off"
@@ -582,6 +610,15 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
                             <p v-if="!venueSuggestions.length" class="muted">{{searchingVenue?'Ищем…':'Площадки не найдены'}}</p>
                         </div>
                     </div>
+                </div>
+                <div v-if="favoriteExtraVisible" class="app-play-dialog__context-section">
+                    <label class="check-label">
+                        <input v-model="favoriteSelected" type="checkbox"
+                            :disabled="favoriteBusy || favoriteState==='unknown' || favoriteState==='active'">
+                        Добавить площадку в избранное
+                    </label>
+                    <p v-if="favoriteState==='active'" class="app-play-dialog__context-hint">Уже в избранном.</p>
+                    <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
                 </div>
                 <label class="check-label"><input v-model="similar" type="checkbox" :disabled="!chosenVenueId">
                     <strong>Подбирать похожие площадки</strong>
@@ -707,16 +744,6 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
         <div v-show="step==='options' && supportsPlay && playOpen" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <h3>Настройки подписки</h3>
             <p class="app-play-dialog__hint">Шаг 2 из 2. Проверь настройки перед сохранением подписки.</p>
-            <div v-if="favoriteExtraVisible" class="app-play-dialog__context-section">
-                <label class="check-label"><input v-model="favoriteSelected" type="checkbox"
-                    :disabled="favoriteBusy || favoriteState==='unknown' || favoriteState==='active'">
-                    Добавить площадку в избранное</label>
-                <p class="app-play-dialog__context-hint" v-if="favoriteState==='active'">
-                    Площадка уже в избранном.</p>
-                <p class="app-play-dialog__context-hint" v-else>
-                    Дополнительное действие. Подписка сохранится независимо от избранного.</p>
-                <p v-if="favoriteError" class="error" role="alert">{{favoriteError}}</p>
-            </div>
             <div class="app-play-dialog__settings">
                 <section class="app-play-dialog__notification-topic" :class="{'app-play-dialog__notification-topic--collapsed':!notifyMatches}">
                     <label class="check-label"><input v-model="notifyMatches" type="checkbox">Уведомлять о подходящих играх</label>
@@ -798,7 +825,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__steps-footer">
             <template v-if="step==='form'">
-                <button class="button secondary" type="button" @click="close()">Отмена</button>
+                <button class="button secondary" type="button" @click="backFromInterest()">Назад</button>
                 <button v-if="supportsPlay && playOpen" class="button primary" type="button" :disabled="busy || favoriteBusy" @click="next()">Далее</button>
                 <button v-else class="button primary" type="button" :disabled="busy || favoriteBusy"
                     @click="saveFavoriteOnly()">Готово</button>

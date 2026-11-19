@@ -119,7 +119,7 @@ final class EventController extends Controller
                 $search,
             ),
             'types' => EventTypeEnum::cases(),
-            'selectedType' => $type,
+            'selectedType' => $type === EventTypeEnum::GAME_TRAINING ? EventTypeEnum::TRAINING : $type,
             'typeFilter' => $typeFilter,
             'period' => $period,
             'dateFrom' => $dateFrom,
@@ -143,8 +143,16 @@ final class EventController extends Controller
     ): Response {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'venue_id' => ['required_with:venue_court_id', 'nullable', 'integer',
+                Rule::exists('venues', 'id')->where('status', 'confirmed')->where('is_published', true)],
+            'venue_court_id' => ['nullable', 'integer', Rule::exists('venue_courts', 'id')
+                ->where('venue_id', (int) $request->input('venue_id'))
+                ->whereNull('deleted_at')],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
+        if ($selectedType === EventTypeEnum::GAME_TRAINING) {
+            $selectedType = EventTypeEnum::TRAINING;
+        }
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $minimumStartsAt = $now->subMinute()->startOfMinute();
@@ -152,7 +160,9 @@ final class EventController extends Controller
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle()->load('courts'),
-            'types' => EventTypeEnum::cases(),
+            'selectedVenueId' => $validated['venue_id'] ?? null,
+            'selectedCourtId' => $validated['venue_court_id'] ?? null,
+            'types' => EventTypeEnum::availableForCreation(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
             'defaultType' => $defaultType,

@@ -691,9 +691,15 @@ if (dayBookingDialog) {
     };
     dayBookingDialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', close));
-    dayBookingDialog.addEventListener('click', event => {
-        if (event.target === dayBookingDialog) close();
+    let beganOnDayBackdrop = false;
+    dayBookingDialog.addEventListener('pointerdown', event => {
+        beganOnDayBackdrop = event.target === dayBookingDialog;
     });
+    dayBookingDialog.addEventListener('pointerup', event => {
+        if (beganOnDayBackdrop && event.target === dayBookingDialog) close();
+        beganOnDayBackdrop = false;
+    });
+    dayBookingDialog.addEventListener('pointercancel', () => { beganOnDayBackdrop = false; });
     dayBookingDialog.addEventListener('close', () => {
         loading?.abort();
         loading = null;

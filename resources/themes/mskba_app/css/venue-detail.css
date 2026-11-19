@@ -648,3 +648,19 @@ dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
         max-height:calc(100dvh - 24px);
     }
 }
+
+
+/* 336: contextual wizard return from rental calendar. */
+.app-venue-day-dialog__wizard-back{flex:none;padding:0}
+.app-venue-day-dialog__wizard-back[hidden]{display:none!important}
+.app-venue-day-dialog__wizard-back .button{min-width:110px}
+.app-venue-choice-dialog__option-body{gap:12px}
+.app-venue-choice-dialog__option-body p{line-height:1.45}
+
+@media (max-width: 580px){
+    .app-venue-day-dialog__footer:has(.app-venue-day-dialog__wizard-back:not([hidden])){flex-wrap:wrap}
+    .app-venue-day-dialog__footer:has(.app-venue-day-dialog__wizard-back:not([hidden])) .app-venue-day-dialog__selection{flex:1 1 100%}
+    .app-venue-day-dialog__footer:has(.app-venue-day-dialog__wizard-back:not([hidden])) .app-venue-day-dialog__wizard-back{flex:1 1 calc(50% - 6px)}
+    .app-venue-day-dialog__footer:has(.app-venue-day-dialog__wizard-back:not([hidden]))>button{flex:1 1 calc(50% - 6px)}
+    .app-venue-day-dialog__wizard-back .button{width:100%}
+}
