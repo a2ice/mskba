@@ -162,19 +162,8 @@
         <div class="quick-event-venue-map__stage">
             <div class="quick-event-venue-map__canvas" data-quick-venue-map-canvas
                 data-map-api-key="{{ config('integrations.yandex.api_key') }}" aria-label="Карта площадок"></div>
-            <article class="quick-event-venue-map__preview" data-quick-venue-map-preview
-                aria-label="Информация о площадке" hidden>
-                <button type="button" class="quick-event-venue-map__preview-close" data-quick-venue-map-preview-close
-                    aria-label="Закрыть карточку площадки">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
-                </button>
-                <span class="quick-event-venue-map__preview-label">Площадка MSKBA</span>
-                <h3 data-quick-venue-map-preview-name></h3>
-                <p data-quick-venue-map-preview-address></p>
-                <p data-quick-venue-map-preview-metro hidden></p>
-                <div class="quick-event-venue-map__preview-tags" data-quick-venue-map-preview-tags></div>
-                <button type="button" class="{{ $quickPrimary }}" data-quick-venue-map-select>Выбрать</button>
-            </article>
+            <div class="quick-event-venue-map__preview" data-quick-venue-map-preview
+                aria-label="Информация о площадке" hidden></div>
         </div>
         <div class="quick-event-venue-map__toolbar">
             <button type="button" class="{{ $quickSecondary }}" data-quick-venue-map-nearby
@@ -347,26 +336,14 @@
 .quick-event-venue-map__toolbar>[hidden]{display:none}
 .quick-event-venue-map__toolbar button{min-height:44px}
 .quick-event-venue-map__preview{
-    box-sizing:border-box;position:absolute;z-index:3;left:12px;right:12px;bottom:12px;
-    max-height:calc(100% - 24px);overflow-y:auto;display:grid;gap:7px;
-    padding:14px;border:1px solid var(--line,#abb4be);border-radius:14px;
-    background:var(--surface,#fff);color:var(--text,#18212a);
+    position:absolute;z-index:3;left:12px;right:12px;bottom:12px;
+    max-height:calc(100% - 24px);overflow-y:auto;border-radius:14px;
     box-shadow:0 12px 36px #0004;
 }
 .quick-event-venue-map__preview[hidden]{display:none}
-.quick-event-venue-map__preview-label{font-size:12px;letter-spacing:.04em;color:var(--muted,#68717d);text-transform:uppercase}
-.quick-event-venue-map__preview h3{margin:0;padding-right:38px;font-size:20px;line-height:1.3}
-.quick-event-venue-map__preview p{margin:0;font-size:14px;line-height:1.5}
-.quick-event-venue-map__preview p[hidden]{display:none}
-.quick-event-venue-map__preview-close{
-    position:absolute;top:9px;right:9px;width:36px;height:36px;display:flex;
-    align-items:center;justify-content:center;border-radius:10px;
-    border:1px solid var(--line,#abb4be);background:var(--surface,#fff);color:inherit;cursor:pointer;
+.quick-event-venue-map__preview>.mskba-venue-map-card{
+    width:100%;
 }
-.quick-event-venue-map__preview-close svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
-.quick-event-venue-map__preview-tags{display:flex;gap:6px;flex-wrap:wrap}
-.quick-event-venue-map__preview-tags span{font-size:12px;line-height:18px;padding:4px 8px;border-radius:99px;background:var(--surface-raised,#f0f2f4);color:var(--text,#18212a)}
-.quick-event-venue-map__preview [data-quick-venue-map-select]{justify-self:end;min-height:44px;margin-top:5px}
 .quick-event-venue-map__fallback{display:grid;gap:6px}
 .quick-event-venue-map__fallback[hidden]{display:none}
 .quick-event-venue-map__fallback button{
@@ -375,9 +352,7 @@
 }
 @media(max-width:540px){
     .quick-event-venue-map__canvas{height:48dvh;min-height:230px}
-    .quick-event-venue-map__preview{left:8px;right:8px;bottom:8px;padding:12px;gap:5px}
-    .quick-event-venue-map__preview h3{font-size:18px}
-    .quick-event-venue-map__preview [data-quick-venue-map-select]{width:100%}
+    .quick-event-venue-map__preview{left:8px;right:8px;bottom:8px}
 }
 
 </style>
