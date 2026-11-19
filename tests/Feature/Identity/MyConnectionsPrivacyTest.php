@@ -127,6 +127,11 @@ final class MyConnectionsPrivacyTest extends TestCase
             'user_id' => $recipient->id, 'member_type' => 'player',
         ])->assertCreated();
 
+        $sharedTeam->update(['status' => 'archived']);
+        $this->assertFalse($access->allows($recipient, $sender, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
+        $sharedTeam->update(['status' => 'active']);
+        $this->assertTrue($access->allows($recipient, $sender, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
+
         $membership->contract->update(['status' => ContractStatusEnum::INACTIVE]);
         $this->assertFalse($access->allows($recipient, $sender, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
         $this->assertTrue($access->allows($recipient, $sender, UserPrivacySettingTypeEnum::MESSAGES) === false);
@@ -167,6 +172,11 @@ final class MyConnectionsPrivacyTest extends TestCase
         $this->assertTrue($access->allows($player, $coach, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
         $this->assertTrue($access->allows($player, $otherPlayer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
         $this->assertFalse($access->allows($player, $stranger, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
+
+        $section->update(['status' => SportsSectionStatusEnum::ARCHIVED]);
+        $this->assertFalse($access->allows($player, $coach, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
+        $section->update(['status' => SportsSectionStatusEnum::ACTIVE]);
+        $this->assertTrue($access->allows($player, $coach, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
 
         $first->update(['status' => TraineeMembershipStatusEnum::INACTIVE, 'left_at' => now()]);
         $this->assertFalse($access->allows($player, $coach, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
