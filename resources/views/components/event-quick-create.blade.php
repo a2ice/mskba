@@ -36,6 +36,7 @@
             <h3>1. О мероприятии</h3>
             <label class="quick-event-dialog__field"><span>Тип мероприятия</span>
                 <span class="select-control"><select name="type" required data-quick-type>
+                    <option value="" disabled selected>Выбери тип мероприятия</option>
                     @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
                         <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                     @endforeach
