@@ -1482,6 +1482,7 @@ Route::prefix('account/play-intents')->middleware(['auth:web', 'throttle:30,1'])
     Route::patch('/{playIntent}/pause', [$controller, 'pause'])->whereNumber('playIntent')->name('play-intents.pause');
     Route::patch('/{playIntent}/resume', [$controller, 'resume'])->whereNumber('playIntent')->name('play-intents.resume');
     Route::patch('/{playIntent}/restore', [$controller, 'restore'])->whereNumber('playIntent')->name('play-intents.restore');
+    Route::delete('/venue/{venue}', [$controller, 'destroyVenue'])->whereNumber('venue')->name('play-intents.venue.destroy');
     Route::delete('/{playIntent}', [$controller, 'destroy'])->whereNumber('playIntent')->name('play-intents.destroy');
     Route::get('/{playIntent}/recommendations', [$controller, 'recommendations'])
         ->whereNumber('playIntent')->name('play-intents.recommendations');
