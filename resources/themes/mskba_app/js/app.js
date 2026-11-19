@@ -40,6 +40,7 @@ import PlayIntentDialog from './components/PlayIntentDialog.vue';
 import './play-interest-continuation.js';
 import './play-interest-mine.js';
 import './venue-interest-summary.js';
+import './venue-interest-action.js';
 import './venue-detail.js';
 import './venue-choice.js';
 import './venue-rental-review.js';
