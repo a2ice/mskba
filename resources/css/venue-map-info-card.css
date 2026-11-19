@@ -1,7 +1,7 @@
 /* One venue info-card UI for both Page Builder homepage and venue selection maps.
  * Card typography is 90% in the compact wizard preview; the homepage keeps
  * its original scale. Modifiers change layout, not the semantic card content. */
-.mskba-venue-map-card {
+.mskba-venues-map__venue-card.mskba-venue-map-card {
     --venue-map-card-scale:1;
     position:relative;box-sizing:border-box;border-radius:18px;padding:12px;
     background:#fff;color:#111b2a;
