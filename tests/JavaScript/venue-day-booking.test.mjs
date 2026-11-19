@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { displayClock } from '../../resources/themes/mskba_app/js/venue-time-label.js';
 import { groupDayBookingSlots } from '../../resources/themes/mskba_app/js/venue-day-booking-groups.js';
+import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from '../../resources/themes/mskba_app/js/quick-event-venue-map-geo.js';
 
 const source = readFileSync(
     new URL('../../resources/themes/mskba_app/js/venue-detail.js', import.meta.url),
@@ -767,4 +768,63 @@ test('game_training remains a legacy readable type, but is not in creation UI', 
     assert.match(categories, /\$typeFilter/);
     assert.match(categories, /EventTypeEnum::creatable\(\)/);
     assert.match(categories, /EventTypeEnum::GAME_TRAINING/);
+});
+
+
+test('venue map opens a preview card before selecting, with simplified instruction', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /Нажмите на площадку на карте\./);
+    assert.match(tpl, /data-quick-venue-map-preview/);
+    assert.match(tpl, /data-quick-venue-map-preview-name/);
+    assert.match(tpl, /data-quick-venue-map-preview-address/);
+    assert.match(tpl, /data-quick-venue-map-preview-metro/);
+    assert.match(tpl, /data-quick-venue-map-select>Выбрать/);
+    assert.match(tpl, /data-quick-venue-map-nearby[\s\S]*?Рядом со мной/);
+    assert.match(source, /marker\.events\.add\('click',\(\)=>showPreview\(venue\)\)/);
+    assert.match(source, /previewSelect\.addEventListener\('click',\(\)=>\{/);
+    assert.match(source, /selected\(cardVenue\)/);
+    assert.doesNotMatch(source, /marker\.events\.add\('click',[\s\S]{0,90}selected\(venue\)/);
+});
+
+test('nearby location mode is optional, reversible and never uploads the position', () => {
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(source, /navigator\.geolocation\.getCurrentPosition/);
+    assert.match(source, /nearbyButton\.hidden=false/);
+    assert.match(source, /nearbyButton\.textContent='Показать все'/);
+    assert.match(source, /nearbyButton\.textContent='Рядом со мной'/);
+    assert.match(source, /nearbyButton\.addEventListener\('click',displayNearby\)/);
+    assert.match(source, /originalBounds=clusterer\.getBounds\(\)/);
+    assert.match(source, /nearbyVenueBounds\(userCoords,plottedVenues\)/);
+    assert.match(source, /map\.geoObjects\.add\(userMarker\)/);
+    assert.match(source, /preset:'islands#blueCircleDotIcon'/);
+    const apiFetch = source.slice(source.indexOf('async function fetchVenues'), source.indexOf('function renderResults'));
+    assert.doesNotMatch(apiFetch, /userCoords|latitude|longitude|geolocation/);
+    assert.ok(NEARBY_ZOOM_MARGIN_PX >= 48, 'Map edge padding must clear 28px pin + 20px gutter');
+});
+
+test('nearby venue bounds include the user at their center and only closest pins', () => {
+    const user = {latitude:55.751, longitude:37.618};
+    const venues = [
+        {id:1, latitude:55.757, longitude:37.618},
+        {id:2, latitude:55.751, longitude:37.628},
+        {id:3, latitude:55.71, longitude:37.60},
+        {id:4, latitude:59.93, longitude:30.3},
+        {id:5, latitude:null, longitude:37.6},
+    ];
+    const result = nearbyVenueBounds(user, venues, 2);
+    assert.deepEqual(result.nearest.map(point=>point.id), [1,2]);
+    const [[minLat,minLon],[maxLat,maxLon]] = result.bounds;
+    assert.ok(minLat <= user.latitude && maxLat >= user.latitude);
+    assert.ok(minLon <= user.longitude && maxLon >= user.longitude);
+    assert.ok(Math.abs((maxLat+minLat)/2-user.latitude)<1e-9);
+    assert.ok(Math.abs((maxLon+minLon)/2-user.longitude)<1e-9);
+    assert.equal(nearbyVenueBounds(user,[],5),null);
+    assert.equal(nearbyVenueBounds({latitude:100,longitude:0},venues),null);
 });
