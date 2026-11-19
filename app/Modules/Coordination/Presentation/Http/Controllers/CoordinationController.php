@@ -371,9 +371,9 @@ final class CoordinationController extends Controller
             'suggestionVenues' => $poll->allows_suggestions && $poll->subject_type === PollSubjectTypeEnum::VENUE
                 ? $eventVenues->handle()
                 : collect(),
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::creatable(),
             'visibilities' => EventVisibilityEnum::cases(),
-            'defaultType' => EventTypeEnum::GAME_TRAINING,
+            'defaultType' => EventTypeEnum::TRAINING,
             'currentDate' => $now->format('Ymd'),
             'defaultTitle' => $coordination->title,
             'defaultDescription' => collect([
