@@ -5,6 +5,7 @@
     if(!dialog || !authNotice || typeof dialog.showModal!=='function')return;
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
+    const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
     let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
@@ -74,12 +75,12 @@
         }catch(e){pane.querySelector('[data-venue-play-wall-empty]').textContent=e.message;}
     }
     function showList(){
-        selectedId=null;list.hidden=false;detail.hidden=true;
+        selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;
         title.textContent='Хочу здесь играть';
     }
     function showEvent(id){
         const pane=getPane(id);if(!pane)return;
-        selectedId=Number(id);list.hidden=true;detail.hidden=false;
+        selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});
         title.textContent='Мероприятие';
         paintButtons(pane);
