@@ -201,6 +201,32 @@ function initVenueHeroSlider() {
 
     previousButton?.addEventListener('click', () => show(currentIndex - 1));
     nextButton?.addEventListener('click', () => show(currentIndex + 1));
+    // Horizontal pointer gestures on mobile and desktop; vertical scrolling
+    // and ordinary taps to open the photo gallery remain intact.
+    slider.style.touchAction = 'pan-y';
+    slider.querySelectorAll('img[data-venue-hero-image]').forEach(img => {img.draggable = false;});
+    let pointer = null;
+    let suppressGalleryClick = false;
+    slider.addEventListener('pointerdown', event => {
+        if (!event.isPrimary || event.button !== 0 || event.target.closest('[data-venue-hero-prev], [data-venue-hero-next]')) return;
+        pointer = {id:event.pointerId,x:event.clientX,y:event.clientY};
+    });
+    slider.addEventListener('pointerup', event => {
+        if (!pointer || pointer.id !== event.pointerId) return;
+        const dx=event.clientX-pointer.x, dy=event.clientY-pointer.y;
+        pointer=null;
+        if(Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)*1.2) {
+            show(currentIndex+(dx<0?1:-1));
+            suppressGalleryClick=true;
+        }
+    });
+    slider.addEventListener('pointercancel', () => {pointer=null;});
+    slider.addEventListener('click', event => {
+        if (!suppressGalleryClick) return;
+        suppressGalleryClick=false;
+        event.preventDefault();event.stopImmediatePropagation();
+    }, true);
+
     slider.addEventListener('keydown', (event) => {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
             return;

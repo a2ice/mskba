@@ -3,6 +3,7 @@
 namespace Tests\Feature\Social;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -25,6 +26,9 @@ final class EventSocialWallTest extends TestCase
         return Event::factory()->create([
             'organizer_actor_id' => $actor->id,
             'status' => EventStatusEnum::PUBLISHED,
+            // Keep the generic social-wall fixtures independent of the
+            // optional nested Game model.
+            'type' => EventTypeEnum::TRAINING,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'starts_at' => now()->addDays(4),
             'ends_at' => now()->addDays(4)->addHours(2),
@@ -56,8 +60,9 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($user)->patch($url, ['status' => 'confirmed'])->assertRedirect();
         $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
         $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
-            ->assertNotFound();
-        // A user who left cannot read the participant discussion; organizers can.
+            ->assertOk()->assertJsonPath('can_post', false);
+        // Public event discussion is readable for discovery; posting still
+        // requires an active participant or organizer and private walls stay closed.
         $organizer = $event->organizerActor->user;
         $this->actingAs($organizer)->getJson(route('events.wall.index', $event->routeIdentifier()))
             ->assertOk()->assertJsonPath('counts.confirmed', 0)

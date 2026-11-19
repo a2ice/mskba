@@ -19,6 +19,17 @@
         </header>
         @if(session('status'))<p role="status">{{ session('status') }}</p>@endif
         @if(session('error'))<p role="alert">{{ session('error') }}</p>@endif
+    @if(count($event->proposed_time_options ?? []) > 1)
+        <section class="panel mb-3" aria-label="Варианты времени">
+            <h2>Предложенные варианты времени</h2>
+            <p>Это альтернативные пожелания одного мероприятия. Нужно согласовать один вариант, прежде чем оформлять бронь.</p>
+            <ol>
+                @foreach($event->proposed_time_options as $option)
+                    <li>{{ \Carbon\CarbonImmutable::parse($option['starts_at'], $timezone)->format('d.m.Y H:i') }} · {{ $option['duration_minutes'] }} мин.</li>
+                @endforeach
+            </ol>
+        </section>
+    @endif
         <section class="panel">
             <h2>{{ $interest->venue->name }}</h2>
             <p>{{ $interest->court?->name ?? 'Зал' }} ·

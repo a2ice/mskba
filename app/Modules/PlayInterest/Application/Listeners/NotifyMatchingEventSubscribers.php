@@ -33,8 +33,10 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
         if ($event === null || $event->venue === null
             || $event->status !== EventStatusEnum::PUBLISHED
             || $event->visibility !== EventVisibilityEnum::PUBLIC
+            || $event->starts_at === null
+            || $event->ends_at === null
             || $event->starts_at->lessThanOrEqualTo(now())
-            || ! in_array($event->type, [EventTypeEnum::GAME, EventTypeEnum::GAME_TRAINING], true)) {
+            || ! in_array($event->type, [EventTypeEnum::GAME, EventTypeEnum::TRAINING, EventTypeEnum::GAME_TRAINING], true)) {
             return;
         }
 
@@ -49,11 +51,24 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
         $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
         $start = $event->starts_at->setTimezone($timezone);
         $end = $event->ends_at->setTimezone($timezone);
+        // A single event may offer several non-binding times. Match interests
+        // against every proposed interval, not only the first one displayed.
+        $candidateTimes = [];
+        foreach (($event->proposed_time_options ?? []) as $option) {
+            if (! is_array($option) || empty($option['starts_at']) || empty($option['duration_minutes'])) {
+                continue;
+            }
+            $proposedStart = CarbonImmutable::parse($option['starts_at'], $timezone);
+            $candidateTimes[] = [$proposedStart, $proposedStart->addMinutes((int) $option['duration_minutes'])];
+        }
+        if ($candidateTimes === []) {
+            $candidateTimes[] = [$start, $end];
+        }
         $organizerId = $event->organizerActor?->user?->canonical()->id;
         $targets = [];
 
         // Search is a background projection; the subscription remains the source
-        // of truth. A favorite alone is not consent to receive game alerts.
+        // of truth. A saved favorite now explicitly creates a default PlayIntent.
         $intents = PlayIntent::query()
             ->with('user')
             ->where('status', 'active')
@@ -68,7 +83,8 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
             if ($user === null || ! $user->isConfirmed() || $user->isBlocked()
                 || $user->trashed() || (int) $user->id === (int) $organizerId
                 || ! $this->venueMatcher->matchesVenue($intent, $venue)
-                || ! $this->matchesSchedule($intent, $event, $start, $end)) {
+                || ! collect($candidateTimes)->contains(fn (array $window): bool =>
+                    $this->matchesSchedule($intent, $event, $window[0], $window[1]))) {
                 continue;
             }
 
@@ -100,8 +116,10 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
                 $this->notifications->handle(new CreateUserNotificationDTO(
                     userId: $userId,
                     type: UserNotificationTypeEnum::SYSTEM,
-                    title: 'Новая игра по вашим интересам',
-                    body: '«'.$event->title.'» на площадке «'.$venue->name.'» — '.$start->format('d.m.Y H:i').'.',
+                    title: 'Новое мероприятие по вашим интересам',
+                    body: '«'.$event->title.'» на площадке «'.$venue->name.'» — '.$start->format('d.m.Y H:i').'.'
+                        .($event->booking_deferred ? ' Время предварительное, бронирование не создано.' : '')
+                        .(count($event->proposed_time_options ?? []) > 1 ? ' Есть альтернативные варианты времени.' : ''),
                     actionUrl: route('events.show', $event->routeIdentifier(), false),
                     actionText: 'Открыть мероприятие',
                     payload: [

@@ -91,7 +91,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('theme::pages.events.game-show', function ($view): void {
             $game = $view->getData()['game'] ?? null;
 
-            if ($game?->recruitment_mode === null) {
+            if ($game !== null && $game->recruitment_mode === null) {
                 $game->setAttribute('recruitment_mode', GameRecruitmentModeEnum::PREFORMED_TEAMS->value);
             }
         });

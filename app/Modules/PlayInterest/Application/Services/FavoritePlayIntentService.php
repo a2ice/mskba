@@ -4,7 +4,6 @@ namespace App\Modules\PlayInterest\Application\Services;
 
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
-use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +15,8 @@ final class FavoritePlayIntentService
     {
         $user = $user->canonical();
         abort_if($user->isBlocked(), 403);
-        $venue = Venue::query()->whereKey($venueId)->where('status', VenueStatusEnum::CONFIRMED)->firstOrFail();
+        $venue = Venue::query()->findOrFail($venueId);
+        abort_unless($venue->status->isPubliclyVisible(), 404);
 
         return DB::transaction(function () use ($user, $venue, $venueId): PlayIntent {
             $intent = PlayIntent::query()->where('user_id', $user->id)
@@ -25,8 +25,10 @@ final class FavoritePlayIntentService
                 ->lockForUpdate()->first();
 
             if ($intent !== null) {
-                if ($intent->status === 'paused' || ! $intent->notify_venue_news) {
-                    $intent->forceFill(['status' => 'active', 'notify_venue_news' => true])->save();
+                // A manually edited or paused subscription is owned by the user;
+                // adding a favorite must never silently override its preferences.
+                if ($intent->favorite_generated && $intent->status === 'paused') {
+                    $intent->forceFill(['status' => 'active'])->save();
                 }
                 return $intent->refresh();
             }
@@ -34,6 +36,7 @@ final class FavoritePlayIntentService
             return PlayIntent::query()->create([
                 'user_id' => $user->id,
                 'venue_id' => $venueId,
+                'favorite_generated' => true,
                 'name' => mb_substr('Подписка на «'.$venue->name.'»', 0, 80),
                 'include_similar_venues' => false,
                 'cadence' => 'flexible',
@@ -50,13 +53,30 @@ final class FavoritePlayIntentService
         });
     }
 
+    public function pauseFavoriteGenerated(User $user, int $venueId): void
+    {
+        // A favorite is a quick subscription; removing it pauses only an
+        // untouched quick subscription, never an interest edited in the account.
+        $user = $user->canonical();
+        PlayIntent::query()->where('user_id', $user->id)
+            ->where('venue_id', $venueId)->where('favorite_generated', true)
+            ->where('status', 'active')->update(['status' => 'paused']);
+    }
+
+    public function enableVenueNews(User $user, int $venueId): PlayIntent
+    {
+        $intent = $this->ensure($user, $venueId);
+        $intent->forceFill(['notify_venue_news' => true, 'favorite_generated' => false])->save();
+        return $intent->refresh();
+    }
+
     public function disableVenueNews(User $user, int $venueId): ?PlayIntent
     {
         $user = $user->canonical();
         $intent = PlayIntent::query()->where('user_id', $user->id)
             ->where('venue_id', $venueId)->where('status', 'active')->first();
         if ($intent !== null) {
-            $intent->forceFill(['notify_venue_news' => false])->save();
+            $intent->forceFill(['notify_venue_news' => false, 'favorite_generated' => false])->save();
         }
         return $intent;
     }

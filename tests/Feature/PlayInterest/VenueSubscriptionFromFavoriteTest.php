@@ -14,7 +14,7 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_favorite_does_not_create_a_game_subscription_until_user_opts_in(): void
+    public function test_favorite_automatically_creates_one_game_subscription_without_an_extra_step(): void
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
@@ -22,7 +22,8 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
 
         $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
             ->assertOk()->assertJsonPath('state', 'active');
-        $this->assertDatabaseCount('play_intents', 0);
+        $this->assertDatabaseCount('play_intents', 1);
+        $this->assertTrue((bool) PlayIntent::query()->firstOrFail()->favorite_generated);
 
         $this->postJson(route('favorites.preferences'), [
             'venue_id' => $venue->id, 'notify_upcoming_events' => true,
@@ -80,6 +81,44 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
         $this->assertSame('active', $intent->refresh()->status);
     }
 
+    public function test_quick_favorite_subscription_is_paused_on_removal_and_resumed_on_readd(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $this->actingAs($user);
+
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('state', 'active');
+        $interest = PlayIntent::query()->sole();
+        $this->assertTrue($interest->favorite_generated);
+
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('state', 'trashed');
+        $this->assertSame('paused', $interest->refresh()->status);
+
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('state', 'active');
+        $this->assertSame('active', $interest->refresh()->status);
+        $this->assertDatabaseCount('play_intents', 1);
+    }
+
+    public function test_edited_favorite_interest_survives_removal(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $this->actingAs($user);
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk();
+        $interest = PlayIntent::query()->sole();
+
+        $interest->forceFill(['favorite_generated' => false, 'name' => 'Вечером играю'])->save();
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
+            ->assertOk()->assertJsonPath('state', 'trashed');
+
+        $this->assertSame('active', $interest->refresh()->status);
+        $this->assertSame('Вечером играю', $interest->name);
+    }
+
     public function test_legacy_active_venue_news_merges_with_paused_search_without_reactivating_game_alerts(): void
     {
         $user = User::factory()->create();
@@ -134,6 +173,7 @@ final class VenueSubscriptionFromFavoriteTest extends TestCase
         $this->actingAs($other)->postJson(route('favorites.preferences'), [
             'venue_id' => $venue->id, 'notify_upcoming_events' => true,
         ])->assertNotFound();
-        $this->assertDatabaseCount('play_intents', 0);
+        $this->assertDatabaseCount('play_intents', 1);
+        $this->assertSame((int) $owner->id, (int) PlayIntent::query()->sole()->user_id);
     }
 }

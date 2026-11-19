@@ -23,12 +23,19 @@ final class SocialWallService
 
     public function canViewEvent(Event $event, ?User $user): bool
     {
+        // A published public event is discoverable, including its discussion:
+        // visitors need to understand who is attending before deciding to join.
+        // Writing remains restricted to confirmed participants and organizers.
+        if ($event->visibility === EventVisibilityEnum::PUBLIC
+            && $event->status === \App\Modules\Event\Domain\Enums\EventStatusEnum::PUBLISHED) {
+            return true;
+        }
+
         if ($user === null || $user->canonical()->trashed() || $user->canonical()->isBlocked()) {
             return false;
         }
 
-        // Public visibility of the Event does not publish conversations.
-        // The discussion remains scoped to actual or tentative members.
+        // Private events keep their existing participant/organizer visibility.
         $identityIds = $user->canonical()->identityIds();
 
         return $event->participants()
