@@ -200,6 +200,7 @@ final class VenueBookingController extends Controller
             'canInvoicePortal' => $canInvoicePortal,
             'canConfirmExternalHold' => $canConfirmExternalHold,
             'visibleInvoices' => $visibleInvoices,
+            'invoiceCardViewer' => $actor,
             'invoiceTemplates' => $canIssueBuyerInvoice ? $invoiceManager->applicableTemplates($venueBooking, $actor) : collect(),
             'invoicePaymentProfiles' => $canIssueBuyerInvoice
                 ? \App\Modules\VenueBooking\Domain\Models\VenueRentalPaymentProfile::query()
