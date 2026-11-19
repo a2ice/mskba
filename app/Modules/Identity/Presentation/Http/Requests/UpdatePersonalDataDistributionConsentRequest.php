@@ -22,7 +22,8 @@ final class UpdatePersonalDataDistributionConsentRequest extends FormRequest
             'public.*' => ['nullable'],
             'privacy_hierarchy' => ['nullable', Rule::in(['1', 1])],
             'privacy_options' => ['nullable', 'array:discoverability,messages,group_invitations'],
-            'privacy_options.*' => ['required', Rule::in(['everyone', 'nobody'])],
+            'privacy_options.*' => ['required', Rule::in(['everyone', 'nobody', 'my_connections'])],
+            'privacy_options.discoverability' => ['sometimes', Rule::in(['everyone', 'nobody'])],
             'distribution_consent' => [
                 'exclude_if:action,private',
                 Rule::excludeIf(fn (): bool => ! $this->hasSelectedPublicTypes()),
