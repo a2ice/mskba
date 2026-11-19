@@ -690,3 +690,20 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
         gap:10px;
     }
 }
+
+/* The booking calendar uses the UI Kit .skeleton primitive during requests. */
+.app-venue-day-dialog__slot-skeleton{
+    box-sizing:border-box;
+    display:grid;
+    align-content:center;
+    gap:9px;
+    min-height:81px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:11px;
+    background:var(--surface);
+}
+.app-venue-day-dialog__slot-skeleton span{height:10px;border-radius:6px}
+.app-venue-day-dialog__slot-skeleton span:first-child{height:16px;width:75%}
+.app-venue-day-dialog__slot-skeleton span:last-child{width:55%}
+@media(max-width:640px){.app-venue-day-dialog__slot-skeleton{min-height:76px}}
