@@ -152,7 +152,7 @@ final class EventController extends Controller
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle()->load('courts'),
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::availableForCreation(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
             'defaultType' => $defaultType,
