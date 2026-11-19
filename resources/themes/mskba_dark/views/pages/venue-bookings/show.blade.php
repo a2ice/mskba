@@ -278,7 +278,7 @@
             @endif
             @if($canIssueBuyerInvoice && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD
                 && ! $booking->invoices->contains('kind', 'buyer'))
-                <form class="app-rental-inbox__fields" method="POST" action="{{ route('account.venue-bookings.invoices.issue', $booking) }}">
+                <form class="app-rental-inbox__fields" data-invoice-issue-form method="POST" action="{{ route('account.venue-bookings.invoices.issue', $booking) }}">
                     @csrf
                     <label>Шаблон счёта
                         <select name="template_id">
@@ -288,6 +288,33 @@
                             @endforeach
                         </select>
                     </label>
+                    <label>Способ оплаты
+                        <select name="payment_method" data-invoice-method>
+                            <option value="">Из шаблона</option>
+                            <option value="sbp">СБП / перевод по номеру карты</option>
+                            <option value="bank_transfer">Банковский перевод</option>
+                            <option value="cash">Наличные</option>
+                            <option value="other">Другой способ</option>
+                        </select>
+                    </label>
+                    <div data-invoice-sbp-fields>
+                        <label>Сохранённые реквизиты
+                            <select name="payment_profile_id" data-invoice-profile>
+                                <option value="">Новые реквизиты</option>
+                                @foreach($invoicePaymentProfiles as $profile)
+                                    <option value="{{ $profile->id }}">{{ $profile->label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <div data-invoice-new-profile>
+                            <label>Банк получателя<input name="sbp_bank" maxlength="120" placeholder="Например, Сбербанк"></label>
+                            <label>Телефон для СБП<input name="sbp_phone" maxlength="32" inputmode="tel" placeholder="+7 ..."></label>
+                            <label>Или номер карты<input name="sbp_card" maxlength="32" inputmode="numeric"></label>
+                            <label>Комментарий к переводу<input name="transfer_purpose" maxlength="400" placeholder="Например, за аренду зала"></label>
+                            <label>Инструкция после оплаты<input name="confirmation_hint" maxlength="400" placeholder="Укажите номер операции из банковского приложения"></label>
+                            <label><input type="checkbox" name="save_profile" value="1" checked> Сохранить реквизиты для следующих счетов</label>
+                        </div>
+                    </div>
                     <button class="btn btn--primary btn--sm" type="submit">Выставить счёт покупателю</button>
                 </form>
             @endif
@@ -319,11 +346,24 @@
                         <p>Для подтверждения аренды этот счёт нужно оплатить либо согласовать разрешённую постоплату до окончания холда, независимо от планового срока расчёта.</p>
                     @endif
                     @if($invoice->payment_instructions)<p>{{ $invoice->payment_instructions }}</p>@endif
+                    @if($invoice->kind === 'buyer' && ($isRequester || $canIssueBuyerInvoice))
+                        @if(data_get($invoice->payment_details, 'bank'))<p>Банк: {{ data_get($invoice->payment_details, 'bank') }}</p>@endif
+                        @if(data_get($invoice->payment_details, 'phone'))<p>Телефон: {{ data_get($invoice->payment_details, 'phone') }}</p>@endif
+                        @if(data_get($invoice->payment_details, 'card'))<p>Карта: {{ data_get($invoice->payment_details, 'card') }}</p>@endif
+                        @if(data_get($invoice->payment_details, 'purpose'))<p>Комментарий к переводу: {{ data_get($invoice->payment_details, 'purpose') }}</p>@endif
+                        @if($invoice->payment_reference)<p>Номер операции: {{ $invoice->payment_reference }}</p>@endif
+                    @endif
                     @if($invoice->settlement_note)<p>Основание: {{ $invoice->settlement_note }}</p>@endif
                     @if($invoice->status === 'issued' && (($invoice->kind === 'buyer' && $isRequester)
                         || ($invoice->kind === 'agent_portal' && $invoiceAgentId !== null && (int) $invoiceAgentId === (int) auth()->id())))
                         <form method="POST" action="{{ route('account.venue-bookings.invoices.claim', [$booking, $invoice]) }}" class="app-rental-inbox__fields">
                             @csrf
+                            @if(in_array('sbp', $invoice->payment_methods ?? [], true))
+                                <label>Номер операции<input name="reference" maxlength="190" required></label>
+                                @if(data_get($invoice->payment_details, 'confirmation_hint'))
+                                    <p>{{ data_get($invoice->payment_details, 'confirmation_hint') }}</p>
+                                @endif
+                            @endif
                             <label>Комментарий об оплате<input name="note" maxlength="2000"></label>
                             <button class="btn btn--outline-secondary btn--sm" type="submit">Сообщить об оплате</button>
                         </form>
@@ -354,6 +394,7 @@
                             <label>Способ оплаты
                                 <select name="method">
                                     <option value="bank_transfer">Перевод</option>
+                                    <option value="sbp">СБП / перевод по карте</option>
                                     <option value="cash">Наличные</option>
                                     <option value="other">Другое</option>
                                 </select>
