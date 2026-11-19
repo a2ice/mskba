@@ -30,7 +30,7 @@ final class PlayIntentApiTest extends TestCase
         ];
     }
 
-    public function test_favoriting_a_venue_creates_direct_interest_without_play_subscription(): void
+    public function test_favoriting_a_venue_does_not_create_or_display_an_interest(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $user = User::factory()->create(['username' => 'favorite-only-player']);
@@ -41,11 +41,9 @@ final class PlayIntentApiTest extends TestCase
 
         $audience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
             ->forVenue($venue);
-        $this->assertSame(1, $audience['total']);
-        $this->assertSame(1, $audience['direct_count']);
+        $this->assertSame(0, $audience['total']);
+        $this->assertSame(0, $audience['direct_count']);
         $this->assertSame(0, $audience['matched_count']);
-        $this->assertSame('favorite-only-player', $audience['direct'][0]['name']);
-        $this->assertFalse($audience['direct'][0]['public']);
         $this->assertDatabaseCount('play_intents', 0);
 
         $this->postJson(route('play-intents.store'), [
@@ -57,9 +55,37 @@ final class PlayIntentApiTest extends TestCase
         $this->postJson(route('favorites.toggle'), [
             'type' => 'venue', 'id' => $venue->id,
         ])->assertOk()->assertJsonPath('state', 'trashed');
-        // The separate active game subscription remains a direct legacy interest.
+        // Favorites and explicit game interests are independent.
         $this->assertSame(1, app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
             ->forVenue($venue)['total']);
+    }
+
+    public function test_removing_venue_interest_cancels_only_owners_direct_subscriptions(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $otherVenue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $user = User::factory()->create();
+
+        $this->deleteJson(route('play-intents.venue.destroy', ['venue' => $venue->id]))
+            ->assertUnauthorized();
+
+        $this->actingAs($user)->postJson(route('play-intents.store'), [
+            ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],
+        ])->assertCreated();
+        $this->postJson(route('play-intents.store'), [
+            ...$this->payload($otherVenue), 'cadence' => 'flexible', 'windows' => [],
+        ])->assertCreated();
+
+        $this->deleteJson(route('play-intents.venue.destroy', ['venue' => $venue->id]))
+            ->assertOk()->assertJsonPath('cancelled', 1);
+        $this->assertDatabaseHas('play_intents', [
+            'user_id' => $user->id, 'venue_id' => $venue->id, 'status' => 'cancelled',
+        ]);
+        $this->assertDatabaseHas('play_intents', [
+            'user_id' => $user->id, 'venue_id' => $otherVenue->id, 'status' => 'active',
+        ]);
+        $this->assertSame(0, app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+            ->forVenue($venue)['direct_count']);
     }
 
     public function test_mskba_app_venue_page_exposes_real_interest_dialog_entry_point(): void
@@ -79,20 +105,19 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('Хочу здесь играть')
             ->assertSee('Хочешь здесь играть?')
             ->assertSee('Создать мероприятие')
-            ->assertSee('data-venue-create-event-link', false)
             ->assertSee(route('events.wizard', ['venue_id' => $venue->id]), false)
             ->assertDontSee('data-venue-create-event-dialog', false)
             ->assertDontSee('В разработке')
-            ->assertSee('>Расписание</a>', false)
             ->assertSee('data-mskba-play-intent-root', false)
-            ->assertSee('data-venue-choice-court', false)
-            ->assertSee('data-venue-favorite-dialog', false)
-            ->assertSee('<button type="button" class="button secondary" data-venue-favorite-back>Назад</button>', false)
             ->assertDontSee('← Назад')
             ->assertDontSee('data-venue-favorite-close>Отмена', false)
-            ->assertSee('Добавь площадку в избранное, чтобы вернуться к ней позже.')
             ->assertSee('Аренда площадки')
-            ->assertSee('Добавить в избранное');
+            ->assertSee('data-venue-favorite-success', false)
+            ->assertSee('data-venue-favorite-confirm', false)
+            ->assertSee('data-venue-interest-add', false)
+            ->assertSee('data-venue-interest-remove', false)
+            ->assertSee('data-venue-rental-start', false)
+            ->assertSee('Ближайшие мероприятия');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
