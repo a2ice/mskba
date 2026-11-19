@@ -85,6 +85,41 @@ final class EventInterestNotificationTest extends TestCase
         $this->assertSame(0, DB::table('event_interest_notification_deliveries')->count());
     }
 
+    public function test_unscheduled_draft_does_not_enqueue_interest_notifications(): void
+    {
+        $event = $this->event();
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->intent($event, $user);
+        $event->forceFill([
+            'status' => EventStatusEnum::DRAFT,
+            'starts_at' => null,
+            'ends_at' => null,
+        ])->save();
+
+        app(NotifyMatchingEventSubscribers::class)->handle(new EventChanged($event->id));
+        $this->assertDatabaseCount('event_interest_notification_deliveries', 0);
+    }
+
+    public function test_second_alternative_time_can_match_a_play_interest(): void
+    {
+        $event = $this->event();
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $timezone = $event->venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
+        $first = $event->starts_at->setTimezone($timezone);
+        $second = $first->addDay();
+        $event->forceFill(['booking_deferred' => true, 'proposed_time_options' => [
+            ['starts_at' => $first->format('Y-m-d\TH:i'), 'duration_minutes' => 90],
+            ['starts_at' => $second->format('Y-m-d\TH:i'), 'duration_minutes' => 90],
+        ]])->save();
+        $this->intent($event, $user, [
+            'cadence' => 'once', 'dates' => [$second->toDateString()],
+        ]);
+
+        app(NotifyMatchingEventSubscribers::class)->handle(new EventChanged($event->id));
+        $this->assertSame(1, DB::table('event_interest_notification_deliveries')
+            ->where('event_id', $event->id)->where('user_id', $user->id)->count());
+    }
+
     public function test_event_catalog_exposes_shared_creation_dialog(): void
     {
         $this->get(route('events.index'))->assertOk()
