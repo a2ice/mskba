@@ -53,7 +53,7 @@ final readonly class CreateVenueOwnershipClaimNotification
             type: UserNotificationTypeEnum::SYSTEM,
             title: $title,
             body: $body,
-            actionUrl: route('account.venue-ownership.show', $claim, false),
+            actionUrl: route('account.venue-contracts.show', ['venue' => $claim->venue_id, 'claim' => $claim->public_id], false),
             actionText: 'Открыть заявку',
             payload: [
                 'source' => $source->value,
