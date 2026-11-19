@@ -137,7 +137,7 @@ final class EventFirstCreationController extends Controller
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
             'venue_court_id' => ['nullable', 'integer',
                 Rule::exists('venue_courts', 'id')->where('venue_id', (int) $request->input('venue_id'))],
-            'type' => ['required', Rule::enum(EventTypeEnum::class)],
+            'type' => ['required', Rule::in(EventTypeEnum::creatableValues())],
             'title' => ['nullable', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
