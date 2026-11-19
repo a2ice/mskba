@@ -6,11 +6,13 @@
         ->where('status', 'confirmed')->where('is_published', true)->with('courts')
         ->orderBy('name')->get();
     $quickSelectedVenue = (int) ($quickEventVenueId ?? 0);
+    $quickSelectedCourt = (int) ($quickEventCourtId ?? 0);
     $quickCourtChoices = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
         $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name])->values()->all()])->all();
 @endphp
 <dialog class="quick-event-dialog {{ $quickApp ? 'quick-event-dialog--app' : 'quick-event-dialog--dark' }}"
     data-quick-event-dialog data-authenticated="{{ auth()->check() ? '1' : '0' }}"
+    data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
     aria-labelledby="quick-event-title">
