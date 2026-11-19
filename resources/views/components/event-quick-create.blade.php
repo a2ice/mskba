@@ -49,8 +49,7 @@
             <label class="quick-event-dialog__field"><span>Тип мероприятия</span>
                 <span class="select-control"><select name="type" required data-quick-type>
                     <option value="" disabled selected>Выбери тип мероприятия</option>
-                    @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
-                        @continue($kind->value === 'game_training')
+                    @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::creatable() as $kind)
                         <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                     @endforeach
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
