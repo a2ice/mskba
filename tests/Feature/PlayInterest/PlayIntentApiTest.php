@@ -111,7 +111,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-mskba-play-intent-root', false)
             ->assertDontSee('← Назад')
             ->assertDontSee('data-venue-favorite-close>Отмена', false)
-            ->assertSee('Аренда площадки')
+            ->assertSee('Арендовать площадку')
             ->assertSee('data-venue-favorite-success', false)
             ->assertSee('data-venue-favorite-confirm', false)
             ->assertSee('data-venue-interest-add', false)
