@@ -249,7 +249,7 @@
         <div class="home-flow-modal__tabs"><button type="button" data-home-flow-tab="search">Найти</button><button type="button" data-home-flow-tab="create">Создать</button></div>
         <section data-home-flow-panel="search">
             <div class="home-flow-steps"><span class="is-active">1 · Тип</span><span>2 · Где</span><span>3 · Когда</span></div>
-            <div class="home-flow-type-grid"><button type="button"><i class="ti ti-ball-basketball"></i>Игра</button><button type="button"><i class="ti ti-barbell"></i>Тренировка</button><button type="button"><i class="ti ti-users-group"></i>Игровая тренировка</button><button type="button"><i class="ti ti-trophy"></i>Турнир</button></div>
+            <div class="home-flow-type-grid"><button type="button"><i class="ti ti-ball-basketball"></i>Игра</button><button type="button"><i class="ti ti-barbell"></i>Тренировка</button><button type="button"><i class="ti ti-trophy"></i>Турнир</button></div>
             <label class="home-flow-field"><span>Локация</span><div><i class="ti ti-map-pin"></i><input type="text" placeholder="Район, адрес, площадка или метро"><button type="button"><i class="ti ti-map-2"></i> Карта</button></div></label>
             <div class="home-flow-row"><label class="home-flow-field"><span>Дата от</span><input type="date"></label><label class="home-flow-field"><span>Дата до</span><input type="date"></label><button type="button" class="home-flow-filter"><i class="ti ti-train"></i> Метро</button></div>
             <div class="home-flow-modal__actions"><a class="btn btn--primary" href="{{ route('events.index') }}">Открыть каталог</a><button type="button" class="btn btn--secondary" data-home-flow-tab="create">Создать мероприятие</button></div>
@@ -257,7 +257,7 @@
         </section>
         <section data-home-flow-panel="create" hidden>
             <div class="home-flow-steps"><span>1 · Поиск</span><span class="is-active">2 · Создание</span></div><p class="home-flow-intro">Выберите тип — дальше откроется уже существующий wizard создания с заполнением параметров мероприятия.</p>
-            <div class="home-flow-create-grid"><a href="{{ route('events.create', ['type' => 'game']) }}"><i class="ti ti-ball-basketball"></i><strong>Игра</strong><small>Создать игру</small></a><a href="{{ route('events.create', ['type' => 'training']) }}"><i class="ti ti-barbell"></i><strong>Тренировка</strong><small>Создать тренировку</small></a><a href="{{ route('events.create', ['type' => 'game_training']) }}"><i class="ti ti-users-group"></i><strong>Игровая тренировка</strong><small>Создать игровую тренировку</small></a><a href="{{ route('tournaments.create') }}"><i class="ti ti-trophy"></i><strong>Турнир</strong><small>Создать турнир</small></a></div>
+            <div class="home-flow-create-grid"><a href="{{ route('events.create', ['type' => 'game']) }}"><i class="ti ti-ball-basketball"></i><strong>Игра</strong><small>Создать игру</small></a><a href="{{ route('events.create', ['type' => 'training']) }}"><i class="ti ti-barbell"></i><strong>Тренировка</strong><small>Создать тренировку</small></a><a href="{{ route('tournaments.create') }}"><i class="ti ti-trophy"></i><strong>Турнир</strong><small>Создать турнир</small></a></div>
         </section>
     </div>
 @endcomponent
