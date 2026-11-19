@@ -10,6 +10,7 @@ use App\Filament\Backoffice\Pages\RestApiExplorer;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\AccountInvitations\AccountInvitationResource;
+use App\Filament\Backoffice\Resources\VenueOwnershipClaims\VenueOwnershipClaimResource;
 use App\Filament\Backoffice\Resources\Contracts\ContractResource;
 use App\Filament\Backoffice\Resources\ContractTemplates\ContractTemplateResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
@@ -190,6 +191,7 @@ final class BackofficePanelProvider extends PanelProvider
                 VenueDuplicateResource::class,
                 BackofficeUserResource::class,
                 AccountInvitationResource::class,
+                VenueOwnershipClaimResource::class,
                 SystemRoleProfileResource::class,
                 ManagerSpecializationResource::class,
                 ShopCategoryResource::class,
