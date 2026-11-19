@@ -118,7 +118,7 @@ final class EventController extends Controller
                 $hasMiniGames,
                 $search,
             ),
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::creatable(),
             'selectedType' => $type,
             'typeFilter' => $typeFilter,
             'period' => $period,
@@ -142,7 +142,7 @@ final class EventController extends Controller
         TelegramChatRegistry $telegramChats,
     ): Response {
         $validated = $request->validate([
-            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'type' => ['nullable', Rule::in(EventTypeEnum::creatableValues())],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
