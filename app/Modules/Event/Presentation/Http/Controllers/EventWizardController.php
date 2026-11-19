@@ -42,6 +42,9 @@ final class EventWizardController extends Controller
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
+        if ($selectedType === EventTypeEnum::GAME_TRAINING) {
+            $selectedType = EventTypeEnum::TRAINING;
+        }
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $defaultStartsAt = $now->ceilMinute();
 
