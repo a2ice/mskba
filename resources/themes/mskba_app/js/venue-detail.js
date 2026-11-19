@@ -461,6 +461,7 @@ if (dayBookingDialog) {
         response = data;
         selection = [];
         grid.replaceChildren();
+        grid.removeAttribute('aria-busy');
         const labels = {
             available: 'Свободно',
             booked: 'Занято',
@@ -764,6 +765,18 @@ if (dayBookingDialog) {
         selection = [];
         bookingButton.disabled = true;
         grid.replaceChildren();
+        grid.setAttribute('aria-busy', 'true');
+        // Reuse the branded UI Kit skeleton, never ad-hoc grey rectangles.
+        // The loading shapes are decorative; the live status announces progress.
+        for (let i = 0; i < 4; i++) {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'skeleton app-venue-day-dialog__slot-skeleton';
+            placeholder.setAttribute('aria-hidden', 'true');
+            for (let line = 0; line < 3; line++) {
+                placeholder.appendChild(document.createElement('span'));
+            }
+            grid.appendChild(placeholder);
+        }
         heading.removeAttribute('title');
         setActiveDate(date);
         const label = dateButtons.find(button => button.dataset.venueDayDate === date)
@@ -801,6 +814,8 @@ if (dayBookingDialog) {
             if (signal.aborted || !dayBookingDialog.open) return;
             status.textContent = error.message || 'Не удалось получить расписание.';
             status.hidden = false;
+            grid.replaceChildren();
+            grid.removeAttribute('aria-busy');
             bookingButton.disabled = true;
         }
     }
