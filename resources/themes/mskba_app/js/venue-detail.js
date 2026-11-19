@@ -29,6 +29,35 @@ document.querySelectorAll('[data-venue-gallery]').forEach(gallery => {
     thumbs.forEach(btn => btn.addEventListener('click', () => {
         show(Number(btn.dataset.galleryThumb)); start();
     }));
+    const stage = gallery.querySelector('.app-venue-gallery__stage');
+    if (stage) {
+        stage.style.touchAction = 'pan-y';
+        stage.tabIndex = 0;
+        stage.setAttribute('aria-label', 'Фотографии площадки: листайте влево или вправо');
+        let pointer = null;
+        stage.querySelectorAll('img[data-gallery-slide]').forEach(img => {img.draggable = false;});
+        stage.addEventListener('pointerdown', event => {
+            if (!event.isPrimary || event.button !== 0 || event.target.closest('[data-gallery-thumb]')) return;
+            pointer = {id:event.pointerId,x:event.clientX,y:event.clientY};
+            stop();
+        });
+        stage.addEventListener('pointerup', event => {
+            if (!pointer || pointer.id !== event.pointerId) return;
+            const dx = event.clientX - pointer.x;
+            const dy = event.clientY - pointer.y;
+            pointer = null;
+            if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) show(active + (dx < 0 ? 1 : -1));
+            start();
+        });
+        stage.addEventListener('pointercancel', () => {pointer = null;start();});
+        stage.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            show(active + (event.key === 'ArrowRight' ? 1 : -1));
+            start();
+        });
+    }
+
     gallery.addEventListener('mouseenter', stop);
     gallery.addEventListener('mouseleave', start);
     gallery.addEventListener('focusin', stop);
