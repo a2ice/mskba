@@ -635,19 +635,35 @@ test('Rental CTA skips court chooser for a single court, preserving calendar pip
 });
 
 
-test('venue popup contains only events or an empty state and one fixed create action', () => {
+test('venue popup retains minimal event list and opens full inline event details', () => {
     const tpl = readFileSync(
         new URL('../../resources/views/components/venue-play-funnel.blade.php', import.meta.url), 'utf8',
     );
     assert.match(tpl, /На этой площадке пока нет предстоящих мероприятий\./);
-    assert.match(tpl, /class="mskba-modal__footer venue-play-dialog__footer"/);
-    assert.match(tpl, /href="{{ route\('events\.show', \$upcoming->routeIdentifier\(\)\) }}"/);
-    assert.doesNotMatch(tpl, /data-venue-play-pane|data-venue-play-rsvp|venue-play-dialog__eyebrow/);
-    assert.doesNotMatch(tpl, /Текущие мероприятия|Выбери ближайшее мероприятие/);
-    const source = readFileSync(
+    assert.match(tpl, /data-venue-play-step="list"/);
+    assert.match(tpl, /data-venue-play-preview="{{ \$upcoming->id }}"/);
+    assert.match(tpl, /data-venue-play-list-footer/);
+    assert.match(tpl, /data-venue-play-step="detail" hidden/);
+    assert.match(tpl, /data-venue-play-pane="{{ \$upcoming->id }}"/);
+    assert.match(tpl, /data-venue-play-rsvp="confirmed"/);
+    assert.match(tpl, /data-venue-play-rsvp="tentative"/);
+    assert.match(tpl, /data-venue-play-rsvp="left"/);
+    assert.match(tpl, /data-venue-play-messages/);
+    assert.match(tpl, /data-venue-play-message-form/);
+    assert.match(tpl, /data-venue-play-back/);
+    assert.match(tpl, /data-venue-play-auth-notice/);
+    assert.doesNotMatch(tpl, /venue-play-dialog__eyebrow|Текущие мероприятия|Выбери ближайшее мероприятие/);
+    // Clickable list items are buttons, not links away from the popup.
+    assert.doesNotMatch(tpl, /<a class="venue-play-dialog__event"/);
+    const js = readFileSync(
         new URL('../../resources/themes/mskba_app/js/venue-play-funnel.js', import.meta.url), 'utf8',
     );
-    assert.doesNotMatch(source, /refreshWall|data-venue-play-rsvp|guestResponse/);
+    assert.match(js, /data-venue-play-preview/);
+    assert.match(js, /showEvent\(button\.dataset\.venuePlayPreview\)/);
+    assert.match(js, /listFooter\.hidden=true/);
+    assert.match(js, /listFooter\.hidden=false/);
+    assert.match(js, /refreshWall\(pane\)/);
+    assert.match(js, /guestResponse\(status\)/);
 });
 
 test('event creation select controls reuse the branded native select, not custom compact fields', () => {
