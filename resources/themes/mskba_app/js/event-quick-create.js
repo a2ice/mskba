@@ -97,6 +97,10 @@
     });
     court.addEventListener('change',()=>{availability.hidden=true;});
     syncType();syncFormat();syncCourts();
+    // Preserve the selected hall when entering the wizard from its own page.
+    if(dialog.dataset.initialCourtId && [...court.options].some(option=>option.value===dialog.dataset.initialCourtId)){
+        court.value=dialog.dataset.initialCourtId;
+    }
     function renderSlots(){
         slotsList.replaceChildren();
         slots.forEach((item,index)=>{
@@ -266,7 +270,11 @@
         if(!trigger)return;
         event.preventDefault();
         const fromVenue=trigger.dataset.quickEventVenueId;
-        if(fromVenue){venue.value=fromVenue;syncCourts();}
+        if(fromVenue){
+            venue.value=fromVenue;syncCourts();
+            const fromCourt=trigger.dataset.quickEventCourtId||dialog.dataset.initialCourtId;
+            if(fromCourt && [...court.options].some(option=>option.value===fromCourt))court.value=fromCourt;
+        }
         document.querySelector('[data-venue-play-dialog][open]')?.close();
         document.querySelector('[data-venue-choice-dialog][open]')?.close();
         if(!dialog.open)dialog.showModal();
