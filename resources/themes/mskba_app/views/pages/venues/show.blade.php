@@ -403,7 +403,7 @@
         </aside>
     </div>
 </section>
-@include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id])
+@include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
 @include('components.venue-play-funnel')
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
