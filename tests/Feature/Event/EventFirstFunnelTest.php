@@ -108,6 +108,48 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('event_venue_interests', 2);
     }
 
+    public function test_game_type_is_an_event_container_and_can_have_no_game(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $input = $this->payload($venue, $this->slots());
+        $input['type'] = 'game';
+        $input['create_game'] = false;
+
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)
+            ->assertCreated()->assertJsonPath('created_count', 1);
+
+        $event = Event::query()->sole();
+        $this->assertSame('game', $event->type->value);
+        $this->assertNull($event->primary_game_id);
+        $this->assertSame(0, $event->games()->count());
+        $this->actingAs($user)->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()->assertSee($event->title);
+    }
+
+    public function test_game_type_can_create_an_initial_child_game_by_default(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $input = $this->payload($venue, $this->slots());
+        $input['type'] = 'game';
+        $input['game_format'] = 'streetball_3x3';
+        $input['game_recruitment_mode'] = 'individual_draft';
+        $input['side_a_size'] = 3;
+        $input['side_b_size'] = 3;
+        $input['scoring_type'] = 'streetball';
+        $input['timing_mode'] = 'whole_game';
+        // Checkbox is enabled by default: omitting the optional flag must not
+        // change the original quick-create behavior.
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)
+            ->assertCreated()->assertJsonPath('created_count', 1);
+
+        $event = Event::query()->sole();
+        $this->assertNotNull($event->primary_game_id);
+        $this->assertSame(1, $event->games()->count());
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
     public function test_duplicate_time_options_are_rejected(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
