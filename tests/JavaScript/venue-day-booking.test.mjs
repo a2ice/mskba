@@ -675,7 +675,7 @@ test('event creation select controls reuse the branded native select, not custom
     assert.match(tpl, /min-height:48px/);
     assert.match(tpl, /border-radius:12px/);
     assert.match(tpl, /font-size:16px;line-height:24px/);
-    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 6);
+    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 5);
     assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
 });
 
@@ -687,7 +687,9 @@ test('favorite modals preserve exact acceptance copy, one action and approved cl
     const source = readFileSync(
         new URL('../../resources/themes/mskba_app/js/venue-favorite-main.js', import.meta.url), 'utf8',
     );
-    assert.match(tpl, /Площадка теперь в избранном/);
+    assert.match(tpl, /data-venue-favorite-title>Избранное/);
+    assert.match(tpl, /Площадка добавлена в избранное\./);
+    assert.match(source, /title\.textContent='Избранное'/);
     assert.match(source, /Вы уверены, что хотите убрать площадку из избранного\?/);
     assert.match(source, /'Убрать'/);
     assert.doesNotMatch(tpl, /data-venue-favorite-cancel/);
