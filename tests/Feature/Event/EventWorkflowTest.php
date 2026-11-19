@@ -300,16 +300,16 @@ final class EventWorkflowTest extends TestCase
             ->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
             ->assertSee('Создать')
-            ->assertSee(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]), false);
+            ->assertSee(route('events.create', ['type' => EventTypeEnum::TRAINING->value]), false);
 
         $this->actingAs($user)
             ->get(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
-            ->assertSee('Новая игровая тренировка')
+            ->assertSee('Новая тренировка')
             ->assertSee('Выберите площадку и свободное время.')
             ->assertDontSee('Без расписания площадка доступна круглосуточно.')
-            ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
-            ->assertSee('Игровая тренировка - 20260722')
+            ->assertSee('value="training" data-title-prefix="Тренировка" selected', false)
+            ->assertSee('Тренировка - 20260722')
             ->assertSee('value="2026-07-22T12:00"', false)
             ->assertSee('min="2026-07-22T11:59"', false)
             ->assertSee('name="duration_minutes"', false)
