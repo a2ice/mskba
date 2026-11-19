@@ -72,6 +72,23 @@ final class EventVenuePrefillTest extends TestCase
             ->assertSee('Выберите площадку');
     }
 
+    public function test_pre_request_is_opt_in_and_never_implied_by_opening_create_form(): void
+    {
+        $this->signIn();
+
+        $response = $this->get(route('events.create'))
+            ->assertOk()
+            ->assertSee('name="send_pre_request" value="0"', false)
+            ->assertSee('не занимает слот и не гарантирует аренду');
+
+        // A pre-request must not be sent merely because the organizer opened
+        // the creation form. Explicitly checking the box is required.
+        $this->assertSame(1, preg_match(
+            '/<input\\s+type="checkbox"\\s+name="send_pre_request"\\s+value="1"\\s*>/',
+            $response->getContent(),
+        ));
+    }
+
     public function test_wizard_and_create_reject_court_from_another_venue(): void
     {
         $this->signIn();
