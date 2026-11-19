@@ -11,6 +11,10 @@
     @if($message->body !== null && $message->body !== '')
         <p class="app-messages__bubble-body">{{ $message->body }}</p>
     @endif
+    @if($message->type === 'invoice')
+        @php($invoiceCard = app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceCard::class)->forMessage($message, $actor))
+        @include('theme::pages.account.partials.rental-invoice-chat-card')
+    @endif
     @if($message->attachment_path !== null)
         <a class="app-messages__action" href="{{ $isPreRequest
             ? route('account.venue-pre-requests.download', [$pre, $message])
