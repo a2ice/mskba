@@ -50,7 +50,7 @@ final class EventWizardController extends Controller
         }
 
         return ThemeResolver::page('events.wizard', [
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::availableForCreation(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
