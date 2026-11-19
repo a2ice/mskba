@@ -11,20 +11,17 @@
         ->where('ends_at', '>', now())
         ->orderBy('starts_at')->limit(20)->get();
 @endphp
-<dialog class="venue-play-dialog {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}"
+<dialog class="mskba-modal venue-play-dialog {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}"
     data-venue-play-dialog data-venue-id="{{ $venue->id }}"
     data-authenticated="{{ auth()->check() ? '1' : '0' }}"
     aria-labelledby="venue-play-title">
-    <header class="venue-play-dialog__header">
+    <header class="mskba-modal__header venue-play-dialog__header">
         <div>
-            <p class="venue-play-dialog__eyebrow">MSKBA · играем вместе</p>
             <h2 id="venue-play-title" data-venue-play-title>Хочу здесь играть</h2>
         </div>
-        <button type="button" class="venue-play-dialog__close" data-venue-play-close aria-label="Закрыть">×</button>
+        <button type="button" class="icon-button venue-play-dialog__close" data-venue-play-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
     </header>
-    <div class="venue-play-dialog__body mskba-scroll" data-venue-play-step="list">
-        <p class="muted">Выбери ближайшее мероприятие или организуй своё на этой площадке.</p>
-        <h3>Текущие мероприятия</h3>
+    <div class="mskba-modal__body venue-play-dialog__body mskba-scroll" data-venue-play-step="list">
         <div class="venue-play-dialog__events">
             @forelse($upcomingVenueEvents as $upcoming)
                 @php
@@ -123,10 +120,10 @@
         @endforeach
     </div>
 </dialog>
-<dialog class="venue-play-dialog venue-play-auth-notice" data-venue-play-auth-notice
+<dialog class="mskba-modal venue-play-dialog venue-play-auth-notice" data-venue-play-auth-notice
     aria-labelledby="venue-play-auth-title">
     <header class="venue-play-dialog__header"><h2 id="venue-play-auth-title">Нужна авторизация</h2>
-        <button type="button" class="venue-play-dialog__close" data-venue-play-auth-close aria-label="Закрыть">×</button>
+        <button type="button" class="icon-button venue-play-dialog__close" data-venue-play-auth-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
     </header>
     <div class="venue-play-dialog__body">
         <p>Чтобы продолжить, войди или зарегистрируйся. Мы сохраним выбранное мероприятие и твой ответ и вернём тебя к процессу.</p>
@@ -138,12 +135,12 @@
 </dialog>
 @once
 <style>
-.venue-play-dialog{width:min(690px,calc(100vw - 24px));max-width:100%;max-height:92dvh;padding:0;overflow:hidden;border:1px solid var(--line,#59606a);border-radius:16px;background:var(--surface,#1b1f27);color:var(--text,#fff)}
-.venue-play-dialog::backdrop{background:rgba(0,0,0,.64)}
-.venue-play-dialog__header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line,#59606a)}
-.venue-play-dialog__header h2{margin:0;font-size:clamp(19px,2vw,25px)}
-.venue-play-dialog__eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
-.venue-play-dialog__close{font-size:30px;line-height:1;color:inherit;background:transparent;border:0;cursor:pointer}
+.venue-play-dialog{width:min(690px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:92dvh;padding:0;overflow:hidden;color:var(--text,#fff)}
+
+.venue-play-dialog__header{display:grid;grid-template-columns:16px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line,#59606a)}
+.venue-play-dialog__header h2{margin:0;font-size:clamp(19px,2vw,25px);min-width:0;line-height:1.3}
+.venue-play-dialog__header .venue-play-dialog__close{width:44px;height:44px;display:flex;align-items:center;justify-content:center;justify-self:end;border:1px solid var(--line,#59606a);border-radius:12px;background:var(--surface,#1b1f27);color:inherit;cursor:pointer}
+.venue-play-dialog__close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .venue-play-dialog__body{display:grid;gap:16px;padding:20px 22px;max-height:calc(92dvh - 85px);overflow:auto}
 .venue-play-dialog__body[hidden],.venue-play-dialog__detail[hidden]{display:none}
 .venue-play-dialog__body h3,.venue-play-dialog__body h4{margin:0}
