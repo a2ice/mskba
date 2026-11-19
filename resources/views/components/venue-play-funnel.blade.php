@@ -133,11 +133,11 @@
     </header>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll">
         <p>Чтобы продолжить, войди или зарегистрируйся. Мы сохраним выбранное мероприятие и твой ответ и вернём тебя к процессу.</p>
-        <div class="venue-play-dialog__message-footer">
-            <button type="button" class="{{ $secondaryButton }}" data-venue-play-auth-close>Позже</button>
-            <button type="button" class="{{ $primaryButton }}" data-venue-play-auth-login>Войти</button>
-        </div>
     </div>
+    <footer class="mskba-modal__footer venue-play-dialog__footer">
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-auth-close>Позже</button>
+        <button type="button" class="{{ $primaryButton }}" data-venue-play-auth-login>Войти</button>
+    </footer>
 </dialog>
 @once
 <style>
@@ -194,6 +194,7 @@
     display:flex;justify-content:flex-end;flex:0 0 auto;
     padding:16px 22px;border-top:1px solid var(--line,#59606a);
 }
+.venue-play-dialog__footer[hidden]{display:none}
 .venue-play-dialog__footer :is(.button,.btn){min-height:44px}
 .venue-play-dialog__participants{display:flex;flex-wrap:wrap;gap:12px}
 .venue-play-dialog__participant{display:flex;align-items:center;gap:6px;font-size:14px}
