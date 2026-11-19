@@ -549,8 +549,7 @@
         <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
     </div>
     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
-    <a class="button secondary" href="{{ route('venues.interest-group', ['venue' => $venue->id]) }}">Перейти на страницу группы</a>
-    <button type="button" class="button primary" data-venue-interests-close>Закрыть</button>
+    <button type="button" class="button secondary" data-venue-overlay-close>Закрыть</button>
 </dialog>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
