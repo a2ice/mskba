@@ -355,6 +355,26 @@ if (root) {
             if(sequence===loadSequence){pagination.hidden=true;if(count) count.textContent='';showError(e.message);}
         }
     }
-    window.addEventListener('mskba:play-intent:saved',()=>{void load();});
+    window.addEventListener('mskba:play-intent:saved',()=>{
+        // The first save changes the menu's available providers immediately,
+        // including both desktop and mobile copies without a page reload.
+        document.querySelectorAll('[data-subscription-nav-type="all"]').forEach(all => {
+            const group = all.parentElement;
+            if(group.querySelector('[data-subscription-nav-type="play"]'))return;
+            const play = all.cloneNode(true);
+            const destination = new URL(all.href);
+            destination.searchParams.set('type','play');
+            play.href = destination.href;
+            play.dataset.subscriptionNavType = 'play';
+            play.classList.remove('is-active');
+            play.removeAttribute('aria-current');
+            const label = play.querySelector('.app-account-nav__label');
+            if(label)label.textContent = 'Игровые подписки';
+            play.querySelector('use')?.setAttribute('href','#ball');
+            group.append(play);
+        });
+        syncSubscriptionNav();
+        void load();
+    });
     void load();
 }

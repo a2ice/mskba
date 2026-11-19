@@ -530,10 +530,17 @@ function onEdit(event){
     }
     void openDialog().then(()=>{void hydrateExcluded(intent.excluded_venue_ids);void syncFavorite();});
 }
-function onBackdrop(e){
-    if(e.target!==el.value)return;
+function isBackdropPointer(e){
+    if(e.target!==el.value)return false;
     const r=el.value.getBoundingClientRect();
-    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close();
+    return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;
+}
+let backdropPointerDown=false;
+function onBackdropPointerDown(e){backdropPointerDown=isBackdropPointer(e);}
+function onBackdrop(e){
+    const intentional=backdropPointerDown && isBackdropPointer(e);
+    backdropPointerDown=false;
+    if(intentional)close();
 }
 onMounted(()=>{window.addEventListener('mskba:subscription-dialog:open',contextOpen);window.addEventListener('mskba:contact:updated',refreshChannels);document.addEventListener('click',onClick);window.addEventListener('mskba:play-intent:edit',onEdit);window.addEventListener('mskba:auth:success',authSuccess);window.addEventListener('mskba:onboarding-completed',authSuccess);void resume();});
 onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open',contextOpen);window.removeEventListener('mskba:contact:updated',refreshChannels);document.removeEventListener('click',onClick);window.removeEventListener('mskba:play-intent:edit',onEdit);window.removeEventListener('mskba:auth:success',authSuccess);window.removeEventListener('mskba:onboarding-completed',authSuccess);clearTimeout(venueTimer);clearTimeout(excludedTimer);if(el.value?.open)el.value.close();});
@@ -541,7 +548,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
 <template>
 <Teleport to="body">
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
- aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
+ aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @pointerdown="onBackdropPointerDown" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
         <div><p v-if="contextSource!=='subscriptions'" class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
