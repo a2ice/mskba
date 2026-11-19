@@ -428,8 +428,7 @@
                 <label class="field-group" for="app-venue-choice-type">Тип мероприятия
                     <span class="select-control">
                         <select id="app-venue-choice-type" data-venue-choice-type>
-                            @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
-                                @continue($kind === \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME_TRAINING)
+                            @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::availableForCreation() as $kind)
                                 <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                             @endforeach
                         </select>
