@@ -25,7 +25,8 @@ final readonly class VenueRentalInvoiceCard
             return null;
         }
         $isPayer = (int) $invoice->payer_user_id === (int) $viewer->user_id;
-        $canSeeDetails = $isPayer || $this->invoices->canReceiveBuyer($booking, $viewer);
+        $canConfirm = $this->invoices->canReceiveBuyer($booking, $viewer);
+        $canSeeDetails = $isPayer || $canConfirm;
         $methods = [
             'sbp' => 'СБП / перевод по номеру карты',
             'bank_transfer' => 'Банковский перевод',
@@ -62,6 +63,10 @@ final readonly class VenueRentalInvoiceCard
             'claim_url' => $isPayer && $invoice->status === 'issued' && $invoice->due_at?->isFuture()
                 ? route('account.venue-bookings.invoices.claim', [$booking, $invoice]) : null,
             'reference_required' => in_array('sbp', $invoice->payment_methods ?? [], true),
+            'settle_url' => $canConfirm && in_array($invoice->status, ['issued', 'claimed', 'postpay'], true)
+                && ($invoice->status === 'postpay' || $booking->effective_protection_until?->isFuture())
+                ? route('account.venue-bookings.invoices.settle', [$booking, $invoice]) : null,
+            'settle_method' => $invoice->payment_methods[0] ?? 'other',
             'confirmation_hint' => $canSeeDetails ? ($details['confirmation_hint'] ?? null) : null,
             'booking_url' => route('account.venue-bookings.show', $booking),
         ];
