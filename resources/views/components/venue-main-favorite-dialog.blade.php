@@ -3,7 +3,7 @@
     $primaryButton = $isAppTheme ? 'button primary' : 'btn btn--primary';
     $secondaryButton = $isAppTheme ? 'button secondary' : 'btn btn--secondary';
 @endphp
-<dialog class="mskba-modal venue-main-favorite-dialog" data-venue-favorite-dialog
+<dialog class="mskba-modal venue-main-favorite-dialog {{ $isAppTheme ? 'venue-main-favorite-dialog--app' : '' }}" data-venue-favorite-dialog
     data-venue-id="{{ $venue->id }}"
     data-status-url="{{ route('favorites.venue-statuses') }}"
     data-toggle-url="{{ route('favorites.toggle') }}"
