@@ -122,7 +122,7 @@
 </dialog>
 <dialog class="mskba-modal venue-play-dialog venue-play-auth-notice" data-venue-play-auth-notice
     aria-labelledby="venue-play-auth-title">
-    <header class="venue-play-dialog__header"><h2 id="venue-play-auth-title">Нужна авторизация</h2>
+    <header class="mskba-modal__header venue-play-dialog__header"><h2 id="venue-play-auth-title">Нужна авторизация</h2>
         <button type="button" class="icon-button venue-play-dialog__close" data-venue-play-auth-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
     </header>
     <div class="venue-play-dialog__body">
