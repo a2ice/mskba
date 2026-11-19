@@ -115,7 +115,7 @@
         </div>
     @endif
     @if(isset($venue))
-        @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id])
+        @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
         @include('components.venue-play-funnel')
         @include('components.venue-main-favorite-dialog')
     @endif
