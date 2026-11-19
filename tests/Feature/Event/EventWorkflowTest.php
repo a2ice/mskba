@@ -307,8 +307,8 @@ final class EventWorkflowTest extends TestCase
             ->assertDontSee('name="type" value="game_training"', false);
 
         $this->actingAs($user)
-            ->get(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
-            ->assertUnprocessable();
+            ->getJson(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
 
         $this->actingAs($user)
             ->get(route('events.create', ['type' => EventTypeEnum::TRAINING->value]))
