@@ -63,13 +63,20 @@ final class FavoritePlayIntentService
             ->where('status', 'active')->update(['status' => 'paused']);
     }
 
+    public function enableVenueNews(User $user, int $venueId): PlayIntent
+    {
+        $intent = $this->ensure($user, $venueId);
+        $intent->forceFill(['notify_venue_news' => true, 'favorite_generated' => false])->save();
+        return $intent->refresh();
+    }
+
     public function disableVenueNews(User $user, int $venueId): ?PlayIntent
     {
         $user = $user->canonical();
         $intent = PlayIntent::query()->where('user_id', $user->id)
             ->where('venue_id', $venueId)->where('status', 'active')->first();
         if ($intent !== null) {
-            $intent->forceFill(['notify_venue_news' => false])->save();
+            $intent->forceFill(['notify_venue_news' => false, 'favorite_generated' => false])->save();
         }
         return $intent;
     }

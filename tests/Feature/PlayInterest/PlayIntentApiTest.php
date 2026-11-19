@@ -30,7 +30,7 @@ final class PlayIntentApiTest extends TestCase
         ];
     }
 
-    public function test_favoriting_a_venue_creates_direct_interest_without_play_subscription(): void
+    public function test_favoriting_a_venue_creates_a_default_play_subscription_with_direct_audience(): void
     {
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $user = User::factory()->create(['username' => 'favorite-only-player']);
@@ -46,7 +46,7 @@ final class PlayIntentApiTest extends TestCase
         $this->assertSame(0, $audience['matched_count']);
         $this->assertSame('favorite-only-player', $audience['direct'][0]['name']);
         $this->assertFalse($audience['direct'][0]['public']);
-        $this->assertDatabaseCount('play_intents', 0);
+        $this->assertDatabaseCount('play_intents', 1);
 
         $this->postJson(route('play-intents.store'), [
             ...$this->payload($venue), 'cadence' => 'flexible', 'windows' => [],

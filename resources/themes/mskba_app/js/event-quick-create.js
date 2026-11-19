@@ -212,7 +212,13 @@
         return data;
     }
     const save=()=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now()}));}catch{}};
-    const clear=()=>{try{sessionStorage.removeItem(storageKey);}catch{}};
+    const clear=()=>{
+        try{
+            sessionStorage.removeItem(storageKey);
+            if(sessionStorage.getItem('mskba:auth:pending-flow')==='quick-event')
+                sessionStorage.removeItem('mskba:auth:pending-flow');
+        }catch{}
+    };
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){

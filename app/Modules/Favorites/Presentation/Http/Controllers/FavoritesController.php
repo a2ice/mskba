@@ -143,7 +143,7 @@ final class FavoritesController extends Controller
         abort_unless($favorite !== null, 404);
 
         $subscription = $enabled
-            ? $subscriptions->ensure($request->user(), $venueId)
+            ? $subscriptions->enableVenueNews($request->user(), $venueId)
             : $subscriptions->disableVenueNews($request->user(), $venueId);
         $favorite->forceFill(['notify_upcoming_events' => $enabled])->save();
 

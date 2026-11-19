@@ -27,7 +27,11 @@
         <h3>Текущие мероприятия</h3>
         <div class="venue-play-dialog__events">
             @forelse($upcomingVenueEvents as $upcoming)
-                @php($venueEventStart = $upcoming->starts_at->setTimezone($upcoming->venue?->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow')))
+                @php
+                    $venueEventStart = $upcoming->starts_at->setTimezone(
+                        $upcoming->venue?->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow')
+                    );
+                @endphp
                 <button type="button" class="venue-play-dialog__event" data-venue-play-preview="{{ $upcoming->id }}">
                     <span class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart->format('d.m.Y H:i') }}</span>
                     <strong>{{ $upcoming->title }}</strong>

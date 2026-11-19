@@ -56,8 +56,9 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($user)->patch($url, ['status' => 'confirmed'])->assertRedirect();
         $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
         $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
-            ->assertNotFound();
-        // A user who left cannot read the participant discussion; organizers can.
+            ->assertOk()->assertJsonPath('can_post', false);
+        // Public event discussion is readable for discovery; posting still
+        // requires an active participant or organizer and private walls stay closed.
         $organizer = $event->organizerActor->user;
         $this->actingAs($organizer)->getJson(route('events.wall.index', $event->routeIdentifier()))
             ->assertOk()->assertJsonPath('counts.confirmed', 0)
