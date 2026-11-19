@@ -257,7 +257,7 @@
         </section>
         <section data-home-flow-panel="create" hidden>
             <div class="home-flow-steps"><span>1 · Поиск</span><span class="is-active">2 · Создание</span></div><p class="home-flow-intro">Выберите тип — дальше откроется уже существующий wizard создания с заполнением параметров мероприятия.</p>
-            <div class="home-flow-create-grid"><a href="{{ route('events.create', ['type' => 'game']) }}"><i class="ti ti-ball-basketball"></i><strong>Игра</strong><small>Создать игру</small></a><a href="{{ route('events.create', ['type' => 'training']) }}"><i class="ti ti-barbell"></i><strong>Тренировка</strong><small>Создать тренировку</small></a><a href="{{ route('events.create', ['type' => 'game_training']) }}"><i class="ti ti-users-group"></i><strong>Игровая тренировка</strong><small>Создать игровую тренировку</small></a><a href="{{ route('tournaments.create') }}"><i class="ti ti-trophy"></i><strong>Турнир</strong><small>Создать турнир</small></a></div>
+            <div class="home-flow-create-grid"><a href="{{ route('events.create', ['type' => 'game']) }}"><i class="ti ti-ball-basketball"></i><strong>Игра</strong><small>Создать игру</small></a><a href="{{ route('events.create', ['type' => 'training']) }}"><i class="ti ti-barbell"></i><strong>Тренировка</strong><small>Создать тренировку</small></a><a href="{{ route('tournaments.create') }}"><i class="ti ti-trophy"></i><strong>Турнир</strong><small>Создать турнир</small></a></div>
         </section>
     </div>
 @endcomponent
