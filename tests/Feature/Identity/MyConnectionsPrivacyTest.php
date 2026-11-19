@@ -105,6 +105,11 @@ final class MyConnectionsPrivacyTest extends TestCase
 
     public function test_accepted_team_connections_control_messages_and_invitation_search_and_store(): void
     {
+        // Team invitation responses use the standard theme's partial templates.
+        config()->set('themes.active', $this->previousTheme);
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/'.$this->previousTheme.'/views'));
+
         $sender = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $recipient = User::factory()->create([
             'username' => 'connected_recipient',
