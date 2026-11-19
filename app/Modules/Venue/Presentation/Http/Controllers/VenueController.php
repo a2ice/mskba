@@ -23,6 +23,7 @@ use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -282,6 +283,19 @@ class VenueController extends Controller
             return response()->json(['message' => $exception->getMessage()], $status);
         }
 
+        // The venue preview powers the same map card as the homepage.
+        // Match its representative-photo fallback, surface and amenity rules.
+        $mapVenue = Venue::query()->with(['courts.media', 'media', 'amenities'])
+            ->findOrFail($venue->id);
+        $mapPhoto = $mapVenue->representativePhoto();
+        $surfaces = $mapVenue->courts
+            ->map(fn ($court): ?array => $court->surface_type instanceof VenueSurfaceTypeEnum
+                ? ['value' => $court->surface_type->value, 'label' => $court->surface_type->label()]
+                : null)
+            ->filter()->unique('value')->values()->all();
+        $amenities = $mapVenue->amenities->filter(fn ($amenity): bool => (bool) $amenity->is_active)
+            ->pluck('name')->values()->all();
+
         return response()->json([
             'venue' => [
                 'id' => $venue->id,
@@ -297,7 +311,9 @@ class VenueController extends Controller
                     'line_name' => $station->lineName,
                     'line_color' => $station->lineColor,
                 ])->all(),
-                'image_url' => $venue->featuredMedia[0]['url'] ?? null,
+                'image_url' => $mapPhoto === null ? null : url($mapPhoto->publicUrl()),
+                'surfaces' => $surfaces,
+                'amenities' => $amenities,
                 'url' => route('venues.show', $venue->routeIdentifier()),
             ],
         ]);
