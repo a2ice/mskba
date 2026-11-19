@@ -43,8 +43,13 @@
         }
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             if(Number(btn.dataset.favoriteVenue)!==id) return;
-            btn.classList.add('mskba-favorite-heart');
-            if (!btn.querySelector('svg use[href="#heart"]')) btn.innerHTML = svg;
+            const labeled = btn.hasAttribute('data-venue-favorite-label');
+            if (labeled) {
+                btn.textContent = state === 'active' ? 'В избранном' : 'В избранное';
+            } else {
+                btn.classList.add('mskba-favorite-heart');
+                if (!btn.querySelector('svg use[href="#heart"]')) btn.innerHTML = svg;
+            }
             btn.setAttribute('aria-pressed',String(state==='active'));
             btn.setAttribute('aria-label',getName(state));
             btn.title=state==='active'?'Добавлено в избранное':getName(state);
@@ -64,7 +69,7 @@
     function enhance() {
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             const id=Number(btn.dataset.favoriteVenue);
-            if(Number.isInteger(id)&&id>0) {paint(id);if(!known.has(id))pending.add(id);}
+            if(Number.isInteger(id)&&id>0) {if(!known.has(id))pending.add(id);paint(id);}
         });
         // Shared catalog/list/home/modal previews: never place a button inside <a>.
         const selectors=[
@@ -148,10 +153,9 @@
                 detail:{venueId:id,state:result.state,count:result.count},
             }));
             if(result.state==='active') {
-                if (document.querySelector('[data-venue-favorite-dialog][data-venue-id="'+id+'"]')) {
-                    // On a venue page the dedicated chooser owns game vs. favorite
-                    // intent; never reopen the obsolete game-subscription wizard.
-                    toast(contextNames.venue.added);
+                const success = document.querySelector('[data-venue-favorite-success][data-venue-id="'+id+'"]');
+                if (success) {
+                    if (!success.open) success.showModal();
                 } else {
                     window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
                         detail:{source:'favorite',type:'venue',id},
@@ -200,11 +204,44 @@
         });
         paint(id);
     });
+    const confirmDialog = document.querySelector('[data-venue-favorite-confirm]');
+    const confirmSubmit = confirmDialog?.querySelector('[data-venue-favorite-confirm-submit]');
+    let confirmVenueId = null;
+    confirmSubmit?.addEventListener('click', () => {
+        const id = confirmVenueId;
+        confirmVenueId = null;
+        confirmDialog.close();
+        if (id !== null) void toggle(id);
+    });
+    const successDialog = document.querySelector('[data-venue-favorite-success]');
+    for (const [dialog, closeSelector] of [
+        [confirmDialog, '[data-venue-favorite-confirm-close]'],
+        [successDialog, '[data-venue-favorite-close]'],
+    ]) {
+        if (!dialog) continue;
+        dialog.querySelectorAll(closeSelector).forEach(button =>
+            button.addEventListener('click', () => dialog.close()));
+        let pressedOutside = false;
+        dialog.addEventListener('pointerdown', event => {
+            pressedOutside = event.target === dialog;
+        });
+        dialog.addEventListener('pointerup', event => {
+            if (pressedOutside && event.target === dialog) dialog.close();
+            pressedOutside = false;
+        });
+    }
     document.addEventListener('click',e=>{
         const b=e.target.closest?.('[data-favorite-venue]');
         if(!b)return;
         e.preventDefault();e.stopPropagation();
-        void toggle(Number(b.dataset.favoriteVenue));
+        const id = Number(b.dataset.favoriteVenue);
+        if (b.hasAttribute('data-venue-favorite-label') && known.get(id)?.state === 'active'
+            && confirmDialog) {
+            confirmVenueId = id;
+            confirmDialog.showModal();
+            return;
+        }
+        void toggle(id);
     });
     document.addEventListener('click',e=>{
         const target=e.target.closest?.('[data-favorite-type][data-favorite-id]');

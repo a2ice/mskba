@@ -163,6 +163,26 @@ document.addEventListener('DOMContentLoaded', () => {
         dialog.querySelector('[data-quick-timing]').value = preset[2];
     };
     const syncType = () => {if(game) game.hidden = type?.value !== 'game';};
+    // Generated titles are editable. Once the organizer types, never overwrite
+    // their own title when another option changes.
+    const title = dialog.querySelector('[name="title"]');
+    const date = dialog.querySelector('[name="starts_at"]');
+    let manualTitle = Boolean(title?.value?.trim());
+    const suggestTitle = () => {
+        if (!title || manualTitle) return;
+        const eventType = type?.selectedOptions?.[0]?.textContent?.trim() || 'Игра';
+        const venueName = venue?.value ? venue.selectedOptions?.[0]?.textContent?.trim() : '';
+        const dateLabel = date?.value ? new Date(date.value).toLocaleDateString('ru-RU', {
+            day: 'numeric', month: 'long',
+        }) : '';
+        title.value = [eventType, venueName ? 'на площадке «' + venueName + '»' : '',
+            dateLabel ? '— ' + dateLabel : ''].filter(Boolean).join(' ').slice(0, 150);
+    };
+    title?.addEventListener('input', () => { manualTitle = true; });
+    venue?.addEventListener('change', suggestTitle);
+    date?.addEventListener('change', suggestTitle);
+    type?.addEventListener('change', suggestTitle);
+    suggestTitle();
     type?.addEventListener('change', syncType);
     format?.addEventListener('change', syncFormat);
     syncType();syncFormat();
@@ -171,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             const id = trigger.dataset.quickEventVenueId;
             if (id && venue?.querySelector('option[value="' + CSS.escape(id) + '"]')) venue.value = id;
+            suggestTitle();
             document.querySelector('[data-venue-choice-dialog][open]')?.close();
             dialog.showModal();
             dialog.querySelector('[name="title"]')?.focus();

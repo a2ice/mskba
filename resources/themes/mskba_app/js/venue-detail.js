@@ -29,6 +29,26 @@ document.querySelectorAll('[data-venue-gallery]').forEach(gallery => {
     thumbs.forEach(btn => btn.addEventListener('click', () => {
         show(Number(btn.dataset.galleryThumb)); start();
     }));
+    // A deliberate horizontal swipe changes the hero image; vertical page scroll is untouched.
+    const stage = gallery.querySelector('.app-venue-gallery__stage');
+    if (stage) {
+        stage.style.touchAction = 'pan-y';
+        let gesture = null;
+        stage.addEventListener('pointerdown', event => {
+            if (event.button !== 0 && event.pointerType === 'mouse') return;
+            if (event.target.closest('[data-gallery-thumb]')) return;
+            gesture = {id: event.pointerId, x: event.clientX, y: event.clientY};
+        });
+        stage.addEventListener('pointerup', event => {
+            if (!gesture || gesture.id !== event.pointerId) return;
+            const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+            gesture = null;
+            if (Math.abs(dx) < 45 || Math.abs(dx) <= Math.abs(dy) * 1.25) return;
+            show(active + (dx < 0 ? 1 : -1));
+            start();
+        });
+        stage.addEventListener('pointercancel', () => { gesture = null; });
+    }
     gallery.addEventListener('mouseenter', stop);
     gallery.addEventListener('mouseleave', start);
     gallery.addEventListener('focusin', stop);

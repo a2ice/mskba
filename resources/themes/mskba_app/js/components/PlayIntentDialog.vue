@@ -452,13 +452,19 @@ async function resume(){
     step.value='options';await openDialog();void refreshChannels();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+function onClick(e){const trigger=e.target.closest?.('[data-play-intent-open]');if(trigger){e.preventDefault();
+    // Reuse the universal two-step wizard with the venue from the clicked card.
+    // The global Vue root has no venue-specific props on most pages.
+    const clickedVenueId=Number(trigger.dataset.venueId);
+    const venueId=Number.isSafeInteger(clickedVenueId)&&clickedVenueId>0?clickedVenueId:(props.options.venueId??null);
+    const venueName=trigger.dataset.venueName||props.options.venueName||'';
     pendingSuccessToast=null;
-    contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
-    favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
+    contextSource.value='play';contextType.value='venue';contextId.value=venueId;
+    // A venue-interest subscription never silently creates a favorite.
+    favoriteOpen.value=false;favoriteSelected.value=false;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
-    editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
+    editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=venueId;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=venueName;selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];

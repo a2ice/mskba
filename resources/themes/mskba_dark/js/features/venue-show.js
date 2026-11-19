@@ -201,6 +201,30 @@ function initVenueHeroSlider() {
 
     previousButton?.addEventListener('click', () => show(currentIndex - 1));
     nextButton?.addEventListener('click', () => show(currentIndex + 1));
+    // Pointer gestures work with a touch swipe as well as desktop dragging.
+    slider.style.touchAction = 'pan-y';
+    let gesture = null;
+    let suppressClick = false;
+    slider.addEventListener('pointerdown', event => {
+        if (event.button !== 0 && event.pointerType === 'mouse') return;
+        if (event.target.closest('[data-venue-hero-prev], [data-venue-hero-next]')) return;
+        gesture = {id: event.pointerId, x: event.clientX, y: event.clientY};
+    });
+    slider.addEventListener('pointerup', event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+        gesture = null;
+        if (Math.abs(dx) < 45 || Math.abs(dx) <= Math.abs(dy) * 1.25) return;
+        suppressClick = true;
+        show(currentIndex + (dx < 0 ? 1 : -1));
+    });
+    slider.addEventListener('pointercancel', () => { gesture = null; });
+    slider.addEventListener('click', event => {
+        if (!suppressClick) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        suppressClick = false;
+    }, true);
     slider.addEventListener('keydown', (event) => {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
             return;

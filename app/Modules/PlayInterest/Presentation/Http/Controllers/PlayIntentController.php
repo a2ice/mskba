@@ -121,6 +121,24 @@ final class PlayIntentController extends Controller
         return response()->json(['message' => 'Подписка отменена.']);
     }
 
+    /**
+     * Cancel direct interests in one venue after explicit confirmation.
+     * A venue can have more than one saved search; removing the venue must
+     * not leave duplicate direct interests active.
+     */
+    public function destroyVenue(Request $request, int $venue): JsonResponse
+    {
+        $user = $this->viewer($request);
+        $cancelled = PlayIntent::query()
+            ->where('user_id', $user->id)
+            ->where('venue_id', $venue)
+            ->where('status', 'active')
+            ->update(['status' => 'cancelled', 'updated_at' => now()]);
+
+        return response()->json(['cancelled' => $cancelled])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function recommendations(
         Request $request, PlayIntent $playIntent, RecommendVenuesForIntent $recommender,
     ): JsonResponse {

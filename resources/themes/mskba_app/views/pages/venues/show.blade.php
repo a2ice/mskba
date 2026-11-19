@@ -20,6 +20,18 @@
     $venueAddress = $venue->address?->display ?: $venue->rawAddress;
     $isConfirmedVenue = $venue->statusSlug === 'confirmed';
     $canStartInterest = $isConfirmedVenue;
+    $viewer = auth()->user()?->canonical();
+    $hasDirectVenueInterest = $viewer !== null && \App\Modules\PlayInterest\Domain\Models\PlayIntent::query()
+        ->where('user_id', $viewer->id)
+        ->where('venue_id', $venue->id)
+        ->where('status', 'active')
+        ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+        ->exists();
+    $upcomingVenueEvents = \App\Modules\Event\Domain\Models\Event::query()
+        ->where('venue_id', $venue->id)
+        ->where('status', 'published')->where('visibility', 'public')
+        ->where('ends_at', '>', now())
+        ->orderBy('starts_at')->limit(20)->get();
     $venueAudience = app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
         ->forVenue(\App\Modules\Venue\Domain\Models\Venue::query()->findOrFail($venue->id));
     $venueInterestUsers = collect(array_merge($venueAudience['direct'], $venueAudience['matched']));
@@ -165,7 +177,8 @@
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-venue-choice-open
                     @disabled(!$canStartInterest)>Хочу здесь играть</button>
-                <a class="button secondary large" href="#app-venue-schedule">Расписание</a>
+                <button type="button" class="button secondary large" data-favorite-venue="{{ $venue->id }}"
+                    data-venue-favorite-label aria-pressed="false">В избранное</button>
             </div>
         </div>
     </div>
@@ -278,6 +291,13 @@
                         </div>
                         <strong class="app-venue-interest-summary__count">{{ $activeVenueInterestCount }} {{ $venuePlayerWord }}</strong>
                         <button type="button" class="button secondary" data-venue-interests-open>Посмотреть всех</button>
+                        <button type="button" class="button secondary" data-venue-interest-add data-play-intent-open
+                            data-venue-id="{{ $venue->id }}" data-venue-name="{{ $venue->name }}"
+                            @if($hasDirectVenueInterest) hidden @endif @disabled(!$canStartInterest)>Добавить площадку в интересы</button>
+                        <button type="button" class="button secondary" data-venue-interest-remove
+                            data-venue-id="{{ $venue->id }}"
+                            data-remove-url="{{ route('play-intents.venue.destroy', ['venue' => $venue->id]) }}"
+                            @unless($hasDirectVenueInterest) hidden @endunless>Не интересует</button>
                     </div>
                 </div>
             </section>
@@ -286,6 +306,10 @@
                 @foreach($venue->courtSchedules as $scheduleGroup)
                     <div class="app-venue-schedule__court" data-venue-schedule-court="{{ $scheduleGroup['id'] }}"
                         data-court-name="{{ $scheduleGroup['name'] }}">
+                        <div class="app-venue-schedule__court-actions">
+                            <button type="button" class="button secondary" data-venue-rental-start
+                                data-court-id="{{ $scheduleGroup['id'] }}">Арендовать площадку</button>
+                        </div>
                         @unless($venue->isCourtPage)
                             <div class="app-venue-schedule__court-header">
                                 <h3>{{ $scheduleGroup['name'] }}</h3>
@@ -396,10 +420,10 @@
         </div>
         <aside class="app-venue-page__aside panel" aria-label="Быстрые действия">
             <strong>Хочешь здесь играть?</strong>
-            <p>Выбери зал и время для аренды или сохрани эту площадку в избранном.</p>
+            <p>Посмотри ближайшие игры или предложи своё мероприятие на этой площадке.</p>
             <button type="button" class="button primary full" data-venue-choice-open
                 @disabled(!$canStartInterest)>Хочу здесь играть</button>
-            <a class="button secondary full" href="{{ $createEventUrl }}" data-venue-create-event-link data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
+            <a class="button secondary full" href="#app-venue-schedule">Расписание и аренда</a>
         </aside>
     </div>
 </section>
@@ -408,69 +432,79 @@
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog
     aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
-        <h2 id="app-venue-choice-title">Отличный выбор!</h2>
+        <h2 id="app-venue-choice-title">Хочу здесь играть</h2>
         <button type="button" data-venue-choice-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
-    <p class="muted">Расскажи, что именно ты хочешь сделать на этой площадке.</p>
-    <div class="app-venue-choice-dialog__options">
-        <a class="button secondary full" href="{{ $createEventUrl }}" data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
-        <details data-venue-choice-rental>
-            <summary>Аренда площадки</summary>
-            <div class="app-venue-choice-dialog__option-body">
-                <p>Выбери зал, затем дату и свободные интервалы. После выбора времени войди в аккаунт или зарегистрируйся, если ещё не авторизован, и пройди обычное оформление и подтверждение аренды.</p>
-                <label class="field-group" for="app-venue-choice-court">Зал или корт
-                    <span class="select-control">
-                        <select id="app-venue-choice-court" data-venue-choice-court required>
-                            @if(!$venue->isCourtPage && count($venue->courts) > 1)
-                                <option value="">Выберите зал или корт</option>
-                            @endif
-                            @foreach($venue->courts as $court)
-                                <option value="{{ $court['id'] }}"
-                                    @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($venue->courts) === 1)>{{ $court['name'] }}</option>
-                            @endforeach
-                        </select>
-                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
-                    </span>
-                </label>
-                <p class="error" data-venue-choice-error role="alert" hidden>Выбери зал, чтобы посмотреть его расписание.</p>
-                <button type="button" class="button primary" data-venue-choice-date>Выбрать дату</button>
-            </div>
+        <details open class="app-venue-choice-dialog__events">
+            <summary>Ближайшие мероприятия</summary>
+            @if($upcomingVenueEvents->isEmpty())
+                <p class="muted">Мероприятий пока нет.</p>
+            @else
+                <ul class="app-venue-activities__list">
+                    @foreach($upcomingVenueEvents as $upcoming)
+                        @php
+                            $tz = $upcoming->venue?->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+                        @endphp
+                        <li class="app-venue-activities__item">
+                            <a class="app-venue-activity" href="{{ route('events.show', $upcoming->routeIdentifier()) }}">
+                                <span class="app-venue-activity__meta">
+                                    <span>{{ $upcoming->starts_at?->setTimezone($tz)->format('d.m.Y H:i') ?? 'Время уточняется' }}</span>
+                                    <span class="app-venue-activity__type">{{ $upcoming->type->label() }}</span>
+                                </span>
+                                <strong class="app-venue-activity__title">{{ $upcoming->title }}</strong>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </details>
-        <details data-venue-choice-favorite>
-            <summary>Добавить в избранное</summary>
-            <div class="app-venue-choice-dialog__option-body">
-                <p>Сохрани площадку, чтобы быстро к ней возвращаться. Для авторизованных пользователей это также прямой интерес в списке «Площадкой интересуются».</p>
-            </div>
-        </details>
-    </div>
-    <p class="app-venue-choice-dialog__footnote">Расширенные условия поиска игр и похожих площадок настраиваются в <a href="{{ route('play-intents.mine') }}">«Моих подписках»</a>.</p>
+        <a class="button primary full" href="{{ $createEventUrl }}" data-quick-event-open
+            data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
     </div>
 </dialog>
-<dialog class="app-venue-overlay app-venue-favorite-dialog" data-venue-favorite-dialog
-    data-venue-id="{{ $venue->id }}"
-    data-status-url="{{ route('favorites.venue-statuses') }}"
-    data-toggle-url="{{ route('favorites.toggle') }}"
-    data-authenticated="{{ auth()->check() ? '1' : '0' }}"
-    aria-labelledby="app-venue-favorite-title">
+<dialog class="app-venue-overlay app-venue-favorite-dialog" data-venue-favorite-success
+    data-venue-id="{{ $venue->id }}" aria-labelledby="app-venue-favorite-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-favorite-title">Площадка в избранном</h2>
-        <button type="button" data-venue-favorite-close aria-label="Закрыть">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
-        </button>
+        <button type="button" data-venue-favorite-close aria-label="Закрыть">×</button>
     </div>
     <div class="app-venue-favorite-dialog__body mskba-scroll">
-    <p data-venue-favorite-description>Добавь площадку в избранное, чтобы вернуться к ней позже.</p>
-    @guest
-        <p class="muted">Для сохранения избранного потребуется вход в аккаунт. После авторизации вернёмся к подтверждению.</p>
-    @endguest
-    <p class="error" data-venue-favorite-error role="alert" hidden></p>
+        <p>Площадка добавлена в избранное. Теперь ты можешь легко вернуться к ней позже.</p>
     </div>
     <div class="app-venue-overlay__actions">
-        <button type="button" class="button secondary" data-venue-favorite-back>Назад</button>
-        <button type="button" class="button primary" data-venue-favorite-submit disabled>Проверяем…</button>
+        <button type="button" class="button primary" data-venue-favorite-close>Понятно</button>
+    </div>
+</dialog>
+<dialog class="app-venue-overlay app-venue-favorite-dialog" data-venue-favorite-confirm
+    aria-labelledby="app-venue-favorite-confirm-title">
+    <div class="app-venue-overlay__header">
+        <h2 id="app-venue-favorite-confirm-title">Убрать из избранного?</h2>
+        <button type="button" data-venue-favorite-confirm-close aria-label="Закрыть">×</button>
+    </div>
+    <div class="app-venue-favorite-dialog__body mskba-scroll">
+        <p>Вы уверены, что хотите убрать площадку из избранного?</p>
+    </div>
+    <div class="app-venue-overlay__actions">
+        <button type="button" class="button secondary" data-venue-favorite-confirm-close>Отмена</button>
+        <button type="button" class="button primary" data-venue-favorite-confirm-submit>Убрать</button>
+    </div>
+</dialog>
+<dialog class="app-venue-overlay app-venue-favorite-dialog" data-venue-interest-confirm
+    aria-labelledby="app-venue-interest-confirm-title">
+    <div class="app-venue-overlay__header">
+        <h2 id="app-venue-interest-confirm-title">Убрать площадку из интересов?</h2>
+        <button type="button" data-venue-interest-confirm-close aria-label="Закрыть">×</button>
+    </div>
+    <div class="app-venue-favorite-dialog__body mskba-scroll">
+        <p>После подтверждения подписка на эту площадку будет отменена.</p>
+        <p class="error" data-venue-interest-error role="alert" hidden></p>
+    </div>
+    <div class="app-venue-overlay__actions">
+        <button type="button" class="button secondary" data-venue-interest-confirm-close>Отмена</button>
+        <button type="button" class="button primary" data-venue-interest-confirm-submit>Не интересует</button>
     </div>
 </dialog>
 <dialog class="app-venue-overlay app-venue-day-dialog" data-venue-day-dialog
@@ -515,8 +549,7 @@
         <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
     </div>
     @include('theme::pages.venues.partials.interest-users-list', ['venueAudience' => $venueAudience])
-    <a class="button secondary" href="{{ route('venues.interest-group', ['venue' => $venue->id]) }}">Перейти на страницу группы</a>
-    <button type="button" class="button primary" data-venue-choice-open>Тоже хочу здесь играть</button>
+    <button type="button" class="button secondary" data-venue-overlay-close>Закрыть</button>
 </dialog>
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
