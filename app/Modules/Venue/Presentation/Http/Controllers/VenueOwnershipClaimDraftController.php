@@ -50,7 +50,7 @@ final class VenueOwnershipClaimDraftController extends Controller
             }
         }
 
-        return redirect()->route('account.venue-ownership.show', $claim)
+        return redirect()->route('account.venue-contracts.show', $claim->venue)
             ->with('status', $data['intent'] === 'submit' ? 'Заявка отправлена на проверку.' : 'Черновик и документы сохранены.');
     }
 
