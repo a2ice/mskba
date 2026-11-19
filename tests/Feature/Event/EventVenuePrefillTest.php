@@ -40,7 +40,7 @@ final class EventVenuePrefillTest extends TestCase
     public function test_wizard_preserves_selected_venue_and_court_in_app_create_form(): void
     {
         $this->signIn();
-        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'is_published' => true]);
         $court = $venue->primaryCourt()->firstOrFail();
 
         $parameters = [
