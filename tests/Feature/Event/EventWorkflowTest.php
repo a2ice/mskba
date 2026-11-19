@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
@@ -148,7 +149,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Занятые слоты')
             ->assertSee('data-day-date="'.$slotStart->format('Y-m-d').'"', false)
             ->assertSee($slotStart->format('H:i').'–'.$slotEnd->format('H:i'))
-            ->assertSee('Игровая тренировка · ✅ Подтверждено');
+            ->assertSee('Тренировка · ✅ Подтверждено');
     }
 
     public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void
@@ -1037,6 +1038,9 @@ final class EventWorkflowTest extends TestCase
         $gamePayload['title'] = 'Игра для фильтра';
         $this->actingAs($organizer)->post(route('events.store'), $gamePayload);
         $game = $gameVenue->events()->firstOrFail();
+        // Seed one historical event without allowing a new game_training
+        // through the public creation route.
+        $game->forceFill(['type' => EventTypeEnum::GAME_TRAINING])->save();
 
         $trainingPayload = $this->payload($trainingVenue, $start, $end);
         $trainingPayload['title'] = 'Тренировка для фильтра';
@@ -1071,7 +1075,7 @@ final class EventWorkflowTest extends TestCase
 
         $this->actingAs($organizer)
             ->get(route('events.index', [
-                'type' => EventTypeEnum::TRAINING->value,
+                'type' => EventTypeEnum::GAME_TRAINING->value,
                 'date_from' => $eventDate,
                 'date_to' => $eventDate,
             ]))
