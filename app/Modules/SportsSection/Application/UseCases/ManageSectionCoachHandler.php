@@ -8,6 +8,8 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Application\Services\SportsSectionRules;
@@ -26,6 +28,7 @@ final readonly class ManageSectionCoachHandler
         private SportsSectionAccess $access,
         private SportsSectionRules $rules,
         private EntityContractManager $contracts,
+        private UserPrivacyAccessService $privacy,
     ) {}
 
     /** @param list<SportsSectionPermissionEnum> $permissions */
@@ -36,6 +39,9 @@ final readonly class ManageSectionCoachHandler
     {
         $target = $this->rules->assertCoach($target);
         $issuer = $issuer->canonical();
+        if (! $this->privacy->allows($target, $issuer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
+            throw new SportsSectionException('Пользователь запретил приглашать себя в команды и другие группы.');
+        }
 
         return DB::transaction(function () use ($section, $target, $issuer, $permissions, $contractName, $expiresAt, $notes): ContractMembership {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($section->id);
