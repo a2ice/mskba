@@ -89,7 +89,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertSee('data-venue-choice-court', false)
             ->assertSee('data-venue-favorite-dialog', false)
             ->assertSee('data-venue-favorite-submit', false)
-            ->assertSee('Площадка теперь в избранном')
+            ->assertSee('Избранное')
             ->assertSee('mskba-modal venue-main-favorite-dialog', false)
             ->assertSee('mskba-modal venue-play-dialog', false)
             ->assertSee('mskba-modal quick-event-dialog', false)
@@ -103,7 +103,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('MSKBA · играем вместе')
             ->assertDontSee('data-venue-favorite-back', false)
             ->assertDontSee('data-venue-favorite-close>Отмена', false)
-            ->assertSee('Добавь площадку в избранное, чтобы вернуться к ней позже.')
+            ->assertSee('Площадка добавлена в избранное.')
             ->assertSee('Арендовать площадку')
             ->assertSee('В избранное');
 
