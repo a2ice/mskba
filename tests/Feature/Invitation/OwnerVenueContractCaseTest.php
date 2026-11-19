@@ -149,12 +149,25 @@ final class OwnerVenueContractCaseTest extends TestCase
         $this->assertSame(ClaimStatus::DRAFT, $claim->refresh()->status);
     }
 
-    public function test_unrelated_account_cannot_read_or_start_other_users_case(): void
+    public function test_uninvited_user_may_claim_unowned_venue_but_cannot_read_another_claim(): void
     {
         [, $owner, $venue] = $this->scenario();
+        $this->actingAs($owner)->post(route('account.venue-contracts.start', $venue))->assertRedirect();
+        $claim = VenueOwnershipClaim::query()->where('venue_id', $venue->id)->sole();
+        $this->post(route('account.venue-ownership.draft.save', $claim), [
+            'intent' => 'save',
+            'ownership_evidence' => 'Приватные сведения собственника и закрытые договоры.',
+        ])->assertRedirect();
+
         $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $this->actingAs($other)->get(route('account.venue-contracts.show', $venue))->assertForbidden();
-        $this->post(route('account.venue-contracts.start', $venue))->assertForbidden();
-        $this->actingAs($owner)->get(route('account.venue-contracts.show', $venue))->assertOk();
+        $this->actingAs($other)->get(route('account.venue-contracts.show', [
+            'venue' => $venue->id, 'claim' => $claim->public_id,
+        ]))->assertForbidden();
+
+        // Existing public venue management entry remains available for a new representative.
+        $this->get(route('account.venue-contracts.show', $venue))
+            ->assertOk()->assertDontSee('Приватные сведения собственника');
+        $this->post(route('account.venue-contracts.start', $venue))->assertRedirect();
+        $this->assertDatabaseCount('venue_ownership_claims', 2);
     }
 }
