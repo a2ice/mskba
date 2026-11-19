@@ -158,6 +158,7 @@
 .quick-event-dialog__field textarea{min-height:85px;resize:vertical}
 .quick-event-dialog__field [aria-invalid=true]{border-color:#ff6b6b}
 .quick-event-dialog__error{color:#ff9696;font-size:12px}
+.quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
 .quick-event-dialog__game-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600}
 .quick-event-dialog__game-toggle input{width:18px;height:18px;flex:none;accent-color:var(--accent,#ed782c)}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
