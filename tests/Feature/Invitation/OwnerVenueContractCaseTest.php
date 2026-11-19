@@ -130,6 +130,25 @@ final class OwnerVenueContractCaseTest extends TestCase
         $this->assertDatabaseCount('venue_ownership_claims', 3);
     }
 
+    public function test_invalid_evidence_returns_to_case_not_last_loaded_js_asset(): void
+    {
+        [, $user, $venue] = $this->scenario();
+        $this->actingAs($user)->post(route('account.venue-contracts.start', $venue))->assertRedirect();
+        $claim = VenueOwnershipClaim::query()->where('venue_id', $venue->id)->sole();
+        $caseUrl = route('account.venue-contracts.show', [
+            'venue' => $venue->id, 'claim' => $claim->public_id,
+        ]);
+
+        $this->withSession([
+            '_previous' => ['url' => url('/assets/design-themes/court_day/example.js')],
+        ])->post(route('account.venue-ownership.draft.save', $claim), [
+            'intent' => 'submit',
+            'ownership_evidence' => 'short',
+        ])->assertRedirect($caseUrl)->assertSessionHasErrors('ownership_evidence');
+
+        $this->assertSame(ClaimStatus::DRAFT, $claim->refresh()->status);
+    }
+
     public function test_unrelated_account_cannot_read_or_start_other_users_case(): void
     {
         [, $owner, $venue] = $this->scenario();
