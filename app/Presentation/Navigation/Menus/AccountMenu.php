@@ -5,6 +5,7 @@ namespace App\Presentation\Navigation\Menus;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Presentation\Navigation\MenuHandler;
@@ -218,8 +219,37 @@ final class AccountMenu implements MenuHandler
         ];
 
         $items[] = $this->link('Мои формы', 'account.uniforms');
-        // A subscription is available to any signed-in user, regardless of participation role.
-        $items[] = $this->link('Мои подписки', 'play-intents.mine');
+        // All subscriptions share one top-level destination. Only providers
+        // for which the owner has actual subscriptions become child shortcuts.
+        $subscriptionQuery = PlayIntent::query()->where('user_id', $user->canonical()->id);
+        $onSubscriptions = $this->isActiveRoute('play-intents.mine');
+        $onPlay = $onSubscriptions && request()->query('type') === 'play';
+        $subscriptionChildren = [[
+            'label' => 'Все подписки',
+            'icon' => 'bell',
+            'url' => $this->routeUrl('play-intents.mine'),
+            'active' => $onSubscriptions && ! $onPlay,
+            'visible' => true,
+            'subscriptionNavType' => 'all',
+        ]];
+        if ($subscriptionQuery->exists()) {
+            $subscriptionChildren[] = [
+                'label' => 'Игровые подписки',
+                'icon' => 'ball',
+                'url' => route('play-intents.mine', ['type' => 'play']),
+                'active' => $onPlay,
+                'visible' => true,
+                'subscriptionNavType' => 'play',
+            ];
+        }
+        $items[] = [
+            'label' => 'Мои подписки',
+            'icon' => 'bell',
+            'url' => null,
+            'active' => $onSubscriptions,
+            'visible' => true,
+            'children' => $subscriptionChildren,
+        ];
         $items[] = $this->link('Избранное', 'favorites.mine');
 
         $items[] = [
