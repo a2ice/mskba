@@ -314,7 +314,9 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $subscriptionsLink = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
         $this->assertNotNull($subscriptionsLink);
         $this->assertTrue($subscriptionsLink['active']);
-        $this->assertSame(route('play-intents.mine'), $subscriptionsLink['url']);
+        $this->assertNull($subscriptionsLink['url']);
+        $this->assertSame(route('play-intents.mine'), $subscriptionsLink['children'][0]['url']);
+        $this->assertSame(['Все подписки'], array_column($subscriptionsLink['children'], 'label'));
         $this->get(route('play-intents.mine'))->assertOk()
             ->assertSee('Тип подписки')
             ->assertDontSee('data-play-intent-open', false);
