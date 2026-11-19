@@ -3,18 +3,31 @@
     $quickPrimary = $quickApp ? 'button primary' : 'btn btn--primary';
     $quickSecondary = $quickApp ? 'button secondary' : 'btn btn--secondary';
     $quickVenues = \App\Modules\Venue\Domain\Models\Venue::query()
-        ->where('status', 'confirmed')->where('is_published', true)->with('courts')
+        ->where('status', 'confirmed')->where('is_published', true)->with(['courts', 'location.address', 'location.metroStations'])
         ->orderBy('name')->get();
     $quickSelectedVenue = (int) ($quickEventVenueId ?? 0);
     $quickSelectedCourt = (int) ($quickEventCourtId ?? 0);
     $quickCourtChoices = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
         $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name])->values()->all()])->all();
+    $quickVenueMeta = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id => [
+        'id' => (int) $place->id,
+        'name' => $place->name,
+        'address' => $place->location?->address?->full_address ?: $place->raw_address,
+        'street' => $place->location?->address?->street,
+        'metro_stations' => ($place->location?->metroStations ?? collect())
+            ->sortBy(fn ($station) => $station->pivot?->distance_meters ?? PHP_INT_MAX)
+            ->pluck('name')->values()->all(),
+        'latitude' => $place->location?->address?->latitude,
+        'longitude' => $place->location?->address?->longitude,
+    ]])->all();
+    $quickInitialVenue = $quickVenues->firstWhere('id', $quickSelectedVenue);
 @endphp
 <dialog class="mskba-modal quick-event-dialog {{ $quickApp ? 'quick-event-dialog--app' : 'quick-event-dialog--dark' }}"
     data-quick-event-dialog data-authenticated="{{ auth()->check() ? '1' : '0' }}"
     data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
+    data-venue-meta='@json($quickVenueMeta, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
     aria-labelledby="quick-event-title">
     <header class="mskba-modal__header quick-event-dialog__heading">
         <div><h2 id="quick-event-title">Создать мероприятие</h2></div>
@@ -37,6 +50,7 @@
                 <span class="select-control"><select name="type" required data-quick-type>
                     <option value="" disabled selected>Выбери тип мероприятия</option>
                     @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
+                        @continue($kind->value === 'game_training')
                         <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                     @endforeach
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
@@ -44,14 +58,22 @@
             <label class="quick-event-dialog__field"><span>Название <small>можно изменить</small></span>
                 <input type="text" name="title" maxlength="150" minlength="2" placeholder="Например, играем 3×3" data-quick-title>
             </label>
-            <label class="quick-event-dialog__field"><span>Площадка</span>
-                <span class="select-control"><select name="venue_id" required data-quick-venue>
-                    <option value="">Выбери площадку</option>
-                    @foreach($quickVenues as $place)
-                        <option value="{{ $place->id }}" @selected($quickSelectedVenue === (int) $place->id)>{{ $place->name }}</option>
-                    @endforeach
-                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
-            </label>
+            <div class="quick-event-dialog__field" data-quick-venue-field>
+                <label for="quick-event-venue-search">Площадка</label>
+                <div class="quick-event-dialog__venue-selector" data-quick-venue-selector data-search-url="{{ route('venues.search') }}" data-confirmed-only="1">
+                    <input id="quick-event-venue-search" type="search" required autocomplete="off"
+                        placeholder="Название, адрес или метро" role="combobox" aria-autocomplete="list"
+                        aria-expanded="false" aria-controls="quick-event-venue-results"
+                        value="{{ $quickInitialVenue?->name ?? '' }}" data-quick-venue-search>
+                    <input type="hidden" name="venue_id" value="{{ $quickSelectedVenue ?: '' }}" data-quick-venue>
+                    <button type="button" class="quick-event-dialog__venue-clear" data-quick-venue-clear
+                        aria-label="Очистить площадку" @if(!$quickInitialVenue) hidden @endif>×</button>
+                    <div id="quick-event-venue-results" class="quick-event-dialog__venue-results" role="listbox"
+                        data-quick-venue-results hidden></div>
+                </div>
+                <p class="quick-event-dialog__hint" data-quick-venue-message role="status" hidden></p>
+                <button type="button" class="quick-event-dialog__venue-map-link" data-quick-venue-map-open>На карте</button>
+            </div>
             <input type="hidden" name="create_game" value="0">
             <label class="quick-event-dialog__game-toggle" data-quick-create-game-row hidden>
                 <input type="checkbox" name="create_game" value="1" data-quick-create-game checked>
@@ -127,6 +149,24 @@
             <button type="submit" class="{{ $quickPrimary }}" data-quick-submit hidden>Создать мероприятие</button>
         </footer>
     </form>
+</dialog>
+<dialog class="mskba-modal quick-event-venue-map {{ $quickApp ? 'quick-event-venue-map--app' : 'quick-event-venue-map--dark' }}"
+    data-quick-venue-map-dialog aria-labelledby="quick-event-venue-map-title">
+    <header class="mskba-modal__header quick-event-dialog__heading">
+        <h2 id="quick-event-venue-map-title">Выбрать площадку на карте</h2>
+        <button type="button" class="icon-button quick-event-dialog__close" data-quick-venue-map-close aria-label="Закрыть">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+        </button>
+    </header>
+    <div class="mskba-modal__body quick-event-venue-map__body">
+        <p class="quick-event-dialog__hint" data-quick-venue-map-status role="status">Выберите площадку на карте.</p>
+        <div class="quick-event-venue-map__canvas" data-quick-venue-map-canvas
+            data-map-api-key="{{ config('integrations.yandex.api_key') }}" aria-label="Карта площадок"></div>
+        <div class="quick-event-venue-map__fallback" data-quick-venue-map-fallback hidden></div>
+    </div>
+    <footer class="mskba-modal__footer quick-event-dialog__actions">
+        <button type="button" class="{{ $quickSecondary }}" data-quick-venue-map-close>Закрыть</button>
+    </footer>
 </dialog>
 <dialog class="mskba-modal quick-event-auth {{ $quickApp ? 'quick-event-auth--app' : 'quick-event-auth--dark' }}" data-quick-auth-info aria-labelledby="quick-event-auth-title">
     <header class="mskba-modal__header quick-event-dialog__heading"><h2 id="quick-event-auth-title">Нужна авторизация</h2>
@@ -236,5 +276,54 @@
     .quick-event-dialog__heading,.quick-event-dialog__actions{padding-block:8px}
     .quick-event-dialog__body{padding-block:12px}
 }
+
+/* Task 337: one canonical predictive venue field and native MSKBA map dialog. */
+.quick-event-dialog__venue-selector{position:relative;min-width:0}
+.quick-event-dialog__venue-selector>input[type=search]{padding-right:48px;appearance:none;-webkit-appearance:none}
+.quick-event-dialog__venue-selector>input[type=search]::-webkit-search-cancel-button{display:none}
+.quick-event-dialog__venue-clear{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    width:36px;height:36px;border:0;border-radius:9px;
+    background:transparent;color:var(--muted,#6f7780);
+    font-size:24px;line-height:1;cursor:pointer;
+}
+.quick-event-dialog__venue-clear[hidden]{display:none}
+.quick-event-dialog__venue-clear:hover{background:var(--surface-raised,#e8ebed)}
+.quick-event-dialog__venue-results{
+    position:absolute;z-index:20;top:calc(100% + 6px);left:0;right:0;
+    max-height:min(42dvh,300px);overflow:auto;
+    background:var(--surface,#fff);border:1px solid var(--line,#b6bec8);
+    border-radius:12px;box-shadow:0 12px 36px #0003;padding:6px;
+}
+.quick-event-dialog__venue-results[hidden]{display:none}
+.quick-event-dialog__venue-results>button{
+    width:100%;display:grid;gap:3px;padding:10px 12px;border:0;border-radius:8px;
+    text-align:left;color:var(--text,#1d2730);background:transparent;cursor:pointer;
+}
+.quick-event-dialog__venue-results>button:is(:hover,:focus-visible){background:var(--surface-raised,#edf0f2)}
+.quick-event-dialog__venue-results small{color:var(--muted,#707781);font-size:13px}
+.quick-event-dialog__venue-map-link{
+    justify-self:start;margin-top:0;padding:3px 0;min-height:44px;
+    background:none;border:none;text-decoration:underline;text-underline-offset:3px;
+    color:var(--accent,#b54e00);font:inherit;font-weight:600;cursor:pointer;
+}
+.quick-event-venue-map{
+    box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(960px,calc(100vw - 24px));
+    max-width:calc(100vw - 24px);max-height:90dvh;padding:0;overflow:hidden;
+    color:var(--text,#1d2730);
+}
+.quick-event-venue-map:not([open]){display:none}
+.quick-event-venue-map[open]{display:flex;flex-direction:column}
+.quick-event-venue-map--dark{background:var(--surface,#1d2027);border:1px solid var(--line,#646a72);border-radius:16px}
+.quick-event-venue-map__body{padding:16px;display:grid;gap:12px;flex:1 1 auto;min-height:0;overflow:auto}
+.quick-event-venue-map__canvas{height:min(56dvh,540px);min-height:260px;width:100%;border:1px solid var(--line,#b3b3b3);border-radius:12px;overflow:hidden}
+.quick-event-venue-map__fallback{display:grid;gap:6px}
+.quick-event-venue-map__fallback[hidden]{display:none}
+.quick-event-venue-map__fallback button{
+    width:100%;min-height:44px;text-align:left;padding:8px 12px;
+    border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);
+}
+@media(max-width:540px){.quick-event-venue-map__canvas{height:48dvh;min-height:230px}}
+
 </style>
 @endonce
