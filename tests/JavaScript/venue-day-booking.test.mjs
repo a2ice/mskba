@@ -662,3 +662,32 @@ test('event creation select controls reuse the branded native select, not custom
     assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 6);
     assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
 });
+
+
+test('favorite modals preserve exact acceptance copy, one action and approved close icon', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/venue-main-favorite-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-favorite-main.js', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /Площадка теперь в избранном/);
+    assert.match(source, /Вы уверены, что хотите убрать площадку из избранного\?/);
+    assert.match(source, /'Убрать'/);
+    assert.doesNotMatch(tpl, /data-venue-favorite-cancel/);
+    assert.equal((tpl.match(/data-venue-favorite-submit/g) || []).length, 1);
+    assert.match(tpl, /M18 6l-12 12/);
+});
+
+test('rental court selection is a semantic standard select with branded arrow', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/show.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /<label for="app-venue-choice-court">Зал или корт<\/label>/);
+    assert.match(tpl, /data-venue-choice-court required aria-describedby="app-venue-choice-error"/);
+    assert.match(tpl, /<use href="#chevron-down"\/>/);
+    const css = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
+    );
+    assert.match(css, /\.select-control>svg\{[^}]*width:20px;height:20px/);
+});
