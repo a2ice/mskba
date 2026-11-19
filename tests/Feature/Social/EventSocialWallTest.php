@@ -3,6 +3,7 @@
 namespace Tests\Feature\Social;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -24,6 +25,9 @@ final class EventSocialWallTest extends TestCase
         $actor = Actor::factory()->create(['type' => ActorTypeEnum::USER->value, 'user_id' => $organizer->id]);
         return Event::factory()->create([
             'organizer_actor_id' => $actor->id,
+            // The social wall is an Event feature, not specific to game subrecords.
+            // A standalone GAME needs a primaryGame for its dedicated view.
+            'type' => EventTypeEnum::TRAINING,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'starts_at' => now()->addDays(4),
