@@ -591,7 +591,7 @@ test('Rental CTA skips court chooser for a single court, preserving calendar pip
         const select = {
             options: courtIds.map(id => ({value:String(id)})),
             value: courtIds.length === 1 ? String(courtIds[0]) : '',
-            addEventListener() {}, focus() {},
+            addEventListener() {}, focus() {}, setAttribute() {}, removeAttribute() {},
         };
         const close = {addEventListener() {}};
         const dateButton = {addEventListener() {}};
@@ -632,4 +632,62 @@ test('Rental CTA skips court chooser for a single court, preserving calendar pip
     const multiple=run([13,14]);
     assert.equal(multiple.choice.opened,1);
     assert.equal(multiple.dispatches.length,0);
+});
+
+
+test('venue popup contains only events or an empty state and one fixed create action', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/venue-play-funnel.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /На этой площадке пока нет предстоящих мероприятий\./);
+    assert.match(tpl, /class="mskba-modal__footer venue-play-dialog__footer"/);
+    assert.match(tpl, /href="{{ route\('events\.show', \$upcoming->routeIdentifier\(\)\) }}"/);
+    assert.doesNotMatch(tpl, /data-venue-play-pane|data-venue-play-rsvp|venue-play-dialog__eyebrow/);
+    assert.doesNotMatch(tpl, /Текущие мероприятия|Выбери ближайшее мероприятие/);
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-play-funnel.js', import.meta.url), 'utf8',
+    );
+    assert.doesNotMatch(source, /refreshWall|data-venue-play-rsvp|guestResponse/);
+});
+
+test('event creation select controls reuse the branded native select, not custom compact fields', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/event-quick-create.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /mskba-modal quick-event-dialog/);
+    assert.match(tpl, /mskba-modal__footer quick-event-dialog__actions/);
+    assert.match(tpl, /min-height:48px/);
+    assert.match(tpl, /border-radius:12px/);
+    assert.match(tpl, /font-size:16px;line-height:24px/);
+    assert.equal((tpl.match(/<use href="#chevron-down"\/>/g) || []).length, 6);
+    assert.doesNotMatch(tpl, /min-height:43px|quick-event-dialog__eyebrow/);
+});
+
+
+test('favorite modals preserve exact acceptance copy, one action and approved close icon', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/views/components/venue-main-favorite-dialog.blade.php', import.meta.url), 'utf8',
+    );
+    const source = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-favorite-main.js', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /Площадка теперь в избранном/);
+    assert.match(source, /Вы уверены, что хотите убрать площадку из избранного\?/);
+    assert.match(source, /'Убрать'/);
+    assert.doesNotMatch(tpl, /data-venue-favorite-cancel/);
+    assert.equal((tpl.match(/data-venue-favorite-submit/g) || []).length, 1);
+    assert.match(tpl, /M18 6l-12 12/);
+});
+
+test('rental court selection is a semantic standard select with branded arrow', () => {
+    const tpl = readFileSync(
+        new URL('../../resources/themes/mskba_app/views/pages/venues/show.blade.php', import.meta.url), 'utf8',
+    );
+    assert.match(tpl, /<label for="app-venue-choice-court">Зал или корт<\/label>/);
+    assert.match(tpl, /data-venue-choice-court required aria-describedby="app-venue-choice-error"/);
+    assert.match(tpl, /<use href="#chevron-down"\/>/);
+    const css = readFileSync(
+        new URL('../../resources/themes/mskba_app/css/design-system.css', import.meta.url), 'utf8',
+    );
+    assert.match(css, /\.select-control>svg\{[^}]*width:20px;height:20px/);
 });
