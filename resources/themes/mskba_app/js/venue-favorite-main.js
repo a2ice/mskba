@@ -30,7 +30,7 @@
     const fail=message=>{error.textContent=message||'';error.hidden=!message;};
     const show=(nextMode)=>{
         mode=nextMode;fail('');
-        title.textContent=mode==='info'?'Площадка теперь в избранном':'Убрать из избранного?';
+        title.textContent=mode==='info'?'Площадка теперь в избранном':'Убрать из избранного';
         description.textContent=mode==='info'
             ?'Добавь площадку в избранное, чтобы вернуться к ней позже.'
             :'Вы уверены, что хотите убрать площадку из избранного?';
