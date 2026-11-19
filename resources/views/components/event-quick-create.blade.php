@@ -10,17 +10,15 @@
     $quickCourtChoices = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
         $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name])->values()->all()])->all();
 @endphp
-<dialog class="quick-event-dialog {{ $quickApp ? 'quick-event-dialog--app' : 'quick-event-dialog--dark' }}"
+<dialog class="mskba-modal quick-event-dialog {{ $quickApp ? 'quick-event-dialog--app' : 'quick-event-dialog--dark' }}"
     data-quick-event-dialog data-authenticated="{{ auth()->check() ? '1' : '0' }}"
     data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
     aria-labelledby="quick-event-title">
-    <header class="quick-event-dialog__heading">
-        <div><p class="quick-event-dialog__eyebrow">MSKBA · новое мероприятие</p>
-            <h2 id="quick-event-title">Создать мероприятие</h2>
-            <p class="quick-event-dialog__hint">Сначала общие сведения, затем — пожелания по времени. Бронь не создаётся.</p></div>
-        <button type="button" class="quick-event-dialog__close" data-quick-event-close aria-label="Закрыть">×</button>
+    <header class="mskba-modal__header quick-event-dialog__heading">
+        <div><h2 id="quick-event-title">Создать мероприятие</h2></div>
+        <button type="button" class="icon-button quick-event-dialog__close" data-quick-event-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </header>
     <form method="POST" action="{{ route('events.funnel.store') }}" data-quick-event-form>
         @csrf
@@ -32,15 +30,16 @@
         <input type="hidden" name="scoring_type" value="streetball" data-quick-scoring>
         <input type="hidden" name="timing_mode" value="whole_game" data-quick-timing>
         <input type="hidden" name="periods_count" value="4">
-        <section class="quick-event-dialog__body" data-quick-step="base">
+        <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="base">
             <h3>1. О мероприятии</h3>
+            <p class="quick-event-dialog__hint">Сначала общие сведения, затем — пожелания по времени. Бронь не создаётся.</p>
             <label class="quick-event-dialog__field"><span>Тип мероприятия</span>
                 <span class="select-control"><select name="type" required data-quick-type>
                     <option value="" disabled selected>Выбери тип мероприятия</option>
                     @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
                         <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
                     @endforeach
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <label class="quick-event-dialog__field"><span>Название <small>можно изменить</small></span>
                 <input type="text" name="title" maxlength="150" minlength="2" placeholder="Например, играем 3×3" data-quick-title>
@@ -51,7 +50,7 @@
                     @foreach($quickVenues as $place)
                         <option value="{{ $place->id }}" @selected($quickSelectedVenue === (int) $place->id)>{{ $place->name }}</option>
                     @endforeach
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <input type="hidden" name="create_game" value="0">
             <label class="quick-event-dialog__game-toggle" data-quick-create-game-row hidden>
@@ -64,13 +63,13 @@
                     <option value="streetball_3x3">3×3</option>
                     <option value="basketball_5x5">5×5</option>
                     <option value="streetball_1x1">1×1</option>
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <label class="quick-event-dialog__field"><span>Видимость</span>
                 <span class="select-control"><select name="visibility" required>
                     <option value="public">Открытое для всех</option>
                     <option value="private">По приглашению</option>
-                </select></span>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
             </label>
             <label class="quick-event-dialog__field"><span>Максимум участников</span>
                 <input type="number" name="max_participants" min="2" max="500" placeholder="Без ограничения"></label>
@@ -78,13 +77,13 @@
                 <textarea name="description" rows="3" maxlength="5000"
                     placeholder="Кого ждёшь и как будет проходить мероприятие?"></textarea></label>
         </section>
-        <section class="quick-event-dialog__body" data-quick-step="schedule" hidden>
+        <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="schedule" hidden>
             <h3>2. Желаемая дата и время <small>необязательно</small></h3>
             <p class="quick-event-dialog__hint">Можешь пропустить этот шаг. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
             <label class="quick-event-dialog__field"><span>Зал или корт</span>
                 <span class="select-control"><select name="venue_court_id" data-quick-court>
                     <option value="">Основной зал</option>
-                </select></span></label>
+                </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
@@ -97,7 +96,7 @@
                         @foreach(range(30,480,30) as $duration)
                             <option value="{{ $duration }}" @selected($duration === 90)>{{ $duration }} мин.</option>
                         @endforeach
-                    </select></span></label>
+                    </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
                 <div class="quick-event-dialog__schedule-buttons">
                     <button type="button" class="{{ $quickSecondary }}" data-quick-show-schedule>Посмотреть занятость</button>
                     <button type="button" class="{{ $quickPrimary }}" data-quick-add-slot>Добавить время</button>
@@ -115,13 +114,13 @@
                     <span>Это <strong>несколько отдельных мероприятий</strong> — по одному на каждый интервал</span></label>
             </fieldset>
         </section>
-        <section class="quick-event-dialog__body" data-quick-step="review" hidden>
+        <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="review" hidden>
             <h3>3. Подтверждение</h3>
             <div data-quick-review></div>
             <p class="quick-event-dialog__hint"><strong>Важно:</strong> создание мероприятия или предварительной заявки не является бронированием. Менеджер площадки согласует время и условия отдельно.</p>
             <p data-quick-feedback role="alert" hidden></p>
         </section>
-        <footer class="quick-event-dialog__actions">
+        <footer class="mskba-modal__footer quick-event-dialog__actions">
             <button type="button" class="{{ $quickSecondary }}" data-quick-back hidden>Назад</button>
             <button type="button" class="{{ $quickSecondary }}" data-quick-event-close>Отмена</button>
             <button type="button" class="{{ $quickPrimary }}" data-quick-next>Далее</button>
@@ -129,51 +128,113 @@
         </footer>
     </form>
 </dialog>
-<dialog class="quick-event-auth" data-quick-auth-info aria-labelledby="quick-event-auth-title">
-    <header><h2 id="quick-event-auth-title">Нужна авторизация</h2>
-        <button type="button" data-quick-auth-close aria-label="Закрыть">×</button></header>
-    <div class="quick-event-auth__content">
+<dialog class="mskba-modal quick-event-auth {{ $quickApp ? 'quick-event-auth--app' : 'quick-event-auth--dark' }}" data-quick-auth-info aria-labelledby="quick-event-auth-title">
+    <header class="mskba-modal__header quick-event-dialog__heading"><h2 id="quick-event-auth-title">Нужна авторизация</h2>
+        <button type="button" class="icon-button quick-event-dialog__close" data-quick-auth-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></header>
+    <div class="mskba-modal__body quick-event-auth__content mskba-scroll">
         <p>Чтобы создать мероприятие, необходимо войти или зарегистрироваться. Все введённые данные и выбранные интервалы сохранятся. После входа мы завершим создание и откроем мероприятие.</p>
-        <div class="quick-event-dialog__actions">
-            <button type="button" class="{{ $quickSecondary }}" data-quick-auth-close>Позже</button>
-            <button type="button" class="{{ $quickPrimary }}" data-quick-auth-login>Войти</button>
-        </div>
     </div>
+    <footer class="mskba-modal__footer quick-event-dialog__actions">
+        <button type="button" class="{{ $quickSecondary }}" data-quick-auth-close>Позже</button>
+        <button type="button" class="{{ $quickPrimary }}" data-quick-auth-login>Войти</button>
+    </footer>
 </dialog>
 @once
 <style>
-.quick-event-dialog,.quick-event-auth{width:min(670px,calc(100vw - 24px));max-width:100%;max-height:94dvh;overflow:auto;padding:0;border:1px solid var(--line,#59616c);border-radius:16px;background:var(--surface,#1d2027);color:var(--text,#f5f6f8);box-shadow:0 22px 80px #0008}
-.quick-event-dialog::backdrop,.quick-event-auth::backdrop{background:rgba(0,0,0,.65)}
-.quick-event-dialog__heading,.quick-event-auth header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:18px 22px;border-bottom:1px solid var(--line,#606772)}
-.quick-event-dialog__heading h2,.quick-event-auth h2{font-size:clamp(20px,2vw,26px);margin:0}
-.quick-event-dialog__eyebrow{margin:0 0 5px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
-.quick-event-dialog__close,.quick-event-auth header button{border:0;color:inherit;background:none;cursor:pointer;font-size:30px;line-height:1}
-.quick-event-dialog__body,.quick-event-auth__content{display:grid;gap:14px;padding:20px 22px}
+/* Shared MSKBA Modal 1.1. Dark theme retains its native palette. */
+.quick-event-dialog,.quick-event-auth{
+    position:fixed;inset:0;margin:auto;transform:none;box-sizing:border-box;
+    width:min(670px,calc(100vw - 24px));max-width:calc(100vw - 24px);
+    max-height:90dvh;padding:0;overflow:hidden;color:var(--text,#f5f6f8);
+    flex-direction:column;
+}
+.quick-event-auth{width:min(520px,calc(100vw - 24px))}
+.quick-event-dialog:not([open]),.quick-event-auth:not([open]){display:none}
+.quick-event-dialog[open],.quick-event-auth[open]{display:flex}
+.quick-event-dialog--dark,.quick-event-auth--dark{
+    border:1px solid var(--line,#59616c);border-radius:16px;
+    background:var(--surface,#1d2027);box-shadow:0 22px 80px #0008;
+}
+.quick-event-dialog--dark::backdrop,.quick-event-auth--dark::backdrop{background:rgba(0,0,0,.65)}
+.quick-event-dialog__heading{
+    display:grid;grid-template-columns:16px minmax(0,1fr) 44px;
+    align-items:center;gap:12px;padding:20px 22px;
+    border-bottom:1px solid var(--line,#606772);
+    flex:0 0 auto;cursor:grab;touch-action:none;user-select:none;
+}
+:is(.quick-event-dialog--dark,.quick-event-auth--dark)[open]>.quick-event-dialog__heading::before{
+    content:"⠿";align-self:center;justify-self:center;
+    font-size:1rem;line-height:1;color:var(--muted,#929aa4);pointer-events:none;
+}
+.quick-event-dialog__heading>div{min-width:0}
+.quick-event-dialog__heading h2{font-size:clamp(20px,2vw,26px);line-height:1.3;margin:0;min-width:0;overflow-wrap:anywhere}
+.quick-event-dialog__heading .quick-event-dialog__close{
+    justify-self:end;width:44px;height:44px;padding:0;display:flex;
+    align-items:center;justify-content:center;border:1px solid var(--line,#59616c);
+    border-radius:12px;background:var(--surface,#1d2027);color:inherit;cursor:pointer;
+}
+.quick-event-dialog__close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.quick-event-dialog>form{
+    width:100%;display:flex;flex:1 1 auto;flex-direction:column;
+    min-height:0;gap:0;overflow:hidden;
+}
+.quick-event-dialog__body,.quick-event-auth__content{
+    display:grid;gap:16px;padding:20px 22px;min-height:0;
+    flex:1 1 auto;overflow-y:auto;overflow-x:hidden;align-content:start;
+}
 .quick-event-dialog__body[hidden],.quick-event-dialog__actions>[hidden],.quick-event-dialog__mode[hidden]{display:none}
 .quick-event-dialog__body h3,.quick-event-dialog__body h4{margin:0}
-.quick-event-dialog__hint{font-size:13px;line-height:1.5;margin:0;opacity:.8}
-.quick-event-dialog__field{display:grid;gap:7px}
-.quick-event-dialog__field>span{font-weight:600}
-.quick-event-dialog__field input,.quick-event-dialog__field select,.quick-event-dialog__field textarea{box-sizing:border-box;width:100%;min-width:0;min-height:43px;border:1px solid var(--line,#6b717a);border-radius:8px;padding:8px 11px;background:var(--field,#292e35);color:inherit}
-.quick-event-dialog__field textarea{min-height:85px;resize:vertical}
-.quick-event-dialog__field [aria-invalid=true]{border-color:#ff6b6b}
-.quick-event-dialog__error{color:#ff9696;font-size:12px}
+.quick-event-dialog__hint{font-size:14px;line-height:20px;margin:0;color:var(--muted,#adb3bb)}
+.quick-event-dialog__field{display:grid;gap:8px;min-width:0}
+.quick-event-dialog__field>span:first-child{font-size:14px;line-height:20px;font-weight:600}
+.quick-event-dialog__field :is(input,select,textarea){
+    box-sizing:border-box;width:100%;min-width:0;min-height:48px;
+    border:1px solid var(--control-line,#707a86);border-radius:12px;
+    padding:11px 12px;background:var(--field,#292e35);color:var(--text,#f5f6f8);
+    font-size:16px;line-height:24px;
+}
+.quick-event-dialog__field textarea{min-height:112px;resize:vertical}
+.quick-event-dialog__field [aria-invalid=true]{border-color:var(--danger,#ff9398)}
+.quick-event-dialog__error{color:var(--danger,#ff9398);font-size:14px;line-height:20px}
+.quick-event-dialog__field .select-control{position:relative;display:block;min-width:0;width:100%}
+.quick-event-dialog--app .select-control>select{appearance:none;-webkit-appearance:none;padding-right:48px;cursor:pointer}
+.quick-event-dialog--app .select-control>svg{
+    display:block;position:absolute;right:16px;top:50%;transform:translateY(-50%);
+    width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none;
+    color:var(--muted,#adb3bb);pointer-events:none;
+}
+.quick-event-dialog--dark .select-control>svg{display:none}
+@media(forced-colors:active){
+    .quick-event-dialog--app .select-control>select{appearance:auto;-webkit-appearance:auto}
+    .quick-event-dialog--app .select-control>svg{display:none}
+}
 .quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
-.quick-event-dialog__game-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600}
-.quick-event-dialog__game-toggle input{width:18px;height:18px;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog__game-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-weight:600}
+.quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
-.quick-event-dialog__availability{display:flex;gap:6px;flex-wrap:wrap;padding:12px;border:1px solid var(--line,#606772);border-radius:9px}
+.quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.quick-event-dialog__availability{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--line,#606772);border-radius:12px}
 .quick-event-dialog__availability[hidden]{display:none}
-.quick-event-dialog__availability button{padding:7px;border:1px solid var(--line,#606772);border-radius:6px;color:inherit;background:var(--field,#333)}
-.quick-event-dialog__availability button.is-busy{border-color:#d59b56;opacity:.85}
+.quick-event-dialog__availability button{padding:8px;border:1px solid var(--line,#606772);border-radius:8px;color:inherit;background:var(--field,#333)}
+.quick-event-dialog__availability button.is-busy{border-color:var(--accent,#d59b56);opacity:.85}
 .quick-event-dialog__slots{margin:0;display:grid;gap:8px;padding-left:22px}
 .quick-event-dialog__slots li{display:flex;align-items:center;gap:10px;justify-content:space-between;border-bottom:1px solid var(--line,#555);padding:7px}
-.quick-event-dialog__mode{display:grid;gap:10px;border:1px solid var(--line,#666);border-radius:10px;padding:12px}
+.quick-event-dialog__mode{display:grid;gap:10px;border:1px solid var(--line,#666);border-radius:12px;padding:12px}
 .quick-event-dialog__mode legend{font-weight:600}
 .quick-event-dialog__mode label{display:flex;gap:9px;align-items:flex-start;cursor:pointer}
 .quick-event-dialog__mode input{margin-top:4px}
-.quick-event-dialog__actions{display:flex;gap:8px;justify-content:flex-end;padding:17px 22px;flex-wrap:wrap;border-top:1px solid var(--line,#606772)}
-@media(max-width:530px){.quick-event-dialog__heading,.quick-event-dialog__body,.quick-event-dialog__actions{padding-inline:14px}.quick-event-dialog__grid{grid-template-columns:1fr}}
+.quick-event-dialog__actions{
+    display:flex;gap:8px;justify-content:flex-end;
+    padding:16px 22px;flex:0 0 auto;flex-wrap:wrap;border-top:1px solid var(--line,#606772);
+}
+@media(max-width:530px){
+    .quick-event-dialog__heading,.quick-event-dialog__body,.quick-event-dialog__actions,.quick-event-auth__content{padding-inline:16px}
+    .quick-event-dialog__grid{grid-template-columns:1fr}
+    .quick-event-dialog__actions :is(.button,.btn){flex:1 1 auto}
+}
+@media(max-height:400px){
+    .quick-event-dialog__heading,.quick-event-dialog__actions{padding-block:8px}
+    .quick-event-dialog__body{padding-block:12px}
+}
 </style>
 @endonce
