@@ -4,6 +4,7 @@ namespace Tests\Feature\Social;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -29,6 +30,9 @@ final class EventSocialWallTest extends TestCase
             // A standalone GAME needs a primaryGame for its dedicated view.
             'type' => EventTypeEnum::TRAINING,
             'status' => EventStatusEnum::PUBLISHED,
+            // The generic factory chooses a random event type. A GAME requires
+            // its own primaryGame; this suite exercises the shared event wall.
+            'type' => EventTypeEnum::TRAINING,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'starts_at' => now()->addDays(4),
             'ends_at' => now()->addDays(4)->addHours(2),
