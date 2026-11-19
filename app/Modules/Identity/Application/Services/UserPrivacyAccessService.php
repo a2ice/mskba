@@ -10,6 +10,7 @@ final class UserPrivacyAccessService
 {
     public function __construct(
         private readonly PersonalDataDistributionConsentService $distributionConsents,
+        private readonly UserConnectionAccessService $connections,
     ) {}
 
     public function allows(User $subject, ?User $viewer, UserPrivacySettingTypeEnum $type): bool
@@ -42,6 +43,9 @@ final class UserPrivacyAccessService
             UserPrivacyVisibilityEnum::EVERYONE => ! $type->requiresDistributionConsent()
                 || $this->distributionConsents->allows($subject, $type),
             UserPrivacyVisibilityEnum::NOBODY => false,
+            UserPrivacyVisibilityEnum::MY_CONNECTIONS => $viewer !== null
+                && in_array($type, [UserPrivacySettingTypeEnum::MESSAGES, UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true)
+                && $this->connections->allows($subject, $viewer),
             UserPrivacyVisibilityEnum::SELECTED_USERS => $viewer !== null
                 && $setting?->allowedUsers()->whereKey($viewer->identityIds())->exists() === true,
         };
