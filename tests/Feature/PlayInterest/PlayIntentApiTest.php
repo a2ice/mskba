@@ -92,7 +92,7 @@ final class PlayIntentApiTest extends TestCase
             ->assertDontSee('data-venue-favorite-close>Отмена', false)
             ->assertSee('Добавь площадку в избранное, чтобы вернуться к ней позже.')
             ->assertSee('Аренда площадки')
-            ->assertSee('Добавить в избранное');
+            ->assertSee('Добавить в интерес');
 
         $this->actingAs(User::factory()->create())
             ->get(route('play-intents.mine'))
