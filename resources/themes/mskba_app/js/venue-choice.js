@@ -5,6 +5,15 @@
     const favorite = document.querySelector('[data-venue-favorite-dialog]');
     const dayDialog = document.querySelector('[data-venue-day-dialog]');
     if (!choice || !favorite || !dayDialog) return;
+    // Accordion semantics: only one expanded workflow is visible at a time.
+    choice.querySelectorAll('.app-venue-choice-dialog__options > details').forEach(section => {
+        section.addEventListener('toggle', () => {
+            if (!section.open) return;
+            choice.querySelectorAll('.app-venue-choice-dialog__options > details').forEach(other => {
+                if (other !== section) other.open = false;
+            });
+        });
+    });
 
     const rental = choice.querySelector('[data-venue-choice-rental]');
     const eventOption = choice.querySelector('[data-venue-choice-event]');
