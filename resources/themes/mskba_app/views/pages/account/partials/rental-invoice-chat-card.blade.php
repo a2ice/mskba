@@ -22,6 +22,11 @@
                 data-reference-required="{{ $invoiceCard['reference_required'] ? '1' : '0' }}"
                 data-confirmation-hint="{{ $invoiceCard['confirmation_hint'] }}">Я оплатил</button>
         @endif
+        @if($invoiceCard['settle_url'])
+            <button class="button primary btn btn--primary btn--sm" type="button" data-rental-invoice-settle
+                data-url="{{ $invoiceCard['settle_url'] }}"
+                data-method="{{ $invoiceCard['settle_method'] }}">Подтвердить получение</button>
+        @endif
         <a class="button secondary" href="{{ $invoiceCard['booking_url'] }}">Открыть счёт</a>
     </div>
 </section>
