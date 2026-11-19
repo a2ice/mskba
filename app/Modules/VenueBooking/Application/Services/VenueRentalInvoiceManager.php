@@ -153,7 +153,22 @@ final readonly class VenueRentalInvoiceManager
             fn (VenueRentalInvoiceTemplate $item): bool => $item->auto_send,
         );
 
-        return $template === null ? null : $this->issueBuyerWithinLock($booking, $actor, $template);
+        if ($template === null) {
+            return null;
+        }
+        if ($template->payment_methods === ['sbp']) {
+            // An automatic invoice must never send an empty SBP destination.
+            $profile = VenueRentalPaymentProfile::query()->where('owner_user_id', $actor->user_id)
+                ->where('venue_id', $booking->venue_id)->latest('id')->first();
+            if ($profile === null) {
+                return null;
+            }
+            return $this->issueBuyerWithinLock($booking, $actor, $template, [
+                'payment_method' => 'sbp', 'payment_profile_id' => $profile->id,
+            ]);
+        }
+
+        return $this->issueBuyerWithinLock($booking, $actor, $template);
     }
 
     public function issueBuyer(int $bookingId, Actor $actor, ?int $templateId = null, array $paymentOptions = []): VenueRentalInvoice
@@ -187,6 +202,16 @@ final readonly class VenueRentalInvoiceManager
         $due = CarbonImmutable::now()->addMinutes(max(1, $duration));
         if ($due->greaterThan($deadline)) {
             $due = $deadline;
+        }
+        if (($paymentOptions['payment_method'] ?? null) === null && $template?->payment_methods === ['sbp']) {
+            $paymentOptions['payment_method'] = 'sbp';
+            if (empty($paymentOptions['payment_profile_id']) && empty($paymentOptions['sbp_bank'])) {
+                $profile = VenueRentalPaymentProfile::query()->where('owner_user_id', $actor->user_id)
+                    ->where('venue_id', $booking->venue_id)->latest('id')->first();
+                if ($profile !== null) {
+                    $paymentOptions['payment_profile_id'] = $profile->id;
+                }
+            }
         }
         [$selectedMethod, $paymentDetails] = $this->resolvePaymentOptions($booking, $actor, $paymentOptions);
         $agentId = $this->agentUserId($booking);
