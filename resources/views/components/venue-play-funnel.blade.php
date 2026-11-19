@@ -33,7 +33,7 @@
                     );
                 @endphp
                 <button type="button" class="venue-play-dialog__event" data-venue-play-preview="{{ $upcoming->id }}">
-                    <span class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart->format('d.m.Y H:i') }}</span>
+                    <span class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart->format('d.m.Y H:i') }}@if($upcoming->booking_deferred) · время предварительное @endif</span>
                     <strong>{{ $upcoming->title }}</strong>
                     <small>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
@@ -60,7 +60,7 @@
                 data-event-wall-url="{{ route('events.wall.index', $upcoming->routeIdentifier()) }}"
                 data-event-post-url="{{ route('events.wall.store', $upcoming->routeIdentifier()) }}"
                 hidden>
-                <p class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart->format('d.m.Y H:i') }}</p>
+                <p class="venue-play-dialog__event-meta">{{ $upcoming->type->label() }} · {{ $venueEventStart->format('d.m.Y H:i') }}@if($upcoming->booking_deferred) · время предварительное @endif</p>
                 <h3>{{ $upcoming->title }}</h3>
                 <p>{{ $upcoming->description ?: 'Описание пока не добавлено.' }}</p>
                 <p><strong>Организатор:</strong>
