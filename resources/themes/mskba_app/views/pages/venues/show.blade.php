@@ -415,12 +415,45 @@
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
     <p class="muted">Расскажи, что именно ты хочешь сделать на этой площадке.</p>
+    @php
+        $venueChoiceVenues = \App\Modules\Venue\Domain\Models\Venue::query()
+            ->where('status', 'confirmed')->where('is_published', true)
+            ->orderBy('name')->get(['id', 'name']);
+    @endphp
     <div class="app-venue-choice-dialog__options">
-        <a class="button secondary full" href="{{ $createEventUrl }}" data-quick-event-open data-quick-event-venue-id="{{ $venue->id }}">Создать мероприятие</a>
+        <details data-venue-choice-event>
+            <summary>Создать мероприятие</summary>
+            <div class="app-venue-choice-dialog__option-body">
+                <p>Организуй встречу, тренировку или несколько игр в рамках одного мероприятия. Участники смогут откликнуться и обсудить детали; аренда оформляется отдельно.</p>
+                <label class="field-group" for="app-venue-choice-type">Тип мероприятия
+                    <span class="select-control">
+                        <select id="app-venue-choice-type" data-venue-choice-type>
+                            @foreach(\App\Modules\Event\Domain\Enums\EventTypeEnum::cases() as $kind)
+                                @continue($kind === \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME_TRAINING)
+                                <option value="{{ $kind->value }}">{{ $kind->label() }}</option>
+                            @endforeach
+                        </select>
+                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                    </span>
+                </label>
+                <label class="field-group" for="app-venue-choice-event-venue">Площадка
+                    <span class="select-control">
+                        <select id="app-venue-choice-event-venue" data-venue-choice-event-venue required>
+                            @foreach($venueChoiceVenues as $place)
+                                <option value="{{ $place->id }}" @selected((int)$place->id === (int)$venue->id)>{{ $place->name }}</option>
+                            @endforeach
+                        </select>
+                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                    </span>
+                </label>
+                <p class="error" data-venue-choice-event-error role="alert" hidden>Выбери площадку.</p>
+                <button type="button" class="button primary" data-venue-choice-event-next>Далее</button>
+            </div>
+        </details>
         <details data-venue-choice-rental>
             <summary>Аренда площадки</summary>
             <div class="app-venue-choice-dialog__option-body">
-                <p>Выбери зал, затем дату и свободные интервалы. После выбора времени войди в аккаунт или зарегистрируйся, если ещё не авторизован, и пройди обычное оформление и подтверждение аренды.</p>
+                <p>Выбери зал и удобное время, затем оформи заявку на аренду. Бронирование подтверждается отдельно.</p>
                 <label class="field-group" for="app-venue-choice-court">Зал или корт
                     <span class="select-control">
                         <select id="app-venue-choice-court" data-venue-choice-court required>
@@ -436,13 +469,14 @@
                     </span>
                 </label>
                 <p class="error" data-venue-choice-error role="alert" hidden>Выбери зал, чтобы посмотреть его расписание.</p>
-                <button type="button" class="button primary" data-venue-choice-date>Выбрать дату</button>
+                <button type="button" class="button primary" data-venue-choice-date>Далее</button>
             </div>
         </details>
-        <details data-venue-choice-favorite>
-            <summary>Добавить в избранное</summary>
+        <details data-venue-choice-interest>
+            <summary>Добавить в интерес</summary>
             <div class="app-venue-choice-dialog__option-body">
-                <p>Сохрани площадку, чтобы быстро к ней возвращаться. Для авторизованных пользователей это также прямой интерес в списке «Площадкой интересуются».</p>
+                <p>Укажи, когда и в каком формате хочешь играть. Подписка поможет находить подходящие игры, а площадку при желании можно добавить в избранное.</p>
+                <button type="button" class="button primary" data-venue-choice-interest-next>Далее</button>
             </div>
         </details>
     </div>
@@ -483,6 +517,9 @@
         <button type="button" data-venue-overlay-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
+    </div>
+    <div class="app-venue-day-dialog__wizard-back" data-venue-day-wizard-back-wrap hidden>
+        <button type="button" class="button secondary" data-venue-day-back>Назад</button>
     </div>
     @include('theme::pages.venues.partials.day-calendar')
     <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
