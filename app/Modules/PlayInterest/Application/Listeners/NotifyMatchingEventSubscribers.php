@@ -34,7 +34,7 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
             || $event->status !== EventStatusEnum::PUBLISHED
             || $event->visibility !== EventVisibilityEnum::PUBLIC
             || $event->starts_at->lessThanOrEqualTo(now())
-            || ! in_array($event->type, [EventTypeEnum::GAME, EventTypeEnum::GAME_TRAINING], true)) {
+            || ! in_array($event->type, [EventTypeEnum::GAME, EventTypeEnum::TRAINING, EventTypeEnum::GAME_TRAINING], true)) {
             return;
         }
 
@@ -53,7 +53,7 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
         $targets = [];
 
         // Search is a background projection; the subscription remains the source
-        // of truth. A favorite alone is not consent to receive game alerts.
+        // of truth. A saved favorite now explicitly creates a default PlayIntent.
         $intents = PlayIntent::query()
             ->with('user')
             ->where('status', 'active')
@@ -100,7 +100,7 @@ final class NotifyMatchingEventSubscribers implements ShouldQueueAfterCommit
                 $this->notifications->handle(new CreateUserNotificationDTO(
                     userId: $userId,
                     type: UserNotificationTypeEnum::SYSTEM,
-                    title: 'Новая игра по вашим интересам',
+                    title: 'Новое мероприятие по вашим интересам',
                     body: '«'.$event->title.'» на площадке «'.$venue->name.'» — '.$start->format('d.m.Y H:i').'.',
                     actionUrl: route('events.show', $event->routeIdentifier(), false),
                     actionText: 'Открыть мероприятие',
