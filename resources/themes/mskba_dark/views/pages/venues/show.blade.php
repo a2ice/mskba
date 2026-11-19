@@ -103,11 +103,6 @@
                     @endif
                 </div>
             @endif
-            @if(isset($rentalUrl))
-                <div class="venue-management-actions mt-3">
-                    <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
-                </div>
-            @endif
         </div>
     @else
         <div class="section-sidebar-block">
@@ -614,7 +609,12 @@
                         <h2>Расписание</h2>
                         <p class="venue-show-section__caption">Нажмите на день, чтобы посмотреть интервалы.</p>
                     </div>
-                    <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
+                    <div class="venue-management-actions">
+                        @if(isset($rentalUrl))
+                            <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
+                        @endif
+                        <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
+                    </div>
                 </div>
 
                 @if($venue->about->scheduleDays !== [])
