@@ -74,10 +74,17 @@ function configureCooperativeInteractions(map, container) {
     // remains available with Ctrl/Cmd + wheel and through the map's own controls.
     map.behaviors.disable('scrollZoom');
 
-    if (hasTouchPrimaryPointer()) {
-        // One-finger gestures are reserved for scrolling the page. Yandex multiTouch
-        // stays enabled, so a deliberate two-finger gesture can still move/zoom the map.
-        map.behaviors.disable('drag');
+    // One-finger panning is the default on touch devices. Individual maps may
+    // explicitly opt into cooperative (two-finger) or static interactions.
+    const touchMode = element.dataset.mapTouchMode || 'default';
+    if (touchMode === 'static') {
+        map.behaviors.disable(['drag', 'multiTouch']);
+    } else if (hasTouchPrimaryPointer()) {
+        if (touchMode === 'cooperative') {
+            map.behaviors.disable('drag');
+        } else {
+            map.behaviors.enable('drag');
+        }
         map.behaviors.enable('multiTouch');
     }
 
@@ -137,7 +144,9 @@ function configureCooperativeInteractions(map, container) {
     };
 
     element.addEventListener('wheel', onWheel, { passive: false });
-    element.dataset.mapCooperativeInteraction = hasTouchPrimaryPointer() ? 'two-finger' : 'modifier-wheel';
+    element.dataset.mapCooperativeInteraction = hasTouchPrimaryPointer()
+        ? (touchMode === 'cooperative' ? 'two-finger' : touchMode === 'static' ? 'static' : 'one-finger')
+        : 'modifier-wheel';
 
     const cleanup = () => {
         element.removeEventListener('wheel', onWheel);

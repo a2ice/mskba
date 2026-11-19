@@ -873,3 +873,50 @@ test('homepage and wizard map cards share one renderer and visual contract', () 
     assert.match(sharedCss, /\.mskba-venues-map__venue-card\.mskba-venue-map-card--compact\s*\{\s*--venue-map-card-scale:\.9/);
     assert.match(sharedCss, /font-size:calc\(16px \* var\(--venue-map-card-scale\)\)/);
 });
+
+
+test('one-finger drag is standard on touch maps while homepage remains cooperative', () => {
+    const core = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/core/yandex-maps.js', import.meta.url), 'utf8',
+    );
+    const home = readFileSync(
+        new URL('../../resources/themes/mskba_dark/js/features/home-venue-section.js', import.meta.url), 'utf8',
+    );
+    const pageBuilder = readFileSync(
+        new URL('../../resources/page-builder/venues-map.js', import.meta.url), 'utf8',
+    );
+    assert.match(core, /const touchMode = element\.dataset\.mapTouchMode \|\| 'default'/);
+    assert.match(core, /if \(touchMode === 'cooperative'\)/);
+    assert.match(core, /map\.behaviors\.enable\('drag'\)/);
+    assert.match(core, /map\.behaviors\.enable\('multiTouch'\)/);
+    assert.match(core, /touchMode === 'static'/);
+    assert.match(home, /canvas\.dataset\.mapTouchMode = 'cooperative'/);
+    assert.match(pageBuilder, /map\.behaviors\.disable\('drag'\)/);
+});
+
+test('venue preview uses existing loader and reuses fetched details and loaded card images', () => {
+    const shared = readFileSync(
+        new URL('../../resources/js/components/venue-map-info-card.js', import.meta.url), 'utf8',
+    );
+    const css = readFileSync(
+        new URL('../../resources/css/venue-map-info-card.css', import.meta.url), 'utf8',
+    );
+    const chooser = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/quick-event-venue-selector.js', import.meta.url), 'utf8',
+    );
+    assert.match(shared, /function mediaLoadingLayer\(/);
+    assert.match(shared, /image-upload-loading__spinner/);
+    assert.match(shared, /options\.mediaPending \? mediaLoadingLayer\(\) : placeholder\(\)/);
+    assert.match(shared, /img\.loading = 'eager'/);
+    assert.match(shared, /img\.addEventListener\('load', showImage/);
+    assert.match(shared, /img\.addEventListener\('error'/);
+    assert.match(shared, /const cachedCards = new Map\(\)/);
+    assert.match(css, /mskba-venue-map-card__media-loading/);
+    assert.match(chooser, /const previewResponses=new Map\(\)/);
+    assert.match(chooser, /const previewCards=new Map\(\)/);
+    assert.match(chooser, /render\(item,Boolean\(item\.preview_url&&!item\.image_url\)\)/);
+    assert.match(chooser, /if\(cached\?\.details\)/);
+    assert.match(chooser, /let promise=cached\?\.promise/);
+    assert.match(chooser, /preview\.replaceChildren\(entry\.node\)/);
+    assert.match(chooser, /\.catch\(\(\)=>render\(item,false\)\)/);
+});
