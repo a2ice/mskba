@@ -22,7 +22,7 @@
             <p>Для создания мероприятия войдите в аккаунт или зарегистрируйтесь.</p>
             <div class="quick-event-dialog__actions">
                 <button type="button" class="{{ $quickSecondary }}" data-quick-event-back>Назад</button>
-                <a class="{{ $quickPrimary }}" href="{{ route('events.wizard', array_filter(['venue_id' => $quickSelectedVenue ?: null])) }}">Далее</a>
+                <a class="{{ $quickPrimary }}" href="{{ route('events.wizard', array_filter(['venue_id' => $quickSelectedVenue ?: null])) }}" data-quick-auth-link>Далее</a>
             </div>
         </div>
     @else
@@ -221,6 +221,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = String(options.venueId || '');
         if (id && venue?.querySelector('option[value="' + CSS.escape(id) + '"]')) venue.value=id;
         if (options.type && type?.querySelector('option[value="' + CSS.escape(options.type) + '"]')) type.value=options.type;
+        const authLink = dialog.querySelector('[data-quick-auth-link]');
+        if (authLink) {
+            const url = new URL(authLink.href, window.location.href);
+            if (id) url.searchParams.set('venue_id', id);
+            if (options.type) url.searchParams.set('type', options.type);
+            authLink.href = url.toString();
+        }
         fromChoice=Boolean(options.fromVenueChoice);
         setReview(false);
         syncType();syncFormat();
