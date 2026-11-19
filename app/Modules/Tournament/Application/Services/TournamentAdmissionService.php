@@ -7,6 +7,8 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as BackofficePermission;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -46,6 +48,7 @@ final class TournamentAdmissionService
         private readonly TeamManagementAccess $teamAccess,
         private readonly CreateUserNotificationHandler $notifications,
         private readonly UserNotificationCounterStore $notificationCounters,
+        private readonly UserPrivacyAccessService $privacy,
     ) {}
 
     public function invite(Tournament $tournament, Actor $actor, Team|User $candidate): TournamentAdmission
@@ -168,6 +171,11 @@ final class TournamentAdmissionService
             $this->assertTournamentAcceptsCandidates($locked);
             if ($direction === TournamentAdmissionDirectionEnum::INVITATION) {
                 $this->assertCanManageAdmissions($locked, $actor);
+                if ($candidate instanceof User && ($actor->user === null || ! $this->privacy->allows(
+                    $candidate, $actor->user->canonical(), UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+                ))) {
+                    throw new InvalidArgumentException('Пользователь запретил приглашать себя в группы и мероприятия.');
+                }
             }
             $this->assertCandidateMatchesMode($locked, $candidate);
             if ($direction === TournamentAdmissionDirectionEnum::APPLICATION

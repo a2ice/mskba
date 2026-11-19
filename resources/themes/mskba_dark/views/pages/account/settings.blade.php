@@ -116,6 +116,7 @@
                         <label class="form-label" for="privacy-{{ $type->value }}">Доступ</label>
                         <select id="privacy-{{ $type->value }}" class="form-control account-privacy__visibility" name="privacy[{{ $type->value }}][visibility]" data-privacy-visibility>
                             @foreach($privacyVisibilities as $visibilityOption)
+                                @continue($visibilityOption === \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::MY_CONNECTIONS && ! in_array($type, [\App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::MESSAGES, \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true))
                                 <option value="{{ $visibilityOption->value }}" @selected($visibility === $visibilityOption->value)>{{ $visibilityOption->label() }}</option>
                             @endforeach
                         </select>

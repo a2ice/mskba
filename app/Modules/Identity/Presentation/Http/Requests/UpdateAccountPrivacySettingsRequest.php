@@ -62,6 +62,14 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                         continue;
                     }
 
+                    if (($setting['visibility'] ?? null) === UserPrivacyVisibilityEnum::MY_CONNECTIONS->value
+                        && ! in_array($type, [UserPrivacySettingTypeEnum::MESSAGES, UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true)) {
+                        $validator->errors()->add(
+                            "privacy.{$type->value}.visibility",
+                            'Режим «Мои связи» доступен только для сообщений и приглашений.',
+                        );
+                    }
+
                     if (
                         ($setting['visibility'] ?? null) === UserPrivacyVisibilityEnum::SELECTED_USERS->value
                         && empty($setting['allowed_user_ids'])

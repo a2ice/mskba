@@ -17,6 +17,8 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
@@ -38,6 +40,7 @@ final class GameAdmissionService
         private readonly EventManagementAccess $eventAccess,
         private readonly TeamManagementAccess $teamAccess,
         private readonly CreateUserNotificationHandler $notifications,
+        private readonly UserPrivacyAccessService $privacy,
     ) {}
 
     public function apply(Game $game, Actor $actor, Team|User $candidate): GameAdmission
@@ -223,6 +226,12 @@ final class GameAdmissionService
             }
 
             $candidate = $this->lockCandidate($candidate);
+            if ($direction === GameAdmissionDirectionEnum::INVITATION && $candidate instanceof User
+                && ($actor->user === null || ! $this->privacy->allows(
+                    $candidate, $actor->user->canonical(), UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+                ))) {
+                throw new InvalidArgumentException('Пользователь запретил приглашать себя в группы и мероприятия.');
+            }
             if ($direction === GameAdmissionDirectionEnum::APPLICATION) {
                 // Authorization is checked after locking the candidate so a concurrent
                 // membership/permission change cannot turn a stale pre-check into an admission.

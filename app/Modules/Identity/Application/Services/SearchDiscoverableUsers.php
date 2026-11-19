@@ -12,7 +12,10 @@ use Illuminate\Support\Collection;
 
 final class SearchDiscoverableUsers
 {
-    public function __construct(private readonly UserPrivacyAccessService $privacy) {}
+    public function __construct(
+        private readonly UserPrivacyAccessService $privacy,
+        private readonly UserConnectionAccessService $connections,
+    ) {}
 
     /**
      * @param  array<int>  $excludeUserIds
@@ -171,6 +174,9 @@ final class SearchDiscoverableUsers
     ): void {
         $defaultVisibility = $type->defaultVisibility();
         $viewerIdentityIds = $viewer->identityIds();
+        $connectedUserIds = in_array($type, [UserPrivacySettingTypeEnum::MESSAGES, UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true)
+            ? $this->connections->connectedCanonicalIds($viewer)
+            : [];
 
         $query
             ->where(function (Builder $missingSettingQuery) use ($type, $defaultVisibility): void {
@@ -184,7 +190,7 @@ final class SearchDiscoverableUsers
             })
             ->orWhereHas('privacySettings', fn ($settingQuery) => $settingQuery
                 ->where('type', $type->value)
-                ->where(function ($visibilityQuery) use ($viewerIdentityIds): void {
+                ->where(function ($visibilityQuery) use ($viewerIdentityIds, $connectedUserIds): void {
                     $visibilityQuery
                         ->where('visibility', UserPrivacyVisibilityEnum::EVERYONE->value)
                         ->orWhere(function ($selectedQuery) use ($viewerIdentityIds): void {
@@ -192,6 +198,11 @@ final class SearchDiscoverableUsers
                                 ->where('visibility', UserPrivacyVisibilityEnum::SELECTED_USERS->value)
                                 ->whereHas('allowedUsers', fn ($allowedQuery) => $allowedQuery
                                     ->whereKey($viewerIdentityIds));
+                        })
+                        ->orWhere(function ($connectionsQuery) use ($connectedUserIds): void {
+                            $connectionsQuery
+                                ->where('visibility', UserPrivacyVisibilityEnum::MY_CONNECTIONS->value)
+                                ->whereHas('user', fn ($users) => $users->whereKey($connectedUserIds));
                         });
                 }));
     }
