@@ -46,7 +46,7 @@ final readonly class NotifyVenueOwnershipClaimMessageRecipients
                 type: UserNotificationTypeEnum::MESSAGE,
                 title: 'Новое сообщение по подтверждению управления',
                 body: "В заявке по площадке «{$claim->venue->name}» появилось новое сообщение.",
-                actionUrl: route('account.venue-ownership.show', $claim, false).'#ownership-conversation',
+                actionUrl: route('account.venue-contracts.show', ['venue' => $claim->venue_id, 'claim' => $claim->public_id], false).'#claim-conversation',
                 actionText: 'Открыть переписку',
                 payload: [
                     'source' => UserNotificationSourceEnum::VENUE_OWNERSHIP_CLAIM_MESSAGE->value,
