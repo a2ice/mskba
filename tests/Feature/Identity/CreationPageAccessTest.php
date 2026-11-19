@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -46,7 +47,9 @@ final class CreationPageAccessTest extends TestCase
     public function test_reloading_after_verifying_contact_opens_form_and_preserves_query(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
-        $target = route('events.wizard', ['type' => 'training', 'venue_id' => 12, 'venue_court_id' => 34]);
+        $venue = Venue::factory()->create();
+        $court = $venue->primaryCourt()->firstOrFail();
+        $target = route('events.wizard', ['type' => 'training', 'venue_id' => $venue->id, 'venue_court_id' => $court->id]);
         $this->actingAs($user)->get($target)->assertOk()
             ->assertSee('Подтвердить контакт')
             ->assertSee(route('faq.welcome').'#contact-confirmation', false)
