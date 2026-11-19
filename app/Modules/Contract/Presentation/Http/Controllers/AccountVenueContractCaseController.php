@@ -56,7 +56,11 @@ final class AccountVenueContractCaseController extends Controller
                 });
             })->with(['contract.permissions'])->get();
         $bootstrap = in_array($venue->id, $venueAccess->bootstrapOwnedVenueIdsFor($user), true);
-        abort_unless($reviewer || $invitation || $claims->isNotEmpty() || $contracts->isNotEmpty() || $bootstrap, 403);
+        // Preserve the existing public "confirm management" funnel: any active
+        // signed-in representative may claim an unowned venue, even without an invitation.
+        $alreadyOwned = $venueMemberships->hasActiveOwner($venue);
+        abort_unless($reviewer || $invitation || $claims->isNotEmpty()
+            || $contracts->isNotEmpty() || $bootstrap || ! $alreadyOwned, 403);
 
         $selected = $claims->first(fn (VenueOwnershipClaim $c) => $c->status === ClaimStatus::PENDING)
             ?? $claims->first(fn (VenueOwnershipClaim $c) => $c->status === ClaimStatus::DRAFT)
@@ -74,7 +78,6 @@ final class AccountVenueContractCaseController extends Controller
         $restriction = $restrictions->active($venue, $user, VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM);
         $ownership = VenueOwnership::query()->where('venue_id', $venue->id)
             ->whereIn('owner_user_id', $ids)->where('active_marker', true)->first();
-        $alreadyOwned = $venueMemberships->hasActiveOwner($venue);
         $hasUnfinished = $claims->contains(fn (VenueOwnershipClaim $c) =>
             in_array($c->status, [ClaimStatus::DRAFT, ClaimStatus::PENDING], true));
 
@@ -109,7 +112,8 @@ final class AccountVenueContractCaseController extends Controller
             ->where('role', 'owner')->exists()
             || VenueOwnershipClaim::query()->where('venue_id', $venue->id)
                 ->whereIn('applicant_user_id', $ids)->exists()
-            || in_array($venue->id, $venueAccess->bootstrapOwnedVenueIdsFor($user), true);
+            || in_array($venue->id, $venueAccess->bootstrapOwnedVenueIdsFor($user), true)
+            || ! $memberships->hasActiveOwner($venue);
         abort_unless($allowed, 403);
 
         $claim = DB::transaction(function () use ($venue, $user, $ids, $drafts, $restrictions, $memberships): VenueOwnershipClaim {
