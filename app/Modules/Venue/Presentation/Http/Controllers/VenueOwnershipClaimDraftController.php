@@ -30,17 +30,27 @@ final class VenueOwnershipClaimDraftController extends Controller
         if ($request->input('intent') === 'submit') {
             $rules['ownership_evidence'] = ['required', 'string', 'min:20', 'max:5000'];
         }
-        $data = $request->validate($rules);
+        try {
+            $data = $request->validate($rules);
+        } catch (ValidationException $exception) {
+            throw $exception->redirectTo(route('account.venue-contracts.show', [
+                'venue' => $venueOwnershipClaim->venue_id,
+                'claim' => $venueOwnershipClaim->public_id,
+            ]));
+        }
         try {
             $claim = $drafts->save($venueOwnershipClaim, $request->user(), (string) ($data['ownership_evidence'] ?? ''), $data['ownership_documents'] ?? []);
         } catch (ValidationException $exception) {
-            throw $exception;
+            throw $exception->redirectTo(route('account.venue-contracts.show', [
+                'venue' => $venueOwnershipClaim->venue_id,
+                'claim' => $venueOwnershipClaim->public_id,
+            ]));
         } catch (HttpExceptionInterface $exception) {
             throw $exception;
         } catch (Throwable $exception) {
             report($exception);
 
-            return back()->withInput()->withErrors(['ownership_documents' => 'Не удалось сохранить документы. Выберите файлы заново и попробуйте ещё раз.']);
+            return redirect()->route('account.venue-contracts.show', ['venue' => $venueOwnershipClaim->venue_id, 'claim' => $venueOwnershipClaim->public_id])->withInput()->withErrors(['ownership_documents' => 'Не удалось сохранить документы. Выберите файлы заново и попробуйте ещё раз.']);
         }
         if ($data['intent'] === 'submit') {
             try {
