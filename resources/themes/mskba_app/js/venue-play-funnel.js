@@ -31,12 +31,20 @@
     const selectedPane=()=>getPane(selectedId);
     const paintButtons=pane=>{
         const status=pane.dataset.eventStatus||'';
-        pane.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>{
+        const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
+        if(!choices.length)return;
+        // The main CTA itself reverses "Пойду" <-> "Не пойду" for an
+        // already confirmed participant. Never show two identical buttons.
+        const [main,thinking,decline]=choices;
+        main.dataset.venuePlayRsvp=status==='confirmed'?'left':'confirmed';
+        main.textContent=status==='confirmed'?'Не пойду':'Пойду';
+        thinking.dataset.venuePlayRsvp='tentative';
+        decline.dataset.venuePlayRsvp='left';
+        decline.hidden=status==='confirmed'||status==='left';
+        choices.forEach(button=>{
             const own=button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
             button.setAttribute('aria-pressed',String(own));
-            // An attendee's reverse action always reads "Не пойду".
-            if(button.dataset.venuePlayRsvp==='confirmed')button.textContent=status==='confirmed'?'Пойду ✓':'Пойду';
         });
     };
     const appendEntries=(pane,entries)=>{
@@ -51,7 +59,9 @@
             const body=document.createElement('p');body.textContent=entry.text||'';
             item.append(label,time,body);list.append(item);
         }
-        pane.querySelector('[data-venue-play-wall-empty]').hidden=list.childElementCount>0;
+        const empty=pane.querySelector('[data-venue-play-wall-empty]');
+        empty.hidden=list.childElementCount>0;
+        if(!empty.hidden)empty.textContent='Сообщений пока нет.';
     };
     async function refreshWall(pane){
         try{
@@ -137,6 +147,7 @@
         window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true}}));
     });
     const resume=()=>{
+        try{if(sessionStorage.getItem('mskba:auth:pending-flow')==='quick-event')return;}catch{}
         let saved=null;try{saved=JSON.parse(sessionStorage.getItem(resumeKey)||'null');}catch{}
         if(!saved || Date.now()-saved.at>20*60*1000){clearResume();return;}
         if(!getPane(saved.id))return;
