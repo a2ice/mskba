@@ -59,7 +59,10 @@
         next.hidden=step===sections.length-1;
         submit.hidden=step!==sections.length-1;
         if(step===2)review();
-        dialog.querySelector('[data-quick-event-title]')?.focus();
+        const firstField=[...sections[step].querySelectorAll('input:not([type=hidden]),select,textarea,button')]
+            .find(el=>!el.disabled&&!el.closest('[hidden]')&&el.getClientRects().length);
+        if(firstField)firstField.focus();
+        else if(step===sections.length-1)submit.focus();
     }
     const syncFormat=()=>{
         const presets={
@@ -183,9 +186,13 @@
         }
         report('');
     }
-    const baseFields=[type,title,venue,form.elements.namedItem('visibility')];
     const goNext=()=>{
-        if(step===0){for(const field of baseFields)if(!validate(field))return;}
+        if(step===0){
+            for(const field of sections[0].querySelectorAll('input:not([type=hidden]),select,textarea')){
+                if(field.disabled||field.closest('[hidden]'))continue;
+                if(!validate(field))return;
+            }
+        }
         setStep(step+1);
     };
     next.addEventListener('click',goNext);
