@@ -58,7 +58,7 @@ final class VenueBookingEventController extends Controller
     {
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'type' => ['required', Rule::enum(EventTypeEnum::class)],
+            'type' => ['required', Rule::in(EventTypeEnum::creatableValues())],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:10000'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:1000'],
