@@ -285,6 +285,13 @@
     width:26px;height:26px;padding:0;border:0;border-radius:50%;
     background:transparent;color:var(--muted,#6f7780);cursor:pointer;
 }
+.quick-event-dialog__venue-clear::before,
+.quick-event-dialog__venue-clear::after{
+    position:absolute;top:12px;left:5px;width:16px;height:2px;
+    border-radius:2px;background:currentColor;content:'';
+}
+.quick-event-dialog__venue-clear::before{transform:rotate(45deg)}
+.quick-event-dialog__venue-clear::after{transform:rotate(-45deg)}
 .quick-event-dialog__venue-clear[hidden]{display:none}
 .quick-event-dialog__venue-clear:hover{background:var(--surface-raised,#e8ebed)}
 .quick-event-dialog__venue-results{
