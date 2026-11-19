@@ -37,6 +37,14 @@ export function renderRentalInvoiceCard(data) {
         button.dataset.confirmationHint = data.confirmation_hint || '';
         actions.append(button);
     }
+    if (data.settle_url) {
+        const button = create('button', 'button primary btn btn--primary btn--sm', 'Подтвердить получение');
+        button.type = 'button';
+        button.dataset.rentalInvoiceSettle = '1';
+        button.dataset.url = data.settle_url;
+        button.dataset.method = data.settle_method || 'other';
+        actions.append(button);
+    }
     const link = create('a', 'button secondary', 'Открыть счёт');
     link.href = data.booking_url;
     actions.append(link);
@@ -54,6 +62,59 @@ export function bindRentalInvoiceActions(root = document) {
             } catch (_error) {
                 copy.textContent = 'Не удалось скопировать';
             }
+            return;
+        }
+        const settle = event.target.closest('[data-rental-invoice-settle]');
+        if (settle && root.contains(settle)) {
+            const dialog = create('dialog', 'app-rental-invoice-claim-dialog');
+            const form = create('form');
+            const heading = create('h3', '', 'Подтверждение получения оплаты');
+            const warning = create('p', '', 'Подтверждайте только фактически полученные средства. Заявление плательщика само по себе не является подтверждением.');
+            const label = create('label', '', 'Основание подтверждения');
+            const note = create('textarea');
+            note.name = 'note';
+            note.maxLength = 2000;
+            note.rows = 3;
+            note.required = true;
+            label.append(note);
+            const error = create('p', 'app-rental-invoice-claim-dialog__error');
+            error.hidden = true;
+            const actions = create('div', 'app-rental-invoice-claim-dialog__actions');
+            const back = create('button', 'button secondary btn btn--secondary', 'Назад');
+            back.type = 'button';
+            back.addEventListener('click', () => dialog.close());
+            const submit = create('button', 'button primary btn btn--primary', 'Подтвердить');
+            submit.type = 'submit';
+            actions.append(back, submit);
+            form.append(heading, warning, label, error, actions);
+            dialog.append(form);
+            document.body.append(dialog);
+            dialog.addEventListener('close', () => dialog.remove(), {once:true});
+            form.addEventListener('submit', async e => {
+                e.preventDefault();
+                submit.disabled = true;
+                error.hidden = true;
+                try {
+                    const response = await fetch(settle.dataset.url, {
+                        method:'POST', credentials:'same-origin',
+                        headers: {'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            'Accept':'application/json', 'Content-Type':'application/json'},
+                        body: JSON.stringify({decision:'received', method:settle.dataset.method, note:note.value.trim()})
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        throw new Error(result.message || Object.values(result.errors || {}).flat().join(' ') || 'Не удалось подтвердить оплату.');
+                    }
+                    dialog.close();
+                    window.location.reload();
+                } catch (err) {
+                    error.textContent = err.message || 'Не удалось подтвердить оплату.';
+                    error.hidden = false;
+                    submit.disabled = false;
+                }
+            });
+            dialog.showModal();
+            note.focus();
             return;
         }
         const button = event.target.closest('[data-rental-invoice-claim]');
