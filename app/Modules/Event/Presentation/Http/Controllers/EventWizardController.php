@@ -39,7 +39,7 @@ final class EventWizardController extends Controller
     public function show(Request $request, TelegramChatRegistry $telegramChats): Response|\Illuminate\Http\RedirectResponse
     {
         $validated = $request->validate([
-            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'type' => ['nullable', Rule::in(EventTypeEnum::creatableValues())],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
@@ -50,7 +50,7 @@ final class EventWizardController extends Controller
         }
 
         return ThemeResolver::page('events.wizard', [
-            'types' => EventTypeEnum::cases(),
+            'types' => EventTypeEnum::creatable(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
