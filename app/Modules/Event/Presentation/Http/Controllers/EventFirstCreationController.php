@@ -135,6 +135,8 @@ final class EventFirstCreationController extends Controller
         return $request->validate([
             'event_request_id' => ['required', 'uuid'],
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'venue_court_id' => ['nullable', 'integer',
+                Rule::exists('venue_courts', 'id')->where('venue_id', (int) $request->input('venue_id'))],
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
             'title' => ['nullable', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],

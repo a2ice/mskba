@@ -76,6 +76,7 @@ import './features/team-member-card-details.js';
 import './features/team-join-application.js';
 import './features/venue-show.js';
 import '../../mskba_app/js/venue-play-funnel.js';
+import '../../mskba_app/js/event-quick-create.js';
 import '../../mskba_app/js/venue-favorite-main.js';
 import './features/venue-heading-polish.js';
 import './features/venue-activity.js';

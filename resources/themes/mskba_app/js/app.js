@@ -43,6 +43,7 @@ import './venue-interest-summary.js';
 import './venue-detail.js';
 import './venue-choice.js';
 import './venue-play-funnel.js';
+import './event-quick-create.js';
 import './venue-favorite-main.js';
 import './venue-rental-review.js';
 import './venue-editor.js';
