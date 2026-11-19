@@ -53,7 +53,13 @@
                     @endforeach
                 </select></span>
             </label>
-            <label class="quick-event-dialog__field" data-quick-game-fields><span>Формат игры</span>
+            <input type="hidden" name="create_game" value="0">
+            <label class="quick-event-dialog__game-toggle" data-quick-create-game-row hidden>
+                <input type="checkbox" name="create_game" value="1" data-quick-create-game checked>
+                <span>Создать игру внутри мероприятия</span>
+            </label>
+            <p class="quick-event-dialog__hint" data-quick-create-game-hint hidden>Игру можно будет настроить отдельно. Если снять галочку, создастся только мероприятие; игру можно добавить позднее.</p>
+            <label class="quick-event-dialog__field" data-quick-game-fields><span>Начальный формат игры</span>
                 <span class="select-control"><select name="game_format" data-quick-format>
                     <option value="streetball_3x3">3×3</option>
                     <option value="basketball_5x5">5×5</option>
@@ -152,6 +158,8 @@
 .quick-event-dialog__field textarea{min-height:85px;resize:vertical}
 .quick-event-dialog__field [aria-invalid=true]{border-color:#ff6b6b}
 .quick-event-dialog__error{color:#ff9696;font-size:12px}
+.quick-event-dialog__game-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600}
+.quick-event-dialog__game-toggle input{width:18px;height:18px;flex:none;accent-color:var(--accent,#ed782c)}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
 .quick-event-dialog__availability{display:flex;gap:6px;flex-wrap:wrap;padding:12px;border:1px solid var(--line,#606772);border-radius:9px}
