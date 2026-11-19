@@ -149,6 +149,7 @@
                             <span class="select-control"><select id="privacy-messages" name="privacy_options[messages]" data-privacy-search-child>
                                 <option value="nobody" @selected(($privacyOptions['messages'] ?? 'nobody') === 'nobody')>Никто</option>
                                 <option value="everyone" @selected(($privacyOptions['messages'] ?? 'nobody') === 'everyone')>Все участники портала</option>
+                                <option value="my_connections" @selected(($privacyOptions['messages'] ?? 'nobody') === 'my_connections')>Мои связи</option>
                             </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span>
                             <p>Если вы сами напишете участнику, он сможет ответить вам даже при выборе «Никто». Чёрный список всегда имеет приоритет.</p>
                         </div>
@@ -157,6 +158,7 @@
                             <span class="select-control"><select id="privacy-invitations" name="privacy_options[group_invitations]" data-privacy-search-child>
                                 <option value="nobody" @selected(($privacyOptions['group_invitations'] ?? 'nobody') === 'nobody')>Никто</option>
                                 <option value="everyone" @selected(($privacyOptions['group_invitations'] ?? 'nobody') === 'everyone')>Все участники портала</option>
+                                <option value="my_connections" @selected(($privacyOptions['group_invitations'] ?? 'nobody') === 'my_connections')>Мои связи</option>
                             </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span>
                             <p>
                                 @if ($hasPlayerRole ?? false)
@@ -166,7 +168,7 @@
                                 @endif
                             </p>
                         </div>
-                        <p class="privacy-onboarding__future">Вариант «Мои связи» добавим после реализации подтверждённых связей команд, секций и участников.</p>
+                        <p class="privacy-onboarding__future">«Мои связи» — участники твоих команд и секций с действующим подтверждённым участием. Непринятые приглашения не учитываются.</p>
                     </div>
                     <p class="privacy-onboarding__closed-hint" data-privacy-search-closed @if ($searchOn) hidden @endif>
                         <span data-privacy-search-closed-text>
