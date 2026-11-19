@@ -409,13 +409,14 @@
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-choice-title">Арендовать площадку</h2>
-        <button type="button" class="icon-button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
+        <button type="button" class="icon-button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
         <p class="muted">Выбери зал или корт, затем дату и доступные временные интервалы.</p>
-        <label class="field-group" for="app-venue-choice-court">Зал или корт
+        <div class="field-group">
+            <label for="app-venue-choice-court">Зал или корт</label>
             <span class="select-control">
-                <select id="app-venue-choice-court" data-venue-choice-court required>
+                <select id="app-venue-choice-court" data-venue-choice-court required aria-describedby="app-venue-choice-error">
                     @if(!$venue->isCourtPage && count($venue->courts) > 1)
                         <option value="">Выберите зал или корт</option>
                     @endif
@@ -424,10 +425,10 @@
                             @selected(($venue->isCourtPage && $venue->selectedCourt['id'] === $court['id']) || count($venue->courts) === 1)>{{ $court['name'] }}</option>
                     @endforeach
                 </select>
-                <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><use href="#chevron-down"/></svg>
             </span>
-        </label>
-        <p class="error" data-venue-choice-error role="alert" hidden>Выбери зал, чтобы посмотреть его расписание.</p>
+        </div>
+        <p class="error" id="app-venue-choice-error" data-venue-choice-error role="alert" hidden>Выбери зал, чтобы посмотреть его расписание.</p>
         <button type="button" class="button primary" data-venue-choice-date>Выбрать дату</button>
     </div>
 </dialog>
@@ -440,7 +441,7 @@
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>
         <button type="button" class="icon-button" data-venue-overlay-close aria-label="Закрыть">
-            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
         </button>
     </div>
     @include('theme::pages.venues.partials.day-calendar')
@@ -468,7 +469,7 @@
     @include('theme::pages.account.partials.direct-message-dialog')
 @endauth
 <dialog class="app-venue-overlay" data-venue-interests-dialog aria-label="Игроки, заинтересованные в площадке">
-    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button></div>
+    <div class="app-venue-overlay__header"><h2>Площадкой интересуются</h2><button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button></div>
     <div class="app-venue-interests-dialog__total" aria-label="{{ $activeVenueInterestCount }} {{ $venuePlayerWord }}">
         <strong class="app-venue-interests-dialog__total-number">{{ $activeVenueInterestCount }}</strong>
         <span class="app-venue-interests-dialog__total-word">{{ $venuePlayerWord }}</span>
@@ -479,14 +480,14 @@
 <dialog class="app-venue-overlay app-venue-player-details-dialog" data-venue-player-details-dialog aria-labelledby="app-venue-player-details-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-player-details-title">Игровая информация</h2>
-        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
+        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </div>
     <div class="app-venue-player-details__body" data-venue-player-details-body></div>
 </dialog>
 <dialog class="app-venue-overlay app-venue-overlay--slot" data-venue-slot-dialog aria-labelledby="app-venue-slot-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-slot-title" data-venue-slot-title>Занятый слот</h2>
-        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
+        <button type="button" data-venue-overlay-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg></button>
     </div>
     <p class="app-venue-slot-dialog__time" data-venue-slot-time></p>
     <p class="muted" data-venue-slot-message></p>
