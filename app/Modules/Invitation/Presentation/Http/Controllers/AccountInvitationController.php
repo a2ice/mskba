@@ -6,7 +6,7 @@ use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
-use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
+use App\Modules\Invitation\Presentation\Http\Requests\InvitationRegisterRequest;
 use App\Modules\Invitation\Application\Services\AccountInvitationManager;
 use App\Modules\Invitation\Domain\Models\AccountInvitation;
 use Carbon\CarbonImmutable;
@@ -51,13 +51,13 @@ final class AccountInvitationController
             'currentUser' => $current,
         ])->withHeaders([
             'Cache-Control' => 'private, no-store, max-age=0',
-            'Referrer-Policy' => 'no-referrer',
+            'Referrer-Policy' => 'same-origin',
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',
         ]);
     }
 
     public function register(
-        RegisterRequest $request, AccountInvitationManager $manager,
+        InvitationRegisterRequest $request, AccountInvitationManager $manager,
         RegisterUserHandler $register, AuthHandler $authHandler
     ): RedirectResponse {
         $token = (string) $request->session()->get('account_invitation_token', '');
@@ -68,7 +68,8 @@ final class AccountInvitationController
             return redirect()->route('account-invitations.continue')
                 ->with('warning', 'Вы уже вошли в аккаунт. Примите приглашение для текущего пользователя.');
         }
-        $request->validate(['accept_invitation' => ['accepted']]);
+        // The invitation-specific FormRequest validates explicit acceptance
+        // and redirects any registration errors to the token-free continuation.
 
         // An invited email belonging to any existing identity must be attached
         // to that identity after login, not used to produce a duplicate user.
@@ -76,7 +77,7 @@ final class AccountInvitationController
             ->where('user_email_key', $invitation->contact_value)->exists()) {
             throw ValidationException::withMessages([
                 'username' => 'Этот email уже связан с аккаунтом. Войдите в него и примите приглашение.',
-            ]);
+            ])->redirectTo(route('account-invitations.continue'));
         }
 
         $data = $request->validated();
@@ -99,7 +100,8 @@ final class AccountInvitationController
                 return $created;
             });
         } catch (InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['username' => $e->getMessage()]);
+            throw ValidationException::withMessages(['username' => $e->getMessage()])
+                ->redirectTo(route('account-invitations.continue'));
         }
 
         // Reuse the normal browser login path: canonical identity resolution,
@@ -113,7 +115,11 @@ final class AccountInvitationController
 
     public function accept(Request $request, AccountInvitationManager $manager): RedirectResponse
     {
-        $request->validate(['accept_invitation' => ['accepted']]);
+        try {
+            $request->validate(['accept_invitation' => ['accepted']]);
+        } catch (ValidationException $e) {
+            throw $e->redirectTo(route('account-invitations.continue'));
+        }
         $token = (string) $request->session()->get('account_invitation_token', '');
         $user = $request->user();
         abort_unless($user !== null, 401);
@@ -121,7 +127,8 @@ final class AccountInvitationController
         try {
             $manager->accept($manager->findByToken($token), $user);
         } catch (InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['accept_invitation' => $e->getMessage()]);
+            throw ValidationException::withMessages(['accept_invitation' => $e->getMessage()])
+                ->redirectTo(route('account-invitations.continue'));
         }
 
         return redirect()->route('account-invitations.continue')
