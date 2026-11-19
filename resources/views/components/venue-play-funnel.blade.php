@@ -50,6 +50,8 @@
     width:min(690px,calc(100vw - 24px));max-width:calc(100vw - 24px);
     max-height:90dvh;padding:0;overflow:hidden;color:var(--text,#fff);
 }
+.venue-play-dialog[open]{display:flex;flex-direction:column}
+.venue-play-dialog:not([open]){display:none}
 .venue-play-dialog:not(.venue-play-dialog--app){
     border:1px solid var(--line,#59606a);border-radius:16px;
     background:var(--surface,#1b1f27);box-shadow:0 20px 85px #0008;
