@@ -145,6 +145,9 @@ final class EventController extends Controller
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
         ]);
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
+        if ($selectedType === EventTypeEnum::GAME_TRAINING) {
+            $selectedType = EventTypeEnum::TRAINING;
+        }
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $minimumStartsAt = $now->subMinute()->startOfMinute();
