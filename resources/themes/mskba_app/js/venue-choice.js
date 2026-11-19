@@ -14,7 +14,7 @@
         }));
     };
     const open=(date=null)=>{
-        desiredDate=date;error.hidden=true;
+        desiredDate=date;error.hidden=true;select?.removeAttribute('aria-invalid');
         // One court means there is no decision to make. Keep the existing
         // calendar/quote pipeline rather than showing an unnecessary step.
         const available=[...select.options].map(option=>Number(option.value))
@@ -37,11 +37,11 @@
     choice.querySelector('[data-venue-choice-date]')?.addEventListener('click',()=>{
         const courtId=Number(select?.value);
         if(!Number.isSafeInteger(courtId)||courtId<1){
-            error.hidden=false;select?.focus();return;
+            error.hidden=false;select?.setAttribute('aria-invalid','true');select?.focus();return;
         }
         chooseCourt(courtId,desiredDate);
     });
-    select?.addEventListener('change',()=>{error.hidden=true;});
+    select?.addEventListener('change',()=>{error.hidden=true;select.removeAttribute('aria-invalid');});
     choice.querySelectorAll('[data-venue-choice-close]').forEach(button=>
         button.addEventListener('click',()=>choice.close()));
     let downOutside=false;
