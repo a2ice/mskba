@@ -452,7 +452,12 @@ async function resume(){
     step.value='options';await openDialog();void refreshChannels();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+function onClick(e){const trigger=e.target.closest?.('[data-play-intent-open]');if(trigger){e.preventDefault();
+    // Reuse the universal two-step wizard with the venue from the clicked card.
+    // The global Vue root has no venue-specific props on most pages.
+    const clickedVenueId=Number(trigger.dataset.venueId);
+    const venueId=Number.isSafeInteger(clickedVenueId)&&clickedVenueId>0?clickedVenueId:(props.options.venueId??null);
+    const venueName=trigger.dataset.venueName||props.options.venueName||'';
     pendingSuccessToast=null;
     contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
