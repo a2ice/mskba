@@ -23,60 +23,20 @@ use Illuminate\Http\Response;
 
 final class VenueOwnershipClaimController extends Controller
 {
-    public function landing(
-        Request $request,
-        Venue $venue,
-        VenueMembershipAccess $memberships,
-        VenueUserRestrictionService $restrictions,
-    ): Response {
-        $currentOwnership = VenueOwnership::query()
-            ->with('owner.profile')
-            ->where('venue_id', $venue->id)
-            ->where('active_marker', true)
-            ->first();
-        $owner = $currentOwnership?->owner ?? $memberships->activeOwner($venue);
-        $user = $request->user()?->canonical();
-        $pendingClaim = null;
-        $draftClaim = null;
-        $claimHistory = collect();
-        $restriction = null;
-
-        if ($user !== null) {
-            $claimHistory = VenueOwnershipClaim::query()
-                ->where('venue_id', $venue->id)
-                ->whereIn('applicant_user_id', $user->identityIds())
-                ->latest('id')
-                ->get();
-            $pendingClaim = $claimHistory
-                ->first(fn (VenueOwnershipClaim $claim): bool => $claim->status === VenueOwnershipClaimStatusEnum::PENDING);
-            $draftClaim = $claimHistory->first(fn (VenueOwnershipClaim $claim): bool => $claim->status === VenueOwnershipClaimStatusEnum::DRAFT);
-            $restriction = $restrictions->active($venue, $user, VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM);
+    /** Historic public link: the canonical owner flow lives inside My Contracts. */
+    public function landing(Request $request, Venue $venue): RedirectResponse
+    {
+        if (! $request->user()) {
+            $request->session()->put('url.intended', route('account.venue-contracts.show', $venue));
+            return redirect()->guest(route('login'));
         }
 
-        $identityVerified = $user !== null
-            && ($user->isConfirmed() || $user->hasVerifiedPrimaryContact());
-
-        return ThemeResolver::page('venues.ownership', [
-            'venue' => $venue,
-            'owner' => $owner,
-            'currentOwnership' => $currentOwnership,
-            'currentUser' => $user,
-            'pendingClaim' => $pendingClaim,
-            'draftClaim' => $draftClaim,
-            'claimHistory' => $claimHistory,
-            'restriction' => $restriction,
-            'canSubmitClaim' => $currentOwnership === null
-                && $owner === null
-                && $identityVerified
-                && $pendingClaim === null
-                && $restriction === null,
-            'needsAccountConfirmation' => $user !== null && ! $identityVerified,
-        ]);
+        return redirect()->route('account.venue-contracts.show', $venue);
     }
 
     public function verify(Request $request, Venue $venue): RedirectResponse
     {
-        $request->session()->put('venue_ownership.intended_url', route('venues.management', $venue));
+        $request->session()->put('venue_ownership.intended_url', route('account.venue-contracts.show', $venue));
 
         return redirect()
             ->route('account.confirmation')
@@ -87,14 +47,14 @@ final class VenueOwnershipClaimController extends Controller
     {
         $user = $request->user()?->canonical();
         if ($user === null) {
-            return redirect()->route('venues.management', $venue);
+            return redirect()->route('account.venue-contracts.show', $venue);
         }
 
         if (! $user->isConfirmed() && ! $user->hasVerifiedPrimaryContact()) {
             return $this->verify($request, $venue);
         }
 
-        return redirect()->to(route('venues.management', $venue).'#claim-form');
+        return redirect()->to(route('account.venue-contracts.show', $venue).'#claim-form');
     }
 
     public function store(
@@ -109,19 +69,19 @@ final class VenueOwnershipClaimController extends Controller
         try {
             $claim = $submit->handle($venue, $request->user(), $validated['evidence']);
         } catch (VenueOwnershipClaimException $exception) {
-            return $this->error($request, $exception->getMessage(), route('venues.management', $venue));
+            return $this->error($request, $exception->getMessage(), route('account.venue-contracts.show', $venue));
         }
 
         if ($request->expectsJson()) {
             return response()->json([
                 'claim_id' => $claim->public_id,
                 'status' => $claim->status->value,
-                'url' => route('account.venue-ownership.show', $claim),
+                'url' => route('account.venue-contracts.show', $venue),
             ], 201);
         }
 
         return redirect()
-            ->route('account.venue-ownership.show', $claim)
+            ->route('account.venue-contracts.show', $venue)
             ->with('status', 'Заявка отправлена. Статус будет обновляться автоматически.');
     }
 
