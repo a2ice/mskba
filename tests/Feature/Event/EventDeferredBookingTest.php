@@ -45,7 +45,7 @@ final class EventDeferredBookingTest extends TestCase
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
         $this->assertTrue($event->booking_deferred);
         $this->assertNull($event->booking);
-        $this->assertDatabaseMissing('event_venue_bookings', ['event_id' => $event->id]);
+        $this->assertSame(0, \\App\\Modules\\Event\\Domain\\Models\\VenueBooking::query()\n            ->where('event_id', $event->id)->count());
 
         $retry = $handler->handle($actor, $data);
         $this->assertSame($event->id, $retry->id);
