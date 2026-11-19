@@ -78,7 +78,7 @@
     };
     const syncType=()=>{
         form.querySelector('[data-quick-game-fields]').hidden=type.value!=='game';
-        if(!editingTitle)title.value=(type.selectedOptions?.[0]?.textContent||'Игра')+' на площадке';
+        if(!editingTitle)title.value=type.value ? (type.selectedOptions?.[0]?.textContent||'Игра')+' на площадке' : '';
     };
     const syncCourts=()=>{
         const remembered=court.value;
