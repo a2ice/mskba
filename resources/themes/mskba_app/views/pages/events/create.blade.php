@@ -185,11 +185,11 @@
                 <textarea id="eventDescription" rows="4" maxlength="5000" name="description">{{ old('description') }}</textarea>
             </div>
             <h2>Планирование аренды</h2>
-            <p>Если у площадки предусмотрена аренда, мероприятие будет опубликовано без бронирования. Предзаявка — необязательный сигнал площадке для планирования и переписки, она не занимает слот.</p>
+            <p>Если для площадки настроена аренда, создание мероприятия само по себе не бронирует время. Предварительный интерес можно отправить отдельно — он не занимает слот и не гарантирует аренду.</p>
             <input type="hidden" name="send_pre_request" value="0">
             <label class="check-label">
                 <input type="checkbox" name="send_pre_request" value="1"
-                    @checked((string) old('send_pre_request', '1') === '1')>
+                    @checked((string) old('send_pre_request', '0') === '1')>
                 <span>Сообщить площадке о предварительном интересе</span>
             </label>
             <div class="app-rental-pricing__actions">
