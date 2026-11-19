@@ -24,6 +24,8 @@
 <style>
 .venue-main-favorite-dialog{width:min(470px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:90dvh;padding:0;color:var(--text,#f5f6f8)}
 
+.venue-main-favorite-dialog[open]{display:flex;flex-direction:column}
+.venue-main-favorite-dialog:not([open]){display:none}
 .venue-main-favorite-dialog:not(.venue-main-favorite-dialog--app){border:1px solid var(--line,#646a72);border-radius:16px;background:var(--surface,#1d2027);box-shadow:0 20px 85px #0008}
 .venue-main-favorite-dialog:not(.venue-main-favorite-dialog--app)::backdrop{background:rgba(0,0,0,.64)}
 .venue-main-favorite-dialog:not(.venue-main-favorite-dialog--app)[open]>.venue-main-favorite-dialog__header::before{content:"⠿";align-self:center;justify-self:center;color:var(--muted,#929aa4);font-size:1rem;line-height:1;pointer-events:none}
