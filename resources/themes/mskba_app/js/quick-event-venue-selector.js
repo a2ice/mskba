@@ -162,6 +162,10 @@ import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-ma
             &&Number.isFinite(lat)&&Number.isFinite(lon)
             &&Math.abs(lat)<=90&&Math.abs(lon)<=180&&!(lat===0&&lon===0);
     };
+    // Preview details and rendered cards persist while this page is open.
+    // Reopening a pin must not refetch its details or recreate its loaded image.
+    const previewResponses=new Map();
+    const previewCards=new Map();
     let previewEpoch=0;
     const dismissPreview=()=>{
         ++previewEpoch;cardVenue=null;
@@ -171,8 +175,9 @@ import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-ma
         ? 'button primary' : 'btn btn--primary';
     function showPreview(venue){
         const item=normalize(venue);
+        const key=String(item.id||item.preview_url||item.name);
         const requestEpoch=++previewEpoch;
-        const render=(details)=>{
+        const render=(details,mediaPending=false)=>{
             if(requestEpoch!==previewEpoch||!mapDialog.open)return;
             // Preserve availability and linked venue identifiers from search;
             // the per-venue preview endpoint enriches the same card with image.
@@ -188,30 +193,63 @@ import { nearbyVenueBounds, NEARBY_ZOOM_MARGIN_PX } from './quick-event-venue-ma
                 amenities:item.amenities,
             });
             cardVenue=combined;
-            preview.replaceChildren(renderVenueMapInfoCard(combined,{
-                compact:true,
-                showBadge:false,
-                actionClass:cardActionClass,
-                onClose:dismissPreview,
-                onSelect:chosen=>{selected(chosen);mapDialog.close();},
-            }));
+            const signature=JSON.stringify([combined,mediaPending]);
+            let entry=previewCards.get(key);
+            if(!entry||entry.signature!==signature){
+                entry={
+                    signature,
+                    node:renderVenueMapInfoCard(combined,{
+                        compact:true,
+                        showBadge:false,
+                        mediaPending,
+                        actionClass:cardActionClass,
+                        onClose:dismissPreview,
+                        onSelect:chosen=>{selected(chosen);mapDialog.close();},
+                    }),
+                };
+                previewCards.set(key,entry);
+                if(previewCards.size>40)previewCards.delete(previewCards.keys().next().value);
+            }
+            preview.replaceChildren(entry.node);
             preview.hidden=false;
         };
-        render(item);
+        const cached=previewResponses.get(key);
+        if(cached?.details){
+            render(cached.details);
+            return;
+        }
+        // The search DTO does not always contain image_url: while fetching the
+        // canonical preview, show a loader rather than claiming no photo exists.
+        render(item,Boolean(item.preview_url&&!item.image_url));
         if(!item.preview_url)return;
-        try{
-            const url=new URL(item.preview_url,location.origin);
-            if(url.origin!==location.origin||!/^\/venues\/[^/]+\/preview\/?$/.test(url.pathname))return;
-            void fetch(url.href,{headers:{Accept:'application/json'},credentials:'same-origin'})
-                .then(response=>{
-                    if(!response.ok)throw new Error('Preview unavailable');
-                    return response.json();
-                })
-                .then(payload=>{
-                    if(payload?.venue)render(payload.venue);
-                })
-                .catch(()=>{/* The original search details remain visible. */});
-        }catch{/* Do not load an invalid preview URL. */}
+        let promise=cached?.promise;
+        if(!promise){
+            try{
+                const url=new URL(item.preview_url,location.origin);
+                if(url.origin!==location.origin||!/^\/venues\/[^/]+\/preview\/?$/.test(url.pathname)){
+                    render(item,false);return;
+                }
+                promise=fetch(url.href,{headers:{Accept:'application/json'},credentials:'same-origin'})
+                    .then(response=>{
+                        if(!response.ok)throw new Error('Preview unavailable');
+                        return response.json();
+                    })
+                    .then(payload=>{
+                        if(!payload?.venue)throw new Error('Invalid preview');
+                        previewResponses.set(key,{details:payload.venue});
+                        return payload.venue;
+                    })
+                    .catch(error=>{
+                        previewResponses.delete(key);
+                        throw error;
+                    });
+                previewResponses.set(key,{promise});
+            }catch{
+                render(item,false);return;
+            }
+        }
+        void promise.then(details=>render(details))
+            .catch(()=>render(item,false));
     }
 
     const addFallback=venues=>{
