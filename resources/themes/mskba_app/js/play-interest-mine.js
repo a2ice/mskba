@@ -16,16 +16,31 @@ if (root) {
     detailsDialog?.addEventListener('close',()=>detailsTrigger?.focus({preventScroll:true}));
     const typeSelect = filters?.querySelector('[name="type"]');
     const statusSelect = filters?.querySelector('[name="status"]');
-    const validTypes = new Set(['all','play','venue']);
+    const validTypes = new Set(['all','play']);
     const validStatuses = new Set(['all','active','paused','expired','cancelled','completed']);
     let currentPage = 1;
     let loadSequence = 0;
 
     function syncFromUrl() {
         const url = new URL(location.href);
-        typeSelect.value = validTypes.has(url.searchParams.get('type')) ? url.searchParams.get('type') : 'all';
+        const requestedType = url.searchParams.get('type');
+        // Old deep links distinguished the venue anchor, not a subscription type.
+        typeSelect.value = requestedType === 'venue' ? 'play' : (validTypes.has(requestedType) ? requestedType : 'all');
+        if (requestedType === 'venue') {
+            url.searchParams.set('type', 'play');
+            history.replaceState(null, '', url);
+        }
         statusSelect.value = validStatuses.has(url.searchParams.get('status')) ? url.searchParams.get('status') : 'active';
         currentPage = Math.max(1, Number.parseInt(url.searchParams.get('page'), 10) || 1);
+        syncSubscriptionNav();
+    }
+    function syncSubscriptionNav() {
+        document.querySelectorAll('[data-subscription-nav-type]').forEach(link => {
+            const active = link.dataset.subscriptionNavType === typeSelect.value;
+            link.classList.toggle('is-active', active);
+            if (active) link.setAttribute('aria-current', 'page');
+            else link.removeAttribute('aria-current');
+        });
     }
     function updateUrl() {
         const url = new URL(location.href);
@@ -34,6 +49,7 @@ if (root) {
             else url.searchParams.set(key,value);
         }
         history.pushState(null,'',url);
+        syncSubscriptionNav();
     }
     const openPage = page => {
         currentPage = page;

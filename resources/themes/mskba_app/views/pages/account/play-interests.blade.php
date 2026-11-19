@@ -3,8 +3,13 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Мои подписки',
-        'intro' => 'Управляй своими подписками, настраивай уведомления и следи за обновлениями в одном месте.',
     ])
+    @push('account-intro')
+        <section class="panel app-account-intro app-account-intro--with-action" aria-label="О разделе">
+            <p>Управляй своими подписками, настраивай уведомления и следи за обновлениями в одном месте.</p>
+            <button type="button" class="button primary app-account-intro__action" data-subscription-create>Добавить подписку</button>
+        </section>
+    @endpush
 @endsection
 
 @section('account-content')
@@ -21,7 +26,6 @@
                     <select id="account-subscription-type" name="type">
                         <option value="all">Все типы</option>
                         <option value="play">Игровые подписки</option>
-                        <option value="venue">С привязкой к площадке</option>
                     </select>
                     <svg aria-hidden="true"><use href="#chevron-down"/></svg>
                 </span>

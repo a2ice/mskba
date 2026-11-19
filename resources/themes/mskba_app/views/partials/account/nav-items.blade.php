@@ -28,6 +28,7 @@
     @else
         <a class="app-account-nav__link{{ $accountNavDepth > 0 ? ' app-account-nav__child' : '' }}{{ $item['active'] ? ' is-active' : '' }}"
            href="{{ $item['url'] }}" title="{{ $item['label'] }}"
+           @if (isset($item['subscriptionNavType'])) data-subscription-nav-type="{{ $item['subscriptionNavType'] }}" @endif
            @if ($item['active']) aria-current="page" @endif>
             @if (! empty($item['icon']))
                 <svg class="app-account-nav__icon" aria-hidden="true"><use href="#{{ $item['icon'] }}"/></svg>

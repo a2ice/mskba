@@ -5,6 +5,10 @@ const STORAGE = 'mskba:play-intent:pending:v1';
 const visible=ref(false), el=ref(null), expanded=ref(false);
 const busy=ref(false), success=ref(null), error=ref(''), errors=ref({});
 const interestName=ref(''), manuallyNamed=ref(false), step=ref('form');
+const subscriptionType=ref(null); // Provider registry: only play is implemented today.
+const availableSubscriptionTypes=[
+    {id:'play',label:'Игровая подписка',description:'Находи игры и площадки по своим условиям, с привязкой к площадке или без неё.'},
+];
 const hasExpiry=ref(false), expiryDate=ref('');
 const venueSearch=ref(''), venueSuggestions=ref([]), searchingVenue=ref(false), venueMenu=ref(false);
 const matchingVenues=ref([]), matchingLoading=ref(false), matchingError=ref(''), matchingOpen=ref(false);
@@ -41,7 +45,8 @@ const favoriteRetryNeeded=ref(false);
 let pendingSuccessToast = null;
 const supportsPlay=computed(()=>!hasFavorite.value||contextualModule.value==='play');
 const titleText=computed(()=>contextSource.value==='favorite'?favoriteTitle.value:
-    editingId.value?'Редактировать подписку':'Хочу здесь играть');
+    editingId.value?'Редактировать подписку':
+    contextSource.value==='subscriptions'?(step.value==='type'?'Новая подписка':'Игровая подписка'):'Хочу здесь играть');
 const selectedVenueName=ref(props.options.venueName ?? ''), selectedVenueUrl=ref(props.options.venueUrl ?? '');
 const chosenVenueId=computed(() => venueDisabled.value ? null : selectedVenueId.value);
 const latitude=ref(props.options.venueLatitude ?? ''), longitude=ref(props.options.venueLongitude ?? '');
@@ -340,6 +345,20 @@ function validateExpiry() {
     }
     return true;
 }
+function nextSubscriptionType(){
+    error.value='';errors.value={};
+    if (!availableSubscriptionTypes.some(item => item.id===subscriptionType.value)) {
+        error.value='Выбери тип подписки.';
+        return;
+    }
+    step.value='form';
+    void nextTick(()=>el.value?.querySelector('#app-play-intent-name')?.focus({preventScroll:true}));
+}
+function backStep(){
+    error.value='';errors.value={};
+    if(step.value==='options') step.value='form';
+    else if(step.value==='form' && contextSource.value==='subscriptions') step.value='type';
+}
 function next(){
     error.value='';errors.value={};
     if(!validateExpiry())return;
@@ -452,13 +471,20 @@ async function resume(){
     step.value='options';await openDialog();void refreshChannels();
 }
 function authSuccess(){isAuth.value=true;void resume();}
-function onClick(e){if(e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+function onClick(e){
+    const accountCreate=Boolean(e.target.closest?.('[data-subscription-create]'));
+    if(accountCreate || e.target.closest?.('[data-play-intent-open]')){e.preventDefault();
+    // Closing an unfinished account wizard preserves all fields and the step.
+    if(accountCreate && contextSource.value==='subscriptions' && !success.value){
+        void openDialog();return;
+    }
     pendingSuccessToast=null;
-    contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
+    subscriptionType.value=accountCreate?null:'play';
+    contextSource.value=accountCreate?'subscriptions':'play';contextType.value='venue';contextId.value=props.options.venueId??null;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
-    editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
+    editingId.value=null;step.value=accountCreate?'type':'form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=props.options.venueId??null;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=props.options.venueName??'';selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
 async function loadMatchingVenues(){
     if(!editingId.value || matchingLoading.value)return;
     matchingOpen.value=true;matchingLoading.value=true;matchingError.value='';matchingVenues.value=[];
@@ -499,7 +525,7 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
 <dialog v-if="visible" ref="el" class="mskba-modal app-play-dialog" :data-surface-tone="success?'success':undefined"
  aria-labelledby="app-play-dialog-title" @cancel.prevent="close()" @click="onBackdrop">
     <header class="mskba-modal__header app-play-dialog__header">
-        <div><p class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
+        <div><p v-if="contextSource!=='subscriptions'" class="eyebrow accent">{{contextSource==='favorite'?'MSKBA / ИЗБРАННОЕ':'MSKBA / ИГРА'}}</p><h2 id="app-play-dialog-title">{{success?(editingId?'Подписка сохранена':'Подписка оформлена'):titleText}}</h2></div>
         <button type="button" class="icon-button" aria-label="Закрыть окно" @click="close()"><svg aria-hidden="true"><use href="#close"/></svg></button>
     </header>
     <template v-if="success">
@@ -518,6 +544,18 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
         </footer>
     </template>
     <template v-else>
+        <div v-if="step==='type'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
+            <fieldset class="app-play-dialog__subscription-types">
+                <legend>Выбери тип подписки</legend>
+                <label v-for="type in availableSubscriptionTypes" :key="type.id"
+                    class="app-play-dialog__subscription-type" :class="{'is-selected':subscriptionType===type.id}">
+                    <input v-model="subscriptionType" type="radio" name="subscription_type" :value="type.id"
+                        @change="error=''" @keydown.enter.prevent="nextSubscriptionType()">
+                    <span><strong>{{type.label}}</strong><small>{{type.description}}</small></span>
+                </label>
+            </fieldset>
+            <p v-if="error" class="error" role="alert">{{error}}</p>
+        </div>
         <div v-show="step==='form'" class="mskba-modal__body mskba-scroll app-play-dialog__body">
             <section v-if="contextSource==='favorite'" class="app-play-dialog__context-section">
                 <p class="app-play-dialog__context-hint">{{favoriteDescription}}</p>
@@ -797,14 +835,17 @@ onBeforeUnmount(()=>{window.removeEventListener('mskba:subscription-dialog:open'
             <p v-for="(msgs,k) in errors" :key="k" class="error" role="alert">{{Array.isArray(msgs)?msgs[0]:msgs}}</p>
         </div>
         <footer class="mskba-modal__footer app-play-dialog__footer app-play-dialog__steps-footer">
-            <template v-if="step==='form'">
-                <button class="button secondary" type="button" @click="close()">Отмена</button>
+            <template v-if="step==='type'">
+                <button class="button primary" type="button" :disabled="busy" @click="nextSubscriptionType()">Далее</button>
+            </template>
+            <template v-else-if="step==='form'">
+                <button class="button secondary" type="button" @click="contextSource==='subscriptions'?backStep():close()">{{contextSource==='subscriptions'?'Назад':'Отмена'}}</button>
                 <button v-if="supportsPlay && playOpen" class="button primary" type="button" :disabled="busy || favoriteBusy" @click="next()">Далее</button>
                 <button v-else class="button primary" type="button" :disabled="busy || favoriteBusy"
                     @click="saveFavoriteOnly()">Готово</button>
             </template>
             <template v-else>
-                <button class="button secondary" type="button" :disabled="busy" @click="step='form'">Назад</button>
+                <button class="button secondary" type="button" :disabled="busy" @click="backStep()">Назад</button>
                 <button class="button primary" type="button" :disabled="busy" @click="submit()">{{busy?'Подписываем…':editingId?'Сохранить подписку':'Подписаться'}}</button>
             </template>
         </footer>

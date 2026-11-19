@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
@@ -216,9 +217,14 @@ final class MskbaAppAccountNavigationTest extends TestCase
 
         $this->assertSame(['Мои лиги'], $this->childLabels());
         $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
-        $this->assertSame(route('play-intents.mine'), $subscriptions['url']);
+        $this->assertNull($subscriptions['url']);
+        $this->assertSame(['Все подписки'], array_column($subscriptions['children'], 'label'));
+        $this->assertSame(route('play-intents.mine'), $subscriptions['children'][0]['url']);
         $this->get(route('play-intents.mine'))->assertOk()
             ->assertSee('Мои подписки')
+            ->assertSee('data-subscription-create', false)
+            ->assertSee('Добавить подписку')
+            ->assertDontSee('С привязкой к площадке')
             ->assertSee('data-subscriptions-filters', false)
             ->assertSee('data-subscriptions-pagination', false)
             ->assertSee('class="field-group app-play-interests__filter-field"', false)
@@ -249,6 +255,41 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertSame(['Все контракты', 'Площадки'], array_column($contracts['children'], 'label'));
         $this->assertSame(route('account.contracts'), $contracts['children'][0]['url']);
         $this->assertSame(route('account.contracts.venues'), $contracts['children'][1]['url']);
+    }
+
+
+    public function test_subscription_sidebar_adds_game_type_only_for_owner_with_subscription(): void
+    {
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $this->actingAs($owner)->get(route('play-intents.mine'))->assertOk();
+        $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
+        $this->assertSame(['Все подписки'], array_column($subscriptions['children'], 'label'));
+
+        PlayIntent::query()->create([
+            'user_id' => $stranger->id,
+            'client_request_id' => (string) \Illuminate\Support\Str::uuid(),
+            'name' => 'Чужая подписка',
+            'cadence' => 'flexible', 'status' => 'active',
+        ]);
+        $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
+        $this->assertCount(1, $subscriptions['children']);
+
+        PlayIntent::query()->create([
+            'user_id' => $owner->id,
+            'client_request_id' => (string) \Illuminate\Support\Str::uuid(),
+            'name' => 'Игры по условиям',
+            'cadence' => 'flexible', 'status' => 'cancelled',
+        ]);
+        $this->get(route('play-intents.mine', ['type' => 'play']))->assertOk()
+            ->assertSee('data-subscription-nav-type="play"', false)
+            ->assertSee('Игровые подписки');
+        $subscriptions = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мои подписки');
+        $this->assertSame(['Все подписки', 'Игровые подписки'], array_column($subscriptions['children'], 'label'));
+        $this->assertFalse($subscriptions['children'][0]['active']);
+        $this->assertTrue($subscriptions['children'][1]['active']);
+        $this->assertSame(route('play-intents.mine', ['type' => 'play']), $subscriptions['children'][1]['url']);
+        $this->assertNull($subscriptions['url']);
     }
 
     public function test_player_role_shows_all_destinations_without_any_team_or_games(): void
