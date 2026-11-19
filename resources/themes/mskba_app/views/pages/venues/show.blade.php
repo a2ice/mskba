@@ -536,7 +536,7 @@
             <span data-venue-day-minimum></span>
         </div>
         <button type="submit" class="button primary" data-venue-day-book disabled>
-            Забронировать
+            Далее
         </button>
     </form>
 </dialog>
