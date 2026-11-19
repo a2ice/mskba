@@ -1,0 +1,12 @@
+.app-rental-invoice-card { border: 1px solid var(--color-border, #c5c5c5); border-radius: 12px; padding: 14px; margin: 10px 0; text-align: left; max-width: 100%; overflow-wrap: anywhere; }
+.app-rental-invoice-card > p { margin: 7px 0; font-size: .9em; }
+.app-rental-invoice-card__amount { font-size: 1.25em; font-weight: 700; margin-top: 7px; }
+.app-rental-invoice-card__actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.app-rental-invoice-card__actions .button { font-size:.86em; }
+.app-rental-invoice-claim-dialog { border:1px solid var(--color-border,#ddd); border-radius:12px; padding:20px; width:min(440px,calc(100% - 24px)); max-height:90vh; color:var(--color-text,inherit); background:var(--color-background,#fff); }
+.app-rental-invoice-claim-dialog::backdrop { background:rgba(0,0,0,.5); }
+.app-rental-invoice-claim-dialog form { display:grid; gap:12px; }
+.app-rental-invoice-claim-dialog label { display:grid; gap:6px; }
+.app-rental-invoice-claim-dialog input, .app-rental-invoice-claim-dialog textarea { max-width:100%; width:100%; box-sizing:border-box; }
+.app-rental-invoice-claim-dialog__actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.app-rental-invoice-claim-dialog__error { color:#d33; }

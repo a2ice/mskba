@@ -18,12 +18,23 @@ final class VenueRentalInvoiceController extends Controller
         Request $request, VenueBooking $venueBooking,
         CurrentActorResolver $actors, VenueRentalInvoiceManager $invoices,
     ): JsonResponse|RedirectResponse {
-        $data = $request->validate(['template_id' => ['nullable', 'integer', 'min:1']]);
+        $data = $request->validate([
+            'template_id' => ['nullable', 'integer', 'min:1'],
+            'payment_method' => ['nullable', 'in:bank_transfer,sbp,cash,other'],
+            'payment_profile_id' => ['nullable', 'integer', 'min:1'],
+            'sbp_bank' => ['nullable', 'string', 'max:120'],
+            'sbp_phone' => ['nullable', 'string', 'max:32'],
+            'sbp_card' => ['nullable', 'string', 'max:32'],
+            'transfer_purpose' => ['nullable', 'string', 'max:400'],
+            'confirmation_hint' => ['nullable', 'string', 'max:400'],
+            'save_profile' => ['nullable', 'boolean'],
+        ]);
 
         return $this->run($request, fn () => $invoices->issueBuyer(
             $venueBooking->id,
             $actors->resolveForRequest($request),
             $data['template_id'] ?? null,
+            $data,
         ), 'Счёт покупателю выставлен.');
     }
 
@@ -31,10 +42,13 @@ final class VenueRentalInvoiceController extends Controller
         Request $request, VenueBooking $venueBooking, VenueRentalInvoice $invoice,
         CurrentActorResolver $actors, VenueRentalInvoiceManager $invoices,
     ): JsonResponse|RedirectResponse {
-        $data = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:2000'],
+            'reference' => ['nullable', 'string', 'max:190'],
+        ]);
 
         return $this->run($request, fn () => $invoices->claim(
-            $venueBooking->id, $invoice->id, $actors->resolveForRequest($request), $data['note'] ?? null,
+            $venueBooking->id, $invoice->id, $actors->resolveForRequest($request), $data['note'] ?? null, $data['reference'] ?? null,
         ), 'Заявление об оплате отправлено.');
     }
 
@@ -45,7 +59,7 @@ final class VenueRentalInvoiceController extends Controller
         $data = $request->validate([
             'decision' => ['required', 'in:received,postpay,self_attested'],
             'note' => ['required', 'string', 'max:2000'],
-            'method' => ['nullable', 'in:bank_transfer,cash,other'],
+            'method' => ['nullable', 'in:bank_transfer,sbp,cash,other'],
         ]);
 
         return $this->run($request, fn () => $invoices->settle(

@@ -11,6 +11,7 @@ use LogicException;
 #[Fillable([
     'public_id', 'conversation_id', 'author_actor_id', 'client_id', 'type', 'body',
     'attachment_disk', 'attachment_path', 'attachment_name', 'attachment_mime', 'attachment_size',
+    'rental_invoice_id',
 ])]
 class VenueBookingMessage extends Model
 {
@@ -24,6 +25,11 @@ class VenueBookingMessage extends Model
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(VenueBookingConversation::class, 'conversation_id');
+    }
+
+    public function rentalInvoice(): BelongsTo
+    {
+        return $this->belongsTo(VenueRentalInvoice::class, 'rental_invoice_id');
     }
 
     public function authorActor(): BelongsTo

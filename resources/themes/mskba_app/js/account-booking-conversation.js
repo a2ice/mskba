@@ -1,4 +1,5 @@
 import { subscribePrivate } from '../../../js/realtime.js';
+import { renderRentalInvoiceCard } from '../../../js/rental-invoice-card.js';
 
 const root = document.querySelector('[data-rental-chat-root]');
 
@@ -95,6 +96,10 @@ if (root) {
             body.className='app-messages__bubble-body';
             body.textContent=message.body;
             article.append(body);
+        }
+        if(message.invoice){
+            const invoiceCard = renderRentalInvoiceCard(message.invoice);
+            if(invoiceCard) article.append(invoiceCard);
         }
         if(message.attachment){
             const link=document.createElement('a');
