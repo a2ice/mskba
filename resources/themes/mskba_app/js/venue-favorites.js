@@ -69,7 +69,7 @@
     function enhance() {
         document.querySelectorAll('[data-favorite-venue]').forEach(btn=>{
             const id=Number(btn.dataset.favoriteVenue);
-            if(Number.isInteger(id)&&id>0) {paint(id);if(!known.has(id))pending.add(id);}
+            if(Number.isInteger(id)&&id>0) {if(!known.has(id))pending.add(id);paint(id);}
         });
         // Shared catalog/list/home/modal previews: never place a button inside <a>.
         const selectors=[
