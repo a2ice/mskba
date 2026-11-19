@@ -77,6 +77,9 @@ final class PlayIntentManager
             $intent ??= new PlayIntent;
             $intent->fill([
                 'user_id' => $canonical->id,
+                // The user explicitly edited this interest: protect it from
+                // being paused when a favorite is later removed.
+                'favorite_generated' => false,
                 'name' => $input['name'] ?? null,
                 'client_request_id' => $intent->client_request_id ?: ($input['client_request_id'] ?? null),
                 'venue_id' => $input['venue_id'] ?? null,

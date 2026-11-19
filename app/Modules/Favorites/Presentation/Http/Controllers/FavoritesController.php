@@ -10,6 +10,7 @@ use App\Modules\Favorites\Domain\Models\Favorite;
 use App\Modules\PlayInterest\Application\Services\FavoritePlayIntentService;
 use App\Modules\PlayInterest\Domain\Models\PlayIntent;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -78,6 +79,7 @@ final class FavoritesController extends Controller
         FavoritesManager $favorites,
         FavoriteTargetRegistry $registry,
         FavoriteCountService $counts,
+        FavoritePlayIntentService $subscriptions,
     ): JsonResponse {
         $validated = $request->validate([
             'type' => ['required', Rule::in(array_keys(FavoriteTargetRegistry::TYPES))],
@@ -93,7 +95,17 @@ final class FavoritesController extends Controller
             abort_unless($registry->visible($type, $id) !== null, 404);
         }
 
-        $favorite = $favorites->toggle($request, $type, $id);
+        $favorite = DB::transaction(function () use ($favorites, $subscriptions, $request, $type, $id) {
+            $favorite = $favorites->toggle($request, $type, $id);
+            if ($type === 'venue' && $request->user() !== null) {
+                if ($favorite->trashed_at === null) {
+                    $subscriptions->ensure($request->user(), $id);
+                } else {
+                    $subscriptions->pauseFavoriteGenerated($request->user(), $id);
+                }
+            }
+            return $favorite;
+        });
 
         return response()->json([
             'state' => $favorite->trashed_at === null ? 'active' : 'trashed',
