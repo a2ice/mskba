@@ -476,7 +476,7 @@
             <summary>Добавить в интерес</summary>
             <div class="app-venue-choice-dialog__option-body">
                 <p>Укажи, когда и в каком формате хочешь играть. Подписка поможет находить подходящие игры, а площадку при желании можно добавить в избранное.</p>
-                <button type="button" class="button primary" data-venue-choice-interest-next>Далее</button>
+                <button type="button" class="button primary" data-venue-choice-interest-next data-play-intent-open>Далее</button>
             </div>
         </details>
     </div>
