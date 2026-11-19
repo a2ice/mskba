@@ -234,6 +234,9 @@ final class EventController extends Controller
             return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
         }
         $item = $events->handle($event, $actor);
+        if ($item->starts_at === null) {
+            return ThemeResolver::page('events.unscheduled', ['event' => $item]);
+        }
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
         $currentParticipant = $item->participants->first(
             fn (EventParticipant $participant): bool => in_array((int) $participant->user_id, $identityIds, true),
