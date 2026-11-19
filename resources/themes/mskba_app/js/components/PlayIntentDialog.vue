@@ -459,7 +459,7 @@ function onClick(e){const trigger=e.target.closest?.('[data-play-intent-open]');
     const venueId=Number.isSafeInteger(clickedVenueId)&&clickedVenueId>0?clickedVenueId:(props.options.venueId??null);
     const venueName=trigger.dataset.venueName||props.options.venueName||'';
     pendingSuccessToast=null;
-    contextSource.value='play';contextType.value='venue';contextId.value=props.options.venueId??null;
+    contextSource.value='play';contextType.value='venue';contextId.value=venueId;
     favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
