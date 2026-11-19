@@ -648,3 +648,45 @@ dialog.app-venue-favorite-dialog>.app-venue-overlay__header{flex:0 0 auto}
         max-height:calc(100dvh - 24px);
     }
 }
+
+
+/* Task 337 acceptance: one aligned modal header/close and breathing room in
+   rental's court step. The shared modal-dragging controller owns movement. */
+.app-venue-overlay__header{align-items:center}
+dialog.app-venue-choice-dialog>.app-venue-overlay__header,
+dialog.app-venue-day-dialog>.app-venue-overlay__header{
+    display:grid;
+    grid-template-columns:16px minmax(0,1fr) 44px;
+    align-items:center;
+    gap:12px;
+}
+dialog.app-venue-choice-dialog>.app-venue-overlay__header h2,
+dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
+    min-width:0;
+    overflow-wrap:anywhere;
+}
+.app-venue-overlay__header button.icon-button{
+    justify-self:end;
+    display:inline-flex;
+    width:44px;
+    height:44px;
+    padding:0;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--text);
+}
+.app-venue-overlay__header button.icon-button:hover{background:var(--surface-raised)}
+.app-venue-choice-dialog__body{display:grid;gap:18px}
+.app-venue-choice-dialog__body>.muted{margin:0 0 2px;line-height:1.5}
+.app-venue-choice-dialog__body>.field-group{display:grid;gap:9px;margin:0}
+.app-venue-choice-dialog__body .select-control,
+.app-venue-choice-dialog__body .select-control select{width:100%}
+.app-venue-choice-dialog__body>[data-venue-choice-date]{justify-self:start;margin-top:8px}
+@media(max-width:480px){
+    dialog.app-venue-choice-dialog>.app-venue-overlay__header,
+    dialog.app-venue-day-dialog>.app-venue-overlay__header{
+        grid-template-columns:16px minmax(0,1fr) 44px;
+        gap:10px;
+    }
+}
