@@ -30,6 +30,10 @@ final class NewsController extends Controller
             'type' => $validated['type'] ?? '',
         ];
         $types = ContentTypeEnum::cases();
+        $filterTypes = array_values(array_filter(
+            $types,
+            static fn (ContentTypeEnum $type): bool => $type !== ContentTypeEnum::SYSTEM_UPDATE,
+        ));
 
         $contentItems = ContentItem::query()
             ->publishedInFeed()
@@ -37,6 +41,7 @@ final class NewsController extends Controller
             ->when($filters['q'] !== '', fn ($query) => $query->where(fn ($search) => $search
                 ->whereLike('title', '%'.$filters['q'].'%')
                 ->orWhereLike('short_description', '%'.$filters['q'].'%')))
+            ->when($filters['type'] === '', fn ($query) => $query->where('type', '!=', ContentTypeEnum::SYSTEM_UPDATE->value))
             ->when($filters['type'] !== '', fn ($query) => $query->where('type', $filters['type']))
             ->orderByDesc('feed_published_at')
             ->paginate(12)
@@ -48,7 +53,7 @@ final class NewsController extends Controller
             $this->viewer(),
         );
 
-        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types'));
+        return ThemeResolver::page('news.index', compact('contentItems', 'reactionSummaries', 'filters', 'types', 'filterTypes'));
     }
 
     public function show(ContentItem $contentItem, ReactionReadService $reactions): Response|RedirectResponse
