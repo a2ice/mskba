@@ -58,6 +58,20 @@ final class EventVenuePrefillTest extends TestCase
             ->assertSee('value="'.$court->id.'" data-venue-id="'.$venue->id.'"', false);
     }
 
+    public function test_wizard_without_venue_keeps_creation_flow_unbound(): void
+    {
+        $this->signIn();
+
+        $parameters = ['type' => EventTypeEnum::GAME->value];
+
+        $this->get(route('events.wizard', $parameters))
+            ->assertRedirect(route('events.create', $parameters));
+
+        $this->get(route('events.create', $parameters))
+            ->assertOk()
+            ->assertSee('Выберите площадку');
+    }
+
     public function test_wizard_and_create_reject_court_from_another_venue(): void
     {
         $this->signIn();
