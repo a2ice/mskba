@@ -579,3 +579,57 @@ test('персональная цена показывает зачёркнут�
         'Explanatory discount text must not be in the keyboard tab order');
     assert.equal(page.summary.children.at(-1).innerHTML, undefined);
 });
+
+
+test('Rental CTA skips court chooser for a single court, preserving calendar pipeline', () => {
+    const choiceSource = readFileSync(
+        new URL('../../resources/themes/mskba_app/js/venue-choice.js', import.meta.url), 'utf8',
+    );
+    const run = courtIds => {
+        const handlers = {};
+        const dispatches = [];
+        const select = {
+            options: courtIds.map(id => ({value:String(id)})),
+            value: courtIds.length === 1 ? String(courtIds[0]) : '',
+            addEventListener() {}, focus() {},
+        };
+        const close = {addEventListener() {}};
+        const dateButton = {addEventListener() {}};
+        const choice = {
+            open:false, opened:0, listeners:{},
+            querySelector:selector => ({
+                '[data-venue-choice-court]':select,
+                '[data-venue-choice-error]':{hidden:true},
+            })[selector],
+            querySelectorAll:()=>[close],
+            addEventListener(type,callback){this.listeners[type]=callback;},
+            showModal(){this.open=true;this.opened++;},
+            close(){this.open=false;},
+        };
+        choice.querySelector=selector=>({
+            '[data-venue-choice-court]':select,
+            '[data-venue-choice-error]':{hidden:true},
+            '[data-venue-choice-date]':dateButton,
+        })[selector];
+        const day = {dispatchEvent:e=>dispatches.push(e.detail)};
+        runInNewContext(choiceSource,{
+            document:{
+                querySelector:selector=>selector==='[data-venue-choice-dialog]'?choice:day,
+                addEventListener:(type,handler)=>{handlers[type]=handler;},
+            },
+            window:{addEventListener:(type,handler)=>{handlers['window:'+type]=handler;}},
+            CustomEvent:class {constructor(type,{detail}){this.type=type;this.detail=detail;}},
+            Number,
+        });
+        handlers.click({target:{closest:selector=>selector==='[data-venue-rental-open]'?{}:null},
+            preventDefault(){}});
+        return {choice,dispatches,select,handlers};
+    };
+    const single=run([13]);
+    assert.equal(single.choice.opened,0);
+    assert.equal(single.dispatches.length,1);
+    assert.equal(single.dispatches[0].courtId,13);
+    const multiple=run([13,14]);
+    assert.equal(multiple.choice.opened,1);
+    assert.equal(multiple.dispatches.length,0);
+});

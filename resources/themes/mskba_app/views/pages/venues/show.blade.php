@@ -409,7 +409,7 @@
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-choice-title">Арендовать площадку</h2>
-        <button type="button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
+        <button type="button" class="icon-button" data-venue-choice-close aria-label="Закрыть"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg></button>
     </div>
     <div class="app-venue-choice-dialog__body mskba-scroll">
         <p class="muted">Выбери зал или корт, затем дату и доступные временные интервалы.</p>
@@ -439,7 +439,7 @@
     aria-labelledby="app-venue-day-dialog-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-day-dialog-title" data-venue-day-title>Расписание дня</h2>
-        <button type="button" data-venue-overlay-close aria-label="Закрыть">
+        <button type="button" class="icon-button" data-venue-overlay-close aria-label="Закрыть">
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19"/></svg>
         </button>
     </div>

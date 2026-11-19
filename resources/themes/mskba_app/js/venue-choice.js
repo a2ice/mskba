@@ -7,8 +7,23 @@
     const select=choice.querySelector('[data-venue-choice-court]');
     const error=choice.querySelector('[data-venue-choice-error]');
     let desiredDate=null;
+    const chooseCourt=(courtId,date=null)=>{
+        if(choice.open)choice.close();
+        dayDialog.dispatchEvent(new CustomEvent('mskba:choose-court',{
+            detail:{courtId,date},
+        }));
+    };
     const open=(date=null)=>{
         desiredDate=date;error.hidden=true;
+        // One court means there is no decision to make. Keep the existing
+        // calendar/quote pipeline rather than showing an unnecessary step.
+        const available=[...select.options].map(option=>Number(option.value))
+            .filter(id=>Number.isSafeInteger(id)&&id>0);
+        if(available.length===1){
+            select.value=String(available[0]);
+            chooseCourt(available[0],date);
+            return;
+        }
         if(!choice.open)choice.showModal();
     };
     document.addEventListener('click',event=>{
@@ -24,10 +39,7 @@
         if(!Number.isSafeInteger(courtId)||courtId<1){
             error.hidden=false;select?.focus();return;
         }
-        choice.close();
-        dayDialog.dispatchEvent(new CustomEvent('mskba:choose-court',{
-            detail:{courtId,date:desiredDate},
-        }));
+        chooseCourt(courtId,desiredDate);
     });
     select?.addEventListener('change',()=>{error.hidden=true;});
     choice.querySelectorAll('[data-venue-choice-close]').forEach(button=>
@@ -35,4 +47,5 @@
     let downOutside=false;
     choice.addEventListener('pointerdown',event=>{downOutside=event.target===choice;});
     choice.addEventListener('pointerup',event=>{if(downOutside&&event.target===choice)choice.close();downOutside=false;});
+    choice.addEventListener('pointercancel',()=>{downOutside=false;});
 })();
