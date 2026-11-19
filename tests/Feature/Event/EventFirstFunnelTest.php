@@ -47,6 +47,20 @@ final class EventFirstFunnelTest extends TestCase
         ];
     }
 
+    public function test_retired_game_training_type_cannot_create_new_event(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $payload = $this->payload($venue);
+        $payload['type'] = 'game_training';
+
+        $this->actingAs($user)
+            ->postJson(route('events.funnel.store'), $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+
+        $this->assertDatabaseCount('events', 0);
+    }
+
     public function test_guest_cannot_create_event_but_can_fill_public_wizard(): void
     {
         $venue = $this->venue();
