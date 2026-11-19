@@ -258,7 +258,8 @@ final class EventController extends Controller
         );
         $seoDescription = $item->description ?: $generatedDescription;
 
-        return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
+        return ThemeResolver::page($item->type === EventTypeEnum::GAME && $item->primaryGame !== null
+                ? 'events.game-show' : 'events.show', [
             'event' => $item,
             'game' => $item->primaryGame,
             'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
