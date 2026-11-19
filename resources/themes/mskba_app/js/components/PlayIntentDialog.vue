@@ -460,7 +460,8 @@ function onClick(e){const trigger=e.target.closest?.('[data-play-intent-open]');
     const venueName=trigger.dataset.venueName||props.options.venueName||'';
     pendingSuccessToast=null;
     contextSource.value='play';contextType.value='venue';contextId.value=venueId;
-    favoriteOpen.value=false;favoriteSelected.value=true;favoriteState.value='unknown';
+    // A venue-interest subscription never silently creates a favorite.
+    favoriteOpen.value=false;favoriteSelected.value=false;favoriteState.value='unknown';
     favoriteError.value='';alreadySubscribed.value=false;playOpen.value=true;
     favoriteRetryNeeded.value=false;
     editingId.value=null;step.value='form';manuallyNamed.value=false;hasExpiry.value=false;expiryDate.value='';selectedVenueId.value=venueId;venueDisabled.value=false;showOnVenue.value=true;notifyMatches.value=true;notifyOffers.value=true;notifyVenueNews.value=true;gameChannels.value=['in_app'];venueChannels.value=['in_app'];offersChannels.value=['in_app'];similar.value=false;excludedVenues.value=[];venueNotice.value='';selectedVenueName.value=venueName;selectedVenueUrl.value=props.options.venueUrl??'';venueSearch.value=selectedVenueName.value;latitude.value=props.options.venueLatitude??'';longitude.value=props.options.venueLongitude??'';interestName.value=suggestedName.value;requestId=null;success.value=null;void openDialog().then(()=>void syncFavorite());}}
