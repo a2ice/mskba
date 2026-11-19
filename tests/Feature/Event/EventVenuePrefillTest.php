@@ -80,7 +80,7 @@ final class EventVenuePrefillTest extends TestCase
         $response = $this->get(route('events.create'))
             ->assertOk()
             ->assertSee('name="send_pre_request" value="0"', false)
-            ->assertSee('не занимает слот и не гарантирует аренду');
+            ->assertSee('она не занимает слот.');
 
         // A pre-request must not be sent merely because the organizer opened
         // the creation form. Explicitly checking the box is required.
