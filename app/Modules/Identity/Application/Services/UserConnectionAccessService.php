@@ -8,15 +8,17 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SectionTraineeMembership;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Database\Eloquent\Builder;
 
- /**
-  * A connection is mutual, not an invitation or an manually maintained allow-list.
+/**
+  * A connection is mutual, not an invitation or a manually maintained allow-list.
   * Two users are connected while they both belong to the same active team or
   * section (accepted coach contracts or active trainee memberships).
   */
@@ -78,7 +80,8 @@ final class UserConnectionAccessService
             $memberIds = array_merge($memberIds, SectionTraineeMembership::query()
                 ->whereIn('sports_section_id', $sectionIds)
                 ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
-                ->whereHas('section')
+                ->whereHas('section', fn (Builder $section) => $section
+                    ->where('status', SportsSectionStatusEnum::ACTIVE->value))
                 ->pluck('user_id')
                 ->all());
         }
@@ -116,7 +119,8 @@ final class UserConnectionAccessService
         $sectionIds = SectionTraineeMembership::query()
             ->whereIn('user_id', $user->identityIds())
             ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
-            ->whereHas('section')
+            ->whereHas('section', fn (Builder $section) => $section
+                ->where('status', SportsSectionStatusEnum::ACTIVE->value))
             ->pluck('sports_section_id');
         foreach ($sectionIds as $id) {
             $groups['sports_section:'.$id] = (int) $id;
@@ -145,10 +149,12 @@ final class UserConnectionAccessService
             ->where(function (Builder $query): void {
                 $query->where(fn (Builder $q) => $q
                     ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
-                    ->whereIn('scope_id', Team::query()->select('id')))
+                    ->whereIn('scope_id', Team::query()
+                        ->where('status', TeamStatusEnum::ACTIVE->value)->select('id')))
                     ->orWhere(fn (Builder $q) => $q
                         ->where('scope_type', ContractMembershipScopeTypeEnum::SPORTS_SECTION->value)
-                        ->whereIn('scope_id', SportsSection::query()->select('id')));
+                        ->whereIn('scope_id', SportsSection::query()
+                            ->where('status', SportsSectionStatusEnum::ACTIVE->value)->select('id')));
             });
     }
 }
