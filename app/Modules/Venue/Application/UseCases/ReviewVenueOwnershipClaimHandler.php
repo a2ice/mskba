@@ -160,6 +160,38 @@ final readonly class ReviewVenueOwnershipClaimHandler
         });
     }
 
+    /** A blocked claim is terminal; only revoking its restriction reopens eligibility for a NEW claim. */
+    public function block(VenueOwnershipClaim $claim, User $reviewer, string $reason): VenueOwnershipClaim
+    {
+        $reviewer = $this->authorizedReviewer($reviewer);
+
+        return DB::transaction(function () use ($claim, $reviewer, $reason): VenueOwnershipClaim {
+            Venue::query()->lockForUpdate()->findOrFail($claim->venue_id);
+            $claim = VenueOwnershipClaim::query()->lockForUpdate()->findOrFail($claim->id);
+
+            if (! in_array($claim->status, [VenueOwnershipClaimStatusEnum::PENDING, VenueOwnershipClaimStatusEnum::REJECTED], true)) {
+                throw new VenueOwnershipClaimException('Блокировка возможна только для ожидающей или отклонённой заявки.');
+            }
+
+            $claim->forceFill([
+                'status' => VenueOwnershipClaimStatusEnum::BLOCKED,
+                'decision_reason' => trim($reason),
+                'reviewer_user_id' => $reviewer->id,
+                'active_marker' => null,
+                'decided_at' => now(),
+            ])->save();
+
+            DB::afterCommit(function () use ($claim): void {
+                event(new VenueOwnershipClaimRejected($claim->id));
+                broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                    $claim->public_id, $claim->status->value, $claim->status->label()
+                ))->toOthers();
+            });
+
+            return $claim->refresh();
+        });
+    }
+
     private function authorizedReviewer(User $reviewer): User
     {
         $reviewer = $reviewer->canonical();
