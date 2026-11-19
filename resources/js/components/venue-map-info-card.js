@@ -52,6 +52,18 @@ function normalizeTags(venue, matchedCourt) {
     ].filter(Boolean).map(String))];
 }
 
+function mediaLoadingLayer() {
+    const layer = document.createElement('div');
+    layer.className = 'mskba-venue-map-card__media-loading';
+    layer.setAttribute('role', 'status');
+    layer.setAttribute('aria-label', 'Загружаем фотографию площадки');
+    const spinner = document.createElement('span');
+    spinner.className = 'image-upload-loading__spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    layer.append(spinner);
+    return layer;
+}
+
 function placeholder() {
     const box = document.createElement('div');
     box.className = 'mskba-venues-map__card-media-placeholder';
@@ -63,7 +75,7 @@ function placeholder() {
  * The one public venue-info component; actions differ by context only.
  *
  * @param {Object} venue Search API or homepage map venue representation
- * @param {Object} options {onClose, onSelect?, compact?, showBadge?, accessFilter?, actionClass?}
+ * @param {Object} options {onClose, onSelect?, compact?, showBadge?, accessFilter?, actionClass?, mediaPending?}
  */
 export function renderVenueMapInfoCard(venue, options = {}) {
     const matches = options.accessFilter === 'Бесплатно' ? venue.court_access?.free
@@ -88,13 +100,26 @@ export function renderVenueMapInfoCard(venue, options = {}) {
     const imageUrl = validPublicUrl(venue.image_url || venue.imageUrl);
     if (imageUrl) {
         const img = document.createElement('img');
-        img.src = imageUrl;
+        const loadingLayer = mediaLoadingLayer();
         img.alt = 'Фото площадки: ' + String(venue.name || '');
-        img.loading = 'lazy';
-        img.addEventListener('error', () => img.replaceWith(placeholder()), {once:true});
-        media.append(img);
+        img.loading = 'eager';
+        img.decoding = 'async';
+        img.hidden = true;
+        const showImage = () => {
+            if (!img.naturalWidth) return;
+            img.hidden = false;
+            loadingLayer.remove();
+        };
+        img.addEventListener('load', showImage, {once:true});
+        img.addEventListener('error', () => {
+            loadingLayer.replaceWith(placeholder());
+            img.remove();
+        }, {once:true});
+        media.append(img, loadingLayer);
+        img.src = imageUrl;
+        if (img.complete && img.naturalWidth > 0) showImage();
     } else {
-        media.append(placeholder());
+        media.append(options.mediaPending ? mediaLoadingLayer() : placeholder());
     }
     if (options.showBadge !== false) {
         const badge = document.createElement('span');
@@ -172,11 +197,23 @@ export function attachSharedHomeVenueCards(root = document) {
             display_tags: [...original.querySelectorAll('.mskba-venues-map__card-tag')]
                 .map(tag => tag.textContent).filter(Boolean),
         };
-        mount.replaceChildren(renderVenueMapInfoCard(normalized, {
-            showBadge: true,
-            onClose: () => close?.click(),
-        }));
+        // Reuse the already loaded image element when the same pin is reopened.
+        // Its DOM survives temporary removal from the map mount.
+        const cacheKey = JSON.stringify(normalized);
+        let entry = cachedCards.get(cacheKey);
+        if (!entry) {
+            entry = {close: null, node: null};
+            entry.node = renderVenueMapInfoCard(normalized, {
+                showBadge: true,
+                onClose: () => entry.close?.click(),
+            });
+            cachedCards.set(cacheKey, entry);
+            if (cachedCards.size > 30) cachedCards.delete(cachedCards.keys().next().value);
+        }
+        entry.close = close;
+        mount.replaceChildren(entry.node);
     };
+    const cachedCards = new Map();
     const observer = new MutationObserver(sync);
     observer.observe(mount, {childList:true});
     sync();
