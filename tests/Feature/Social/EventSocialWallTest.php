@@ -174,7 +174,8 @@ final class EventSocialWallTest extends TestCase
         $this->postWall($event, 'Нет доступа')->assertForbidden();
 
         $organizer->update(['status' => UserStatusEnum::BLOCKED]);
-        $this->actingAs($organizer)->getJson($wall)->assertOk()->assertJsonPath('can_post', false);
+        // Global blocked-account middleware rejects the request before the wall controller.
+        $this->actingAs($organizer)->getJson($wall)->assertForbidden();
     }
 
     public function test_preview_roster_updates_atomically_with_rsvp_and_keeps_organizer_first(): void
