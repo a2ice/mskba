@@ -57,3 +57,45 @@ test('preferred calendar cards alone have compact inset and 90 percent typograph
     assert.match(css,/\.app-venue-day-dialog__date-item\[data-rental-preference\]>\.app-venue-day-dialog__date\s*\{[^}]*min-height:51px;[^}]*font-size:90%/s);
     assert.match(css,/\[data-rental-preference\] \.app-venue-day-dialog__date-hours\s*\{\s*font-size:9\.9px;/s);
 });
+
+test('venue availability entry points reuse the rental calendar without booking or consuming untouched defaults',()=>{
+    const read=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const funnel=read('resources/views/components/venue-play-funnel.blade.php');
+    const quick=read('resources/themes/mskba_app/js/event-quick-create.js');
+    const rental=read('resources/themes/mskba_app/js/venue-rental-search.js');
+    const detail=read('resources/themes/mskba_app/js/venue-detail.js');
+    assert.match(funnel,/data-venue-play-empty-footer/);
+    assert.match(funnel,/data-venue-availability-open/);
+    assert.match(quick,/base.textContent='Любой зал'/);
+    assert.match(quick,/scheduleEnabled.checked=false;syncScheduleVisibility\(\);setStep\(0\)/);
+    assert.match(quick,/mskba:availability-open/);
+    assert.match(rental,/readOnly, courts:results/);
+    assert.match(detail,/!rentalSearch\?\.readOnly && !!response\?\.booking_enabled/);
+    assert.match(detail,/bookingButton.hidden = !!rentalSearch.readOnly/);
+});
+
+test('event defaults include venue booking lead, selected court override and ten-minute form buffer',()=>{
+    const read=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const js=read('resources/themes/mskba_app/js/event-quick-create.js');
+    const view=read('resources/views/components/event-quick-create.blade.php');
+    assert.match(view,/where\('active_marker', true\)/);
+    assert.match(view,/data-booking-lead/);
+    assert.match(js,/selected\?\.minimum_lead_time_minutes\?\?venueLead/);
+    assert.match(js,/Date\.now\(\)\+\(lead\+10\)\*60000/);
+    assert.match(js,/if\(step===1&&scheduleEnabled.checked&&\(!slots.length\|\|scheduleEdited\)\)/);
+});
+
+test('event date requires explicit opt-in; disabling clears preferences and restores an undated draft',()=>{
+    const read=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const js=read('resources/themes/mskba_app/js/event-quick-create.js');
+    const view=read('resources/views/components/event-quick-create.blade.php');
+    const toggle=view.match(/<input type="checkbox" data-quick-schedule-enabled[^>]*>/)?.[0];
+    assert.ok(toggle);
+    assert.doesNotMatch(toggle,/\bchecked\b/);
+    assert.match(view,/data-quick-schedule-fields disabled hidden/);
+    assert.match(js,/scheduleFields.hidden=scheduleFields.disabled=!enabled/);
+    assert.match(js,/slots=\[\];date.value='';time.value='';scheduleEdited=false/);
+    assert.match(js,/data.slots=scheduleEnabled.checked\?slots:\[\]/);
+    assert.match(js,/scheduleEnabled.checked=slots.length>0/);
+    assert.match(js,/if\(step===1&&scheduleEnabled.checked&&\(!slots.length\|\|scheduleEdited\)\)/);
+});
