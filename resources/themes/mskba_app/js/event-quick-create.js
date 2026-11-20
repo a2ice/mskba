@@ -19,6 +19,9 @@
     const createGame=form.querySelector('[data-quick-create-game]');
     const createGameRow=form.querySelector('[data-quick-create-game-row]');
     const createGameHint=form.querySelector('[data-quick-create-game-hint]');
+    const scheduleEnabled=form.querySelector('[data-quick-schedule-enabled]');
+    const scheduleFields=form.querySelector('[data-quick-schedule-fields]');
+    const scheduleOff=form.querySelector('[data-quick-schedule-off]');
     const time=form.querySelector('[data-quick-time]');
     const date=form.querySelector('[data-quick-date]');
     const duration=form.querySelector('[data-quick-duration]');
@@ -28,10 +31,37 @@
     const availability=form.querySelector('[data-quick-availability]');
     const feedback=form.querySelector('[data-quick-feedback]');
     const storageKey='mskba:event-quick-create:'+location.pathname;
-    let step=0,slots=[],editingTitle=false,saving=false;
+    let step=0,slots=[],editingTitle=false,saving=false,scheduleEdited=false;
+    function initializeSchedule(){
+        if(!scheduleEnabled.checked)return;
+        const venueLead=bookingLead[venue.value]??0;
+        const selected=(courts[venue.value]||[]).find(item=>String(item.id)===court.value);
+        const lead=Math.max(0,Number(selected?.minimum_lead_time_minutes??venueLead)||0);
+        const now=new Date(Math.ceil((Date.now()+(lead+10)*60000)/60000)*60000+180*60000).toISOString();
+        date.min=new Date(Date.now()+180*60000).toISOString().slice(0,10);
+        date.value=now.slice(0,10);time.value=now.slice(11,16);
+        scheduleEdited=false;
+    }
+    function syncScheduleVisibility({reset=false}={}){
+        const enabled=scheduleEnabled.checked;
+        scheduleFields.hidden=scheduleFields.disabled=!enabled;
+        scheduleOff.hidden=enabled;
+        scheduleEnabled.setAttribute('aria-expanded',String(enabled));
+        if(!enabled){
+            slots=[];date.value='';time.value='';scheduleEdited=false;
+            availability.hidden=true;availability.replaceChildren();
+            for(const field of [date,time,duration]){field.setCustomValidity('');clearValidation(field);}
+            renderSlots();
+        }else if(reset){
+            initializeSchedule();
+        }
+    }
+    scheduleEnabled.addEventListener('change',()=>syncScheduleVisibility({reset:true}));
+    for(const field of [date,time,duration])field.addEventListener('input',()=>{scheduleEdited=true;});
     let authenticated=dialog.dataset.authenticated==='1';
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const courts=(()=>{try{return JSON.parse(dialog.dataset.courts||'{}');}catch{return {};}})();
+    const bookingLead=(()=>{try{return JSON.parse(dialog.dataset.bookingLead||'{}');}catch{return {};}})();
     const venueMeta=(()=>{try{return JSON.parse(dialog.dataset.venueMeta||'{}');}catch{return {};}})();
     const report=text=>{feedback.textContent=text;feedback.hidden=!text;};
     const clearValidation=field=>{
@@ -58,7 +88,9 @@
         field.addEventListener('change',()=>clearValidation(field));
     }
     function setStep(index){
+        const previousStep=step;
         step=Math.max(0,Math.min(sections.length-1,index));
+        if(previousStep===0&&step===1&&scheduleEnabled.checked&&!scheduleEdited&&!slots.length)initializeSchedule();
         sections.forEach((node,i)=>{node.hidden=i!==step;});
         back.hidden=step===0;
         next.hidden=step===sections.length-1;
@@ -103,7 +135,7 @@
     const syncCourts=()=>{
         const remembered=court.value;
         court.replaceChildren();
-        const base=document.createElement('option');base.value='';base.textContent='Основной зал';court.append(base);
+        const base=document.createElement('option');base.value='';base.textContent='Любой зал';court.append(base);
         for(const item of (courts[venue.value]||[])){
             const option=document.createElement('option');option.value=String(item.id);option.textContent=item.name;
             court.append(option);
@@ -120,8 +152,9 @@
         updateAutoTitle();
         syncCourts();
         if(slots.length){slots=[];renderSlots();}
+        if(!scheduleEdited)initializeSchedule();
     });
-    court.addEventListener('change',()=>{availability.hidden=true;});
+    court.addEventListener('change',()=>{availability.hidden=true;if(!scheduleEdited)initializeSchedule();});
     syncType();syncFormat();syncCourts();
     // Preserve the selected hall when entering the wizard from its own page.
     if(dialog.dataset.initialCourtId && [...court.options].some(option=>option.value===dialog.dataset.initialCourtId)){
@@ -160,7 +193,7 @@
         }
         // Consume the pending selection. Navigating back or removing a saved
         // interval must not silently re-add it on the next transition.
-        date.value='';time.value='';
+        date.value='';time.value='';scheduleEdited=false;
         availability.hidden=false;availability.textContent='Интервал добавлен. Можешь указать ещё один вариант времени.';
         return true;
     }
@@ -185,7 +218,7 @@
                 button.classList.toggle('is-busy',occupied);
                 button.setAttribute('aria-label','Начало '+slot.starts_at+(occupied?', сейчас занято':', свободно'));
                 button.addEventListener('click',()=>{
-                    time.value=slot.starts_at;
+                    time.value=slot.starts_at;scheduleEdited=true;
                     availability.querySelectorAll('button').forEach(b=>b.classList.remove('is-picked'));
                     button.classList.add('is-picked');
                     // Occupied time remains eligible only as a preliminary request.
@@ -194,7 +227,12 @@
             }
         }catch(e){availability.textContent=e.message;}
     }
-    form.querySelector('[data-quick-show-schedule]').addEventListener('click',()=>void loadDaySchedule());
+    form.querySelector('[data-quick-show-schedule]').addEventListener('click',()=>{
+        const shared=document.querySelector('[data-rental-search-dialog]');
+        if(shared && shared.dataset.venueId===venue.value){
+            shared.dispatchEvent(new CustomEvent('mskba:availability-open',{detail:{date:date.value,time:time.value,courtId:court.value}}));
+        }else void loadDaySchedule();
+    });
     function review(){
         const node=form.querySelector('[data-quick-review]');node.replaceChildren();
         const info=document.createElement('p');
@@ -230,7 +268,7 @@
                 if(!validate(field))return;
             }
         }
-        if(step===1&&(date.value||time.value)){
+        if(step===1&&scheduleEnabled.checked&&(!slots.length||scheduleEdited)){
             const previousCount=slots.length;
             if(!addSlot({automatic:true}))return;
             // The second interval reveals the choice between separate events
@@ -262,7 +300,7 @@
         if(court.value)data.venue_court_id=Number(court.value);
         if(!data.max_participants)delete data.max_participants;
         if(!data.title)data.title=type.selectedOptions[0]?.textContent||'Игра';
-        data.slots=slots;
+        data.slots=scheduleEnabled.checked?slots:[];
         data.schedule_mode=form.querySelector('[name="schedule_mode"]:checked')?.value||'alternatives';
         return data;
     }
@@ -292,6 +330,8 @@
         const data=saved.draft;
         if(data.venue_court_id)court.value=String(data.venue_court_id);
         slots=Array.isArray(data.slots)?data.slots.slice(0,8):[];
+        scheduleEnabled.checked=slots.length>0;
+        syncScheduleVisibility();
         renderSlots();
         const radio=form.querySelector('[name="schedule_mode"][value="'+(data.schedule_mode==='separate'?'separate':'alternatives')+'"]');
         if(radio)radio.checked=true;
@@ -336,7 +376,7 @@
         document.querySelector('[data-venue-play-dialog][open]')?.close();
         document.querySelector('[data-venue-choice-dialog][open]')?.close();
         if(!dialog.open)dialog.showModal();
-        setStep(0);type.focus();
+        scheduleEnabled.checked=false;syncScheduleVisibility();setStep(0);type.focus();
     });
     dialog.querySelectorAll('[data-quick-event-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));

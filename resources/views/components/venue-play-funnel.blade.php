@@ -38,11 +38,14 @@
                     <small data-venue-play-card-count>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
             @empty
-                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий.</p>
+                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий. Вы можете создать своё мероприятие, пригласить игроков или открыть его для всех, чтобы желающие могли присоединиться самостоятельно.@if($isAppTheme) А пока можно посмотреть, когда площадка свободна.@endif</p>
             @endforelse
         </div>
     </div>
-    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer>
+    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer @if($isAppTheme && $upcomingVenueEvents->isEmpty()) data-venue-play-empty-footer @endif>
+        @if($isAppTheme && $upcomingVenueEvents->isEmpty())
+            <button type="button" class="{{ $secondaryButton }}" data-venue-availability-open>Посмотреть занятость</button>
+        @endif
         <button type="button" class="{{ $primaryButton }}" data-quick-event-open
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
@@ -172,6 +175,7 @@
     display:flex;justify-content:flex-end;flex:0 0 auto;
     gap:12px;padding:16px 22px;border-top:1px solid var(--line,#59606a);
 }
+.venue-play-dialog__footer[data-venue-play-empty-footer]{justify-content:space-around;gap:12px;flex-wrap:wrap}
 .venue-play-dialog__footer[hidden]{display:none}
 .venue-play-dialog__footer :is(.button,.btn){min-height:44px}
 .venue-play-dialog__detail{display:grid;gap:20px;min-width:0}
