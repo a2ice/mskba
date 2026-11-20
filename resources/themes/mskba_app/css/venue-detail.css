@@ -722,9 +722,24 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-rental-search__tabs .button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 /* One continuous outline for the original request, separate from aria-pressed.
    The 8px gap is bridged by 4px on each adjacent item. All nine cards keep
-   their ordinary widths, scrolling and occupancy indicators. */
+   their ordinary outer widths and scrolling. The selected cells use a compact
+   inset so the occupancy track and focus/active borders breathe inside it. */
 .app-venue-day-dialog__dates.has-rental-preference{padding:6px}
-.app-venue-day-dialog__date-item[data-rental-preference]{position:relative}
+.app-venue-day-dialog__date-item[data-rental-preference]{
+    position:relative;box-sizing:border-box;padding:5px;
+}
+.app-venue-day-dialog__date-item[data-rental-preference]>.app-venue-day-dialog__date{
+    box-sizing:border-box;height:auto;min-height:51px;padding:4px 6px;font-size:90%;
+}
+.app-venue-day-dialog__date-item[data-rental-preference] .app-venue-day-dialog__date-hours{
+    font-size:9.9px;
+}
+.app-venue-day-dialog__date-item[data-rental-preference]>.app-venue-schedule__occupancy{
+    width:100%;margin-top:4px;
+}
+@media(max-width:640px){
+    .app-venue-day-dialog__date-item[data-rental-preference]>.app-venue-day-dialog__date{padding:2px 4px}
+}
 .app-venue-day-dialog__date-item[data-rental-preference]::before{
     content:"";position:absolute;inset:-4px;pointer-events:none;
     border-block:1px solid var(--accent);
