@@ -62,6 +62,7 @@ final class CreateEventRequest extends FormRequest
     {
         return [
             'event_request_id' => ['required', 'uuid'],
+            'add_organizer_role' => ['sometimes', 'boolean'],
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
             'venue_court_id' => [
                 'nullable',
