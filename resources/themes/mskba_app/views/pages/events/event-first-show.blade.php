@@ -9,12 +9,17 @@
     $booking = $event->sourceBooking ?? $event->booking;
     $court = $booking?->court ?? $event->court;
     $courtLabel = $court?->name ?? 'Любой зал';
-    $photo = $court?->media?->first() ?? $venue->media->first();
+    $photo = $court?->media?->first(fn ($item) => $item->collection === 'gallery') ?? $venue->media->first();
     $owner = auth()->user() && $event->organizerActor?->user?->canonical()?->id === auth()->user()->canonical()->id;
+    // The public shell must not expose powers granted only by global admin status.
+    $scopedPermissions = auth()->user() ? collect(app(\App\Modules\Contract\Application\Services\EntityContractManager::class)
+        ->effectivePermissions(auth()->user(), \App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum::EVENT, $event->id)) : collect();
+    $effectivePermissions = $effectivePermissions->intersect($scopedPermissions);
+    $canManage = $effectivePermissions->isNotEmpty();
     $editable = !in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true) && (!$event->ends_at || $event->ends_at->isFuture());
     $canEdit = $editable && $effectivePermissions->contains(Permission::UPDATE_EVENT->value);
     $canInvite = $editable && $event->status === EventStatusEnum::PUBLISHED && $effectivePermissions->contains(Permission::MANAGE_PARTICIPANTS->value);
-    $canRespond = auth()->check() && $editable && ($owner || ($event->status === EventStatusEnum::PUBLISHED && $event->visibility->value === 'public'));
+    $canRespond = auth()->check() && $editable && (($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at) || ($event->status === EventStatusEnum::PUBLISHED && ($owner || $currentParticipant || $event->visibility->value === 'public')));
     $confirmedCount = app(\App\Modules\Event\Application\Services\EventIdentityParticipationService::class)->confirmedIdentityCount($event);
     $participants = $event->participants->sortBy(fn ($p) => $p->role === EventParticipantRoleEnum::ORGANIZER ? 0 : 1)->unique(fn ($p) => $p->user?->canonical()?->id ?? $p->user_id);
     $interest = $canManage ? $event->venueInterests->sortByDesc('revision')->first() : null;
@@ -46,11 +51,11 @@
                 <div class="app-event-actions">@foreach($venue->location->metroStations as $station)<span class="badge">{{ $station->name }}</span>@endforeach</div>
             @endif
             <button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>
-            <a class="app-event-link" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Посмотреть занятость площадки</a>
+            <a class="app-event-link" href="{{ route('venues.show', ['venue' => $venue->routeIdentifier(), 'availability' => 1]) }}">Посмотреть занятость площадки</a>
             <h2>Дата и время</h2>
             @if($event->starts_at)
                 <p><strong>{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong> (МСК)</p>
-                @if(!$booking)<p class="muted">Желаемое время, бронирование не подтверждено.</p>@endif
+                @if(!$booking || $booking->status->value !== 'confirmed')<p class="muted">Желаемое время, бронирование не подтверждено.</p>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <h3>Желаемые интервалы</h3>
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
@@ -121,8 +126,10 @@
                 <article class="panel app-event-panel"><h2>Игры внутри мероприятия</h2>
                     @foreach($event->games as $child)
                         <p>{{ $child->format?->label() ?? 'Игра' }} · {{ $child->status?->label() ?? '' }}</p>
-                        <a class="app-event-link" href="{{ route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">Открыть игру</a>
-                        @if($effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
+                        @if($event->starts_at)
+                            <a class="app-event-link" href="{{ $event->primary_game_id === $child->id && $event->type->value === 'game' ? route('events.show', ['event' => $event->routeIdentifier(), 'sport' => 1]) : route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">Открыть игру</a>
+                        @endif
+                        @if($event->starts_at && $effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
                     @endforeach
                 </article>
             @endif
