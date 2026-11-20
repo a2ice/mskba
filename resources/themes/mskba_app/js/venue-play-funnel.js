@@ -36,10 +36,7 @@
         const status=pane.dataset.eventStatus||'';
         const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
         if(!choices.length)return;
-        const organizer=pane.dataset.eventOrganizer==='1';
         const active=status==='confirmed'||status==='tentative';
-        pane.querySelector('.venue-play-dialog__rsvp').hidden=organizer;
-        pane.querySelector('[data-venue-play-organizer-notice]').hidden=!organizer;
         const decline=choices.find(button=>button.dataset.venuePlayRsvp==='left');
         decline.hidden=!active;
         choices.forEach(button=>{
@@ -74,7 +71,8 @@
             }else{avatar.append(icon('user'));}
             const dot=document.createElement('span');dot.className='venue-play-dialog__participant-status';
             dot.classList.toggle('is-confirmed',member.status==='confirmed');
-            const status=member.status==='confirmed'?'Идёт':'Думает';
+            dot.classList.toggle('is-declined',member.status==='left');
+            const status=member.status==='confirmed'?'Идёт':member.status==='left'?'Не идёт':'Думает';
             dot.title=status+(member.decision_at?': '+member.decision_at:'');
             dot.setAttribute('aria-label',dot.title);dot.setAttribute('data-tooltip-visual','');dot.tabIndex=0;
             const name=document.createElement(member.url?'a':'span');name.className='venue-play-dialog__participant-name';
@@ -95,7 +93,7 @@
         const empty=pane.querySelector('[data-venue-play-roster-empty]');
         empty.hidden=roster.members.length>0;empty.textContent='Участников пока нет.';
         pane.querySelector('[data-venue-play-roster-retry]').hidden=true;
-        pane.querySelector('[data-venue-play-roster-heading]').textContent='Участники ('+roster.members.length+(roster.max_participants!=null?'/'+roster.max_participants:'')+')';
+        pane.querySelector('[data-venue-play-roster-heading]').textContent='Участники ('+roster.members.filter(member=>member.status!=='left').length+(roster.max_participants!=null?'/'+roster.max_participants:'')+')';
         pane.dataset.eventStatus=roster.viewer_status||'';
         pane.dataset.eventOrganizer=roster.viewer_is_organizer?'1':'0';
         paintButtons(pane);
@@ -193,7 +191,7 @@
             pane.dataset.eventStatus=result.status;paintButtons(pane);
             paintRoster(pane,result.roster,true,result.counts);
             toast({
-                confirmed:'Вы успешно добавлены в участники. Следите за дальнейшими сообщениями организатора на портале.',
+                confirmed:pane.dataset.eventOrganizer==='1'?'Ваше участие подтверждено.':'Вы успешно добавлены в участники. Следите за дальнейшими сообщениями организатора на портале.',
                 tentative:'Ответ «Подумаю» сохранён. Вы можете изменить решение в любой момент до завершения мероприятия.',
                 left:'Вы отказались от участия в мероприятии.',
             }[result.status]||'Ответ сохранён.');

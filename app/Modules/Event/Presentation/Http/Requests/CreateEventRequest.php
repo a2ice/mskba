@@ -63,6 +63,7 @@ final class CreateEventRequest extends FormRequest
         return [
             'event_request_id' => ['required', 'uuid'],
             'add_organizer_role' => ['sometimes', 'boolean'],
+            'organizer_participates' => ['sometimes', 'boolean'],
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
             'venue_court_id' => [
                 'nullable',
@@ -165,7 +166,7 @@ final class CreateEventRequest extends FormRequest
             'duration_minutes.required' => 'Выберите длительность мероприятия.',
             'duration_minutes.min' => 'Длительность должна быть больше нуля.',
             'duration_minutes.max' => 'Мероприятие должно завершиться в течение суток.',
-            'max_participants.min' => 'Вместимость должна учитывать организатора и хотя бы одного участника.',
+            'max_participants.min' => 'Лимит участников должен быть не меньше двух.',
             'team_a_id.different' => 'Одна команда не может занимать обе стороны игры.',
             'team_b_id.different' => 'Одна команда не может занимать обе стороны игры.',
         ];

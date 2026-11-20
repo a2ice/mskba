@@ -12,6 +12,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -196,5 +197,75 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
         $this->assertSame(1, $user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->count());
         $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER->value)->exists());
+    }
+
+    public function test_legacy_postgres_constraint_is_upgraded_without_losing_existing_roles(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('PostgreSQL-specific legacy CHECK constraint.');
+        }
+
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        app(UpdateUserParticipationRolesHandler::class)->updateOne($user, UserParticipationRoleEnum::PLAYER, true);
+
+        DB::statement('ALTER TABLE user_participation_roles DROP CONSTRAINT IF EXISTS user_participation_roles_role_check');
+        DB::statement("ALTER TABLE user_participation_roles ADD CONSTRAINT user_participation_roles_role_check CHECK (role IN ('player', 'coach', 'referee', 'statistician', 'media', 'venue_related'))");
+
+        $migration = require database_path('migrations/2026_11_20_160000_allow_organizer_participation_role_on_existing_postgres.php');
+        $migration->up();
+
+        $input = $this->payload($this->venue(), [$this->slots()[0]]);
+        $input['add_organizer_role'] = true;
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->assertSame(EventStatusEnum::PUBLISHED, Event::query()->sole()->status);
+        $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->exists());
+        $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER->value)->exists());
+        $this->assertDatabaseCount('event_venue_interests', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
+    }
+
+    public function test_organizer_attendance_is_default_but_optional_and_can_change_without_losing_role(): void
+    {
+        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $payload = $this->payload($venue, [$this->slots()[0]]);
+        $payload['max_participants'] = 2;
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $event = Event::query()->sole();
+        $this->assertSame('confirmed', $event->participants()->sole()->status->value);
+
+        $payload = $this->payload($venue, [$this->slots()[1]]);
+        $payload['max_participants'] = 2;
+        $payload['organizer_participates'] = false;
+        $this->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $event = Event::query()->latest('id')->firstOrFail();
+        $url = route('events.participation', $event->routeIdentifier());
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+        $this->assertSame('left', $event->participants()->sole()->status->value);
+        $this->assertSame([], $event->participants()->sole()->participation_roles);
+        $this->getJson($wall)->assertOk()->assertJsonPath('can_post', true)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'left')
+            ->assertJsonPath('counts.confirmed', 0);
+
+        $first = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $second = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        foreach ([$first, $second] as $player) {
+            $this->actingAs($player)->patchJson($url, ['status' => 'confirmed'])->assertOk();
+        }
+        $this->actingAs($organizer)->patchJson($url, ['status' => 'confirmed'])->assertStatus(409);
+        $this->actingAs($first)->patchJson($url, ['status' => 'left'])->assertOk();
+
+        $this->actingAs($organizer)->patchJson($url, ['status' => 'confirmed', 'include_roster' => true])
+            ->assertOk()->assertJsonPath('counts.confirmed', 2)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'confirmed');
+        $this->patchJson($url, ['status' => 'left', 'include_roster' => true])
+            ->assertOk()->assertJsonPath('counts.confirmed', 1)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'left');
+        $this->getJson($wall)->assertOk()->assertJsonPath('can_post', true);
+        $this->assertSame('organizer', $event->participants()->where('user_id', $organizer->id)->sole()->role->value);
+        $this->assertSame($organizer->id, $event->refresh()->organizerActor->user_id);
     }
 }
