@@ -38,11 +38,14 @@
                     <small>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
             @empty
-                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий.</p>
+                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий. Создайте своё мероприятие и пригласите игроков или дождитесь, пока они сами найдут его и захотят присоединиться.@if($isAppTheme) А пока можно посмотреть, когда площадка свободна.@endif</p>
             @endforelse
         </div>
     </div>
-    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer>
+    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer @if($isAppTheme && $upcomingVenueEvents->isEmpty()) style="justify-content:space-around;gap:12px;flex-wrap:wrap" @endif>
+        @if($isAppTheme && $upcomingVenueEvents->isEmpty())
+            <button type="button" class="{{ $secondaryButton }}" data-venue-availability-open>Посмотреть занятость</button>
+        @endif
         <button type="button" class="{{ $primaryButton }}" data-quick-event-open
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
