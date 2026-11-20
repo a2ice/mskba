@@ -50,3 +50,10 @@ test('rental CTA uses the new wizard even for one hall and preserves legacy quot
     assert.match(wizard,/mskba-wizard__progress/);
     assert.match(wizard,/data-rental-end-fields hidden/);
 });
+
+test('preferred calendar cards alone have compact inset and 90 percent typography',()=>{
+    const css=readFileSync(new URL('../../resources/themes/mskba_app/css/venue-detail.css',import.meta.url),'utf8');
+    assert.match(css,/\.app-venue-day-dialog__date-item\[data-rental-preference\]\s*\{[^}]*box-sizing:border-box;[^}]*padding:5px/s);
+    assert.match(css,/\.app-venue-day-dialog__date-item\[data-rental-preference\]>\.app-venue-day-dialog__date\s*\{[^}]*min-height:51px;[^}]*font-size:90%/s);
+    assert.match(css,/\[data-rental-preference\] \.app-venue-day-dialog__date-hours\s*\{\s*font-size:9\.9px;/s);
+});
