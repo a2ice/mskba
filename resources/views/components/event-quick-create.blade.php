@@ -109,7 +109,7 @@
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
                 <label class="quick-event-dialog__field"><span>Время начала</span>
-                    <input type="time" data-quick-time step="1800"></label>
+                    <input type="time" data-quick-time step="60"></label>
             </div>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Продолжительность</span>

@@ -12,6 +12,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -196,5 +197,30 @@ final class EventFirstFunnelTest extends TestCase
         $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
         $this->assertSame(1, $user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->count());
         $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER->value)->exists());
+    }
+
+    public function test_legacy_postgres_constraint_is_upgraded_without_losing_existing_roles(): void
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            $this->markTestSkipped('PostgreSQL-specific legacy CHECK constraint.');
+        }
+
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        app(UpdateUserParticipationRolesHandler::class)->updateOne($user, UserParticipationRoleEnum::PLAYER, true);
+
+        DB::statement('ALTER TABLE user_participation_roles DROP CONSTRAINT IF EXISTS user_participation_roles_role_check');
+        DB::statement("ALTER TABLE user_participation_roles ADD CONSTRAINT user_participation_roles_role_check CHECK (role IN ('player', 'coach', 'referee', 'statistician', 'media', 'venue_related'))");
+
+        $migration = require database_path('migrations/2026_11_20_160000_allow_organizer_participation_role_on_existing_postgres.php');
+        $migration->up();
+
+        $input = $this->payload($this->venue(), [$this->slots()[0]]);
+        $input['add_organizer_role'] = true;
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->assertSame(EventStatusEnum::PUBLISHED, Event::query()->sole()->status);
+        $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->exists());
+        $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER->value)->exists());
+        $this->assertDatabaseCount('event_venue_interests', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 }
