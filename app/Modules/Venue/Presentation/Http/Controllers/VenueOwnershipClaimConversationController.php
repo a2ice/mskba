@@ -15,6 +15,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaimMessage;
 use App\Modules\Venue\Infrastructure\Broadcasting\VenueOwnershipClaimMessageSentBroadcast;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -85,7 +86,7 @@ final class VenueOwnershipClaimConversationController extends Controller
         Request $request,
         VenueOwnershipClaim $venueOwnershipClaim,
         CurrentActorResolver $actors,
-    ): JsonResponse {
+    ): JsonResponse|RedirectResponse {
         $data = $request->validate([
             'client_id' => ['required', 'uuid'],
             'body' => ['required', 'string', 'max:4000'],
@@ -109,6 +110,10 @@ final class VenueOwnershipClaimConversationController extends Controller
             shortCode: $shortCode,
         );
 
+        if (! $request->expectsJson()) {
+            return back()->with('status', 'Сообщение отправлено.');
+        }
+
         return response()->json($this->messagePayload($message, $actor), 201);
     }
 
@@ -116,7 +121,7 @@ final class VenueOwnershipClaimConversationController extends Controller
         Request $request,
         VenueOwnershipClaim $venueOwnershipClaim,
         CurrentActorResolver $actors,
-    ): JsonResponse {
+    ): JsonResponse|RedirectResponse {
         $data = $request->validate([
             'client_id' => ['required', 'uuid'],
             'body' => ['nullable', 'string', 'max:4000'],
@@ -171,6 +176,10 @@ final class VenueOwnershipClaimConversationController extends Controller
 
             return $message->load(['authorActor.user', 'conversation']);
         });
+
+        if (! $request->expectsJson()) {
+            return back()->with('status', 'Документ прикреплён к переписке.');
+        }
 
         return response()->json($this->messagePayload($message, $actor), 201);
     }

@@ -55,7 +55,7 @@ final class VenueOwnershipClaimDraftTest extends TestCase
         $this->assertDatabaseMissing('venue_ownership_claim_documents', ['id' => $extra->id]);
         $this->post(route('account.venue-ownership.draft.save', $claim), [
             'intent' => 'submit', 'ownership_evidence' => $evidence,
-        ])->assertRedirect(route('account.venue-ownership.show', $claim));
+        ])->assertRedirect(route('account.venue-contracts.show', $claim->venue));
         $this->assertSame(VenueOwnershipClaimStatusEnum::PENDING, $claim->fresh()->status);
         $this->assertNotNull($claim->fresh()->submitted_at);
         $this->assertDatabaseCount('venue_ownership_claims', 1);

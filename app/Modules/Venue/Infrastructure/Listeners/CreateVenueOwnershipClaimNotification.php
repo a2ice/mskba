@@ -40,8 +40,11 @@ final readonly class CreateVenueOwnershipClaimNotification
             ],
             VenueOwnershipClaimRejected::class => [
                 UserNotificationSourceEnum::VENUE_OWNERSHIP_CLAIM_REJECTED,
-                'Заявка на управление отклонена',
-                "Заявка на подтверждение управления площадкой «{$claim->venue->name}» отклонена.",
+                $claim->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::BLOCKED
+                    ? 'Заявка на управление заблокирована' : 'Заявка на управление отклонена',
+                $claim->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::BLOCKED
+                    ? "Заявка на площадку «{$claim->venue->name}» заблокирована. Повторная подача невозможна до снятия ограничения."
+                    : "Заявка на подтверждение управления площадкой «{$claim->venue->name}» отклонена.",
             ],
         };
 
@@ -50,7 +53,7 @@ final readonly class CreateVenueOwnershipClaimNotification
             type: UserNotificationTypeEnum::SYSTEM,
             title: $title,
             body: $body,
-            actionUrl: route('account.venue-ownership.show', $claim, false),
+            actionUrl: route('account.venue-contracts.show', ['venue' => $claim->venue_id, 'claim' => $claim->public_id], false),
             actionText: 'Открыть заявку',
             payload: [
                 'source' => $source->value,

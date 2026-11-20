@@ -35,7 +35,7 @@ final readonly class NotifyVenueOwnershipAdministrators
                     type: UserNotificationTypeEnum::SYSTEM,
                     title: 'Новая заявка на управление площадкой',
                     body: "Получена заявка на подтверждение управления площадкой «{$claim->venue->name}».",
-                    actionUrl: route('account.venue-ownership.show', $claim, false),
+                    actionUrl: route('account.venue-contracts.show', ['venue' => $claim->venue_id, 'claim' => $claim->public_id], false),
                     actionText: 'Рассмотреть заявку',
                     payload: [
                         'source' => UserNotificationSourceEnum::VENUE_OWNERSHIP_CLAIM_SUBMITTED->value,

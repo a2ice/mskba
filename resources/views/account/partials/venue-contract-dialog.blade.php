@@ -38,9 +38,15 @@
                 <a href="{{ route('account.contracts.show', $contract['id']) }}" class="account-contracts-workspace__text-link">Полная карточка контракта</a>
             </section>
         @empty
-            <p>У этой площадки пока нет назначенного контракта. Она доступна вам как создателю в рамках временных прав, пока не оформлены договорные отношения.</p>
-            <p class="account-contracts-dialog__note">Формальные разрешения будут отображаться после назначения контракта.</p>
+            <p>Действующего договора пока нет. Для оформления полномочий владельца подайте заявку и дождитесь проверки администрацией.</p>
+            @if($card['claim'])
+                <p><strong>Последняя заявка:</strong> {{ $card['restriction'] ? 'Заблокирована' : $card['claim']->status->label() }}</p>
+                @if($card['claim']->decision_reason)
+                    <p class="account-contracts-dialog__note">{{ $card['claim']->decision_reason }}</p>
+                @endif
+            @endif
         @endforelse
+        <p><a class="account-contracts-workspace__text-link" href="{{ route('account.venue-contracts.show', $venue->id) }}">Открыть полную карточку и действия по подтверждению</a></p>
     </div>
     <div class="account-contracts-dialog__footer">
         <button type="button" class="account-contracts-workspace__secondary" data-contract-dialog-close>Закрыть</button>

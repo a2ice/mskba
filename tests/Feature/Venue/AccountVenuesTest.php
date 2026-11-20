@@ -62,7 +62,7 @@ final class AccountVenuesTest extends TestCase
             ->assertOk()
             ->assertSee('Площадка в кабинете')
             ->assertSee('account-contracts-workspace__cards', false)
-            ->assertSee('Без контракта')
+            ->assertSee('Требуется подтверждение')
             ->assertSee('Контракт')
             ->assertSee('Не подтверждён')
             ->assertDontSee('btn-primary', false)

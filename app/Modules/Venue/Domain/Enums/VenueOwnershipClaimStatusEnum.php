@@ -8,6 +8,7 @@ enum VenueOwnershipClaimStatusEnum: string
     case PENDING = 'pending';
     case APPROVED = 'approved';
     case REJECTED = 'rejected';
+    case BLOCKED = 'blocked';
     case CANCELLED = 'cancelled';
 
     public function label(): string
@@ -17,6 +18,7 @@ enum VenueOwnershipClaimStatusEnum: string
             self::PENDING => 'На рассмотрении',
             self::APPROVED => 'Одобрена',
             self::REJECTED => 'Отклонена',
+            self::BLOCKED => 'Заблокирована',
             self::CANCELLED => 'Отменена',
         };
     }

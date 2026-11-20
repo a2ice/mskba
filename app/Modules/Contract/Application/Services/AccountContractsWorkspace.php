@@ -10,6 +10,11 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Invitation\Domain\Models\AccountInvitation;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Models\VenueUserRestriction;
+use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\PlayInterest\Application\Services\VenueGroupOffers;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
@@ -104,11 +109,23 @@ final readonly class AccountContractsWorkspace
         }
 
         $bootstrap = $this->venueAccess->bootstrapOwnedVenueIdsFor($canonical);
-        $venueIds = array_values(array_unique([...array_keys($byVenue), ...$bootstrap]));
+        // A pending ownership invitation/claim must be visible before a contract exists.
+        $invitedVenueIds = AccountInvitation::query()
+            ->whereIn('accepted_user_id', $canonical->identityIds())
+            ->where('scope_type', 'venue')->pluck('scope_id')->all();
+        $claims = VenueOwnershipClaim::query()
+            ->whereIn('applicant_user_id', $canonical->identityIds())
+            ->latest('id')->get()->unique('venue_id')->keyBy('venue_id');
+        $claimVenueIds = $claims->keys()->all();
+        $restrictions = VenueUserRestriction::query()
+            ->whereIn('user_id', $canonical->identityIds())
+            ->where('type', VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM->value)
+            ->where('active_marker', true)->get()->keyBy('venue_id');
+        $venueIds = array_values(array_unique([...array_keys($byVenue), ...$bootstrap, ...$invitedVenueIds, ...$claimVenueIds]));
         $legacy = collect($this->accountVenues->handle($canonical))->keyBy('id');
 
         $cards = Venue::query()->whereIn('id', $venueIds)->orderBy('name')->get()
-            ->map(function (Venue $venue) use ($byVenue, $bootstrap, $legacy, $canonical): array {
+            ->map(function (Venue $venue) use ($byVenue, $bootstrap, $legacy, $canonical, $claims, $restrictions): array {
                 $contracts = collect($byVenue[$venue->id] ?? [])
                     ->sortByDesc(fn (ContractMembership $m): int =>
                         $this->isEffective($m->contract) ? 1000000000 + $m->contract->id : $m->contract->id)
@@ -147,6 +164,8 @@ final readonly class AccountContractsWorkspace
 
                 return [
                     'venue' => $venue,
+                    'claim' => $claims->get($venue->id),
+                    'restriction' => $restrictions->get($venue->id),
                     'legacy' => $legacy->get($venue->id),
                     'contracts' => $contracts,
                     'bootstrap' => in_array($venue->id, $bootstrap, true),
