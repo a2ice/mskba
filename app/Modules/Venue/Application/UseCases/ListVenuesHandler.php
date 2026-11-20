@@ -2,6 +2,8 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
@@ -22,7 +24,7 @@ final class ListVenuesHandler
         private readonly VenueCourtDiscoveryAccess $courtDiscovery,
     ) {}
 
-    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null} $filters */
+    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null} $filters */
     public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
@@ -54,7 +56,15 @@ final class ListVenuesHandler
                     }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))
-                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status));
+                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
+                ->when((bool) ($filters['has_upcoming_events'] ?? false), function ($filtered) use ($filters): void {
+                    $now = now();
+                    $until = $now->copy()->addDays((int) ($filters['event_days'] ?? 7));
+                    $filtered->whereHas('events', fn ($events) => $events
+                        ->where('status', EventStatusEnum::PUBLISHED->value)
+                        ->where('visibility', EventVisibilityEnum::PUBLIC->value)
+                        ->whereBetween('starts_at', [$now, $until]));
+                });
         })
             ->with('courts.media')
             ->when(
