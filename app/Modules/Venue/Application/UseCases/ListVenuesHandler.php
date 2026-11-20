@@ -10,6 +10,7 @@ use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueCourtDiscoveryAccess;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -22,9 +23,10 @@ final class ListVenuesHandler
         private readonly ListVenuesBuilder $listVenuesBuilder,
         private readonly AddressDisplayFormatter $addressFormatter,
         private readonly VenueCourtDiscoveryAccess $courtDiscovery,
+        private readonly VenueProximityService $proximity,
     ) {}
 
-    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null} $filters */
+    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null, sort?: string|null, has_upcoming_events?: bool|int|string|null, event_days?: int|string|null, latitude?: float|string|null, longitude?: float|string|null, radius_km?: int|string|null} $filters */
     public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
@@ -76,6 +78,17 @@ final class ListVenuesHandler
                 },
             )
             ->get();
+
+        // Keep the same access-aware result for cards, map and later pages.
+        // Do not use the nearby-preview handler here: it limits the result to 50.
+        if (isset($filters['latitude'], $filters['longitude'], $filters['radius_km'])) {
+            $latitude = (float) $filters['latitude'];
+            $longitude = (float) $filters['longitude'];
+            $radiusMeters = (int) $filters['radius_km'] * 1000;
+
+            $venues = $venues->filter(fn (Venue $venue): bool =>
+                ($this->proximity->distanceToCoordinates($venue, $latitude, $longitude) ?? INF) <= $radiusMeters);
+        }
 
         $policies = VenueBookingPolicy::query()
             ->whereIn('venue_id', $venues->pluck('id')->all())
