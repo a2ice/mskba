@@ -23,7 +23,9 @@
                 <label for="eventTitle">Название</label>
                 <input id="eventTitle" name="title" value="{{ old('title', $event->title) }}" maxlength="150" required>
             </div>
-            @if($canReschedule)
+            @if(!$event->starts_at)
+                <p>Дата пока не определена. Её можно указать на странице мероприятия.</p>
+            @elseif($canReschedule)
                 <p>Место и время можно пересмотреть. Предзаявка не резервирует зал; после изменения участники должны заново подтвердить участие.</p>
                 <div class="field-group">
                     <label for="eventVenue">Площадка</label>
@@ -36,6 +38,22 @@
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                     </span>
                 </div>
+                @if($event->proposed_time_options !== null)
+                    @php($hallOptions = $venues->mapWithKeys(fn ($place) => [(string) $place->id => $place->courts->map(fn ($hall) => ['id' => $hall->id, 'name' => $hall->name])->values()]))
+                    <div class="field-group">
+                        <label for="eventCourt">Зал</label>
+                        <span class="select-control"><select id="eventCourt" name="venue_court_id" data-court-options='@json($hallOptions, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP)' data-selected="{{ old('venue_court_id', $event->venue_court_id) }}">
+                            <option value="">Любой зал</option>
+                            @foreach($event->venue->courts as $hall)<option value="{{ $hall->id }}" @selected((int)old('venue_court_id', $event->venue_court_id) === $hall->id)>{{ $hall->name }}</option>@endforeach
+                        </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span>
+                    </div>
+                    @push('scripts')
+                    <script type="module">
+                    const venue=document.getElementById('eventVenue'),hall=document.getElementById('eventCourt');
+                    if(venue&&hall){const options=JSON.parse(hall.dataset.courtOptions);const fill=selected=>{hall.replaceChildren(new Option('Любой зал',''));for(const item of options[venue.value]||[])hall.add(new Option(item.name,String(item.id)));if([...hall.options].some(o=>o.value===selected))hall.value=selected;};fill(hall.dataset.selected);venue.addEventListener('change',()=>fill(''));}
+                    </script>
+                    @endpush
+                @endif
                 <div class="field-group">
                     <label for="eventStartsAt">Начало</label>
                     <input id="eventStartsAt" type="datetime-local" name="starts_at"
@@ -61,9 +79,7 @@
                 @endif
             @else
                 <p>Для площадок с оплатой или подтверждением бронирования после подачи заявки изменение места и времени доступно через отмену или согласованный перенос брони.</p>
-                <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
-                <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
-                <input type="hidden" name="duration_minutes" value="{{ $currentDuration }}">
+
             @endif
             <div class="field-group">
                 <label for="eventType">Тип мероприятия</label>
