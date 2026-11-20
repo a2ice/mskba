@@ -186,7 +186,8 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
-            ->assertDontSee('event-response__button', false)
+            ->assertSee('event-response__button', false)
+            ->assertSee('Не пойду')
             ->assertDontSee('event-response-closed', false);
 
         $event->forceFill([
