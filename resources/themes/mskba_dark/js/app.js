@@ -119,6 +119,8 @@ import './features/game-live.js';
 import './features/standalone-game-recruitment.js';
 import './features/game-qr-join.js';
 import './features/notification-toasts.js';
+import { initActionToasts } from '../../mskba_app/js/action-toasts.js';
+initActionToasts(document, window, { legacy: true });
 import './features/coordination-form.js';
 import './features/venue-selector.js';
 import './features/venue-selector-metro.js';
