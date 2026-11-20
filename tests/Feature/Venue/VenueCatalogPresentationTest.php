@@ -5,6 +5,8 @@ namespace Tests\Feature\Venue;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -63,5 +65,32 @@ class VenueCatalogPresentationTest extends TestCase
         ]))->pluck('id')->all());
         $this->getJson(route('venues', ['has_upcoming_events' => 1, 'event_days' => 15]))
             ->assertUnprocessable()->assertJsonValidationErrors('event_days');
+    }
+
+    public function test_catalog_radius_filters_all_visible_venues_before_pagination(): void
+    {
+        $make = function (string $name, ?float $latitude, ?float $longitude, bool $published = true): Venue {
+            $address = Address::factory()->create(['latitude' => $latitude, 'longitude' => $longitude]);
+            $location = Location::factory()->create(['address_id' => $address->id]);
+
+            return Venue::factory()->create([
+                'name' => $name, 'location_id' => $location->id,
+                'status' => VenueStatusEnum::CONFIRMED, 'is_published' => $published,
+            ]);
+        };
+        foreach (range(1, 6) as $index) {
+            $make(sprintf('AA Far %02d', $index), 55.95, 37.8);
+        }
+        $near = $make('ZZ Nearby Hall', 55.752, 37.62);
+        $make('Unknown location', null, null);
+        $make('Hidden nearby', 55.752, 37.62, false);
+        $filters = ['latitude' => 55.751244, 'longitude' => 37.618423, 'radius_km' => 3];
+
+        $this->assertSame([$near->id], collect(app(ListVenuesHandler::class)
+            ->handle(null, filters: $filters))->pluck('id')->values()->all());
+        $this->getJson(route('venues', ['latitude' => 55.75]))
+            ->assertUnprocessable()->assertJsonValidationErrors(['longitude', 'radius_km']);
+        $this->getJson(route('venues', array_replace($filters, ['radius_km' => 11])))
+            ->assertUnprocessable()->assertJsonValidationErrors('radius_km');
     }
 }
