@@ -9,7 +9,7 @@
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
     let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
-    let pendingResponse=null, saving=false;
+    let pendingResponse=null, saving=false, savingPane=null;
     const rosterLoads=new WeakMap();
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const getPane=id=>dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
@@ -49,6 +49,7 @@
         });
     };
     const icon=(id)=>{
+        if(!document.getElementById(id)){const fallback=document.createElement('i');fallback.className='ti ti-'+(id==='star'?'star-filled':'user');fallback.setAttribute('aria-hidden','true');return fallback;}
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
         svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
         const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','#'+id);svg.append(use);return svg;
@@ -170,7 +171,7 @@
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});
         title.textContent='Мероприятие';
         paintButtons(pane);
-        if(!saving)void refreshRoster(pane);
+        if(savingPane!==pane)void refreshRoster(pane);
     }
     function open(){
         if(!dialog.open)dialog.showModal();
@@ -183,7 +184,7 @@
     async function respond(pane,status){
         if(saving)return;
         if(!authenticated){guestResponse(status);return;}
-        saving=true;rosterLoads.delete(pane);rosterBusy(pane,true);notice(pane,'');
+        saving=true;savingPane=pane;rosterLoads.delete(pane);rosterBusy(pane,true);notice(pane,'');
         let saved=false;
         try{
             const result=await request(pane.dataset.eventParticipationUrl,'PATCH',{status,include_roster:true});
@@ -204,7 +205,7 @@
                 if(saved)rosterFailure(pane,message);
                 toast(message,true);notice(pane,message,true);
             }
-        }finally{saving=false;rosterBusy(pane,false);}
+        }finally{saving=false;savingPane=null;rosterBusy(pane,false);}
     }
     document.addEventListener('click',event=>{
         const opener=event.target.closest?.('[data-venue-play-open]');
