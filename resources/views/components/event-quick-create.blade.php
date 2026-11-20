@@ -103,13 +103,13 @@
             <p class="quick-event-dialog__hint">Можешь пропустить этот шаг. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
             <label class="quick-event-dialog__field"><span>Зал или корт</span>
                 <span class="select-control"><select name="venue_court_id" data-quick-court>
-                    <option value="">Основной зал</option>
+                    <option value="">Любой зал</option>
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
                 <label class="quick-event-dialog__field"><span>Время начала</span>
-                    <input type="time" data-quick-time step="1800"></label>
+                    <input type="time" data-quick-time step="60"></label>
             </div>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Продолжительность</span>
@@ -119,10 +119,10 @@
                         @endforeach
                     </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
                 <div class="quick-event-dialog__schedule-buttons">
-                    <button type="button" class="{{ $quickSecondary }}" data-quick-show-schedule>Посмотреть занятость</button>
-                    <button type="button" class="{{ $quickPrimary }}" data-quick-add-slot>Добавить время</button>
+                    <button type="button" class="{{ $quickPrimary }} quick-event-dialog__add-slot" data-quick-add-slot title="Добавить указанные дату, время и продолжительность в список интервалов" aria-label="Добавить указанный интервал"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
                 </div>
             </div>
+            <button type="button" class="quick-event-dialog__venue-map-link" data-quick-show-schedule>Посмотреть занятость</button>
             <div class="quick-event-dialog__availability" data-quick-availability hidden aria-live="polite"></div>
             <h4>Выбранные интервалы</h4>
             <ol class="quick-event-dialog__slots" data-quick-slots></ol>
@@ -261,6 +261,8 @@
 .quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.quick-event-dialog__add-slot{width:48px;height:48px;min-width:48px;padding:0;display:grid;place-items:center}
+.quick-event-dialog__add-slot svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none}
 .quick-event-dialog__availability{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--line,#606772);border-radius:12px}
 .quick-event-dialog__availability[hidden]{display:none}
 .quick-event-dialog__availability button{padding:8px;border:1px solid var(--line,#606772);border-radius:8px;color:inherit;background:var(--field,#333)}
