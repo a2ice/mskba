@@ -26,11 +26,6 @@
         }
         if(!choice.open)choice.showModal();
     };
-    document.addEventListener('click',event=>{
-        const button=event.target.closest?.('[data-venue-rental-open]');
-        if(!button)return;
-        event.preventDefault();open();
-    });
     window.addEventListener('mskba:venue-court-selection-required',event=>{
         open(event.detail?.date||null);
     });

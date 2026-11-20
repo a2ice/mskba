@@ -707,3 +707,19 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-day-dialog__slot-skeleton span:first-child{height:16px;width:75%}
 .app-venue-day-dialog__slot-skeleton span:last-child{width:55%}
 @media(max-width:640px){.app-venue-day-dialog__slot-skeleton{min-height:76px}}
+
+/* Existing Modal/Wizard primitives; rental result is the standard day dialog. */
+.app-rental-search-dialog {width:min(580px,calc(100vw - 24px));max-height:90dvh}
+.app-rental-search-dialog [hidden],.app-venue-day-dialog [data-rental-result-header][hidden],
+.app-venue-day-dialog [data-rental-result-courts][hidden],.app-venue-day-dialog [data-rental-result-back][hidden],
+.app-venue-day-dialog__date-item[hidden]{display:none!important}
+.app-rental-search-dialog .form-row{gap:12px}
+.app-rental-search-dialog input{min-width:0;width:100%}
+.app-rental-search-dialog .check-label input{width:20px}
+.app-rental-search__note{margin:10px 20px;color:var(--text);line-height:1.45;font-size:14px}
+.app-rental-search__tabs{display:flex;overflow-x:auto;gap:8px;padding:0 20px 10px}
+.app-rental-search__tabs .button{white-space:nowrap;flex:none;min-height:44px}
+.app-rental-search__tabs .button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.app-venue-day-dialog__dates.is-rental-range{border:1px solid var(--accent);border-radius:12px;padding:4px}
+.app-venue-day-dialog__grid .app-rental-search__busy{min-height:18px;height:18px;padding:0;cursor:default}
+@media(max-width:480px){.app-rental-search-dialog .form-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
