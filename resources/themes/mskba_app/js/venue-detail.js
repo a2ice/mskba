@@ -495,8 +495,14 @@ if (dayBookingDialog) {
     function renderSlots(data) {
         if (rentalSearch) {
             const eligible = new Set(rentalSearch.eligibleSlots(data));
-            data = {...data,slots:rentalSearch.filterSlots(data).map(slot =>
-                slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot)};
+            const unverified = data.stale || data.refresh_state === 'failed';
+            data = {...data,slots:rentalSearch.filterSlots(data).map(slot => {
+                if (slot.status === 'unknown' || (unverified && slot.status === 'available')) {
+                    return {...slot,status:'unknown',selectable:false,price_minor:null};
+                }
+                if (slot.status === 'unavailable') return {...slot,selectable:false,price_minor:null};
+                return slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
+            })};
         }
         response = data;
         selection = [];
@@ -519,7 +525,7 @@ if (dayBookingDialog) {
                 grid.appendChild(busy);
                 continue;
             }
-            if (rentalSearch && (slot.status === 'unavailable' || (slot.status === 'available' && !slot.selectable))) continue;
+            if (rentalSearch && slot.status === 'available' && !slot.selectable) continue;
             const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
@@ -723,7 +729,9 @@ if (dayBookingDialog) {
         status.hidden = !warning;
         if (rentalSearch && !data.slots.some(slot => slot.selectable)) {
             status.hidden = false;
-            status.textContent = warning || 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.';
+            status.textContent = warning || (data.slots.some(slot => slot.status === 'unknown')
+                ? 'На этот день пока нет подтверждённого расписания. Выбери другой день или зал.'
+                : 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.');
         }
         if (!rentalSearch) updateDayOccupancy(data.date, data.slots);
         const selectedDateButton = dateButtons.find(button => button.dataset.venueDayDate === data.date);
