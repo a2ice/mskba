@@ -39,11 +39,11 @@ final class SetEventParticipationHandler
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $isOrganizer = $event->organizerActor()->whereIn('user_id', $user->identityIds())->exists();
             $participant = $this->identityParticipation->effectiveParticipant($event, $user);
-            $isOrganizer = $participant?->role === EventParticipantRoleEnum::ORGANIZER;
             $native = $event->proposed_time_options !== null;
             $isPublished = $event->status === EventStatusEnum::PUBLISHED
-                && ($event->visibility === EventVisibilityEnum::PUBLIC || ($native && $participant !== null));
+                && ($event->visibility === EventVisibilityEnum::PUBLIC || $isOrganizer || ($native && $participant !== null));
             $ownDraft = $native && $isOrganizer && $event->status === EventStatusEnum::DRAFT && $event->starts_at === null;
             if (! $isPublished && ! $ownDraft) {
                 throw new InvalidArgumentException('Для этого мероприятия сейчас нельзя изменить участие.');
@@ -53,8 +53,8 @@ final class SetEventParticipationHandler
                 throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
-            if ($isOrganizer && ! $native) {
-                throw new InvalidArgumentException('Организатор не может изменить участие в собственном мероприятии.');
+            if ($participant?->role === EventParticipantRoleEnum::ORGANIZER && ! $isOrganizer) {
+                throw new InvalidArgumentException('Запись организатора не соответствует владельцу мероприятия.');
             }
 
             if ($participant?->status === $status
@@ -64,15 +64,18 @@ final class SetEventParticipationHandler
 
             $previousStatus = $participant?->status;
             $roles = $participant?->participation_roles ?: ['player'];
+            $hadPlayerSeat = $participant?->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version
+                && $participant->hasPlayerRole();
             if ($status === EventParticipantStatusEnum::CONFIRMED
-                && ($participant?->status !== EventParticipantStatusEnum::CONFIRMED || $participant->confirmation_version !== $event->participation_confirmation_version)
+                && ! $hadPlayerSeat
                 && in_array('player', $roles, true)
                 && $event->max_participants !== null
                 && $this->identityParticipation->confirmedIdentityCount($event) >= $event->max_participants) {
                 throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
-            if ($status !== EventParticipantStatusEnum::CONFIRMED) {
+            if (! $isOrganizer && $status !== EventParticipantStatusEnum::CONFIRMED) {
                 $participant?->responsibilityPermissions()->delete();
             }
 
@@ -85,7 +88,7 @@ final class SetEventParticipationHandler
                 'confirmation_version' => $event->participation_confirmation_version,
                 'status_changed_by_actor_id' => null,
                 'status_changed_at' => null,
-                ...($status === EventParticipantStatusEnum::CONFIRMED ? [] : [
+                ...($status === EventParticipantStatusEnum::CONFIRMED || $isOrganizer ? [] : [
                     'responsibility_status' => null,
                     'responsibility_requested_by_user_id' => null,
                     'responsibility_requested_at' => null,

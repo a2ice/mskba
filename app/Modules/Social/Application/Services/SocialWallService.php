@@ -49,12 +49,18 @@ final class SocialWallService
 
     public function canCommentOnEvent(Event $event, ?User $user): bool
     {
-        if ($user === null || ! $user->canonical()->isConfirmed() || $user->canonical()->isBlocked()) {
+        $user = $user?->canonical();
+        if ($user === null || $user->trashed() || $user->isBlocked()) {
             return false;
         }
 
-        $identityIds = $user->canonical()->identityIds();
-        $isOrganizer = $event->organizerActor()->whereIn('user_id', $identityIds)->exists();
+        $identityIds = $user->identityIds();
+        if ($event->organizerActor()->whereIn('user_id', $identityIds)->exists()) {
+            return true;
+        }
+        if (! $user->isConfirmed()) {
+            return false;
+        }
         $isParticipant = $event->participants()
             ->whereIn('user_id', $identityIds)
             ->where('confirmation_version', $event->participation_confirmation_version)
@@ -63,7 +69,7 @@ final class SocialWallService
                 EventParticipantStatusEnum::TENTATIVE->value,
             ])->exists();
 
-        return $isOrganizer || $isParticipant;
+        return $isParticipant;
     }
 
     /** @return Collection<int, SocialWallEntry> */
@@ -71,7 +77,7 @@ final class SocialWallService
     {
         $query = SocialWallEntry::query()
             ->where('scope_type', 'event')->where('scope_id', $event->id)
-            ->with(['actor:id,username,deleted_at', 'target:id,username,deleted_at']);
+            ->with(['actor:id,username,nickname,deleted_at', 'target:id,username,deleted_at']);
 
         if ($afterId !== null) {
             return $query->where('id', '>', $afterId)->orderBy('id')
@@ -103,7 +109,7 @@ final class SocialWallService
     public function postEventComment(Event $event, User $user, string $body, string $requestId): SocialWallEntry
     {
         if (! $this->canCommentOnEvent($event, $user)) {
-            abort(403, 'Комментировать могут только подтверждённые участники мероприятия.');
+            abort(403, 'Комментировать могут организатор и подтверждённые участники мероприятия.');
         }
 
         $body = trim($body);
@@ -196,8 +202,10 @@ final class SocialWallService
     public function present(SocialWallEntry $entry): array
     {
         $actor = $entry->actor;
-        $name = $actor !== null && ! $actor->trashed() && filled($actor->username)
-            ? $actor->username : 'Удалённый пользователь';
+        $actorName = $entry->scope_type === 'event' && filled($actor?->nickname)
+            ? $actor->nickname : $actor?->username;
+        $name = $actor !== null && ! $actor->trashed() && filled($actorName)
+            ? $actorName : 'Удалённый пользователь';
         $target = $entry->target;
         $targetName = $target !== null && ! $target->trashed() && filled($target->username)
             ? $target->username : 'Удалённый пользователь';
@@ -234,6 +242,7 @@ final class SocialWallService
             'deleted' => $entry->deleted_at !== null,
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
+            'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
             'date' => $entry->created_at?->format('d.m.Y H:i'),
         ];
     }

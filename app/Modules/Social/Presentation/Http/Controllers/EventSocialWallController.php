@@ -3,6 +3,7 @@
 namespace App\Modules\Social\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\EventPreviewRoster;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Social\Application\Exceptions\SocialActionRateLimitException;
@@ -23,13 +24,14 @@ final class EventSocialWallController extends Controller
         $item = $this->event($event);
         abort_unless($wall->canViewEvent($item, $request->user()), 404);
 
-        $data = $request->validate(['after_id' => ['nullable', 'integer', 'min:0']]);
+        $data = $request->validate(['after_id' => ['nullable', 'integer', 'min:0'], 'include_roster' => ['sometimes', 'boolean']]);
         $after = isset($data['after_id']) ? (int) $data['after_id'] : null;
         return response()->json([
             'entries' => $wall->latestForEvent($item, 50, $after)
                 ->map(fn ($entry) => $this->present($entry, $item, $request, $wall))->values(),
             'counts' => $wall->eventCounts($item),
             'can_post' => $wall->canCommentOnEvent($item, $request->user()),
+            ...($request->boolean('include_roster') ? ['roster' => app(EventPreviewRoster::class)->forEvent($item, $request->user())] : []),
         ])->header('Cache-Control', 'private, no-store');
     }
 

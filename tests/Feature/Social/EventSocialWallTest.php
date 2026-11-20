@@ -69,6 +69,8 @@ final class EventSocialWallTest extends TestCase
             ->assertJsonPath('counts.left', 1)
             ->assertJsonCount(2, 'entries')
             ->assertJsonPath('entries.0.kind', 'event_rsvp_changed')
+            ->assertJsonPath('entries.0.rsvp_status', 'confirmed')
+            ->assertJsonPath('entries.1.rsvp_status', 'left')
             ->assertJsonPath('entries.1.text', $user->username.' не пойдёт на мероприятие.');
 
         $this->assertDatabaseHas('event_participants', [
@@ -80,6 +82,28 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
         $this->assertSame(2, DB::table('social_action_logs')->where('user_id', $user->id)->count());
         $this->assertSame(2, DB::table('social_wall_entries')->where('scope_type', 'event')->count());
+    }
+
+    public function test_event_wall_prefers_nickname_and_exposes_historical_rsvp_status(): void
+    {
+        $event = $this->event();
+        $user = $this->confirmedUser();
+        $user->forceFill(['nickname' => 'court_nick'])->save();
+        $url = route('events.participation', $event->routeIdentifier());
+
+        $this->actingAs($user)->patch($url, ['status' => 'confirmed'])->assertRedirect();
+        $this->actingAs($user)->patch($url, ['status' => 'tentative'])->assertRedirect();
+        $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
+        $this->getJson(route('events.wall.index', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertJsonCount(3, 'entries')
+            ->assertJsonPath('entries.0.actor', 'court_nick')
+            ->assertJsonPath('entries.0.text', 'court_nick пойдёт на мероприятие.')
+            ->assertJsonPath('entries.0.rsvp_status', 'confirmed')
+            ->assertJsonPath('entries.1.text', 'court_nick пока думает, идти ли на мероприятие.')
+            ->assertJsonPath('entries.1.rsvp_status', 'tentative')
+            ->assertJsonPath('entries.2.text', 'court_nick не пойдёт на мероприятие.')
+            ->assertJsonPath('entries.2.rsvp_status', 'left');
     }
 
     public function test_comment_and_rsvp_share_three_per_sixty_seconds_globally(): void
@@ -155,5 +179,70 @@ final class EventSocialWallTest extends TestCase
             ->assertSee('data-event-social-wall', false)
             ->assertSee('event-wall-panel-chat', false)
             ->assertSee('event-wall-panel-history', false);
+    }
+
+    public function test_organizer_can_write_without_attendance_or_confirmed_account_but_blocked_users_cannot(): void
+    {
+        $event = $this->event();
+        $organizer = $event->organizerActor->user;
+        $organizer->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+
+        $this->actingAs($organizer)->getJson($wall)->assertOk()
+            ->assertJsonPath('can_post', true)
+            ->assertJsonPath('roster.viewer_is_organizer', true);
+        $this->postWall($event, 'Сообщение организатора')->assertCreated();
+
+        $other = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($other)->getJson($wall)->assertOk()->assertJsonPath('can_post', false);
+        $this->postWall($event, 'Нет доступа')->assertForbidden();
+
+        $organizer->update(['status' => UserStatusEnum::BLOCKED]);
+        // Global blocked-account middleware rejects the request before the wall controller.
+        $this->actingAs($organizer)->getJson($wall)->assertForbidden();
+    }
+
+    public function test_preview_roster_updates_atomically_with_rsvp_and_keeps_organizer_first(): void
+    {
+        $event = $this->event();
+        $event->update(['max_participants' => 15, 'participation_confirmation_version' => 1]);
+        $organizer = $event->organizerActor->user;
+        $user = $this->confirmedUser();
+        $event->participants()->create([
+            'user_id' => $organizer->id,
+            'role' => 'organizer',
+            'status' => 'confirmed',
+            'joined_at' => now(),
+            'confirmation_version' => $event->participation_confirmation_version,
+        ]);
+        $url = route('events.participation', $event->routeIdentifier());
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+
+        $this->getJson($wall)->assertOk()
+            ->assertJsonCount(1, 'roster.members')
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.max_participants', 15)
+            ->assertJsonPath('roster.viewer_status', null);
+
+        $this->actingAs($user)->patchJson($url, ['status' => 'confirmed', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(2, 'roster.members')
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.1.is_viewer', true)
+            ->assertJsonPath('roster.members.1.status', 'confirmed')
+            ->assertJsonPath('roster.viewer_status', 'confirmed');
+
+        $response = $this->patchJson($url, ['status' => 'tentative', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(2, 'roster.members')
+            ->assertJsonPath('roster.members.1.status', 'tentative')
+            ->assertJsonPath('roster.viewer_status', 'tentative');
+        $this->assertNotNull($response->json('roster.members.1.decision_at'));
+
+        $this->patchJson($url, ['status' => 'left', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(1, 'roster.members')
+            ->assertJsonPath('roster.viewer_status', 'left');
+
+        $this->getJson($wall)->assertOk()->assertJsonCount(1, 'roster.members');
+        $event->update(['visibility' => EventVisibilityEnum::PRIVATE]);
+        $this->getJson($wall)->assertNotFound();
     }
 }

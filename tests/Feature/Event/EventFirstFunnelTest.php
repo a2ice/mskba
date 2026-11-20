@@ -223,4 +223,58 @@ final class EventFirstFunnelTest extends TestCase
         $this->assertDatabaseCount('event_venue_interests', 1);
         $this->assertDatabaseCount('venue_bookings', 0);
     }
+
+    public function test_organizer_attendance_is_default_but_optional_and_can_change_without_losing_role(): void
+    {
+        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $payload = $this->payload($venue, [$this->slots()[0]]);
+        $payload['max_participants'] = 2;
+        $payload['organizer_participates'] = true;
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $event = Event::query()->sole();
+        $this->assertSame('confirmed', $event->participants()->sole()->status->value);
+        $initialWall = route('events.wall.index', $event->routeIdentifier());
+        $this->getJson($initialWall)->assertOk()
+            ->assertJsonCount(1, 'entries')
+            ->assertJsonPath('entries.0.kind', 'event_rsvp_changed')
+            ->assertJsonPath('entries.0.system', true);
+        $this->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $this->getJson($initialWall)->assertOk()->assertJsonCount(1, 'entries');
+
+        $payload = $this->payload($venue, [$this->slots()[1]]);
+        $payload['max_participants'] = 2;
+        $payload['organizer_participates'] = false;
+        $this->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $event = Event::query()->latest('id')->firstOrFail();
+        $url = route('events.participation', $event->routeIdentifier());
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+        $this->assertSame('left', $event->participants()->sole()->status->value);
+        $this->assertSame([], $event->participants()->sole()->participation_roles);
+        $this->getJson($wall)->assertOk()->assertJsonPath('can_post', true)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'left')
+            ->assertJsonPath('counts.confirmed', 0)
+            ->assertJsonCount(0, 'entries');
+
+        $first = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $second = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        foreach ([$first, $second] as $player) {
+            $this->actingAs($player)->patchJson($url, ['status' => 'confirmed'])->assertOk();
+        }
+        $this->actingAs($organizer)->patchJson($url, ['status' => 'confirmed'])->assertStatus(409);
+        $this->actingAs($first)->patchJson($url, ['status' => 'left'])->assertOk();
+
+        $this->actingAs($organizer)->patchJson($url, ['status' => 'confirmed', 'include_roster' => true])
+            ->assertOk()->assertJsonPath('counts.confirmed', 2)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'confirmed');
+        $this->patchJson($url, ['status' => 'left', 'include_roster' => true])
+            ->assertOk()->assertJsonPath('counts.confirmed', 1)
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.0.status', 'left');
+        $this->getJson($wall)->assertOk()->assertJsonPath('can_post', true);
+        $this->assertSame('organizer', $event->participants()->where('user_id', $organizer->id)->sole()->role->value);
+        $this->assertSame($organizer->id, $event->refresh()->organizerActor->user_id);
+    }
 }

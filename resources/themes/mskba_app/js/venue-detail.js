@@ -339,6 +339,8 @@ if (dayBookingDialog) {
     }
     function resetSearch() {
         rentalSearch = null;
+        bookingButton.hidden = false;
+        dayBookingDialog.classList.toggle('is-availability-view', false);
         dayBookingDialog.classList.toggle('is-rental-search', false);
         if (searchHeader) searchHeader.hidden = true;
         if (searchBack) searchBack.hidden = true;
@@ -392,7 +394,7 @@ if (dayBookingDialog) {
         const enough = duration >= required
             && duration <= (response?.maximum_minutes ?? 0)
             && selectedIndexesAreContiguous();
-        const canBook = !!response?.booking_enabled && enough;
+        const canBook = !rentalSearch?.readOnly && !!response?.booking_enabled && enough;
         bookingButton.disabled = !canBook;
         grid.querySelectorAll('button[data-slot-index]').forEach(button => {
             const active = selection.includes(Number(button.dataset.slotIndex));
@@ -501,7 +503,7 @@ if (dayBookingDialog) {
                     return {...slot,status:'unknown',selectable:false,price_minor:null};
                 }
                 if (slot.status === 'unavailable') return {...slot,selectable:false,price_minor:null};
-                return slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
+                return !rentalSearch.readOnly && slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
             })};
         }
         response = data;
@@ -525,12 +527,12 @@ if (dayBookingDialog) {
                 grid.appendChild(busy);
                 continue;
             }
-            if (rentalSearch && slot.status === 'available' && !slot.selectable) continue;
+            if (rentalSearch && !rentalSearch.readOnly && slot.status === 'available' && !slot.selectable) continue;
             const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'app-venue-day-dialog__slot';
-            if (slot.selectable) cell.dataset.slotIndex = String(group.firstIndex);
+            if (slot.selectable && !rentalSearch?.readOnly) cell.dataset.slotIndex = String(group.firstIndex);
             if (group.count > 1) cell.classList.add('is-booking-group');
             if (eventInfo) cell.classList.add('has-attached-event');
             if (slot.status === 'booked') cell.classList.add('has-booking-details');
@@ -540,7 +542,7 @@ if (dayBookingDialog) {
             cell.dataset.slotStatus = slot.status;
             // Occupied slots are informational, even when there is no event.
             // Only available slots remain selectable for a new reservation.
-            cell.disabled = !slot.selectable && slot.status !== 'booked';
+            cell.disabled = !!rentalSearch?.readOnly || (!slot.selectable && slot.status !== 'booked');
             cell.setAttribute('aria-pressed', 'false');
             const times = document.createElement('strong');
             times.textContent = displayClock(slot.starts_at) + '–' + displayClock(group.last.ends_at);
@@ -727,7 +729,7 @@ if (dayBookingDialog) {
             : (data.refresh_state === 'failed' ? data.refresh_message : null);
         status.textContent = warning || '';
         status.hidden = !warning;
-        if (rentalSearch && !data.slots.some(slot => slot.selectable)) {
+        if (rentalSearch && !data.slots.some(slot => rentalSearch.readOnly ? slot.status === 'available' : slot.selectable)) {
             status.hidden = false;
             status.textContent = warning || (data.slots.some(slot => slot.status === 'unknown')
                 ? 'На этот день пока нет подтверждённого расписания. Выбери другой день или зал.'
@@ -858,7 +860,7 @@ if (dayBookingDialog) {
         setActiveDate(date);
         const label = dateButtons.find(button => button.dataset.venueDayDate === date)
             ?.querySelector('strong')?.textContent || date;
-        heading.textContent = (rentalSearch ? 'Аренда · ' : 'Расписание · ')
+        heading.textContent = (rentalSearch?.readOnly ? 'Занятость · ' : rentalSearch ? 'Аренда · ' : 'Расписание · ')
             + (dayBookingDialog.dataset.courtName ? dayBookingDialog.dataset.courtName + ' · ' : '')
             + label;
         status.hidden = false;
@@ -969,6 +971,8 @@ if (dayBookingDialog) {
         if (!rentalSearch || !searchHeader || !searchCourts) return;
         dayBookingDialog.classList.toggle('is-rental-search', true);
         searchHeader.hidden = false;
+        dayBookingDialog.classList.toggle('is-availability-view', !!rentalSearch.readOnly);
+        bookingButton.hidden = !!rentalSearch.readOnly;
         searchNote.textContent = rentalSearch.note;
         searchBack.hidden = false;
         markPreferredDates();

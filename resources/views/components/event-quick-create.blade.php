@@ -5,10 +5,16 @@
     $quickVenues = \App\Modules\Venue\Domain\Models\Venue::query()
         ->where('status', 'confirmed')->where('is_published', true)->with(['courts', 'location.address', 'location.metroStations'])
         ->orderBy('name')->get();
+    // Fetch active venue policies in one query; court overrides are already loaded.
+    $quickBookingPolicies = \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+        ->whereIn('venue_id', $quickVenues->modelKeys())->where('active_marker', true)
+        ->pluck('minimum_lead_time_minutes', 'venue_id');
+    $quickBookingLead = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
+        (int) ($quickBookingPolicies->get($place->id) ?? 0)])->all();
     $quickSelectedVenue = (int) ($quickEventVenueId ?? 0);
     $quickSelectedCourt = (int) ($quickEventCourtId ?? 0);
     $quickCourtChoices = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
-        $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name])->values()->all()])->all();
+        $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name, 'minimum_lead_time_minutes' => $court->minimum_lead_time_minutes])->values()->all()])->all();
     $quickVenueMeta = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id => [
         'id' => (int) $place->id,
         'name' => $place->name,
@@ -27,6 +33,7 @@
     data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
+    data-booking-lead='@json($quickBookingLead)'
     data-venue-meta='@json($quickVenueMeta, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
     aria-labelledby="quick-event-title">
     <header class="mskba-modal__header quick-event-dialog__heading">
@@ -100,11 +107,17 @@
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="schedule" hidden>
             <h3>2. Желаемая дата и время <small>необязательно</small></h3>
-            <p class="quick-event-dialog__hint">Можешь пропустить этот шаг. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
+            <p class="quick-event-dialog__hint">Можно не указывать дату. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
             <label class="quick-event-dialog__field"><span>Зал или корт</span>
                 <span class="select-control"><select name="venue_court_id" data-quick-court>
-                    <option value="">Основной зал</option>
+                    <option value="">Любой зал</option>
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
+            <label class="quick-event-dialog__game-toggle">
+                <input type="checkbox" data-quick-schedule-enabled aria-controls="quick-event-schedule-fields" aria-expanded="false">
+                <span>Указать желаемую дату</span>
+            </label>
+            <p class="quick-event-dialog__hint" data-quick-schedule-off>Без даты мероприятие будет создано как черновик. Дату и время можно указать позднее.</p>
+            <fieldset id="quick-event-schedule-fields" class="quick-event-dialog__schedule-fields" data-quick-schedule-fields disabled hidden>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
@@ -119,14 +132,14 @@
                         @endforeach
                     </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
                 <div class="quick-event-dialog__schedule-buttons">
-                    <button type="button" class="{{ $quickSecondary }}" data-quick-show-schedule>Посмотреть занятость</button>
-                    <button type="button" class="{{ $quickPrimary }}" data-quick-add-slot>Добавить время</button>
+                    <button type="button" class="{{ $quickPrimary }} quick-event-dialog__add-slot" data-quick-add-slot title="Добавить указанные дату, время и продолжительность в список интервалов" aria-label="Добавить указанный интервал"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
                 </div>
             </div>
+            <button type="button" class="quick-event-dialog__venue-map-link" data-quick-show-schedule>Посмотреть занятость</button>
             <div class="quick-event-dialog__availability" data-quick-availability hidden aria-live="polite"></div>
             <h4>Выбранные интервалы</h4>
             <ol class="quick-event-dialog__slots" data-quick-slots></ol>
-            <p class="quick-event-dialog__hint" data-quick-no-slots>Пока ничего не выбрано. Можно перейти дальше без даты.</p>
+            <p class="quick-event-dialog__hint" data-quick-no-slots>Дополнительные интервалы не добавлены. Указанное время будет добавлено при нажатии «Далее».</p>
             <fieldset class="quick-event-dialog__mode" data-quick-mode-group hidden>
                 <legend>Что означают эти интервалы?</legend>
                 <label><input type="radio" name="schedule_mode" value="alternatives" checked>
@@ -134,17 +147,18 @@
                 <label><input type="radio" name="schedule_mode" value="separate">
                     <span>Это <strong>несколько отдельных мероприятий</strong> — по одному на каждый интервал</span></label>
             </fieldset>
+            </fieldset>
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="review" hidden>
             <h3>3. Подтверждение</h3>
             <div data-quick-review></div>
             <p class="quick-event-dialog__hint"><strong>Важно:</strong> создание мероприятия или предварительной заявки не является бронированием. Менеджер площадки согласует время и условия отдельно.</p>
+            @include('components.event-organizer-attendance-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             @include('components.event-organizer-role-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             <p data-quick-feedback role="alert" hidden></p>
         </section>
         <footer class="mskba-modal__footer quick-event-dialog__actions">
             <button type="button" class="{{ $quickSecondary }}" data-quick-back hidden>Назад</button>
-            <button type="button" class="{{ $quickSecondary }}" data-quick-event-close>Отмена</button>
             <button type="button" class="{{ $quickPrimary }}" data-quick-next>Далее</button>
             <button type="submit" class="{{ $quickPrimary }}" data-quick-submit hidden>Создать мероприятие</button>
         </footer>
@@ -259,8 +273,12 @@
 .quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
 .quick-event-dialog__game-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-weight:600}
 .quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog__schedule-fields{display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0}
+.quick-event-dialog__schedule-fields[hidden]{display:none}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
+.quick-event-dialog__add-slot{width:48px;height:48px;min-width:48px;padding:0;display:grid;place-items:center}
+.quick-event-dialog__add-slot svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;stroke-linecap:round;fill:none}
 .quick-event-dialog__availability{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border:1px solid var(--line,#606772);border-radius:12px}
 .quick-event-dialog__availability[hidden]{display:none}
 .quick-event-dialog__availability button{padding:8px;border:1px solid var(--line,#606772);border-radius:8px;color:inherit;background:var(--field,#333)}
