@@ -268,3 +268,54 @@ test('all app-theme headings remain inert: never tabindex or programmatically fo
     walk(root);
     assert.deepEqual(problems, [], problems.join('\n'));
 });
+
+test('backdrop closes only for a complete click begun and ended outside a native dialog', () => {
+    const h = harness();
+    let blocked = false;
+    const event = (target, x, y, pointerId = 7) => ({
+        target, clientX:x, clientY:y, button:0, pointerId, isPrimary:true,
+        preventDefault(){ blocked = true; },
+        stopImmediatePropagation(){ blocked = true; },
+    });
+    const click = (downTarget, downX, downY, upTarget, upX, upY, shouldBlock) => {
+        blocked = false;
+        h.doc.emit('pointerdown', event(downTarget, downX, downY));
+        h.doc.emit('pointerup', event(upTarget, upX, upY));
+        h.doc.emit('click', event(h.dialog, upX, upY));
+        assert.equal(blocked, shouldBlock);
+    };
+    // Real backdrop click stays available.
+    click(h.dialog, 100, 90, h.dialog, 100, 90, false);
+    // Selecting text inside, then releasing over backdrop is NOT a click-away.
+    click(h.header, 400, 150, h.dialog, 100, 90, true);
+    // Beginning outside then releasing inside isn't a backdrop click either.
+    click(h.dialog, 100, 90, h.header, 400, 150, true);
+    // Blank space inside a dialog is not its backdrop.
+    click(h.dialog, 300, 150, h.dialog, 300, 150, true);
+    h.controller.destroy();
+});
+
+test('legacy modal backdrop has the same press-and-release requirement', () => {
+    const h = harness(true);
+    // The generic harness uses substring matching; override the shell so it
+    // is never mistaken for its own .modal__dialog child.
+    h.shell.matches = selector => selector.split(',').some(part =>
+        part.trim() === '.modal' || part.trim().startsWith('.modal.'));
+    const event = (target, pointerId=8) => ({
+        target, clientX:100, clientY:90, button:0, pointerId, isPrimary:true,
+        preventDefault(){this.blocked=true;},
+        stopImmediatePropagation(){this.blocked=true;},
+        blocked:false,
+    });
+    h.doc.emit('pointerdown', event(h.dialog));
+    h.doc.emit('pointerup', event(h.shell));
+    const unintended = event(h.shell);
+    h.doc.emit('click', unintended);
+    assert.equal(unintended.blocked, true);
+    h.doc.emit('pointerdown', event(h.shell));
+    h.doc.emit('pointerup', event(h.shell));
+    const deliberate = event(h.shell);
+    h.doc.emit('click', deliberate);
+    assert.equal(deliberate.blocked, false);
+    h.controller.destroy();
+});
