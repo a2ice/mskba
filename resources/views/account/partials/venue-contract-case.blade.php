@@ -25,6 +25,11 @@
             </div>
             <span class="venue-contract-case__badge {{ $restriction ? 'is-blocked' : ($ownership ? 'is-active' : '') }}">{{ $state }}</span>
         </div>
+        @if(app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->canManageAudience(auth()->user(), $venue))
+            <div class="venue-contract-case__actions">
+                <a class="venue-contract-case__button" href="{{ route('account.venue-audience.index', $venue->id) }}">Интересуются</a>
+            </div>
+        @endif
         @if($invitation)
             <p class="venue-contract-case__note">Приглашение принято: {{ $invitation->role === 'owner' ? 'подтверждение полномочий владельца' : 'участие в управлении площадкой' }}. Подтверждение email не заменяет проверку прав управления.</p>
         @endif

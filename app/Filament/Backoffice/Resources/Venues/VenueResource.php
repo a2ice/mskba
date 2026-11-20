@@ -365,6 +365,11 @@ final class VenueResource extends Resource
                         && \App\Filament\Backoffice\Resources\Contracts\ContractResource::canViewAny())
                     ->schema([View::make('filament.backoffice.related-contracts')
                         ->viewData(['contractScope' => 'venue'])]),
+                Tab::make('Интересуются')->icon('heroicon-o-users')
+                    ->visible(fn (?Venue $record): bool => $record !== null
+                        && app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)
+                            ->canManageAudience(auth('web')->user(), $record, true))
+                    ->schema([View::make('filament.backoffice.venue-audience')]),
                 Tab::make('Адрес и метро')->schema([
                     Section::make('Адрес')
                         ->description('Адрес создаётся как отдельная Location/Address. Изменение адреса не переписывает адреса других объектов.')
