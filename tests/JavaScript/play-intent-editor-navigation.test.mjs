@@ -7,26 +7,25 @@ const account = readFileSync(new URL('../../resources/themes/mskba_app/js/play-i
 const hearts = readFileSync(new URL('../../resources/themes/mskba_app/js/venue-favorites.js', import.meta.url), 'utf8');
 const bootstrap = readFileSync(new URL('../../resources/themes/mskba_app/js/app.js', import.meta.url), 'utf8');
 
-test('all entry points use the same mounted context-aware popup', () => {
+const favorite = readFileSync(new URL('../../resources/themes/mskba_app/js/favorite-action.js', import.meta.url), 'utf8');
+
+test('subscription editor remains mounted; favorite hearts use the separate shared info popup', () => {
     assert.match(bootstrap, /createApp\(PlayIntentDialog/);
-    assert.match(hearts, /mskba:subscription-dialog:open/);
+    assert.match(hearts, /import \{ addFavorite \} from/);
+    assert.doesNotMatch(hearts, /mskba:subscription-dialog:open/);
     assert.match(editor, /mskba:subscription-dialog:open/);
     assert.match(editor, /contextSource\.value='favorite'/);
     assert.match(editor, /contextSource\.value='play'/);
     assert.match(editor, /contextSource\.value='edit'/);
 });
 
-test('clicking a heart saves its actual entity before opening optional actions', () => {
-    assert.match(hearts, /request\(endpoints\.toggle,'POST',\{type:'venue',id\}\)/);
-    assert.match(hearts, /request\(endpoints\.toggle,'POST',\{type,id\}\)/);
-    assert.match(hearts, /if\(result\.state==='active'\)/);
-    assert.match(hearts, /contextNames\[type\]/);
-    assert.match(editor, /favoriteTitle\.value/);
-    assert.match(editor, /contextSource==='favorite'/);
-    assert.match(editor, /saveFavoriteOnly/);
-    assert.match(editor, /playOpen\.value=false;favoriteOpen\.value=true/);
-    assert.match(hearts, /await request\(endpoints\.toggle,'POST',\{type:'venue',id\}\)/);
-    assert.match(hearts, /if\(result\.state==='active'\)/);
+test('clicking either kind of heart uses shared explicit add, not a blind toggle', () => {
+    assert.match(hearts, /await addFavorite\('venue',id\)/);
+    assert.match(hearts, /await addFavorite\(type,id\)/);
+    assert.match(hearts, /request\(endpoints\.toggle,'POST',\{type:'venue',id,action:'remove'\}\)/);
+    assert.match(hearts, /request\(endpoints\.toggle,'POST',\{type,id,action:'remove'\}\)/);
+    assert.match(favorite, /JSON\.stringify\(\{type,id,action:'add'\}\)/);
+    assert.ok(favorite.indexOf("if(result.state!=='active')") < favorite.indexOf("show(labels[type][1],null)"));
     assert.match(editor, /async function saveFavoriteOnly\(\)/);
 });
 
