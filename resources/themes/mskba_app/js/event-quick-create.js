@@ -28,7 +28,14 @@
     const availability=form.querySelector('[data-quick-availability]');
     const feedback=form.querySelector('[data-quick-feedback]');
     const storageKey='mskba:event-quick-create:'+location.pathname;
-    let step=0,slots=[],editingTitle=false,saving=false;
+    let step=0,slots=[],editingTitle=false,saving=false,scheduleEdited=false;
+    function initializeSchedule(){
+        const now=new Date(Date.now()+10*60000+180*60000).toISOString();
+        date.min=new Date(Date.now()+180*60000).toISOString().slice(0,10);
+        date.value=now.slice(0,10);time.value=now.slice(11,16);
+        scheduleEdited=false;
+    }
+    for(const field of [date,time,duration])field.addEventListener('input',()=>{scheduleEdited=true;});
     let authenticated=dialog.dataset.authenticated==='1';
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const courts=(()=>{try{return JSON.parse(dialog.dataset.courts||'{}');}catch{return {};}})();
@@ -103,7 +110,7 @@
     const syncCourts=()=>{
         const remembered=court.value;
         court.replaceChildren();
-        const base=document.createElement('option');base.value='';base.textContent='Основной зал';court.append(base);
+        const base=document.createElement('option');base.value='';base.textContent='Любой зал';court.append(base);
         for(const item of (courts[venue.value]||[])){
             const option=document.createElement('option');option.value=String(item.id);option.textContent=item.name;
             court.append(option);
@@ -160,7 +167,7 @@
         }
         // Consume the pending selection. Navigating back or removing a saved
         // interval must not silently re-add it on the next transition.
-        date.value='';time.value='';
+        date.value='';time.value='';scheduleEdited=false;
         availability.hidden=false;availability.textContent='Интервал добавлен. Можешь указать ещё один вариант времени.';
         return true;
     }
@@ -185,7 +192,7 @@
                 button.classList.toggle('is-busy',occupied);
                 button.setAttribute('aria-label','Начало '+slot.starts_at+(occupied?', сейчас занято':', свободно'));
                 button.addEventListener('click',()=>{
-                    time.value=slot.starts_at;
+                    time.value=slot.starts_at;scheduleEdited=true;
                     availability.querySelectorAll('button').forEach(b=>b.classList.remove('is-picked'));
                     button.classList.add('is-picked');
                     // Occupied time remains eligible only as a preliminary request.
@@ -194,7 +201,12 @@
             }
         }catch(e){availability.textContent=e.message;}
     }
-    form.querySelector('[data-quick-show-schedule]').addEventListener('click',()=>void loadDaySchedule());
+    form.querySelector('[data-quick-show-schedule]').addEventListener('click',()=>{
+        const shared=document.querySelector('[data-rental-search-dialog]');
+        if(shared && shared.dataset.venueId===venue.value){
+            shared.dispatchEvent(new CustomEvent('mskba:availability-open',{detail:{date:date.value,time:time.value,courtId:court.value}}));
+        }else void loadDaySchedule();
+    });
     function review(){
         const node=form.querySelector('[data-quick-review]');node.replaceChildren();
         const info=document.createElement('p');
@@ -230,7 +242,7 @@
                 if(!validate(field))return;
             }
         }
-        if(step===1&&(date.value||time.value)){
+        if(step===1&&scheduleEdited&&(date.value||time.value)){
             const previousCount=slots.length;
             if(!addSlot({automatic:true}))return;
             // The second interval reveals the choice between separate events
@@ -334,7 +346,7 @@
         document.querySelector('[data-venue-play-dialog][open]')?.close();
         document.querySelector('[data-venue-choice-dialog][open]')?.close();
         if(!dialog.open)dialog.showModal();
-        setStep(0);type.focus();
+        initializeSchedule();setStep(0);type.focus();
     });
     dialog.querySelectorAll('[data-quick-event-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));
