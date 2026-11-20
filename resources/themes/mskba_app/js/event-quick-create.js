@@ -19,6 +19,9 @@
     const createGame=form.querySelector('[data-quick-create-game]');
     const createGameRow=form.querySelector('[data-quick-create-game-row]');
     const createGameHint=form.querySelector('[data-quick-create-game-hint]');
+    const scheduleEnabled=form.querySelector('[data-quick-schedule-enabled]');
+    const scheduleFields=form.querySelector('[data-quick-schedule-fields]');
+    const scheduleOff=form.querySelector('[data-quick-schedule-off]');
     const time=form.querySelector('[data-quick-time]');
     const date=form.querySelector('[data-quick-date]');
     const duration=form.querySelector('[data-quick-duration]');
@@ -30,6 +33,7 @@
     const storageKey='mskba:event-quick-create:'+location.pathname;
     let step=0,slots=[],editingTitle=false,saving=false,scheduleEdited=false;
     function initializeSchedule(){
+        if(!scheduleEnabled.checked)return;
         const venueLead=bookingLead[venue.value]??0;
         const selected=(courts[venue.value]||[]).find(item=>String(item.id)===court.value);
         const lead=Math.max(0,Number(selected?.minimum_lead_time_minutes??venueLead)||0);
@@ -38,6 +42,21 @@
         date.value=now.slice(0,10);time.value=now.slice(11,16);
         scheduleEdited=false;
     }
+    function syncScheduleVisibility({reset=false}={}){
+        const enabled=scheduleEnabled.checked;
+        scheduleFields.hidden=scheduleFields.disabled=!enabled;
+        scheduleOff.hidden=enabled;
+        scheduleEnabled.setAttribute('aria-expanded',String(enabled));
+        if(!enabled){
+            slots=[];date.value='';time.value='';scheduleEdited=false;
+            availability.hidden=true;availability.replaceChildren();
+            for(const field of [date,time,duration]){field.setCustomValidity('');clearValidation(field);}
+            renderSlots();
+        }else if(reset){
+            initializeSchedule();
+        }
+    }
+    scheduleEnabled.addEventListener('change',()=>syncScheduleVisibility({reset:true}));
     for(const field of [date,time,duration])field.addEventListener('input',()=>{scheduleEdited=true;});
     let authenticated=dialog.dataset.authenticated==='1';
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
@@ -71,7 +90,7 @@
     function setStep(index){
         const previousStep=step;
         step=Math.max(0,Math.min(sections.length-1,index));
-        if(previousStep===0&&step===1&&!scheduleEdited&&!slots.length)initializeSchedule();
+        if(previousStep===0&&step===1&&scheduleEnabled.checked&&!scheduleEdited&&!slots.length)initializeSchedule();
         sections.forEach((node,i)=>{node.hidden=i!==step;});
         back.hidden=step===0;
         next.hidden=step===sections.length-1;
@@ -249,7 +268,7 @@
                 if(!validate(field))return;
             }
         }
-        if(step===1&&scheduleEdited&&(date.value||time.value)){
+        if(step===1&&scheduleEnabled.checked&&(!slots.length||scheduleEdited)){
             const previousCount=slots.length;
             if(!addSlot({automatic:true}))return;
             // The second interval reveals the choice between separate events
@@ -281,7 +300,7 @@
         if(court.value)data.venue_court_id=Number(court.value);
         if(!data.max_participants)delete data.max_participants;
         if(!data.title)data.title=type.selectedOptions[0]?.textContent||'Игра';
-        data.slots=slots;
+        data.slots=scheduleEnabled.checked?slots:[];
         data.schedule_mode=form.querySelector('[name="schedule_mode"]:checked')?.value||'alternatives';
         return data;
     }
@@ -309,6 +328,8 @@
         const data=saved.draft;
         if(data.venue_court_id)court.value=String(data.venue_court_id);
         slots=Array.isArray(data.slots)?data.slots.slice(0,8):[];
+        scheduleEnabled.checked=slots.length>0;
+        syncScheduleVisibility();
         renderSlots();
         const radio=form.querySelector('[name="schedule_mode"][value="'+(data.schedule_mode==='separate'?'separate':'alternatives')+'"]');
         if(radio)radio.checked=true;
@@ -353,7 +374,7 @@
         document.querySelector('[data-venue-play-dialog][open]')?.close();
         document.querySelector('[data-venue-choice-dialog][open]')?.close();
         if(!dialog.open)dialog.showModal();
-        initializeSchedule();setStep(0);type.focus();
+        scheduleEnabled.checked=false;syncScheduleVisibility();setStep(0);type.focus();
     });
     dialog.querySelectorAll('[data-quick-event-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));
