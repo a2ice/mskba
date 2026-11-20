@@ -4,6 +4,8 @@ namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -174,5 +176,25 @@ final class EventFirstFunnelTest extends TestCase
             $this->payload($venue, [$slot, $slot]))
             ->assertUnprocessable()->assertJsonValidationErrors('slots');
         $this->assertDatabaseCount('events', 0);
+    }
+    public function test_organizer_role_is_opt_in_preserves_other_roles_and_is_idempotent(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        app(UpdateUserParticipationRolesHandler::class)->updateOne($user, UserParticipationRoleEnum::PLAYER, true);
+        $venue = $this->venue();
+        $input = $this->payload($venue);
+        $input['add_organizer_role'] = false;
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->assertFalse($user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->exists());
+
+        $input = $this->payload($venue);
+        $input['add_organizer_role'] = true;
+        $invalid = [...$input, 'venue_id' => 0];
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $invalid)->assertUnprocessable();
+        $this->assertFalse($user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->exists());
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $input)->assertCreated();
+        $this->assertSame(1, $user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->count());
+        $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER->value)->exists());
     }
 }
