@@ -1,4 +1,5 @@
-// One event-only funnel from the venue page. No rental/favorite logic here.
+// Event discussion adapter for the shared chat composer and action menu.
+import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js/chat-composer-actions.js';
 (() => {
     const page=document.querySelector('[data-venue-play-page]');
     const dialog=page||document.querySelector('[data-venue-play-dialog]');
@@ -55,14 +56,14 @@
     const selectedPane=()=>getPane(selectedId);
     const paintButtons=pane=>{
         const status=pane.dataset.eventStatus||'';
-        const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
+        const choices=[...pane.querySelectorAll('[data-chat-action="event-rsvp"]')];
         if(!choices.length)return;
-        const attendance=pane.querySelector('[data-venue-play-attendance]');
+        const attendance=pane.querySelector('[data-chat-action-slot="attendance"]');
         const confirmed=status==='confirmed';
-        attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
+        attendance.dataset.chatActionValue=confirmed?'left':'confirmed';
         attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
+            const own=button!==attendance&&button.dataset.chatActionValue===status;
             button.classList.toggle('is-selected',own);
             if(dialog.classList.contains('venue-play-dialog--app')){
                 button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
@@ -82,7 +83,7 @@
     const rosterBusy=(pane,busy)=>{
         pane.querySelector('[data-venue-play-roster-surface]').setAttribute('aria-busy',String(busy));
         pane.querySelector('[data-venue-play-roster-loading]').hidden=!busy;
-        pane.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.disabled=busy);
+        pane.querySelectorAll('[data-chat-action="event-rsvp"]').forEach(button=>button.disabled=busy);
     };
     function paintRoster(pane,roster,scrollToOwn=false,counts=null){
         if(!roster||!Array.isArray(roster.members))throw Error('Не удалось получить актуальный список участников.');
@@ -177,7 +178,7 @@
     };
     function paintWallAccess(pane,response){
         const form=pane.querySelector('[data-venue-play-message-form]');
-        form.hidden=!response.can_post;
+        setChatComposerAccess(form,response.can_post);
         pane.querySelector('[data-venue-play-comment-notice]').hidden=!!response.can_post;
     }
     function paintWall(pane,response){
@@ -314,15 +315,17 @@
     dialog.querySelector('[data-venue-play-back]')?.addEventListener('click',showList);
     dialog.querySelectorAll('[data-venue-play-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));
-    dialog.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.addEventListener('click',()=>{
-        const pane=button.closest('[data-venue-play-pane]');
-        void respond(pane,button.dataset.venuePlayRsvp);
-    }));
+    dialog.addEventListener('mskba:chat-action',event=>{
+        if(event.detail?.id!=='event-rsvp'||!['confirmed','tentative','left'].includes(event.detail.value))return;
+        const pane=event.target.closest('[data-venue-play-pane]');
+        if(pane)void respond(pane,event.detail.value);
+    });
     for(const pane of pageMode?[page]:dialog.querySelectorAll('[data-venue-play-pane]')){
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const messageList=messages(pane);
         messageList.addEventListener('scroll',()=>{void loadOlder(pane);},{passive:true});
         const form=pane.querySelector('[data-venue-play-message-form]');
+        bindChatActions(form);
         const field=form.querySelector('[name="body"]');
         const cancel=form.querySelector('[data-venue-play-edit-cancel]');
         const remove=form.querySelector('[data-venue-play-delete]');
@@ -330,7 +333,7 @@
         let editing=null, draft='', sending=false;
         const count=()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));};
         const finishEdit=()=>{
-            field.value=draft;draft='';editing=null;form.classList.remove('is-editing');cancel.hidden=true;remove.hidden=true;
+            field.value=draft;draft='';editing=null;form.classList.remove('is-editing');cancel.hidden=true;remove.hidden=true;syncChatActions(form);
             submit.title='Отправить сообщение';submit.setAttribute('aria-label',submit.title);count();
         };
         field.addEventListener('input',count);
@@ -349,17 +352,18 @@
         cancel.addEventListener('click',()=>{if(!sending){finishEdit();field.focus();}});
         pane.querySelector('[data-venue-play-messages]').addEventListener('click',event=>{
             const edit=event.target.closest('[data-venue-play-edit]');
-            if(!edit||sending||form.hidden)return;
+            if(!edit||sending||form.dataset.chatCanPost!=='true')return;
             if(!editing)draft=field.value;
             const original=edit.closest('li').querySelector('p').textContent;
             editing={url:edit.dataset.venuePlayEdit,deleteUrl:edit.dataset.deleteUrl,version:Number(edit.dataset.version),original};
-            field.value=original;form.classList.add('is-editing');cancel.hidden=false;remove.hidden=!editing.deleteUrl;
+            field.value=original;form.classList.add('is-editing');cancel.hidden=false;remove.hidden=!editing.deleteUrl;syncChatActions(form);
             submit.title='Сохранить изменения';submit.setAttribute('aria-label',submit.title);
             count();field.focus();field.setSelectionRange(field.value.length,field.value.length);
         });
         form.addEventListener('submit',async event=>{
             event.preventDefault();
             if(!authenticated){guestResponse(null);return;}
+            if(form.dataset.chatCanPost!=='true')return;
             const body=field.value.trim();if(!body||[...body].length>200)return;
             if(sending)return;
             if(editing&&body===editing.original.trim()){finishEdit();return;}

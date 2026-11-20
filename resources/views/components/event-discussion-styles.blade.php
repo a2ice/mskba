@@ -117,9 +117,19 @@ html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-sta
 .venue-play-dialog__message-footer{justify-content:space-between;flex-wrap:nowrap}
 .venue-play-dialog__send{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0}
 .venue-play-dialog__send svg{width:22px;height:22px}
-.venue-play-dialog__delete{border:0;border-radius:5px;background:#b91c1c;color:#fff;cursor:pointer}
-.venue-play-dialog__delete:hover{background:#991b1b}
-.venue-play-dialog__delete:disabled{opacity:.5;cursor:default}
+.chat-actions{position:relative;margin-left:auto;flex:none}
+.chat-actions__toggle{display:grid;place-items:center;width:44px;height:44px;list-style:none;border:1px solid var(--line,#cbd0d5);border-radius:5px;background:#fff;color:#18212b;cursor:pointer}
+.chat-actions__toggle::-webkit-details-marker{display:none}
+.chat-actions__toggle svg{width:22px;height:22px}
+.chat-actions__menu{position:absolute;z-index:5;bottom:calc(100% + 8px);right:0;min-width:180px;max-width:calc(100vw - 48px);display:grid;gap:2px;padding:5px;border:1px solid var(--line,#cbd0d5);border-radius:8px;background:var(--surface,#fff);color:var(--text,#18212b);box-shadow:0 4px 16px #0002}
+.chat-actions:not([open]) .chat-actions__menu{display:none}
+.chat-actions__menu button{display:block;width:100%;min-height:44px;border:0;border-radius:5px;padding:8px 12px;text-align:left;background:transparent;color:inherit;cursor:pointer;white-space:normal}
+.chat-actions__menu button[hidden],.chat-actions[hidden], [data-chat-composer] [hidden]{display:none!important}
+.chat-actions__menu button:hover,.chat-actions__menu button:focus-visible,.chat-actions__menu button.is-selected{background:var(--field,#eceff2)}
+.chat-actions__menu button.is-selected{color:var(--accent,#ea7628)}
+.chat-actions__menu .chat-actions__danger{color:var(--danger,#b91c1c)}
+.chat-actions__menu button:disabled{opacity:.5;cursor:default}
+[data-chat-composer][data-chat-can-post="false"]{background:transparent;border:0;padding:0}
 .venue-play-delete-dialog{width:min(440px,calc(100vw - 24px))}
 .venue-play-delete-dialog p{margin:0}
 .venue-play-delete-dialog [data-venue-play-delete-error]{color:var(--danger,#dc2626)}
