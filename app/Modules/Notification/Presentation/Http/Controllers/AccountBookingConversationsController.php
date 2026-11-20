@@ -134,7 +134,7 @@ final class AccountBookingConversationsController extends Controller
         ]);
         abort_if(isset($data['before_id'], $data['after_id']), 422);
         $conversation = $preRequest->conversation;
-        $messages = VenueBookingMessage::query()->with(['authorActor.user'])
+        $messages = VenueBookingMessage::query()->with(['authorActor.user', 'rentalInvoice.booking'])
             ->where('conversation_id', $conversation->id)
             ->when(isset($data['before_id']), fn ($q) => $q->where('id', '<', $data['before_id']))
             ->when(isset($data['after_id']), fn ($q) => $q->where('id', '>', $data['after_id'])->orderBy('id'))
@@ -163,6 +163,8 @@ final class AccountBookingConversationsController extends Controller
                 'message_id' => $message->public_id,
                 'body' => $message->body,
                 'type' => $message->type,
+                'invoice' => app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceCard::class)
+                    ->forMessage($message, $actor),
                 'author' => $message->authorActor?->user?->username,
                 'is_own' => $message->authorActor?->user_id === $actor->user_id,
                 'created_at' => $message->created_at->utc()->toIso8601String(),
@@ -261,7 +263,7 @@ final class AccountBookingConversationsController extends Controller
             return [collect(), false];
         }
 
-        $latest = $conversation->messages()->with('authorActor.user')->latest('id')->limit(31)->get();
+        $latest = $conversation->messages()->with(['authorActor.user', 'rentalInvoice.booking'])->latest('id')->limit(31)->get();
 
         return [$latest->take(30)->reverse()->values(), $latest->count() > 30];
     }

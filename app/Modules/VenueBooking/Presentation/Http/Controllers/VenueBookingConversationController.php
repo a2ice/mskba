@@ -51,7 +51,7 @@ final class VenueBookingConversationController extends Controller
         if (isset($validated['before_id'], $validated['after_id'])) {
             throw ValidationException::withMessages(['after_id' => 'Нельзя одновременно листать назад и запрашивать новые сообщения.']);
         }
-        $messages = VenueBookingMessage::query()->with(['authorActor.user', 'conversation'])
+        $messages = VenueBookingMessage::query()->with(['authorActor.user', 'conversation', 'rentalInvoice.booking'])
             ->where('conversation_id', $conversation->id)
             ->when(isset($validated['before_id']), fn (Builder $query) => $query->where('id', '<', $validated['before_id']))
             ->when(isset($validated['after_id']), fn (Builder $query) => $query->where('id', '>', $validated['after_id'])->orderBy('id'))
@@ -144,6 +144,8 @@ final class VenueBookingConversationController extends Controller
             'client_id' => $message->client_id,
             'type' => $message->type,
             'body' => $message->body,
+            'invoice' => app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceCard::class)
+                ->forMessage($message, $viewer),
             'author' => $message->authorActor->user?->username,
             'is_own' => $message->author_actor_id === $viewer->id,
             'created_at' => $message->created_at->utc()->toIso8601String(),

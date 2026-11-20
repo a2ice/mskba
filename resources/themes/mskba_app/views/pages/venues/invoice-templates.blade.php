@@ -1,6 +1,6 @@
 @php
     $title = 'Шаблоны счетов · '.$venue->name;
-    $methods = ['bank_transfer' => 'Банковский перевод', 'cash' => 'Наличные', 'other' => 'Иной способ'];
+    $methods = ['bank_transfer' => 'Банковский перевод', 'sbp' => 'СБП / перевод по карте', 'cash' => 'Наличные', 'other' => 'Иной способ'];
 @endphp
 @extends('theme::layouts.app', ['title' => $title])
 

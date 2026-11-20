@@ -1,4 +1,7 @@
 import $ from 'jquery';
+import { bindRentalInvoiceActions, bindInvoiceIssuanceFields } from '../../../js/rental-invoice-card.js';
+bindRentalInvoiceActions(document);
+document.addEventListener('DOMContentLoaded', () => bindInvoiceIssuanceFields());
 import '../../mskba_app/js/cookie-consent.js';
 import { initModalDragging } from '../../mskba_app/js/modal-dragging.js';
 initModalDragging();

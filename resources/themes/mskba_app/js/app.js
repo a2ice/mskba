@@ -1,4 +1,7 @@
 import './header.js';
+import { bindRentalInvoiceActions, bindInvoiceIssuanceFields } from '../../../js/rental-invoice-card.js';
+bindRentalInvoiceActions(document);
+document.addEventListener('DOMContentLoaded', () => bindInvoiceIssuanceFields());
 import './mobile-primary-bar.js';
 import './cookie-consent.js';
 import './features/appearance-preferences.js';

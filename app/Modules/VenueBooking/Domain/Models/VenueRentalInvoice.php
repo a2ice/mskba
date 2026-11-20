@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'reviewed_by_actor_id', 'status', 'currency', 'amount_minor', 'title',
     'description', 'payment_methods', 'payment_instructions', 'settlement_basis',
     'settlement_note', 'issued_at', 'due_at', 'settled_at', 'quote_snapshot',
+    'payment_details', 'payment_reference', 'payment_claim_note',
 ])]
 final class VenueRentalInvoice extends Model
 {
@@ -41,6 +42,7 @@ final class VenueRentalInvoice extends Model
         return [
             'amount_minor' => 'integer',
             'payment_methods' => 'array',
+            'payment_details' => 'encrypted:array',
             'quote_snapshot' => 'array',
             'issued_at' => 'immutable_datetime',
             'due_at' => 'immutable_datetime',
