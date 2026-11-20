@@ -81,6 +81,10 @@ final class EventNativePageTest extends TestCase
             ->assertSee('data-venue-play-page', false)
             ->assertSee('data-venue-play-message-form', false)
             ->assertSee('data-venue-play-edit-cancel', false)
+            ->assertSee('data-chat-composer', false)
+            ->assertSee('data-chat-actions', false)
+            ->assertSee('data-chat-action="event-rsvp"', false)
+            ->assertSee('data-chat-context-delete hidden', false)
             ->assertSee('data-venue-play-delete-dialog', false)
             ->assertSee('Указать дату и время')
             ->assertDontSee('id="event-booking"', false);
