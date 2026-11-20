@@ -125,6 +125,7 @@
             if(list.querySelector('[data-entry-id="'+Number(entry.id)+'"]'))continue;
             const item=document.createElement('li');item.dataset.entryId=String(entry.id);
             item.classList.toggle('is-system',!!entry.system);
+            if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
             item.classList.toggle('is-deleted',!!entry.deleted);
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
             const time=document.createElement('time');time.textContent=entry.date||'';
