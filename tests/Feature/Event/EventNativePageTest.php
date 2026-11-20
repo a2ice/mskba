@@ -15,6 +15,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -139,5 +140,65 @@ final class EventNativePageTest extends TestCase
             ->assertSee('Бронирование №'.$booking->id)
             ->assertDontSee('Пригласить участников')
             ->assertDontSee('Перейти к заявке');
+    }
+
+    public function test_organizer_can_delete_and_restore_with_reason_and_personal_notifications(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $going = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $thinking = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $declined = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $event = $this->createEvent($owner, $venue, [
+            'slots' => [['starts_at' => $start->format('Y-m-d\\TH:i'), 'duration_minutes' => 90]],
+        ]);
+        foreach ([[$going, 'confirmed'], [$thinking, 'tentative'], [$declined, 'left']] as [$user, $status]) {
+            $event->participants()->create([
+                'user_id' => $user->id,
+                'role' => EventParticipantRoleEnum::PARTICIPANT,
+                'status' => $status,
+                'participation_roles' => ['player'],
+                'confirmation_version' => $event->participation_confirmation_version,
+            ]);
+        }
+        $delete = route('events.lifecycle.delete', $event->routeIdentifier());
+        $restore = route('events.lifecycle.restore', $event->routeIdentifier());
+        $statusUrl = route('events.lifecycle.show', $event->routeIdentifier());
+        $reason = 'Изменились планы организатора';
+        $restoreReason = 'Удалось найти подходящее время';
+
+        $this->actingAs($going)->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()->assertDontSee('data-event-lifecycle-open', false);
+        $this->postJson($delete, ['reason' => $reason])->assertForbidden();
+
+        $this->actingAs($owner)->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()->assertSee('Удалить мероприятие');
+        $this->postJson($delete, ['reason' => '  коротко  '])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->post($delete, ['reason' => '  '.$reason.'  '])->assertRedirect($statusUrl);
+        $this->assertSoftDeleted('events', ['id' => $event->id]);
+        $this->assertDatabaseHas('event_lifecycle_changes', ['event_id' => $event->id, 'action' => 'deleted', 'reason' => $reason]);
+        $this->get($statusUrl)->assertOk()->assertSee('Восстановить мероприятие')->assertSee($reason);
+        $this->get(route('account.events.deleted'))->assertOk()->assertSee($event->title);
+        $this->post($delete, ['reason' => $reason])->assertRedirect($statusUrl);
+
+        $notifications = fn () => DB::table('user_notifications')->where('payload->source', 'event.lifecycle')
+            ->where('payload->event_id', $event->id);
+        $this->assertSame(2, $notifications()->count());
+        $this->assertEqualsCanonicalizing([$going->id, $thinking->id], $notifications()->pluck('user_id')->all());
+        $this->assertStringContainsString($reason, $notifications()->first()->body);
+
+        $this->actingAs($going)->get($statusUrl)->assertOk()->assertSee($reason)->assertDontSee('Восстановить мероприятие');
+        $this->postJson($restore, ['reason' => $restoreReason])->assertForbidden();
+        $this->actingAs($declined)->get($statusUrl)->assertNotFound();
+
+        $this->actingAs($owner)->postJson($restore, ['reason' => '  мало  '])->assertUnprocessable();
+        $this->post($restore, ['reason' => $restoreReason])->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertNotSoftDeleted('events', ['id' => $event->id]);
+        $this->assertDatabaseHas('event_lifecycle_changes', ['event_id' => $event->id, 'action' => 'restored', 'reason' => $restoreReason]);
+        $this->assertSame(4, $notifications()->count());
+        $this->assertSame(4, $event->participants()->count());
+        $this->post($restore, ['reason' => $restoreReason])->assertRedirect();
+        $this->assertSame(4, $notifications()->count());
     }
 }

@@ -88,7 +88,7 @@ final readonly class EventVenueInterestService
     public function canPropose(User $user, EventVenueInterest $interest): bool
     {
         $user = $user->canonical();
-        if (! $this->canView($user, $interest->venue, $interest->court)) {
+        if ($interest->event === null || ! $this->canView($user, $interest->venue, $interest->court)) {
             return false;
         }
         if ($this->backoffice->canManage($user)) {
@@ -170,7 +170,7 @@ final readonly class EventVenueInterestService
     private function notifyRecipients(int $interestId): void
     {
         $interest = EventVenueInterest::query()->with(['venue', 'court', 'event'])->find($interestId);
-        if ($interest === null) {
+        if ($interest === null || $interest->event === null || $interest->status !== 'open') {
             return;
         }
         $venue = $interest->venue;
