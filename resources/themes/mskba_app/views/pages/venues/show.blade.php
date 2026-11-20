@@ -183,7 +183,7 @@
             @if($plannedVenueEvents->isNotEmpty())
             <section class="panel app-venue-block" id="{{ $activityDays->isEmpty() ? 'app-venue-activities' : 'app-venue-planned-events' }}">
                 <header class="app-venue-block__header"><h2>Предстоящие мероприятия</h2></header>
-                <p class="muted">Открытые мероприятия, на которые можно записаться. Площадка для них пока не забронирована.</p>
+                <p class="muted">Открытые мероприятия, на которые можно записаться.</p>
                 <ul class="app-venue-activities__list">
                     @foreach($plannedVenueEvents as $planned)
                         @php
@@ -191,13 +191,14 @@
                             $localTime = $planned->starts_at->setTimezone($timeZone);
                         @endphp
                         <li class="app-venue-activities__item">
-                            <a class="app-venue-activity" href="{{ route('events.show', $planned->routeIdentifier()) }}">
+                            <a class="app-venue-activity" href="{{ route('events.show', $planned->routeIdentifier()) }}"
+                                data-venue-play-open-event="{{ $planned->id }}" aria-haspopup="dialog">
                                 <span class="app-venue-activity__meta">
                                     <span>{{ $localTime->format('d.m.Y H:i') }}</span>
                                     <span class="app-venue-activity__type">{{ $planned->type->label() }}</span>
                                 </span>
                                 <strong class="app-venue-activity__title">{{ $planned->title }}</strong>
-                                <span class="app-venue-activity__description">Сбор участников · аренда ещё не оформлена</span>
+                                <span class="app-venue-activity__description">Сбор участников</span>
                             </a>
                         </li>
                     @endforeach
@@ -404,7 +405,7 @@
     </div>
 </section>
 @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
-@include('components.venue-play-funnel')
+@include('components.venue-play-funnel', ['venuePlayDirectEvents' => $plannedVenueEvents])
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
 @php
     $rentalSearchCourts = collect($venue->courts)->when($venue->isCourtPage,

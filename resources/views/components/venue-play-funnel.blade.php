@@ -10,6 +10,11 @@
         ->where('visibility', \App\Modules\Event\Domain\Enums\EventVisibilityEnum::PUBLIC->value)
         ->where('ends_at', '>', now())
         ->orderBy('starts_at')->limit(20)->get();
+    // Every public upcoming card on the venue page must have a detail pane,
+    // even when it falls outside the first 20 items in the popup list.
+    $venuePlayDetailEvents = $upcomingVenueEvents->concat($venuePlayDirectEvents ?? collect())
+        ->unique('id')->values();
+    $venuePlayDetailEvents->loadMissing(['organizerActor.user', 'participants', 'venue.schedule', 'primaryGame']);
 @endphp
 <dialog class="mskba-modal venue-play-dialog {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}"
     data-venue-play-dialog data-venue-id="{{ $venue->id }}"
@@ -50,7 +55,7 @@
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll" data-venue-play-step="detail" hidden>
-        @foreach($upcomingVenueEvents as $upcoming)
+        @foreach($venuePlayDetailEvents as $upcoming)
             @php
                 $participant = $upcoming->participants->first(fn ($member) => in_array((int) $member->user_id, $viewerIdentityIds, true));
                 $currentStatus = $participant?->confirmation_version === $upcoming->participation_confirmation_version ? $participant?->status?->value : null;
@@ -76,7 +81,7 @@
     </div>
     <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-detail-footer hidden>
         <button type="button" class="{{ $secondaryButton }}" data-venue-play-back>Назад</button>
-        @foreach($upcomingVenueEvents as $upcoming)
+        @foreach($venuePlayDetailEvents as $upcoming)
             <a class="{{ $primaryButton }}" data-venue-play-event-link="{{ $upcoming->id }}" href="{{ route('events.show', $upcoming->routeIdentifier()) }}" hidden>К мероприятию</a>
         @endforeach
     </footer>
