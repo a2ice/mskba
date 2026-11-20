@@ -25,6 +25,8 @@
         @disabled($currentView === 'cards')
     >
 
+    @include('components.venue-catalog-nearby-filter', ['scope' => $scope])
+
     <label class="default-category-filter__field">
         <span>Тип площадки</span>
         <select name="type" class="form-select">

@@ -41,6 +41,7 @@
                 <label><span>Поиск площадки</span>
                     <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание">
                 </label>
+                @include('components.venue-catalog-nearby-filter', ['scope' => 'app'])
                 <label><span>Тип площадки</span>
                     <span class="select-control"><select name="type"><option value="">Все типы</option>
                         @foreach($types as $type)

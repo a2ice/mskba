@@ -1,3 +1,4 @@
+import '../../../mskba_app/js/venue-catalog-nearby.js';
 import { loadYandexMaps } from '../core/yandex-maps.js';
 import { venuePlacemark } from '../core/venue-map-pins.js';
 import '../../css/pages/venue-catalog-fixes.css';
