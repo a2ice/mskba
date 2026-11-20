@@ -82,6 +82,10 @@ final readonly class EventDeletionService
                 // Only restore the open (non-binding) interests withdrawn by this action.
                 $event->venueInterests()->whereIn('id', $snapshot['interests'] ?? [])
                     ->where('status', 'withdrawn')->update(['status' => 'open']);
+                if ($event->booking_id === null && ! $event->booking()->exists()) {
+                    $event->venueInterests()->whereIn('id', $snapshot['requested_interests'] ?? [])
+                        ->where('status', 'withdrawn')->update(['status' => 'open']);
+                }
             } else {
                 // Booking is a separate aggregate. Keep its status, payments,
                 // slot and both link directions intact when hiding the event.
@@ -98,6 +102,7 @@ final readonly class EventDeletionService
                 $snapshot = [
                     'games' => $games->modelKeys(),
                     'interests' => $interests->all(),
+                    'requested_interests' => $event->venueInterests()->where('status', 'booking_requested')->pluck('id')->all(),
                     'booking_id' => $event->booking_id ?? $event->booking()->value('id'),
                 ];
                 $games->each->delete();
