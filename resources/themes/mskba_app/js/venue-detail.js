@@ -322,6 +322,7 @@ if (dayBookingDialog) {
         : dateValues;
     function resetSearch() {
         rentalSearch = null;
+        dayBookingDialog.classList.toggle('is-rental-search', false);
         if (searchHeader) searchHeader.hidden = true;
         if (searchBack) searchBack.hidden = true;
         calendar?.classList.toggle('is-rental-range', false);
@@ -366,7 +367,8 @@ if (dayBookingDialog) {
     });
 
     const selectedIndexesAreContiguous = () => selection.every((index, i) =>
-        i === 0 || index === selection[i - 1] + 1);
+        i === 0 || (index === selection[i - 1] + 1
+            && response?.slots[selection[i - 1]]?.ends_at === response?.slots[index]?.starts_at));
     function redrawSelection() {
         const step = response?.step_minutes ?? 30;
         const required = response?.minimum_minutes ?? 60;
@@ -937,6 +939,7 @@ if (dayBookingDialog) {
     dayBookingDialog.addEventListener('mskba:rental-search', event => {
         rentalSearch = event.detail;
         if (!rentalSearch || !searchHeader || !searchCourts) return;
+        dayBookingDialog.classList.toggle('is-rental-search', true);
         searchHeader.hidden = false;
         searchNote.textContent = rentalSearch.note;
         searchBack.hidden = false;

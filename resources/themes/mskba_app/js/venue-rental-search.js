@@ -30,6 +30,8 @@ if (dialog && result) {
         if (reset) {
             defaults = rentalDefaults(Date.now(), Number(dialog.dataset.lead), Number(dialog.dataset.step));
             from.min = defaults.today;
+            const lastCalendarDay = Array.from(result.querySelectorAll('[data-venue-day-date]')).at(-1)?.dataset.venueDayDate;
+            if (lastCalendarDay && lastCalendarDay < defaults.maxDate) defaults.maxDate = lastCalendarDay;
             from.max = defaults.maxDate;
             from.value = defaults.date;
             fromTime.value = defaults.time;

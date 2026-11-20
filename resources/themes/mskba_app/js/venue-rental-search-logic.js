@@ -17,11 +17,12 @@ export function rentalDefaults(now = Date.now(), lead = 0, step = 30) {
     return {today, date, time: crossesDay ? '00:00' : clockOf(earliest), maxDate: addDays(today, 8)};
 }
 const minute = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
-const endMinute = time => time === '00:00' || time === '23:59' ? 1440 : minute(time);
+const endMinute = time => time === '00:00' ? 1440 : minute(time);
+const upperMinute = time => time === '23:59' ? 1440 : minute(time);
 export function rangeSlots(data, range) {
     if (data.date < range.from || data.date > range.to) return [];
     const lo = data.date === range.from ? minute(range.fromTime) : 0;
-    const hi = data.date === range.to ? endMinute(range.toTime) : 1440;
+    const hi = data.date === range.to ? upperMinute(range.toTime) : 1440;
     return data.slots.filter(slot => minute(slot.starts_at) >= lo && endMinute(slot.ends_at) <= hi);
 }
 export function eligibleRuns(data, range) {
@@ -69,7 +70,7 @@ export function summarizeRental(days, range, incomplete = false) {
         if (unknown || incomplete) return 'Не удалось подтвердить свободное время. Попробуй изменить условия или повторить поиск.';
         if (!known) return 'На это время нет доступного расписания. Попробуй другие даты.';
         if (booked === known) return 'Ой, похоже, всё занято. Давай попробуем другое время?';
-        return 'Свободные интервалы есть не всегда достаточной длины для аренды. Попробуй расширить поиск.';
+        return 'Не нашлось свободного времени, которое можно забронировать. Попробуй расширить поиск.';
     }
     if (unknown || incomplete) return 'Подходящее время есть, но часть расписания пока не удалось проверить.';
     if (nightFree / available >= .8) return 'Время есть, но в основном поздно ночью или рано утром.';

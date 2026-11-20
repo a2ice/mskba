@@ -288,6 +288,21 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
             ->assertJsonPath('slots.47.ends_at', '24:00')
             ->assertJsonPath('slots.47.status', 'available');
 
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'venue_court_id' => $court->id,
+            'date' => '2026-11-14', 'search_until' => '2026-11-14',
+            'search_from_time' => '23:00', 'search_to_time' => '23:59',
+        ]))->assertOk()->assertJsonCount(1, 'days')->assertJsonCount(2, 'days.0.slots')
+            ->assertJsonPath('days.0.slots.1.starts_at', '23:30')
+            ->assertJsonPath('days.0.slots.1.ends_at', '24:00')
+            ->assertJsonMissingPath('days.0.slots.1.booking_group');
+        $this->getJson(route('venues.schedule.day', [
+            'venue' => $venue->id, 'venue_court_id' => $court->id,
+            'date' => '2026-11-13', 'search_until' => '2026-11-14',
+            'search_from_time' => '23:30', 'search_to_time' => '00:30',
+        ]))->assertOk()->assertJsonCount(2, 'days')
+            ->assertJsonCount(1, 'days.0.slots')->assertJsonCount(1, 'days.1.slots');
+
         $again = app(ApplyFindSportSnapshotToNativeSchedule::class)
             ->apply($source, $snapshot, $actor);
         $this->assertSame($applied->id, $again->id);
