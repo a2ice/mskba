@@ -120,6 +120,7 @@ final readonly class PublicVenueDaySchedule
         $minimum = max($step, (int) ($effective['minimum_duration_minutes'] ?? 60), (int) ($snapshot?->minimum_minutes ?? 0));
         $maximum = (int) ($effective['maximum_duration_minutes'] ?? 480);
         $leadTime = (int) ($effective['minimum_lead_time_minutes'] ?? 0);
+        $latestStart = CarbonImmutable::now('Europe/Moscow')->addDays((int) ($effective['maximum_advance_days'] ?? 90));
         $rentalEnabled = $supportedStep
             && config('features.venue_rental.rental_flow', false)
             && $policy !== null && $policy->is_enabled
@@ -247,7 +248,7 @@ final readonly class PublicVenueDaySchedule
             }
 
             $inFuture = $start->greaterThanOrEqualTo(CarbonImmutable::now('Europe/Moscow')->addMinutes($leadTime));
-            $selectable = $rentalEnabled && ! $stale && $inFuture
+            $selectable = $rentalEnabled && ! $stale && $inFuture && $start->lessThanOrEqualTo($latestStart)
                 && $status === 'available' && $priceMinor !== null;
 
             // Source tariffs remain untouched; public prices include the
