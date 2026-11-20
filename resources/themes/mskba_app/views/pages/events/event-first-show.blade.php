@@ -33,7 +33,10 @@
         <a href="{{ route('events.index') }}" class="app-event-link">Все мероприятия</a>
         <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
         <div class="app-event-actions"><span class="badge">{{ $event->type->label() }}</span><span class="badge">{{ $event->status->label() }}</span><span class="badge">{{ $event->visibility->label() }}</span>
-            <button type="button" class="button secondary" data-event-share>Поделиться</button>
+            @if($event->status === EventStatusEnum::PUBLISHED && $event->visibility->value === 'public')
+                <button type="button" class="button secondary" data-event-share>Поделиться</button>
+                <button type="button" class="button secondary" data-favorite-type="event" data-favorite-id="{{ $event->id }}" data-favorite-name="{{ $event->title }}" aria-label="Избранное">Избранное</button>
+            @endif
         </div>
     </header>
     @if(session('status') || session('error') || $errors->any())
@@ -51,7 +54,7 @@
                 <div class="app-event-actions">@foreach($venue->location->metroStations as $station)<span class="badge">{{ $station->name }}</span>@endforeach</div>
             @endif
             <button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>
-            <a class="app-event-link" href="{{ route('venues.show', ['venue' => $venue->routeIdentifier(), 'availability' => 1]) }}">Посмотреть занятость площадки</a>
+            <a class="app-event-link" href="{{ route('venues.show', ['alias' => $venue->routeIdentifier(), 'availability' => 1, 'availability_court' => $court?->id, 'availability_date' => $event->starts_at?->setTimezone($timezone)->format('Y-m-d'), 'availability_time' => $event->starts_at?->setTimezone($timezone)->format('H:i')]) }}">Посмотреть занятость площадки</a>
             <h2>Дата и время</h2>
             @if($event->starts_at)
                 <p><strong>{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong> (МСК)</p>
@@ -189,10 +192,10 @@
 .app-event-photo{width:100%;max-height:300px;object-fit:cover;border-radius:12px}
 .app-event-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .app-event-link{color:var(--accent);text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer;text-align:left;justify-self:start}
-.app-event-booking{display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.app-event-booking{display:grid;gap:8px;padding:16px;border:1px solid var(--control-line);border-radius:12px;background:transparent;color:inherit;text-align:left;cursor:pointer}
 .app-event-person{display:flex;gap:12px;align-items:center}
 .app-event-person img,.app-event-initials{width:44px;height:44px;flex:none;border-radius:50%;object-fit:cover}
-.app-event-initials{display:grid;place-items:center;border:1px solid var(--line)}
+.app-event-initials{display:grid;place-items:center;border:1px solid var(--control-line)}
 .app-event-person p{font-size:.9rem;margin-top:4px}.app-event-person .badge{margin-inline-start:6px}
 .app-event-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#b77916}
 .app-event-dot[data-response="confirmed"]{background:#2a9955}.app-event-dot[data-response="left"]{background:#c44e4e}
@@ -202,7 +205,7 @@
 .app-event-page .event-social-wall__header h2,.app-event-page .event-social-wall__entry p{margin:0}
 .app-event-page .event-social-wall__stats,.app-event-page .event-social-wall__tabs,.app-event-page .event-social-wall__form-actions,.app-event-page .event-social-wall__entry-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
 .app-event-page .event-social-wall__list{display:grid;gap:12px;list-style:none;padding:0;max-height:420px;overflow:auto}
-.app-event-page .event-social-wall__entry{display:grid;gap:6px;padding:12px;border:1px solid var(--line);border-radius:10px;overflow-wrap:anywhere}
+.app-event-page .event-social-wall__entry{display:grid;gap:6px;padding:12px;border:1px solid var(--control-line);border-radius:10px;overflow-wrap:anywhere}
 .app-event-page .event-social-wall__entry.is-system,.app-event-page .event-social-wall__muted{font-size:.85rem;opacity:.85}
 .app-event-page .event-social-wall__tab.is-active{color:var(--accent);border-color:var(--accent)}
 .app-event-page .event-social-wall__form{display:grid;gap:8px}.app-event-page .event-social-wall__form textarea{width:100%}
