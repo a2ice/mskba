@@ -406,6 +406,17 @@
 @include('theme::pages.events.partials.quick-create', ['quickEventVenueId' => $venue->id, 'quickEventCourtId' => $venue->isCourtPage ? $venue->selectedCourt['id'] : null])
 @include('components.venue-play-funnel')
 @include('theme::partials.venue-map-dialog', ['mapVenue' => $venue])
+@php
+    $rentalSearchCourts = collect($venue->courts)->when($venue->isCourtPage,
+        fn ($courts) => $courts->where('id', $venue->selectedCourt['id']))->values()->map(
+        fn ($court) => ['id' => $court['id'], 'name' => $court['name']])->all();
+    $rentalSearchPolicy = $venue->isCourtPage
+        ? ($venue->rental['effective'] ?? [])
+        : (\App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+            ->where('venue_id', $venue->id)->where('active_marker', true)->first()?->only(
+                ['minimum_lead_time_minutes', 'time_step_minutes']) ?? []);
+@endphp
+@include('theme::pages.venues.partials.rental-search-dialog')
 <dialog class="app-venue-overlay app-venue-choice-dialog" data-venue-choice-dialog aria-labelledby="app-venue-choice-title">
     <div class="app-venue-overlay__header">
         <h2 id="app-venue-choice-title">Арендовать площадку</h2>
@@ -444,6 +455,11 @@
             <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
         </button>
     </div>
+    <div data-rental-result-header hidden>
+        <div class="mskba-wizard__progress"><progress value="2" max="2" aria-label="Прогресс мастера"></progress><span>ШАГ 2 / 2</span></div>
+        <p class="app-rental-search__note" data-rental-result-note role="status"></p>
+        <div class="app-rental-search__tabs" data-rental-result-courts role="group" aria-label="Залы"></div>
+    </div>
     @include('theme::pages.venues.partials.day-calendar')
     <p class="app-venue-day-dialog__status" role="status" aria-live="polite"
         data-venue-day-status hidden></p>
@@ -459,6 +475,7 @@
             <strong data-venue-day-summary>Выберите время</strong>
             <span data-venue-day-minimum></span>
         </div>
+        <button type="button" class="button secondary" data-rental-result-back hidden>Назад</button>
         <button type="submit" class="button primary" data-venue-day-book disabled>
             Забронировать
         </button>

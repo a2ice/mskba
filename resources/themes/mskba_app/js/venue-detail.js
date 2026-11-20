@@ -311,6 +311,24 @@ if (dayBookingDialog) {
     const dateValues = dateButtons.map(button => button.dataset.venueDayDate);
     const dateNav = Array.from(dayBookingDialog.querySelectorAll('[data-venue-day-nav]'));
     let activeDate = null;
+    let rentalSearch = null;
+    const searchHeader = dayBookingDialog.querySelector('[data-rental-result-header]');
+    const searchNote = dayBookingDialog.querySelector('[data-rental-result-note]');
+    const searchCourts = dayBookingDialog.querySelector('[data-rental-result-courts]');
+    const searchBack = dayBookingDialog.querySelector('[data-rental-result-back]');
+    const calendar = dayBookingDialog.querySelector('[data-venue-day-dates]');
+    const visibleDates = () => rentalSearch
+        ? dateValues.filter(date => date >= rentalSearch.criteria.from && date <= rentalSearch.criteria.to)
+        : dateValues;
+    function resetSearch() {
+        rentalSearch = null;
+        dayBookingDialog.classList.toggle('is-rental-search', false);
+        if (searchHeader) searchHeader.hidden = true;
+        if (searchBack) searchBack.hidden = true;
+        calendar?.classList.toggle('is-rental-range', false);
+        dateButtons.forEach(button => { if(button.parentElement) button.parentElement.hidden = false; });
+        searchCourts?.replaceChildren();
+    }
     const currency = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 2});
     let response = null;
     let selection = [];
@@ -349,7 +367,8 @@ if (dayBookingDialog) {
     });
 
     const selectedIndexesAreContiguous = () => selection.every((index, i) =>
-        i === 0 || index === selection[i - 1] + 1);
+        i === 0 || (index === selection[i - 1] + 1
+            && response?.slots[selection[i - 1]]?.ends_at === response?.slots[index]?.starts_at));
     function redrawSelection() {
         const step = response?.step_minutes ?? 30;
         const required = response?.minimum_minutes ?? 60;
@@ -458,6 +477,11 @@ if (dayBookingDialog) {
     }
 
     function renderSlots(data) {
+        if (rentalSearch) {
+            const eligible = new Set(rentalSearch.eligibleSlots(data));
+            data = {...data,slots:rentalSearch.filterSlots(data).map(slot =>
+                slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot)};
+        }
         response = data;
         selection = [];
         grid.replaceChildren();
@@ -468,8 +492,18 @@ if (dayBookingDialog) {
             unavailable: 'Недоступно',
             unknown: 'Нет данных',
         };
-        for (const group of groupDayBookingSlots(data.slots)) {
+        for (const group of (rentalSearch ? rentalSearch.groupSlots(data.slots) : groupDayBookingSlots(data.slots))) {
             const slot = group.first;
+            if (rentalSearch && slot.status === 'booked') {
+                const busy = document.createElement('div');
+                busy.className = 'app-venue-day-dialog__slot app-rental-search__busy';
+                busy.dataset.slotStatus = 'booked';
+                busy.setAttribute('role','img');
+                busy.setAttribute('aria-label','Занято: '+displayClock(slot.starts_at)+'–'+displayClock(group.last.ends_at));
+                grid.appendChild(busy);
+                continue;
+            }
+            if (rentalSearch && (slot.status === 'unavailable' || (slot.status === 'available' && !slot.selectable))) continue;
             const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
@@ -671,10 +705,14 @@ if (dayBookingDialog) {
             : (data.refresh_state === 'failed' ? data.refresh_message : null);
         status.textContent = warning || '';
         status.hidden = !warning;
-        updateDayOccupancy(data.date, data.slots);
+        if (rentalSearch && !data.slots.some(slot => slot.selectable)) {
+            status.hidden = false;
+            status.textContent = warning || 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.';
+        }
+        if (!rentalSearch) updateDayOccupancy(data.date, data.slots);
         const selectedDateButton = dateButtons.find(button => button.dataset.venueDayDate === data.date);
         const hours = selectedDateButton?.querySelector('.app-venue-day-dialog__date-hours');
-        if (hours && data.slots.length) {
+        if (!rentalSearch && hours && data.slots.length) {
             const last = data.slots.at(-1).ends_at;
             hours.textContent = displayClock(data.slots[0].starts_at) + '–' + displayClock(last);
         }
@@ -721,9 +759,13 @@ if (dayBookingDialog) {
     };
     dayBookingDialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', close));
-    dayBookingDialog.addEventListener('click', event => {
-        if (event.target === dayBookingDialog) close();
+    let dayOutside = false;
+    dayBookingDialog.addEventListener('pointerdown', event => { dayOutside = event.target === dayBookingDialog; });
+    dayBookingDialog.addEventListener('pointerup', event => {
+        if (dayOutside && event.target === dayBookingDialog) close();
+        dayOutside = false;
     });
+    dayBookingDialog.addEventListener('pointercancel', () => {dayOutside = false;});
     dayBookingDialog.addEventListener('close', () => {
         loading?.abort();
         loading = null;
@@ -731,11 +773,18 @@ if (dayBookingDialog) {
         selection = [];
         ++previewSequence;
         bookingButton.disabled = true;
+        resetSearch();
+    });
+    searchBack?.addEventListener('click', () => {
+        const back = rentalSearch?.back;
+        close();
+        back?.();
     });
 
     function setActiveDate(date) {
         activeDate = date;
-        const index = dateValues.indexOf(date);
+        const dates = visibleDates();
+        const index = dates.indexOf(date);
         dateButtons.forEach(button => {
             const selected = button.dataset.venueDayDate === date;
             button.setAttribute('aria-pressed', String(selected));
@@ -743,12 +792,12 @@ if (dayBookingDialog) {
         });
         dateNav.forEach(button => {
             const offset = Number(button.dataset.venueDayNav);
-            button.disabled = index < 0 || index + offset < 0 || index + offset >= dateValues.length;
+            button.disabled = index < 0 || index + offset < 0 || index + offset >= dates.length;
         });
     }
 
     async function showDay(date, resumeBooking = null) {
-        if (!date) return;
+        if (!date || !visibleDates().includes(date)) return;
         // The venue overview may have many halls with different free slots.
         // Never silently book the first hall when no explicit selection exists.
         if (!dayBookingDialog.dataset.courtId) {
@@ -781,7 +830,7 @@ if (dayBookingDialog) {
         setActiveDate(date);
         const label = dateButtons.find(button => button.dataset.venueDayDate === date)
             ?.querySelector('strong')?.textContent || date;
-        heading.textContent = 'Расписание · '
+        heading.textContent = (rentalSearch ? 'Аренда · ' : 'Расписание · ')
             + (dayBookingDialog.dataset.courtName ? dayBookingDialog.dataset.courtName + ' · ' : '')
             + label;
         status.hidden = false;
@@ -838,8 +887,9 @@ if (dayBookingDialog) {
     });
     dateNav.forEach(button => {
         button.addEventListener('click', () => {
-            const nextIndex = dateValues.indexOf(activeDate) + Number(button.dataset.venueDayNav);
-            if (nextIndex >= 0 && nextIndex < dateValues.length) void showDay(dateValues[nextIndex]);
+            const dates = visibleDates();
+            const nextIndex = dates.indexOf(activeDate) + Number(button.dataset.venueDayNav);
+            if (nextIndex >= 0 && nextIndex < dates.length) void showDay(dates[nextIndex]);
         });
     });
     // The review page opens the same dialog after a court change. The
@@ -886,7 +936,40 @@ if (dayBookingDialog) {
         void showDay(pendingResume.date, pendingResume);
     }
 
+    dayBookingDialog.addEventListener('mskba:rental-search', event => {
+        rentalSearch = event.detail;
+        if (!rentalSearch || !searchHeader || !searchCourts) return;
+        dayBookingDialog.classList.toggle('is-rental-search', true);
+        searchHeader.hidden = false;
+        searchNote.textContent = rentalSearch.note;
+        searchBack.hidden = false;
+        calendar?.classList.toggle('is-rental-range', rentalSearch.criteria.from !== rentalSearch.criteria.to);
+        dateButtons.forEach(button => {
+            if (button.parentElement) button.parentElement.hidden = !visibleDates().includes(button.dataset.venueDayDate);
+        });
+        searchCourts.replaceChildren();
+        const selectCourt = (court,date) => {
+            dayBookingDialog.dataset.courtId = String(court.id);
+            syncCourtDates(court.id);
+            dayBookingDialog.dataset.courtName = court.name;
+            searchCourts.querySelectorAll('button').forEach(button =>
+                button.setAttribute('aria-pressed', String(button.dataset.courtId === String(court.id))));
+            void showDay(date);
+        };
+        searchCourts.hidden = rentalSearch.courts.length <= 1;
+        for (const court of rentalSearch.courts) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'button secondary';
+            button.dataset.courtId = String(court.id);
+            button.textContent = court.name;
+            button.addEventListener('click', () => selectCourt(court, activeDate || rentalSearch.criteria.from));
+            searchCourts.appendChild(button);
+        }
+        selectCourt(rentalSearch.courts.find(court => String(court.id) === String(rentalSearch.courtId)), rentalSearch.date);
+    });
     dayBookingDialog.addEventListener('mskba:choose-court', event => {
+        resetSearch();
         const nextCourt = Number(event.detail?.courtId);
         if (Number.isSafeInteger(nextCourt) && nextCourt > 0) {
             if (String(nextCourt) !== dayBookingDialog.dataset.courtId) {
