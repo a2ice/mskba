@@ -721,7 +721,7 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-rental-search__tabs .button{white-space:nowrap;flex:none;min-height:44px}
 .app-rental-search__tabs .button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .app-venue-day-dialog__dates.is-rental-range{border:1px solid var(--accent);border-radius:12px;padding:4px}
-.app-venue-day-dialog__grid .app-rental-search__busy{min-height:18px;height:18px;padding:0;cursor:default}
+.app-venue-day-dialog__grid .app-rental-search__busy{min-height:18px;height:18px;padding:0;cursor:default;pointer-events:none}
 @media(max-width:480px){.app-rental-search-dialog .form-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 .app-rental-search-dialog > .mskba-modal__header{
