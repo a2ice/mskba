@@ -37,18 +37,20 @@
         const status=pane.dataset.eventStatus||'';
         const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
         if(!choices.length)return;
-        const active=status==='confirmed'||status==='tentative';
-        const decline=choices.find(button=>button.dataset.venuePlayRsvp==='left');
-        decline.hidden=!active;
+        const attendance=pane.querySelector('[data-venue-play-attendance]');
+        const confirmed=status==='confirmed';
+        attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
+        attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button.dataset.venuePlayRsvp===status;
+            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
             if(dialog.classList.contains('venue-play-dialog--app')){
                 button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
             }else{
                 button.classList.toggle('btn--primary',own);button.classList.toggle('btn--secondary',!own);
             }
-            button.setAttribute('aria-pressed',String(own));
+            if(button===attendance)button.removeAttribute('aria-pressed');
+            else button.setAttribute('aria-pressed',String(own));
         });
     };
     const icon=(id)=>{
@@ -230,7 +232,7 @@
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const form=pane.querySelector('[data-venue-play-message-form]');
         const field=form.querySelector('[name="body"]');
-        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String([...field.value].length);});
+        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));});
         form.addEventListener('submit',async event=>{
             event.preventDefault();
             if(!authenticated){guestResponse(null);return;}
@@ -240,7 +242,7 @@
                 const response=await request(pane.dataset.eventPostUrl,'POST',{
                     body,client_request_id:crypto.randomUUID(),
                 });
-                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='0';
+                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='200';
                 await refreshWall(pane);notice(pane,'Сообщение отправлено.');
             }catch(e){notice(pane,e.message,true);}
             finally{submit.disabled=false;}
