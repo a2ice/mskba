@@ -144,7 +144,6 @@
         </section>
         <footer class="mskba-modal__footer quick-event-dialog__actions">
             <button type="button" class="{{ $quickSecondary }}" data-quick-back hidden>Назад</button>
-            <button type="button" class="{{ $quickSecondary }}" data-quick-event-close>Отмена</button>
             <button type="button" class="{{ $quickPrimary }}" data-quick-next>Далее</button>
             <button type="submit" class="{{ $quickPrimary }}" data-quick-submit hidden>Создать мероприятие</button>
         </footer>
