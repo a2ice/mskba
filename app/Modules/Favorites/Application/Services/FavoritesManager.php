@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final class FavoritesManager
 {
@@ -67,23 +66,28 @@ final class FavoritesManager
         return $favorite === null ? 'none' : ($favorite->trashed_at === null ? 'active' : 'trashed');
     }
 
-    public function toggle(Request $request, string $type, int $id): Favorite
+    /**
+     * Explicit add/remove actions are idempotent. Legacy authenticated toggle
+     * remains supported for the account trash/restore controls.
+     */
+    public function toggle(Request $request, string $type, int $id, ?string $action = null): Favorite
     {
         $user = $this->user($request);
         abort_if($user?->isBlocked(), 403);
-
-        // A tampered, stale or malformed cookie cannot acquire another guest's list.
         $hash = $this->guestHash($request);
-        if ($user === null && $hash === null) {
-            $token = Str::random(64);
-            $hash = hash('sha256', $token);
-            Cookie::queue(cookie(
-                self::COOKIE_NAME, $token, 60 * 24 * 90, '/', null,
-                $request->isSecure(), true, false, 'lax',
-            ));
+        // No new guest favorites or restores. Existing anonymous active rows
+        // may still be removed, and the first-login claim remains unchanged.
+        if ($user === null) {
+            abort_unless($hash !== null && $action !== 'add', 401);
+            $action = 'remove';
         }
 
-        $favorite = DB::transaction(function () use ($request, $type, $id, $user, $hash): Favorite {
+        $favorite = DB::transaction(function () use ($type, $id, $user, $hash, $action): Favorite {
+            // Serialize first additions for the canonical account; a lock
+            // on a non-existing favorite alone cannot prevent duplicate inserts.
+            if ($user !== null) {
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            }
             $query = $user !== null
                 ? Favorite::query()->where('user_id', $user->id)
                 : Favorite::query()->where('guest_token_hash', $hash)->whereNull('user_id');
@@ -91,16 +95,28 @@ final class FavoritesManager
                 ->lockForUpdate()->first();
 
             if ($existing !== null) {
-                $existing->forceFill([
-                    'trashed_at' => $existing->trashed_at === null ? now() : null,
-                ])->save();
+                if ($action === 'add') {
+                    if ($existing->trashed_at !== null) {
+                        $existing->forceFill(['trashed_at' => null])->save();
+                    }
+                } elseif ($action === 'remove') {
+                    if ($existing->trashed_at === null) {
+                        $existing->forceFill(['trashed_at' => now()])->save();
+                    }
+                } else {
+                    $existing->forceFill([
+                        'trashed_at' => $existing->trashed_at === null ? now() : null,
+                    ])->save();
+                }
 
                 return $existing->refresh();
             }
 
+            abort_unless($user !== null, 401);
+            abort_if($action === 'remove', 404);
+
             return Favorite::query()->create([
-                'user_id' => $user?->id,
-                'guest_token_hash' => $user === null ? $hash : null,
+                'user_id' => $user->id,
                 'entity_type' => $type,
                 'entity_id' => $id,
                 'trashed_at' => null,

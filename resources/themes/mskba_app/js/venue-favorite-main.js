@@ -1,3 +1,4 @@
+import { addFavorite } from './favorite-action.js';
 // Single-click add, explicit confirmation to remove. Same UX in both themes.
 (() => {
     const modal=document.querySelector('[data-venue-favorite-dialog]');
@@ -40,7 +41,8 @@
     const toggle=async()=>{
         busy=true;paint();submit.disabled=true;fail('');
         try {
-            const result=await request(modal.dataset.toggleUrl,'POST',{type:'venue',id});
+            if(state!=='active'){await addFavorite('venue',id);return;}
+            const result=await request(modal.dataset.toggleUrl,'POST',{type:'venue',id,action:'remove'});
             state=result.state;paint();
             window.dispatchEvent(new CustomEvent('mskba:favorites:changed',{detail:{count:result.favorites_count}}));
             window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
