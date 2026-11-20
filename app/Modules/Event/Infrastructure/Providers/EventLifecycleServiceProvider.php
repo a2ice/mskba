@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleState;
 use App\Modules\Event\Infrastructure\Listeners\BroadcastChangedGames;
 use App\Modules\Event\Infrastructure\Observers\GameRosterEntryObserver;
+use App\Modules\Event\Presentation\Http\Controllers\EventDeletionController;
 use App\Modules\Event\Presentation\Http\Controllers\EventManagementController;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,13 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             ->get('/events/{event}/management', EventManagementController::class)
             ->name('events.management')
             ->defaults('breadcrumb', 'Управление мероприятием');
+
+        Route::middleware(['web', 'auth'])->group(function (): void {
+            Route::get('/account/deleted-events', [EventDeletionController::class, 'index'])->name('account.events.deleted');
+            Route::get('/events/{event}/lifecycle', [EventDeletionController::class, 'show'])->name('events.lifecycle.show');
+            Route::post('/events/{event}/lifecycle/delete', [EventDeletionController::class, 'destroy'])->name('events.lifecycle.delete')->middleware('throttle:10,1');
+            Route::post('/events/{event}/lifecycle/restore', [EventDeletionController::class, 'restore'])->name('events.lifecycle.restore')->middleware('throttle:10,1');
+        });
 
         Route::middleware(['web', 'auth', 'can:access-admin-panel'])
             ->get('/admin/events/{event}', [AdminEventsController::class, 'show'])

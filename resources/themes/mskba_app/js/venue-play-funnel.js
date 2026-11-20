@@ -1,19 +1,40 @@
-// One event-only funnel from the venue page. No rental/favorite logic here.
+// Event discussion adapter for the shared chat composer and action menu.
+import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js/chat-composer-actions.js';
 (() => {
-    const dialog=document.querySelector('[data-venue-play-dialog]');
+    const page=document.querySelector('[data-venue-play-page]');
+    const dialog=page||document.querySelector('[data-venue-play-dialog]');
+    const pageMode=!!page;
     const authNotice=document.querySelector('[data-venue-play-auth-notice]');
-    if(!dialog || !authNotice || typeof dialog.showModal!=='function')return;
+    const deleteDialog=document.querySelector('[data-venue-play-delete-dialog]');
+    if(!dialog || !deleteDialog || (!pageMode && (!authNotice || typeof dialog.showModal!=='function')))return;
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
     const detailFooter=dialog.querySelector('[data-venue-play-detail-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
-    let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
+    let selectedId=pageMode?Number(page.dataset.venuePlayPane):null, authenticated=dialog.dataset.authenticated==='1';
     let pendingResponse=null, saving=false, savingPane=null;
     const rosterLoads=new WeakMap();
+    const wallPages=new WeakMap();
+    const messages=pane=>pane.querySelector('[data-venue-play-messages]');
+    const scrollBottom=pane=>{const list=messages(pane);list.scrollTop=list.scrollHeight;};
+    const deleteConfirm=deleteDialog.querySelector('[data-venue-play-delete-confirm]');
+    const deleteClose=deleteDialog.querySelector('[data-venue-play-delete-close]');
+    const deleteError=deleteDialog.querySelector('[data-venue-play-delete-error]');
+    let pendingDelete=null, deleting=false;
+    deleteClose.addEventListener('click',()=>{if(!deleting)deleteDialog.close();});
+    deleteDialog.addEventListener('cancel',event=>{if(deleting)event.preventDefault();});
+    deleteDialog.addEventListener('close',()=>{pendingDelete=null;deleteError.hidden=true;deleteError.textContent='';});
+    deleteConfirm.addEventListener('click',async()=>{
+        if(!pendingDelete||deleting)return;
+        deleting=true;deleteConfirm.disabled=true;deleteClose.disabled=true;deleteError.hidden=true;
+        try{await pendingDelete();deleteDialog.close();}
+        catch(e){deleteError.textContent=e.message;deleteError.hidden=false;}
+        finally{deleting=false;deleteConfirm.disabled=false;deleteClose.disabled=false;}
+    });
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
-    const getPane=id=>dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
+    const getPane=id=>pageMode?page:dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
     const saveResume=()=>{
         try{sessionStorage.setItem(resumeKey,JSON.stringify({id:selectedId,status:pendingResponse,at:Date.now()}));}catch{}
     };
@@ -22,7 +43,7 @@
         const node=pane?.querySelector('[data-venue-play-feedback]');
         if(node){node.textContent=message;node.hidden=!message;node.classList.toggle('is-error',error);}
     };
-    const toast=(message,failed=false)=>window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message,failed,dialog}}));
+    const toast=(message,failed=false)=>window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message,failed,...(pageMode?{}:{dialog})}}));
     async function request(url,method='GET',body=null){
         const response=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{
             'Accept':'application/json','X-Requested-With':'XMLHttpRequest',
@@ -35,14 +56,14 @@
     const selectedPane=()=>getPane(selectedId);
     const paintButtons=pane=>{
         const status=pane.dataset.eventStatus||'';
-        const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
+        const choices=[...pane.querySelectorAll('[data-chat-action="event-rsvp"]')];
         if(!choices.length)return;
-        const attendance=pane.querySelector('[data-venue-play-attendance]');
+        const attendance=pane.querySelector('[data-chat-action-slot="attendance"]');
         const confirmed=status==='confirmed';
-        attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
+        attendance.dataset.chatActionValue=confirmed?'left':'confirmed';
         attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
+            const own=button!==attendance&&button.dataset.chatActionValue===status;
             button.classList.toggle('is-selected',own);
             if(dialog.classList.contains('venue-play-dialog--app')){
                 button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
@@ -62,7 +83,7 @@
     const rosterBusy=(pane,busy)=>{
         pane.querySelector('[data-venue-play-roster-surface]').setAttribute('aria-busy',String(busy));
         pane.querySelector('[data-venue-play-roster-loading]').hidden=!busy;
-        pane.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.disabled=busy);
+        pane.querySelectorAll('[data-chat-action="event-rsvp"]').forEach(button=>button.disabled=busy);
     };
     function paintRoster(pane,roster,scrollToOwn=false,counts=null){
         if(!roster||!Array.isArray(roster.members))throw Error('Не удалось получить актуальный список участников.');
@@ -119,34 +140,103 @@
         if(!pane.querySelector('[data-venue-play-participants]').children.length){empty.hidden=false;empty.textContent=message;}
         pane.querySelector('[data-venue-play-roster-retry]').hidden=false;
     };
-    const appendEntries=(pane,entries)=>{
+    const appendEntries=(pane,entries,prepend=false)=>{
         const list=pane.querySelector('[data-venue-play-messages]');
+        const older=document.createDocumentFragment();
         for(const entry of entries){
-            if(list.querySelector('[data-entry-id="'+Number(entry.id)+'"]'))continue;
+            const existing=list.querySelector('[data-entry-id="'+Number(entry.id)+'"]');
+            if(entry.deleted){existing?.remove();continue;}
             const item=document.createElement('li');item.dataset.entryId=String(entry.id);
             item.classList.toggle('is-system',!!entry.system);
+            if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
             item.classList.toggle('is-deleted',!!entry.deleted);
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
-            const time=document.createElement('time');time.textContent=entry.date||'';
+            const time=document.createElement('time');time.textContent=(entry.date||'')+(entry.edited?' (изменено)':'');
             const body=document.createElement('p');body.textContent=entry.text||'';
-            item.append(label,time,body);list.append(item);
+            item.append(label,time,body);
+            if(entry.can_edit&&entry.edit_url){
+                const edit=document.createElement('button');edit.type='button';edit.className='venue-play-dialog__edit';
+                edit.dataset.venuePlayEdit=entry.edit_url;edit.dataset.version=String(entry.version);edit.dataset.deleteUrl=entry.delete_url||'';
+                edit.setAttribute('aria-label','Редактировать сообщение');edit.title='Редактировать сообщение';
+                edit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 0 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>';item.append(edit);
+            }
+            if(existing){existing.replaceWith(item);}
+            else if(prepend){older.append(item);}
+            else{
+                const last=list.lastElementChild;
+                if(!last||Number(last.dataset.entryId)<Number(entry.id))list.append(item);
+                else{
+                    const next=[...list.children].find(node=>Number(node.dataset.entryId)>Number(entry.id));
+                    list.insertBefore(item,next||null);
+                }
+            }
         }
+        if(prepend)list.prepend(older);
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
         empty.hidden=list.childElementCount>0;
         if(!empty.hidden)empty.textContent='Сообщений пока нет.';
     };
-    async function refreshWall(pane){
-        try{
-            const response=await request(pane.dataset.eventWallUrl);
-            paintWall(pane,response);
-        }catch(e){pane.querySelector('[data-venue-play-wall-empty]').textContent=e.message;}
+    function paintWallAccess(pane,response){
+        const form=pane.querySelector('[data-venue-play-message-form]');
+        setChatComposerAccess(form,response.can_post);
+        pane.querySelector('[data-venue-play-comment-notice]').hidden=!!response.can_post;
     }
     function paintWall(pane,response){
-        pane.querySelector('[data-venue-play-messages]').replaceChildren();
+        const list=messages(pane);
+        wallPages.set(pane,{hasOlder:!!response.has_older,loading:false});
+        list.replaceChildren();
         appendEntries(pane,response.entries||[]);
-        const form=pane.querySelector('[data-venue-play-message-form]');
-        form.hidden=!response.can_post;
-        pane.querySelector('[data-venue-play-comment-notice]').hidden=!!response.can_post;
+        paintWallAccess(pane,response);
+        scrollBottom(pane);
+    }
+    async function loadOlder(pane){
+        const list=messages(pane),page=wallPages.get(pane);
+        const first=list.firstElementChild?.dataset.entryId;
+        if(!page?.hasOlder||page.loading||!first||list.scrollTop>24||list.clientHeight===0)return;
+        page.loading=true;
+        try{
+            const url=new URL(pane.dataset.eventWallUrl,location.href);
+            url.searchParams.set('before_id',first);
+            const response=await request(url);
+            if(wallPages.get(pane)!==page)return;
+            const height=list.scrollHeight,top=list.scrollTop;
+            appendEntries(pane,response.entries||[],true);
+            page.hasOlder=!!response.has_older;
+            list.scrollTop=top+list.scrollHeight-height;
+        }catch(e){if(wallPages.get(pane)===page)notice(pane,e.message,true);}
+        finally{page.loading=false;}
+    }
+    async function refreshWall(pane,posted=null,reset=false){
+        const list=messages(pane),page=wallPages.get(pane);
+        try{
+            if(reset||!page||!list.lastElementChild){
+                const response=await request(pane.dataset.eventWallUrl);
+                if(wallPages.get(pane)!==page)return;
+                paintWall(pane,response);
+                return;
+            }
+            // Merge new entries instead of throwing away history already loaded.
+            let cursor=Number(list.lastElementChild.dataset.entryId);
+            while(true){
+                const url=new URL(pane.dataset.eventWallUrl,location.href);
+                url.searchParams.set('after_id',String(cursor));
+                const response=await request(url);
+                if(wallPages.get(pane)!==page)return;
+                const entries=response.entries||[];
+                appendEntries(pane,entries);
+                paintWallAccess(pane,response);
+                if(entries.length<50)break;
+                cursor=Number(entries[entries.length-1].id);
+            }
+            if(posted&&!list.querySelector('[data-entry-id="'+Number(posted.id)+'"]'))appendEntries(pane,[posted]);
+            scrollBottom(pane);
+        }catch(e){
+            if(wallPages.get(pane)!==page)return;
+            if(posted){
+                if(!list.querySelector('[data-entry-id="'+Number(posted.id)+'"]'))appendEntries(pane,[posted]);
+                scrollBottom(pane);
+            }else notice(pane,e.message,true);
+        }
     }
     async function refreshRoster(pane){
         const token={};rosterLoads.set(pane,token);
@@ -185,6 +275,7 @@
         if(selectedId)showEvent(selectedId);else showList();
     }
     function guestResponse(status){
+        if(pageMode){window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true}}));return;}
         pendingResponse=status;saveResume();dialog.close();
         authNotice.showModal();
     }
@@ -214,7 +305,18 @@
             }
         }finally{saving=false;savingPane=null;rosterBusy(pane,false);}
     }
-    document.addEventListener('click',event=>{
+    if(!pageMode)document.addEventListener('click',event=>{
+        const direct=event.target.closest?.('[data-venue-play-open-event]');
+        if(direct){
+            if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+            const id=Number(direct.dataset.venuePlayOpenEvent);
+            // Keep a real link fallback if the event is no longer available.
+            if(!getPane(id))return;
+            event.preventDefault();
+            if(!dialog.open)dialog.showModal();
+            showEvent(id);
+            return;
+        }
         const opener=event.target.closest?.('[data-venue-play-open]');
         if(!opener||opener.disabled)return;
         event.preventDefault();open();
@@ -224,30 +326,77 @@
     dialog.querySelector('[data-venue-play-back]')?.addEventListener('click',showList);
     dialog.querySelectorAll('[data-venue-play-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));
-    dialog.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.addEventListener('click',()=>{
-        const pane=button.closest('[data-venue-play-pane]');
-        void respond(pane,button.dataset.venuePlayRsvp);
-    }));
-    for(const pane of dialog.querySelectorAll('[data-venue-play-pane]')){
+    dialog.addEventListener('mskba:chat-action',event=>{
+        if(event.detail?.id!=='event-rsvp'||!['confirmed','tentative','left'].includes(event.detail.value))return;
+        const pane=event.target.closest('[data-venue-play-pane]');
+        if(pane)void respond(pane,event.detail.value);
+    });
+    for(const pane of pageMode?[page]:dialog.querySelectorAll('[data-venue-play-pane]')){
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
+        const messageList=messages(pane);
+        messageList.addEventListener('scroll',()=>{void loadOlder(pane);},{passive:true});
         const form=pane.querySelector('[data-venue-play-message-form]');
+        bindChatActions(form);
         const field=form.querySelector('[name="body"]');
-        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));});
+        const cancel=form.querySelector('[data-venue-play-edit-cancel]');
+        const remove=form.querySelector('[data-venue-play-delete]');
+        const submit=form.querySelector('[type="submit"]');
+        let editing=null, draft='', sending=false;
+        const count=()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));};
+        const finishEdit=()=>{
+            field.value=draft;draft='';editing=null;form.classList.remove('is-editing');cancel.hidden=true;remove.hidden=true;syncChatActions(form);
+            submit.title='Отправить сообщение';submit.setAttribute('aria-label',submit.title);count();
+        };
+        field.addEventListener('input',count);
+        remove.addEventListener('click',()=>{
+            if(!editing?.deleteUrl||sending||deleting)return;
+            const selected=editing;
+            pendingDelete=async()=>{
+                sending=true;submit.disabled=true;field.disabled=true;cancel.disabled=true;remove.disabled=true;
+                try{
+                    const result=await request(selected.deleteUrl,'DELETE');
+                    appendEntries(pane,[result.entry]);finishEdit();notice(pane,'');
+                }finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
+            };
+            deleteError.hidden=true;deleteDialog.showModal();
+        });
+        cancel.addEventListener('click',()=>{if(!sending){finishEdit();field.focus();}});
+        pane.querySelector('[data-venue-play-messages]').addEventListener('click',event=>{
+            const edit=event.target.closest('[data-venue-play-edit]');
+            if(!edit||sending||form.dataset.chatCanPost!=='true')return;
+            if(!editing)draft=field.value;
+            const original=edit.closest('li').querySelector('p').textContent;
+            editing={url:edit.dataset.venuePlayEdit,deleteUrl:edit.dataset.deleteUrl,version:Number(edit.dataset.version),original};
+            field.value=original;form.classList.add('is-editing');cancel.hidden=false;remove.hidden=!editing.deleteUrl;syncChatActions(form);
+            submit.title='Сохранить изменения';submit.setAttribute('aria-label',submit.title);
+            count();field.focus();field.setSelectionRange(field.value.length,field.value.length);
+        });
         form.addEventListener('submit',async event=>{
             event.preventDefault();
             if(!authenticated){guestResponse(null);return;}
+            if(form.dataset.chatCanPost!=='true')return;
             const body=field.value.trim();if(!body||[...body].length>200)return;
-            const submit=form.querySelector('[type="submit"]');submit.disabled=true;
+            if(sending)return;
+            if(editing&&body===editing.original.trim()){finishEdit();return;}
+            sending=true;submit.disabled=true;field.disabled=true;cancel.disabled=true;remove.disabled=true;
             try{
-                const response=await request(pane.dataset.eventPostUrl,'POST',{
-                    body,client_request_id:crypto.randomUUID(),
-                });
-                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='200';
-                await refreshWall(pane);notice(pane,'Сообщение отправлено.');
-            }catch(e){notice(pane,e.message,true);}
-            finally{submit.disabled=false;}
+                if(editing){
+                    const response=await request(editing.url,'PATCH',{body,version:editing.version});
+                    appendEntries(pane,[response.entry]);finishEdit();notice(pane,'');
+                }else{
+                    const response=await request(pane.dataset.eventPostUrl,'POST',{body,client_request_id:crypto.randomUUID()});
+                    field.value='';count();
+                    await refreshWall(pane,response.entry);notice(pane,'Сообщение отправлено.');
+                }
+            }catch(e){if(e.status===409)await refreshWall(pane,null,true);notice(pane,e.message,true);}
+            finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
         });
     }
+    if(pageMode){
+        paintButtons(page);
+        void refreshRoster(page);
+        window.addEventListener('mskba:auth:success',()=>{authenticated=true;window.location.reload();});
+    }else{
     authNotice.querySelectorAll('[data-venue-play-auth-close]').forEach(button=>
         button.addEventListener('click',()=>authNotice.close()));
     authNotice.querySelector('[data-venue-play-auth-login]')?.addEventListener('click',()=>{
@@ -268,14 +417,15 @@
     };
     window.addEventListener('mskba:auth:success',()=>{authenticated=true;dialog.dataset.authenticated='1';resume();});
     if(authenticated)queueMicrotask(resume);
+    }
     // A gesture must both begin and end on the backdrop to dismiss.
-    for(const modal of [dialog,authNotice]){
+    for(const modal of pageMode?[deleteDialog]:[dialog,authNotice,deleteDialog]){
         let outsidePointer=null;
         modal.addEventListener('pointerdown',event=>{
             outsidePointer=event.target===modal?event.pointerId:null;
         });
         modal.addEventListener('pointerup',event=>{
-            if(outsidePointer===event.pointerId&&event.target===modal)modal.close();
+            if(outsidePointer===event.pointerId&&event.target===modal&&!(modal===deleteDialog&&deleting))modal.close();
             outsidePointer=null;
         });
         modal.addEventListener('pointercancel',()=>{outsidePointer=null;});

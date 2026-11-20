@@ -36,6 +36,9 @@
                 <button type="button" class="button secondary" data-event-share>Поделиться</button>
                 <button type="button" class="button secondary" data-favorite-type="event" data-favorite-id="{{ $event->id }}" data-favorite-name="{{ $event->title }}" aria-label="Избранное">Избранное</button>
             @endif
+            @if($owner)
+                <button type="button" class="button secondary event-lifecycle-danger" data-event-lifecycle-open>Удалить мероприятие</button>
+            @endif
         </div>
     </header>
     @if(session('status') || session('error') || $errors->any())
@@ -83,36 +86,17 @@
             @endif
         </article>
         <div class="app-event-column">
-            <article class="panel app-event-panel">
-                <h2>Участники <span class="badge">{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</span></h2>
-                @if($canRespond)
-                    <div class="app-event-actions" aria-label="Мой ответ на участие">
-                        @foreach(['confirmed'=>'Пойду','tentative'=>'Думаю','left'=>'Не пойду'] as $status=>$label)
-                            <form method="POST" action="{{ route('events.participation', $event->routeIdentifier()) }}">
-                                @csrf @method('PATCH') <input type="hidden" name="status" value="{{ $status }}">
-                                <button type="submit" class="button {{ $currentParticipant?->status?->value === $status ? 'primary' : 'secondary' }}">{{ $label }}</button>
-                            </form>
-                        @endforeach
-                    </div>
-                @elseif(auth()->guest() && $editable)
-                    <p class="muted">Войдите, чтобы участвовать.</p>
-                @endif
-                @foreach($participants as $participant)
-                    @php
-                        $user = $participant->user;
-                        $name = trim(($user?->profile?->first_name ?? '').' '.($user?->profile?->last_name ?? '')) ?: ($user?->username ?: 'Пользователь');
-                        $role = $participant->role === EventParticipantRoleEnum::ORGANIZER;
-                        $response = $participant->status->value;
-                        $stale = $response === 'confirmed' && $participant->confirmation_version !== $event->participation_confirmation_version;
-                    @endphp
-                    <div class="app-event-person">
-                        @if($user?->profile?->avatarUrl())<img src="{{ $user->profile->avatarUrl() }}" alt="">@else<span class="app-event-initials">{{ mb_substr($name,0,1) }}</span>@endif
-                        <div><strong>{{ $name }}</strong>@if($role)<span class="badge">Организатор</span>@endif
-                            <p><span class="status-dot app-event-dot" data-response="{{ $stale ? 'tentative' : $response }}"></span> {{ $stale ? 'Нужно подтвердить повторно' : (['confirmed'=>'Пойдёт','tentative'=>'Думает','left'=>'Не пойдёт'][$response] ?? $participant->status->label()) }}</p></div>
-                    </div>
-                @endforeach
-                @if($participants->isEmpty())<p class="muted">Участников пока нет.</p>@endif
-            </article>
+            @if($eventWallCanView)
+                <article class="panel app-event-panel venue-play-dialog--app" data-venue-play-page
+                    data-venue-play-pane="{{ $event->id }}" data-authenticated="{{ auth()->check() ? '1' : '0' }}"
+                    data-event-status="{{ $currentParticipant?->confirmation_version === $event->participation_confirmation_version ? $currentParticipant?->status?->value : '' }}"
+                    data-event-organizer="{{ $owner ? '1' : '0' }}"
+                    data-event-participation-url="{{ route('events.participation', $event->routeIdentifier()) }}"
+                    data-event-wall-url="{{ route('events.wall.index', $event->routeIdentifier()) }}"
+                    data-event-post-url="{{ route('events.wall.store', $event->routeIdentifier()) }}">
+                    @include('components.event-discussion', ['chatEvent' => $event, 'chatCanRespond' => $canRespond, 'primaryButton' => 'button primary', 'secondaryButton' => 'button secondary'])
+                </article>
+            @endif
             @if($canEdit || $canInvite || $interest)
                 <article class="panel app-event-panel">
                     <h2>Управление мероприятием</h2>
@@ -137,7 +121,6 @@
             @endif
         </div>
     </div>
-    @include('theme::pages.events.partials.social-wall')
     @if($event->venueRevisions->isNotEmpty())
         <article class="panel app-event-panel"><h2>История изменений места и времени</h2>
             @foreach($event->venueRevisions->sortByDesc('revision') as $revision)
@@ -146,6 +129,13 @@
         </article>
     @endif
 </section>
+@if($eventWallCanView)
+    @include('components.event-discussion-delete-dialog', ['isAppTheme' => true])
+    @include('components.event-discussion-styles')
+@endif
+@if($owner)
+    @include('theme::pages.events.partials.lifecycle-dialog', ['restoring' => false])
+@endif
 @include('theme::partials.venue-map-dialog', ['mapVenue' => null])
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
