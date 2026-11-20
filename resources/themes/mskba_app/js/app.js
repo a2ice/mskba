@@ -45,6 +45,7 @@ import './play-interest-mine.js';
 import './venue-interest-summary.js';
 import './venue-detail.js';
 import './venue-choice.js';
+import './venue-rental-search.js';
 import './venue-play-funnel.js';
 import './event-quick-create.js';
 import './quick-event-venue-selector.js';
