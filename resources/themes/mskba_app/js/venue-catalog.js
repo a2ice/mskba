@@ -1,6 +1,24 @@
 import { loadYandexMaps } from '../../mskba_dark/js/core/yandex-maps.js';
 import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
 
+/* Optional numeric catalog filters share the player-profile range control. */
+document.querySelectorAll('[data-catalog-range-filter]').forEach(root => {
+    const toggle = root.querySelector('[data-catalog-range-toggle]');
+    const options = root.querySelector('[data-catalog-range-options]');
+    const range = root.querySelector('[data-catalog-range-input]');
+    const value = root.querySelector('[data-catalog-range-value]');
+    if (!toggle || !options || !range || !value) return;
+    const sync = () => {
+        options.hidden = !toggle.checked;
+        range.disabled = !toggle.checked;
+        value.textContent = range.value;
+    };
+    toggle.addEventListener('change', sync);
+    range.addEventListener('input', sync);
+    window.addEventListener('pageshow', sync);
+    sync();
+});
+
 /* Venue infinite scrolling. Use the existing project loading spinner. */
 (() => {
     const root = document.querySelector('[data-venue-infinite-catalog]');
