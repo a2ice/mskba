@@ -27,6 +27,10 @@
     {
       "name": "Внутренний API · Page Builder (DEV)",
       "description": "Только DEV/staging; отдельный временный токен superadmin, права Filament, контроль SHA-256, аудит. Не использовать обычный мобильный токен."
+    },
+    {
+      "name": "Внутренний API · Новости",
+      "description": "DEV и production. Только отдельный scoped Sanctum PAT системного пользователя dev; публикация требует отдельного разрешения."
     }
   ],
   "paths": {
@@ -1206,6 +1210,249 @@
           }
         }
       }
+    },
+    "/api/v1/internal/editorial-news": {
+      "post": {
+        "tags": [
+          "Внутренний API · Новости"
+        ],
+        "security": [
+          {
+            "editorialNewsAgentBearer": []
+          }
+        ],
+        "operationId": "createEditorialNewsDraft",
+        "summary": "Создать черновик новости",
+        "description": "editorial-news:write. Только material, без публикации. Повторный alias возвращает 422.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorialNewsDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Черновик создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialNewsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/editorial-news/{alias}": {
+      "get": {
+        "tags": [
+          "Внутренний API · Новости"
+        ],
+        "security": [
+          {
+            "editorialNewsAgentBearer": []
+          }
+        ],
+        "operationId": "getEditorialNews",
+        "summary": "Получить статус своего материала",
+        "description": "editorial-news:write.",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Материал",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialNewsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Материал не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/editorial-news/{alias}/publish": {
+      "post": {
+        "tags": [
+          "Внутренний API · Новости"
+        ],
+        "security": [
+          {
+            "editorialNewsAgentBearer": []
+          }
+        ],
+        "operationId": "publishEditorialNews",
+        "summary": "Опубликовать новость на сайте",
+        "description": "editorial-news:publish. Повторный вызов не меняет дату публикации. Telegram не затрагивается.",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Материал опубликован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialNewsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется токен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Материал не найден",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Недопустимый статус",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1220,6 +1467,12 @@
         "scheme": "bearer",
         "bearerFormat": "Sanctum (24-hour Page Builder agent PAT)",
         "description": "Только временный персональный Sanctum-токен superadmin с префиксом имени mskba-pagebuilder-agent: и abilities page-builder:read/write/publish. Выдаётся в Filament DEV; не является мобильным токеном и не передаётся в чат/репозиторий."
+      },
+      "editorialNewsAgentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Sanctum",
+        "description": "Токен mskba-editorial-news: с editorial-news:write и/или editorial-news:publish. Выдаётся суперадминистратором в Filament на 24 часа."
       }
     },
     "schemas": {
@@ -2265,6 +2518,83 @@
           "message": {
             "type": "string",
             "example": "Аккаунт восстановлен. Теперь войдите заново."
+          }
+        }
+      },
+      "EditorialNewsDraftRequest": {
+        "type": "object",
+        "required": [
+          "alias",
+          "title",
+          "summary",
+          "content"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string",
+            "maxLength": 230,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 50000,
+            "description": "Markdown"
+          },
+          "cover": {
+            "type": "string",
+            "format": "binary",
+            "description": "JPEG, PNG, WebP; до 5 MiB, 6000×6000."
+          }
+        }
+      },
+      "EditorialNewsResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "id",
+              "alias",
+              "status",
+              "title",
+              "has_cover",
+              "url"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "alias": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "has_cover": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
+            }
           }
         }
       }
