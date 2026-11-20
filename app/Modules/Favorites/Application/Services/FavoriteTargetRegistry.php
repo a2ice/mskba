@@ -25,7 +25,7 @@ final class FavoriteTargetRegistry
     public function visible(string $type, int $id): ?Model
     {
         return match ($type) {
-            'venue' => Venue::query()->whereKey($id)->where('status', VenueStatusEnum::CONFIRMED)->first(),
+            'venue' => Venue::query()->whereKey($id)->where('status', VenueStatusEnum::CONFIRMED)->where('is_published', true)->first(),
             'event' => Event::query()->whereKey($id)
                 ->where('visibility', EventVisibilityEnum::PUBLIC)
                 ->whereIn('status', [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value])->first(),

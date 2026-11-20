@@ -128,7 +128,7 @@ function confirmDiscard() {
     else closeDialog();
 }
 
-function closeDialog() {
+function closeDialog(authenticated = false) {
     if (busy.value) return;
     if (discardDialog.value?.open) discardDialog.value.close();
     discardTarget.value = '';
@@ -136,6 +136,7 @@ function closeDialog() {
     legalDialog.value?.closeDocument();
     if (panel.value?.open) panel.value.close();
     opened.value = false;
+    if (!authenticated) window.dispatchEvent(new CustomEvent('mskba:auth:cancel'));
     document.body.style.overflow = previousOverflow;
     transientMessage.value = false;
     message.value = '';
@@ -212,7 +213,7 @@ async function post(endpoint, form) {
                 if (result.csrf_token) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', result.csrf_token);
                 busy.value = false;
                 loginForm.password = '';
-                closeDialog();
+                closeDialog(true);
                 inlineAuth = false;
                 window.dispatchEvent(new CustomEvent('mskba:auth:success'));
                 return;

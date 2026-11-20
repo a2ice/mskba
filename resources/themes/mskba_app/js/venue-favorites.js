@@ -1,4 +1,5 @@
-/* MSKBA universal venue hearts: works for guest and authenticated web sessions.
+import { addFavorite } from './favorite-action.js';
+/* MSKBA universal venue hearts: guest additions require the shared auth flow.
  * Add data-favorite-venue="<id>" to any standalone button. Cards/previews
  * with venue URLs also get the same accessible heart, outside link elements.
  */
@@ -137,7 +138,8 @@
         if(pending.has(id)||!known.has(id))return;
         pending.add(id);paint(id);
         try{
-            const result=await request(endpoints.toggle,'POST',{type:'venue',id});
+            if(known.get(id)?.state!=='active'){await addFavorite('venue',id);return;}
+            const result=await request(endpoints.toggle,'POST',{type:'venue',id,action:'remove'});
             notifyFavoriteCount(result);
             known.set(id,{
                 state:result.state,
@@ -147,19 +149,7 @@
             window.dispatchEvent(new CustomEvent('mskba:venue-favorite:updated',{
                 detail:{venueId:id,state:result.state,count:result.count},
             }));
-            if(result.state==='active') {
-                if (document.querySelector('[data-venue-favorite-dialog][data-venue-id="'+id+'"]')) {
-                    // On a venue page the dedicated chooser owns game vs. favorite
-                    // intent; never reopen the obsolete game-subscription wizard.
-                    toast(contextNames.venue.added);
-                } else {
-                    window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
-                        detail:{source:'favorite',type:'venue',id},
-                    }));
-                }
-            } else {
-                toast(contextNames.venue.removed);
-            }
+            toast(contextNames.venue.removed);
         }catch(e){toast(e.message||'Не удалось изменить избранное.',true);}
         finally{pending.delete(id);paint(id);}
     }
@@ -169,7 +159,11 @@
         pendingGeneric.add(key);
         if(button)button.disabled=true;
         try{
-            const result=await request(endpoints.toggle,'POST',{type,id});
+            const url=new URL('/favorites/status',location.origin);
+            url.searchParams.set('type',type);url.searchParams.set('id',String(id));
+            const status=await request(url);
+            if(status.state!=='active'){await addFavorite(type,id);return;}
+            const result=await request(endpoints.toggle,'POST',{type,id,action:'remove'});
             notifyFavoriteCount(result);
             const words=contextNames[type];
             if(result.state!=='active')toast(words?.removed||'Убрано из избранного');
@@ -177,12 +171,6 @@
                 button.setAttribute('aria-pressed',String(result.state==='active'));
                 button.title=result.state==='active'?'Убрать из избранного':'Добавить в избранное';
                 button.setAttribute('aria-label',button.title);
-            }
-            if(result.state==='active') {
-                if(type==='product')toast(words?.added||'Добавлено в избранное');
-                else window.dispatchEvent(new CustomEvent('mskba:subscription-dialog:open',{
-                    detail:{source:'favorite',type,id,name},
-                }));
             }
         }catch(e){toast(e.message||'Не удалось изменить избранное.',true);}
         finally{pendingGeneric.delete(key);if(button)button.disabled=false;}

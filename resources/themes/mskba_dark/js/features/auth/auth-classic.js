@@ -222,6 +222,7 @@ $(document).on('modal:closed', function(_event, modal) {
     if (!isClassicAuthModal(modal)) {
         return;
     }
+    window.dispatchEvent(new CustomEvent('mskba:auth:cancel'));
 
     restoreBorrowedTelegramLoginWidget(modal);
     resetClassicModalState(modal);
