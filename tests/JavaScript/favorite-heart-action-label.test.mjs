@@ -21,6 +21,7 @@ test('active heart keeps Убрать из избранного and accessible l
     assert.match(source, /btn\.setAttribute\('aria-pressed',String\(state==='active'\)\)/);
 });
 
-test('public heart still toggles original favorite record rather than creating a duplicate', () => {
-    assert.match(source, /const result=await request\(endpoints\.toggle,'POST',\{type:'venue',id\}\)/);
+test('public heart dispatches add through shared authenticated flow and explicit removal', () => {
+    assert.match(source, /await addFavorite\('venue',id\)/);
+    assert.match(source, /request\(endpoints\.toggle,'POST',\{type:'venue',id,action:'remove'\}\)/);
 });

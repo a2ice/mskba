@@ -1,5 +1,5 @@
 import { addFavorite } from './favorite-action.js';
-/* MSKBA universal venue hearts: works for guest and authenticated web sessions.
+/* MSKBA universal venue hearts: guest additions require the shared auth flow.
  * Add data-favorite-venue="<id>" to any standalone button. Cards/previews
  * with venue URLs also get the same accessible heart, outside link elements.
  */

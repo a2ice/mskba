@@ -5,7 +5,6 @@ const labels = {
     event: ['мероприятие', 'Мероприятие добавлено в избранное.'],
     team: ['команду', 'Команда добавлена в избранное.'],
     product: ['товар', 'Товар добавлен в избранное.'],
-    user: ['пользователя', 'Пользователь добавлен в избранное.'],
 };
 const storageKey = 'mskba:favorite:pending:v1';
 const currentPath = () => location.pathname + location.search + location.hash;
