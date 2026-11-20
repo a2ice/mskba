@@ -658,7 +658,12 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(tpl, /data-venue-play-pane="{{ \$upcoming->id }}"/);
     assert.match(tpl, /data-venue-play-rsvp="confirmed"/);
     assert.match(tpl, /data-venue-play-rsvp="tentative"/);
-    assert.match(tpl, /data-venue-play-rsvp="left"/);
+    assert.doesNotMatch(tpl, /data-venue-play-rsvp="left"/);
+    assert.equal((tpl.match(/data-venue-play-rsvp="/g) || []).length, 2);
+    assert.match(tpl, /data-venue-play-attendance/);
+    assert.match(tpl, /placeholder="Написать сообщение"/);
+    assert.match(tpl, /data-venue-play-chars[^>]*>200</);
+    assert.doesNotMatch(tpl, /Обсуждение и действия|не более 3 действий в минуту|0\/200/);
     assert.match(tpl, /data-venue-play-messages/);
     assert.match(tpl, /data-venue-play-message-form/);
     assert.match(tpl, /data-venue-play-back/);
@@ -675,6 +680,9 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(js, /listFooter\.hidden=false/);
     assert.match(js, /refreshWall\(pane\)/);
     assert.match(js, /guestResponse\(status\)/);
+    assert.match(js, /attendance\.dataset\.venuePlayRsvp=confirmed\?'left':'confirmed'/);
+    assert.match(js, /attendance\.textContent=confirmed\?'Не пойду':'Пойду'/);
+    assert.match(js, /200-\[\.\.\.field\.value\]\.length/);
 });
 
 test('event creation select controls reuse the branded native select, not custom compact fields', () => {
