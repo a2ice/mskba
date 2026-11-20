@@ -54,6 +54,7 @@ if (wall) {
     };
     function append(entry) {
         if (!entry || !Number.isInteger(Number(entry.id))) return;
+        if(entry.deleted){wall.querySelectorAll('[data-event-wall-entry="'+entry.id+'"]').forEach(li=>li.remove());return;}
         for (const list of wall.querySelectorAll('[data-event-wall-list]')) {
             if (list.dataset.eventWallList==='history' && !entry.system) continue;
             if (list.querySelector('[data-event-wall-entry="'+entry.id+'"]')) continue;
@@ -129,15 +130,8 @@ if (wall) {
         button.disabled=true;
         try{
             const result=await request(button.dataset.wallDeleteUrl,'DELETE');
-            wall.querySelectorAll('[data-event-wall-entry="'+result.entry.id+'"]').forEach(li=>{
-                li.classList.add('is-deleted');
-                const p=li.querySelector('.event-social-wall__entry-text');
-                if(p){p.textContent=result.entry.text;p.classList.add('is-struck');}
-                li.querySelector('[data-wall-delete-url]')?.remove();
-                const label=document.createElement('small');label.className='event-social-wall__muted';
-                label.textContent='Сообщение удалено автором';li.append(label);
-            });
-            message('Сообщение зачёркнуто.');
+            wall.querySelectorAll('[data-event-wall-entry="'+result.entry.id+'"]').forEach(li=>li.remove());
+            message('Сообщение удалено.');
         }catch(e){button.disabled=false;message(e.message,true);}
     });
 

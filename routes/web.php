@@ -830,6 +830,8 @@ Route::prefix('events')->group(function () {
             ->name('events.participation');
         Route::post('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'store'])
             ->name('events.wall.store');
+        Route::patch('/{event}/wall/{entry}', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'update'])
+            ->whereNumber('entry')->name('events.wall.update');
         Route::delete('/{event}/wall/{entry}', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'destroy'])
             ->whereNumber('entry')->name('events.wall.delete');
         Route::get('/{event}/participants/candidates', [EventController::class, 'participantCandidates'])

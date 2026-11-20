@@ -94,6 +94,8 @@
                             aria-label="Написать сообщение" placeholder="Написать сообщение"></textarea>
                         <div class="venue-play-dialog__message-footer">
                             <small data-venue-play-chars aria-label="Осталось символов">200</small>
+                            <button type="button" class="venue-play-dialog__edit-cancel" data-venue-play-edit-cancel hidden aria-label="Отменить редактирование" title="Отменить редактирование"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button>
+                            <button type="button" class="venue-play-dialog__send venue-play-dialog__delete" data-venue-play-delete hidden aria-label="Удалить сообщение" title="Удалить сообщение"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6l-12 12M6 6l12 12"/></svg></button>
                             <button type="submit" class="{{ $primaryButton }} venue-play-dialog__send" aria-label="Отправить сообщение" title="Отправить сообщение">
                                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
                             </button>
@@ -121,6 +123,19 @@
     </div>
     <footer class="mskba-modal__footer venue-play-dialog__footer">
         <button type="button" class="{{ $primaryButton }}" data-venue-play-auth-login>Войти</button>
+    </footer>
+</dialog>
+<dialog class="mskba-modal venue-play-dialog venue-play-delete-dialog {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}" data-venue-play-delete-dialog aria-labelledby="venue-play-delete-title" aria-describedby="venue-play-delete-question">
+    <header class="mskba-modal__header venue-play-dialog__header">
+        <h2 id="venue-play-delete-title">Удалить сообщение</h2>
+        <button type="button" class="icon-button venue-play-dialog__close" data-venue-play-delete-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button>
+    </header>
+    <div class="mskba-modal__body venue-play-dialog__body">
+        <p id="venue-play-delete-question">Вы уверены, что хотите удалить?</p>
+        <p data-venue-play-delete-error role="alert" hidden></p>
+    </div>
+    <footer class="mskba-modal__footer venue-play-dialog__footer">
+        <button type="button" class="{{ $isAppTheme ? 'button danger' : 'btn btn--danger' }}" data-venue-play-delete-confirm>Да, удалить</button>
     </footer>
 </dialog>
 @once
@@ -217,6 +232,13 @@
 .venue-play-dialog__wall{display:grid;gap:10px}
 .venue-play-dialog__messages{display:grid;gap:10px;max-height:250px;overflow-y:auto;list-style:none;padding:0;margin:0}
 .venue-play-dialog__messages li{padding:10px 12px;border-radius:8px;background:var(--field,#30343a);overflow-wrap:anywhere}
+.venue-play-dialog__messages li:has(.venue-play-dialog__edit){position:relative;padding-right:48px}
+.venue-play-dialog__edit,.venue-play-dialog__edit-cancel{display:inline-grid;place-items:center;min-width:36px;min-height:36px;border:0;background:transparent;color:inherit;cursor:pointer;border-radius:5px}
+.venue-play-dialog__edit{position:absolute;right:4px;top:2px}
+.venue-play-dialog__edit svg,.venue-play-dialog__edit-cancel svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.venue-play-dialog__edit:hover,.venue-play-dialog__edit:focus-visible,.venue-play-dialog__edit-cancel:hover,.venue-play-dialog__edit-cancel:focus-visible{color:var(--accent,#ea7628)}
+.venue-play-dialog__edit-cancel{margin-left:auto}
+.venue-play-dialog__wall form.is-editing{border-color:var(--accent,#ea7628)}
 .venue-play-dialog__messages time{font-size:12px;opacity:.65;margin-left:9px}
 .venue-play-dialog__messages li.is-system{opacity:.8}
 .venue-play-dialog__messages li[data-rsvp-status]{opacity:1}
@@ -235,6 +257,12 @@ html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-sta
 .venue-play-dialog__message-footer{justify-content:space-between;flex-wrap:nowrap}
 .venue-play-dialog__send{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0}
 .venue-play-dialog__send svg{width:22px;height:22px}
+.venue-play-dialog__delete{border:0;border-radius:5px;background:#b91c1c;color:#fff;cursor:pointer}
+.venue-play-dialog__delete:hover{background:#991b1b}
+.venue-play-dialog__delete:disabled{opacity:.5;cursor:default}
+.venue-play-delete-dialog{width:min(440px,calc(100vw - 24px))}
+.venue-play-delete-dialog p{margin:0}
+.venue-play-delete-dialog [data-venue-play-delete-error]{color:var(--danger,#dc2626)}
 @media(max-width:540px){
     .venue-play-dialog__header,.venue-play-dialog__body{padding-inline:16px}
     .venue-play-dialog__footer{padding:16px}
