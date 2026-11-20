@@ -38,11 +38,12 @@ final class LeaveEventHandler
                 throw new InvalidArgumentException('Вы не участвуете в этом мероприятии.');
             }
 
-            if ($participant->role === EventParticipantRoleEnum::ORGANIZER) {
-                throw new InvalidArgumentException('Организатор не может покинуть собственное мероприятие.');
+            $isOrganizer = $participant->role === EventParticipantRoleEnum::ORGANIZER;
+            if ($isOrganizer && ! $event->organizerActor()->whereIn('user_id', $user->identityIds())->exists()) {
+                throw new InvalidArgumentException('Запись организатора не соответствует владельцу мероприятия.');
             }
 
-            if ($event->ends_at->lessThanOrEqualTo(now())) {
+            if ($event->ends_at === null || $event->ends_at->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
@@ -57,7 +58,9 @@ final class LeaveEventHandler
                 'status_changed_by_actor_id' => null,
                 'status_changed_at' => null,
             ]);
-            $participant->responsibilityPermissions()->delete();
+            if (! $isOrganizer) {
+                $participant->responsibilityPermissions()->delete();
+            }
 
             $this->wall->appendSystem('event', $event->id, $user, 'event_rsvp_changed', [
                 'from' => $previousStatus->value,

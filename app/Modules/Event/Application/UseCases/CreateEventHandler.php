@@ -172,6 +172,7 @@ final class CreateEventHandler
                     ? EventParticipantStatusEnum::CONFIRMED
                     : EventParticipantStatusEnum::LEFT,
                 'joined_at' => $organizerParticipates ? now() : null,
+                'left_at' => $organizerParticipates ? null : now(),
                 'confirmation_version' => $event->participation_confirmation_version,
             ]);
 

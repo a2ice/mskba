@@ -192,6 +192,7 @@
                     @checked((string) old('send_pre_request', '1') === '1')>
                 <span>Сообщить площадке о предварительном интересе</span>
             </label>
+            @include('components.event-organizer-attendance-toggle')
             @include('components.event-organizer-role-toggle')
             <div class="app-rental-pricing__actions">
                 <button type="submit" class="button primary">Создать мероприятие</button>

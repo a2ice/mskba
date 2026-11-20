@@ -139,6 +139,7 @@
             <h3>3. Подтверждение</h3>
             <div data-quick-review></div>
             <p class="quick-event-dialog__hint"><strong>Важно:</strong> создание мероприятия или предварительной заявки не является бронированием. Менеджер площадки согласует время и условия отдельно.</p>
+            @include('components.event-organizer-attendance-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             @include('components.event-organizer-role-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             <p data-quick-feedback role="alert" hidden></p>
         </section>
