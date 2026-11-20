@@ -49,10 +49,10 @@
                 @if($person['organized'] !== null)<span>Проведено мероприятий: {{ $person['organized'] }}</span>@endif
                 <span>Рейтинг: пока нет данных</span>
             </div>
-            @if($person['can_message'] && !$backoffice)
+            @if($person['can_message'])
                 <details>
                     <summary>Написать</summary>
-                    <form method="POST" action="{{ route('account.venue-audience.message', [$venue->id, $person['user_id']]) }}" class="account-contracts-workspace__filters">
+                    <form method="POST" action="{{ route($backoffice ? 'account.venue-audience.backoffice.message' : 'account.venue-audience.message', [$venue->id, $person['user_id']]) }}" class="account-contracts-workspace__filters">
                         @csrf
                         <label>Сообщение<textarea name="body" maxlength="500" rows="3" required></textarea></label>
                         <button type="submit" class="account-contracts-workspace__primary">Отправить</button>

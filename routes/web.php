@@ -1264,6 +1264,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->whereNumber('venue')->name('account.venue-audience.backoffice')->defaults('backoffice', true)->defaults('breadcrumb', 'Интересуются');
         Route::post('/contracts/venues/{venue}/audience/{user}/message', [VenueAudienceController::class, 'message'])
             ->whereNumber('venue')->whereNumber('user')->middleware('throttle:direct-messages')->name('account.venue-audience.message');
+        Route::post('/contracts/venues/{venue}/audience/backoffice/{user}/message', [VenueAudienceController::class, 'message'])
+            ->whereNumber('venue')->whereNumber('user')->middleware('throttle:direct-messages')
+            ->name('account.venue-audience.backoffice.message')->defaults('backoffice', true);
         Route::post('/contracts/venues/{venue}/audience/{user}/offer', [VenueAudienceController::class, 'notify'])
             ->whereNumber('venue')->whereNumber('user')->middleware('throttle:5,1')->name('account.venue-audience.offer');
         Route::post('/contracts/venues/{venue}/audience/backoffice/{user}/offer', [VenueAudienceController::class, 'notify'])

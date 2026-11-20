@@ -58,7 +58,7 @@ final class VenueAudienceController extends Controller
         DirectMessagesController $direct, DirectMessageRecipientAccess $access,
         CreateUserNotificationHandler $notifications, DirectMessageBlockService $blocks)
     {
-        $person = collect($audience->forManagement($venue, $request->user())['people'])
+        $person = collect($audience->forManagement($venue, $request->user(), (bool) $request->route('backoffice'))['people'])
             ->firstWhere('user_id', $user->canonical()->id);
         abort_unless($person && $person['can_message'], 403);
         // Reuse existing ACL, block checks, transaction, message history and rate limiter.
