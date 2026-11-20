@@ -2,7 +2,8 @@
 (() => {
     const dialog=document.querySelector('[data-venue-play-dialog]');
     const authNotice=document.querySelector('[data-venue-play-auth-notice]');
-    if(!dialog || !authNotice || typeof dialog.showModal!=='function')return;
+    const deleteDialog=document.querySelector('[data-venue-play-delete-dialog]');
+    if(!dialog || !authNotice || !deleteDialog || typeof dialog.showModal!=='function')return;
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
@@ -12,6 +13,20 @@
     let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
     let pendingResponse=null, saving=false, savingPane=null;
     const rosterLoads=new WeakMap();
+    const deleteConfirm=deleteDialog.querySelector('[data-venue-play-delete-confirm]');
+    const deleteClose=deleteDialog.querySelector('[data-venue-play-delete-close]');
+    const deleteError=deleteDialog.querySelector('[data-venue-play-delete-error]');
+    let pendingDelete=null, deleting=false;
+    deleteClose.addEventListener('click',()=>{if(!deleting)deleteDialog.close();});
+    deleteDialog.addEventListener('cancel',event=>{if(deleting)event.preventDefault();});
+    deleteDialog.addEventListener('close',()=>{pendingDelete=null;deleteError.hidden=true;deleteError.textContent='';});
+    deleteConfirm.addEventListener('click',async()=>{
+        if(!pendingDelete||deleting)return;
+        deleting=true;deleteConfirm.disabled=true;deleteClose.disabled=true;deleteError.hidden=true;
+        try{await pendingDelete();deleteDialog.close();}
+        catch(e){deleteError.textContent=e.message;deleteError.hidden=false;}
+        finally{deleting=false;deleteConfirm.disabled=false;deleteClose.disabled=false;}
+    });
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const getPane=id=>dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
     const saveResume=()=>{
@@ -122,7 +137,8 @@
     const appendEntries=(pane,entries)=>{
         const list=pane.querySelector('[data-venue-play-messages]');
         for(const entry of entries){
-            if(list.querySelector('[data-entry-id="'+Number(entry.id)+'"]'))continue;
+            const existing=list.querySelector('[data-entry-id="'+Number(entry.id)+'"]');
+            if(entry.deleted){existing?.remove();continue;}
             const item=document.createElement('li');item.dataset.entryId=String(entry.id);
             item.classList.toggle('is-system',!!entry.system);
             if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
@@ -130,7 +146,14 @@
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
             const time=document.createElement('time');time.textContent=entry.date||'';
             const body=document.createElement('p');body.textContent=entry.text||'';
-            item.append(label,time,body);list.append(item);
+            item.append(label,time,body);
+            if(entry.can_edit&&entry.edit_url){
+                const edit=document.createElement('button');edit.type='button';edit.className='venue-play-dialog__edit';
+                edit.dataset.venuePlayEdit=entry.edit_url;edit.dataset.version=String(entry.version);edit.dataset.deleteUrl=entry.delete_url||'';
+                edit.setAttribute('aria-label','Редактировать сообщение');edit.title='Редактировать сообщение';
+                edit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 0 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>';item.append(edit);
+            }
+            if(existing)existing.replaceWith(item);else list.append(item);
         }
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
         empty.hidden=list.childElementCount>0;
@@ -233,20 +256,57 @@
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const form=pane.querySelector('[data-venue-play-message-form]');
         const field=form.querySelector('[name="body"]');
-        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));});
+        const cancel=form.querySelector('[data-venue-play-edit-cancel]');
+        const remove=form.querySelector('[data-venue-play-delete]');
+        const submit=form.querySelector('[type="submit"]');
+        let editing=null, draft='', sending=false;
+        const count=()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));};
+        const finishEdit=()=>{
+            field.value=draft;draft='';editing=null;form.classList.remove('is-editing');cancel.hidden=true;remove.hidden=true;
+            submit.title='Отправить сообщение';submit.setAttribute('aria-label',submit.title);count();
+        };
+        field.addEventListener('input',count);
+        remove.addEventListener('click',()=>{
+            if(!editing?.deleteUrl||sending||deleting)return;
+            const selected=editing;
+            pendingDelete=async()=>{
+                sending=true;submit.disabled=true;field.disabled=true;cancel.disabled=true;remove.disabled=true;
+                try{
+                    const result=await request(selected.deleteUrl,'DELETE');
+                    appendEntries(pane,[result.entry]);finishEdit();notice(pane,'');
+                }finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
+            };
+            deleteError.hidden=true;deleteDialog.showModal();
+        });
+        cancel.addEventListener('click',()=>{if(!sending){finishEdit();field.focus();}});
+        pane.querySelector('[data-venue-play-messages]').addEventListener('click',event=>{
+            const edit=event.target.closest('[data-venue-play-edit]');
+            if(!edit||sending||form.hidden)return;
+            if(!editing)draft=field.value;
+            const original=edit.closest('li').querySelector('p').textContent;
+            editing={url:edit.dataset.venuePlayEdit,deleteUrl:edit.dataset.deleteUrl,version:Number(edit.dataset.version),original};
+            field.value=original;form.classList.add('is-editing');cancel.hidden=false;remove.hidden=!editing.deleteUrl;
+            submit.title='Сохранить изменения';submit.setAttribute('aria-label',submit.title);
+            count();field.focus();field.setSelectionRange(field.value.length,field.value.length);
+        });
         form.addEventListener('submit',async event=>{
             event.preventDefault();
             if(!authenticated){guestResponse(null);return;}
             const body=field.value.trim();if(!body||[...body].length>200)return;
-            const submit=form.querySelector('[type="submit"]');submit.disabled=true;
+            if(sending)return;
+            if(editing&&body===editing.original.trim()){finishEdit();return;}
+            sending=true;submit.disabled=true;field.disabled=true;cancel.disabled=true;remove.disabled=true;
             try{
-                const response=await request(pane.dataset.eventPostUrl,'POST',{
-                    body,client_request_id:crypto.randomUUID(),
-                });
-                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='200';
-                await refreshWall(pane);notice(pane,'Сообщение отправлено.');
-            }catch(e){notice(pane,e.message,true);}
-            finally{submit.disabled=false;}
+                if(editing){
+                    const response=await request(editing.url,'PATCH',{body,version:editing.version});
+                    appendEntries(pane,[response.entry]);finishEdit();notice(pane,'');
+                }else{
+                    await request(pane.dataset.eventPostUrl,'POST',{body,client_request_id:crypto.randomUUID()});
+                    field.value='';count();
+                    await refreshWall(pane);notice(pane,'Сообщение отправлено.');
+                }
+            }catch(e){if(e.status===409)await refreshWall(pane);notice(pane,e.message,true);}
+            finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
         });
     }
     authNotice.querySelectorAll('[data-venue-play-auth-close]').forEach(button=>
@@ -270,13 +330,13 @@
     window.addEventListener('mskba:auth:success',()=>{authenticated=true;dialog.dataset.authenticated='1';resume();});
     if(authenticated)queueMicrotask(resume);
     // A gesture must both begin and end on the backdrop to dismiss.
-    for(const modal of [dialog,authNotice]){
+    for(const modal of [dialog,authNotice,deleteDialog]){
         let outsidePointer=null;
         modal.addEventListener('pointerdown',event=>{
             outsidePointer=event.target===modal?event.pointerId:null;
         });
         modal.addEventListener('pointerup',event=>{
-            if(outsidePointer===event.pointerId&&event.target===modal)modal.close();
+            if(outsidePointer===event.pointerId&&event.target===modal&&!(modal===deleteDialog&&deleting))modal.close();
             outsidePointer=null;
         });
         modal.addEventListener('pointercancel',()=>{outsidePointer=null;});
