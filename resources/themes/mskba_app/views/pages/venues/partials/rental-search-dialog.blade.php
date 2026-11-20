@@ -1,4 +1,6 @@
 <dialog class="mskba-modal app-rental-search-dialog" data-rental-search-dialog
+    data-venue-id="{{ $venue->id }}"
+    data-availability-courts='@json(collect($venue->courts)->map(fn ($court) => ['id' => $court['id'], 'name' => $court['name']])->values()->all(), JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
     data-courts='@json($rentalSearchCourts, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
     data-lead="{{ $rentalSearchPolicy['minimum_lead_time_minutes'] ?? 0 }}"
     data-step="{{ $rentalSearchPolicy['time_step_minutes'] ?? 30 }}"
