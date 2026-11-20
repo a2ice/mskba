@@ -4,23 +4,29 @@
     inset-inline:0;
     bottom:0;
     z-index:110;
-    padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));
+    padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));
+    opacity:.9;
+    transition:opacity 160ms ease;
     background:var(--surface,#141618);
     border-top:1px solid var(--line,#30353b);
     box-shadow:0 -12px 36px var(--ambient-shadow,#0004);
     color:var(--text,#f5f6f7);
+}
+.mskba-cookie-consent:hover, .mskba-cookie-consent:focus-within {opacity:1}
+@media(prefers-reduced-motion:reduce) {
+    .mskba-cookie-consent {transition:none}
 }
 .mskba-cookie-consent[hidden] {display:none!important}
 .mskba-cookie-consent__inner {
     display:flex;
     align-items:center;
     justify-content:space-between;
-    gap:24px;
+    gap:16px;
     min-width:0;
 }
 .mskba-cookie-consent__copy {min-width:0;flex:1 1 auto}
-.mskba-cookie-consent__copy strong {display:block;font-size:16px;line-height:24px;font-weight:700;margin-bottom:4px}
-.mskba-cookie-consent__copy p {font-size:13px;line-height:20px;color:var(--muted,#adb3bb);margin:0}
+.mskba-cookie-consent__copy strong {display:block;font-size:14px;line-height:20px;font-weight:700;margin-bottom:2px}
+.mskba-cookie-consent__copy p {font-size:12px;line-height:17px;color:var(--muted,#adb3bb);margin:0}
 .mskba-cookie-consent__copy a {color:var(--accent,#ff7900);text-decoration:underline;text-underline-offset:2px}
 .mskba-cookie-consent__copy a:hover {color:var(--accent-hover,#ff922e)}
 .mskba-cookie-consent__copy .mskba-cookie-consent__error {margin-top:8px;color:var(--danger,#ff9398)}
@@ -29,7 +35,7 @@
     flex:0 0 auto;
     flex-direction:row;
     align-items:center;
-    gap:12px;
+    gap:8px;
     width:auto;
     margin:0;
 }
@@ -37,13 +43,13 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    min-height:44px;
-    padding:10px 16px;
+    min-height:36px;
+    padding:6px 12px;
     border:1px solid transparent;
     border-radius:var(--radius-control,12px);
-    font-size:14px;
+    font-size:12px;
     font-weight:600;
-    line-height:20px;
+    line-height:18px;
     text-align:center;
     white-space:nowrap;
     cursor:pointer;
@@ -81,16 +87,16 @@ body.theme-shell .mskba-cookie-consent .container {
     margin-inline:auto;
 }
 @media(max-width:900px) {
-    .mskba-cookie-consent__inner {align-items:stretch;flex-direction:column;gap:16px}
+    .mskba-cookie-consent__inner {align-items:stretch;flex-direction:column;gap:8px}
     .mskba-cookie-consent__actions {width:100%}
     .mskba-cookie-consent__button {flex:1 1 0;white-space:normal}
 }
 @media(max-width:540px) {
-    .mskba-cookie-consent {padding-block:16px calc(16px + env(safe-area-inset-bottom,0px))}
-    .mskba-cookie-consent__copy strong {font-size:15px}
-    .mskba-cookie-consent__copy p {font-size:12px;line-height:18px}
+    .mskba-cookie-consent {padding-block:8px calc(8px + env(safe-area-inset-bottom,0px))}
+    .mskba-cookie-consent__copy strong {font-size:13px;line-height:18px}
+    .mskba-cookie-consent__copy p {font-size:12px;line-height:16px}
     .mskba-cookie-consent__actions {flex-direction:column;align-items:stretch;gap:8px}
-    .mskba-cookie-consent__button {width:100%}
+    .mskba-cookie-consent__button {width:100%;min-height:36px}
 }
 
 /* Match existing footer link typography without changing the footer grid. */
