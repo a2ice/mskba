@@ -8,7 +8,17 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
-use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Application\Services\PublicUserProfileService;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\EventParticipant;
+use App\Modules\Notification\Application\Services\DirectMessageRecipientAccess;
+use App\Modules\Notification\Application\Services\DirectMessageBlockService;
+use App\Modules\VenueBooking\Application\Services\VenueSpecialTermsManager;
 use App\Modules\Venue\Domain\Models\Venue;
 
 final class VenueSubscriptionAudience
@@ -73,54 +83,86 @@ final class VenueSubscriptionAudience
             'matched' => $matchedUsers,
         ];
     }
-    /**
-     * Management-only read model. Never reuse the public page DTO here:
-     * even its opt-out rows contain an account username.
-     *
-     * No offer/message capability is implied by an audience record.
-     * @return array{total:int,direct_count:int,matched_count:int,anonymous_count:int,people:array}
-     */
-    public function forManagement(Venue $venue, User $viewer, VenueAccessResolver $access, UserPrivacyAccessService $privacy): array
+    public function canManageAudience(?User $viewer, Venue $venue, bool $backoffice = false): bool
+    {
+        $viewer = $viewer?->canonical();
+        if ($viewer === null || ! $viewer->isConfirmed() || $viewer->isBlocked()
+            || $viewer->trashed() || $venue->trashed()) {
+            return false;
+        }
+        if ($backoffice) {
+            $permissions = app(BackofficePermissionManager::class);
+            return $permissions->allows($viewer, UserOperationalPermissionEnum::BACKOFFICE_ACCESS)
+                && $permissions->allows($viewer, UserOperationalPermissionEnum::BACKOFFICE_VENUE_MANAGE);
+        }
+        $memberships = app(VenueMembershipAccess::class);
+
+        return $memberships->hasActiveVenueManagementRole($viewer, $venue)
+            || $memberships->allows($viewer, $venue, VenuePermissionEnum::VIEW_EVENT_INTERESTS);
+    }
+
+    /** Explicit management projection: private interest identities never enter the result. */
+    public function forManagement(Venue $venue, User $viewer, bool $backoffice = false): array
     {
         $viewer = $viewer->canonical();
-        abort_unless($viewer->isConfirmed() && ! $viewer->isBlocked()
-            && ! $venue->trashed()
-            && ($viewer->hasSystemRole(\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN)
-                || in_array((int) $venue->id, $access->contractViewableVenueIdsFor($viewer), true)), 403);
-
-        $rows = $this->collectAudience($venue);
+        abort_unless($this->canManageAudience($viewer, $venue, $backoffice), 403);
+        $privacy = app(UserPrivacyAccessService::class);
+        $profiles = app(PublicUserProfileService::class);
+        $blocks = app(DirectMessageBlockService::class);
+        $messages = app(DirectMessageRecipientAccess::class);
+        $offerAccess = app(VenueSpecialTermsManager::class)->canManage($viewer, $venue, $backoffice);
+        $canSend = app(VenueMembershipAccess::class)->hasActiveVenueManagementRole($viewer, $venue)
+            || app(VenueMembershipAccess::class)->allows($viewer, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS);
+        $rows = $this->collectAudience($venue, true);
         $people = [];
         $direct = 0;
         foreach ($rows as $id => $row) {
             $direct += (int) $row['direct'];
             $subject = $row['user']->canonical();
-            if (! $row['public'] || ! $subject->isConfirmed() || $subject->isBlocked()
+            if (! $row['public'] || ! $subject->isConfirmed() || $subject->isBlocked() || $subject->trashed()
                 || ! $privacy->allows($subject, $viewer, UserPrivacySettingTypeEnum::DISCOVERABILITY)
                 || ! $privacy->allows($subject, $viewer, UserPrivacySettingTypeEnum::PROFILE)) {
                 continue;
             }
-
-            // Only the projection of a separately opted-in matching subscription.
-            // Never reveal whether this person also has a private favorite.
+            $profile = $profiles->preview($subject, $viewer);
+            $roles = collect(UserParticipationRoleEnum::cases())
+                ->filter(fn ($role) => $subject->hasActiveRole($role->value)
+                    && $privacy->allows($subject, $viewer, UserPrivacySettingTypeEnum::from('role_'.$role->value)))
+                ->map(fn ($role) => ['value' => $role->value, 'label' => $role->label()])->values()->all();
+            $roleValues = array_column($roles, 'value');
+            // Public completed events only. Never expose live schedules or private events.
+            $games = in_array('player', $roleValues, true)
+                && $privacy->allows($subject, $viewer, UserPrivacySettingTypeEnum::PLAYER_GAMES)
+                ? EventParticipant::query()->whereIn('user_id', $subject->identityIds())
+                    ->occupiesPlayerSpot()->whereHas('event', fn ($q) => $q
+                        ->where('visibility', 'public')->where('status', 'completed')->whereIn('type', ['game', 'game_training']))
+                    ->distinct()->count('event_id') : null;
+            $organized = in_array('organizer', $roleValues, true)
+                ? Event::query()->where('visibility', 'public')->where('status', 'completed')
+                    ->whereHas('organizerActor', fn ($q) => $q->whereIn('user_id', $subject->identityIds()))->count() : null;
+            $contactAllowed = ! $subject->isSameIdentity($viewer) && ! $blocks->blockedBetween($viewer, $subject);
             $people[] = [
                 'user_id' => $id,
-                'name' => $subject->username ?: 'Игрок',
-                'avatar' => $privacy->allows($subject, $viewer, UserPrivacySettingTypeEnum::AVATAR)
-                    ? $subject->profile?->avatarUrl() : null,
+                'name' => $profile['name'],
+                'url' => $profile['url'],
+                'avatar' => $profile['avatar_url'],
+                'roles' => $roles, 'games' => $games, 'organized' => $organized,
+                'reason' => $row['public_direct'] ? 'Подписка на площадку' : 'Совпадение по условиям',
+                'can_message' => $contactAllowed && $canSend && $messages->allows($subject, $viewer),
+                'can_offer' => $contactAllowed && $offerAccess && $row['offer_channels'] !== [],
             ];
         }
 
         return [
-            'total' => count($rows),
-            'direct_count' => $direct,
+            'total' => count($rows), 'direct_count' => $direct,
             'matched_count' => count($rows) - $direct,
             'anonymous_count' => count($rows) - count($people),
-            'people' => $people,
+            'people' => collect($people)->sortBy([['name', 'asc'], ['user_id', 'asc']])->values()->all(),
         ];
     }
 
     /** @return array<int, array{direct:bool,public:bool,user:User}> */
-    private function collectAudience(Venue $venue): array
+    private function collectAudience(Venue $venue, bool $strict = false): array
     {
         $venue->loadMissing(['location.address', 'amenities']);
         $subscriptions = PlayIntent::query()
@@ -141,17 +183,24 @@ final class VenueSubscriptionAudience
                 continue;
             }
             $direct = $subscription->venue_id !== null && (int) $subscription->venue_id === (int) $venue->id;
-            if (! $direct && ! $this->matcher->matchesVenue($subscription, $venue)) {
+            if (($strict || ! $direct) && ! $this->matcher->matchesVenue($subscription, $venue)) {
                 continue;
             }
             $id = (int) $user->canonical()->id;
-            $byUser[$id] ??= ['direct' => false, 'public' => false, 'user' => $user];
+            $byUser[$id] ??= ['direct' => false, 'public' => false, 'public_direct' => false, 'offer_channels' => [], 'user' => $user];
             $byUser[$id]['direct'] = $byUser[$id]['direct'] || $direct;
             // Publicity is consented per subscription, not globally per user.
             // Any *matching active* subscription with opt-in permits displaying
             // the player's profile for this venue; private subscriptions remain
             // counted but must not veto a different explicit public opt-in.
             $byUser[$id]['public'] = $byUser[$id]['public'] || (bool) $subscription->show_on_venue;
+            if ($subscription->show_on_venue) {
+                $byUser[$id]['public_direct'] = $byUser[$id]['public_direct'] || $direct;
+                if ($subscription->notify_offers) {
+                    $byUser[$id]['offer_channels'] = array_values(array_unique(array_merge(
+                        $byUser[$id]['offer_channels'], $subscription->offers_delivery_channels ?? [])));
+                }
+            }
         }
 
         // A favorite is a direct venue interest in its own right. It does not
@@ -171,7 +220,7 @@ final class VenueSubscriptionAudience
                 continue;
             }
             $id = (int) $user->canonical()->id;
-            $byUser[$id] ??= ['direct' => false, 'public' => false, 'user' => $user];
+            $byUser[$id] ??= ['direct' => false, 'public' => false, 'public_direct' => false, 'offer_channels' => [], 'user' => $user];
             $byUser[$id]['direct'] = true;
             // Saving a favorite is not consent to reveal the player's avatar
             // or sporting characteristics to others.
