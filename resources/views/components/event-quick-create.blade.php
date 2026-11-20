@@ -5,10 +5,16 @@
     $quickVenues = \App\Modules\Venue\Domain\Models\Venue::query()
         ->where('status', 'confirmed')->where('is_published', true)->with(['courts', 'location.address', 'location.metroStations'])
         ->orderBy('name')->get();
+    // Fetch active venue policies in one query; court overrides are already loaded.
+    $quickBookingPolicies = \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()
+        ->whereIn('venue_id', $quickVenues->modelKeys())->where('active_marker', true)
+        ->pluck('minimum_lead_time_minutes', 'venue_id');
+    $quickBookingLead = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
+        (int) ($quickBookingPolicies->get($place->id) ?? 0)])->all();
     $quickSelectedVenue = (int) ($quickEventVenueId ?? 0);
     $quickSelectedCourt = (int) ($quickEventCourtId ?? 0);
     $quickCourtChoices = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id =>
-        $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name])->values()->all()])->all();
+        $place->courts->map(fn ($court) => ['id' => $court->id, 'name' => $court->name, 'minimum_lead_time_minutes' => $court->minimum_lead_time_minutes])->values()->all()])->all();
     $quickVenueMeta = $quickVenues->mapWithKeys(fn ($place) => [(string) $place->id => [
         'id' => (int) $place->id,
         'name' => $place->name,
@@ -27,6 +33,7 @@
     data-initial-court-id="{{ $quickSelectedCourt }}"
     data-schedule-day-template="{{ route('venues.schedule.day', '__VENUE__') }}"
     data-courts='@json($quickCourtChoices)'
+    data-booking-lead='@json($quickBookingLead)'
     data-venue-meta='@json($quickVenueMeta, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG)'
     aria-labelledby="quick-event-title">
     <header class="mskba-modal__header quick-event-dialog__heading">
