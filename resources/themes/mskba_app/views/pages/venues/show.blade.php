@@ -183,7 +183,6 @@
             @if($plannedVenueEvents->isNotEmpty())
             <section class="panel app-venue-block" id="{{ $activityDays->isEmpty() ? 'app-venue-activities' : 'app-venue-planned-events' }}">
                 <header class="app-venue-block__header"><h2>Предстоящие мероприятия</h2></header>
-                <p class="muted">Открытые мероприятия, на которые можно записаться.</p>
                 <ul class="app-venue-activities__list">
                     @foreach($plannedVenueEvents as $planned)
                         @php
