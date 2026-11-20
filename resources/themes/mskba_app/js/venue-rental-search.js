@@ -15,7 +15,19 @@ if (dialog && result) {
         endFields = field('[data-rental-end-fields]'), error = field('[data-rental-search-error]'),
         next = field('[data-rental-search-next]');
     const courts = JSON.parse(dialog.dataset.courts || '[]');
-    let pending = null, defaults, transfer = false;
+    const availabilityCourts = JSON.parse(dialog.dataset.availabilityCourts || '[]');
+    let pending = null, defaults, transfer = false, readOnly = false, selectedCourt = '';
+    function startAvailability(detail = {}) {
+        readOnly = true;
+        selectedCourt = String(detail.courtId || '');
+        open();
+        if (detail.date && detail.date >= from.min && detail.date <= from.max) {
+            from.value = detail.date;
+            if (detail.time) fromTime.value = detail.time;
+            resetEnd();
+        }
+    }
+    dialog.addEventListener('mskba:availability-open', event => startAvailability(event.detail));
     function showError(message = '') {
         error.textContent = message;
         error.hidden = !message;
@@ -32,8 +44,9 @@ if (dialog && result) {
         range.setAttribute('aria-expanded', String(range.checked));
     }
     function open(reset = true) {
+        dialog.querySelector('#rental-search-title').textContent = readOnly ? 'Занятость площадки' : 'Арендовать площадку';
         if (reset) {
-            defaults = rentalDefaults(Date.now(), Number(dialog.dataset.lead), Number(dialog.dataset.step));
+            defaults = rentalDefaults(Date.now(), readOnly ? 0 : Number(dialog.dataset.lead), Number(dialog.dataset.step));
             from.min = defaults.today;
             const lastCalendarDay = Array.from(result.querySelectorAll('[data-venue-day-date]')).at(-1)?.dataset.venueDayDate;
             if (lastCalendarDay && lastCalendarDay < defaults.maxDate) defaults.maxDate = lastCalendarDay;
@@ -49,9 +62,12 @@ if (dialog && result) {
         field('[data-rental-search-close]').focus({preventScroll:true});
     }
     document.addEventListener('click', event => {
+        const availabilityButton = event.target.closest?.('[data-venue-availability-open]');
+        if (availabilityButton) { event.preventDefault(); startAvailability(); return; }
         const button = event.target.closest?.('[data-venue-rental-open]');
         if (!button) return;
         event.preventDefault();
+        readOnly = false; selectedCourt = '';
         open();
     });
     from.addEventListener('change', () => {
@@ -100,7 +116,8 @@ if (dialog && result) {
             showError('Проверь даты и время: конец диапазона должен быть позже начала.');
             return;
         }
-        if (!courts.length) { showError('У площадки пока нет доступных залов.'); return; }
+        const searchCourts = readOnly ? availabilityCourts.filter(court => !selectedCourt || String(court.id) === selectedCourt) : courts;
+        if (!searchCourts.length) { showError('У площадки пока нет доступных залов.'); return; }
         showError();
         const controller = new AbortController();
         pending = controller;
@@ -109,12 +126,12 @@ if (dialog && result) {
         try {
             const results = [];
             // Limit concurrent requests, even when a venue has many halls.
-            for (let index = 0; index < courts.length; index += 3) {
-                const batch = await Promise.allSettled(courts.slice(index,index+3)
+            for (let index = 0; index < searchCourts.length; index += 3) {
+                const batch = await Promise.allSettled(searchCourts.slice(index,index+3)
                     .map(court => searchCourt(court,criteria,controller.signal)));
                 if (controller.signal.aborted) return;
                 results.push(...batch.map((item, i) => item.status === 'fulfilled'
-                    ? item.value : {...courts[index+i], days:[], failed:true}));
+                    ? item.value : {...searchCourts[index+i], days:[], failed:true}));
             }
             if (controller.signal.aborted || !dialog.open) return;
             const days = results.flatMap(court => court.days);
@@ -122,9 +139,9 @@ if (dialog && result) {
             transfer = true;
             dialog.close();
             result.dispatchEvent(new CustomEvent('mskba:rental-search', {detail:{
-                criteria, courts:results, courtId:first.id,
+                criteria, readOnly, courts:results, courtId:first.id,
                 date:first.days.find(day => eligibleRuns(day,criteria).length)?.date || criteria.from,
-                note:summarizeRental(days,criteria,results.some(court => court.failed)),
+                note:readOnly ? 'Занятость по выбранным датам. Просмотр расписания не создаёт бронь.' : summarizeRental(days,criteria,results.some(court => court.failed)),
                 // Outside the original dates, browse the entire day without
                 // changing the remembered request or its summary.
                 filterSlots:data => rangeSlots(data, criteriaForDay(data.date, criteria)),
