@@ -156,4 +156,48 @@ final class EventSocialWallTest extends TestCase
             ->assertSee('event-wall-panel-chat', false)
             ->assertSee('event-wall-panel-history', false);
     }
+
+    public function test_preview_roster_updates_atomically_with_rsvp_and_keeps_organizer_first(): void
+    {
+        $event = $this->event();
+        $event->update(['max_participants' => 15, 'participation_confirmation_version' => 1]);
+        $organizer = $event->organizerActor->user;
+        $user = $this->confirmedUser();
+        $event->participants()->create([
+            'user_id' => $organizer->id,
+            'role' => 'organizer',
+            'status' => 'confirmed',
+            'joined_at' => now(),
+            'confirmation_version' => $event->participation_confirmation_version,
+        ]);
+        $url = route('events.participation', $event->routeIdentifier());
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+
+        $this->getJson($wall)->assertOk()
+            ->assertJsonCount(1, 'roster.members')
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.max_participants', 15)
+            ->assertJsonPath('roster.viewer_status', null);
+
+        $this->actingAs($user)->patchJson($url, ['status' => 'confirmed', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(2, 'roster.members')
+            ->assertJsonPath('roster.members.0.organizer', true)
+            ->assertJsonPath('roster.members.1.is_viewer', true)
+            ->assertJsonPath('roster.members.1.status', 'confirmed')
+            ->assertJsonPath('roster.viewer_status', 'confirmed');
+
+        $response = $this->patchJson($url, ['status' => 'tentative', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(2, 'roster.members')
+            ->assertJsonPath('roster.members.1.status', 'tentative')
+            ->assertJsonPath('roster.viewer_status', 'tentative');
+        $this->assertNotNull($response->json('roster.members.1.decision_at'));
+
+        $this->patchJson($url, ['status' => 'left', 'include_roster' => true])->assertOk()
+            ->assertJsonCount(1, 'roster.members')
+            ->assertJsonPath('roster.viewer_status', 'left');
+
+        $this->getJson($wall)->assertOk()->assertJsonCount(1, 'roster.members');
+        $event->update(['visibility' => EventVisibilityEnum::PRIVATE]);
+        $this->getJson($wall)->assertNotFound();
+    }
 }
