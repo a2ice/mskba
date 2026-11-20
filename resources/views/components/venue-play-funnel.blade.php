@@ -82,22 +82,21 @@
                     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
                 </section>
                     <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
-                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed">Пойду</button>
+                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
-                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="left" hidden>Не пойду</button>
                     </div>
                 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
                 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
-                    <h4>Обсуждение и действия</h4>
                     <ol class="venue-play-dialog__messages" data-venue-play-messages aria-live="polite"></ol>
                     <p class="muted" data-venue-play-wall-empty>Загружаем обсуждение…</p>
                     <form data-venue-play-message-form hidden>
-                        <label for="venue-play-message-{{ $upcoming->id }}">Написать сообщение</label>
                         <textarea id="venue-play-message-{{ $upcoming->id }}" name="body" maxlength="200" rows="2" required
-                            placeholder="Например, где встречаемся?"></textarea>
+                            aria-label="Написать сообщение" placeholder="Написать сообщение"></textarea>
                         <div class="venue-play-dialog__message-footer">
-                            <small><span data-venue-play-chars>0</span>/200 · не более 3 действий в минуту</small>
-                            <button type="submit" class="{{ $primaryButton }}">Отправить</button>
+                            <small data-venue-play-chars aria-label="Осталось символов">200</small>
+                            <button type="submit" class="{{ $primaryButton }} venue-play-dialog__send" aria-label="Отправить сообщение" title="Отправить сообщение">
+                                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
+                            </button>
                         </div>
                     </form>
                     <p class="muted" data-venue-play-comment-notice hidden>Написать сообщение могут участники и организатор мероприятия.</p>
@@ -221,9 +220,14 @@
 .venue-play-dialog__messages time{font-size:12px;opacity:.65;margin-left:9px}
 .venue-play-dialog__messages li.is-system{opacity:.8}
 .venue-play-dialog__messages li.is-deleted{text-decoration:line-through;opacity:.6}
-.venue-play-dialog__wall form{display:grid;gap:8px}
-.venue-play-dialog__wall textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;min-height:70px;border:1px solid var(--line,#59606a);background:var(--field,#282d33);color:inherit}
-.venue-play-dialog__message-footer{justify-content:space-between}
+.venue-play-dialog__wall form{display:grid;gap:4px;padding:10px;border:1px solid var(--line,#cbd0d5);border-radius:5px;background:#fff;color:#18212b;min-width:0}
+.venue-play-dialog__wall form:focus-within{border-color:var(--accent,#ea7628)}
+.venue-play-dialog__wall textarea{width:100%;box-sizing:border-box;padding:0;min-height:56px;border:0;border-radius:0;outline:none;box-shadow:none;background:#fff;color:#18212b;resize:vertical}
+.venue-play-dialog__wall textarea:focus{outline:none;box-shadow:none}
+.venue-play-dialog__wall textarea::placeholder{color:#69717c}
+.venue-play-dialog__message-footer{justify-content:space-between;flex-wrap:nowrap}
+.venue-play-dialog__send{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0}
+.venue-play-dialog__send svg{width:22px;height:22px}
 @media(max-width:540px){
     .venue-play-dialog__header,.venue-play-dialog__body{padding-inline:16px}
     .venue-play-dialog__footer{padding:16px}

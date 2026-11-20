@@ -21,6 +21,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Social\Application\Services\SocialWallService;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
@@ -37,6 +38,7 @@ final class CreateEventHandler
         private readonly StandaloneGameFormationService $standaloneGames,
         private readonly StandaloneGameInitialSelectionService $initialSelections,
         private readonly UpdateUserParticipationRolesHandler $participationRoles,
+        private readonly SocialWallService $wall,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -175,6 +177,14 @@ final class CreateEventHandler
                 'left_at' => $organizerParticipates ? null : now(),
                 'confirmation_version' => $event->participation_confirmation_version,
             ]);
+
+            if ($organizerParticipates) {
+                $this->wall->appendSystem('event', $event->id, $actor->user, 'event_rsvp_changed', [
+                    'from' => null,
+                    'to' => EventParticipantStatusEnum::CONFIRMED->value,
+                    'confirmation_version' => $event->participation_confirmation_version,
+                ]);
+            }
 
             // Event remains a valid container even when no Game is created.
             // Legacy creation routes retain their previous automatic-game behavior;

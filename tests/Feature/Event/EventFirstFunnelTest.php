@@ -230,9 +230,17 @@ final class EventFirstFunnelTest extends TestCase
         $venue = $this->venue();
         $payload = $this->payload($venue, [$this->slots()[0]]);
         $payload['max_participants'] = 2;
+        $payload['organizer_participates'] = true;
         $this->actingAs($organizer)->postJson(route('events.funnel.store'), $payload)->assertCreated();
         $event = Event::query()->sole();
         $this->assertSame('confirmed', $event->participants()->sole()->status->value);
+        $initialWall = route('events.wall.index', $event->routeIdentifier());
+        $this->getJson($initialWall)->assertOk()
+            ->assertJsonCount(1, 'entries')
+            ->assertJsonPath('entries.0.kind', 'event_rsvp_changed')
+            ->assertJsonPath('entries.0.system', true);
+        $this->postJson(route('events.funnel.store'), $payload)->assertCreated();
+        $this->getJson($initialWall)->assertOk()->assertJsonCount(1, 'entries');
 
         $payload = $this->payload($venue, [$this->slots()[1]]);
         $payload['max_participants'] = 2;
@@ -246,7 +254,8 @@ final class EventFirstFunnelTest extends TestCase
         $this->getJson($wall)->assertOk()->assertJsonPath('can_post', true)
             ->assertJsonPath('roster.members.0.organizer', true)
             ->assertJsonPath('roster.members.0.status', 'left')
-            ->assertJsonPath('counts.confirmed', 0);
+            ->assertJsonPath('counts.confirmed', 0)
+            ->assertJsonCount(0, 'entries');
 
         $first = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $second = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
