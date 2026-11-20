@@ -160,7 +160,7 @@ final class EventSocialWallTest extends TestCase
     public function test_preview_roster_updates_atomically_with_rsvp_and_keeps_organizer_first(): void
     {
         $event = $this->event();
-        $event->update(['max_participants' => 15]);
+        $event->update(['max_participants' => 15, 'participation_confirmation_version' => 1]);
         $organizer = $event->organizerActor->user;
         $user = $this->confirmedUser();
         $event->participants()->create([
