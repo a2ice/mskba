@@ -157,6 +157,26 @@ final class EventSocialWallTest extends TestCase
             ->assertSee('event-wall-panel-history', false);
     }
 
+    public function test_organizer_can_write_without_attendance_or_confirmed_account_but_blocked_users_cannot(): void
+    {
+        $event = $this->event();
+        $organizer = $event->organizerActor->user;
+        $organizer->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $wall = route('events.wall.index', [$event->routeIdentifier(), 'include_roster' => 1]);
+
+        $this->actingAs($organizer)->getJson($wall)->assertOk()
+            ->assertJsonPath('can_post', true)
+            ->assertJsonPath('roster.viewer_is_organizer', true);
+        $this->postWall($event, 'Сообщение организатора')->assertCreated();
+
+        $other = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->actingAs($other)->getJson($wall)->assertOk()->assertJsonPath('can_post', false);
+        $this->postWall($event, 'Нет доступа')->assertForbidden();
+
+        $organizer->update(['status' => UserStatusEnum::BLOCKED]);
+        $this->actingAs($organizer)->getJson($wall)->assertOk()->assertJsonPath('can_post', false);
+    }
+
     public function test_preview_roster_updates_atomically_with_rsvp_and_keeps_organizer_first(): void
     {
         $event = $this->event();
