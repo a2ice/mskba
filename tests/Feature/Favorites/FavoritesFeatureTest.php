@@ -26,42 +26,42 @@ final class FavoritesFeatureTest extends TestCase
         return $this->postJson(route('favorites.toggle'), ['type' => $type, 'id' => $id]);
     }
 
-    public function test_anonymous_guest_can_add_trash_and_restore_a_venue_with_one_cookie(): void
+    private function existingGuestFavorite(Venue $venue, string $token): void
+    {
+        Favorite::query()->create([
+            'guest_token_hash' => hash('sha256', $token), 'entity_type' => 'venue',
+            'entity_id' => $venue->id, 'trashed_at' => null,
+        ]);
+    }
+
+    public function test_guest_cannot_add_or_restore_but_can_remove_legacy_favorite(): void
     {
         $this->withCredentials();
         $venue = $this->venue();
         $token = str_repeat('A', 64);
-        $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
         $this->toggle('venue', $venue->id)
-            ->assertOk()->assertJsonPath('state', 'active');
-
+            ->assertUnauthorized()->assertCookieMissing(FavoritesManager::COOKIE_NAME);
+        $this->assertDatabaseCount('favorites', 0);
+        $this->existingGuestFavorite($venue, $token);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
-        $this->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
-            ->assertOk()->assertJsonPath('state', 'active');
-
         $this->toggle('venue', $venue->id)->assertOk()->assertJsonPath('state', 'trashed');
-        $this->toggle('venue', $venue->id)->assertOk()->assertJsonPath('state', 'active');
+        $this->toggle('venue', $venue->id)->assertUnauthorized();
+        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id, 'action' => 'add'])
+            ->assertUnauthorized();
         $this->assertDatabaseCount('favorites', 1);
+        $this->assertNotNull(Favorite::query()->sole()->trashed_at);
     }
 
-    public function test_first_anonymous_save_issues_a_securely_scoped_cookie(): void
+    public function test_explicit_add_replay_does_not_toggle_or_duplicate(): void
     {
-        $this->withCredentials();
         $venue = $this->venue();
-        $result = $this->toggle('venue', $venue->id)
-            ->assertOk()->assertJsonPath('state', 'active')
-            ->assertCookie(FavoritesManager::COOKIE_NAME);
-        $cookie = collect($result->headers->getCookies())
-            ->first(fn ($cookie) => $cookie->getName() === FavoritesManager::COOKIE_NAME);
-        $this->assertTrue($cookie->isHttpOnly());
-        $this->assertSame('lax', strtolower($cookie->getSameSite()));
-
-        // The encrypted response cookie is already encrypted, so send it
-        // unchanged as a browser would. Laravel's JSON test requests require
-        // withCredentials() to include the cookie at all.
-        $this->withUnencryptedCookie(FavoritesManager::COOKIE_NAME, $cookie->getValue())
-            ->getJson(route('favorites.status', ['type' => 'venue', 'id' => $venue->id]))
-            ->assertOk()->assertJsonPath('state', 'active');
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $input = ['type' => 'venue', 'id' => $venue->id, 'action' => 'add'];
+        $this->postJson(route('favorites.toggle'), $input)->assertOk()->assertJsonPath('state', 'active');
+        $this->postJson(route('favorites.toggle'), $input)->assertOk()->assertJsonPath('state', 'active');
+        $this->assertDatabaseCount('favorites', 1);
+        $this->assertNull(Favorite::query()->sole()->trashed_at);
     }
 
     public function test_guest_favorite_is_transferred_automatically_on_first_authenticated_request(): void
@@ -70,7 +70,7 @@ final class FavoritesFeatureTest extends TestCase
         $venue = $this->venue();
         $token = str_repeat('B', 64);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
-        $response = $this->toggle('venue', $venue->id)->assertOk();
+        $this->existingGuestFavorite($venue, $token);
         $user = User::factory()->create();
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token)
             ->actingAs($user)->getJson(route('favorites.items'))->assertOk()
@@ -212,7 +212,7 @@ final class FavoritesFeatureTest extends TestCase
         ]);
         $token = str_repeat('C', 64);
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token);
-        $guest = $this->toggle('venue', $venue->id)->assertOk();
+        $this->existingGuestFavorite($venue, $token);
 
         $this->withCookie(FavoritesManager::COOKIE_NAME, $token)
             ->actingAs($user)->getJson(route('favorites.items'))->assertOk()

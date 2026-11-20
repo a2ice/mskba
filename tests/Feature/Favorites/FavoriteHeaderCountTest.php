@@ -76,18 +76,15 @@ final class FavoriteHeaderCountTest extends TestCase
                 $event->userId === $user->id && $event->count === 0);
     }
 
-    public function test_guest_toggle_counts_active_cookie_favorites_without_exposing_account_count(): void
+    public function test_guest_cannot_create_favorite_or_access_private_count(): void
     {
         $this->withCredentials();
         $this->withCookie(\App\Modules\Favorites\Application\Services\FavoritesManager::COOKIE_NAME, str_repeat('G', 64));
         $venue = $this->venue();
         $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
-            ->assertOk()->assertJsonPath('favorites_count', 1);
-        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
-            ->assertOk()->assertJsonPath('favorites_count', 0);
-        $this->postJson(route('favorites.toggle'), ['type' => 'venue', 'id' => $venue->id])
-            ->assertOk()->assertJsonPath('favorites_count', 1);
+            ->assertUnauthorized();
         $this->getJson(route('favorites.count'))->assertUnauthorized();
+        $this->assertDatabaseCount('favorites', 0);
     }
 
     public function test_header_favorites_shortcut_is_auth_only(): void

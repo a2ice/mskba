@@ -84,19 +84,23 @@ final class FavoritesController extends Controller
         $validated = $request->validate([
             'type' => ['required', Rule::in(array_keys(FavoriteTargetRegistry::TYPES))],
             'id' => ['required', 'integer', 'min:1'],
+            'action' => ['sometimes', Rule::in(['add', 'remove'])],
         ]);
         $type = $validated['type'];
         $id = (int) $validated['id'];
+        $action = $validated['action'] ?? null;
         $current = $favorites->status($request, $type, $id);
 
         // Removing a now-inaccessible old entry is always allowed;
         // adding/restoring it must not expose a private or blocked object.
-        if ($current !== 'active') {
+        if ($action === 'add' || ($action === null && $current !== 'active')) {
             abort_unless($registry->visible($type, $id) !== null, 404);
         }
 
-        $favorite = DB::transaction(function () use ($favorites, $subscriptions, $request, $type, $id) {
-            $favorite = $favorites->toggle($request, $type, $id);
+        abort_if($request->user() === null && ($action === 'add' || $current !== 'active'), 401);
+
+        $favorite = DB::transaction(function () use ($favorites, $subscriptions, $request, $type, $id, $action) {
+            $favorite = $favorites->toggle($request, $type, $id, $action);
             if ($type === 'venue' && $request->user() !== null) {
                 if ($favorite->trashed_at === null) {
                     $subscriptions->ensure($request->user(), $id);
