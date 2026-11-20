@@ -39,17 +39,21 @@ final class SetEventParticipationHandler
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($event->status !== EventStatusEnum::PUBLISHED || $event->visibility !== EventVisibilityEnum::PUBLIC) {
+            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
+            $isOrganizer = $participant?->role === EventParticipantRoleEnum::ORGANIZER;
+            $native = $event->proposed_time_options !== null;
+            $isPublished = $event->status === EventStatusEnum::PUBLISHED
+                && ($event->visibility === EventVisibilityEnum::PUBLIC || ($native && $participant !== null));
+            $ownDraft = $native && $isOrganizer && $event->status === EventStatusEnum::DRAFT && $event->starts_at === null;
+            if (! $isPublished && ! $ownDraft) {
                 throw new InvalidArgumentException('Для этого мероприятия сейчас нельзя изменить участие.');
             }
 
-            if ($event->ends_at->lessThanOrEqualTo(now())) {
+            if ($event->ends_at?->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
-            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
-
-            if ($participant?->role === EventParticipantRoleEnum::ORGANIZER) {
+            if ($isOrganizer && ! $native) {
                 throw new InvalidArgumentException('Организатор не может изменить участие в собственном мероприятии.');
             }
 
@@ -73,8 +77,8 @@ final class SetEventParticipationHandler
             }
 
             $attributes = [
-                'role' => EventParticipantRoleEnum::PARTICIPANT,
-'participation_roles' => $roles,
+                'role' => $isOrganizer ? EventParticipantRoleEnum::ORGANIZER : EventParticipantRoleEnum::PARTICIPANT,
+                'participation_roles' => $roles,
                 'status' => $status,
                 'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                 'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
