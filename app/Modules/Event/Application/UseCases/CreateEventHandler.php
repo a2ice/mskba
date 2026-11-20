@@ -86,19 +86,19 @@ final class CreateEventHandler
             // Some verified venues (including the production -> dev fixture)
             // predate VenueCourt and have no court rows. NULL court_id means
             // the entire venue, as supported by the existing schema/availability.
+            $funnel = (bool) ($data['event_first_funnel'] ?? false);
             $court = isset($data['venue_court_id'])
                 ? VenueCourt::query()
                     ->where('venue_id', $venue->id)
                     ->whereKey((int) $data['venue_court_id'])
                     ->first()
-                : ($venue->primaryCourt()->first() ?? $venue->courts()->first());
+                : ($funnel ? null : ($venue->primaryCourt()->first() ?? $venue->courts()->first()));
             if (isset($data['venue_court_id']) && $court === null) {
                 throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
             }
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             // The event-first funnel may create an unscheduled draft. Other
             // creation flows retain their obligatory date/time requirement.
-            $funnel = (bool) ($data['event_first_funnel'] ?? false);
             $localStart = filled($data['starts_at'] ?? null)
                 ? CarbonImmutable::parse($data['starts_at'], $timezone)
                 : null;
