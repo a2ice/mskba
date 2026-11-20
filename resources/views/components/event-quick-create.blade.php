@@ -107,11 +107,17 @@
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="schedule" hidden>
             <h3>2. Желаемая дата и время <small>необязательно</small></h3>
-            <p class="quick-event-dialog__hint">Можешь пропустить этот шаг. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
+            <p class="quick-event-dialog__hint">Можно не указывать дату. Выбранные интервалы — предварительные пожелания, не бронь. Даже если слот уже занят, можно отправить менеджеру запрос на согласование.</p>
             <label class="quick-event-dialog__field"><span>Зал или корт</span>
                 <span class="select-control"><select name="venue_court_id" data-quick-court>
                     <option value="">Любой зал</option>
                 </select><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#chevron-down"/></svg></span></label>
+            <label class="quick-event-dialog__game-toggle">
+                <input type="checkbox" data-quick-schedule-enabled aria-controls="quick-event-schedule-fields" aria-expanded="false">
+                <span>Указать желаемую дату</span>
+            </label>
+            <p class="quick-event-dialog__hint" data-quick-schedule-off>Без даты мероприятие будет создано как черновик. Дату и время можно указать позднее.</p>
+            <fieldset id="quick-event-schedule-fields" class="quick-event-dialog__schedule-fields" data-quick-schedule-fields disabled hidden>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
@@ -133,13 +139,14 @@
             <div class="quick-event-dialog__availability" data-quick-availability hidden aria-live="polite"></div>
             <h4>Выбранные интервалы</h4>
             <ol class="quick-event-dialog__slots" data-quick-slots></ol>
-            <p class="quick-event-dialog__hint" data-quick-no-slots>Пока ничего не выбрано. Можно перейти дальше без даты.</p>
+            <p class="quick-event-dialog__hint" data-quick-no-slots>Дополнительные интервалы не добавлены. Указанное время будет добавлено при нажатии «Далее».</p>
             <fieldset class="quick-event-dialog__mode" data-quick-mode-group hidden>
                 <legend>Что означают эти интервалы?</legend>
                 <label><input type="radio" name="schedule_mode" value="alternatives" checked>
                     <span>Это разные варианты времени <strong>одного мероприятия</strong> — согласуем один</span></label>
                 <label><input type="radio" name="schedule_mode" value="separate">
                     <span>Это <strong>несколько отдельных мероприятий</strong> — по одному на каждый интервал</span></label>
+            </fieldset>
             </fieldset>
         </section>
         <section class="mskba-modal__body quick-event-dialog__body mskba-scroll" data-quick-step="review" hidden>
@@ -265,6 +272,8 @@
 .quick-event-dialog__game-toggle[hidden],.quick-event-dialog__field[hidden],.quick-event-dialog__hint[hidden]{display:none}
 .quick-event-dialog__game-toggle{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;font-weight:600}
 .quick-event-dialog__game-toggle input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent,#ed782c)}
+.quick-event-dialog__schedule-fields{display:grid;gap:16px;min-width:0;margin:0;padding:0;border:0}
+.quick-event-dialog__schedule-fields[hidden]{display:none}
 .quick-event-dialog__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .quick-event-dialog__schedule-buttons{display:flex;align-items:end;gap:8px;flex-wrap:wrap}
 .quick-event-dialog__add-slot{width:48px;height:48px;min-width:48px;padding:0;display:grid;place-items:center}
