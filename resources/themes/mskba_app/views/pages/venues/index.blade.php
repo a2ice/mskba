@@ -63,6 +63,20 @@
                         <option value="approval" @selected(($filters['access'] ?? '') === 'approval')>По подтверждению</option>
                     </select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
                 </label>
+                <div data-catalog-range-filter>
+                    <label class="check-label">
+                        <input type="checkbox" name="has_upcoming_events" value="1" data-catalog-range-toggle
+                            aria-controls="venue-event-days-filter" @checked($filters['has_upcoming_events'] ?? false)>
+                        <span>Есть ближайшие мероприятия</span>
+                    </label>
+                    <label class="app-player-workspace__field app-player-workspace__range-field" for="venue-event-days"
+                        id="venue-event-days-filter" data-catalog-range-options @if(!($filters['has_upcoming_events'] ?? false)) hidden @endif>
+                        <span class="app-player-workspace__range-heading">Период, дней <output for="venue-event-days" data-catalog-range-value>{{ $filters['event_days'] ?? 7 }}</output></span>
+                        <input id="venue-event-days" type="range" name="event_days" min="1" max="14" step="1"
+                            value="{{ $filters['event_days'] ?? 7 }}" data-catalog-range-input @disabled(!($filters['has_upcoming_events'] ?? false))>
+                        <span class="app-player-workspace__range-bounds" aria-hidden="true"><span>1</span><span>14</span></span>
+                    </label>
+                </div>
                 <div class="app-venues-catalog__filter-actions">
                     <button class="button primary" type="submit">Применить</button>
                 </div>
