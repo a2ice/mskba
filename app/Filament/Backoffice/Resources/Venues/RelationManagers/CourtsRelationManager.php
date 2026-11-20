@@ -11,6 +11,10 @@ use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveCourtPolicy;
 use App\Modules\Venue\Application\Services\SyncVenueCourtSchedule;
+use App\Modules\VenueIntegration\Domain\Models\VenueIntegrationCourtMapping;
+use App\Modules\VenueIntegration\Domain\Models\VenueCourtExternalScheduleImport;
+use App\Modules\VenueIntegration\Application\Services\VenueIntegrationManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Venue\Application\Services\VenueCourtFacilitiesSynchronizer;
 use App\Modules\Venue\Domain\Models\Amenity;
 use Filament\Forms\Components\CheckboxList;
@@ -235,6 +239,29 @@ final class CourtsRelationManager extends RelationManager
     {
         return $table->columns([
             TextColumn::make('name')->label('Зал / зона')->searchable(),
+            TextColumn::make('external_integration')->label('Интеграция')->wrap()
+                ->visible(fn (): bool => auth('web')->user() !== null
+                    && app(VenueIntegrationManager::class)->can(
+                        auth('web')->user(), UserOperationalPermissionEnum::BACKOFFICE_VENUE_INTEGRATIONS_VIEW,
+                    ))
+                ->getStateUsing(function (VenueCourt $record): string {
+                    $sources = VenueIntegrationCourtMapping::query()
+                        ->where('venue_court_id', $record->id)
+                        ->whereHas('source', fn ($query) => $query->whereIn('adapter_key', ['api', 'browser']))
+                        ->with('source')->get()->pluck('source.name')->filter()->unique();
+                    $import = VenueCourtExternalScheduleImport::query()
+                        ->where('venue_court_id', $record->id)->with('source', 'snapshot')->first();
+                    if ($import !== null) {
+                        $sources = $sources->push($import->source?->name)->filter()->unique();
+                        $observed = $import->snapshot?->observed_at;
+
+                        return $sources->implode(', ').' · '.($observed
+                            ? 'Обновлено '.$observed->setTimezone('Europe/Moscow')->format('d.m.Y H:i').' МСК'
+                            : 'Снимок применён');
+                    }
+
+                    return $sources->isEmpty() ? '—' : $sources->implode(', ').' · Не применено';
+                }),
             ImageColumn::make('cover')->label('Фото')->getStateUsing(
                 fn (VenueCourt $record): ?string => ($photo = $record->media()
                     ->where('collection', 'gallery')->orderByDesc('is_featured')
@@ -287,26 +314,39 @@ final class CourtsRelationManager extends RelationManager
                         return $court;
                     });
                 }),
-            Action::make('syncAllCourts')->label('Синхронизировать все залы')
+            Action::make('syncAllCourts')->label('Синхронизировать с расписанием площадки')
                 ->icon('heroicon-o-arrow-path')
                 ->visible(fn (): bool => VenueResource::authorized())
                 ->modalHeading('Синхронизация всех залов')
-                ->modalDescription('Данные выбранных дат будут заменены у всех залов площадки. Существующие бронирования и мероприятия не изменяются.')
+                ->modalDescription('Расписание выбранных дат будет скопировано только в залы без внешней интеграции. Залы с внешними источниками пропускаются. Бронирования и мероприятия сохраняются.')
                 ->modalSubmitActionLabel('Синхронизировать')
                 ->requiresConfirmation()
                 ->schema($this->syncFormSchema())
                 ->action(function (array $data): void {
                     abort_unless(VenueResource::authorized(), 403);
                     $venue = $this->getOwnerRecord();
-                    $result = app(SyncVenueCourtSchedule::class)->handle(
+                    $service = app(SyncVenueCourtSchedule::class);
+                    $ids = $venue->courts()->pluck('id')->all();
+                    $protected = $service->protectedCourtIds($ids);
+                    $eligible = array_values(array_diff($ids, $protected));
+                    if ($eligible === []) {
+                        Notification::make()->warning()->title('Нет залов для внутренней синхронизации')
+                            ->body('Все залы защищены внешними интеграциями или отсутствуют.')->send();
+
+                        return;
+                    }
+                    $result = $service->handle(
                         $venue,
-                        $venue->courts()->pluck('id')->all(),
+                        $eligible,
                         (string) $data['mode'],
                         $this->syncStart($data),
                         $this->syncEnd($data),
                         (bool) ($data['include_prices'] ?? false),
                     );
                     $this->syncNotification($result);
+                    if ($protected !== []) {
+                        Notification::make()->info()->title('Пропущено защищённых залов: '.count($protected))->send();
+                    }
                 }),
         ])->recordActions([
             EditAction::make()
@@ -328,9 +368,10 @@ final class CourtsRelationManager extends RelationManager
                         return $record;
                     });
                 }),
-            Action::make('syncCourtSchedule')->label('Синхронизировать')
+            Action::make('syncCourtSchedule')->label('Синхронизировать с площадкой')
                 ->icon('heroicon-o-arrow-path')
-                ->visible(fn (): bool => VenueResource::authorized())
+                ->visible(fn (VenueCourt $record): bool => VenueResource::authorized()
+                    && app(SyncVenueCourtSchedule::class)->protectedCourtIds([$record->id]) === [])
                 ->modalHeading('Синхронизация зала с площадкой')
                 ->modalDescription('Индивидуальные данные выбранных дат будут заменены. Бронирования и мероприятия сохраняются.')
                 ->modalSubmitActionLabel('Синхронизировать')

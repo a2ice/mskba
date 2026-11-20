@@ -100,6 +100,46 @@ final class VenueIntegrationFoundationTest extends TestCase
         $this->assertDatabaseCount('venue_integration_audit_events', 4);
     }
 
+    public function test_findsport_rejects_multiple_courts_and_protects_external_schedule(): void
+    {
+        $manager = app(VenueIntegrationManager::class);
+        $venue = Venue::factory()->create();
+        $actor = $this->superadmin();
+        $court = $venue->primaryCourt()->firstOrFail();
+        $second = $court->replicate();
+        $second->forceFill(['name' => 'Второй зал', 'alias' => 'second-hall', 'is_primary' => false])->save();
+        $config = $manager->saveConfiguration($venue, $actor, $this->settings());
+        $data = $this->source($court->id, [
+            'adapter_key' => 'api',
+            'external_id' => '4805',
+            'endpoint_url' => 'https://findsport.ru/playground/4805',
+            'court_ids' => [$court->id, $second->id],
+        ]);
+        try {
+            $manager->saveSource($config, $actor, $data);
+            $this->fail('Multiple FindSport halls accepted');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('court_ids', $exception->errors());
+        }
+        $manager->saveSource($config, $actor, array_replace($data, ['court_ids' => [$court->id]]));
+        $service = app(\App\Modules\Venue\Application\Services\SyncVenueCourtSchedule::class);
+        $this->assertSame([(int) $court->id], $service->protectedCourtIds([$court->id, $second->id]));
+        $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
+        $venue->schedule()->firstOrFail()->intervals()->create([
+            'day_of_week' => 1, 'starts_at' => '09:00', 'ends_at' => '21:00', 'sort_order' => 0,
+        ]);
+        try {
+            $service->handle($venue, [$court->id, $second->id], 'full', includePrices: false);
+            $this->fail('Protected court was accepted');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('mode', $exception->errors());
+        }
+        $this->assertFalse($court->schedule()->exists());
+        $this->assertFalse($second->schedule()->exists());
+        $service->handle($venue, [$second->id], 'full', includePrices: false);
+        $this->assertTrue($second->schedule()->exists());
+    }
+
     public function test_external_source_credentials_are_encrypted_and_never_in_audit_or_serialized_output(): void
     {
         $manager = app(VenueIntegrationManager::class);
