@@ -14,11 +14,7 @@
     <header class="event-social-wall__header">
         <div>
             <h2 id="event-social-wall-title">Обсуждение и история</h2>
-            <p class="event-social-wall__muted">
-                Договоритесь о деталях игры. Изменения участия автоматически сохраняются в истории мероприятия.
-            </p>
         </div>
-        <a class="event-social-wall__back" href="{{ route('events.index') }}">Все мероприятия</a>
     </header>
     <div class="event-social-wall__stats" role="group" aria-label="Текущие ответы на участие">
         <span><strong data-wall-count="confirmed">{{ $counts['confirmed'] }}</strong> пойдут</span>
@@ -35,9 +31,9 @@
     </div>
 
     <div id="event-wall-panel-chat" data-event-wall-panel="chat"
-        role="tabpanel" tabindex="0" aria-labelledby="event-wall-tab-chat">
+        role="tabpanel" aria-labelledby="event-wall-tab-chat">
         @if($isViewer)
-            <ol class="event-social-wall__list" data-event-wall-list="chat" aria-live="polite">
+            <ol class="event-social-wall__list mskba-scroll" data-event-wall-list="chat" aria-live="polite">
                 @forelse($wallEntries as $entry)
                     @php($display = $wallPresenter->present($entry))
                     <li class="event-social-wall__entry {{ $display['system'] ? 'is-system' : 'is-comment' }} {{ $display['deleted'] ? 'is-deleted' : '' }}"
@@ -55,7 +51,7 @@
                         @endif
                     </li>
                 @empty
-                    <li class="event-social-wall__empty" data-event-wall-empty>Сообщений пока нет. Начни обсуждение.</li>
+                    <li class="event-social-wall__empty" data-event-wall-empty>Сообщений пока нет.</li>
                 @endforelse
             </ol>
             @if($canPost)
@@ -63,14 +59,14 @@
                     @csrf
                     <label for="event-wall-message">Написать участникам</label>
                     <textarea id="event-wall-message" name="body" maxlength="200" rows="3"
-                        placeholder="Например, где встречаемся и что взять с собой?" required></textarea>
+                        placeholder="Сообщение" required></textarea>
                     <div class="event-social-wall__form-actions">
-                        <span class="event-social-wall__muted"><span data-event-wall-chars>0</span>/200 · не более 3 действий в минуту</span>
+                        <span class="event-social-wall__muted"><span data-event-wall-chars>0</span>/200</span>
                         <button type="submit" class="button primary">Отправить</button>
                     </div>
                 </form>
             @else
-                <p class="event-social-wall__muted">Написать смогут подтверждённые участники мероприятия. Для участия используй кнопки «Пойду» или «Думаю» выше.</p>
+                <p class="event-social-wall__muted">Писать могут участники и организатор.</p>
             @endif
         @else
             <p class="event-social-wall__muted">Обсуждение доступно участникам мероприятия.</p>
@@ -79,7 +75,7 @@
 
     <div id="event-wall-panel-history" data-event-wall-panel="history"
         role="tabpanel" tabindex="0" aria-labelledby="event-wall-tab-history" hidden>
-        <ol class="event-social-wall__list" data-event-wall-list="history">
+        <ol class="event-social-wall__list mskba-scroll" data-event-wall-list="history">
             @forelse($wallEntries->filter(fn ($entry) => $entry->kind !== 'comment') as $entry)
                 @php($display = $wallPresenter->present($entry))
                 <li class="event-social-wall__entry is-system" data-event-wall-entry="{{ $entry->id }}">
