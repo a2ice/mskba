@@ -720,7 +720,24 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-rental-search__tabs{display:flex;overflow-x:auto;gap:8px;padding:0 20px 10px}
 .app-rental-search__tabs .button{white-space:nowrap;flex:none;min-height:44px}
 .app-rental-search__tabs .button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
-.app-venue-day-dialog__dates.is-rental-range{border:1px solid var(--accent);border-radius:12px;padding:4px}
+/* One continuous outline for the original request, separate from aria-pressed.
+   The 8px gap is bridged by 4px on each adjacent item. All nine cards keep
+   their ordinary widths, scrolling and occupancy indicators. */
+.app-venue-day-dialog__dates.has-rental-preference{padding:6px}
+.app-venue-day-dialog__date-item[data-rental-preference]{position:relative}
+.app-venue-day-dialog__date-item[data-rental-preference]::before{
+    content:"";position:absolute;inset:-4px;pointer-events:none;
+    border-block:1px solid var(--accent);
+}
+.app-venue-day-dialog__date-item[data-rental-preference="first"]::before{
+    border-inline-start:1px solid var(--accent);border-start-start-radius:12px;border-end-start-radius:12px
+}
+.app-venue-day-dialog__date-item[data-rental-preference="last"]::before{
+    border-inline-end:1px solid var(--accent);border-start-end-radius:12px;border-end-end-radius:12px
+}
+.app-venue-day-dialog__date-item[data-rental-preference="single"]::before{
+    border:1px solid var(--accent);border-radius:12px
+}
 .app-venue-day-dialog__grid .app-rental-search__busy{min-height:18px;height:18px;padding:0;cursor:default;pointer-events:none}
 @media(max-width:480px){.app-rental-search-dialog .form-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
