@@ -36,6 +36,9 @@
                 <button type="button" class="button secondary" data-event-share>Поделиться</button>
                 <button type="button" class="button secondary" data-favorite-type="event" data-favorite-id="{{ $event->id }}" data-favorite-name="{{ $event->title }}" aria-label="Избранное">Избранное</button>
             @endif
+            @if($owner)
+                <button type="button" class="button secondary event-lifecycle-danger" data-event-lifecycle-open>Удалить мероприятие</button>
+            @endif
         </div>
     </header>
     @if(session('status') || session('error') || $errors->any())
@@ -146,6 +149,9 @@
         </article>
     @endif
 </section>
+@if($owner)
+    @include('theme::pages.events.partials.lifecycle-dialog', ['restoring' => false])
+@endif
 @include('theme::partials.venue-map-dialog', ['mapVenue' => null])
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">

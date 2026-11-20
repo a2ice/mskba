@@ -88,7 +88,7 @@ final readonly class EventVenueInterestService
     public function canPropose(User $user, EventVenueInterest $interest): bool
     {
         $user = $user->canonical();
-        if (! $this->canView($user, $interest->venue, $interest->court)) {
+        if ($interest->event === null || ! $this->canView($user, $interest->venue, $interest->court)) {
             return false;
         }
         if ($this->backoffice->canManage($user)) {
@@ -156,21 +156,31 @@ final readonly class EventVenueInterestService
     /** An unsuccessful or cancelled rental request must not cancel a previously created event. */
     public function releaseLinkedBooking(VenueBooking $booking): void
     {
-        $event = Event::query()->where('booking_id', $booking->id)->lockForUpdate()->first();
-        if ($event === null || ! $event->booking_deferred) {
+        $event = Event::withTrashed()->where('booking_id', $booking->id)->lockForUpdate()->first();
+        if ($event === null || (! $event->booking_deferred && ! $event->trashed())) {
             return;
         }
 
-        $event->forceFill(['booking_id' => null, 'booking_snapshot' => null])->save();
+        $event->forceFill([
+            'booking_id' => null,
+            'booking_snapshot' => null,
+            'booking_deferred' => true,
+        ])->save();
         $booking->forceFill(['event_id' => null])->save();
-        $this->reopen($event);
-        DB::afterCommit(static fn () => event(new EventChanged($event->id)));
+        if (! $event->trashed()) {
+            $this->reopen($event);
+            DB::afterCommit(static fn () => event(new EventChanged($event->id)));
+        } else {
+            // Keep the demand hidden while the event is deleted. Restore will
+            // explicitly reopen only the formerly requested, now unbooked interest.
+            $event->venueInterests()->where('status', 'booking_requested')->update(['status' => 'withdrawn']);
+        }
     }
 
     private function notifyRecipients(int $interestId): void
     {
         $interest = EventVenueInterest::query()->with(['venue', 'court', 'event'])->find($interestId);
-        if ($interest === null) {
+        if ($interest === null || $interest->event === null || $interest->status !== 'open') {
             return;
         }
         $venue = $interest->venue;

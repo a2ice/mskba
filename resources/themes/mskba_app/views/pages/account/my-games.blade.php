@@ -12,6 +12,7 @@
         <div class="app-my-games__top">
             <h2 id="my-games-heading">Мои игры и игровые тренировки</h2>
             <a class="account-collection__action" href="{{ route('events.index', ['type' => 'games']) }}">Найти игру</a>
+            <a class="account-collection__action" href="{{ route('account.events.deleted') }}">Удалённые мероприятия</a>
         </div>
         <nav class="app-my-games__filters account-collection__tabs" aria-label="Фильтр участия">
             @foreach (['all' => 'Все', ...$groups] as $key => $name)
