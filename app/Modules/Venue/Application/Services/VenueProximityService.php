@@ -99,7 +99,7 @@ final class VenueProximityService
         return $this->haversineMeters(...$firstCoordinates, ...$secondCoordinates);
     }
 
-    private function distanceToCoordinates(Venue $venue, float $latitude, float $longitude): ?int
+    public function distanceToCoordinates(Venue $venue, float $latitude, float $longitude): ?int
     {
         $venue->loadMissing('location.address');
         $coordinates = $this->coordinates($venue);
