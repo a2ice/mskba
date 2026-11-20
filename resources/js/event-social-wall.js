@@ -64,7 +64,7 @@ if (wall) {
             li.dataset.eventWallEntry=String(entry.id);
             const head=document.createElement('div');head.className='event-social-wall__entry-head';
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':entry.actor;
-            const time=document.createElement('time');time.textContent=entry.date||'';
+            const time=document.createElement('time');time.textContent=(entry.date||'')+(entry.edited?' (изменено)':'');
             head.append(label,time);
             const text=document.createElement('p');
             text.className='event-social-wall__entry-text'+(entry.deleted&&!entry.system?' is-struck':'');

@@ -1,18 +1,23 @@
 // One event-only funnel from the venue page. No rental/favorite logic here.
 (() => {
-    const dialog=document.querySelector('[data-venue-play-dialog]');
+    const page=document.querySelector('[data-venue-play-page]');
+    const dialog=page||document.querySelector('[data-venue-play-dialog]');
+    const pageMode=!!page;
     const authNotice=document.querySelector('[data-venue-play-auth-notice]');
     const deleteDialog=document.querySelector('[data-venue-play-delete-dialog]');
-    if(!dialog || !authNotice || !deleteDialog || typeof dialog.showModal!=='function')return;
+    if(!dialog || !deleteDialog || (!pageMode && (!authNotice || typeof dialog.showModal!=='function')))return;
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
     const detailFooter=dialog.querySelector('[data-venue-play-detail-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
-    let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
+    let selectedId=pageMode?Number(page.dataset.venuePlayPane):null, authenticated=dialog.dataset.authenticated==='1';
     let pendingResponse=null, saving=false, savingPane=null;
     const rosterLoads=new WeakMap();
+    const wallPages=new WeakMap();
+    const messages=pane=>pane.querySelector('[data-venue-play-messages]');
+    const scrollBottom=pane=>{const list=messages(pane);list.scrollTop=list.scrollHeight;};
     const deleteConfirm=deleteDialog.querySelector('[data-venue-play-delete-confirm]');
     const deleteClose=deleteDialog.querySelector('[data-venue-play-delete-close]');
     const deleteError=deleteDialog.querySelector('[data-venue-play-delete-error]');
@@ -28,7 +33,7 @@
         finally{deleting=false;deleteConfirm.disabled=false;deleteClose.disabled=false;}
     });
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
-    const getPane=id=>dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
+    const getPane=id=>pageMode?page:dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
     const saveResume=()=>{
         try{sessionStorage.setItem(resumeKey,JSON.stringify({id:selectedId,status:pendingResponse,at:Date.now()}));}catch{}
     };
@@ -37,7 +42,7 @@
         const node=pane?.querySelector('[data-venue-play-feedback]');
         if(node){node.textContent=message;node.hidden=!message;node.classList.toggle('is-error',error);}
     };
-    const toast=(message,failed=false)=>window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message,failed,dialog}}));
+    const toast=(message,failed=false)=>window.dispatchEvent(new CustomEvent('mskba:action-toast',{detail:{message,failed,...(pageMode?{}:{dialog})}}));
     async function request(url,method='GET',body=null){
         const response=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:{
             'Accept':'application/json','X-Requested-With':'XMLHttpRequest',
@@ -134,8 +139,9 @@
         if(!pane.querySelector('[data-venue-play-participants]').children.length){empty.hidden=false;empty.textContent=message;}
         pane.querySelector('[data-venue-play-roster-retry]').hidden=false;
     };
-    const appendEntries=(pane,entries)=>{
+    const appendEntries=(pane,entries,prepend=false)=>{
         const list=pane.querySelector('[data-venue-play-messages]');
+        const older=document.createDocumentFragment();
         for(const entry of entries){
             const existing=list.querySelector('[data-entry-id="'+Number(entry.id)+'"]');
             if(entry.deleted){existing?.remove();continue;}
@@ -144,7 +150,7 @@
             if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
             item.classList.toggle('is-deleted',!!entry.deleted);
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
-            const time=document.createElement('time');time.textContent=entry.date||'';
+            const time=document.createElement('time');time.textContent=(entry.date||'')+(entry.edited?' (изменено)':'');
             const body=document.createElement('p');body.textContent=entry.text||'';
             item.append(label,time,body);
             if(entry.can_edit&&entry.edit_url){
@@ -153,24 +159,83 @@
                 edit.setAttribute('aria-label','Редактировать сообщение');edit.title='Редактировать сообщение';
                 edit.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 0 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>';item.append(edit);
             }
-            if(existing)existing.replaceWith(item);else list.append(item);
+            if(existing){existing.replaceWith(item);}
+            else if(prepend){older.append(item);}
+            else{
+                const last=list.lastElementChild;
+                if(!last||Number(last.dataset.entryId)<Number(entry.id))list.append(item);
+                else{
+                    const next=[...list.children].find(node=>Number(node.dataset.entryId)>Number(entry.id));
+                    list.insertBefore(item,next||null);
+                }
+            }
         }
+        if(prepend)list.prepend(older);
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
         empty.hidden=list.childElementCount>0;
         if(!empty.hidden)empty.textContent='Сообщений пока нет.';
     };
-    async function refreshWall(pane){
-        try{
-            const response=await request(pane.dataset.eventWallUrl);
-            paintWall(pane,response);
-        }catch(e){pane.querySelector('[data-venue-play-wall-empty]').textContent=e.message;}
-    }
-    function paintWall(pane,response){
-        pane.querySelector('[data-venue-play-messages]').replaceChildren();
-        appendEntries(pane,response.entries||[]);
+    function paintWallAccess(pane,response){
         const form=pane.querySelector('[data-venue-play-message-form]');
         form.hidden=!response.can_post;
         pane.querySelector('[data-venue-play-comment-notice]').hidden=!!response.can_post;
+    }
+    function paintWall(pane,response){
+        const list=messages(pane);
+        wallPages.set(pane,{hasOlder:!!response.has_older,loading:false});
+        list.replaceChildren();
+        appendEntries(pane,response.entries||[]);
+        paintWallAccess(pane,response);
+        scrollBottom(pane);
+    }
+    async function loadOlder(pane){
+        const list=messages(pane),page=wallPages.get(pane);
+        const first=list.firstElementChild?.dataset.entryId;
+        if(!page?.hasOlder||page.loading||!first||list.scrollTop>24||list.clientHeight===0)return;
+        page.loading=true;
+        try{
+            const url=new URL(pane.dataset.eventWallUrl,location.href);
+            url.searchParams.set('before_id',first);
+            const response=await request(url);
+            if(wallPages.get(pane)!==page)return;
+            const height=list.scrollHeight,top=list.scrollTop;
+            appendEntries(pane,response.entries||[],true);
+            page.hasOlder=!!response.has_older;
+            list.scrollTop=top+list.scrollHeight-height;
+        }catch(e){if(wallPages.get(pane)===page)notice(pane,e.message,true);}
+        finally{page.loading=false;}
+    }
+    async function refreshWall(pane,posted=null,reset=false){
+        const list=messages(pane),page=wallPages.get(pane);
+        try{
+            if(reset||!page||!list.lastElementChild){
+                const response=await request(pane.dataset.eventWallUrl);
+                if(wallPages.get(pane)!==page)return;
+                paintWall(pane,response);
+                return;
+            }
+            // Merge new entries instead of throwing away history already loaded.
+            let cursor=Number(list.lastElementChild.dataset.entryId);
+            while(true){
+                const url=new URL(pane.dataset.eventWallUrl,location.href);
+                url.searchParams.set('after_id',String(cursor));
+                const response=await request(url);
+                if(wallPages.get(pane)!==page)return;
+                const entries=response.entries||[];
+                appendEntries(pane,entries);
+                paintWallAccess(pane,response);
+                if(entries.length<50)break;
+                cursor=Number(entries[entries.length-1].id);
+            }
+            if(posted&&!list.querySelector('[data-entry-id="'+Number(posted.id)+'"]'))appendEntries(pane,[posted]);
+            scrollBottom(pane);
+        }catch(e){
+            if(wallPages.get(pane)!==page)return;
+            if(posted){
+                if(!list.querySelector('[data-entry-id="'+Number(posted.id)+'"]'))appendEntries(pane,[posted]);
+                scrollBottom(pane);
+            }else notice(pane,e.message,true);
+        }
     }
     async function refreshRoster(pane){
         const token={};rosterLoads.set(pane,token);
@@ -209,6 +274,7 @@
         if(selectedId)showEvent(selectedId);else showList();
     }
     function guestResponse(status){
+        if(pageMode){window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true}}));return;}
         pendingResponse=status;saveResume();dialog.close();
         authNotice.showModal();
     }
@@ -238,7 +304,7 @@
             }
         }finally{saving=false;savingPane=null;rosterBusy(pane,false);}
     }
-    document.addEventListener('click',event=>{
+    if(!pageMode)document.addEventListener('click',event=>{
         const opener=event.target.closest?.('[data-venue-play-open]');
         if(!opener||opener.disabled)return;
         event.preventDefault();open();
@@ -252,8 +318,10 @@
         const pane=button.closest('[data-venue-play-pane]');
         void respond(pane,button.dataset.venuePlayRsvp);
     }));
-    for(const pane of dialog.querySelectorAll('[data-venue-play-pane]')){
+    for(const pane of pageMode?[page]:dialog.querySelectorAll('[data-venue-play-pane]')){
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
+        const messageList=messages(pane);
+        messageList.addEventListener('scroll',()=>{void loadOlder(pane);},{passive:true});
         const form=pane.querySelector('[data-venue-play-message-form]');
         const field=form.querySelector('[name="body"]');
         const cancel=form.querySelector('[data-venue-play-edit-cancel]');
@@ -301,14 +369,19 @@
                     const response=await request(editing.url,'PATCH',{body,version:editing.version});
                     appendEntries(pane,[response.entry]);finishEdit();notice(pane,'');
                 }else{
-                    await request(pane.dataset.eventPostUrl,'POST',{body,client_request_id:crypto.randomUUID()});
+                    const response=await request(pane.dataset.eventPostUrl,'POST',{body,client_request_id:crypto.randomUUID()});
                     field.value='';count();
-                    await refreshWall(pane);notice(pane,'Сообщение отправлено.');
+                    await refreshWall(pane,response.entry);notice(pane,'Сообщение отправлено.');
                 }
-            }catch(e){if(e.status===409)await refreshWall(pane);notice(pane,e.message,true);}
+            }catch(e){if(e.status===409)await refreshWall(pane,null,true);notice(pane,e.message,true);}
             finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
         });
     }
+    if(pageMode){
+        paintButtons(page);
+        void refreshRoster(page);
+        window.addEventListener('mskba:auth:success',()=>{authenticated=true;window.location.reload();});
+    }else{
     authNotice.querySelectorAll('[data-venue-play-auth-close]').forEach(button=>
         button.addEventListener('click',()=>authNotice.close()));
     authNotice.querySelector('[data-venue-play-auth-login]')?.addEventListener('click',()=>{
@@ -329,8 +402,9 @@
     };
     window.addEventListener('mskba:auth:success',()=>{authenticated=true;dialog.dataset.authenticated='1';resume();});
     if(authenticated)queueMicrotask(resume);
+    }
     // A gesture must both begin and end on the backdrop to dismiss.
-    for(const modal of [dialog,authNotice,deleteDialog]){
+    for(const modal of pageMode?[deleteDialog]:[dialog,authNotice,deleteDialog]){
         let outsidePointer=null;
         modal.addEventListener('pointerdown',event=>{
             outsidePointer=event.target===modal?event.pointerId:null;

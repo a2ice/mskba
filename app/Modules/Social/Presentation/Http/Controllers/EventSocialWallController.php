@@ -24,11 +24,25 @@ final class EventSocialWallController extends Controller
         $item = $this->event($event);
         abort_unless($wall->canViewEvent($item, $request->user()), 404);
 
-        $data = $request->validate(['after_id' => ['nullable', 'integer', 'min:0'], 'include_roster' => ['sometimes', 'boolean']]);
+        $data = $request->validate([
+            'after_id' => ['nullable', 'integer', 'min:0', 'prohibits:before_id'],
+            'before_id' => ['nullable', 'integer', 'min:1', 'prohibits:after_id'],
+            'include_roster' => ['sometimes', 'boolean'],
+        ]);
         $after = isset($data['after_id']) ? (int) $data['after_id'] : null;
+        $before = isset($data['before_id']) ? (int) $data['before_id'] : null;
         $canPost = $wall->canCommentOnEvent($item, $request->user());
+        // Fetch one extra visible entry to determine whether an older page exists.
+        // Preserve the existing forward cursor contract for the legacy poller.
+        $entries = $wall->latestForEvent($item, $after === null ? 11 : 50, $after, $before);
+        $hasOlder = $after === null && $entries->count() > 10;
+        if ($hasOlder) {
+            $entries = $entries->slice(-10)->values();
+        }
+
         return response()->json([
-            'entries' => $wall->latestForEvent($item, 50, $after)
+            'has_older' => $hasOlder,
+            'entries' => $entries
                 ->map(fn ($entry) => $this->present($entry, $item, $request, $wall, $canPost))->values(),
             'counts' => $wall->eventCounts($item),
             'can_post' => $canPost,
