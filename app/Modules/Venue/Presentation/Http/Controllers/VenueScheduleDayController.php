@@ -34,6 +34,9 @@ final class VenueScheduleDayController extends Controller
         $data = $request->validate([
             'coupon_code' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9_-]+$/'],
             'date' => ['required', 'date_format:Y-m-d'],
+            'search_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date'],
+            'search_from_time' => ['required_with:search_until', 'nullable', 'date_format:H:i'],
+            'search_to_time' => ['required_with:search_until', 'nullable', 'date_format:H:i'],
             'preview_start' => ['nullable', 'date_format:H:i', 'required_with:preview_duration_minutes'],
             'preview_duration_minutes' => ['nullable', 'integer', 'min:30', 'max:1440', 'required_with:preview_start'],
             'venue_court_id' => ['nullable', 'integer',
@@ -47,6 +50,39 @@ final class VenueScheduleDayController extends Controller
             : ($venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail());
 
         try {
+            // One bounded request per court. Return only the data needed to
+            // summarize the search; detailed booking information is fetched
+            // separately by the existing day dialog.
+            if (isset($data['search_until'])) {
+                $first = CarbonImmutable::createFromFormat('!Y-m-d', $data['date'], 'Europe/Moscow');
+                $last = CarbonImmutable::createFromFormat('!Y-m-d', $data['search_until'], 'Europe/Moscow');
+                $today = CarbonImmutable::now('Europe/Moscow')->startOfDay();
+                $endClock = $data['search_to_time'] === '23:59' ? '24:00' : $data['search_to_time'];
+                if ($first->lessThan($today) || $last->greaterThan($today->addDays(8))
+                    || ($first->equalTo($last) && $data['search_from_time'] >= $endClock)
+                    || isset($data['preview_start'])) {
+                    throw new InvalidArgumentException('Выбери корректный диапазон в пределах доступных девяти дней.');
+                }
+                $searchDays = [];
+                for ($day = $first; $day->lessThanOrEqualTo($last); $day = $day->addDay()) {
+                    $dayResult = $days->forDate($venue, $court, $day->toDateString(), null, null,
+                        $request->user(), $viewerActor);
+                    $lower = $day->equalTo($first) ? $data['search_from_time'] : '00:00';
+                    $upper = $day->equalTo($last) ? $endClock : '24:00';
+                    $slots = [];
+                    foreach ($dayResult['slots'] as $slot) {
+                        if ($slot['starts_at'] >= $lower && $slot['ends_at'] <= $upper) {
+                            $slots[] = array_intersect_key($slot, array_flip(['starts_at', 'ends_at', 'status', 'selectable']));
+                        }
+                    }
+                    $searchDays[] = array_intersect_key($dayResult, array_flip(['date', 'step_minutes',
+                        'minimum_minutes', 'maximum_minutes', 'booking_enabled', 'stale', 'refresh_state']))
+                        + ['slots' => $slots];
+                }
+
+                return response()->json(['days' => $searchDays, 'venue_court_id' => $court->id])
+                    ->header('Cache-Control', 'private, no-store');
+            }
             $result = $days->forDate(
                 $venue, $court, $data['date'],
                 $data['preview_start'] ?? null, $data['preview_duration_minutes'] ?? null,

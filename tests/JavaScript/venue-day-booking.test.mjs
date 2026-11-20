@@ -582,7 +582,7 @@ test('персональная цена показывает зачёркнут�
 });
 
 
-test('Rental CTA skips court chooser for a single court, preserving calendar pipeline', () => {
+test('Legacy day entry without a selected court still resolves the court explicitly', () => {
     const choiceSource = readFileSync(
         new URL('../../resources/themes/mskba_app/js/venue-choice.js', import.meta.url), 'utf8',
     );
@@ -622,8 +622,7 @@ test('Rental CTA skips court chooser for a single court, preserving calendar pip
             CustomEvent:class {constructor(type,{detail}){this.type=type;this.detail=detail;}},
             Number,
         });
-        handlers.click({target:{closest:selector=>selector==='[data-venue-rental-open]'?{}:null},
-            preventDefault(){}});
+        handlers['window:mskba:venue-court-selection-required']({detail:{date:'2026-11-15'}});
         return {choice,dispatches,select,handlers};
     };
     const single=run([13]);
@@ -920,3 +919,5 @@ test('venue preview uses existing loader and reuses fetched details and loaded c
     assert.match(chooser, /preview\.replaceChildren\(entry\.node\)/);
     assert.match(chooser, /\.catch\(\(\)=>render\(item,false\)\)/);
 });
+
+import './venue-rental-search.test.mjs';
