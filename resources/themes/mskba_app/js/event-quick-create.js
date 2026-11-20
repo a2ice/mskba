@@ -30,7 +30,10 @@
     const storageKey='mskba:event-quick-create:'+location.pathname;
     let step=0,slots=[],editingTitle=false,saving=false,scheduleEdited=false;
     function initializeSchedule(){
-        const now=new Date(Date.now()+10*60000+180*60000).toISOString();
+        const venueLead=bookingLead[venue.value]??0;
+        const selected=(courts[venue.value]||[]).find(item=>String(item.id)===court.value);
+        const lead=Math.max(0,Number(selected?.minimum_lead_time_minutes??venueLead)||0);
+        const now=new Date(Math.ceil((Date.now()+(lead+10)*60000)/60000)*60000+180*60000).toISOString();
         date.min=new Date(Date.now()+180*60000).toISOString().slice(0,10);
         date.value=now.slice(0,10);time.value=now.slice(11,16);
         scheduleEdited=false;
@@ -39,6 +42,7 @@
     let authenticated=dialog.dataset.authenticated==='1';
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const courts=(()=>{try{return JSON.parse(dialog.dataset.courts||'{}');}catch{return {};}})();
+    const bookingLead=(()=>{try{return JSON.parse(dialog.dataset.bookingLead||'{}');}catch{return {};}})();
     const venueMeta=(()=>{try{return JSON.parse(dialog.dataset.venueMeta||'{}');}catch{return {};}})();
     const report=text=>{feedback.textContent=text;feedback.hidden=!text;};
     const clearValidation=field=>{
@@ -65,7 +69,9 @@
         field.addEventListener('change',()=>clearValidation(field));
     }
     function setStep(index){
+        const previousStep=step;
         step=Math.max(0,Math.min(sections.length-1,index));
+        if(previousStep===0&&step===1&&!scheduleEdited&&!slots.length)initializeSchedule();
         sections.forEach((node,i)=>{node.hidden=i!==step;});
         back.hidden=step===0;
         next.hidden=step===sections.length-1;
@@ -127,8 +133,9 @@
         updateAutoTitle();
         syncCourts();
         if(slots.length){slots=[];renderSlots();}
+        if(!scheduleEdited)initializeSchedule();
     });
-    court.addEventListener('change',()=>{availability.hidden=true;});
+    court.addEventListener('change',()=>{availability.hidden=true;if(!scheduleEdited)initializeSchedule();});
     syncType();syncFormat();syncCourts();
     // Preserve the selected hall when entering the wizard from its own page.
     if(dialog.dataset.initialCourtId && [...court.options].some(option=>option.value===dialog.dataset.initialCourtId)){
