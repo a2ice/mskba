@@ -40,7 +40,6 @@ export function initActionToasts(doc = document, host = window, { legacy = false
         // Keep the region visible while ordinary Reverb notifications remain.
         if (!region.children.length && !persistentLegacy) region.hidden = true;
         if (!live.size) restoreRegion?.();
-        if (persistentLegacy) doc.dispatchEvent(new CustomEvent('mskba:action-toast-removed'));
     };
     const emit = (event) => {
         const message = typeof event.detail?.message === 'string'
