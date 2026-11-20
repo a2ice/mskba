@@ -341,6 +341,7 @@ if (dayBookingDialog) {
         rentalSearch = null;
         bookingButton.hidden = false;
         summary.parentElement.hidden = false;
+        dayBookingDialog.classList.remove('is-availability-view');
         dayBookingDialog.classList.toggle('is-rental-search', false);
         if (searchHeader) searchHeader.hidden = true;
         if (searchBack) searchBack.hidden = true;
@@ -971,6 +972,7 @@ if (dayBookingDialog) {
         if (!rentalSearch || !searchHeader || !searchCourts) return;
         dayBookingDialog.classList.toggle('is-rental-search', true);
         searchHeader.hidden = false;
+        dayBookingDialog.classList.toggle('is-availability-view', !!rentalSearch.readOnly);
         bookingButton.hidden = !!rentalSearch.readOnly;
         summary.parentElement.hidden = !!rentalSearch.readOnly;
         searchNote.textContent = rentalSearch.note;
