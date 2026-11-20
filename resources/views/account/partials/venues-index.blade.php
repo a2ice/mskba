@@ -79,6 +79,9 @@
                     @if($legacy?->canEditSchedule)
                         <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}">Расписание</a>
                     @endif
+                    @if(app(\App\Modules\PlayInterest\Application\Services\VenueSubscriptionAudience::class)->canManageAudience(auth()->user(), $venue))
+                        <a class="account-contracts-workspace__secondary" href="{{ route('account.venue-audience.index', $venue->id) }}">Интересуются</a>
+                    @endif
                     @if($card['manage_offers'])
                         <a class="account-contracts-workspace__secondary" href="{{ route('account.venues.group-offers.index', ['venue' => $venue->id]) }}">Промокоды</a>
                     @endif

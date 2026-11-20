@@ -161,6 +161,16 @@ final class VenueSubscriptionAudience
         ];
     }
 
+    /** Revalidate subscription consent and current channel availability at send time. */
+    public function offerChannels(Venue $venue, User $subject): array
+    {
+        $rows = $this->collectAudience($venue, true);
+        $channels = $rows[$subject->canonical()->id]['offer_channels'] ?? [];
+        $available = app(SubscriptionDeliveryChannels::class)->availability($subject);
+
+        return array_values(array_filter($channels, fn ($channel) => $available[$channel]['available'] ?? false));
+    }
+
     /** @return array<int, array{direct:bool,public:bool,user:User}> */
     private function collectAudience(Venue $venue, bool $strict = false): array
     {
