@@ -40,16 +40,18 @@ final class SetEventParticipationHandler
                 ->firstOrFail();
 
             $isOrganizer = $event->organizerActor()->whereIn('user_id', $user->identityIds())->exists();
-            if ($event->status !== EventStatusEnum::PUBLISHED
-                || ($event->visibility !== EventVisibilityEnum::PUBLIC && ! $isOrganizer)) {
+            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
+            $native = $event->proposed_time_options !== null;
+            $isPublished = $event->status === EventStatusEnum::PUBLISHED
+                && ($event->visibility === EventVisibilityEnum::PUBLIC || $isOrganizer || ($native && $participant !== null));
+            $ownDraft = $native && $isOrganizer && $event->status === EventStatusEnum::DRAFT && $event->starts_at === null;
+            if (! $isPublished && ! $ownDraft) {
                 throw new InvalidArgumentException('Для этого мероприятия сейчас нельзя изменить участие.');
             }
 
-            if ($event->ends_at->lessThanOrEqualTo(now())) {
+            if ($event->ends_at?->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
-
-            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
 
             if ($participant?->role === EventParticipantRoleEnum::ORGANIZER && ! $isOrganizer) {
                 throw new InvalidArgumentException('Запись организатора не соответствует владельцу мероприятия.');
