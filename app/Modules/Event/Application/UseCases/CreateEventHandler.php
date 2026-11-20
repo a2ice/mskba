@@ -18,6 +18,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -35,6 +36,7 @@ final class CreateEventHandler
         private readonly CyrillicTransliterator $transliterator,
         private readonly StandaloneGameFormationService $standaloneGames,
         private readonly StandaloneGameInitialSelectionService $initialSelections,
+        private readonly UpdateUserParticipationRolesHandler $participationRoles,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -201,6 +203,14 @@ final class CreateEventHandler
                     isset($data['team_a_id']) ? (int) $data['team_a_id'] : null,
                     isset($data['team_b_id']) ? (int) $data['team_b_id'] : null,
                 );
+            }
+
+            // The explicit checkbox is independent of event-scoped organizer rights.
+            if (filter_var($data['add_organizer_role'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $user = $actor->user?->canonical();
+                if ($user !== null && ! $user->participationRoles()->where('role', UserParticipationRoleEnum::ORGANIZER->value)->exists()) {
+                    $this->participationRoles->updateOne($user, UserParticipationRoleEnum::ORGANIZER, true);
+                }
             }
 
             return $event->load(['venue', 'court', 'booking', 'participants.user']);
