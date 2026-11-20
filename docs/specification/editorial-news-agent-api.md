@@ -9,6 +9,4 @@ Base route: /api/v1/internal/editorial-news. JSON Accept header and Bearer authe
 - POST /{alias}/publish: requires editorial-news:publish, publishes an owned material draft to site feed only. Repeated publish preserves original publication time. No Telegram publication.
 - No access to system updates, FAQ, other authors' materials or archived content; no editing or deletion via API.
 
-First editorial article: publish on production only, alias winter-basketball-indoors-2026, heading Холода наступают. Перебираемся в залы! Link /venues in Markdown. Upload supplied original image as cover (retain creator attribution). Verify public URL and cover; do not publish without supplied image or appropriate permission.
-
 The existing project-update draft API and verification rules remain unchanged. No secret or content image is committed to the repository.
