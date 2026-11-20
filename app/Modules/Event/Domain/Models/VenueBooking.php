@@ -33,7 +33,7 @@ class VenueBooking extends Model
                 return;
             }
 
-            if ($booking->venue_court_id !== null && ! ($booking->isDirty('venue_id') && ! $booking->isDirty('venue_court_id'))) {
+            if ($booking->venue_court_id !== null && VenueCourt::query()->where('venue_id', $booking->venue_id)->whereKey($booking->venue_court_id)->exists()) {
                 return;
             }
 
