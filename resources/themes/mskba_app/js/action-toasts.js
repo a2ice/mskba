@@ -3,40 +3,61 @@
 // marked read, or included in the unread counter.
 export const MAX_ACTION_TOASTS = 3;
 
-export function initActionToasts(doc = document, host = window) {
-    let region = doc.querySelector('[data-message-toast-region]');
+export function initActionToasts(doc = document, host = window, { legacy = false } = {}) {
+    let region = doc.querySelector(legacy ? '[data-notification-toasts]' : '[data-message-toast-region]');
+    const persistentLegacy = legacy && Boolean(region);
     if (!region) {
         region = doc.createElement('section');
-        region.className = 'app-message-toast-region';
-        region.dataset.messageToastRegion = '';
+        region.className = legacy ? 'notification-toast-region' : 'app-message-toast-region';
+        if (!legacy) region.dataset.messageToastRegion = '';
         region.hidden = true;
         region.setAttribute('role', 'region');
         region.setAttribute('aria-label', 'Уведомления');
         doc.body.append(region);
     }
     const live = new Set();
+    let restoreRegion = null;
+    const mountForDialog = (dialog) => {
+        if (!dialog?.open || dialog.contains(region)) return;
+        restoreRegion?.();
+        const parent = region.parentNode;
+        const next = region.nextSibling;
+        const restore = () => {
+            delete region.dataset.actionToastModal;
+            if (next?.parentNode === parent) parent.insertBefore(region, next);
+            else parent.append(region);
+            dialog.removeEventListener('close', restore);
+            restoreRegion = null;
+        };
+        restoreRegion = restore;
+        region.dataset.actionToastModal = '';
+        dialog.append(region);
+        dialog.addEventListener('close', restore, { once: true });
+    };
     const remove = (card) => {
         if (!live.delete(card)) return;
         card.remove();
         // Keep the region visible while ordinary Reverb notifications remain.
-        if (!region.children.length) region.hidden = true;
+        if (!region.children.length && !persistentLegacy) region.hidden = true;
+        if (!live.size) restoreRegion?.();
     };
     const emit = (event) => {
         const message = typeof event.detail?.message === 'string'
             ? event.detail.message.trim() : '';
         if (!message) return;
+        mountForDialog(event.detail?.dialog);
         const card = doc.createElement('article');
-        card.className = 'toast app-message-toast app-action-toast' +
+        card.className = (legacy ? 'notification-toast app-action-toast' : 'toast app-message-toast app-action-toast') +
             (event.detail?.failed ? ' app-action-toast--error' : '');
         card.setAttribute('role', event.detail?.failed ? 'alert' : 'status');
 
         const title = doc.createElement('strong');
-        title.className = 'app-message-toast__heading';
+        title.className = legacy ? 'notification-toast__title' : 'app-message-toast__heading';
         title.textContent = message;
 
         const close = doc.createElement('button');
         close.type = 'button';
-        close.className = 'app-message-toast__close';
+        close.className = legacy ? 'notification-toast__close' : 'app-message-toast__close';
         close.setAttribute('aria-label', 'Скрыть уведомление');
         close.textContent = '×';
         close.addEventListener('click', () => remove(card));

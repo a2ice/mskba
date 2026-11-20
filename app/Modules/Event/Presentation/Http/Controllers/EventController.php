@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventPreviewRoster;
 use App\Modules\Event\Application\Services\EventPlayerStatisticsSummaryBuilder;
 use App\Modules\Event\Application\Services\EventResultGalleryManager;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
@@ -185,6 +186,9 @@ final class EventController extends Controller
 
         try {
             $data = $request->validated();
+            if (array_key_exists('organizer_participates', $data)) {
+                $data['participation_roles'] = ['player'];
+            }
             $result = $events->handle($actor, $data);
         } catch (InvalidArgumentException|DomainException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -746,6 +750,7 @@ final class EventController extends Controller
             return response()->json([
                 'status' => $status->value,
                 'counts' => $wall->eventCounts($updated),
+                ...($request->boolean('include_roster') ? ['roster' => app(EventPreviewRoster::class)->forEvent($updated, $request->user())] : []),
             ]);
         }
 

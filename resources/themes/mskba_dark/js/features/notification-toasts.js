@@ -144,7 +144,7 @@ if (region) {
     };
 
     const pump = () => {
-        while (region.children.length < visibleLimit && pending.length) {
+        while (region.querySelectorAll('[data-notification-id]').length < visibleLimit && pending.length) {
             region.append(createToast(pending.shift()));
         }
     };
