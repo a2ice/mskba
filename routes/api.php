@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Content\Presentation\Http\Controllers\Api\V1\EditorialNewsAgentApiController;
 use App\Modules\Content\Presentation\Http\Controllers\Api\V1\PageBuilderAgentApiController;
 use App\Modules\Content\Presentation\Http\Controllers\Api\V1\ProjectUpdateAgentApiController;
 use App\Modules\Ai\Presentation\Http\Controllers\GitHubOpenAiGenerationCallbackController;
@@ -132,4 +133,19 @@ Route::middleware(['auth:sanctum', 'throttle:15,1'])
         Route::get('/{contentItem}', [ProjectUpdateAgentApiController::class, 'show'])
             ->whereNumber('contentItem')
             ->name('api.internal.project-updates.show');
+    });
+
+
+// Editorial materials only; separate explicit write and publication abilities.
+Route::middleware(['auth:sanctum', 'throttle:15,1'])
+    ->prefix('v1/internal/editorial-news')
+    ->group(function (): void {
+        Route::post('/', [EditorialNewsAgentApiController::class, 'store'])
+            ->name('api.internal.editorial-news.store');
+        Route::get('/{alias}', [EditorialNewsAgentApiController::class, 'show'])
+            ->where('alias', '[a-z0-9-]+')
+            ->name('api.internal.editorial-news.show');
+        Route::post('/{alias}/publish', [EditorialNewsAgentApiController::class, 'publish'])
+            ->where('alias', '[a-z0-9-]+')
+            ->name('api.internal.editorial-news.publish');
     });
