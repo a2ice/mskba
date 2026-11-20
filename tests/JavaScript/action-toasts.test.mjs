@@ -86,7 +86,10 @@ test('favorite success has no second toast; errors and removals share dispatch',
     const favorites=readFileSync(new URL('../../resources/themes/mskba_app/js/venue-favorites.js',import.meta.url),'utf8');
     const vue=readFileSync(new URL('../../resources/themes/mskba_app/js/components/PlayIntentDialog.vue',import.meta.url),'utf8');
     assert.doesNotMatch(favorites,/mskba-action-toast-region|className='mskba-action-toast'/);
-    assert.match(favorites,/else \{\s*toast\(contextNames.venue.removed\)/);
+    assert.match(favorites,/action:'remove'\}\);[\s\S]*?toast\(contextNames\.venue\.removed\)/);
+    const action=readFileSync(new URL('../../resources/themes/mskba_app/js/favorite-action.js',import.meta.url),'utf8');
+    assert.match(action,/show\(labels\[type\]\[1\],null\)/);
+    assert.doesNotMatch(action,/toast\(labels\[type\]\[1\]/);
     assert.match(favorites,/if\(result.state!=='active'\)toast/);
     assert.doesNotMatch(vue,/toast\(data.state==='active'\?'Добавлено в избранное'/);
     assert.match(vue,/pendingSuccessToast=editingId.value\?'Подписка сохранена':'Подписка оформлена'/);
