@@ -42,14 +42,15 @@
         attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
         attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button===attendance?confirmed:button.dataset.venuePlayRsvp===status;
+            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
             if(dialog.classList.contains('venue-play-dialog--app')){
                 button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
             }else{
                 button.classList.toggle('btn--primary',own);button.classList.toggle('btn--secondary',!own);
             }
-            button.setAttribute('aria-pressed',String(own));
+            if(button===attendance)button.removeAttribute('aria-pressed');
+            else button.setAttribute('aria-pressed',String(own));
         });
     };
     const icon=(id)=>{
