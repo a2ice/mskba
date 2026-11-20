@@ -6,6 +6,11 @@
         <span class="badge">Удалено</span>
         <p>Причина: {{ $change->reason }}</p>
         @if($owner)
+            @php($linkedBooking = $event->sourceBooking ?? $event->booking)
+            @if($linkedBooking && !$linkedBooking->status->isTerminal())
+                <p>Бронирование сохранено: {{ $linkedBooking->venue?->name ?? $event->venue?->name }} · {{ $linkedBooking->status->label() }}</p>
+                @if($event->sourceBooking)<a class="button secondary" href="{{ route('account.venue-bookings.show', $linkedBooking) }}">К бронированию</a>@endif
+            @endif
             <div class="app-event-actions">
                 <button type="button" class="button primary" data-event-lifecycle-open>Восстановить мероприятие</button>
                 <a class="button secondary" href="{{ route('account.events.deleted') }}">Удалённые мероприятия</a>

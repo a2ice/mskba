@@ -73,6 +73,9 @@ final readonly class EventDeletionService
             $snapshot = null;
             if ($restore) {
                 $snapshot = json_decode($previous->snapshot ?? '{}', true, flags: JSON_THROW_ON_ERROR);
+                // A cancelled/rejected/expired booking remains historical; restoring
+                // an event never revives a reservation or recreates its slot.
+                $this->detachTerminalBooking($event);
                 $event->restore();
                 $event->games()->withTrashed()->whereIn('id', $snapshot['games'] ?? [])
                     ->whereNotNull('deleted_at')->get()->each->restore();
@@ -80,12 +83,8 @@ final readonly class EventDeletionService
                 $event->venueInterests()->whereIn('id', $snapshot['interests'] ?? [])
                     ->where('status', 'withdrawn')->update(['status' => 'open']);
             } else {
-                // Never silently cancel a rental, refund, or an external booking request.
-                if ($event->booking_id !== null || $event->booking()->exists()
-                    || $event->venueInterests()->whereHas('booking')->exists()
-                    || $event->venueInterests()->where('status', 'booking_requested')->exists()) {
-                    throw ValidationException::withMessages(['reason' => 'Сначала урегулируйте связанную заявку или бронирование.']);
-                }
+                // Booking is a separate aggregate. Keep its status, payments,
+                // slot and both link directions intact when hiding the event.
                 if ($event->trainingSession()->exists()
                     || $event->games()->where(function ($query): void {
                         $query->where('status', '!=', GameStatusEnum::SCHEDULED->value)
@@ -96,7 +95,11 @@ final readonly class EventDeletionService
                 }
                 $games = $event->games()->lockForUpdate()->get();
                 $interests = $event->venueInterests()->where('status', 'open')->lockForUpdate()->pluck('id');
-                $snapshot = ['games' => $games->modelKeys(), 'interests' => $interests->all()];
+                $snapshot = [
+                    'games' => $games->modelKeys(),
+                    'interests' => $interests->all(),
+                    'booking_id' => $event->booking_id ?? $event->booking()->value('id'),
+                ];
                 $games->each->delete();
                 $event->venueInterests()->whereIn('id', $interests)->update(['status' => 'withdrawn']);
                 $event->delete();
@@ -115,6 +118,27 @@ final readonly class EventDeletionService
 
             return $event;
         });
+    }
+
+    private function detachTerminalBooking(Event $event): void
+    {
+        $booking = $event->sourceBooking()->lockForUpdate()->first()
+            ?? $event->booking()->lockForUpdate()->first();
+
+        if ($booking === null || ! $booking->status->isTerminal()) {
+            return;
+        }
+
+        // Preserve the booking itself, including payment and transition history.
+        // Only remove the active association and allow the event to be rebooked.
+        DB::table('venue_bookings')->where('id', $booking->id)
+            ->where('event_id', $event->id)->update(['event_id' => null, 'updated_at' => now()]);
+        $event->forceFill([
+            'booking_id' => null,
+            'booking_snapshot' => null,
+            'booking_deferred' => true,
+        ])->save();
+        $event->venueInterests()->where('status', 'booking_requested')->update(['status' => 'open']);
     }
 
     private function notify(Event $event, User $owner, bool $restore, string $reason, int $changeId): void

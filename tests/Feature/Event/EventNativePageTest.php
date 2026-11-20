@@ -201,4 +201,43 @@ final class EventNativePageTest extends TestCase
         $this->post($restore, ['reason' => $restoreReason])->assertRedirect();
         $this->assertSame(4, $notifications()->count());
     }
+
+    public function test_deleting_and_restoring_event_keeps_active_booking_and_slot(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $event = $this->createEvent($owner, $venue, [
+            'slots' => [['starts_at' => $start->format('Y-m-d\\TH:i'), 'duration_minutes' => 90]],
+        ]);
+        $booking = $event->booking()->create([
+            'venue_id' => $venue->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => VenueBookingStatusEnum::CONFIRMED,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+        ]);
+        $identifier = $event->routeIdentifier();
+        $this->get(route('events.show', $identifier))->assertOk()
+            ->assertSee('К данному мероприятию привязана бронь')
+            ->assertSee($venue->name)->assertSee('19:00')->assertSee('Всё равно удалить');
+        $this->post(route('events.lifecycle.delete', $identifier), ['reason' => 'Нужно перенести мероприятие'])->assertRedirect();
+        $this->assertSoftDeleted('events', ['id' => $event->id]);
+        $this->assertSame($event->id, $booking->fresh()->event_id);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $booking->fresh()->status);
+        $this->assertTrue($booking->fresh()->status->occupiesVenue());
+        $this->post(route('events.lifecycle.restore', $identifier), ['reason' => 'Мероприятие всё же состоится'])->assertRedirect();
+        $this->assertNotSoftDeleted('events', ['id' => $event->id]);
+        $this->assertSame($booking->id, $event->fresh()->booking->id);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $booking->fresh()->status);
+
+        $this->post(route('events.lifecycle.delete', $identifier), ['reason' => 'Планы снова изменились'])->assertRedirect();
+        DB::table('venue_bookings')->where('id', $booking->id)->update(['status' => 'cancelled']);
+        $this->post(route('events.lifecycle.restore', $identifier), ['reason' => 'Найдём другое бронирование'])->assertRedirect();
+        $this->assertNotSoftDeleted('events', ['id' => $event->id]);
+        $this->assertNull($event->fresh()->booking);
+        $this->assertNull($booking->fresh()->event_id);
+        $this->assertSame(VenueBookingStatusEnum::CANCELLED, $booking->fresh()->status);
+    }
 }
