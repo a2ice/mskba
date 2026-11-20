@@ -6,6 +6,7 @@
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
+    const detailFooter=dialog.querySelector('[data-venue-play-detail-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
     let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
@@ -42,6 +43,11 @@
         choices.forEach(button=>{
             const own=button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
+            if(dialog.classList.contains('venue-play-dialog--app')){
+                button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
+            }else{
+                button.classList.toggle('btn--primary',own);button.classList.toggle('btn--secondary',!own);
+            }
             button.setAttribute('aria-pressed',String(own));
         });
     };
@@ -158,12 +164,13 @@
         }
     }
     function showList(){
-        selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;
+        selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;detailFooter.hidden=true;
         title.textContent='Хочу здесь играть';
     }
     function showEvent(id){
         const pane=getPane(id);if(!pane)return;
-        selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;
+        selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;detailFooter.hidden=false;
+        detailFooter.querySelectorAll('[data-venue-play-event-link]').forEach(el=>{el.hidden=Number(el.dataset.venuePlayEventLink)!==selectedId;});
         // Different event cards must open at the start of their own detail view.
         detail.scrollTop=0;
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});

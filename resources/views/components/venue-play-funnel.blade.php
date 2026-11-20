@@ -50,7 +50,6 @@
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll" data-venue-play-step="detail" hidden>
-        <button type="button" class="{{ $secondaryButton }}" data-venue-play-back>Назад к мероприятиям</button>
         @foreach($upcomingVenueEvents as $upcoming)
             @php
                 $participant = $upcoming->participants->first(fn ($member) => in_array((int) $member->user_id, $viewerIdentityIds, true));
@@ -83,7 +82,7 @@
                     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
                 </section>
                     <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
-                        <button type="button" class="{{ $primaryButton }}" data-venue-play-rsvp="confirmed">Пойду</button>
+                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed">Пойду</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="left" hidden>Не пойду</button>
                     </div>
@@ -101,12 +100,17 @@
                             <button type="submit" class="{{ $primaryButton }}">Отправить</button>
                         </div>
                     </form>
-                    <p class="muted" data-venue-play-comment-notice>Написать сообщение смогут участники мероприятия.</p>
+                    <p class="muted" data-venue-play-comment-notice hidden>Написать сообщение могут участники и организатор мероприятия.</p>
                 </section>
-                <a class="{{ $secondaryButton }}" href="{{ route('events.show', $upcoming->routeIdentifier()) }}">Полная страница мероприятия</a>
             </article>
         @endforeach
     </div>
+    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-detail-footer hidden>
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-back>Назад</button>
+        @foreach($upcomingVenueEvents as $upcoming)
+            <a class="{{ $primaryButton }}" data-venue-play-event-link="{{ $upcoming->id }}" href="{{ route('events.show', $upcoming->routeIdentifier()) }}" hidden>К мероприятию</a>
+        @endforeach
+    </footer>
 </dialog>
 <dialog class="mskba-modal venue-play-dialog venue-play-auth-notice {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}" data-venue-play-auth-notice
     aria-labelledby="venue-play-auth-title">
@@ -199,7 +203,8 @@
 .venue-play-dialog__roster-surface .image-upload-loading{min-height:30px;padding:0;background:rgba(8,10,8,.35);backdrop-filter:blur(2px)}
 .venue-play-dialog__roster-surface .image-upload-loading__spinner{width:24px;height:24px;border-right-color:var(--accent,#ea7628)}
 .venue-play-dialog [hidden]{display:none!important}
-.venue-play-dialog__detail>a{justify-self:start;max-width:100%;white-space:normal}
+.venue-play-dialog__footer[data-venue-play-detail-footer]{justify-content:space-between;align-items:center}
+.venue-play-dialog__footer[data-venue-play-detail-footer] :is(.button,.btn){width:auto;min-width:0;white-space:normal;text-align:center}
 .venue-play-dialog__roster>button{justify-self:start}
 .venue-play-dialog>[data-action-toast-modal]{position:absolute;inset:auto 12px 12px auto;z-index:40;width:min(320px,calc(100% - 24px));max-height:50%;overflow:auto}
 .venue-play-dialog>[data-action-toast-modal] .app-action-toast{opacity:1;overflow-wrap:anywhere}
@@ -222,7 +227,7 @@
 @media(max-width:540px){
     .venue-play-dialog__header,.venue-play-dialog__body{padding-inline:16px}
     .venue-play-dialog__footer{padding:16px}
-    .venue-play-dialog__footer :is(.button,.btn){width:100%}
+    .venue-play-dialog__footer:not([data-venue-play-detail-footer]) :is(.button,.btn){width:100%}
 }
 </style>
 @endonce
