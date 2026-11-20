@@ -106,6 +106,75 @@ final class EventSocialWallTest extends TestCase
             ->assertJsonPath('entries.2.rsvp_status', 'left');
     }
 
+    public function test_edit_own_comment_keeps_only_three_latest_versions_and_original_position(): void
+    {
+        $event = $this->event();
+        $author = $event->organizerActor->user;
+        $this->actingAs($author);
+        $entry = $this->postWall($event, 'Первая версия')->assertCreated()->json('entry');
+        $id = $entry['id'];
+        $url = $entry['edit_url'];
+        $this->assertTrue($entry['can_edit']);
+        $this->assertSame(1, $entry['version']);
+
+        $this->patchJson($url, ['body' => '  Первая версия  ', 'version' => 1])
+            ->assertOk()->assertJsonPath('entry.version', 1);
+        $this->assertSame(1, DB::table('social_action_logs')->where('user_id', $author->id)->count());
+
+        $this->patchJson($url, ['body' => 'Вторая версия', 'version' => 1])
+            ->assertOk()->assertJsonPath('entry.version', 2)->assertJsonPath('entry.id', $id);
+        // An identical retry is a no-op, even with the original version number.
+        $this->patchJson($url, ['body' => 'Вторая версия', 'version' => 1])
+            ->assertOk()->assertJsonPath('entry.version', 2);
+        $this->patchJson($url, ['body' => 'Конфликт', 'version' => 1])->assertConflict();
+        $this->patchJson($url, ['body' => 'Третья версия', 'version' => 2])
+            ->assertOk()->assertJsonPath('entry.version', 3);
+        $this->patchJson($url, ['body' => 'Четвёртая версия', 'version' => 3])->assertStatus(429);
+
+        $this->travel(61)->seconds();
+        $this->patchJson($url, ['body' => 'Четвёртая версия', 'version' => 3])
+            ->assertOk()->assertJsonPath('entry.version', 4)->assertJsonPath('entry.date', $entry['date']);
+        $this->getJson(route('events.wall.index', $event->routeIdentifier()))
+            ->assertOk()->assertJsonCount(1, 'entries')
+            ->assertJsonPath('entries.0.id', $id)
+            ->assertJsonPath('entries.0.text', 'Четвёртая версия')
+            ->assertJsonMissingPath('entries.0.previous_versions');
+
+        $stored = \App\Modules\Social\Domain\Models\SocialWallEntry::findOrFail($id);
+        $this->assertSame('Четвёртая версия', $stored->body);
+        $this->assertSame([2, 3], array_column($stored->metadata['previous_versions'], 'version'));
+        $this->assertSame(['Вторая версия', 'Третья версия'], array_column($stored->metadata['previous_versions'], 'body'));
+    }
+
+    public function test_edit_comment_rejects_other_authors_wrong_scope_hidden_deleted_and_system_entries(): void
+    {
+        $event = $this->event();
+        $otherEvent = $this->event();
+        $author = $event->organizerActor->user;
+        $this->actingAs($author);
+        $entry = $this->postWall($event, 'Исходное сообщение')->assertCreated()->json('entry');
+        $url = $entry['edit_url'];
+        $payload = ['body' => 'Изменение', 'version' => 1];
+
+        $other = $this->confirmedUser();
+        $this->actingAs($other)->patch(route('events.participation', $event->routeIdentifier()), ['status' => 'confirmed'])->assertRedirect();
+        $this->patchJson($url, $payload)->assertNotFound();
+        $wall = $this->getJson(route('events.wall.index', $event->routeIdentifier()))->assertOk();
+        $wall->assertJsonPath('entries.0.can_edit', false)->assertJsonPath('entries.1.can_edit', false);
+
+        $this->actingAs($author);
+        $this->patchJson(route('events.wall.update', [$otherEvent->routeIdentifier(), $entry['id']]), $payload)->assertForbidden();
+        $this->patchJson(route('events.wall.update', [$event->routeIdentifier(), $wall->json('entries.1.id')]), $payload)->assertNotFound();
+        $this->patchJson($url, ['body' => str_repeat('Я', 201), 'version' => 1])->assertUnprocessable();
+
+        DB::table('social_wall_entries')->where('id', $entry['id'])->update(['hidden_at' => now()]);
+        $this->patchJson($url, $payload)->assertNotFound();
+        $this->getJson(route('events.wall.index', $event->routeIdentifier()))->assertJsonPath('entries.0.can_edit', false);
+        DB::table('social_wall_entries')->where('id', $entry['id'])->update(['hidden_at' => null, 'deleted_at' => now()]);
+        $this->patchJson($url, $payload)->assertNotFound();
+        $this->assertDatabaseHas('social_wall_entries', ['id' => $entry['id'], 'body' => 'Исходное сообщение']);
+    }
+
     public function test_comment_and_rsvp_share_three_per_sixty_seconds_globally(): void
     {
         $event = $this->event();
@@ -132,7 +201,7 @@ final class EventSocialWallTest extends TestCase
         $this->assertSame(3, DB::table('social_wall_entries')->count());
     }
 
-    public function test_author_deletes_by_striking_through_and_moderation_stays_separate(): void
+    public function test_author_soft_deletes_message_and_all_versions_from_public_wall(): void
     {
         $event = $this->event();
         $user = $this->confirmedUser();
@@ -142,18 +211,25 @@ final class EventSocialWallTest extends TestCase
         ])->assertRedirect();
 
         $post = $this->postWall($event, 'В пятницу после семи')->assertCreated()->json('entry');
+        $this->patchJson($post['edit_url'], ['body' => 'В пятницу после восьми', 'version' => 1])->assertOk();
+        $this->travel(61)->seconds();
         $this->actingAs($other)->deleteJson($post['delete_url'])->assertNotFound();
         $this->actingAs($user)->deleteJson($post['delete_url'])
             ->assertOk()->assertJsonPath('entry.deleted', true)
-            ->assertJsonPath('entry.text', 'В пятницу после семи');
+            ->assertJsonPath('entry.text', null);
 
         $this->actingAs($user)->getJson(route('events.wall.index', $event->routeIdentifier()))
-            ->assertOk()->assertJsonPath('entries.1.deleted', true)
-            ->assertJsonPath('entries.1.text', 'В пятницу после семи');
+            ->assertOk()->assertJsonCount(1, 'entries')
+            ->assertJsonMissing(['id' => $post['id']]);
+        $this->getJson(route('events.wall.index', [$event->routeIdentifier(), 'after_id' => 0]))->assertOk()->assertJsonCount(1, 'entries');
 
         $this->assertDatabaseHas('social_wall_entries', [
-            'id' => $post['id'], 'body' => 'В пятницу после семи',
+            'id' => $post['id'], 'body' => 'В пятницу после восьми', 'deleted_by_user_id' => $user->id,
         ]);
+        $stored = \App\Modules\Social\Domain\Models\SocialWallEntry::findOrFail($post['id']);
+        $this->assertNotNull($stored->deleted_at);
+        $this->assertSame('В пятницу после семи', $stored->metadata['previous_versions'][0]['body']);
+        $this->patchJson($post['edit_url'], ['body' => 'Возврат', 'version' => 2])->assertNotFound();
     }
 
     public function test_comment_validation_and_private_wall_access(): void
