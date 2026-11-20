@@ -164,6 +164,13 @@ final readonly class VenueIntegrationManager
         }
 
         $courtIds = array_values(array_unique(array_map('intval', $data['court_ids'])));
+        if ($data['adapter_key'] === 'api'
+            && preg_match('~^https://findsport\.ru/playground/~i', $url)
+            && count($courtIds) !== 1) {
+            throw ValidationException::withMessages([
+                'court_ids' => 'Для каждого источника FindSport выберите ровно один зал MSKBA.',
+            ]);
+        }
         if ($integration->venue->courts()->whereIn('id', $courtIds)->count() !== count($courtIds)) {
             throw ValidationException::withMessages([
                 'court_ids' => 'Все выбранные залы должны принадлежать этой площадке.',
