@@ -108,3 +108,21 @@ const interestRoot = document.querySelector('[data-mskba-play-intent-root]') || 
 
 // Inertia is intentionally bootstrapped only on the isolated ui-preview route.
 // Legacy theme DOM enhancers and jQuery are not imported here.
+
+
+// Deep link from the event page to the same read-only rental calendar.
+const eventAvailabilityUrl = new URL(window.location.href);
+const eventAvailabilityDialog = document.querySelector('[data-rental-search-dialog]');
+if (eventAvailabilityDialog && eventAvailabilityUrl.searchParams.get('availability') === '1') {
+    const query = eventAvailabilityUrl.searchParams;
+    const date = query.get('availability_date') || '';
+    const time = query.get('availability_time') || '';
+    const courtId = query.get('availability_court') || '';
+    eventAvailabilityDialog.dispatchEvent(new CustomEvent('mskba:availability-open', {detail:{
+        date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '',
+        time: /^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : '',
+        courtId: /^\d+$/.test(courtId) ? courtId : '',
+    }}));
+    for (const key of ['availability','availability_date','availability_time','availability_court']) query.delete(key);
+    history.replaceState(history.state, '', eventAvailabilityUrl);
+}
