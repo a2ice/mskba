@@ -121,7 +121,7 @@ async function applyFavorite(){
             headers:{Accept:'application/json','Content-Type':'application/json',
                 'X-Requested-With':'XMLHttpRequest',
                 'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},
-            body:JSON.stringify({type:contextType.value,id:Number(contextId.value)})});
+            body:JSON.stringify({type:contextType.value,id:Number(contextId.value),action:favoriteSelected.value?'add':'remove'})});
         if(!response.ok)throw Error('Не удалось изменить избранное.');
         const data=await response.json();
         window.dispatchEvent(new CustomEvent('mskba:favorites:changed',

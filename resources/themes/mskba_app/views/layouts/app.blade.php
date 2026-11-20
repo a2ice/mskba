@@ -64,5 +64,6 @@
             @endif
         @endauth
         @stack('scripts')
+        @include('components.favorite-action-dialog')
     </body>
 </html>

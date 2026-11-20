@@ -86,6 +86,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="theme-color" content="#10120f">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="mskba-authenticated" content="{{ auth()->check() ? '1' : '0' }}">
         @include('partials.branding.favicon', ['includeLegacyPng' => true])
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
@@ -241,5 +242,6 @@
 
         @include('theme::partials.modal')
         @include('theme::partials.notification-toasts')
+        @include('components.favorite-action-dialog')
     </body>
 </html>
