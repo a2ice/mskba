@@ -264,13 +264,15 @@
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
-            if(name==='slots'||name==='schedule_mode'||name==='create_game')continue;
+            if(name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role')continue;
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
         createGame.checked=saved.draft.create_game!=='0';
+        const organizerRole=form.querySelector('[data-event-organizer-role]');
+        if(organizerRole && Object.hasOwn(saved.draft,'add_organizer_role')) organizerRole.checked=saved.draft.add_organizer_role==='1';
         syncType();syncFormat();syncCourts();
         const data=saved.draft;
         if(data.venue_court_id)court.value=String(data.venue_court_id);
