@@ -20,6 +20,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
+use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -71,10 +73,10 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
             TextInput::make('name')->label('Название источника')->required()->maxLength(120),
             Select::make('adapter_key')->label('Тип адаптера')->required()
                 ->options(['manual' => 'Ручной источник', 'api' => 'API', 'browser' => 'Browser Agent'])
-                ->default('manual'),
+                ->default('manual')->live(),
             TextInput::make('external_id')->label('Внешний ID')->maxLength(190),
             TextInput::make('endpoint_url')->label('HTTPS-адрес источника')
-                ->maxLength(2048)->helperText('Ручная проверка доступна для тестового FindSport API-источника. Автоматическая синхронизация остаётся отключённой. Секреты в URL запрещены.'),
+                ->maxLength(2048)->live(onBlur: true)->helperText('Ручная проверка доступна для тестового FindSport API-источника. Автоматическая синхронизация остаётся отключённой. Секреты в URL запрещены.'),
             TextInput::make('priority')->label('Приоритет')->numeric()->integer()
                 ->minValue(0)->maxValue(1000)->default(100)->required(),
             CheckboxList::make('capabilities')->label('Данные источника')
@@ -83,7 +85,17 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
             CheckboxList::make('court_ids')->label('Привязка к залам MSKBA')
                 ->options(fn (): array => $this->getOwnerRecord()->courts()
                     ->pluck('name', 'id')->all())
-                ->required()->columns(2),
+                ->required()->columns(2)->live()
+                ->helperText('Для FindSport отдельный источник и ровно один зал на каждый URL.')
+                ->disableOptionWhen(function ($value, $state, Get $get): bool {
+                    if ($get('adapter_key') !== 'api'
+                        || ! preg_match('~^https://findsport\.ru/playground/~i', (string) $get('endpoint_url'))) {
+                        return false;
+                    }
+                    $selected = array_map('strval', (array) $state);
+
+                    return $selected !== [] && ! in_array((string) $value, $selected, true);
+                }),
             Select::make('permission_status')->label('Статус допустимого доступа')
                 ->options([
                     'unchecked' => 'Не проверено',
@@ -146,6 +158,36 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
             ->emptyStateHeading('Источников нет')
             ->emptyStateDescription('Сначала создайте конфигурацию выше, затем добавьте источники и свяжите их с залами.')
             ->headerActions([
+                Action::make('refreshAllSources')->label('Обновить все источники')
+                    ->icon('heroicon-o-arrow-path')
+                    ->visible(fn (): bool => $this->canExecute())
+                    ->requiresConfirmation()
+                    ->modalHeading('Обновить внешние расписания площадки')
+                    ->modalDescription('Обновляются только уже применённые источники FindSport с разрешённым доступом. Новые источники сначала применяются вручную. Свежие данные повторно не запрашиваются.')
+                    ->action(function (): void {
+                        abort_unless($this->canExecute(), 403);
+                        $venue = $this->getOwnerRecord();
+                        $imports = VenueCourtExternalScheduleImport::query()
+                            ->where('venue_id', $venue->id)->with('court', 'source')->get();
+                        $counts = [];
+                        foreach ($imports as $import) {
+                            if ($import->court === null || $import->source === null) {
+                                continue;
+                            }
+                            $state = app(FindSportOnDemandRefresh::class)->forCourt($import->court)['state'];
+                            $counts[$state] = ($counts[$state] ?? 0) + 1;
+                        }
+                        $total = $venue->integrationSources()->count();
+                        $skipped = max(0, $total - array_sum($counts))
+                            + ($counts['not_configured'] ?? 0) + ($counts['disabled'] ?? 0);
+                        $failed = $counts['failed'] ?? 0;
+                        $notification = Notification::make()->title('Обновление источников завершено')
+                            ->body('Обновлено: '.($counts['updated'] ?? 0)
+                                .'. Уже актуальны: '.($counts['cached'] ?? 0)
+                                .'. В процессе: '.($counts['updating'] ?? 0)
+                                .'. Пропущено: '.$skipped.'. Ошибок: '.$failed.'.');
+                        ($failed > 0 || $skipped > 0 ? $notification->warning() : $notification->success())->send();
+                    }),
                 Action::make('createIntegrationSource')->label('Добавить источник')
                     ->icon('heroicon-o-plus')
                     ->visible(fn (): bool => $this->canManage()
@@ -228,7 +270,7 @@ final class VenueIntegrationSourcesRelationManager extends RelationManager
                             ->where('venue_integration_source_id', $record->id)->exists())
                     ->requiresConfirmation()
                     ->modalHeading('Перезаписать расписание связанного зала?')
-                    ->modalDescription('Последний полный снимок FindSport заменит часы работы площадки и её единственного зала, исключения по датам и цены зала. Занятые интервалы станут недоступны для бронирования. Существующие мероприятия и бронирования сохраняются. Только dev.')
+                    ->modalDescription('Последний полный снимок FindSport заменит часы работы, исключения по датам и цены связанного зала. Если зал единственный, обновятся также часы площадки. Занятые интервалы станут недоступны для бронирования. Мероприятия и бронирования сохраняются.')
                     ->action(function (VenueIntegrationSource $record): void {
                         abort_unless($this->canExecute(), 403);
                         try {
