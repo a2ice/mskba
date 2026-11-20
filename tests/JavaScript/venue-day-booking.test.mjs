@@ -1015,7 +1015,7 @@ test('upcoming venue card opens existing event detail with shared chat before pa
     const js = readFileSync(new URL('../../resources/themes/mskba_app/js/venue-play-funnel.js', import.meta.url), 'utf8');
     assert.match(page, /data-venue-play-open-event="{{ \$planned->id }}"/);
     assert.match(page, /'venuePlayDirectEvents' => \$plannedVenueEvents/);
-    assert.doesNotMatch(page, /аренда ещё не оформлена|Площадка для них пока не забронирована/);
+    assert.doesNotMatch(page, /аренда ещё не оформлена|Площадка для них пока не забронирована|Открытые мероприятия, на которые можно записаться/);
     assert.match(popup, /concat\(\$venuePlayDirectEvents/);
     assert.match(popup, /@foreach\(\$venuePlayDetailEvents as \$upcoming\)/);
     assert.match(popup, /data-venue-play-event-link/);
