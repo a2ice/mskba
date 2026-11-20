@@ -1,3 +1,4 @@
+import { renderRentalInvoiceCard } from '../../../../js/rental-invoice-card.js';
 import {
     realtimeSocketId,
     realtimeState,
@@ -135,6 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const body = document.createElement('p');
             body.textContent = message.body;
             article.append(body);
+        }
+        if (message.invoice) {
+            const invoiceCard = renderRentalInvoiceCard(message.invoice);
+            if (invoiceCard) article.append(invoiceCard);
         }
         if (message.attachment && message.message_id) {
             const link = document.createElement('a');

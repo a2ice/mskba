@@ -92,10 +92,11 @@ final class RentalInvoiceTemplateResource extends Resource
                     ->rows(2)->maxLength(2000)->columnSpanFull(),
                 CheckboxList::make('payment_methods')->label('Способы оплаты')
                     ->options([
-                        'bank_transfer' => 'Банковский перевод / СБП',
+                        'bank_transfer' => 'Банковский перевод',
+                        'sbp' => 'СБП / перевод по карте',
                         'cash' => 'Наличные',
                         'other' => 'Другой способ',
-                    ])->default(['bank_transfer'])->required()->columns(3)->columnSpanFull(),
+                    ])->default(['bank_transfer'])->required()->columns(4)->columnSpanFull(),
                 Textarea::make('payment_instructions')->label('Инструкция по оплате')
                     ->rows(3)->maxLength(4000)->columnSpanFull(),
                 TextInput::make('due_minutes')->label('Окно оплаты покупателем, мин')

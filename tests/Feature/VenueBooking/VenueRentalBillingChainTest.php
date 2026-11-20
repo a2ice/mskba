@@ -299,6 +299,57 @@ final class VenueRentalBillingChainTest extends TestCase
         }
     }
 
+    public function test_sbp_invoice_is_sent_as_actionable_chat_card_with_saved_encrypted_details_and_reference(): void
+    {
+        config()->set('features.venue_rental.conversations', true);
+        [, $adminActor, $venue, $client, $clientActor] = $this->scenario();
+        $booking = $this->requested($venue, $client, $clientActor);
+        app(VenueExternalHoldManager::class)->confirm(
+            $booking->id, $adminActor, CarbonImmutable::now()->addMinutes(25),
+            'phone', null, 'Холд подтверждён',
+        );
+
+        $invoices = app(VenueRentalInvoiceManager::class);
+        $invoice = $invoices->issueBuyer($booking->id, $adminActor, null, [
+            'payment_method' => 'sbp', 'sbp_bank' => 'Тест Банк',
+            'sbp_phone' => '+79998887766', 'transfer_purpose' => 'За аренду зала',
+            'confirmation_hint' => 'Укажите номер операции', 'save_profile' => true,
+        ]);
+
+        $this->assertSame(['sbp'], $invoice->payment_methods);
+        $this->assertSame('+79998887766', $invoice->payment_details['phone']);
+        $this->assertSame('За аренду зала', $invoice->payment_details['purpose']);
+        $this->assertDatabaseCount('venue_rental_payment_profiles', 1);
+        $raw = \Illuminate\Support\Facades\DB::table('venue_rental_payment_profiles')->first();
+        $this->assertStringNotContainsString('79998887766', $raw->details);
+        $message = $booking->conversation()->firstOrFail()->messages()->where('type', 'invoice')->firstOrFail();
+        $this->assertSame($invoice->id, $message->rental_invoice_id);
+
+        $card = app(\App\Modules\VenueBooking\Application\Services\VenueRentalInvoiceCard::class)
+            ->forMessage($message, $clientActor);
+        $this->assertSame('Тест Банк', $card['details']['bank']);
+        $this->assertTrue($card['reference_required']);
+        $this->assertNotNull($card['claim_url']);
+
+        try {
+            $invoices->claim($booking->id, $invoice->id, $clientActor, 'Оплатил');
+            $this->fail('СБП требует номер операции.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('INVOICE_REFERENCE_REQUIRED', $exception->errorCode);
+        }
+        $invoices->claim($booking->id, $invoice->id, $clientActor, 'Оплата аренды', 'SBP-12345');
+        $this->assertSame('claimed', $invoice->fresh()->status);
+        $this->assertSame('SBP-12345', $invoice->fresh()->payment_reference);
+        $this->assertDatabaseHas('venue_booking_messages', [
+            'conversation_id' => $message->conversation_id, 'type' => 'system',
+        ]);
+
+        $invoices->settle($booking->id, $invoice->id, $adminActor, 'received', 'Проверено по выписке', 'sbp');
+        $this->assertDatabaseHas('venue_rental_invoice_payments', [
+            'invoice_id' => $invoice->id, 'method' => 'sbp', 'reference' => 'SBP-12345',
+        ]);
+    }
+
     public function test_invoice_automatic_issuance_requires_eligible_template_and_actual_hold(): void
     {
         [, $adminActor, $venue, $client, $clientActor] = $this->scenario();

@@ -9,6 +9,7 @@ use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueRentalInvoice;
 use App\Modules\VenueBooking\Domain\Models\VenueRentalInvoiceTemplate;
+use App\Modules\VenueBooking\Domain\Models\VenueRentalPaymentProfile;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingMessage;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
@@ -152,12 +153,27 @@ final readonly class VenueRentalInvoiceManager
             fn (VenueRentalInvoiceTemplate $item): bool => $item->auto_send,
         );
 
-        return $template === null ? null : $this->issueBuyerWithinLock($booking, $actor, $template);
+        if ($template === null) {
+            return null;
+        }
+        if ($template->payment_methods === ['sbp']) {
+            // An automatic invoice must never send an empty SBP destination.
+            $profile = VenueRentalPaymentProfile::query()->where('owner_user_id', $actor->user_id)
+                ->where('venue_id', $booking->venue_id)->latest('id')->first();
+            if ($profile === null) {
+                return null;
+            }
+            return $this->issueBuyerWithinLock($booking, $actor, $template, [
+                'payment_method' => 'sbp', 'payment_profile_id' => $profile->id,
+            ]);
+        }
+
+        return $this->issueBuyerWithinLock($booking, $actor, $template);
     }
 
-    public function issueBuyer(int $bookingId, Actor $actor, ?int $templateId = null): VenueRentalInvoice
+    public function issueBuyer(int $bookingId, Actor $actor, ?int $templateId = null, array $paymentOptions = []): VenueRentalInvoice
     {
-        return $this->locked->run($bookingId, function (VenueBooking $booking) use ($actor, $templateId): VenueRentalInvoice {
+        return $this->locked->run($bookingId, function (VenueBooking $booking) use ($actor, $templateId, $paymentOptions): VenueRentalInvoice {
             $this->assertEnabled($booking);
             $this->assertBuyerReceiptActor($actor, $booking);
             $template = $templateId === null ? null
@@ -166,12 +182,12 @@ final readonly class VenueRentalInvoiceManager
                 throw new VenueBookingTransitionException('Недоступный шаблон счёта.', 'INVOICE_TEMPLATE_FORBIDDEN');
             }
 
-            return $this->issueBuyerWithinLock($booking, $actor, $template);
+            return $this->issueBuyerWithinLock($booking, $actor, $template, $paymentOptions);
         });
     }
 
     private function issueBuyerWithinLock(
-        VenueBooking $booking, Actor $actor, ?VenueRentalInvoiceTemplate $template,
+        VenueBooking $booking, Actor $actor, ?VenueRentalInvoiceTemplate $template, array $paymentOptions = [],
     ): VenueRentalInvoice {
         $this->assertEnabled($booking);
         $this->assertActiveBookingHold($booking);
@@ -187,11 +203,22 @@ final readonly class VenueRentalInvoiceManager
         if ($due->greaterThan($deadline)) {
             $due = $deadline;
         }
+        if (($paymentOptions['payment_method'] ?? null) === null && $template?->payment_methods === ['sbp']) {
+            $paymentOptions['payment_method'] = 'sbp';
+            if (empty($paymentOptions['payment_profile_id']) && empty($paymentOptions['sbp_bank'])) {
+                $profile = VenueRentalPaymentProfile::query()->where('owner_user_id', $actor->user_id)
+                    ->where('venue_id', $booking->venue_id)->latest('id')->first();
+                if ($profile !== null) {
+                    $paymentOptions['payment_profile_id'] = $profile->id;
+                }
+            }
+        }
+        [$selectedMethod, $paymentDetails] = $this->resolvePaymentOptions($booking, $actor, $paymentOptions);
         $agentId = $this->agentUserId($booking);
         $invoice = $this->create(
             $booking, 'buyer', $agentId === null ? 'portal' : 'agent', 'buyer',
             $agentId, $booking->requester_user_id, $actor, $template, $distribution['buyer'], $due,
-            'invoice',
+            'invoice', $selectedMethod === null ? null : [$selectedMethod], $paymentDetails,
         );
         $booking->forceFill([
             'payment_state' => VenueBookingPaymentState::WINDOW_OPEN,
@@ -205,7 +232,7 @@ final readonly class VenueRentalInvoiceManager
     private function create(
         VenueBooking $booking, string $kind, string $issuerKind, string $payerKind,
         ?int $issuerUserId, ?int $payerUserId, Actor $actor,
-        ?VenueRentalInvoiceTemplate $template, int $amount, CarbonImmutable $due, string $documentKind,
+        ?VenueRentalInvoiceTemplate $template, int $amount, CarbonImmutable $due, string $documentKind, ?array $paymentMethods = null, ?array $paymentDetails = null,
     ): VenueRentalInvoice {
         $currency = (string) data_get($booking->quote_snapshot, 'pricing.currency', '');
         if ($amount < 0 || $amount > 1000000000000 || preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
@@ -233,7 +260,8 @@ final readonly class VenueRentalInvoiceManager
             'amount_minor' => $amount,
             'title' => $template?->title ?? $titles[$kind],
             'description' => $template?->description,
-            'payment_methods' => $template?->payment_methods ?? ['bank_transfer', 'cash', 'other'],
+            'payment_methods' => $paymentMethods ?? $template?->payment_methods ?? ['bank_transfer', 'cash', 'other'],
+            'payment_details' => $paymentDetails,
             'payment_instructions' => $template?->payment_instructions,
             'issued_at' => now(),
             'due_at' => $due,
@@ -265,7 +293,8 @@ final readonly class VenueRentalInvoiceManager
             'conversation_id' => $conversation->id,
             'author_actor_id' => $actor->id,
             'client_id' => (string) Str::uuid(),
-            'type' => 'text',
+            'type' => 'invoice',
+            'rental_invoice_id' => $invoice->id,
             'body' => "Выставлен счёт {$invoice->number} на {$amount} {$invoice->currency}. "
                 ."Срок до {$invoice->due_at->setTimezone('Europe/Moscow')->format('d.m.Y H:i')} (МСК). "
                 .'Оплата и её статус доступны в карточке заявки.',
@@ -278,10 +307,80 @@ final readonly class VenueRentalInvoiceManager
         });
     }
 
-    /** Buyer or agent reports transfer. This is not evidence that funds were received. */
-    public function claim(int $bookingId, int $invoiceId, Actor $actor, ?string $note): VenueRentalInvoice
+    /** @return array{0:?string,1:?array} */
+    private function resolvePaymentOptions(VenueBooking $booking, Actor $actor, array $options): array
     {
-        return $this->locked->run($bookingId, function (VenueBooking $booking) use ($invoiceId, $actor, $note): VenueRentalInvoice {
+        $method = $options['payment_method'] ?? null;
+        if (! in_array($method, [null, 'bank_transfer', 'sbp', 'cash', 'other'], true)) {
+            throw new VenueBookingTransitionException('Неизвестный способ оплаты.', 'INVOICE_INVALID_METHOD');
+        }
+        if ($method !== 'sbp') {
+            return [$method, null];
+        }
+        $profileId = $options['payment_profile_id'] ?? null;
+        if ($profileId !== null) {
+            $profile = VenueRentalPaymentProfile::query()
+                ->where('owner_user_id', $actor->user_id)
+                ->where('venue_id', $booking->venue_id)->find($profileId);
+            if ($profile === null) {
+                throw new VenueBookingTransitionException('Реквизиты недоступны.', 'INVOICE_PROFILE_FORBIDDEN');
+            }
+            return ['sbp', $profile->details];
+        }
+        $card = preg_replace('/\\D+/', '', (string) ($options['sbp_card'] ?? ''));
+        $phone = trim((string) ($options['sbp_phone'] ?? ''));
+        $bank = trim((string) ($options['sbp_bank'] ?? ''));
+        if ($bank === '' || ($phone === '' && $card === '')
+            || ($card !== '' && (strlen($card) < 16 || strlen($card) > 19))
+            || ($phone !== '' && preg_match('/^\\+?[0-9 ()-]{9,25}$/', $phone) !== 1)) {
+            throw new VenueBookingTransitionException('Укажите банк и корректный телефон или карту получателя.', 'INVOICE_SBP_INVALID');
+        }
+        $details = [
+            'bank' => $bank, 'phone' => $phone, 'card' => $card,
+            'purpose' => trim((string) ($options['transfer_purpose'] ?? '')),
+            'confirmation_hint' => trim((string) ($options['confirmation_hint'] ?? '')),
+        ];
+        if (! empty($options['save_profile'])) {
+            VenueRentalPaymentProfile::query()->create([
+                'owner_user_id' => $actor->user_id,
+                'venue_id' => $booking->venue_id,
+                'label' => mb_substr($bank.' · '.($phone ?: 'карта ••••'.substr($card, -4)), 0, 120),
+                'details' => $details,
+            ]);
+        }
+        return ['sbp', $details];
+    }
+
+    private function announceInvoiceClaim(VenueBooking $booking, Actor $actor, VenueRentalInvoice $invoice): void
+    {
+        if (! config('features.venue_rental.conversations', false)) {
+            return;
+        }
+        $conversation = VenueBookingConversation::query()->where($booking->conversationLookup())->first();
+        if ($conversation === null) {
+            return;
+        }
+        $message = VenueBookingMessage::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'conversation_id' => $conversation->id,
+            'author_actor_id' => $actor->id,
+            'client_id' => (string) Str::uuid(),
+            'type' => 'system',
+            'body' => 'Покупатель сообщил об оплате счёта '.$invoice->number
+                .'. Реквизиты операции переданы получателю. Получение денег ещё не подтверждено.',
+        ]);
+        DB::afterCommit(static function () use ($booking, $conversation, $message): void {
+            event(new VenueBookingMessageSent($booking->id, $conversation->id, $message->id));
+            broadcast(new VenueBookingMessageSentBroadcast(
+                $booking->public_id, $conversation->public_id, $message->public_id,
+            ))->toOthers();
+        });
+    }
+
+    /** Buyer or agent reports transfer. This is not evidence that funds were received. */
+    public function claim(int $bookingId, int $invoiceId, Actor $actor, ?string $note, ?string $reference = null): VenueRentalInvoice
+    {
+        return $this->locked->run($bookingId, function (VenueBooking $booking) use ($invoiceId, $actor, $note, $reference): VenueRentalInvoice {
             $this->assertEnabled($booking);
             $invoice = $this->invoice($booking, $invoiceId);
             $canClaim = ($invoice->kind === 'buyer' && $actor->user_id === $booking->requester_user_id)
@@ -295,8 +394,19 @@ final readonly class VenueRentalInvoiceManager
             if ($invoice->status !== 'issued' || ! now()->lessThan($invoice->due_at)) {
                 throw new VenueBookingTransitionException('Счёт больше не ожидает оплату.', 'INVOICE_EXPIRED');
             }
-            $invoice->update(['status' => 'claimed']);
-            $this->event($invoice, $actor, 'claim', 'issued', 'claimed', $note);
+            $reference = trim((string) $reference);
+            if (in_array('sbp', $invoice->payment_methods ?? [], true) && $reference === '') {
+                throw new VenueBookingTransitionException('Укажите номер операции перевода.', 'INVOICE_REFERENCE_REQUIRED');
+            }
+            $invoice->update([
+                'status' => 'claimed', 'payment_reference' => $reference ?: null,
+                'payment_claim_note' => trim((string) $note) ?: null,
+            ]);
+            $this->event($invoice, $actor, 'claim', 'issued', 'claimed',
+                'Номер операции: '.($reference ?: 'не указан').'; '.trim((string) $note));
+            if ($invoice->kind === 'buyer') {
+                $this->announceInvoiceClaim($booking, $actor, $invoice);
+            }
 
             return $invoice;
         });
@@ -319,7 +429,7 @@ final readonly class VenueRentalInvoiceManager
             if (! in_array($decision, ['received', 'postpay', 'self_attested'], true) || trim($note) === '') {
                 throw new VenueBookingTransitionException('Укажите решение и основание.', 'INVOICE_INVALID_DECISION');
             }
-            if (! in_array($method, ['bank_transfer', 'cash', 'other'], true)) {
+            if (! in_array($method, ['bank_transfer', 'sbp', 'cash', 'other'], true)) {
                 throw new VenueBookingTransitionException('Некорректный способ оплаты.', 'INVOICE_INVALID_METHOD');
             }
             if ($invoice->status === 'paid') {
@@ -392,6 +502,7 @@ final readonly class VenueRentalInvoiceManager
                     'actor_id' => $actor->id,
                     'amount_minor' => $invoice->amount_minor,
                     'method' => $method,
+                    'reference' => $invoice->payment_reference,
                     'note' => trim($note),
                     'verification' => $decision === 'self_attested' ? 'self_attested' : 'confirmed',
                     'recorded_at' => now(),
