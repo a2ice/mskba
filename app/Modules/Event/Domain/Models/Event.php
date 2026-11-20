@@ -70,7 +70,9 @@ class Event extends Model
         });
 
         static::saving(function (self $event): void {
-            if ($event->venue_id === null) {
+            // Event-first preferences explicitly permit any hall. Do not turn
+            // a nullable preference or an explicitly selected hall into the primary one.
+            if ($event->venue_id === null || $event->proposed_time_options !== null) {
                 return;
             }
 

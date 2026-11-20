@@ -89,8 +89,28 @@ final class UpdateEventHandler
             }
 
             if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
-                || $event->ends_at->lessThanOrEqualTo(now())) {
+                || $event->ends_at?->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('Завершённое или отменённое мероприятие нельзя редактировать.');
+            }
+
+            if ($event->starts_at === null && $event->booking_deferred && $event->status === EventStatusEnum::DRAFT) {
+                if (array_intersect(['venue_id', 'venue_court_id', 'starts_at', 'duration_minutes', 'booking_scope'], array_keys($data)) !== []) {
+                    throw new InvalidArgumentException('Дату и время черновика задайте на странице мероприятия.');
+                }
+                $maxParticipants = isset($data['max_participants']) ? (int) $data['max_participants'] : null;
+                if ($maxParticipants !== null && $maxParticipants < app(\App\Modules\Event\Application\Services\EventIdentityParticipationService::class)->confirmedIdentityCount($event)) {
+                    throw new InvalidArgumentException('Лимит участников не может быть меньше числа уже записавшихся.');
+                }
+                $event->forceFill([
+                    'title' => $data['title'],
+                    'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
+                    'type' => $requestedType,
+                    'visibility' => EventVisibilityEnum::from($data['visibility']),
+                    'description' => $data['description'] ?? null,
+                    'max_participants' => $maxParticipants,
+                ])->save();
+
+                return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
             }
 
             $booking = VenueBooking::query()
@@ -115,7 +135,7 @@ final class UpdateEventHandler
                     ->where('venue_id', $targetVenue->id)
                     ->whereKey($requestedCourtId)
                     ->first()
-                : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->first());
+                : ($event->proposed_time_options !== null ? null : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->first()));
             if ($requestedCourtId !== null && $targetCourt === null) {
                 throw new InvalidArgumentException('Выбранная игровая зона отсутствует на площадке.');
             }
@@ -212,6 +232,9 @@ final class UpdateEventHandler
                 'planned_booking_scope' => $bookingScope,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
+                'proposed_time_options' => $bookingChanged && $event->proposed_time_options !== null
+                    ? [['starts_at' => $localStart->format('Y-m-d\TH:i'), 'duration_minutes' => $durationMinutes]]
+                    : $event->proposed_time_options,
                 'participation_confirmation_version' => $bookingChanged
                     ? $event->participation_confirmation_version + 1
                     : $event->participation_confirmation_version,
