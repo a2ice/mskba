@@ -144,6 +144,7 @@ final class EventFirstCreationController extends Controller
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
             // The event can be created independently from its optional Game child.
             'create_game' => ['sometimes', 'boolean'],
+            'add_organizer_role' => ['sometimes', 'boolean'],
             'game_format' => ['nullable', Rule::enum(GameFormatEnum::class)],
             'game_recruitment_mode' => ['nullable', Rule::enum(GameRecruitmentModeEnum::class)],
             'game_accepts_applications' => ['nullable', 'boolean'],

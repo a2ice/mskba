@@ -198,6 +198,9 @@
     @else
         <input type="hidden" name="publish_to_telegram" value="0">
     @endif
+    @if($formAction === route('events.store'))
+        @include('components.event-organizer-role-toggle')
+    @endif
     <button
         class="btn btn--primary"
         type="submit"
