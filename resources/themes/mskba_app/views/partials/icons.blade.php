@@ -16,6 +16,7 @@
   <symbol id="message" viewBox="0 0 24 24"><path d="M4 5h16v13H8l-4 3V5z"/><path d="M8 10h8"/><path d="M8 14h6"/></symbol>
   <symbol id="bell" viewBox="0 0 24 24"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/></symbol>
   <symbol id="home" viewBox="0 0 24 24"><path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.003L12 2l3.086 6.252 6.9 1.003-4.993 4.867 1.179 6.873z"/></symbol>
   <symbol id="user" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
   {{-- Tabler Icons Outline 3.46.0: currency-ruble and file-description. --}}
   <symbol id="currency-ruble" viewBox="0 0 24 24"><path d="M8 19v-14h6a3 3 0 0 1 0 6h-8"/><path d="M14 15h-8"/></symbol>
