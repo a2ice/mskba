@@ -234,7 +234,9 @@ final class EventController extends Controller
             return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
         }
         $item = $events->handle($event, $actor);
-        if ($item->starts_at === null) {
+        $nativeEvent = app(ThemeResolver::class)->active() === 'mskba_app'
+            && ($item->proposed_time_options !== null || $item->starts_at === null);
+        if ($item->starts_at === null && ! $nativeEvent) {
             return ThemeResolver::page('events.unscheduled', ['event' => $item]);
         }
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
@@ -253,13 +255,13 @@ final class EventController extends Controller
             '%s «%s» — %s%s. Участники, место проведения и актуальная информация на MSKBA.',
             $item->type->label(),
             $item->title,
-            $item->starts_at->timezone((string) config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i'),
+            $item->starts_at?->timezone((string) config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i') ?? 'Дата пока не определена',
             $item->venue ? ' на площадке «'.$item->venue->name.'»' : '',
         );
         $seoDescription = $item->description ?: $generatedDescription;
 
-        return ThemeResolver::page($item->type === EventTypeEnum::GAME && $item->primaryGame !== null
-                ? 'events.game-show' : 'events.show', [
+        return ThemeResolver::page($nativeEvent ? 'events.event-first-show' : ($item->type === EventTypeEnum::GAME && $item->primaryGame !== null
+                ? 'events.game-show' : 'events.show'), [
             'event' => $item,
             'game' => $item->primaryGame,
             'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
@@ -304,13 +306,13 @@ final class EventController extends Controller
         abort_unless($access->allows($item, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT), 403);
 
         if (in_array($item->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
-            || $item->ends_at->lessThanOrEqualTo(now())) {
+            || $item->ends_at?->lessThanOrEqualTo(now())) {
             return redirect()->route('events.show', $item->routeIdentifier())
                 ->with('error', 'Завершённое или отменённое мероприятие нельзя редактировать.');
         }
 
-        $canReschedule = ($item->booking_deferred && $item->booking_id === null)
-            || ($item->booking_id === null && $item->venue->hasFreeAccess());
+        $canReschedule = $item->starts_at !== null && (($item->booking_deferred && $item->booking_id === null)
+            || ($item->booking_id === null && $item->venue->hasFreeAccess()));
         $availableVenues = $venues->handle(freeOnly: ! $item->booking_deferred);
 
         if (! $availableVenues->contains('id', $item->venue_id)) {
@@ -325,7 +327,7 @@ final class EventController extends Controller
             'visibilities' => EventVisibilityEnum::cases(),
             'canReschedule' => $canReschedule,
             'durationOptions' => range(30, 480, 30),
-            'currentDuration' => (int) $item->starts_at->diffInMinutes($item->ends_at),
+            'currentDuration' => $item->starts_at && $item->ends_at ? (int) $item->starts_at->diffInMinutes($item->ends_at) : 90,
         ]);
     }
 
