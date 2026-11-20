@@ -197,6 +197,9 @@
 .venue-play-dialog [hidden]{display:none!important}
 .venue-play-dialog__detail>a{justify-self:start;max-width:100%;white-space:normal}
 .venue-play-dialog__roster>button{justify-self:start}
+.venue-play-dialog>[data-action-toast-modal]{position:absolute;inset:auto 12px 12px auto;z-index:40;width:min(320px,calc(100% - 24px));max-height:50%;overflow:auto}
+.venue-play-dialog>[data-action-toast-modal] .app-action-toast{opacity:1;overflow-wrap:anywhere}
+.notification-toast-region .app-action-toast--error{border-color:var(--danger,#ff8a8a)}
 .venue-play-dialog__rsvp,.venue-play-dialog__message-footer{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .venue-play-dialog__rsvp .is-selected{outline:2px solid var(--accent,#ec792e);outline-offset:2px}
 .venue-play-dialog__rsvp button{min-height:44px}
