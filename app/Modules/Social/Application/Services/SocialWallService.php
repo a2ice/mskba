@@ -49,12 +49,18 @@ final class SocialWallService
 
     public function canCommentOnEvent(Event $event, ?User $user): bool
     {
-        if ($user === null || ! $user->canonical()->isConfirmed() || $user->canonical()->isBlocked()) {
+        $user = $user?->canonical();
+        if ($user === null || $user->trashed() || $user->isBlocked()) {
             return false;
         }
 
-        $identityIds = $user->canonical()->identityIds();
-        $isOrganizer = $event->organizerActor()->whereIn('user_id', $identityIds)->exists();
+        $identityIds = $user->identityIds();
+        if ($event->organizerActor()->whereIn('user_id', $identityIds)->exists()) {
+            return true;
+        }
+        if (! $user->isConfirmed()) {
+            return false;
+        }
         $isParticipant = $event->participants()
             ->whereIn('user_id', $identityIds)
             ->where('confirmation_version', $event->participation_confirmation_version)
@@ -63,7 +69,7 @@ final class SocialWallService
                 EventParticipantStatusEnum::TENTATIVE->value,
             ])->exists();
 
-        return $isOrganizer || $isParticipant;
+        return $isParticipant;
     }
 
     /** @return Collection<int, SocialWallEntry> */
@@ -103,7 +109,7 @@ final class SocialWallService
     public function postEventComment(Event $event, User $user, string $body, string $requestId): SocialWallEntry
     {
         if (! $this->canCommentOnEvent($event, $user)) {
-            abort(403, 'Комментировать могут только подтверждённые участники мероприятия.');
+            abort(403, 'Комментировать могут организатор и подтверждённые участники мероприятия.');
         }
 
         $body = trim($body);
