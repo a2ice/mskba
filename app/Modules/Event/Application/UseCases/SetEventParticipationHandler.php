@@ -65,7 +65,7 @@ final class SetEventParticipationHandler
             $previousStatus = $participant?->status;
             $roles = $participant?->participation_roles ?: ['player'];
             if ($status === EventParticipantStatusEnum::CONFIRMED
-                && $participant?->status !== EventParticipantStatusEnum::CONFIRMED
+                && ($participant?->status !== EventParticipantStatusEnum::CONFIRMED || $participant->confirmation_version !== $event->participation_confirmation_version)
                 && in_array('player', $roles, true)
                 && $event->max_participants !== null
                 && $this->identityParticipation->confirmedIdentityCount($event) >= $event->max_participants) {
