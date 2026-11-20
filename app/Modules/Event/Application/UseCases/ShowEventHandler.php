@@ -29,8 +29,8 @@ final class ShowEventHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
                 'court.media' => fn ($query) => $query->where('collection', 'gallery')->orderByDesc('is_featured')->orderBy('sort_order'),
-                'booking.court',
-                'sourceBooking.court',
+                'booking.court.media',
+                'sourceBooking.court.media',
                 'venueInterests',
                 'venueRevisions.previousVenue',
                 'venueRevisions.nextVenue',
@@ -76,6 +76,8 @@ final class ShowEventHandler
         $isInvited = $event->proposed_time_options !== null
             && $event->status === EventStatusEnum::PUBLISHED
             && $actor?->user !== null
+            && ! $actor->user->canonical()->trashed()
+            && ! $actor->user->canonical()->isBlocked()
             && $event->participants->contains(fn ($participant) => in_array((int) $participant->user_id, $actor->user->canonical()->identityIds(), true));
 
         if (! $isPublic && ! $canManage && ! $isInvited) {
