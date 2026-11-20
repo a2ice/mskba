@@ -62,6 +62,7 @@ final class SaveContentItemRequest extends FormRequest
             'meta_keywords' => ['nullable', 'string', 'max:1000'],
             'publish_in_feed' => ['nullable', 'boolean'],
             'publish_in_telegram' => ['nullable', 'boolean'],
+            'publish_in_vk' => ['nullable', 'boolean'],
             'telegram_chat_ids' => ['nullable', 'array'],
             'telegram_chat_ids.*' => [
                 'integer',
@@ -134,6 +135,14 @@ final class SaveContentItemRequest extends FormRequest
                 $link = trim((string) $this->input('link_url'));
                 if ($link !== '' && ! str_starts_with($link, '/') && filter_var($link, FILTER_VALIDATE_URL) === false) {
                     $validator->errors()->add('link_url', 'Укажите внутренний путь или полный URL.');
+                }
+
+                if ($type !== ContentTypeEnum::FAQ && $this->boolean('publish_in_vk')) {
+                    if (! \App\Modules\Vk\Application\Services\VkWallPublisher::configured()) {
+                        $validator->errors()->add('publish_in_vk', 'Публикация во ВКонтакте не настроена.');
+                    } elseif ($this->input('status', $content?->status?->value ?? 'published') !== 'published' || ! $this->boolean('publish_in_feed')) {
+                        $validator->errors()->add('publish_in_vk', 'Для ВКонтакте необходимо опубликовать материал в ленте сайта.');
+                    }
                 }
 
                 if ($type !== ContentTypeEnum::FAQ
