@@ -116,9 +116,10 @@ final class EventSocialWallTest extends TestCase
         $url = $entry['edit_url'];
         $this->assertTrue($entry['can_edit']);
         $this->assertSame(1, $entry['version']);
+        $this->assertFalse($entry['edited']);
 
         $this->patchJson($url, ['body' => '  Первая версия  ', 'version' => 1])
-            ->assertOk()->assertJsonPath('entry.version', 1);
+            ->assertOk()->assertJsonPath('entry.version', 1)->assertJsonPath('entry.edited', false);
         $this->assertSame(1, DB::table('social_action_logs')->where('user_id', $author->id)->count());
 
         $this->patchJson($url, ['body' => 'Вторая версия', 'version' => 1])
@@ -133,17 +134,64 @@ final class EventSocialWallTest extends TestCase
 
         $this->travel(61)->seconds();
         $this->patchJson($url, ['body' => 'Четвёртая версия', 'version' => 3])
-            ->assertOk()->assertJsonPath('entry.version', 4)->assertJsonPath('entry.date', $entry['date']);
+            ->assertOk()->assertJsonPath('entry.version', 4)
+            ->assertJsonPath('entry.edited', true)->assertJsonPath('entry.date', now()->format('d.m.Y H:i'));
         $this->getJson(route('events.wall.index', $event->routeIdentifier()))
             ->assertOk()->assertJsonCount(1, 'entries')
             ->assertJsonPath('entries.0.id', $id)
             ->assertJsonPath('entries.0.text', 'Четвёртая версия')
+            ->assertJsonPath('entries.0.edited', true)
+            ->assertJsonPath('entries.0.date', now()->format('d.m.Y H:i'))
             ->assertJsonMissingPath('entries.0.previous_versions');
 
         $stored = \App\Modules\Social\Domain\Models\SocialWallEntry::findOrFail($id);
         $this->assertSame('Четвёртая версия', $stored->body);
         $this->assertSame([2, 3], array_column($stored->metadata['previous_versions'], 'version'));
         $this->assertSame(['Вторая версия', 'Третья версия'], array_column($stored->metadata['previous_versions'], 'body'));
+    }
+
+    public function test_event_wall_loads_latest_ten_then_older_visible_entries_without_gaps(): void
+    {
+        $event = $this->event();
+        $otherEvent = $this->event();
+        $author = $event->organizerActor->user;
+        $this->actingAs($author);
+        $model = \App\Modules\Social\Domain\Models\SocialWallEntry::class;
+        $ids = [];
+        for ($i = 1; $i <= 24; $i++) {
+            $row = $model::query()->create([
+                'scope_type' => 'event', 'scope_id' => $event->id,
+                'actor_user_id' => $author->id, 'kind' => 'comment',
+                'body' => 'Сообщение '.$i,
+                'deleted_at' => in_array($i, [5, 15], true) ? now() : null,
+            ]);
+            if ($row->deleted_at === null) {
+                $ids[] = $row->id;
+            }
+            $model::query()->create([
+                'scope_type' => 'event', 'scope_id' => $otherEvent->id,
+                'kind' => 'comment', 'body' => 'Другое мероприятие',
+            ]);
+        }
+        $url = route('events.wall.index', $event->routeIdentifier());
+        $latest = $this->getJson($url)->assertOk()->assertJsonCount(10, 'entries')
+            ->assertJsonPath('has_older', true);
+        $this->assertSame(array_slice($ids, 12), array_column($latest->json('entries'), 'id'));
+
+        $middle = $this->getJson($url.'?before_id='.$ids[12])->assertOk()
+            ->assertJsonCount(10, 'entries')->assertJsonPath('has_older', true);
+        $this->assertSame(array_slice($ids, 2, 10), array_column($middle->json('entries'), 'id'));
+
+        $first = $this->getJson($url.'?before_id='.$ids[2])->assertOk()
+            ->assertJsonCount(2, 'entries')->assertJsonPath('has_older', false);
+        $this->assertSame(array_slice($ids, 0, 2), array_column($first->json('entries'), 'id'));
+        $this->getJson($url.'?before_id='.$ids[0])->assertOk()
+            ->assertJsonCount(0, 'entries')->assertJsonPath('has_older', false);
+
+        $forward = $this->getJson($url.'?after_id='.$ids[19])->assertOk()
+            ->assertJsonCount(2, 'entries');
+        $this->assertSame(array_slice($ids, 20), array_column($forward->json('entries'), 'id'));
+        $this->getJson($url.'?after_id=0&before_id='.$ids[12])->assertUnprocessable();
     }
 
     public function test_edit_comment_rejects_other_authors_wrong_scope_hidden_deleted_and_system_entries(): void
