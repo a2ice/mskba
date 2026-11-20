@@ -109,7 +109,7 @@
                 <label class="quick-event-dialog__field"><span>Дата</span>
                     <input type="date" data-quick-date min="{{ now(config('app.timezone','Europe/Moscow'))->format('Y-m-d') }}"></label>
                 <label class="quick-event-dialog__field"><span>Время начала</span>
-                    <input type="time" data-quick-time step="1800"></label>
+                    <input type="time" data-quick-time step="60"></label>
             </div>
             <div class="quick-event-dialog__grid">
                 <label class="quick-event-dialog__field"><span>Продолжительность</span>
@@ -139,6 +139,7 @@
             <h3>3. Подтверждение</h3>
             <div data-quick-review></div>
             <p class="quick-event-dialog__hint"><strong>Важно:</strong> создание мероприятия или предварительной заявки не является бронированием. Менеджер площадки согласует время и условия отдельно.</p>
+            @include('components.event-organizer-attendance-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             @include('components.event-organizer-role-toggle', ['organizerToggleClass' => 'quick-event-dialog__game-toggle'])
             <p data-quick-feedback role="alert" hidden></p>
         </section>

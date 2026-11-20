@@ -28,9 +28,6 @@
     $declinedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::LEFT)
         ->where('confirmation_version', $event->participation_confirmation_version)
-        // An organizer who never opted in did not decline an invitation.
-        ->reject(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER
-            && $participant->participation_roles === [])
         ->values();
     $playerParticipants = $confirmedParticipants->filter(fn ($participant) => $participant->hasPlayerRole());
     $confirmedCount = $playerParticipants->count();
@@ -63,11 +60,11 @@
     $isFuture = $event->ends_at->isFuture();
     $isCompleted = $event->status === EventStatusEnum::COMPLETED;
     $isParticipationWindowOpen = $event->status === EventStatusEnum::PUBLISHED
-        && $event->visibility === EventVisibilityEnum::PUBLIC
+        && ($event->visibility === EventVisibilityEnum::PUBLIC || $isOrganizer)
         && $isFuture;
     $isRegistrationOpen = $isParticipationWindowOpen
         && ($remainingPlaces === null || $remainingPlaces > 0);
-    $canRespond = $isParticipationWindowOpen && ! $isOrganizer;
+    $canRespond = $isParticipationWindowOpen;
     $needsReconfirmation = $currentParticipant !== null
         && ! $isOrganizer
         && $currentParticipant->confirmation_version < $event->participation_confirmation_version;

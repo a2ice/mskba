@@ -146,19 +146,25 @@
             if(mode)mode.checked=true;
         }
     }
-    function addSlot(){
-        if(!validate(venueSearch))return;
-        if(!date.value){date.setCustomValidity('Выберите дату.');validate(date);date.setCustomValidity('');return;}
-        if(!time.value){time.setCustomValidity('Выберите время.');validate(time);time.setCustomValidity('');return;}
+    function addSlot({automatic=false}={}){
+        if(!validate(venueSearch))return false;
+        if(!date.value){date.setCustomValidity('Выберите дату.');validate(date);date.setCustomValidity('');return false;}
+        if(!time.value){time.setCustomValidity('Выберите время.');validate(time);time.setCustomValidity('');return false;}
+        if(!validate(date)||!validate(time)||!validate(duration))return false;
         const item={starts_at:date.value+'T'+time.value,duration_minutes:Number(duration.value)};
         if(slots.some(x=>x.starts_at===item.starts_at&&x.duration_minutes===item.duration_minutes)){
-            availability.hidden=false;availability.textContent='Такой интервал уже добавлен.';return;
+            if(!automatic){availability.hidden=false;availability.textContent='Такой интервал уже добавлен.';return false;}
+        }else{
+            if(slots.length>=8){availability.hidden=false;availability.textContent='Можно выбрать до восьми интервалов.';return false;}
+            slots.push(item);renderSlots();
         }
-        if(slots.length>=8){availability.hidden=false;availability.textContent='Можно выбрать до восьми интервалов.';return;}
-        slots.push(item);renderSlots();
+        // Consume the pending selection. Navigating back or removing a saved
+        // interval must not silently re-add it on the next transition.
+        date.value='';time.value='';
         availability.hidden=false;availability.textContent='Интервал добавлен. Можешь указать ещё один вариант времени.';
+        return true;
     }
-    form.querySelector('[data-quick-add-slot]').addEventListener('click',addSlot);
+    form.querySelector('[data-quick-add-slot]').addEventListener('click',()=>addSlot());
     async function loadDaySchedule(){
         availability.hidden=false;availability.textContent='Загружаем расписание…';
         if(!venue.value||!date.value){availability.textContent='Сначала выберите площадку и дату.';return;}
@@ -224,6 +230,13 @@
                 if(!validate(field))return;
             }
         }
+        if(step===1&&(date.value||time.value)){
+            const previousCount=slots.length;
+            if(!addSlot({automatic:true}))return;
+            // The second interval reveals the choice between separate events
+            // and alternative times; let the user make that choice first.
+            if(previousCount<2&&slots.length===2)return;
+        }
         setStep(step+1);
     };
     next.addEventListener('click',goNext);
@@ -264,13 +277,15 @@
     function restore(saved){
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
-            if(name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role')continue;
+            if(name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }
         editingTitle=true;
         if(venue.value)venue.dispatchEvent(new Event('change',{bubbles:true}));
         createGame.checked=saved.draft.create_game!=='0';
+        const attendance=form.querySelector('[data-event-organizer-attendance]');
+        if(attendance) attendance.checked=String(saved.draft.organizer_participates??'1')==='1';
         const organizerRole=form.querySelector('[data-event-organizer-role]');
         if(organizerRole && Object.hasOwn(saved.draft,'add_organizer_role')) organizerRole.checked=saved.draft.add_organizer_role==='1';
         syncType();syncFormat();syncCourts();

@@ -60,6 +60,7 @@ final class EventFirstCreationController extends Controller
                     : $baseTitle;
                 $payload = [
                     ...$input,
+                    'participation_roles' => ['player'],
                     'event_request_id' => $requestId,
                     'title' => mb_substr($name, 0, 150),
                     'starts_at' => $first['starts_at'] ?? null,
@@ -145,6 +146,7 @@ final class EventFirstCreationController extends Controller
             // The event can be created independently from its optional Game child.
             'create_game' => ['sometimes', 'boolean'],
             'add_organizer_role' => ['sometimes', 'boolean'],
+            'organizer_participates' => ['sometimes', 'boolean'],
             'game_format' => ['nullable', Rule::enum(GameFormatEnum::class)],
             'game_recruitment_mode' => ['nullable', Rule::enum(GameRecruitmentModeEnum::class)],
             'game_accepts_applications' => ['nullable', 'boolean'],

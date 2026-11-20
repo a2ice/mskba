@@ -79,12 +79,11 @@
                     </div>
                     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
                 </section>
-                    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие" @if($isMyEvent) hidden @endif>
+                    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
                         <button type="button" class="{{ $primaryButton }}" data-venue-play-rsvp="confirmed">Пойду</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="left" hidden>Не пойду</button>
                     </div>
-                    <p class="muted" data-venue-play-organizer-notice @if(!$isMyEvent) hidden @endif>Ты организатор. Участием можно управлять на странице мероприятия.</p>
                 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
                 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
                     <h4>Обсуждение и действия</h4>
@@ -187,6 +186,7 @@
 .venue-play-dialog__participant-name{min-width:0;overflow-wrap:anywhere}
 .venue-play-dialog__participant-status{display:inline-block;flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:#d97706}
 .venue-play-dialog__participant-status.is-confirmed{background:#16a34a}
+.venue-play-dialog__participant-status.is-declined{background:#dc2626}
 .venue-play-dialog__participant-star{flex:none;color:#eab308;width:17px;height:17px;display:grid;place-items:center}
 .venue-play-dialog__participant-star svg{width:100%;height:100%;fill:currentColor;stroke:currentColor}
 .venue-play-dialog__avatar{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--surface-raised,var(--field,#444))}
