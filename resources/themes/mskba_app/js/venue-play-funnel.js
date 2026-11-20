@@ -306,6 +306,17 @@ import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js
         }finally{saving=false;savingPane=null;rosterBusy(pane,false);}
     }
     if(!pageMode)document.addEventListener('click',event=>{
+        const direct=event.target.closest?.('[data-venue-play-open-event]');
+        if(direct){
+            if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+            const id=Number(direct.dataset.venuePlayOpenEvent);
+            // Keep a real link fallback if the event is no longer available.
+            if(!getPane(id))return;
+            event.preventDefault();
+            if(!dialog.open)dialog.showModal();
+            showEvent(id);
+            return;
+        }
         const opener=event.target.closest?.('[data-venue-play-open]');
         if(!opener||opener.disabled)return;
         event.preventDefault();open();
