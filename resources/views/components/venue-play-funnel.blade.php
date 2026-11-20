@@ -87,7 +87,7 @@
                     </div>
                 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
                 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
-                    <ol class="venue-play-dialog__messages" data-venue-play-messages aria-live="polite"></ol>
+                    <ol class="venue-play-dialog__messages mskba-scroll" data-venue-play-messages aria-live="polite"></ol>
                     <p class="muted" data-venue-play-wall-empty>Загружаем обсуждение…</p>
                     <form data-venue-play-message-form hidden>
                         <textarea id="venue-play-message-{{ $upcoming->id }}" name="body" maxlength="200" rows="2" required
@@ -230,7 +230,7 @@
 .venue-play-dialog__feedback{padding:10px;border-radius:8px;background:var(--field,#333)}
 .venue-play-dialog__feedback.is-error{color:#f9a3a3}
 .venue-play-dialog__wall{display:grid;gap:10px}
-.venue-play-dialog__messages{display:grid;gap:10px;max-height:250px;overflow-y:auto;list-style:none;padding:0;margin:0}
+.venue-play-dialog__messages{display:grid;gap:10px;max-height:250px;overflow-y:auto;overflow-anchor:none;overscroll-behavior:contain;list-style:none;padding:0;margin:0}
 .venue-play-dialog__messages li{padding:10px 12px;border-radius:8px;background:var(--field,#30343a);overflow-wrap:anywhere}
 .venue-play-dialog__messages li:has(.venue-play-dialog__edit){position:relative;padding-right:48px}
 .venue-play-dialog__edit,.venue-play-dialog__edit-cancel{display:inline-grid;place-items:center;min-width:36px;min-height:36px;border:0;background:transparent;color:inherit;cursor:pointer;border-radius:5px}

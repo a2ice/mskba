@@ -73,7 +73,7 @@ final class SocialWallService
     }
 
     /** @return Collection<int, SocialWallEntry> */
-    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null): Collection
+    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null, ?int $beforeId = null): Collection
     {
         $query = SocialWallEntry::query()
             ->where('scope_type', 'event')->where('scope_id', $event->id)
@@ -83,6 +83,10 @@ final class SocialWallService
         if ($afterId !== null) {
             return $query->where('id', '>', $afterId)->orderBy('id')
                 ->limit(max(1, min(100, $limit)))->get();
+        }
+
+        if ($beforeId !== null) {
+            $query->where('id', '<', $beforeId);
         }
 
         return $query->orderByDesc('id')->limit(max(1, min(100, $limit)))
@@ -275,6 +279,11 @@ final class SocialWallService
         };
         $hidden = $entry->hidden_at !== null;
         $deleted = $entry->deleted_at !== null;
+        $editedAt = $entry->kind === 'comment' && ! $hidden && ! $deleted
+            ? ($entry->metadata['edited_at'] ?? null) : null;
+        $displayDate = $editedAt !== null
+            ? \Illuminate\Support\Carbon::parse($editedAt)->setTimezone(config('app.timezone'))
+            : $entry->created_at;
         return [
             'id' => $entry->id,
             'kind' => $entry->kind,
@@ -287,7 +296,8 @@ final class SocialWallService
             'system' => $entry->kind !== 'comment',
             'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
             'version' => $entry->kind === 'comment' ? (int) ($entry->metadata['version'] ?? 1) : null,
-            'date' => $entry->created_at?->format('d.m.Y H:i'),
+            'date' => $displayDate?->format('d.m.Y H:i'),
+            'edited' => $editedAt !== null,
         ];
     }
 }
