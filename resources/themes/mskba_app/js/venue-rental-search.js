@@ -1,5 +1,10 @@
 import { addDays, rentalDefaults, summarizeRental, rangeSlots, eligibleRuns, groupRentalSlots } from './venue-rental-search-logic.js';
 
+function criteriaForDay(date, criteria) {
+    return date >= criteria.from && date <= criteria.to ? criteria
+        : {from:date, to:date, fromTime:'00:00', toTime:'23:59'};
+}
+
 const dialog = document.querySelector('[data-rental-search-dialog]');
 const result = document.querySelector('[data-venue-day-dialog]');
 if (dialog && result) {
@@ -120,8 +125,10 @@ if (dialog && result) {
                 criteria, courts:results, courtId:first.id,
                 date:first.days.find(day => eligibleRuns(day,criteria).length)?.date || criteria.from,
                 note:summarizeRental(days,criteria,results.some(court => court.failed)),
-                filterSlots:data => rangeSlots(data,criteria),
-                eligibleSlots:data => eligibleRuns(data,criteria),
+                // Outside the original dates, browse the entire day without
+                // changing the remembered request or its summary.
+                filterSlots:data => rangeSlots(data, criteriaForDay(data.date, criteria)),
+                eligibleSlots:data => eligibleRuns(data, criteriaForDay(data.date, criteria)),
                 groupSlots:groupRentalSlots,
                 back:() => open(false),
             }}));
