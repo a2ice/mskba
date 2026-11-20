@@ -73,15 +73,20 @@ final class SocialWallService
     }
 
     /** @return Collection<int, SocialWallEntry> */
-    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null): Collection
+    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null, ?int $beforeId = null): Collection
     {
         $query = SocialWallEntry::query()
             ->where('scope_type', 'event')->where('scope_id', $event->id)
-            ->with(['actor:id,username,deleted_at', 'target:id,username,deleted_at']);
+            ->whereNull('deleted_at')
+            ->with(['actor:id,username,nickname,deleted_at', 'target:id,username,deleted_at']);
 
         if ($afterId !== null) {
             return $query->where('id', '>', $afterId)->orderBy('id')
                 ->limit(max(1, min(100, $limit)))->get();
+        }
+
+        if ($beforeId !== null) {
+            $query->where('id', '<', $beforeId);
         }
 
         return $query->orderByDesc('id')->limit(max(1, min(100, $limit)))
@@ -139,6 +144,47 @@ final class SocialWallService
                 'body' => $body,
                 'client_request_id' => $requestId,
             ]);
+
+            return ['changed' => true, 'value' => $entry->load(['actor', 'target'])];
+        });
+    }
+
+    public function editOwnEventComment(Event $event, User $user, int $id, string $body, int $version): SocialWallEntry
+    {
+        $body = trim($body);
+        if ($body === '' || mb_strlen($body) > 200) {
+            throw new InvalidArgumentException('Сообщение должно содержать от 1 до 200 символов.');
+        }
+
+        $user = $user->canonical();
+        abort_unless($this->canCommentOnEvent($event, $user), 403);
+
+        return $this->limiter->run($user, 'event', $event->id, 'comment_edit', function () use ($event, $user, $id, $body, $version): array {
+            $entry = SocialWallEntry::query()
+                ->where('scope_type', 'event')->where('scope_id', $event->id)
+                ->where('kind', 'comment')->where('actor_user_id', $user->id)
+                ->whereNull('deleted_at')->whereNull('hidden_at')
+                ->lockForUpdate()->findOrFail($id);
+
+            $metadata = $entry->metadata ?? [];
+            $currentVersion = (int) ($metadata['version'] ?? 1);
+            if (trim((string) $entry->body) === $body) {
+                return ['changed' => false, 'value' => $entry->load(['actor', 'target'])];
+            }
+
+            abort_unless($version === $currentVersion, 409, 'Сообщение уже изменилось. Обнови обсуждение.');
+
+            $history = $metadata['previous_versions'] ?? [];
+            $history[] = [
+                'version' => $currentVersion,
+                'body' => $entry->body,
+                'created_at' => $metadata['edited_at'] ?? $entry->created_at?->toIso8601String(),
+            ];
+            $metadata['previous_versions'] = array_slice($history, -2);
+            $metadata['version'] = $currentVersion + 1;
+            $metadata['edited_at'] = now()->toIso8601String();
+
+            $entry->forceFill(['body' => $body, 'metadata' => $metadata])->save();
 
             return ['changed' => true, 'value' => $entry->load(['actor', 'target'])];
         });
@@ -202,8 +248,10 @@ final class SocialWallService
     public function present(SocialWallEntry $entry): array
     {
         $actor = $entry->actor;
-        $name = $actor !== null && ! $actor->trashed() && filled($actor->username)
-            ? $actor->username : 'Удалённый пользователь';
+        $actorName = $entry->scope_type === 'event' && filled($actor?->nickname)
+            ? $actor->nickname : $actor?->username;
+        $name = $actor !== null && ! $actor->trashed() && filled($actorName)
+            ? $actorName : 'Удалённый пользователь';
         $target = $entry->target;
         $targetName = $target !== null && ! $target->trashed() && filled($target->username)
             ? $target->username : 'Удалённый пользователь';
@@ -230,17 +278,26 @@ final class SocialWallService
             default => $name.' выполнил действие.',
         };
         $hidden = $entry->hidden_at !== null;
+        $deleted = $entry->deleted_at !== null;
+        $editedAt = $entry->kind === 'comment' && ! $hidden && ! $deleted
+            ? ($entry->metadata['edited_at'] ?? null) : null;
+        $displayDate = $editedAt !== null
+            ? \Illuminate\Support\Carbon::parse($editedAt)->setTimezone(config('app.timezone'))
+            : $entry->created_at;
         return [
             'id' => $entry->id,
             'kind' => $entry->kind,
             'actor' => $name,
             'text' => $entry->kind === 'comment'
-                ? ($hidden ? 'Сообщение скрыто модератором.' : $entry->body)
+                ? ($deleted ? null : ($hidden ? 'Сообщение скрыто модератором.' : $entry->body))
                 : $message,
             'deleted' => $entry->deleted_at !== null,
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
-            'date' => $entry->created_at?->format('d.m.Y H:i'),
+            'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
+            'version' => $entry->kind === 'comment' ? (int) ($entry->metadata['version'] ?? 1) : null,
+            'date' => $displayDate?->format('d.m.Y H:i'),
+            'edited' => $editedAt !== null,
         ];
     }
 }

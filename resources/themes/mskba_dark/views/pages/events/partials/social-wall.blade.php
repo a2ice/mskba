@@ -45,7 +45,7 @@
                         data-event-wall-entry="{{ $entry->id }}">
                         <div class="event-social-wall__entry-head">
                             <strong>{{ $display['system'] ? 'Событие' : $display['actor'] }}</strong>
-                            <time>{{ $display['date'] }}</time>
+                            <time>{{ $display['date'] }}{{ $display['edited'] ? ' (изменено)' : '' }}</time>
                         </div>
                         <p class="event-social-wall__entry-text @if($display['deleted'] && !$display['system']) is-struck @endif">{{ $display['text'] }}</p>
                         @if($display['deleted'] && !$display['system'])
@@ -85,7 +85,7 @@
                 @php($display = $wallPresenter->present($entry))
                 <li class="event-social-wall__entry is-system" data-event-wall-entry="{{ $entry->id }}">
                     <div class="event-social-wall__entry-head">
-                        <strong>Событие</strong><time>{{ $display['date'] }}</time>
+                        <strong>Событие</strong><time>{{ $display['date'] }}{{ $display['edited'] ? ' (изменено)' : '' }}</time>
                     </div>
                     <p class="event-social-wall__entry-text">{{ $display['text'] }}</p>
                 </li>

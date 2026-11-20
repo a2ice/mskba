@@ -78,9 +78,10 @@ final class EventNativePageTest extends TestCase
             ->assertSee($venue->name)
             ->assertSee('Посмотреть на карте')
             ->assertSee('Посмотреть занятость')
-            ->assertSee('Организатор')
-            ->assertSee('Обсуждение и история')
-            ->assertSee('data-event-wall-form', false)
+            ->assertSee('data-venue-play-page', false)
+            ->assertSee('data-venue-play-message-form', false)
+            ->assertSee('data-venue-play-edit-cancel', false)
+            ->assertSee('data-venue-play-delete-dialog', false)
             ->assertSee('Указать дату и время')
             ->assertDontSee('id="event-booking"', false);
 
@@ -88,7 +89,7 @@ final class EventNativePageTest extends TestCase
         $organizer = $event->participants()->firstOrFail();
         $this->assertSame(EventParticipantRoleEnum::ORGANIZER, $organizer->role);
         $this->assertSame(EventParticipantStatusEnum::LEFT, $organizer->status);
-        $this->get($url)->assertOk()->assertSee('Не пойдёт')->assertSee('data-event-wall-form', false);
+        $this->get($url)->assertOk()->assertSee('data-event-status="left"', false)->assertSee('data-venue-play-message-form', false);
 
         $this->get(route('events.edit', $event->routeIdentifier()))->assertOk();
         $this->put(route('events.update', $event->routeIdentifier()), [

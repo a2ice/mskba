@@ -24,13 +24,28 @@ final class EventSocialWallController extends Controller
         $item = $this->event($event);
         abort_unless($wall->canViewEvent($item, $request->user()), 404);
 
-        $data = $request->validate(['after_id' => ['nullable', 'integer', 'min:0'], 'include_roster' => ['sometimes', 'boolean']]);
+        $data = $request->validate([
+            'after_id' => ['nullable', 'integer', 'min:0', 'prohibits:before_id'],
+            'before_id' => ['nullable', 'integer', 'min:1', 'prohibits:after_id'],
+            'include_roster' => ['sometimes', 'boolean'],
+        ]);
         $after = isset($data['after_id']) ? (int) $data['after_id'] : null;
+        $before = isset($data['before_id']) ? (int) $data['before_id'] : null;
+        $canPost = $wall->canCommentOnEvent($item, $request->user());
+        // Fetch one extra visible entry to determine whether an older page exists.
+        // Preserve the existing forward cursor contract for the legacy poller.
+        $entries = $wall->latestForEvent($item, $after === null ? 11 : 50, $after, $before);
+        $hasOlder = $after === null && $entries->count() > 10;
+        if ($hasOlder) {
+            $entries = $entries->slice(-10)->values();
+        }
+
         return response()->json([
-            'entries' => $wall->latestForEvent($item, 50, $after)
-                ->map(fn ($entry) => $this->present($entry, $item, $request, $wall))->values(),
+            'has_older' => $hasOlder,
+            'entries' => $entries
+                ->map(fn ($entry) => $this->present($entry, $item, $request, $wall, $canPost))->values(),
             'counts' => $wall->eventCounts($item),
-            'can_post' => $wall->canCommentOnEvent($item, $request->user()),
+            'can_post' => $canPost,
             ...($request->boolean('include_roster') ? ['roster' => app(EventPreviewRoster::class)->forEvent($item, $request->user())] : []),
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -59,6 +74,30 @@ final class EventSocialWallController extends Controller
         return response()->json(['entry' => $this->present($entry, $item, $request, $wall)], 201);
     }
 
+    public function update(Request $request, string $event, int $entry, SocialWallService $wall): JsonResponse
+    {
+        $data = $request->validate([
+            'body' => ['required', 'string', 'max:200'],
+            'version' => ['required', 'integer', 'min:1'],
+        ]);
+        $item = $this->event($event);
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        try {
+            $updated = $wall->editOwnEventComment($item, $user, $entry, $data['body'], (int) $data['version']);
+        } catch (SocialActionRateLimitException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'retry_after' => $exception->retryAfter,
+            ], 429)->header('Retry-After', (string) $exception->retryAfter);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['entry' => $this->present($updated, $item, $request, $wall, true)]);
+    }
+
     public function destroy(Request $request, string $event, int $entry, SocialWallService $wall): JsonResponse
     {
         $item = $this->event($event);
@@ -79,6 +118,7 @@ final class EventSocialWallController extends Controller
         Event $event,
         Request $request,
         SocialWallService $wall,
+        ?bool $canPost = null,
     ): array {
         $payload = $wall->present($entry);
         $viewer = $request->user()?->canonical();
@@ -89,6 +129,12 @@ final class EventSocialWallController extends Controller
         $payload['can_delete'] = $canDelete;
         $payload['delete_url'] = $canDelete
             ? route('events.wall.delete', [$event->routeIdentifier(), $entry->id]) : null;
+
+        $canEdit = $canDelete && ! $payload['hidden']
+            && ($canPost ?? $wall->canCommentOnEvent($event, $viewer));
+        $payload['can_edit'] = $canEdit;
+        $payload['edit_url'] = $canEdit
+            ? route('events.wall.update', [$event->routeIdentifier(), $entry->id]) : null;
 
         return $payload;
     }
