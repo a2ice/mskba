@@ -159,7 +159,14 @@
             }
             if(existing){existing.replaceWith(item);}
             else if(prepend){older.append(item);}
-            else{list.append(item);}
+            else{
+                const last=list.lastElementChild;
+                if(!last||Number(last.dataset.entryId)<Number(entry.id))list.append(item);
+                else{
+                    const next=[...list.children].find(node=>Number(node.dataset.entryId)>Number(entry.id));
+                    list.insertBefore(item,next||null);
+                }
+            }
         }
         if(prepend)list.prepend(older);
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
@@ -201,6 +208,7 @@
         try{
             if(reset||!page||!list.lastElementChild){
                 const response=await request(pane.dataset.eventWallUrl);
+                if(wallPages.get(pane)!==page)return;
                 paintWall(pane,response);
                 return;
             }
