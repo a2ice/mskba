@@ -57,3 +57,19 @@ test('preferred calendar cards alone have compact inset and 90 percent typograph
     assert.match(css,/\.app-venue-day-dialog__date-item\[data-rental-preference\]>\.app-venue-day-dialog__date\s*\{[^}]*min-height:51px;[^}]*font-size:90%/s);
     assert.match(css,/\[data-rental-preference\] \.app-venue-day-dialog__date-hours\s*\{\s*font-size:9\.9px;/s);
 });
+
+test('venue availability entry points reuse the rental calendar without booking or consuming untouched defaults',()=>{
+    const read=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const funnel=read('resources/views/components/venue-play-funnel.blade.php');
+    const quick=read('resources/themes/mskba_app/js/event-quick-create.js');
+    const rental=read('resources/themes/mskba_app/js/venue-rental-search.js');
+    const detail=read('resources/themes/mskba_app/js/venue-detail.js');
+    assert.match(funnel,/data-venue-play-empty-footer/);
+    assert.match(funnel,/data-venue-availability-open/);
+    assert.match(quick,/base.textContent='Любой зал'/);
+    assert.match(quick,/initializeSchedule\(\);setStep\(0\)/);
+    assert.match(quick,/mskba:availability-open/);
+    assert.match(rental,/readOnly, courts:results/);
+    assert.match(detail,/!rentalSearch\?\.readOnly && !!response\?\.booking_enabled/);
+    assert.match(detail,/bookingButton.hidden = !!rentalSearch.readOnly/);
+});
