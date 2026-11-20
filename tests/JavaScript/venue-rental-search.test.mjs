@@ -73,3 +73,14 @@ test('venue availability entry points reuse the rental calendar without booking 
     assert.match(detail,/!rentalSearch\?\.readOnly && !!response\?\.booking_enabled/);
     assert.match(detail,/bookingButton.hidden = !!rentalSearch.readOnly/);
 });
+
+test('event defaults include venue booking lead, selected court override and ten-minute form buffer',()=>{
+    const read=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const js=read('resources/themes/mskba_app/js/event-quick-create.js');
+    const view=read('resources/views/components/event-quick-create.blade.php');
+    assert.match(view,/where\('active_marker', true\)/);
+    assert.match(view,/data-booking-lead/);
+    assert.match(js,/selected\?\.minimum_lead_time_minutes\?\?venueLead/);
+    assert.match(js,/Date\.now\(\)\+\(lead\+10\)\*60000/);
+    assert.match(js,/if\(step===1&&scheduleEdited&&/);
+});
