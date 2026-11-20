@@ -39,7 +39,7 @@ final class VenueCourtSyncConsoleTest extends TestCase
             'ownerRecord' => $venue,
             'pageClass' => EditVenue::class,
         ])->assertSuccessful()
-            ->assertSee('Синхронизировать все залы')
+            ->assertSee('Синхронизировать с расписанием площадки')
             ->assertSee('Синхронизировать');
 
         $this->assertFalse($venue->primaryCourt()->firstOrFail()->auto_sync_enabled);
