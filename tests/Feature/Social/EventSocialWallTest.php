@@ -69,6 +69,8 @@ final class EventSocialWallTest extends TestCase
             ->assertJsonPath('counts.left', 1)
             ->assertJsonCount(2, 'entries')
             ->assertJsonPath('entries.0.kind', 'event_rsvp_changed')
+            ->assertJsonPath('entries.0.rsvp_status', 'confirmed')
+            ->assertJsonPath('entries.1.rsvp_status', 'left')
             ->assertJsonPath('entries.1.text', $user->username.' не пойдёт на мероприятие.');
 
         $this->assertDatabaseHas('event_participants', [
@@ -80,6 +82,28 @@ final class EventSocialWallTest extends TestCase
         $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
         $this->assertSame(2, DB::table('social_action_logs')->where('user_id', $user->id)->count());
         $this->assertSame(2, DB::table('social_wall_entries')->where('scope_type', 'event')->count());
+    }
+
+    public function test_event_wall_prefers_nickname_and_exposes_historical_rsvp_status(): void
+    {
+        $event = $this->event();
+        $user = $this->confirmedUser();
+        $user->forceFill(['nickname' => 'court_nick'])->save();
+        $url = route('events.participation', $event->routeIdentifier());
+
+        $this->actingAs($user)->patch($url, ['status' => 'confirmed'])->assertRedirect();
+        $this->actingAs($user)->patch($url, ['status' => 'tentative'])->assertRedirect();
+        $this->actingAs($user)->patch($url, ['status' => 'left'])->assertRedirect();
+        $this->getJson(route('events.wall.index', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertJsonCount(3, 'entries')
+            ->assertJsonPath('entries.0.actor', 'court_nick')
+            ->assertJsonPath('entries.0.text', 'court_nick пойдёт на мероприятие.')
+            ->assertJsonPath('entries.0.rsvp_status', 'confirmed')
+            ->assertJsonPath('entries.1.text', 'court_nick пока думает, идти ли на мероприятие.')
+            ->assertJsonPath('entries.1.rsvp_status', 'tentative')
+            ->assertJsonPath('entries.2.text', 'court_nick не пойдёт на мероприятие.')
+            ->assertJsonPath('entries.2.rsvp_status', 'left');
     }
 
     public function test_comment_and_rsvp_share_three_per_sixty_seconds_globally(): void

@@ -219,6 +219,13 @@
 .venue-play-dialog__messages li{padding:10px 12px;border-radius:8px;background:var(--field,#30343a);overflow-wrap:anywhere}
 .venue-play-dialog__messages time{font-size:12px;opacity:.65;margin-left:9px}
 .venue-play-dialog__messages li.is-system{opacity:.8}
+.venue-play-dialog__messages li[data-rsvp-status]{opacity:1}
+.venue-play-dialog__messages li[data-rsvp-status="confirmed"] p{color:var(--success,#7cdcab)}
+.venue-play-dialog__messages li[data-rsvp-status="left"] p{color:var(--danger,#ff9398)}
+.venue-play-dialog__messages li[data-rsvp-status="tentative"] p{color:var(--info,#8ccbff)}
+html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-status="confirmed"] p{color:#166534}
+html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-status="left"] p{color:#b91c1c}
+html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-status="tentative"] p{color:#1e3a8a}
 .venue-play-dialog__messages li.is-deleted{text-decoration:line-through;opacity:.6}
 .venue-play-dialog__wall form{display:grid;gap:4px;padding:10px;border:1px solid var(--line,#cbd0d5);border-radius:5px;background:#fff;color:#18212b;min-width:0}
 .venue-play-dialog__wall form:focus-within{border-color:var(--accent,#ea7628)}

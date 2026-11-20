@@ -77,7 +77,7 @@ final class SocialWallService
     {
         $query = SocialWallEntry::query()
             ->where('scope_type', 'event')->where('scope_id', $event->id)
-            ->with(['actor:id,username,deleted_at', 'target:id,username,deleted_at']);
+            ->with(['actor:id,username,nickname,deleted_at', 'target:id,username,deleted_at']);
 
         if ($afterId !== null) {
             return $query->where('id', '>', $afterId)->orderBy('id')
@@ -202,8 +202,10 @@ final class SocialWallService
     public function present(SocialWallEntry $entry): array
     {
         $actor = $entry->actor;
-        $name = $actor !== null && ! $actor->trashed() && filled($actor->username)
-            ? $actor->username : 'Удалённый пользователь';
+        $actorName = $entry->scope_type === 'event' && filled($actor?->nickname)
+            ? $actor->nickname : $actor?->username;
+        $name = $actor !== null && ! $actor->trashed() && filled($actorName)
+            ? $actorName : 'Удалённый пользователь';
         $target = $entry->target;
         $targetName = $target !== null && ! $target->trashed() && filled($target->username)
             ? $target->username : 'Удалённый пользователь';
@@ -240,6 +242,7 @@ final class SocialWallService
             'deleted' => $entry->deleted_at !== null,
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
+            'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
             'date' => $entry->created_at?->format('d.m.Y H:i'),
         ];
     }
