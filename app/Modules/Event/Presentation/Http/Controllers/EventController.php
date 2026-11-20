@@ -313,6 +313,10 @@ final class EventController extends Controller
                 ->with('error', 'Завершённое или отменённое мероприятие нельзя редактировать.');
         }
 
+        if ($item->starts_at === null && app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return redirect()->route('events.show', $item->routeIdentifier());
+        }
+
         $canReschedule = $item->starts_at !== null && (($item->booking_deferred && $item->booking_id === null)
             || ($item->booking_id === null && $item->venue->hasFreeAccess()));
         $availableVenues = $venues->handle(freeOnly: ! $item->booking_deferred);
