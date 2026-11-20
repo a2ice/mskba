@@ -25,6 +25,7 @@ use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Content\Presentation\Http\PageBuilderController;
 use App\Modules\Content\Presentation\Http\PageBuilderScriptController;
 use App\Modules\Contract\Presentation\Http\Controllers\AccountContractsWorkspaceController;
+use App\Modules\Contract\Presentation\Http\Controllers\AccountVenueContractCaseController;
 use App\Modules\Contract\Presentation\Http\Controllers\BackofficeContractVerificationController;
 use App\Modules\Contract\Presentation\Http\Controllers\ContractEvidenceController;
 use App\Modules\Contract\Presentation\Http\Controllers\ContractTemplateController;
@@ -1253,6 +1254,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         // Must precede /contracts/{number}; this is the canonical venue collection.
         Route::get('/contracts/venues', [AccountContractsWorkspaceController::class, 'venues'])
             ->name('account.contracts.venues')->defaults('breadcrumb', 'Мои площадки');
+        Route::get('/contracts/venues/{venue}', [AccountVenueContractCaseController::class, 'show'])
+            ->whereNumber('venue')->name('account.venue-contracts.show')
+            ->defaults('breadcrumb', 'Подтверждение полномочий');
+        Route::post('/contracts/venues/{venue}/start', [AccountVenueContractCaseController::class, 'start'])
+            ->whereNumber('venue')->middleware('throttle:5,1')->name('account.venue-contracts.start');
         Route::post('/contracts/{contract}/evidence', [ContractEvidenceController::class, 'store'])
             ->whereNumber('contract')->middleware('throttle:10,1')->name('account.contract-evidence.store');
         Route::get('/contracts/{contract}/evidence/{document}', [ContractEvidenceController::class, 'download'])

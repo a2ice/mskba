@@ -133,9 +133,11 @@ final class AdminVenueOwnershipController extends Controller
                     ->lockForUpdate()
                     ->findOrFail($venueOwnershipClaim->id);
 
-                if ($claim->status === VenueOwnershipClaimStatusEnum::PENDING) {
-                    $review->reject($claim, $request->user(), $validated['reason']);
+                if (in_array($claim->status, [VenueOwnershipClaimStatusEnum::PENDING, VenueOwnershipClaimStatusEnum::REJECTED], true)) {
+                    $review->block($claim, $request->user(), $validated['reason']);
                     $claim->refresh()->loadMissing(['venue', 'applicant']);
+                } elseif ($claim->status !== VenueOwnershipClaimStatusEnum::BLOCKED) {
+                    throw new VenueOwnershipClaimException('Эту заявку нельзя заблокировать.');
                 }
 
                 $restrictions->impose(

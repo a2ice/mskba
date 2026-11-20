@@ -38,7 +38,7 @@
                 @elseif($invitation->role === 'owner')
                     <h2>Следующий этап — подтверждение управления площадкой</h2>
                     <p>Адрес электронной почты подтверждён. Теперь подайте заявку с основанием владения или управления. После проверки и одобрения будут выданы полномочия владельца.</p>
-                    <p><a class="button primary" href="{{ route('venues.management', ['venue' => $invitation->scope_id]) }}">Перейти к подтверждению управления</a></p>
+                    <p><a class="button primary" href="{{ route('account.venue-contracts.show', ['venue' => $invitation->scope_id]) }}">Перейти к подтверждению управления</a></p>
                 @else
                     <h2>Завершите подтверждение аккаунта</h2>
                     <p>Email уже подтверждён. После подтверждения основных данных профиля вернитесь по ссылке приглашения, чтобы завершить назначение роли.</p>
@@ -63,7 +63,7 @@
                     <div><label for="inv-password-repeat">Повтор пароля</label><input id="inv-password-repeat" @error('password_confirmation') aria-invalid="true" aria-describedby="inv-password-repeat-error" @enderror name="password_confirmation" type="password" required autocomplete="new-password">@error('password_confirmation') <small id="inv-password-repeat-error" class="app-invitation-form__error">{{ $message }}</small> @enderror</div>
                     <div><label for="inv-first-name">Имя (необязательно)</label><input id="inv-first-name" @error('first_name') aria-invalid="true" aria-describedby="inv-first-name-error" @enderror name="first_name" value="{{ old('first_name') }}" maxlength="255">@error('first_name') <small id="inv-first-name-error" class="app-invitation-form__error">{{ $message }}</small> @enderror</div>
                     <div><label for="inv-last-name">Фамилия (необязательно)</label><input id="inv-last-name" @error('last_name') aria-invalid="true" aria-describedby="inv-last-name-error" @enderror name="last_name" value="{{ old('last_name') }}" maxlength="255">@error('last_name') <small id="inv-last-name-error" class="app-invitation-form__error">{{ $message }}</small> @enderror</div>
-                    <p><label><input type="checkbox" name="privacy_consent" value="1" required @checked(old('privacy_consent'))> Согласен с <a href="{{ route('privacy.policy') }}" target="_blank" rel="noopener noreferrer">обработкой персональных данных</a>.</label></p>
+                    <p><label><input type="checkbox" name="privacy_consent" value="1" required @checked(old('privacy_consent'))> Согласен с <a class="app-invitation__privacy-link" href="{{ route('privacy.policy') }}" target="_blank" rel="noopener noreferrer">обработкой персональных данных</a>.</label></p>
                     <p><label><input type="checkbox" name="accept_invitation" value="1" required @checked(old('accept_invitation'))> Принимаю приглашение и подтверждаю принадлежность мне указанного email.</label></p>
                     <button type="submit" class="button primary">Создать аккаунт и принять приглашение</button>
                 </form>
@@ -74,6 +74,8 @@
 <style>
     /* Token-free invitation onboarding: scoped to this page and both appearances. */
     .app-invitation.section { padding-top:clamp(28px,3.5vw,52px); padding-bottom:clamp(48px,5vw,80px); }
+    .app-invitation__privacy-link { color:var(--accent,#ea5a00) !important; text-decoration:underline !important; text-underline-offset:3px; font-weight:600; }
+    .app-invitation__privacy-link:hover { color:var(--accent-hover,#b84900) !important; }
     .app-invitation__container { max-width:820px; margin-inline:auto; }
     .app-invitation__title { margin:0 0 22px; font-size:clamp(30px,3.2vw,46px); line-height:1.12; letter-spacing:-.03em; overflow-wrap:anywhere; }
     .app-invitation__panel { padding:clamp(20px,3vw,36px); margin-top:0; }
