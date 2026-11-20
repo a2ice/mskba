@@ -317,16 +317,32 @@ if (dayBookingDialog) {
     const searchCourts = dayBookingDialog.querySelector('[data-rental-result-courts]');
     const searchBack = dayBookingDialog.querySelector('[data-rental-result-back]');
     const calendar = dayBookingDialog.querySelector('[data-venue-day-dates]');
-    const visibleDates = () => rentalSearch
-        ? dateValues.filter(date => date >= rentalSearch.criteria.from && date <= rentalSearch.criteria.to)
-        : dateValues;
+    // The original preference is a marker, not a navigation restriction.
+    const visibleDates = () => dateValues;
+    const isPreferredDate = date => !!rentalSearch
+        && date >= rentalSearch.criteria.from && date <= rentalSearch.criteria.to;
+    function markPreferredDates() {
+        const preferred = dateValues.filter(isPreferredDate);
+        calendar?.classList.toggle('has-rental-preference', preferred.length > 0);
+        dateButtons.forEach(button => {
+            const item = button.parentElement;
+            const index = preferred.indexOf(button.dataset.venueDayDate);
+            if (index < 0) {
+                if (item) delete item.dataset.rentalPreference;
+                button.removeAttribute('aria-description');
+                return;
+            }
+            if (item) item.dataset.rentalPreference = preferred.length === 1 ? 'single'
+                : index === 0 ? 'first' : index === preferred.length - 1 ? 'last' : 'middle';
+            button.setAttribute('aria-description', 'День исходного запроса аренды');
+        });
+    }
     function resetSearch() {
         rentalSearch = null;
         dayBookingDialog.classList.toggle('is-rental-search', false);
         if (searchHeader) searchHeader.hidden = true;
         if (searchBack) searchBack.hidden = true;
-        calendar?.classList.toggle('is-rental-range', false);
-        dateButtons.forEach(button => { if(button.parentElement) button.parentElement.hidden = false; });
+        markPreferredDates();
         searchCourts?.replaceChildren();
     }
     const currency = new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 2});
@@ -479,8 +495,14 @@ if (dayBookingDialog) {
     function renderSlots(data) {
         if (rentalSearch) {
             const eligible = new Set(rentalSearch.eligibleSlots(data));
-            data = {...data,slots:rentalSearch.filterSlots(data).map(slot =>
-                slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot)};
+            const unverified = data.stale || data.refresh_state === 'failed';
+            data = {...data,slots:rentalSearch.filterSlots(data).map(slot => {
+                if (slot.status === 'unknown' || (unverified && slot.status === 'available')) {
+                    return {...slot,status:'unknown',selectable:false,price_minor:null};
+                }
+                if (slot.status === 'unavailable') return {...slot,selectable:false,price_minor:null};
+                return slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
+            })};
         }
         response = data;
         selection = [];
@@ -503,7 +525,7 @@ if (dayBookingDialog) {
                 grid.appendChild(busy);
                 continue;
             }
-            if (rentalSearch && (slot.status === 'unavailable' || (slot.status === 'available' && !slot.selectable))) continue;
+            if (rentalSearch && slot.status === 'available' && !slot.selectable) continue;
             const eventInfo = slot.booking_group?.event || null;
             const cell = document.createElement('button');
             cell.type = 'button';
@@ -707,7 +729,9 @@ if (dayBookingDialog) {
         status.hidden = !warning;
         if (rentalSearch && !data.slots.some(slot => slot.selectable)) {
             status.hidden = false;
-            status.textContent = warning || 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.';
+            status.textContent = warning || (data.slots.some(slot => slot.status === 'unknown')
+                ? 'На этот день пока нет подтверждённого расписания. Выбери другой день или зал.'
+                : 'На этот день подходящих интервалов нет. Выбери другой день или зал либо вернись к условиям.');
         }
         if (!rentalSearch) updateDayOccupancy(data.date, data.slots);
         const selectedDateButton = dateButtons.find(button => button.dataset.venueDayDate === data.date);
@@ -783,6 +807,10 @@ if (dayBookingDialog) {
 
     function setActiveDate(date) {
         activeDate = date;
+        if (rentalSearch && searchNote) {
+            searchNote.textContent = isPreferredDate(date) ? rentalSearch.note
+                : 'Ты смотришь другой день. Даты исходного запроса выделены рамкой.';
+        }
         const dates = visibleDates();
         const index = dates.indexOf(date);
         dateButtons.forEach(button => {
@@ -943,10 +971,7 @@ if (dayBookingDialog) {
         searchHeader.hidden = false;
         searchNote.textContent = rentalSearch.note;
         searchBack.hidden = false;
-        calendar?.classList.toggle('is-rental-range', rentalSearch.criteria.from !== rentalSearch.criteria.to);
-        dateButtons.forEach(button => {
-            if (button.parentElement) button.parentElement.hidden = !visibleDates().includes(button.dataset.venueDayDate);
-        });
+        markPreferredDates();
         searchCourts.replaceChildren();
         const selectCourt = (court,date) => {
             dayBookingDialog.dataset.courtId = String(court.id);
