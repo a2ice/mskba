@@ -186,6 +186,9 @@ final class EventController extends Controller
 
         try {
             $data = $request->validated();
+            if (array_key_exists('organizer_participates', $data)) {
+                $data['participation_roles'] = ['player'];
+            }
             $result = $events->handle($actor, $data);
         } catch (InvalidArgumentException|DomainException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());

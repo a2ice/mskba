@@ -6,6 +6,7 @@
     const list=dialog.querySelector('[data-venue-play-step="list"]');
     const detail=dialog.querySelector('[data-venue-play-step="detail"]');
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
+    const detailFooter=dialog.querySelector('[data-venue-play-detail-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
     let selectedId=null, authenticated=dialog.dataset.authenticated==='1';
@@ -36,16 +37,20 @@
         const status=pane.dataset.eventStatus||'';
         const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
         if(!choices.length)return;
-        const organizer=pane.dataset.eventOrganizer==='1';
-        const active=status==='confirmed'||status==='tentative';
-        pane.querySelector('.venue-play-dialog__rsvp').hidden=organizer;
-        pane.querySelector('[data-venue-play-organizer-notice]').hidden=!organizer;
-        const decline=choices.find(button=>button.dataset.venuePlayRsvp==='left');
-        decline.hidden=!active;
+        const attendance=pane.querySelector('[data-venue-play-attendance]');
+        const confirmed=status==='confirmed';
+        attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
+        attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button.dataset.venuePlayRsvp===status;
+            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
-            button.setAttribute('aria-pressed',String(own));
+            if(dialog.classList.contains('venue-play-dialog--app')){
+                button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
+            }else{
+                button.classList.toggle('btn--primary',own);button.classList.toggle('btn--secondary',!own);
+            }
+            if(button===attendance)button.removeAttribute('aria-pressed');
+            else button.setAttribute('aria-pressed',String(own));
         });
     };
     const icon=(id)=>{
@@ -74,7 +79,8 @@
             }else{avatar.append(icon('user'));}
             const dot=document.createElement('span');dot.className='venue-play-dialog__participant-status';
             dot.classList.toggle('is-confirmed',member.status==='confirmed');
-            const status=member.status==='confirmed'?'Идёт':'Думает';
+            dot.classList.toggle('is-declined',member.status==='left');
+            const status=member.status==='confirmed'?'Идёт':member.status==='left'?'Не идёт':'Думает';
             dot.title=status+(member.decision_at?': '+member.decision_at:'');
             dot.setAttribute('aria-label',dot.title);dot.setAttribute('data-tooltip-visual','');dot.tabIndex=0;
             const name=document.createElement(member.url?'a':'span');name.className='venue-play-dialog__participant-name';
@@ -95,7 +101,7 @@
         const empty=pane.querySelector('[data-venue-play-roster-empty]');
         empty.hidden=roster.members.length>0;empty.textContent='Участников пока нет.';
         pane.querySelector('[data-venue-play-roster-retry]').hidden=true;
-        pane.querySelector('[data-venue-play-roster-heading]').textContent='Участники ('+roster.members.length+(roster.max_participants!=null?'/'+roster.max_participants:'')+')';
+        pane.querySelector('[data-venue-play-roster-heading]').textContent='Участники ('+roster.members.filter(member=>member.status!=='left').length+(roster.max_participants!=null?'/'+roster.max_participants:'')+')';
         pane.dataset.eventStatus=roster.viewer_status||'';
         pane.dataset.eventOrganizer=roster.viewer_is_organizer?'1':'0';
         paintButtons(pane);
@@ -160,12 +166,13 @@
         }
     }
     function showList(){
-        selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;
+        selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;detailFooter.hidden=true;
         title.textContent='Хочу здесь играть';
     }
     function showEvent(id){
         const pane=getPane(id);if(!pane)return;
-        selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;
+        selectedId=Number(id);list.hidden=true;detail.hidden=false;listFooter.hidden=true;detailFooter.hidden=false;
+        detailFooter.querySelectorAll('[data-venue-play-event-link]').forEach(el=>{el.hidden=Number(el.dataset.venuePlayEventLink)!==selectedId;});
         // Different event cards must open at the start of their own detail view.
         detail.scrollTop=0;
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});
@@ -193,7 +200,7 @@
             pane.dataset.eventStatus=result.status;paintButtons(pane);
             paintRoster(pane,result.roster,true,result.counts);
             toast({
-                confirmed:'Вы успешно добавлены в участники. Следите за дальнейшими сообщениями организатора на портале.',
+                confirmed:pane.dataset.eventOrganizer==='1'?'Ваше участие подтверждено.':'Вы успешно добавлены в участники. Следите за дальнейшими сообщениями организатора на портале.',
                 tentative:'Ответ «Подумаю» сохранён. Вы можете изменить решение в любой момент до завершения мероприятия.',
                 left:'Вы отказались от участия в мероприятии.',
             }[result.status]||'Ответ сохранён.');
@@ -225,7 +232,7 @@
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const form=pane.querySelector('[data-venue-play-message-form]');
         const field=form.querySelector('[name="body"]');
-        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String([...field.value].length);});
+        field.addEventListener('input',()=>{pane.querySelector('[data-venue-play-chars]').textContent=String(Math.max(0,200-[...field.value].length));});
         form.addEventListener('submit',async event=>{
             event.preventDefault();
             if(!authenticated){guestResponse(null);return;}
@@ -235,7 +242,7 @@
                 const response=await request(pane.dataset.eventPostUrl,'POST',{
                     body,client_request_id:crypto.randomUUID(),
                 });
-                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='0';
+                field.value='';pane.querySelector('[data-venue-play-chars]').textContent='200';
                 await refreshWall(pane);notice(pane,'Сообщение отправлено.');
             }catch(e){notice(pane,e.message,true);}
             finally{submit.disabled=false;}

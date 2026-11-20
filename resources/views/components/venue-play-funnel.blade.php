@@ -38,16 +38,18 @@
                     <small data-venue-play-card-count>{{ $upcoming->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)->count() }} пойдут · Подробнее</small>
                 </button>
             @empty
-                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий.</p>
+                <p class="venue-play-dialog__empty">На этой площадке пока нет предстоящих мероприятий. Вы можете создать своё мероприятие, пригласить игроков или открыть его для всех, чтобы желающие могли присоединиться самостоятельно.@if($isAppTheme) А пока можно посмотреть, когда площадка свободна.@endif</p>
             @endforelse
         </div>
     </div>
-    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer>
+    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-list-footer @if($isAppTheme && $upcomingVenueEvents->isEmpty()) data-venue-play-empty-footer @endif>
+        @if($isAppTheme && $upcomingVenueEvents->isEmpty())
+            <button type="button" class="{{ $secondaryButton }}" data-venue-availability-open>Посмотреть занятость</button>
+        @endif
         <button type="button" class="{{ $primaryButton }}" data-quick-event-open
             data-quick-event-venue-id="{{ $venue->id }}" data-venue-play-create>Создать мероприятие</button>
     </footer>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll" data-venue-play-step="detail" hidden>
-        <button type="button" class="{{ $secondaryButton }}" data-venue-play-back>Назад к мероприятиям</button>
         @foreach($upcomingVenueEvents as $upcoming)
             @php
                 $participant = $upcoming->participants->first(fn ($member) => in_array((int) $member->user_id, $viewerIdentityIds, true));
@@ -79,32 +81,35 @@
                     </div>
                     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
                 </section>
-                    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие" @if($isMyEvent) hidden @endif>
-                        <button type="button" class="{{ $primaryButton }}" data-venue-play-rsvp="confirmed">Пойду</button>
+                    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
+                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
                         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
-                        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="left" hidden>Не пойду</button>
                     </div>
-                    <p class="muted" data-venue-play-organizer-notice @if(!$isMyEvent) hidden @endif>Ты организатор. Участием можно управлять на странице мероприятия.</p>
                 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
                 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
-                    <h4>Обсуждение и действия</h4>
                     <ol class="venue-play-dialog__messages" data-venue-play-messages aria-live="polite"></ol>
                     <p class="muted" data-venue-play-wall-empty>Загружаем обсуждение…</p>
                     <form data-venue-play-message-form hidden>
-                        <label for="venue-play-message-{{ $upcoming->id }}">Написать сообщение</label>
                         <textarea id="venue-play-message-{{ $upcoming->id }}" name="body" maxlength="200" rows="2" required
-                            placeholder="Например, где встречаемся?"></textarea>
+                            aria-label="Написать сообщение" placeholder="Написать сообщение"></textarea>
                         <div class="venue-play-dialog__message-footer">
-                            <small><span data-venue-play-chars>0</span>/200 · не более 3 действий в минуту</small>
-                            <button type="submit" class="{{ $primaryButton }}">Отправить</button>
+                            <small data-venue-play-chars aria-label="Осталось символов">200</small>
+                            <button type="submit" class="{{ $primaryButton }} venue-play-dialog__send" aria-label="Отправить сообщение" title="Отправить сообщение">
+                                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
+                            </button>
                         </div>
                     </form>
-                    <p class="muted" data-venue-play-comment-notice>Написать сообщение смогут участники мероприятия.</p>
+                    <p class="muted" data-venue-play-comment-notice hidden>Написать сообщение могут участники и организатор мероприятия.</p>
                 </section>
-                <a class="{{ $secondaryButton }}" href="{{ route('events.show', $upcoming->routeIdentifier()) }}">Полная страница мероприятия</a>
             </article>
         @endforeach
     </div>
+    <footer class="mskba-modal__footer venue-play-dialog__footer" data-venue-play-detail-footer hidden>
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-back>Назад</button>
+        @foreach($upcomingVenueEvents as $upcoming)
+            <a class="{{ $primaryButton }}" data-venue-play-event-link="{{ $upcoming->id }}" href="{{ route('events.show', $upcoming->routeIdentifier()) }}" hidden>К мероприятию</a>
+        @endforeach
+    </footer>
 </dialog>
 <dialog class="mskba-modal venue-play-dialog venue-play-auth-notice {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}" data-venue-play-auth-notice
     aria-labelledby="venue-play-auth-title">
@@ -173,6 +178,7 @@
     display:flex;justify-content:flex-end;flex:0 0 auto;
     gap:12px;padding:16px 22px;border-top:1px solid var(--line,#59606a);
 }
+.venue-play-dialog__footer[data-venue-play-empty-footer]{justify-content:space-around;gap:12px;flex-wrap:wrap}
 .venue-play-dialog__footer[hidden]{display:none}
 .venue-play-dialog__footer :is(.button,.btn){min-height:44px}
 .venue-play-dialog__detail{display:grid;gap:20px;min-width:0}
@@ -187,6 +193,7 @@
 .venue-play-dialog__participant-name{min-width:0;overflow-wrap:anywhere}
 .venue-play-dialog__participant-status{display:inline-block;flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:#d97706}
 .venue-play-dialog__participant-status.is-confirmed{background:#16a34a}
+.venue-play-dialog__participant-status.is-declined{background:#dc2626}
 .venue-play-dialog__participant-star{flex:none;color:#eab308;width:17px;height:17px;display:grid;place-items:center}
 .venue-play-dialog__participant-star svg{width:100%;height:100%;fill:currentColor;stroke:currentColor}
 .venue-play-dialog__avatar{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:var(--surface-raised,var(--field,#444))}
@@ -195,7 +202,8 @@
 .venue-play-dialog__roster-surface .image-upload-loading{min-height:30px;padding:0;background:rgba(8,10,8,.35);backdrop-filter:blur(2px)}
 .venue-play-dialog__roster-surface .image-upload-loading__spinner{width:24px;height:24px;border-right-color:var(--accent,#ea7628)}
 .venue-play-dialog [hidden]{display:none!important}
-.venue-play-dialog__detail>a{justify-self:start;max-width:100%;white-space:normal}
+.venue-play-dialog__footer[data-venue-play-detail-footer]{justify-content:space-between;align-items:center}
+.venue-play-dialog__footer[data-venue-play-detail-footer] :is(.button,.btn){width:auto;min-width:0;white-space:normal;text-align:center}
 .venue-play-dialog__roster>button{justify-self:start}
 .venue-play-dialog>[data-action-toast-modal]{position:absolute;inset:auto 12px 12px auto;z-index:40;width:min(320px,calc(100% - 24px));max-height:50%;overflow:auto}
 .venue-play-dialog>[data-action-toast-modal] .app-action-toast{opacity:1;overflow-wrap:anywhere}
@@ -212,13 +220,18 @@
 .venue-play-dialog__messages time{font-size:12px;opacity:.65;margin-left:9px}
 .venue-play-dialog__messages li.is-system{opacity:.8}
 .venue-play-dialog__messages li.is-deleted{text-decoration:line-through;opacity:.6}
-.venue-play-dialog__wall form{display:grid;gap:8px}
-.venue-play-dialog__wall textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;min-height:70px;border:1px solid var(--line,#59606a);background:var(--field,#282d33);color:inherit}
-.venue-play-dialog__message-footer{justify-content:space-between}
+.venue-play-dialog__wall form{display:grid;gap:4px;padding:10px;border:1px solid var(--line,#cbd0d5);border-radius:5px;background:#fff;color:#18212b;min-width:0}
+.venue-play-dialog__wall form:focus-within{border-color:var(--accent,#ea7628)}
+.venue-play-dialog__wall textarea{width:100%;box-sizing:border-box;padding:0;min-height:56px;border:0;border-radius:0;outline:none;box-shadow:none;background:#fff;color:#18212b;resize:vertical}
+.venue-play-dialog__wall textarea:focus{outline:none;box-shadow:none}
+.venue-play-dialog__wall textarea::placeholder{color:#69717c}
+.venue-play-dialog__message-footer{justify-content:space-between;flex-wrap:nowrap}
+.venue-play-dialog__send{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;padding:0}
+.venue-play-dialog__send svg{width:22px;height:22px}
 @media(max-width:540px){
     .venue-play-dialog__header,.venue-play-dialog__body{padding-inline:16px}
     .venue-play-dialog__footer{padding:16px}
-    .venue-play-dialog__footer :is(.button,.btn){width:100%}
+    .venue-play-dialog__footer:not([data-venue-play-detail-footer]) :is(.button,.btn){width:100%}
 }
 </style>
 @endonce

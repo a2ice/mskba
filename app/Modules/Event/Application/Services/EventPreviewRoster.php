@@ -23,10 +23,17 @@ final class EventPreviewRoster
     public function forEvent(Event $event, ?User $viewer): array
     {
         $viewer = $viewer?->canonical();
-        $organizerId = $event->organizerActor?->user?->canonical()->id;
+        $organizer = $event->organizerActor?->user?->canonical();
+        $organizerId = $organizer?->id;
         $members = $event->participants()->with('user.profile.activeAvatar')->orderBy('id')->get()
             ->filter(fn (EventParticipant $member): bool => $member->user !== null)
             ->groupBy(fn (EventParticipant $member): int => (int) $member->user->canonical()->id);
+        if ($organizer !== null && ! $members->has($organizerId)) {
+            // Old events may have an organizer actor but no sporting roster row.
+            $placeholder = new EventParticipant(['role' => Role::ORGANIZER, 'status' => Status::LEFT, 'confirmation_version' => $event->participation_confirmation_version]);
+            $placeholder->setRelation('user', $organizer);
+            $members->put($organizerId, collect([$placeholder]));
+        }
         $decisions = SocialWallEntry::query()->where('scope_type', 'event')->where('scope_id', $event->id)
             ->where('kind', 'event_rsvp_changed')->whereNull('hidden_at')->whereNull('deleted_at')
             ->latest('id')->get()->groupBy('actor_user_id');
@@ -44,24 +51,25 @@ final class EventPreviewRoster
                 ?? $group->first(fn ($item) => (int) $item->user_id === (int) $id)
                 ?? $group->first();
 
-            if ($member->confirmation_version !== $event->participation_confirmation_version
-                || ! in_array($member->status, [Status::CONFIRMED, Status::TENTATIVE], true)) {
+            $isOrganizer = (int) $id === (int) $organizerId;
+            $status = $member->confirmation_version === $event->participation_confirmation_version ? $member->status : Status::LEFT;
+            if (! $isOrganizer && ! in_array($status, [Status::CONFIRMED, Status::TENTATIVE], true)) {
                 continue;
             }
             $profileAllowed = $this->privacy->allows($person, $viewer, Privacy::PROFILE);
             $person->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
             $avatarAllowed = $profileAllowed && $this->privacy->allows($person, $viewer, Privacy::AVATAR);
             $decision = $decisions->get($id)?->first(fn ($entry) =>
-                ($entry->metadata['to'] ?? null) === $member->status->value
+                ($entry->metadata['to'] ?? null) === $status->value
                 && (int) ($entry->metadata['confirmation_version'] ?? 0) === $event->participation_confirmation_version);
-            $decisionAt = $member->status_changed_at ?? $decision?->created_at ?? $member->joined_at;
+            $decisionAt = $member->status_changed_at ?? $decision?->created_at ?? ($status === Status::LEFT ? $member->left_at : $member->joined_at);
             $rows[] = [
                 'name' => $profileAllowed ? ($person->nickname ?: $person->username ?: 'Участник') : 'Участник',
                 'url' => $profileAllowed ? $this->profiles->url($person) : null,
                 'avatar_url' => $avatarAllowed ? ($person->profile?->avatarUrl() ?: $person->telegramAccount?->photo_url ?: $person->vkAccount?->avatar_url) : null,
-                'status' => $member->status->value,
+                'status' => $status->value,
                 'decision_at' => $decisionAt?->setTimezone($event->venue?->schedule?->timezone ?: config('app.timezone'))->format('d.m.Y H:i'),
-                'organizer' => (int) $id === (int) $organizerId,
+                'organizer' => $isOrganizer,
                 'is_viewer' => $viewer !== null && (int) $id === (int) $viewer->id,
             ];
         }
