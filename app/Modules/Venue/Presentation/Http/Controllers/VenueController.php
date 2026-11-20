@@ -79,6 +79,8 @@ class VenueController extends Controller
             'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
+            'has_upcoming_events' => ['nullable', 'boolean'],
+            'event_days' => ['nullable', 'integer', 'between:1,14'],
             'view' => ['nullable', Rule::in(['list', 'map'])],
             'sort' => ['nullable', Rule::in(['new', 'name_asc', 'name_desc'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
