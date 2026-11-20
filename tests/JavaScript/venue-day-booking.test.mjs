@@ -48,7 +48,7 @@ function node() {
 
 function mountDayBooking({
     previewFails = false, customSlots = null, personalDiscount = null,
-    viewerAuthenticated = true, sessionStore = null, stale = false,
+    viewerAuthenticated = true, sessionStore = null, stale = false, calendarDays = null,
 } = {}) {
     const status = node();
     const heading = node();
@@ -84,9 +84,20 @@ function mountDayBooking({
     const eventDialog = node();
     const eventFields = {};
     eventDialog.querySelector = selector => eventFields[selector] ||= node();
-    const dates = ['2026-11-15', '2026-11-16', '2026-11-17'].map(date => {
+    const searchHeader = node(), searchNote = node(), searchCourts = node(), searchBack = node(), calendar = node();
+    Object.assign(fields, {
+        '[data-rental-result-header]': searchHeader, '[data-rental-result-note]': searchNote,
+        '[data-rental-result-courts]': searchCourts, '[data-rental-result-back]': searchBack,
+        '[data-venue-day-dates]': calendar,
+    });
+    searchCourts.querySelectorAll = () => searchCourts.children;
+    const dates = (calendarDays || ['2026-11-15', '2026-11-16', '2026-11-17']).map(date => {
         const button = node();
         button.dataset.venueDayDate = date;
+        button.parentElement = node();
+        button.attributes = {};
+        button.setAttribute = (key, value) => {button.attributes[key] = value;};
+        button.removeAttribute = key => {delete button.attributes[key];};
         button.querySelector = selector => selector === 'strong'
             ? {textContent: date} : null;
         return button;
@@ -166,7 +177,7 @@ function mountDayBooking({
     }, { filename: 'venue-detail.js' });
     return {
         dialog, eventDialog, eventFields, opener, grid, bookingButton, summary, minimum, inputs, requests, previous, next, dates,
-        window, windowEvents, storage, status,
+        window, windowEvents, storage, status, searchNote, searchBack,
         async open(expectedCards = 2) {
             await opener.listeners.click();
             assert.equal(grid.children.length, expectedCards);
@@ -921,3 +932,43 @@ test('venue preview uses existing loader and reuses fetched details and loaded c
 });
 
 import './venue-rental-search.test.mjs';
+
+test('rental preference marks one or several days but all nine remain navigable', async () => {
+    const dayValues = Array.from({length:9}, (_, i) => '2026-11-' + (15+i));
+    const page = mountDayBooking({calendarDays:dayValues});
+    const settle = () => new Promise(resolve => setImmediate(resolve));
+    const openSearch = (from, to) => page.dialog.listeners['mskba:rental-search']({detail:{
+        criteria:{from,to,fromTime:'20:00',toTime:'23:59'},
+        courts:[{id:13,name:'Зал 1'}],courtId:13,date:from,note:'Исходная сводка',
+        filterSlots:data=>data.slots,eligibleSlots:data=>data.slots,groupSlots:groupDayBookingSlots,back:()=>{},
+    }});
+    const markers = () => page.dates.map(button=>button.parentElement.dataset.rentalPreference ?? null);
+    openSearch(dayValues[2],dayValues[3]);
+    await settle();
+    assert.deepEqual(markers(),[null,null,'first','last',null,null,null,null,null]);
+    assert.equal(page.dates.every(button=>!button.parentElement.hidden),true);
+    assert.equal(page.previous.disabled,false);
+    page.previous.click();
+    await settle();
+    assert.equal(page.requests.at(-1).searchParams.get('date'),dayValues[1]);
+    assert.match(page.searchNote.textContent,/другой день/);
+    assert.ok(page.grid.children.length);
+    page.dates[8].click();
+    await settle();
+    assert.equal(page.requests.at(-1).searchParams.get('date'),dayValues[8]);
+    assert.equal(page.next.disabled,true);
+    assert.equal(page.dates[8].attributes['aria-pressed'],'true');
+    assert.deepEqual(markers(),[null,null,'first','last',null,null,null,null,null]);
+    page.dates[2].click();
+    await settle();
+    assert.equal(page.searchNote.textContent,'Исходная сводка');
+    page.dialog.close();
+    assert.deepEqual(markers(),Array(9).fill(null));
+    openSearch(dayValues[4],dayValues[4]);
+    await settle();
+    assert.deepEqual(markers(),[null,null,null,null,'single',null,null,null,null]);
+    page.next.click();
+    await settle();
+    assert.equal(page.requests.at(-1).searchParams.get('date'),dayValues[5]);
+    assert.equal(markers()[4],'single');
+});
