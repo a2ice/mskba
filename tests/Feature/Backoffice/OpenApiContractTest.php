@@ -26,7 +26,8 @@ final class OpenApiContractTest extends TestCase
         $actual = [];
         foreach (Route::getRoutes() as $route) {
             if (str_starts_with((string) $route->getName(), 'api.v1.')
-                || str_starts_with((string) $route->getName(), 'api.internal.page-builder.')) {
+                || str_starts_with((string) $route->getName(), 'api.internal.page-builder.')
+                || str_starts_with((string) $route->getName(), 'api.internal.editorial-news.')) {
                 foreach (array_filter($route->methods(), fn (string $method): bool => $method !== 'HEAD') as $method) {
                     $actual[] = $method.' '.$route->uri();
                 }
