@@ -972,3 +972,25 @@ test('rental preference marks one or several days but all nine remain navigable'
     assert.equal(page.requests.at(-1).searchParams.get('date'),dayValues[5]);
     assert.equal(markers()[4],'single');
 });
+
+test('rental search shows unverified and unavailable intervals as disabled calendar cells', async () => {
+    const page = mountDayBooking({customSlots:[
+        {starts_at:'18:00',ends_at:'18:30',status:'unknown',selectable:false,price_minor:null},
+        {starts_at:'18:30',ends_at:'19:00',status:'unavailable',selectable:false,price_minor:null},
+    ]});
+    const detail = {criteria:{from:'2026-11-15',to:'2026-11-16'},courts:[{id:13,name:'Зал 1'}],
+        courtId:13,date:'2026-11-15',note:'Нет подтверждённых данных',
+        filterSlots:data=>data.slots,eligibleSlots:()=>[],groupSlots:groupDayBookingSlots,back:()=>{}};
+    page.dialog.listeners['mskba:rental-search']({detail});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual(page.grid.children.map(cell=>cell.dataset.slotStatus),['unknown','unavailable']);
+    assert.ok(page.grid.children.every(cell=>cell.disabled && cell.dataset.slotIndex===undefined));
+    assert.equal(page.bookingButton.disabled,true);
+    assert.match(page.status.textContent,/нет подтверждённого расписания/);
+    const stalePage = mountDayBooking({stale:true});
+    stalePage.dialog.listeners['mskba:rental-search']({detail});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(stalePage.grid.children.length,2);
+    assert.ok(stalePage.grid.children.every(cell=>cell.dataset.slotStatus==='unknown'&&cell.disabled));
+    assert.equal(stalePage.bookingButton.disabled,true);
+});
