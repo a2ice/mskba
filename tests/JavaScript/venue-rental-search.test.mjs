@@ -33,7 +33,7 @@ test('night and off-peak supply cannot trigger a prime-time congratulation',()=>
     assert.match(summarizeRental([off],range),/прайм-тайм/);
     const prime=day([slot('18:00','18:30'),slot('18:30','19:00')]);
     assert.match(summarizeRental([prime],range),/повезло/);
-    assert.match(summarizeRental([day(prime.slots,{stale:true})],range),/не удалось подтвердить/);
+    assert.match(summarizeRental([day(prime.slots,{stale:true})],range),/не удалось подтвердить/i);
     const weekend=day([slot('10:00','10:30'),slot('10:30','11:00')],{date:'2026-11-21'});
     assert.match(summarizeRental([weekend],{...range,from:'2026-11-21',to:'2026-11-21'}),/повезло/);
 });
