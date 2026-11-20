@@ -3,8 +3,9 @@ export function syncChatActions(form) {
     const menu=form.querySelector('[data-chat-actions]');
     if(!menu)return false;
     const available=[...menu.querySelectorAll('button')].some(button=>!button.hidden);
-    menu.hidden=!available;
-    if(!available)menu.open=false;
+    menu.hidden=form.dataset.chatCanPost!=='true';
+    menu.querySelector('summary').setAttribute('aria-disabled',String(!available));
+    if(!available||menu.hidden)menu.open=false;
     return available;
 }
 
@@ -20,15 +21,17 @@ export function setChatComposerAccess(form,canPost) {
         form.querySelector('[data-chat-context-delete]').hidden=true;
         form.querySelector('[data-venue-play-edit-cancel]').hidden=true;
     }
-    form.hidden=!allowed&&!syncChatActions(form);
-    // Do not short-circuit the menu refresh when writing is allowed.
-    if(allowed)syncChatActions(form);
+    form.hidden=!allowed;
+    syncChatActions(form);
 }
 
 export function bindChatActions(form) {
     const menu=form.querySelector('[data-chat-actions]');
     if(!menu)return;
     const toggle=menu.querySelector('summary');
+    toggle.addEventListener('click',event=>{
+        if(toggle.getAttribute('aria-disabled')==='true')event.preventDefault();
+    });
     menu.addEventListener('click',event=>{
         const action=event.target.closest('button[data-chat-action],button[data-chat-context-delete]');
         if(!action||action.disabled||action.hidden)return;
