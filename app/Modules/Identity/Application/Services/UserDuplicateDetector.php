@@ -185,10 +185,12 @@ final class UserDuplicateDetector
                 ContactTypeEnum::TELEGRAM => UserDuplicateEvidenceTypeEnum::TELEGRAM_IDENTITY,
             };
 
+            $valueColumn = $contact->type === ContactTypeEnum::PHONE ? 'user_phone_key' : 'value';
+            $normalizedValue = (string) $contact->{$valueColumn};
             $otherUserIds = Contact::query()
                 ->where('contactable_type', 'user')
                 ->where('type', $contact->type->value)
-                ->where('value', $contact->value)
+                ->where($valueColumn, $normalizedValue)
                 ->whereNotNull('verified_at')
                 ->whereNotIn('contactable_id', $identityIds)
                 ->pluck('contactable_id')
@@ -203,7 +205,7 @@ final class UserDuplicateDetector
                 $result[] = [
                     'user' => $otherUser,
                     'type' => $type,
-                    'value' => (string) $contact->value,
+                    'value' => $normalizedValue,
                     'metadata' => [
                         'contact_type' => $contact->type->value,
                         'contact_id' => (int) $contact->id,

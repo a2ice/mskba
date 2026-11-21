@@ -43,6 +43,7 @@ class ContactValueTest extends TestCase
             $this->assertSame('+79991234567', (new ContactValue(ContactTypeEnum::PHONE, $number))->value());
         }
         $this->assertSame('+37255512345', (new ContactValue(ContactTypeEnum::PHONE, '0037255512345'))->value());
+        $this->assertSame('+123456789012345', (new ContactValue(ContactTypeEnum::PHONE, '00123456789012345'))->value());
     }
 
     public function test_it_rejects_invalid_contact_values(): void
