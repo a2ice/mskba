@@ -360,6 +360,57 @@ final class EventWizardBookingFirstTest extends TestCase
             ->assertSee('Подстроили время под команду.');
     }
 
+    public function test_explicit_rental_selection_checks_original_and_revises_only_when_booking_is_sent(): void
+    {
+        $organizer = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $representative = User::factory()->withVerifiedContact()->create([
+            'status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $venue = $this->venue($representative);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $original = CarbonImmutable::now('Europe/Moscow')->addDays(4)->setTime(18, 0);
+        $this->actingAs($organizer)->postJson(route('events.funnel.store'), [
+            'event_request_id' => (string) Str::uuid(), 'venue_id' => $venue->id,
+            'venue_court_id' => $court->id, 'type' => 'training', 'visibility' => 'public',
+            'title' => 'Аренда с выбором времени', 'slots' => [
+                ['starts_at' => $original->format('Y-m-d\\TH:i'), 'duration_minutes' => 60],
+            ],
+        ])->assertCreated();
+
+        $event = Event::query()->sole();
+        $interest = $event->venueInterests()->sole();
+        $quoteUrl = route('events.booking.quote', $event->routeIdentifier());
+        $storeUrl = route('events.booking.store', $event->routeIdentifier());
+        $check = ['rental_action' => 'check', 'expected_version' => $event->participation_confirmation_version,
+            'venue_court_id' => $court->id];
+        $this->postJson($quoteUrl, $check)->assertOk()->assertJsonPath('status', 'available');
+
+        $block = VenueBooking::query()->create([
+            'venue_id' => $venue->id, 'venue_court_id' => $court->id,
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($representative, null)->id,
+            'status' => VenueBookingStatusEnum::CONFIRMED, 'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at, 'ends_at' => $event->ends_at,
+        ]);
+        $this->postJson($quoteUrl, $check)->assertOk()->assertJsonPath('status', 'occupied');
+        $next = $original->addHours(2);
+        $selected = ['rental_action' => 'select', 'expected_version' => $event->participation_confirmation_version,
+            'venue_court_id' => $court->id, 'starts_at' => $next->format('Y-m-d\\TH:i'), 'duration_minutes' => 60, 'scope' => 'whole'];
+        $this->post($quoteUrl, $selected)->assertOk()->assertSee('20:00');
+        $this->assertTrue($event->fresh()->starts_at->equalTo($original));
+        $this->assertDatabaseCount('venue_bookings', 1);
+        $this->assertSame('open', $interest->refresh()->status);
+        $quote = \App\Modules\VenueBooking\Domain\Models\VenueBookingQuote::query()->sole();
+        $this->post($storeUrl, $selected + ['quote_id' => $quote->public_id])->assertSessionHasNoErrors();
+        $event->refresh();
+        $this->assertTrue($event->starts_at->equalTo($next));
+        $this->assertSame(2, $event->participation_confirmation_version);
+        $this->assertSame('revised', $interest->refresh()->status);
+        $booking = VenueBooking::query()->where('event_id', $event->id)->sole();
+        $this->assertSame($booking->id, $event->booking_id);
+        $this->assertSame('booking_requested', $event->venueInterests()->where('revision', 2)->sole()->status);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $block->fresh()->status);
+    }
+
     private function venue(User $publisher): Venue
     {
         $venue = Venue::factory()->create([

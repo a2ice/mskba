@@ -339,7 +339,7 @@ if(rentalStart && rentalPrompt && rentalCalendar){
     }
     function openCalendar(){
         if(!courtSelect.value)return;
-        rentalPrompt.close();
+        if(rentalPrompt.open)rentalPrompt.close();
         rentalCalendar.dataset.courtName=courtSelect.selectedOptions[0]?.textContent.trim()||'';
         rentalCalendar.dispatchEvent(new CustomEvent('mskba:choose-court',{detail:{
             courtId:Number(courtSelect.value),date:rentalPrompt.dataset.originalDate

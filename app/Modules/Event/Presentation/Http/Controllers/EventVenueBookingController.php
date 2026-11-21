@@ -25,6 +25,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Application\Services\EffectiveVenueHours;
 use App\Modules\VenueIntegration\Application\Services\FindSportOnDemandRefresh;
+use App\Modules\VenueIntegration\Application\Services\AppliedImportedCourtAvailability;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
@@ -136,7 +137,8 @@ final class EventVenueBookingController extends Controller
             }
             if ($request->input('rental_action') === 'select') {
                 return redirect()->route('events.show', $item->routeIdentifier())
-                    ->with('event_rental_error', $exception->getMessage());
+                    ->with('event_rental_error', $exception->getMessage())
+                    ->with('error', $exception->getMessage());
             }
             return redirect()->route('events.show', $item->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
@@ -207,6 +209,9 @@ final class EventVenueBookingController extends Controller
                     // All changes and the booking share the same transaction.
                     $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
                     $availability->assertAvailable($venue, $start->setTimezone($databaseTimezone), $end->setTimezone($databaseTimezone), scope: $selection['scope'], court: $selection['court']);
+                    if (app(EffectiveVenueHours::class)->intervals($venue, $selection['court'], $start) === null) {
+                        throw new InvalidArgumentException('Для выбранного времени нет подтверждённого расписания.');
+                    }
                     if ($this->selectionChangesEvent($event, $selection)) {
                         if ($event->starts_at === null) {
                             $timezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
@@ -336,7 +341,8 @@ final class EventVenueBookingController extends Controller
             }
             if ($request->input('rental_action') === 'select') {
                 return redirect()->route('events.show', $reference->routeIdentifier())
-                    ->with('event_rental_error', $exception->getMessage());
+                    ->with('event_rental_error', $exception->getMessage())
+                    ->with('error', $exception->getMessage());
             }
             return redirect()->route('events.show', $reference->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
@@ -407,7 +413,14 @@ final class EventVenueBookingController extends Controller
             return response()->json(['status' => 'available']);
         } catch (InvalidArgumentException $exception) {
             $message = $exception->getMessage();
-            $status = str_contains($message, 'уже занято') ? 'occupied' : 'unavailable';
+            $occupied = str_contains($message, 'уже занято');
+            if (str_contains($message, 'занято или недоступно по расписанию FindSport')) {
+                $imports = app(AppliedImportedCourtAvailability::class);
+                $import = $imports->activeFor($court);
+                $occupied = $import !== null && $imports->blockingSlots($import, $event->starts_at, $event->ends_at)
+                    ->contains(fn ($slot) => $slot->status === 'booked' && $slot->day_complete);
+            }
+            $status = $occupied ? 'occupied' : 'unavailable';
             return response()->json(['status' => $status, 'message' => $message]);
         }
     }
