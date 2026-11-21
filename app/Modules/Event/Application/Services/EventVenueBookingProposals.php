@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\Services;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Models\EventVenueBookingProposal;
 use App\Modules\Event\Domain\Models\EventVenueInterest;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
@@ -41,8 +42,9 @@ final readonly class EventVenueBookingProposals
                 return $existing;
             }
             $client = $event->organizerActor?->user?->canonical();
-            if ($client === null || ! $client->isConfirmed()) {
-                throw new InvalidArgumentException('Для получения предложения организатор должен подтвердить аккаунт.');
+            if ($client === null || $client->isBlocked() || $client->trashed()
+                || ! app(VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact($client)) {
+                throw new InvalidArgumentException('Для получения предложения организатору необходимо иметь подтверждённый контакт.');
             }
             $quote = $this->quotes->handle(
                 $venue, $event->starts_at, (int) $event->starts_at->diffInMinutes($event->ends_at),

@@ -277,6 +277,8 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->actingAs($organizer)->get($thread)->assertOk()
             ->assertSee('Предзаявка ещё актуальна?');
 
+        // Account status is independent from the verified contact requirement.
+        $organizer->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
         $this->actingAs($representative)->post(route('events.interests.proposals.store', [
             'event' => $event->routeIdentifier(),
             'interest' => $interest->id,
@@ -287,8 +289,6 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->assertSame($representative->id, $proposal->initiator->user_id);
         $this->assertDatabaseCount('venue_bookings', 0);
 
-        // Account status is independent from the verified contact requirement.
-        $organizer->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
         $this->actingAs($organizer)->post(route('events.booking.quote', $event->routeIdentifier()), [
             'expected_version' => $event->participation_confirmation_version,
             'interest_id' => $interest->id,
