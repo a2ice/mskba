@@ -9,7 +9,7 @@ return [
         'unified-chat' => [
             'title' => 'Единый чат — редактор сообщения',
             'issue' => 933,
-            'revision' => 2,
+            'revision' => 3,
             'status' => 'На визуальной приёмке',
             'templates' => ['mskba_app'],
             'states' => ['normal' => 'Обычное', 'empty' => 'Пустое', 'editing' => 'Редактирование', 'disabled' => 'Недоступно'],

@@ -13,6 +13,7 @@
 <dialog class="mskba-modal venue-play-dialog venue-play-dialog--app" data-studio-chat aria-labelledby="studio-chat-title">
     <header class="mskba-modal__header venue-play-dialog__header">
         <h2 id="studio-chat-title">Мероприятие</h2>
+        <button type="button" class="icon-button venue-play-dialog__messages-jump" data-studio-messages-jump aria-label="Перейти к сообщениям" title="К сообщениям"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h8M8 13h5M5 19l1-4a8 8 0 1 1 4 4z"/></svg></button>
         <button type="button" class="icon-button venue-play-dialog__close" data-studio-close aria-label="Закрыть" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button>
     </header>
     <div class="mskba-modal__body venue-play-dialog__body mskba-scroll">
@@ -47,16 +48,75 @@ const deleteDialog = document.querySelector('[data-venue-play-delete-dialog]');
 const state = @json($state);
 let editing = null;
 let own = null;
-const append = (author, body, rsvp = null, isOwn = false) => {
+// Candidate-only DOM adaptation of the real shared component. After acceptance,
+// promote these placements into the component itself, not a second chat.
+const actionsMenu = form.querySelector('.chat-actions__menu');
+cancel.classList.remove('venue-play-dialog__edit-cancel');
+cancel.textContent = 'Отменить редактирование';
+cancel.removeAttribute('aria-label');
+cancel.removeAttribute('title');
+cancel.dataset.chatAction = 'cancel-edit';
+actionsMenu.prepend(cancel);
+const rosterSection = dialog.querySelector('.venue-play-dialog__roster');
+const rsvpSection = dialog.querySelector('.venue-play-dialog__rsvp');
+rosterSection.before(rsvpSection);
+
+const wall = dialog.querySelector('.venue-play-dialog__wall');
+wall.tabIndex = -1;
+dialog.querySelector('[data-studio-messages-jump]').addEventListener('click', () => {
+    wall.focus({preventScroll:true});
+    wall.scrollIntoView({block:'end'});
+    messages.scrollTop = messages.scrollHeight;
+});
+
+// Fixed fixture clock: identical data in all themes and viewports.
+// Dates/times below use the venue's Moscow time (+03:00).
+let clock = Date.parse('2026-11-21T16:39:00+03:00');
+const nextStamp = () => new Date(clock += 60000).toISOString();
+const dateFormat = new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long',timeZone:'Europe/Moscow'});
+const timeFormat = new Intl.DateTimeFormat('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'});
+const dayFormat = new Intl.DateTimeFormat('sv-SE',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/Moscow'});
+function setStamp(item, stamp, edited = false) {
+    const date = new Date(stamp);
+    item.dataset.messageStamp = date.toISOString();
+    const time = item.querySelector('time');
+    time.dateTime = date.toISOString();
+    time.textContent = timeFormat.format(date) + (edited ? ' (изменено)' : '');
+    time.title = dateFormat.format(date) + ', ' + timeFormat.format(date);
+}
+function regroup() {
+    const items = [...messages.querySelectorAll('[data-message-stamp]')]
+        .sort((a,b)=>a.dataset.messageStamp.localeCompare(b.dataset.messageStamp));
+    let previousDay = '';
+    const fragment = document.createDocumentFragment();
+    for (const item of items) {
+        const date = new Date(item.dataset.messageStamp);
+        const day = dayFormat.format(date);
+        if (day !== previousDay) {
+            const separator = document.createElement('li');
+            separator.className = 'venue-play-dialog__date';
+            const label = document.createElement('time');
+            label.dateTime = day;
+            label.textContent = dateFormat.format(date);
+            separator.append(label);
+            fragment.append(separator);
+            previousDay = day;
+        }
+        fragment.append(item);
+    }
+    messages.replaceChildren(fragment);
+    empty.hidden = items.length !== 0;
+}
+const append = (author, body, rsvp = null, isOwn = false, stamp = nextStamp()) => {
     const item = document.createElement('li');
     if (rsvp) item.dataset.rsvpStatus = rsvp;
     const title = document.createElement('strong');
     title.textContent = author;
     const time = document.createElement('time');
-    time.textContent = '21.11.2026 16:35';
     const p = document.createElement('p');
     p.textContent = body;
     item.append(title, time, p);
+    setStamp(item, stamp);
     if (isOwn) {
         const edit = document.createElement('button');
         edit.type = 'button';
@@ -67,7 +127,7 @@ const append = (author, body, rsvp = null, isOwn = false) => {
         item.append(edit);
     }
     messages.append(item);
-    empty.hidden = true;
+    regroup();
     messages.scrollTop = messages.scrollHeight;
     return item;
 };
@@ -105,11 +165,11 @@ dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Учас
 dialog.querySelector('[data-venue-play-roster-empty]').hidden = true;
 empty.textContent = 'Сообщений пока нет';
 if (state !== 'empty') {
-    append('Событие','olsen'+' пойдёт на мероприятие.','confirmed');
-    append('Событие','olsen'+' не пойдёт на мероприятие.','left');
-    append('Событие','superadmin пойдёт на мероприятие.','confirmed');
+    append('Событие','olsen пойдёт на мероприятие.','confirmed',false,'2026-11-19T18:20:00+03:00');
+    append('Событие','olsen не пойдёт на мероприятие.','left',false,'2026-11-19T19:05:00+03:00');
+    append('Событие','superadmin пойдёт на мероприятие.','confirmed',false,'2026-11-21T16:35:00+03:00');
 }
-if (state === 'editing') own = append('superadmin','Проверка сообщения.',null,true);
+if (state === 'editing') own = append('superadmin','Проверка сообщения.',null,true,'2026-11-21T16:37:00+03:00');
 setChatComposerAccess(form, state !== 'disabled');
 dialog.querySelector('[data-venue-play-comment-notice]').hidden = state !== 'disabled';
 bindChatActions(form);
@@ -119,13 +179,20 @@ form.addEventListener('submit',event=>{
     if (submit.disabled) return;
     if (editing) {
         editing.querySelector('p').textContent = field.value.trim();
-        editing.querySelector('time').textContent = '21.11.2026 16:39 (изменено)';
+        setStamp(editing, nextStamp(), true);
+        regroup();
+        messages.scrollTop = messages.scrollHeight;
     } else {
         append('superadmin',field.value.trim(),null,true);
     }
     stopEdit();
 });
-cancel.addEventListener('click',stopEdit);
+form.addEventListener('mskba:chat-action', event => {
+    if (event.detail.id === 'cancel-edit') {
+        stopEdit();
+        field.focus();
+    }
+});
 remove.addEventListener('click',()=>{
     if (editing) deleteDialog.showModal();
 });
@@ -133,8 +200,9 @@ deleteDialog.querySelector('[data-venue-play-delete-close]').addEventListener('c
 deleteDialog.querySelector('[data-venue-play-delete-confirm]').addEventListener('click',()=>{
     if (editing) editing.remove();
     stopEdit();
-    empty.hidden = messages.children.length !== 0;
+    regroup();
     deleteDialog.close();
+    field.focus();
 });
 const attendance = dialog.querySelector('[data-venue-play-attendance]');
 const tentative = dialog.querySelector('[data-venue-play-rsvp="tentative"]');
