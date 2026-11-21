@@ -1,3 +1,9 @@
+@if($chatCanRespond ?? true)
+    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
+    </div>
+@endif
 @if($chatShowRoster ?? true)
 <section class="venue-play-dialog__roster" aria-label="Участники">
     <h4 data-venue-play-roster-heading>Участники</h4>
@@ -10,12 +16,6 @@
     </div>
     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
 </section>
-@endif
-@if($chatCanRespond ?? true)
-    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
-        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
-        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
-    </div>
 @endif
 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
