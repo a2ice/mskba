@@ -55,9 +55,9 @@ final class EventWizardBookingFirstTest extends TestCase
 
     public function test_wizard_creates_event_and_interest_first_then_links_only_one_booking_later(): void
     {
-        $requester = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $requester = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $requesterActor = app(CurrentActorResolver::class)->resolve($requester, null);
-        $owner = User::factory()->create([
+        $owner = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
@@ -197,11 +197,11 @@ final class EventWizardBookingFirstTest extends TestCase
     {
         config()->set('features.venue_rental_rollout.mode', 'internal');
 
-        $requester = User::factory()->create([
+        $requester = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::USER,
         ]);
-        $owner = User::factory()->create([
+        $owner = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
@@ -240,8 +240,8 @@ final class EventWizardBookingFirstTest extends TestCase
 
     public function test_venue_representative_offers_booking_but_organizer_must_accept_and_thread_survives(): void
     {
-        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $representative = User::factory()->create([
+        $organizer = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $representative = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
@@ -264,7 +264,7 @@ final class EventWizardBookingFirstTest extends TestCase
             'interest' => $interest->id,
         ]);
         $this->actingAs($organizer)->get($thread)->assertOk()->assertSee('Переписка');
-        $stranger = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $stranger = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($stranger)->get($thread)->assertForbidden();
 
         $this->actingAs($representative)->post(route('events.interests.messages.store', [
@@ -320,8 +320,8 @@ final class EventWizardBookingFirstTest extends TestCase
 
     public function test_event_venue_time_revision_keeps_old_values_and_revises_nonbinding_interest(): void
     {
-        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $representative = User::factory()->create([
+        $organizer = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $representative = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);

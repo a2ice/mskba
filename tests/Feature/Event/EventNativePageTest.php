@@ -59,7 +59,7 @@ final class EventNativePageTest extends TestCase
 
     public function test_undated_page_keeps_organizer_and_discussion_and_does_not_book(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = $this->venue();
         $venue->courts()->first() ?? $venue->courts()->create([
             'name' => 'Основной зал', 'alias' => 'court-main', 'is_primary' => true, 'sort_order' => 10,
@@ -108,13 +108,13 @@ final class EventNativePageTest extends TestCase
         $this->assertSame(EventStatusEnum::DRAFT, $event->fresh()->status);
         $this->assertDatabaseCount('venue_bookings', 0);
 
-        $this->actingAs(User::factory()->create(['status' => UserStatusEnum::CONFIRMED]))
+        $this->actingAs(User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]))
             ->get($url)->assertNotFound();
     }
 
     public function test_published_event_uses_nonprimary_selected_hall_and_booking_popup(): void
     {
-        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = $this->venue();
         $venue->courts()->first() ?? $venue->courts()->create([
             'name' => 'Основной зал', 'alias' => 'court-main', 'is_primary' => true, 'sort_order' => 10,
@@ -139,7 +139,7 @@ final class EventNativePageTest extends TestCase
             'ends_at' => $event->ends_at,
         ]);
         $this->assertSame($court->id, $booking->venue_court_id);
-        $reader = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $reader = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($reader)->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()->assertSee('data-native-event-page', false)
             ->assertSee('Испытательный зал')
@@ -153,10 +153,10 @@ final class EventNativePageTest extends TestCase
 
     public function test_organizer_can_delete_and_restore_with_reason_and_personal_notifications(): void
     {
-        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $going = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $thinking = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $declined = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $going = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $thinking = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $declined = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = $this->venue();
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
         $event = $this->createEvent($owner, $venue, [
@@ -213,7 +213,7 @@ final class EventNativePageTest extends TestCase
 
     public function test_deleting_and_restoring_event_keeps_active_booking_and_slot(): void
     {
-        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = $this->venue();
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
         $event = $this->createEvent($owner, $venue, [
@@ -252,7 +252,7 @@ final class EventNativePageTest extends TestCase
 
     public function test_finished_event_report_and_feedback_settings_permissions(): void
     {
-        $owner = User::factory()->create(['status'=>UserStatusEnum::CONFIRMED]);
+        $owner = User::factory()->withVerifiedContact()->create(['status'=>UserStatusEnum::CONFIRMED]);
         $event = $this->createEvent($owner, $this->venue(), ['discussion_enabled'=>false,'report_comments_enabled'=>true]);
         $this->assertFalse($event->discussion_enabled);
         $event->forceFill(['status'=>EventStatusEnum::COMPLETED,'starts_at'=>now()->subHours(3),'ends_at'=>now()->subHour()])->save();
@@ -267,7 +267,7 @@ final class EventNativePageTest extends TestCase
         $settings=route('events.feedback.settings',$event->routeIdentifier());
         $this->patch($settings,['discussion_enabled'=>true,'report_comments_enabled'=>false])->assertRedirect();
         $this->assertFalse($event->fresh()->report_comments_enabled);
-        $this->actingAs(User::factory()->create(['status'=>UserStatusEnum::CONFIRMED]))
+        $this->actingAs(User::factory()->withVerifiedContact()->create(['status'=>UserStatusEnum::CONFIRMED]))
             ->patchJson($settings,['discussion_enabled'=>true,'report_comments_enabled'=>true])->assertForbidden();
         $this->postJson(route('events.report.store',$event->routeIdentifier()),['result_description'=>'Чужой отчёт'])->assertForbidden();
         $this->assertSame('Отличная игра',$event->fresh()->result_description);
