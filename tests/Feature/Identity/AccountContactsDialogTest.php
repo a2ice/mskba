@@ -32,6 +32,47 @@ final class AccountContactsDialogTest extends TestCase
         return $user;
     }
 
+    public function test_pending_email_replacement_cancels_old_code_and_sends_new(): void
+    {
+        config()->set('mail.default', 'smtp');
+        \Illuminate\Support\Facades\Mail::fake();
+        $user = $this->user();
+        $old = $user->contacts()->create(['type' => ContactTypeEnum::EMAIL, 'value' => 'typo@example.test', 'is_primary' => true]);
+        $verification = $old->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'), 'sent_to' => $old->value,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+        $response = $this->actingAs($user)->postJson(route('account.contacts.store'), [
+            'type' => 'email', 'value' => 'correct@example.test', 'replace_contact_id' => $old->id,
+        ])->assertCreated()->assertJsonPath('seconds_left', 60);
+        $this->assertSoftDeleted($old);
+        $this->assertSame(ContactVerificationStatusEnum::CANCELLED, $verification->refresh()->status);
+        $this->assertDatabaseHas('contacts', ['id' => $response->json('contact.id'), 'value' => 'correct@example.test', 'is_primary' => true]);
+        $this->assertDatabaseHas('contact_verifications', ['contact_id' => $response->json('contact.id'), 'sent_to' => 'correct@example.test', 'status' => ContactVerificationStatusEnum::PENDING->value]);
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Modules\Contact\Presentation\Mail\ContactVerificationCodeMail::class);
+        $this->postJson(route('account.contacts.verification.confirm', $old), ['code' => '123456'])->assertNotFound();
+    }
+
+    public function test_replacement_keeps_old_contact_on_failure_and_rejects_foreign_or_verified_contact(): void
+    {
+        config()->set('mail.default', 'log');
+        $user = $this->user();
+        $other = $this->user();
+        $old = $user->contacts()->create(['type' => ContactTypeEnum::EMAIL, 'value' => 'old@example.test']);
+        $foreign = $other->contacts()->create(['type' => ContactTypeEnum::EMAIL, 'value' => 'foreign@example.test']);
+        $verified = $user->contacts()->create(['type' => ContactTypeEnum::EMAIL, 'value' => 'verified@example.test', 'verified_at' => now()]);
+        $payload = ['type' => 'email', 'value' => 'new@example.test'];
+        $this->actingAs($user)->postJson(route('account.contacts.store'), $payload + ['replace_contact_id' => $foreign->id])->assertNotFound();
+        $this->postJson(route('account.contacts.store'), $payload + ['replace_contact_id' => $verified->id])->assertUnprocessable();
+        $this->postJson(route('account.contacts.store'), $payload + ['replace_contact_id' => $old->id])->assertStatus(503);
+        $this->assertFalse($old->refresh()->trashed());
+        $this->assertDatabaseMissing('contacts', ['value' => 'new@example.test']);
+        $this->postJson(route('account.contacts.store'), $payload)->assertCreated();
+        $this->assertFalse($old->refresh()->trashed());
+    }
+
     public function test_log_mailer_rejects_delivery_without_creating_a_pending_code(): void
     {
         config()->set('mail.default', 'log');
