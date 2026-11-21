@@ -30,12 +30,12 @@
         </div>
     </div>
     @if($eventFinished)
-    <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
-            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
-            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
-        </div>
     <div class="studio-report-chat" data-studio-report-chat>
         <h3>Комментарии</h3>
+        <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
+            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')>Нравится</button>
+            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')>Не нравится</button>
+        </div>
         @include('components.event-discussion', ['chatEvent'=>(object)['id'=>'studio-report'], 'chatCanRespond'=>false,'chatShowRoster'=>false])
     </div>
     @endif
@@ -47,10 +47,8 @@
 .studio-event-report p{margin:0}
 .studio-report-chat{display:grid;gap:12px;padding-top:16px;border-top:1px solid var(--line);min-width:0}
 .studio-report-chat h3{margin:0}
-.studio-report-chat .venue-play-dialog__wall{border:0;padding:0;min-width:0}
-.studio-report-reactions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:4px}
-.studio-report-reactions button{display:inline-flex;gap:7px;align-items:center}
-.studio-report-reactions svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.studio-report-chat .venue-play-dialog__wall{border-top:1px solid var(--line);padding-top:16px;min-width:0}
+.studio-report-reactions{justify-content:flex-start}
 .studio-report-reactions button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--surface-raised)}
 .studio-report-chat li[data-reaction="like"] p{color:var(--success,#166534)}
 .studio-report-chat li[data-reaction="dislike"] p{color:var(--danger,#b91c1c)}

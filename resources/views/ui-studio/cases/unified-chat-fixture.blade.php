@@ -42,8 +42,8 @@ cancel.removeAttribute('title');
 cancel.dataset.chatAction = 'cancel-edit';
 actionsMenu.prepend(cancel);
 const rosterSection = dialog.querySelector('.venue-play-dialog__roster');
-const rsvpSection = dialog.querySelector('.venue-play-dialog__rsvp');
-if (rosterSection && rsvpSection) rosterSection.before(rsvpSection);
+const rsvpSection = dialog.querySelector('[data-venue-play-rsvp]')?.closest('.venue-play-dialog__rsvp');
+if (!reportMode && rosterSection && rsvpSection) rosterSection.before(rsvpSection);
 
 const wall = dialog.querySelector('.venue-play-dialog__wall');
 wall.tabIndex = -1;
@@ -266,7 +266,7 @@ if(reportMode){
     // Count active likes, not historical "like" events. Other users' demo votes remain unchanged.
     const othersLikes=Number(pageRoot.dataset.reportInitialLikes)||0;
     const tally=pageRoot.querySelector('[data-report-like-count]');
-    const controls=[...dialog.closest('#studio-report').querySelectorAll('[data-report-reaction]')];
+    const controls=[...dialog.querySelectorAll('[data-report-reaction]')];
     function syncReaction(){
         const likes=othersLikes+Number(reaction==='like');
         if(tally){tally.textContent=String(likes);tally.setAttribute('aria-label','Лайков: '+likes);}
