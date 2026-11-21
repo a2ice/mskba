@@ -25,10 +25,9 @@ final class VkPublisherOAuthController
         }
 
         $state = Str::random(64);
-        $verifier = Str::random(64);
         $redirect = 'https://mskba.ru'.route('backoffice.vk-publisher.callback', [], false);
         $request->session()->put(self::SESSION, [
-            'state' => $state, 'verifier' => $verifier, 'actor' => $request->user()->id,
+            'state' => $state, 'actor' => $request->user()->id,
             'app' => $appId, 'group' => $groupId, 'secret_hash' => hash('sha256', $secret),
             'until' => now()->timestamp + 600, 'redirect' => $redirect,
         ]);
@@ -36,8 +35,8 @@ final class VkPublisherOAuthController
         return redirect()->away('https://oauth.vk.ru/authorize?'.http_build_query([
             'client_id' => $appId, 'redirect_uri' => $redirect, 'display' => 'page',
             'scope' => 'photos', 'response_type' => 'code', 'state' => $state,
-            'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='),
-            'code_challenge_method' => 'S256', 'v' => config('vk.wall.api_version', '5.199'),
+            // Legacy VK server-side OAuth rejects PKCE; keep client secret and one-time session state.
+            'v' => config('vk.wall.api_version', '5.199'),
         ], '', '&', PHP_QUERY_RFC3986))->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
@@ -63,7 +62,7 @@ final class VkPublisherOAuthController
                 ->post('https://oauth.vk.ru/access_token', [
                     'client_id' => $flow['app'], 'client_secret' => $secret,
                     'redirect_uri' => $flow['redirect'], 'code' => $code,
-                    'code_verifier' => $flow['verifier'], 'grant_type' => 'authorization_code',
+                    'grant_type' => 'authorization_code',
                 ]);
             $token = $response->json('access_token');
             $expires = $response->json('expires_in');
