@@ -197,6 +197,16 @@ final class VenueRentalBillingChainTest extends TestCase
         $this->assertSame('internal_settlement', $provider->document_kind);
         $this->assertDatabaseCount('venue_rental_invoices', 2);
 
+        $timeline = app(\App\Modules\VenueBooking\Application\Queries\GetRentalReviewTimeline::class);
+        $history = $timeline->handle($booking->fresh(), $client);
+        $labels = array_column($history, 'label');
+        $this->assertSame(1, count(array_keys($labels, 'Выставлен счёт', true)));
+        $this->assertContains('Ожидается подтверждение оплаты счёта', $labels);
+        $this->assertContains('Оплата подтверждена — счёт оплачен', $labels);
+        foreach ($history as $entry) {
+            $this->assertInstanceOf(\Carbon\CarbonInterface::class, $entry['at']);
+        }
+
         $invoices->settle($booking->id, $provider->id, $adminActor, 'postpay', 'Расчёт с площадкой в конце недели');
         $this->assertSame('postpay', $provider->fresh()->status);
         $this->assertNull($provider->fresh()->settled_at);
