@@ -28,7 +28,8 @@ final class SocialIntegrationSettingsController
             'community_url' => ['required', 'url:https', 'max:255', 'regex:~\Ahttps://vk\.(?:ru|com)/[a-zA-Z0-9_.-]+\z~'],
             'group_id' => ['nullable', 'integer', 'min:1'],
             'community_token' => ['nullable', 'string', 'max:2048'],
-            'user_token' => ['nullable', 'string', 'max:2048'],
+            'mini_app_id' => ['nullable', 'integer', 'min:1'],
+            'mini_app_secret' => ['nullable', 'string', 'max:255'],
             'enabled' => ['required', 'boolean'],
         ];
         $validator = Validator::make($request->all(), [...$rules, 'password' => ['required', 'string', 'max:255']]);
@@ -68,13 +69,19 @@ final class SocialIntegrationSettingsController
         } else {
             $data['enabled'] = (bool) $data['enabled'];
             $data['group_id'] = (int) ($data['group_id'] ?? 0);
+            $data['mini_app_id'] = (int) ($data['mini_app_id'] ?? config('vk.wall.mini_app_id'));
+            if ($data['mini_app_id'] !== (int) config('vk.wall.mini_app_id') || filled($data['mini_app_secret'] ?? null)) {
+                $data['user_token_expires_at'] = 1;
+            }
             if ($data['enabled']) {
-                $token = ($data['user_token'] ?? config('vk.wall.user_token'))
-                    ?: ($data['community_token'] ?? config('vk.wall.community_token'));
+                $token = config('vk.wall.user_token');
+                $communityToken = $data['community_token'] ?? config('vk.wall.community_token');
                 if (config('app.env') !== 'production'
                     || parse_url((string) config('app.url'), PHP_URL_HOST) !== 'mskba.ru'
-                    || $data['group_id'] <= 0 || blank($token)) {
-                    return $this->page()->withErrors(['social' => 'Для публикации нужны production, ID сообщества и ключ VK API.']);
+                    || $data['group_id'] <= 0 || blank($communityToken)
+                    || ! \App\Modules\Vk\Application\Services\VkWallPublisher::photoTokenAvailable()
+                    || isset($data['user_token_expires_at'])) {
+                    return $this->page()->withErrors(['social' => 'Для публикации нужны ID сообщества, ключ сообщества и действующая авторизация загрузки фотографий.']);
                 }
                 try {
                     $probe = Http::asForm()->withoutRedirecting()->timeout(15)
@@ -107,7 +114,7 @@ final class SocialIntegrationSettingsController
                 // Do not surface arbitrary provider URLs or payloads.
                 return $this->page()->with('social_status', 'Telegram: бот @'.preg_replace('/[^a-zA-Z0-9_]/', '', (string) data_get($bot, 'result.username')).'; webhook '.$state.'.');
             }
-            $token = config('vk.wall.community_token') ?: config('vk.wall.user_token');
+            $token = config('vk.wall.community_token');
             if (blank($token)) {
                 return $this->page()->withErrors(['social' => 'Сначала сохраните ключ ВКонтакте.']);
             }
@@ -128,7 +135,10 @@ final class SocialIntegrationSettingsController
                 return $this->page()->withErrors(['social' => $message.' Сохранённый ID не совпадает.']);
             }
             // Request an upload endpoint only, never upload or publish during checks.
-            $photoToken = config('vk.wall.user_token') ?: $token;
+            if (! \App\Modules\Vk\Application\Services\VkWallPublisher::photoTokenAvailable()) {
+                return $this->page()->with('social_status', $message.' Требуется авторизация для загрузки фотографий.');
+            }
+            $photoToken = config('vk.wall.user_token');
             $photo = Http::asForm()->withoutRedirecting()->timeout(15)->post('https://api.vk.com/method/photos.getWallUploadServer', [
                 'group_id' => $id, 'access_token' => $photoToken, 'v' => config('vk.wall.api_version', '5.199'),
             ]);
