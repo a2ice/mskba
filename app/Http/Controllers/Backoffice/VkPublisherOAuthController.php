@@ -14,6 +14,8 @@ final class VkPublisherOAuthController
 {
     private const SESSION = 'vk_publisher_oauth';
 
+    private const REDIRECT = 'https://oauth.vk.com/blank.html';
+
     public function start(Request $request): RedirectResponse
     {
         $this->authorizeAdmin();
@@ -25,14 +27,14 @@ final class VkPublisherOAuthController
         }
 
         $state = Str::random(64);
-        $redirect = 'https://mskba.ru'.route('backoffice.vk-publisher.callback', [], false);
+        $redirect = self::REDIRECT;
         $request->session()->put(self::SESSION, [
             'state' => $state, 'actor' => $request->user()->id,
             'app' => $appId, 'group' => $groupId, 'secret_hash' => hash('sha256', $secret),
             'until' => now()->timestamp + 600, 'redirect' => $redirect,
         ]);
 
-        return redirect()->away('https://oauth.vk.ru/authorize?'.http_build_query([
+        return redirect()->away('https://oauth.vk.com/authorize?'.http_build_query([
             'client_id' => $appId, 'redirect_uri' => $redirect, 'display' => 'page',
             'scope' => 'photos', 'response_type' => 'code', 'state' => $state,
             // Legacy VK server-side OAuth rejects PKCE; keep client secret and one-time session state.
@@ -40,35 +42,58 @@ final class VkPublisherOAuthController
         ], '', '&', PHP_QUERY_RFC3986))->header('Cache-Control', 'no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
-    public function callback(Request $request, SocialIntegrationSettings $settings): RedirectResponse
+    public function complete(Request $request, SocialIntegrationSettings $settings): RedirectResponse
     {
         $this->authorizeAdmin();
         $flow = $request->session()->pull(self::SESSION);
-        $state = $request->query('state');
-        $code = $request->query('code');
+        // Only accept the one-time authorization response from the official VK blank page.
+        // No arbitrary redirect, implicit bearer token, or query-string submission.
+        $returnUrl = $request->input('authorization_response');
+        $params = [];
+        if (is_string($returnUrl) && strlen($returnUrl) <= 8192) {
+            $url = parse_url(trim($returnUrl));
+            if (is_array($url) && ($url['scheme'] ?? null) === 'https'
+                && in_array($url['host'] ?? null, ['oauth.vk.com', 'oauth.vk.ru'], true)
+                && ($url['path'] ?? null) === '/blank.html'
+                && ! isset($url['user'], $url['pass']) && ! isset($url['user'])
+                && ! isset($url['port']) && ! isset($url['fragment'])) {
+                parse_str($url['query'] ?? '', $params);
+            }
+        }
+        $state = $params['state'] ?? null;
+        $code = $params['code'] ?? null;
+        if (isset($params['access_token']) || isset($params['refresh_token'])) {
+            return $this->finish('Нужен одноразовый код, а не токен. Запустите авторизацию заново.', false);
+        }
         $secret = (string) config('vk.wall.mini_app_secret');
         if (! is_array($flow) || ! is_string($state) || ! hash_equals($flow['state'], $state)
             || $flow['until'] < now()->timestamp || $flow['actor'] !== $request->user()->id
             || $flow['app'] !== (int) config('vk.wall.mini_app_id')
             || $flow['group'] !== (int) config('vk.wall.group_id')
             || ! hash_equals($flow['secret_hash'], hash('sha256', $secret))
-            || ! is_string($code) || $code === '' || strlen($code) > 4096) {
+            || ! is_string($code) || ! preg_match('/\A[A-Za-z0-9._-]{16,4096}\z/', $code)) {
             return $this->finish('Авторизация не завершена. Запустите её заново из настроек.', false);
         }
 
         try {
             // Never log the request, credentials or raw OAuth response.
             $response = Http::asForm()->timeout(20)->withoutRedirecting()
-                ->post('https://oauth.vk.ru/access_token', [
+                ->post('https://oauth.vk.com/access_token', [
                     'client_id' => $flow['app'], 'client_secret' => $secret,
                     'redirect_uri' => $flow['redirect'], 'code' => $code,
-                    'grant_type' => 'authorization_code',
                 ]);
             $token = $response->json('access_token');
             $expires = $response->json('expires_in');
             if (! $response->successful() || ! is_string($token) || blank($token)
                 || ! is_numeric($expires) || (int) $expires <= 120) {
-                return $this->finish('ВК не выдал токен с подтверждённым сроком. Повторите авторизацию.', false);
+                $error = $response->json('error');
+                $reason = match ($error) {
+                    'invalid_grant' => 'Код истёк или уже использован.',
+                    'invalid_client' => 'ВК не принял параметры приложения.',
+                    'invalid_request' => 'ВК отклонил параметры обмена кода.',
+                    default => 'ВК не выдал токен с подтверждённым сроком.',
+                };
+                return $this->finish($reason.' Повторите авторизацию.', false);
             }
 
             $probe = Http::asForm()->timeout(15)->withoutRedirecting()

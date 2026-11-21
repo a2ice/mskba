@@ -1560,5 +1560,5 @@ Route::post('/backoffice/social-integrations/{provider}/check', [\App\Http\Contr
 
 Route::post('/backoffice/social-integrations/vk/authorize', [\App\Http\Controllers\Backoffice\VkPublisherOAuthController::class, 'start'])
     ->middleware(['auth:web', 'throttle:5,1'])->name('backoffice.vk-publisher.authorize');
-Route::get('/backoffice/social-integrations/vk/callback', [\App\Http\Controllers\Backoffice\VkPublisherOAuthController::class, 'callback'])
-    ->middleware(['auth:web', 'throttle:10,1'])->name('backoffice.vk-publisher.callback');
+Route::post('/backoffice/social-integrations/vk/complete', [\App\Http\Controllers\Backoffice\VkPublisherOAuthController::class, 'complete'])
+    ->middleware(['auth:web', 'throttle:10,1'])->name('backoffice.vk-publisher.complete');
