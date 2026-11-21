@@ -60,5 +60,5 @@ html:has(.studio-event-dialog[open]){overflow:hidden}
 .studio-feedback-dialog .mskba-modal__footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line)}
 .studio-event-completed,.studio-event-like-tally{display:inline-flex;align-items:center;gap:6px}
 .studio-event-like-tally{gap:4px;font-variant-numeric:tabular-nums}
-.studio-event-like-tally svg{width:14px;height:14px;fill:var(--accent);stroke:var(--accent);stroke-width:1.5;flex:none}
+.studio-event-like-tally svg{display:block;width:16px;height:16px;flex:0 0 16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--text)}
 </style>
