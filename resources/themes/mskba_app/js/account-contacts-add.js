@@ -261,7 +261,7 @@ if (root) {
                 verificationContactId=Number(result.contact.id);
                 verificationEmail=value.value.toLowerCase();
                 showStep('verification');
-                window.dispatchEvent(new CustomEvent('mskba:contact:pending'));
+                window.dispatchEvent(new CustomEvent('mskba:contact:pending',{detail:{id:verificationContactId,value:verificationEmail}}));
                 await sendEmailCode();
             } else {
                 success.textContent = (result.contact?.value || value.value)
