@@ -828,6 +828,9 @@ Route::prefix('events')->group(function () {
             ->name('events.leave');
         Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
             ->name('events.participation');
+        Route::patch('/{event}/feedback-settings', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'settings'])->name('events.feedback.settings');
+        Route::post('/{event}/report', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'store'])->name('events.report.store');
+        Route::delete('/{event}/report/media/{media}', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'destroy'])->whereNumber('media')->name('events.report.media.destroy');
         Route::put('/{event}/report/reaction', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'reaction'])
             ->name('events.report.reaction');
         Route::post('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'store'])
@@ -883,6 +886,7 @@ Route::prefix('events')->group(function () {
         Route::put('/{event}/games/{game}/lineup', [NestedGameController::class, 'lineup'])->whereNumber('game')->name('events.games.lineup.update');
     });
 
+    Route::get('/{event}/report/media/{media}', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'media'])->whereNumber('media')->name('events.report.media');
     Route::get('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'index'])
         ->name('events.wall.index')->middleware('throttle:90,1');
     Route::get('/{event}', [EventController::class, 'show'])

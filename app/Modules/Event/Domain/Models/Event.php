@@ -94,6 +94,17 @@ class Event extends Model
         });
     }
 
+    public function canManageFeedback(?\App\Modules\Identity\Domain\Models\User $user): bool
+    {
+        $user = $user?->canonical();
+        if (! $user || $user->trashed() || $user->isBlocked()) {
+            return false;
+        }
+
+        return $this->organizerActor()->whereIn('user_id', $user->identityIds())->exists()
+            || ($user->isConfirmed() && $user->system_role === \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN);
+    }
+
     public function hasEnded(): bool
     {
         return $this->status === EventStatusEnum::COMPLETED

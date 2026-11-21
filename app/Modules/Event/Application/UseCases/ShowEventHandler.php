@@ -59,7 +59,7 @@ final class ShowEventHandler
                     ->orderByRaw('scheduled_starts_at nulls last')
                     ->orderBy('id'),
                 'media' => fn ($query) => $query
-                    ->where('collection', 'event_results')
+                    ->whereIn('collection', ['event_results', 'event_report_media'])
                     ->with('eventResultPhotoTags.user.profile')
                     ->orderBy('sort_order')
                     ->orderBy('id'),

@@ -77,6 +77,8 @@ final class CreateEventRequest extends FormRequest
             'type' => ['required', Rule::in(EventTypeEnum::creatableValues())],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
+            'discussion_enabled' => ['sometimes', 'boolean'],
+            'report_comments_enabled' => ['sometimes', 'boolean'],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],

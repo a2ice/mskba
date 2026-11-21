@@ -141,6 +141,8 @@ final class EventFirstCreationController extends Controller
             'type' => ['required', Rule::in(EventTypeEnum::creatableValues())],
             'title' => ['nullable', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'discussion_enabled' => ['sometimes', 'boolean'],
+            'report_comments_enabled' => ['sometimes', 'boolean'],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'max_participants' => ['nullable', 'integer', 'between:2,500'],
             // The event can be created independently from its optional Game child.
