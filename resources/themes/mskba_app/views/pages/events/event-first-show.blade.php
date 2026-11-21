@@ -97,9 +97,15 @@
                 <p>{{ $courtLabel }}</p>
                 @if($address)<button type="button" class="app-venue-intro__address" data-venue-map-open aria-label="Посмотреть на карте"><svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $address }}</span></button>@endif
                 @if($venue->location?->metroStations?->isNotEmpty())
-                    <div class="app-venue-intro__metro">@foreach($venue->location->metroStations as $station)
-                        <span class="app-venue-intro__station">{{ $station->name }}</span>
-                    @endforeach</div>
+                    <div class="app-venue-intro__metro" aria-label="Ближайшие станции метро">
+                        @foreach($venue->location->metroStations->loadMissing('line') as $station)
+                            <span class="app-venue-intro__station">
+                                <span class="app-venue-intro__metro-dot"
+                                    style="--metro-color: {{ preg_match('/\A#?[0-9A-Fa-f]{6}\z/D', (string) $station->line?->color) ? '#'.ltrim((string) $station->line->color, '#') : '#758392' }}"
+                                    aria-hidden="true"></span>{{ $station->name }}
+                            </span>
+                        @endforeach
+                    </div>
                 @endif
                 <div class="app-event-actions">
                     <a class="button secondary" href="{{ $venueUrl }}" target="_blank" rel="noopener noreferrer">К площадке</a>
