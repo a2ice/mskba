@@ -39,6 +39,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'visibility',
     'description',
     'result_description',
+    'discussion_enabled',
+    'report_comments_enabled',
     'starts_at',
     'ends_at',
     'max_participants',
@@ -90,6 +92,23 @@ class Event extends Model
                 $event->venue_court_id = (int) $courtId;
             }
         });
+    }
+
+    public function canManageFeedback(?\App\Modules\Identity\Domain\Models\User $user): bool
+    {
+        $user = $user?->canonical();
+        if (! $user || $user->trashed() || $user->isBlocked()) {
+            return false;
+        }
+
+        return $this->organizerActor()->whereIn('user_id', $user->identityIds())->exists()
+            || ($user->isConfirmed() && $user->system_role === \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN);
+    }
+
+    public function hasEnded(): bool
+    {
+        return $this->status === EventStatusEnum::COMPLETED
+            || ($this->status === EventStatusEnum::PUBLISHED && $this->ends_at !== null && $this->ends_at->isPast());
     }
 
     public function routeIdentifier(): string
@@ -202,6 +221,8 @@ class Event extends Model
             'participation_confirmation_version' => 'integer',
             'planned_booking_scope' => \App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::class,
             'booking_deferred' => 'boolean',
+            'discussion_enabled' => 'boolean',
+            'report_comments_enabled' => 'boolean',
             'proposed_time_options' => 'array',
         ];
     }

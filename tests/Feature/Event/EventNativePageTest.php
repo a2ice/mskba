@@ -83,8 +83,10 @@ final class EventNativePageTest extends TestCase
             ->assertSee('data-venue-play-edit-cancel', false)
             ->assertSee('data-chat-composer', false)
             ->assertSee('data-chat-actions', false)
-            ->assertSee('data-venue-play-rsvp="confirmed"', false)
-            ->assertSee('data-venue-play-rsvp="tentative"', false)
+            ->assertSee('data-event-response-choice="confirmed"', false)
+            ->assertSee('data-event-response-choice="tentative"', false)
+            ->assertSee('Как это было')
+            ->assertSee('Материалов по данному мероприятию пока нет')
             ->assertDontSee('data-chat-action="event-rsvp"', false)
             ->assertSee('data-chat-context-delete hidden', false)
             ->assertSee('data-venue-play-delete-dialog', false)
@@ -246,5 +248,26 @@ final class EventNativePageTest extends TestCase
         $this->assertNull($event->fresh()->booking);
         $this->assertNull($booking->fresh()->event_id);
         $this->assertSame(VenueBookingStatusEnum::CANCELLED, $booking->fresh()->status);
+    }
+
+    public function test_finished_event_report_and_feedback_settings_permissions(): void
+    {
+        $owner = User::factory()->create(['status'=>UserStatusEnum::CONFIRMED]);
+        $event = $this->createEvent($owner, $this->venue(), ['discussion_enabled'=>false,'report_comments_enabled'=>true]);
+        $this->assertFalse($event->discussion_enabled);
+        $event->forceFill(['status'=>EventStatusEnum::COMPLETED,'starts_at'=>now()->subHours(3),'ends_at'=>now()->subHour()])->save();
+        $url = route('events.show',$event->routeIdentifier());
+        $this->get($url)->assertOk()->assertSee('Завершено')->assertSee('data-report-reaction="like"',false)
+            ->assertSee('data-report-like-count',false)->assertSee('data-event-report-wall',false)
+            ->assertDontSee('data-event-participate aria-haspopup',false);
+        $this->post(route('events.report.store',$event->routeIdentifier()),['result_description'=>'Отличная игра'])->assertRedirect();
+        $this->get($url)->assertOk()->assertSee('Отличная игра');
+        $settings=route('events.feedback.settings',$event->routeIdentifier());
+        $this->patch($settings,['discussion_enabled'=>true,'report_comments_enabled'=>false])->assertRedirect();
+        $this->assertFalse($event->fresh()->report_comments_enabled);
+        $this->actingAs(User::factory()->create(['status'=>UserStatusEnum::CONFIRMED]))
+            ->patchJson($settings,['discussion_enabled'=>true,'report_comments_enabled'=>true])->assertForbidden();
+        $this->postJson(route('events.report.store',$event->routeIdentifier()),['result_description'=>'Чужой отчёт'])->assertForbidden();
+        $this->assertSame('Отличная игра',$event->fresh()->result_description);
     }
 }

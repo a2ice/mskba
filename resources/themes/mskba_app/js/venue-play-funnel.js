@@ -12,17 +12,43 @@ const toast=(message,failed=false,dialog=null)=>window.dispatchEvent(new CustomE
 for(const page of document.querySelectorAll('[data-venue-play-page]')){
     if(!deleteDialog)continue;
     const legacy=page.hasAttribute('data-event-discussion-legacy');
+    const native=page.hasAttribute('data-event-native-discussion');
+    const host=native?page.closest('[data-native-event-page]'):null;
+    const cta=host?.querySelector('[data-event-participate]');
+    const resumeKey='mskba:event-rsvp:'+location.pathname;
+    const syncCTA=()=>{if(cta)cta.textContent=['confirmed','tentative'].includes(page.dataset.eventStatus)?'Не участвовать':'Участвовать';};
+    const paintAudience=roster=>{
+        const avatars=host?.querySelector('[data-event-audience-avatars]'),count=host?.querySelector('[data-event-audience-count]');
+        if(!avatars||!count)return;
+        avatars.replaceChildren();
+        const members=roster.members.filter(m=>m.status!=='left'||m.organizer);
+        for(const m of members.slice(0,7)){
+            const avatar=document.createElement('span');avatar.className='app-venue-interest-summary__avatar';avatar.dataset.status=m.status;avatar.title=m.name;
+            if(m.avatar_url){const img=document.createElement('img');img.src=m.avatar_url;img.alt='';avatar.append(img);}
+            else avatar.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24"><use href="#user"/></svg>';
+            avatars.append(avatar);
+        }
+        const n=members.length,ones=n%10,mod=n%100;
+        count.textContent=n+' '+(mod>=11&&mod<=14?'участников':ones===1?'участник':ones>=2&&ones<=4?'участника':'участников');
+    };
+    const guestNative=status=>{
+        if(!status){login();return;}
+        try{sessionStorage.setItem(resumeKey,JSON.stringify({status,at:Date.now()}));}catch{}
+        document.getElementById('event-auth-required')?.showModal();
+    };
     const controller=mountEventDiscussion(page,{
         deleteDialog,
         authenticated:page.dataset.authenticated==='1',
-        guestResponse:login,
+        guestResponse:native?guestNative:login,
         toast,
         onRosterUpdate:(_pane,roster,counts)=>{
+            if(native){paintAudience(roster);syncCTA();}
             if(!legacy||!counts)return;
             const count=document.querySelector('[data-event-confirmed-count]');
             if(count)count.textContent=String(counts.confirmed??0)+(roster.max_participants>0?'/'+roster.max_participants:'');
         },
         onParticipationSaved:(_pane,result)=>{
+            if(native){page.dataset.eventStatus=result.status;syncCTA();try{sessionStorage.removeItem(resumeKey);}catch{}}
             if(!legacy)return;
             document.querySelectorAll('.event-response__button').forEach(button=>
                 button.classList.toggle('is-active',button.closest('form')?.querySelector('[name="status"]')?.value===result.status));
@@ -30,7 +56,28 @@ for(const page of document.querySelectorAll('[data-venue-play-page]')){
     });
     controller.paintButtons(page);
     void controller.refreshRoster(page);
-    window.addEventListener('mskba:auth:success',()=>window.location.reload());
+    if(native){
+        syncCTA();
+        cta?.addEventListener('click',()=>document.getElementById(['confirmed','tentative'].includes(page.dataset.eventStatus)?'event-leave':'event-participate')?.showModal());
+        host?.querySelector('#event-discussion')?.addEventListener('click',e=>{
+            if(!e.target.closest('.venue-play-dialog__participation-link')||!cta)return;
+            e.preventDefault();cta.click();
+        });
+        document.querySelectorAll('[data-event-response-choice]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog')?.close();void controller.respond(page,b.dataset.eventResponseChoice);}));
+        document.querySelector('[data-event-auth-login]')?.addEventListener('click',()=>{document.getElementById('event-auth-required')?.close();login();});
+        const resume=()=>{
+            let saved;try{saved=JSON.parse(sessionStorage.getItem(resumeKey)||'null');sessionStorage.removeItem(resumeKey);}catch{}
+            if(saved&&Date.now()-saved.at<20*60*1000&&['confirmed','tentative','left'].includes(saved.status))void controller.respond(page,saved.status);
+        };
+        window.addEventListener('mskba:auth:success',()=>{controller.setAuthenticated(true);resume();});
+        window.addEventListener('mskba:auth:cancel',()=>{try{sessionStorage.removeItem(resumeKey);}catch{}});
+        if(controller.authenticated)queueMicrotask(resume);
+    }else if(page.hasAttribute('data-event-report-wall')){
+        window.addEventListener('mskba:auth:success',()=>{controller.setAuthenticated(true);void controller.refreshRoster(page);});
+    }else window.addEventListener('mskba:auth:success',()=>window.location.reload());
+    if(native || page.hasAttribute('data-event-report-wall')){
+        window.setInterval(()=>{if(document.visibilityState!=='hidden'&&!controller.savingPane)void controller.refreshWall(page,null,false,false);},15000);
+    }
     if(legacy){
         // Keep legacy sport/registration-specific actions in their existing host.
         document.querySelectorAll('form[action*="/participants/me"]').forEach(form=>{

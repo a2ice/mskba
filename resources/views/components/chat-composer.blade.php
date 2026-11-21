@@ -2,7 +2,7 @@
      Action handlers belong to the caller; server permissions are still authoritative. --}}
 <form data-venue-play-message-form data-chat-composer data-chat-can-post="false" hidden>
     <textarea id="{{ $chatComposerId }}" name="body" maxlength="200" rows="2" required
-        aria-label="Написать сообщение" placeholder="Написать сообщение"></textarea>
+        aria-label="{{ $chatComposerLabel ?? 'Написать сообщение' }}" placeholder="{{ $chatComposerLabel ?? 'Написать сообщение' }}"></textarea>
     <div class="venue-play-dialog__message-footer">
         <small data-venue-play-chars aria-label="Осталось символов">200</small>
         <details class="chat-actions" data-chat-actions>

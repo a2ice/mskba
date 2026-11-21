@@ -20,6 +20,13 @@
     $canEdit = $editable && $effectivePermissions->contains(Permission::UPDATE_EVENT->value);
     $canInvite = $editable && $event->status === EventStatusEnum::PUBLISHED && $effectivePermissions->contains(Permission::MANAGE_PARTICIPANTS->value);
     $canRespond = auth()->check() && $editable && (($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at) || ($event->status === EventStatusEnum::PUBLISHED && ($owner || $currentParticipant || $event->visibility->value === 'public')));
+    $finished = $event->hasEnded();
+    $feedbackManager = $event->canManageFeedback(auth()->user());
+    $feedback = $finished && $eventWallCanView ? app(\App\Modules\Social\Application\Services\SocialWallService::class)->reportFeedback($event, auth()->user()) : ['likes'=>0,'can_react'=>false,'reaction'=>null];
+    $canJoin = $editable && $eventWallCanView && (($event->status === EventStatusEnum::PUBLISHED && ($event->visibility->value === 'public' || $owner || $currentParticipant)) || ($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at));
+    $reportMedia = $finished ? $event->media->concat($event->media()->where('collection','event_report_media')->orderBy('sort_order')->get()) : collect();
+    $venueUrl = route('venues.show', $venue->routeIdentifier());
+    $shareUrl = route('events.show', $event->routeIdentifier());
     $confirmedCount = app(\App\Modules\Event\Application\Services\EventIdentityParticipationService::class)->confirmedIdentityCount($event);
     $participants = $event->participants->sortBy(fn ($p) => $p->role === EventParticipantRoleEnum::ORGANIZER ? 0 : 1)->unique(fn ($p) => $p->user?->canonical()?->id ?? $p->user_id);
     $interest = $canManage ? $event->venueInterests->sortByDesc('revision')->first() : null;
@@ -28,51 +35,80 @@
 @endphp
 @extends('theme::layouts.app', ['title' => $event->title])
 @section('content')
-<section class="container app-event-page" data-native-event-page>
-    <header class="app-account-overview__intro">
-        <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
-        <div class="app-event-actions"><span class="badge">{{ $event->type->label() }}</span><span class="badge">{{ $event->status->label() }}</span><span class="badge">{{ $event->visibility->label() }}</span>
-            @if($event->status === EventStatusEnum::PUBLISHED && $event->visibility->value === 'public')
-                <button type="button" class="button secondary" data-event-share>Поделиться</button>
-                <button type="button" class="button secondary" data-favorite-type="event" data-favorite-id="{{ $event->id }}" data-favorite-name="{{ $event->title }}" aria-label="Избранное">Избранное</button>
-            @endif
-            @if($owner)
-                <button type="button" class="button secondary event-lifecycle-danger" data-event-lifecycle-open>Удалить мероприятие</button>
+<section class="container app-venue-page app-event-page venue-play-dialog--app" data-native-event-page>
+    @if(session('status') || session('error') || session('photo_error') || $errors->any())
+        <p class="notice" role="status">{{ session('error') ?: session('photo_error') ?: session('status') ?: $errors->first() }}</p>
+    @endif
+    <div class="app-venue-page__hero-grid">
+        <div class="app-venue-gallery panel" data-venue-gallery>
+            @if($photo)
+                <div class="app-venue-gallery__stage"><img class="app-venue-gallery__slide is-active" src="{{ $photo->publicUrl() }}" alt="{{ $venue->name }}" data-gallery-slide></div>
+            @else
+                <div class="app-venue-gallery__missing"><svg aria-hidden="true"><use href="#ball"/></svg></div>
             @endif
         </div>
-    </header>
-    @if(session('status') || session('error') || $errors->any())
-        <p class="notice" role="status">{{ session('error') ?: session('status') ?: $errors->first() }}</p>
-    @endif
-    <div class="app-event-grid">
-        <article class="panel app-event-panel" data-venue-id="{{ $venue->id }}">
-            @if($photo)<img class="app-event-photo" src="{{ $photo->publicUrl() }}" alt="{{ $venue->name }}">@endif
-            <h2>Площадка</h2>
-            <a class="app-event-link" href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a>
-            <p>Зал: <strong>{{ $courtLabel }}</strong></p>
-            @if($address)<p>{{ $address }}</p>@endif
-            @if($venue->location?->metroStations?->isNotEmpty())
-                <div class="app-event-actions">@foreach($venue->location->metroStations as $station)<span class="badge">{{ $station->name }}</span>@endforeach</div>
-            @endif
-            <button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>
-            <a class="app-event-link" href="{{ route('venues.show', ['alias' => $venue->routeIdentifier(), 'availability' => 1, 'availability_court' => $court?->id, 'availability_date' => $event->starts_at?->setTimezone($timezone)->format('Y-m-d'), 'availability_time' => $event->starts_at?->setTimezone($timezone)->format('H:i')]) }}">Посмотреть занятость</a>
-            <h2>Дата и время</h2>
+        <div class="app-venue-intro panel app-event-intro">
+            <div class="app-venue-intro__badges">
+                <span class="badge">{{ $event->type->label() }}</span><span class="badge">{{ $event->visibility->label() }}</span>
+                @if($finished)
+                <span class="badge app-event-completed">Завершено <span class="app-event-like-tally"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#heart"/></svg><span data-report-like-count role="status" aria-label="Лайков: {{ $feedback['likes'] }}">{{ $feedback['likes'] }}</span></span></span>
+                @elseif($event->status !== EventStatusEnum::PUBLISHED)
+                <span class="badge">{{ $event->status->label() }}</span>
+                @endif
+            </div>
+            <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
-                <p><strong>{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong> (МСК)</p>
-                @if(!$booking || $booking->status->value !== 'confirmed')<p class="muted">Предварительное время</p>@endif
+                <strong>{{ $event->starts_at->setTimezone($timezone)->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
-                    <h3>Желаемые интервалы</h3>
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
                 @endif
             @else
                 <p>Дата и время не определены</p>
-                @if($owner && $editable)<button type="button" class="button primary" data-event-dialog-open="event-schedule">Указать дату и время</button>@endif
+                @if($owner && $editable)<button type="button" class="button secondary" data-event-dialog-open="event-schedule">Указать дату и время</button>@endif
             @endif
-            <h2>Бронирование</h2>
+            @if(filled($event->description))<p class="app-venue-intro__copy app-event-description">{{ $event->description }}</p>@endif
+            @if($eventWallCanView)
+            <div class="app-venue-interest-summary__profiles app-event-audience">
+                <div class="app-venue-interest-summary__avatars" data-event-audience-avatars aria-hidden="true"></div>
+                <a class="app-event-audience-count" href="#event-participants" data-event-audience-count>{{ $confirmedCount }} · Участники</a>
+            </div>
+            @endif
+            <div class="app-venue-intro__actions">
+                @if($canJoin)<button type="button" class="button primary large" data-event-participate aria-haspopup="dialog">Участвовать</button>@endif
+                @if($event->visibility->value === 'public')<button type="button" class="button secondary large" data-event-dialog-open="event-share">Поделиться</button>@endif
+            </div>
+        </div>
+    </div>
+    <nav class="app-venue-page__anchors" aria-label="Разделы мероприятия" data-venue-section-nav>
+        <a href="#event-where">Где играем</a><a href="#event-rental">Аренда</a>
+        @if($eventWallCanView)<a href="#event-participants">Участники</a><a href="#event-discussion">Обсуждение</a>@endif
+        <a href="#event-report">Как это было</a>
+    </nav>
+    <div class="app-venue-page__columns">
+        <div class="app-venue-page__sections">
+            <section class="panel app-venue-block app-event-where" id="event-where" data-venue-id="{{ $venue->id }}">
+                <header class="app-venue-block__header"><h2>Где играем</h2></header>
+                <a class="app-event-link" href="{{ $venueUrl }}" target="_blank" rel="noopener noreferrer">{{ $venue->name }}</a>
+                <p>{{ $courtLabel }}</p>
+                @if($address)<button type="button" class="app-venue-intro__address" data-venue-map-open aria-label="Посмотреть на карте"><svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $address }}</span></button>@endif
+                @if($venue->location?->metroStations?->isNotEmpty())
+                    <div class="app-venue-intro__metro">@foreach($venue->location->metroStations as $station)
+                        <span class="app-venue-intro__station">{{ $station->name }}</span>
+                    @endforeach</div>
+                @endif
+                <div class="app-event-actions">
+                    <a class="button secondary" href="{{ $venueUrl }}" target="_blank" rel="noopener noreferrer">К площадке</a>
+                    <a class="app-event-link" href="{{ route('venues.show', ['alias' => $venue->routeIdentifier(), 'availability' => 1, 'availability_court' => $court?->id, 'availability_date' => $event->starts_at?->setTimezone($timezone)->format('Y-m-d'), 'availability_time' => $event->starts_at?->setTimezone($timezone)->format('H:i')]) }}">Посмотреть занятость</a>
+                </div>
+                @unless($address)<button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>@endunless
+            </section>
+            <section class="panel app-venue-block" id="event-rental">
+                <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
                 <button type="button" class="app-event-booking" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span>Бронирование №{{ $booking->id }}</span><strong>{{ $booking->status->label() }}</strong><svg class="app-event-booking__arrow" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"/></svg></button>
             @else
-                <p>Нет бронирования</p>
+                <p class="muted">Площадка пока не забронирована.</p>
                 @if($canEdit && $event->starts_at && $event->status === EventStatusEnum::PUBLISHED)
                     @if($court && ($policy || $venue->hasFreeAccess()))
                         <form method="POST" action="{{ $policy ? route('events.booking.quote', $event->routeIdentifier()) : route('events.booking.store', $event->routeIdentifier()) }}">
@@ -84,42 +120,46 @@
                     @endif
                 @endif
             @endif
-        </article>
-        <div class="app-event-column">
+
+            </section>
             @if($eventWallCanView)
-                <article class="panel app-event-panel venue-play-dialog--app" data-venue-play-page
-                    data-venue-play-pane="{{ $event->id }}" data-authenticated="{{ auth()->check() ? '1' : '0' }}"
-                    data-event-status="{{ $currentParticipant?->confirmation_version === $event->participation_confirmation_version ? $currentParticipant?->status?->value : '' }}"
-                    data-event-organizer="{{ $owner ? '1' : '0' }}"
-                    data-event-participation-url="{{ route('events.participation', $event->routeIdentifier()) }}"
-                    data-event-wall-url="{{ route('events.wall.index', $event->routeIdentifier()) }}"
-                    data-event-post-url="{{ route('events.wall.store', $event->routeIdentifier()) }}">
-                    @include('components.event-discussion', ['chatEvent' => $event, 'chatCanRespond' => $canRespond, 'primaryButton' => 'button primary', 'secondaryButton' => 'button secondary'])
-                </article>
+            <div class="app-event-chat-layout venue-play-dialog--app" data-venue-play-page data-event-native-discussion
+                data-venue-play-pane="{{ $event->id }}" data-authenticated="{{ auth()->check() ? '1' : '0' }}"
+                data-event-status="{{ $currentParticipant?->confirmation_version === $event->participation_confirmation_version ? $currentParticipant?->status?->value : 'left' }}"
+                data-event-organizer="{{ $owner ? '1' : '0' }}"
+                data-event-page-url="{{ $shareUrl }}"
+                data-event-participation-url="{{ route('events.participation', $event->routeIdentifier()) }}"
+                data-event-wall-url="{{ route('events.wall.index', $event->routeIdentifier()) }}"
+                data-event-post-url="{{ route('events.wall.store', $event->routeIdentifier()) }}">
+                <section class="panel app-venue-block" id="event-participants">
+                    @include('components.event-discussion', ['chatEvent'=>$event,'chatCanRespond'=>false,'chatShowRoster'=>true,'chatShowWall'=>false,'primaryButton'=>'button primary','secondaryButton'=>'button secondary'])
+                </section>
+                <section class="panel app-venue-block" id="event-discussion">
+                    <header class="app-venue-block__header"><h2>Обсуждение</h2></header>
+                    @include('components.event-discussion', ['chatEvent'=>$event,'chatCanRespond'=>false,'chatShowRoster'=>false,'primaryButton'=>'button primary','secondaryButton'=>'button secondary'])
+                </section>
+            </div>
             @endif
-            @if($canEdit || $canInvite || $interest)
-                <article class="panel app-event-panel">
-                    <h2>Управление мероприятием</h2>
-                    @if($canEdit)<a class="button secondary" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать мероприятие</a>@endif
-                    @if($canInvite)<button type="button" class="button primary" data-event-dialog-open="event-invite">Пригласить участников</button>@endif
-                    @if($interest)<a class="button secondary" href="{{ route('events.interests.show', [$event->routeIdentifier(), $interest->id]) }}">Переписка с площадкой</a>@endif
-                </article>
-            @endif
-            @if(filled($event->description))
-                <article class="panel app-event-panel"><h2>Описание</h2><p class="app-event-description">{{ $event->description }}</p></article>
-            @endif
-            @if($event->games->isNotEmpty())
-                <article class="panel app-event-panel"><h2>Игры внутри мероприятия</h2>
-                    @foreach($event->games as $child)
-                        <p>{{ $child->format?->label() ?? 'Игра' }} · {{ $child->status?->label() ?? '' }}</p>
-                        @if($event->starts_at)
-                            <a class="app-event-link" href="{{ $event->primary_game_id === $child->id && $event->type->value === 'game' ? route('events.show', ['event' => $event->routeIdentifier(), 'sport' => 1]) : route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">Открыть игру</a>
-                        @endif
-                        @if($event->starts_at && $effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
-                    @endforeach
-                </article>
-            @endif
+            @include('theme::pages.events.partials.event-report')
         </div>
+        <aside class="app-venue-page__aside panel app-event-aside">
+            @if($canEdit || $canInvite || $interest || $feedbackManager || $owner)
+                @if($canEdit)<a class="button secondary" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать мероприятие</a>@endif
+                @if($feedbackManager)<button class="button secondary" data-event-dialog-open="event-feedback-settings">Обсуждение и комментарии</button>@endif
+                @if($canInvite)<button type="button" class="button secondary" data-event-dialog-open="event-invite">Пригласить участников</button>@endif
+                @if($interest)<a class="button secondary" href="{{ route('events.interests.show', [$event->routeIdentifier(), $interest->id]) }}">Переписка с площадкой</a>@endif
+                @if($owner)<button type="button" class="button secondary event-lifecycle-danger" data-event-lifecycle-open>Удалить мероприятие</button>@endif
+            @endif
+            <strong>Игры</strong>
+            @forelse($event->games as $child)
+                @if($event->starts_at)
+                    <a class="app-venue-activity" href="{{ $event->primary_game_id === $child->id && $event->type->value === 'game' ? route('events.show', ['event' => $event->routeIdentifier(), 'sport' => 1]) : route('events.games.show', [$event->routeIdentifier(), $child->id]) }}">
+                        <strong class="app-venue-activity__title">{{ $child->title ?: 'Игра' }}</strong><span class="app-venue-activity__description">{{ $child->formatLabel() }} · {{ $child->status?->label() }}</span>
+                    </a>
+                @else <p>{{ $child->title ?: 'Игра' }} · {{ $child->formatLabel() }}</p> @endif
+                @if($event->starts_at && $effectivePermissions->contains(Permission::UPDATE_MINI_GAME->value))<a class="button secondary" href="{{ route('events.games.manage', [$event->routeIdentifier(), $child->id]) }}">Управлять игрой</a>@endif
+            @empty <p>Игр пока нет</p> @endforelse
+        </aside>
     </div>
     @if($event->venueRevisions->isNotEmpty())
         <article class="panel app-event-panel"><h2>История изменений места и времени</h2>
@@ -128,7 +168,9 @@
             @endforeach
         </article>
     @endif
+
 </section>
+@include('theme::pages.events.partials.event-detail-dialogs')
 @if($eventWallCanView)
     @include('components.event-discussion-delete-dialog', ['isAppTheme' => true])
     @include('components.event-discussion-styles')
@@ -136,7 +178,7 @@
 @if($owner)
     @include('theme::pages.events.partials.lifecycle-dialog', ['restoring' => false])
 @endif
-@include('theme::partials.venue-map-dialog', ['mapVenue' => null])
+@include('theme::partials.venue-map-dialog', ['mapVenue' => null, 'mapShowCurrentVenueLink'=>true])
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
@@ -172,7 +214,30 @@
 @endsection
 @push('styles')
 <style>
-.app-event-page{display:grid;gap:24px;padding-block:24px 48px;min-width:0}
+.app-event-page{padding-block:24px 48px;min-width:0}
+.app-event-intro{display:flex;flex-direction:column;gap:16px}.app-event-intro .app-venue-intro__actions{margin-top:auto}
+.app-event-chat-layout{display:contents}.app-event-chat-layout>.app-venue-block{scroll-margin-top:calc(var(--app-sticky-offset,124px) + var(--app-venue-nav-height,58px) + 15px)}
+.app-event-page .app-venue-block{min-width:0;align-items:stretch}.app-event-page .venue-play-dialog__wall{border:0;padding:0}.app-event-page .venue-play-dialog__messages{max-height:420px}
+.app-event-page .app-venue-block p{margin:0}.app-event-where .app-venue-intro__address{align-self:flex-start}
+.app-event-audience{display:flex;align-items:center;gap:12px}.app-event-audience .app-venue-interest-summary__avatar{position:relative;overflow:visible;border-color:var(--surface)}
+.app-event-audience .app-venue-interest-summary__avatar img{border-radius:50%}.app-event-audience .app-venue-interest-summary__avatar svg{width:24px;height:24px}
+.app-event-audience .app-venue-interest-summary__avatar::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;border:2px solid var(--surface);border-radius:50%;background:var(--success)}
+.app-event-audience .app-venue-interest-summary__avatar[data-status="tentative"]::after{background:var(--warning)}.app-event-audience .app-venue-interest-summary__avatar[data-status="left"]::after{background:var(--danger)}
+.app-event-audience-count{color:var(--accent);font-weight:650}.app-event-completed,.app-event-like-tally{display:inline-flex;align-items:center;gap:6px}.app-event-like-tally svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-event-aside .app-venue-activity__title{font-size:14px}.app-event-aside{min-width:0}
+.app-event-report-chat{display:grid;gap:12px;min-width:0}.app-event-report-chat .venue-play-dialog__wall{border-top:1px solid var(--line);padding-top:16px}
+.app-event-report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:12px}
+.app-event-report-grid button{padding:0;overflow:hidden;aspect-ratio:4/3;border-radius:12px;border:1px solid var(--line);background:var(--surface-raised);position:relative;cursor:pointer}
+.app-event-report-grid :is(img,video){width:100%;height:100%;object-fit:cover;display:block}.app-event-report-grid .app-event-video-play{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);color:#fff;background:#18212bcc;padding:12px;border-radius:50%}
+.app-event-report-reactions button{display:inline-flex;gap:7px;align-items:center}.app-event-report-reactions svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.app-event-report-reactions button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--surface-raised)}
+.app-event-media-viewer{width:min(800px,calc(100vw - 24px))}.app-event-media-viewer :is(img,video){display:block;max-width:100%;max-height:65dvh;margin:auto}
+.app-event-dialog .app-event-choice-row{display:flex;justify-content:space-around;gap:12px;flex-wrap:wrap}.app-event-dialog .app-event-choice-row .button{min-width:125px;margin:0}
+.app-event-dialog>.mskba-modal__header{display:grid;grid-template-columns:16px minmax(0,1fr) 44px;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.app-event-dialog>.mskba-modal__header h2{margin:0;font-size:clamp(19px,2vw,25px);grid-column:2}.app-event-dialog>.mskba-modal__header .icon-button{grid-column:3;width:44px;height:44px}
+.app-event-dialog .mskba-modal__body{padding:20px 22px}.app-event-dialog .mskba-modal__footer{padding:16px 22px;border-top:1px solid var(--line)}.app-event-page [hidden],.app-event-dialog [hidden]{display:none!important}
+.event-feedback-fields{display:grid;gap:12px}.event-feedback-fields label{display:flex;align-items:flex-start;gap:10px}
+@media(max-width:900px){.app-event-page .app-event-aside{display:flex;position:static}.app-event-page .app-event-report-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .app-event-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
 .app-event-column,.app-event-panel{display:grid;gap:16px;min-width:0;align-content:start}
 .app-event-panel{padding:24px}
@@ -211,7 +276,15 @@ html:has(.app-event-dialog[open]){overflow:hidden}
 document.querySelectorAll('[data-event-dialog-open]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.eventDialogOpen)?.showModal()));
 document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 document.querySelectorAll('.app-event-dialog').forEach(dialog=>{let outside=false;const onBackdrop=e=>{const rect=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom);};dialog.addEventListener('pointerdown',e=>outside=onBackdrop(e));dialog.addEventListener('pointerup',e=>{if(outside&&onBackdrop(e))dialog.close();outside=false;});dialog.addEventListener('pointercancel',()=>outside=false);});
-document.querySelector('[data-native-event-page] [data-event-share]')?.addEventListener('click',async e=>{try{if(navigator.share)await navigator.share({title:document.title,url:location.href});else{await navigator.clipboard.writeText(location.href);e.target.textContent='Ссылка скопирована';}}catch{}});
+document.querySelectorAll('[data-event-dialog-next]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog')?.close();document.getElementById(b.dataset.eventDialogNext)?.showModal();}));
+document.querySelector('[data-event-copy]')?.addEventListener('click',async e=>{try{await navigator.clipboard.writeText(e.currentTarget.dataset.eventCopy);e.currentTarget.textContent='Ссылка скопирована';}catch{e.currentTarget.textContent='Не удалось скопировать';}});
+document.querySelectorAll('[data-event-media-open]').forEach(b=>b.addEventListener('click',()=>{
+    const viewer=document.getElementById('event-media-viewer'),body=viewer.querySelector('[data-event-media-body]');
+    const media=document.createElement(b.dataset.mediaKind==='video'?'video':'img');media.src=b.dataset.eventMediaOpen;
+    if(media.tagName==='VIDEO'){media.controls=true;media.playsInline=true;}else media.alt='Фото мероприятия';
+    body.replaceChildren(media);viewer.showModal();
+}));
+document.getElementById('event-media-viewer')?.addEventListener('close',e=>e.currentTarget.querySelector('[data-event-media-body]').replaceChildren());
 const invite=document.querySelector('[data-event-invite]');
 if(invite){
     const query=invite.querySelector('[data-event-invite-query]'),results=invite.querySelector('[data-event-invite-results]'),feedback=invite.querySelector('[data-event-invite-feedback]');
