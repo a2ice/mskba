@@ -528,7 +528,14 @@ class AccountController extends Controller
         }
 
         try {
-            $contact = $createContactForUser->handle($user, $contactData);
+            $replaceId = $request->validated('replace_contact_id');
+            $contact = $replaceId
+                ? $createContactForUser->replacePending($user, $contactData, (int) $replaceId)
+                : $createContactForUser->handle($user, $contactData);
+        } catch (ContactVerificationDeliveryException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 503)
+                : redirect()->route('account.contacts')->withInput()->with('error', $e->getMessage());
         } catch (InvalidArgumentException $e) {
             return $request->expectsJson()
                 ? response()->json(['message' => $e->getMessage()], 422)
@@ -537,7 +544,8 @@ class AccountController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Контакт добавлен.',
+                'message' => $replaceId ? 'Контакт заменён.' : 'Контакт добавлен.',
+                'seconds_left' => $replaceId ? EmailContactVerificationStrategy::secondsUntilResend($contact->verifications()->latest()->first()) : 0,
                 'contact' => [
                     'id' => $contact->id,
                     'type' => $contact->type->value,
