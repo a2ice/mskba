@@ -63,10 +63,13 @@ rosterSection.before(rsvpSection);
 
 const wall = dialog.querySelector('.venue-play-dialog__wall');
 wall.tabIndex = -1;
-dialog.querySelector('[data-studio-messages-jump]').addEventListener('click', () => {
-    wall.focus({preventScroll:true});
+function scrollToMessagesEnd() {
     wall.scrollIntoView({block:'end'});
     messages.scrollTop = messages.scrollHeight;
+}
+dialog.querySelector('[data-studio-messages-jump]').addEventListener('click', () => {
+    wall.focus({preventScroll:true});
+    scrollToMessagesEnd();
 });
 
 // Fixed fixture clock: identical data in all themes and viewports.
@@ -156,9 +159,24 @@ function startEdit(item) {
 }
 for (const name of ['olsen','superadmin']) {
     const li = document.createElement('li');
-    li.className = 'venue-play-dialog__participant';
-    li.innerHTML = '<span class="venue-play-dialog__avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><span class="venue-play-dialog__participant-status is-confirmed"></span><span class="venue-play-dialog__participant-name"></span>';
-    li.querySelector('.venue-play-dialog__participant-name').textContent = name;
+    const participant = document.createElement('button');
+    participant.type = 'button';
+    participant.className = 'venue-play-dialog__participant';
+    participant.disabled = state === 'disabled';
+    participant.innerHTML = '<span class="venue-play-dialog__avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><span class="venue-play-dialog__participant-status is-confirmed"></span><span class="venue-play-dialog__participant-name"></span>';
+    participant.querySelector('.venue-play-dialog__participant-name').textContent = name;
+    participant.addEventListener('click', () => {
+        if (form.dataset.chatCanPost !== 'true') return;
+        const prefix = '@' + name + ' ';
+        if (!field.value.startsWith(prefix) && field.value.length + prefix.length <= field.maxLength) {
+            field.setRangeText(prefix, 0, 0, 'end');
+        }
+        sync();
+        field.focus({preventScroll:true});
+        field.setSelectionRange(field.value.length, field.value.length);
+        scrollToMessagesEnd();
+    });
+    li.append(participant);
     roster.append(li);
 }
 dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (2/20)';

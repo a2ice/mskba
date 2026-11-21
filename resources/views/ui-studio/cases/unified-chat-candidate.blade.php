@@ -1,4 +1,4 @@
-{{-- Local UIKit candidate, revision 3. Do not promote to common styles before acceptance. --}}
+{{-- Local UIKit candidate, revision 4. Do not promote to common styles before acceptance. --}}
 <style>
 /* One visible focus boundary: the composer; no nested textarea outline. */
 .venue-play-dialog__wall [data-chat-composer] {
@@ -54,5 +54,36 @@
     margin:0;padding:3px 12px;border-radius:999px;
     background:var(--surface-raised);color:var(--muted);
     font-size:12px;font-weight:600;line-height:18px;opacity:1;
+}
+/* Compact discussion typography; retain date separator and timestamp hierarchy. */
+[data-studio-chat] .venue-play-dialog__messages li:not(.venue-play-dialog__date) {
+    font-size:14px;
+    line-height:1.4;
+}
+[data-studio-chat] .venue-play-dialog__messages li:not(.venue-play-dialog__date) p {
+    font-size:inherit;
+    line-height:inherit;
+}
+/* Native participant button, same roster geometry; keyboard-accessible mention. */
+[data-studio-chat] button.venue-play-dialog__participant {
+    width:100%;
+    padding:0;
+    border:0;
+    background:transparent;
+    color:inherit;
+    font-family:inherit;
+    text-align:start;
+    cursor:pointer;
+}
+[data-studio-chat] button.venue-play-dialog__participant:not(:disabled):hover .venue-play-dialog__participant-name {
+    text-decoration:underline;
+}
+[data-studio-chat] button.venue-play-dialog__participant:focus-visible {
+    outline:2px solid var(--accent);
+    outline-offset:-2px;
+    border-radius:5px;
+}
+[data-studio-chat] button.venue-play-dialog__participant:disabled {
+    cursor:default;
 }
 </style>
