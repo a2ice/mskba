@@ -13,7 +13,7 @@ final class VkWallPublisher
     public static function configured(): bool
     {
         return config('vk.wall.enabled') && config('app.env') === 'production'
-            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.user_token'))
+            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.user_token') ?: config('vk.wall.community_token'))
             && parse_url((string) config('app.url'), PHP_URL_HOST) === 'mskba.ru';
     }
 
@@ -102,7 +102,7 @@ final class VkWallPublisher
             $response = Http::asForm()->timeout(20)->withoutRedirecting()
                 ->post('https://api.vk.com/method/'.$method, [
                     ...$data,
-                    'access_token' => config('vk.wall.user_token'),
+                    'access_token' => config('vk.wall.user_token') ?: config('vk.wall.community_token'),
                     'v' => config('vk.wall.api_version'),
                 ]);
             $payload = $response->json();
