@@ -408,6 +408,12 @@ final class EventWizardBookingFirstTest extends TestCase
         $booking = VenueBooking::query()->where('event_id', $event->id)->sole();
         $this->assertSame($booking->id, $event->booking_id);
         $this->assertSame('booking_requested', $event->venueInterests()->where('revision', 2)->sole()->status);
+        $timeline = app(\App\Modules\VenueBooking\Application\Queries\GetRentalReviewTimeline::class);
+        $entries = $timeline->handle($booking, $organizer);
+        $this->assertSame('Заявка отправлена', $entries[0]['label']);
+        $this->assertNotNull($entries[0]['at']);
+        $this->assertSame([], $timeline->handle($booking, $representative));
+        $this->assertNotContains('Заявка просмотрена', array_column($entries, 'label'));
         $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $block->fresh()->status);
     }
 
