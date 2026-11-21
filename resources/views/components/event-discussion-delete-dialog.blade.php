@@ -1,3 +1,4 @@
+@once
 <dialog class="mskba-modal venue-play-dialog venue-play-delete-dialog {{ $isAppTheme ? 'venue-play-dialog--app' : '' }}" data-venue-play-delete-dialog aria-labelledby="venue-play-delete-title" aria-describedby="venue-play-delete-question">
     <header class="mskba-modal__header venue-play-dialog__header">
         <h2 id="venue-play-delete-title">Удалить сообщение</h2>
@@ -11,3 +12,4 @@
         <button type="button" class="{{ $isAppTheme ? 'button danger' : 'btn btn--danger' }}" data-venue-play-delete-confirm>Да, удалить</button>
     </footer>
 </dialog>
+@endonce

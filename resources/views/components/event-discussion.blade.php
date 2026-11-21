@@ -1,3 +1,4 @@
+@if($chatShowRoster ?? true)
 <section class="venue-play-dialog__roster" aria-label="Участники">
     <h4 data-venue-play-roster-heading>Участники</h4>
     <div class="venue-play-dialog__roster-surface" data-venue-play-roster-surface aria-busy="false">
@@ -9,6 +10,7 @@
     </div>
     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
 </section>
+@endif
 @if($chatCanRespond ?? true)
     <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
         <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
