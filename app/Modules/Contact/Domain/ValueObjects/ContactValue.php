@@ -48,14 +48,15 @@ final readonly class ContactValue
         $phone = trim($value);
         $phone = str_replace([' ', '-', '(', ')'], '', $phone);
 
+        // Convert an explicit international access prefix before length validation.
+        if (str_starts_with($phone, '00')) {
+            $phone = '+'.substr($phone, 2);
+        }
         if (! preg_match('/^\+?[0-9]{7,15}$/', $phone)) {
             throw new InvalidArgumentException('Некорректный формат телефона.');
         }
 
-        // Explicit international prefix and Russian domestic trunk prefix.
-        if (str_starts_with($phone, '00') && strlen($phone) >= 9) {
-            return '+'.substr($phone, 2);
-        }
+        // Russian domestic trunk prefix.
         if (preg_match('/^[78][0-9]{10}$/D', $phone)) {
             return '+7'.substr($phone, 1);
         }
