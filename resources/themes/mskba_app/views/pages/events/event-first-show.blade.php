@@ -127,6 +127,7 @@
                 data-venue-play-pane="{{ $event->id }}" data-authenticated="{{ auth()->check() ? '1' : '0' }}"
                 data-event-status="{{ $currentParticipant?->confirmation_version === $event->participation_confirmation_version ? $currentParticipant?->status?->value : 'left' }}"
                 data-event-organizer="{{ $owner ? '1' : '0' }}"
+                data-event-page-url="{{ $shareUrl }}"
                 data-event-participation-url="{{ route('events.participation', $event->routeIdentifier()) }}"
                 data-event-wall-url="{{ route('events.wall.index', $event->routeIdentifier()) }}"
                 data-event-post-url="{{ route('events.wall.store', $event->routeIdentifier()) }}">

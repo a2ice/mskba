@@ -230,6 +230,11 @@ export function mountEventDiscussion(root, {
         setChatComposerAccess(form,response.can_post);
         const noticeNode=pane.querySelector('[data-venue-play-comment-notice]');
         if(response.can_post_reason){noticeNode.textContent=response.can_post_reason;}
+        else if(!response.can_post && !pane.hasAttribute('data-event-report-wall')){
+            noticeNode.replaceChildren(document.createTextNode('Написать сообщение могут участники мероприятия. '));
+            const href=pane.dataset.eventPageUrl;
+            if(href){const a=document.createElement('a');a.className='venue-play-dialog__participation-link';a.href=href;a.textContent='Участвовать';noticeNode.append(a);}
+        }
         noticeNode.hidden=!!response.can_post;
         if(!response.can_post)pane.querySelectorAll('[data-venue-play-edit]').forEach(b=>b.hidden=true);
         if(pane.hasAttribute('data-event-report-wall')){
@@ -353,7 +358,7 @@ export function mountEventDiscussion(root, {
             reacting=true;const reaction=pane.dataset.reportReaction===button.dataset.reportReaction?null:button.dataset.reportReaction;
             pane.querySelectorAll('[data-report-reaction]').forEach(b=>b.disabled=true);
             try{const result=await request(pane.dataset.reactionUrl,'PUT',{reaction});
-                pane.dataset.reportReaction=result.reaction||'';
+                paintWallAccess(pane,{...result,can_post:pane.querySelector('[data-chat-composer]').dataset.chatCanPost==='true',can_post_reason:pane.querySelector('[data-venue-play-comment-notice]').textContent});
                 await refreshWall(pane);
             }catch(e){notice(pane,e.message,true);}
             finally{reacting=false;pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=pane.dataset.canReact!=='1';});}

@@ -7,11 +7,15 @@
     @else
         @if(filled($event->result_description))<p class="app-event-description">{{ $event->result_description }}</p>@endif
         @foreach(['image'=>'Фотоотчёт','video'=>'Видеоотчёт'] as $kind=>$label)
-            @php($items = $reportMedia->filter(fn($m)=>str_starts_with((string)$m->mime,$kind.'/')))
+            @php
+                $items = $reportMedia->filter(fn($m)=>str_starts_with((string)$m->mime,$kind.'/'));
+            @endphp
             @if($items->isNotEmpty())
                 <h3>{{ $label }}</h3>
                 <div class="app-event-report-grid">@foreach($items as $media)
-                    @php($mediaUrl = $media->collection === 'event_report_media' ? route('events.report.media', [$event->routeIdentifier(),$media->id]) : $media->publicUrl())
+                    @php
+                        $mediaUrl = $media->collection === 'event_report_media' ? route('events.report.media', [$event->routeIdentifier(),$media->id]) : $media->publicUrl();
+                    @endphp
                     <button type="button" data-event-media-open="{{ $mediaUrl }}" data-media-kind="{{ $kind === 'video' ? 'video' : 'photo' }}" aria-label="{{ $label }}">
                         @if($kind === 'video')<video src="{{ $mediaUrl }}" muted playsinline preload="metadata"></video><span class="app-event-video-play">▶</span>
                         @else<img src="{{ $mediaUrl }}" alt="Фото мероприятия" loading="lazy">@endif

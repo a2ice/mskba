@@ -72,7 +72,12 @@ for(const page of document.querySelectorAll('[data-venue-play-page]')){
         window.addEventListener('mskba:auth:success',()=>{controller.setAuthenticated(true);resume();});
         window.addEventListener('mskba:auth:cancel',()=>{try{sessionStorage.removeItem(resumeKey);}catch{}});
         if(controller.authenticated)queueMicrotask(resume);
-    }else if(!page.hasAttribute('data-event-report-wall'))window.addEventListener('mskba:auth:success',()=>window.location.reload());
+    }else if(page.hasAttribute('data-event-report-wall')){
+        window.addEventListener('mskba:auth:success',()=>{controller.setAuthenticated(true);void controller.refreshRoster(page);});
+    }else window.addEventListener('mskba:auth:success',()=>window.location.reload());
+    if(native || page.hasAttribute('data-event-report-wall')){
+        window.setInterval(()=>{if(document.visibilityState!=='hidden'&&!controller.savingPane)void controller.refreshWall(page,null,false,false);},15000);
+    }
     if(legacy){
         // Keep legacy sport/registration-specific actions in their existing host.
         document.querySelectorAll('form[action*="/participants/me"]').forEach(form=>{
