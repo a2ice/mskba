@@ -52,11 +52,13 @@ final class SocialIntegrationSettingsTest extends TestCase
         ]);
         $this->actingAs($this->admin());
         Http::fake([
-            'https://oauth.vk.ru/access_token' => Http::response(['access_token' => 'photo-secret', 'expires_in' => 86400]),
+            'https://oauth.vk.com/access_token' => Http::response(['access_token' => 'photo-secret', 'expires_in' => 86400]),
             'https://api.vk.com/method/photos.getWallUploadServer' => Http::response(['response' => ['upload_url' => 'https://upload.vk.com/photo']]),
         ]);
         $redirect = $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
         parse_str((string) parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $params);
+        $this->assertSame('oauth.vk.com', parse_url($redirect->headers->get('Location'), PHP_URL_HOST));
+        $this->assertSame('https://oauth.vk.com/blank.html', $params['redirect_uri']);
         $this->assertSame('photos', $params['scope']);
         $this->assertSame('code', $params['response_type']);
         $this->assertArrayNotHasKey('code_challenge', $params);
@@ -65,21 +67,40 @@ final class SocialIntegrationSettingsTest extends TestCase
         $flow = session('vk_publisher_oauth');
         $this->assertSame($flow['state'], $params['state']);
         $this->assertArrayNotHasKey('verifier', $flow);
-        $this->assertSame('https://mskba.ru/backoffice/social-integrations/vk/callback', $flow['redirect']);
-        $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
+        $this->assertSame('https://oauth.vk.com/blank.html', $flow['redirect']);
+        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html?'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
             ->assertRedirect('/backoffice/social-integrations')->assertSessionHas('social_status');
         $this->assertSame('photo-secret', config('vk.wall.user_token'));
         $this->assertTrue(config('vk.wall.user_token_expires_at') > now()->timestamp);
         $this->assertTrue(app(SocialIntegrationSettings::class)->display('vk')['mini_app_secret']);
         $this->assertStringNotContainsString('photo-secret', DB::table('social_integration_settings')->first()->encrypted_settings);
-        $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
+        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html?'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
             ->assertSessionHasErrors('social');
         Http::assertSentCount(2);
-        Http::assertSent(fn ($request) => $request->url() === 'https://oauth.vk.ru/access_token'
+        Http::assertSent(fn ($request) => $request->url() === 'https://oauth.vk.com/access_token'
             && $request['client_secret'] === 'app-secret'
-            && $request['code'] === 'test-code'
+            && $request['code'] === 'abcdef0123456789'
             && $request['redirect_uri'] === $flow['redirect']
             && ! array_key_exists('code_verifier', $request->data()));
+    }
+
+    public function test_vk_oauth_rejects_untrusted_return_url_without_exchange(): void
+    {
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'vk.wall.group_id' => 174334075, 'vk.wall.mini_app_id' => 54729290,
+            'vk.wall.mini_app_secret' => 'app-secret', 'vk.wall.community_token' => 'community-secret',
+        ]);
+        $this->actingAs($this->admin());
+        Http::fake();
+        foreach (['https://example.com/blank.html?', 'https://oauth.vk.com/blank.html#', 'https://oauth.vk.com/blank.html?access_token=secret&'] as $prefix) {
+            $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+            $flow = session('vk_publisher_oauth');
+            $this->post(route('backoffice.vk-publisher.complete'), [
+                'authorization_response' => $prefix.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789']),
+            ])->assertSessionHasErrors('social');
+        }
+        Http::assertNothingSent();
     }
 
     public function test_normal_user_cannot_change_social_settings(): void
