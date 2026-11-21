@@ -13,6 +13,9 @@ return new class extends Migration
             $table->boolean('ownership_reserved')->default(false);
         });
 
+        DB::table('contacts')->where('contactable_type', 'user')->whereIn('type', ['email', 'phone'])
+            ->whereNotNull('verified_at')->update(['ownership_reserved' => true]);
+
         // Preserve known historical ownership; old deletion cleared verified_at.
         DB::table('contacts')->where('contactable_type', 'user')
             ->whereIn('type', ['email', 'phone'])->whereNotNull('deleted_at')

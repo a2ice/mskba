@@ -77,11 +77,18 @@ final class ContactOwnership
         $identityIds = $user->identityIds();
         $this->assertAvailable($contact->type, $contact->value, $identityIds);
 
+        $value = (new ContactValue($contact->type, $contact->value))->value();
+        // A pending alias may have survived an earlier account merge.
+        // Never create a second verified row for the same reserved email.
+        if ($contact->type === ContactTypeEnum::EMAIL && Contact::query()->withTrashed()
+            ->where('user_email_key', $value)->whereKeyNot($contact->id)->exists()) {
+            throw new InvalidArgumentException('Этот email уже подтверждён в вашем аккаунте.');
+        }
+
         // The email unique index is the final safeguard even for direct writes.
         $contact->update(['verified_at' => now()]);
-        $value = (new ContactValue($contact->type, $contact->value))->value();
         $others = Contact::query()->where('contactable_type', 'user')
-            ->where('type', $contact->type->value)->whereNotIn('contactable_id', $identityIds)
+            ->where('type', $contact->type->value)->whereKeyNot($contact->id)
             ->whereNull('verified_at')->where('ownership_reserved', false)
             ->where($contact->type === ContactTypeEnum::EMAIL ? 'value' : 'user_phone_key', $value)
             ->orderBy('id')->lockForUpdate()->get();

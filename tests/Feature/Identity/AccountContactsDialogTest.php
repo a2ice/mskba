@@ -477,6 +477,7 @@ final class AccountContactsDialogTest extends TestCase
             'type' => ContactTypeEnum::EMAIL,
             'value' => 'taken@example.test',
             'is_primary' => true,
+            'verified_at' => now(),
         ]);
 
         $this->actingAs($requester)->postJson(route('account.contacts.store'), [

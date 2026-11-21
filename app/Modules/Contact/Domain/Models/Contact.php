@@ -35,7 +35,7 @@ class Contact extends Model
             }
 
             // Preserve evidence of earlier verified ownership when a contact is removed.
-            if ($contact->exists && $contact->verified_at === null && $contact->getRawOriginal('verified_at') !== null
+            if (($contact->verified_at !== null || ($contact->exists && $contact->getRawOriginal('verified_at') !== null))
                 && $contact->contactable_type === 'user'
                 && in_array($contact->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
                 $contact->ownership_reserved = true;
