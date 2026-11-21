@@ -22,7 +22,7 @@ final class SocialIntegrationSettingsController
             'bot_token' => ['nullable', 'string', 'max:255', 'regex:/\A[0-9]+:[a-zA-Z0-9_-]+\z/'],
             'bot_username' => ['required', 'string', 'max:64', 'regex:/\A@?[a-zA-Z0-9_]+\z/'],
             'bot_domain' => ['nullable', 'string', 'max:255'],
-            'main_chat_id' => ['required', 'string', 'regex:/\A-?[0-9]+\z/'],
+            'main_chat_id' => ['nullable', 'string', 'regex:/\A-?[0-9]+\z/'],
             'community_url' => ['nullable', 'url:https', 'max:255', 'regex:~\Ahttps://t\.me/[a-zA-Z0-9_]+\z~'],
         ] : [
             'community_url' => ['required', 'url:https', 'max:255', 'regex:~\Ahttps://vk\.(?:ru|com)/[a-zA-Z0-9_.-]+\z~'],
@@ -68,11 +68,26 @@ final class SocialIntegrationSettingsController
         } else {
             $data['enabled'] = (bool) $data['enabled'];
             $data['group_id'] = (int) ($data['group_id'] ?? 0);
-            if ($data['enabled'] && (config('app.env') !== 'production'
-                || parse_url((string) config('app.url'), PHP_URL_HOST) !== 'mskba.ru'
-                || $data['group_id'] <= 0
-                || blank($data['user_token'] ?? config('vk.wall.user_token')) && blank(config('vk.wall.user_token')))) {
-                return $this->page()->withErrors(['social' => 'Для публикации нужны production, ID сообщества и пользовательский ключ VK API.']);
+            if ($data['enabled']) {
+                $token = ($data['user_token'] ?? config('vk.wall.user_token'))
+                    ?: ($data['community_token'] ?? config('vk.wall.community_token'));
+                if (config('app.env') !== 'production'
+                    || parse_url((string) config('app.url'), PHP_URL_HOST) !== 'mskba.ru'
+                    || $data['group_id'] <= 0 || blank($token)) {
+                    return $this->page()->withErrors(['social' => 'Для публикации нужны production, ID сообщества и ключ VK API.']);
+                }
+                try {
+                    $probe = Http::asForm()->withoutRedirecting()->timeout(15)
+                        ->post('https://api.vk.com/method/photos.getWallUploadServer', [
+                            'group_id' => $data['group_id'], 'access_token' => $token,
+                            'v' => config('vk.wall.api_version', '5.199'),
+                        ]);
+                    if (! $probe->successful() || blank($probe->json('response.upload_url'))) {
+                        return $this->page()->withErrors(['social' => 'Ключ не разрешает загрузку обложек. Код VK: '.(int) $probe->json('error.error_code').'. Сохраните ключ без включения публикации или добавьте пользовательский токен.']);
+                    }
+                } catch (Throwable) {
+                    return $this->page()->withErrors(['social' => 'Не удалось проверить права загрузки ВКонтакте.']);
+                }
             }
         }
         $settings->save($provider, $data, $actor->id);
@@ -87,7 +102,6 @@ final class SocialIntegrationSettingsController
             if ($provider === 'telegram') {
                 $bot = $telegram->call('getMe');
                 $webhook = $telegram->call('getWebhookInfo');
-                $expected = rtrim((string) config('app.url'), '/').'/api/v1/telegram/webhook';
                 $url = (string) data_get($webhook, 'result.url');
                 $state = $url !== '' ? 'настроен' : 'не задан';
                 // Do not surface arbitrary provider URLs or payloads.
