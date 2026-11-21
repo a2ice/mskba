@@ -182,7 +182,8 @@ final class EventNativePageTest extends TestCase
             'starts_at' => $event->starts_at, 'ends_at' => $event->ends_at,
         ]);
         DB::table('venue_bookings')->where('id', $booking->id)->update([
-            'requester_user_id' => $owner->id, 'payment_state' => 'not_started',
+            'public_id' => (string) Str::uuid(), 'requester_user_id' => $owner->id,
+            'payment_state' => 'not_started',
             'quote_snapshot' => json_encode(['policy' => ['invoice_workflow' => true, 'requires_payment' => true]]),
         ]);
         $event->forceFill(['booking_id' => $booking->id])->save();

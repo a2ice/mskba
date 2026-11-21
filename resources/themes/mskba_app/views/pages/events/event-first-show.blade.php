@@ -238,7 +238,7 @@
         <p>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
         @if($booking->scope)<p>{{ $booking->scope->label() }}</p>@endif
     </div>
-    @if($owner && $event->sourceBooking)<footer class="mskba-modal__footer"><a class="button secondary" href="{{ route('account.venue-bookings.show', $event->sourceBooking) }}">Перейти к заявке</a></footer>@endif
+    @if($owner && $event->sourceBooking?->public_id)<footer class="mskba-modal__footer"><a class="button secondary" href="{{ route('account.venue-bookings.show', $event->sourceBooking) }}">Перейти к заявке</a></footer>@endif
 </dialog>
 @endif
 @if(!$event->starts_at && $owner && $editable)
