@@ -62,7 +62,7 @@
             </div>
             <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
-                <strong>{{ $event->starts_at->setTimezone($timezone)->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
                 @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
@@ -103,7 +103,6 @@
                 @endif
                 <div class="app-event-actions">
                     <a class="button secondary" href="{{ $venueUrl }}" target="_blank" rel="noopener noreferrer">К площадке</a>
-                    <a class="app-event-link" href="{{ route('venues.show', ['alias' => $venue->routeIdentifier(), 'availability' => 1, 'availability_court' => $court?->id, 'availability_date' => $event->starts_at?->setTimezone($timezone)->format('Y-m-d'), 'availability_time' => $event->starts_at?->setTimezone($timezone)->format('H:i')]) }}">Посмотреть занятость</a>
                 </div>
                 @unless($address)<button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>@endunless
             </section>
