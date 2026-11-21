@@ -71,7 +71,7 @@ final class AccountInvitationController
         // The invitation-specific FormRequest validates explicit acceptance
         // and redirects any registration errors to the token-free continuation.
 
-        // An invited email belonging to any existing identity must be attached
+        // An invited email with verified/historical ownership must be attached
         // to that identity after login, not used to produce a duplicate user.
         if (Contact::query()->withTrashed()
             ->where('user_email_key', $invitation->contact_value)->exists()) {

@@ -52,6 +52,14 @@ final readonly class ContactValue
             throw new InvalidArgumentException('Некорректный формат телефона.');
         }
 
+        // Explicit international prefix and Russian domestic trunk prefix.
+        if (str_starts_with($phone, '00') && strlen($phone) >= 9) {
+            return '+'.substr($phone, 2);
+        }
+        if (preg_match('/^[78][0-9]{10}$/D', $phone)) {
+            return '+7'.substr($phone, 1);
+        }
+
         return $phone;
     }
 
