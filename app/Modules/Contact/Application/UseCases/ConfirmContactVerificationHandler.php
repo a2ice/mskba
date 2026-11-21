@@ -4,6 +4,8 @@ namespace App\Modules\Contact\Application\UseCases;
 
 use App\Modules\Contact\Application\DTO\ConfirmContactVerificationDTO;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
+use App\Modules\Contact\Application\Services\ContactOwnership;
+use InvalidArgumentException;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Events\UserContactConfirmed;
 use App\Modules\Contact\Domain\Models\Contact;
@@ -22,13 +24,18 @@ class ConfirmContactVerificationHandler
         }
 
         $result = DB::transaction(function () use ($contact, $verificationData): ContactVerification|ContactVerificationException {
+            $ownership = app(ContactOwnership::class);
             if ($contact->contactable_type === 'user') {
+                $ownership->lock($contact->type, $contact->value);
                 $canonical = User::query()->find((int) $contact->contactable_id)?->canonical();
                 if ($canonical !== null) {
                     User::query()->whereKey($canonical->identityIds())->orderBy('id')->lockForUpdate()->get();
                 }
             }
-            $contact = Contact::query()->whereKey($contact->id)->lockForUpdate()->firstOrFail();
+            $contact = Contact::query()->withTrashed()->whereKey($contact->id)->lockForUpdate()->firstOrFail();
+            if ($contact->trashed()) {
+                return new ContactVerificationException('Контакт больше недоступен. Добавьте новый контакт.');
+            }
             if ($contact->hasBeenVerified()) {
                 throw new LogicException('Контакт уже подтвержден.');
             }
@@ -81,14 +88,17 @@ class ConfirmContactVerificationHandler
                 return ContactVerificationException::invalidCode($attemptsLeft);
             }
 
+            try {
+                $ownership->claim($contact);
+            } catch (InvalidArgumentException $exception) {
+                return new ContactVerificationException($exception->getMessage());
+            }
+
             $verification->update([
                 'status' => ContactVerificationStatusEnum::CONFIRMED,
                 'verified_at' => now(),
             ]);
 
-            $contact->update([
-                'verified_at' => now(),
-            ]);
 
             // The first successfully verified contact becomes primary, even when
             // an earlier unverified contact was provisionally marked as primary.

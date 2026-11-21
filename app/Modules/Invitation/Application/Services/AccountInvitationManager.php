@@ -3,6 +3,7 @@
 namespace App\Modules\Invitation\Application\Services;
 
 use App\Modules\Contact\Application\DTO\CreateContactDTO;
+use App\Modules\Contact\Application\Services\ContactOwnership;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
@@ -149,6 +150,10 @@ final class AccountInvitationManager
                 abort(403);
             }
 
+            $ownership = app(ContactOwnership::class);
+            $ownership->lock(ContactTypeEnum::EMAIL, $record->contact_value);
+            $ownership->assertAvailable(ContactTypeEnum::EMAIL, $record->contact_value, $user->identityIds());
+            User::query()->whereKey($user->identityIds())->orderBy('id')->lockForUpdate()->get();
             $contact = $user->identityContactsQuery()
                 ->where('type', ContactTypeEnum::EMAIL->value)
                 ->where('value', $record->contact_value)->first();
@@ -158,7 +163,7 @@ final class AccountInvitationManager
                 );
             }
             if ($contact->verified_at === null) {
-                $contact->forceFill(['verified_at' => now()])->save();
+                $ownership->claim($contact);
                 $contact->verifications()->where('status', ContactVerificationStatusEnum::PENDING->value)
                     ->update(['status' => ContactVerificationStatusEnum::CANCELLED->value]);
             }
