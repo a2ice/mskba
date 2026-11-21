@@ -22,6 +22,16 @@ class ConfirmContactVerificationHandler
         }
 
         $result = DB::transaction(function () use ($contact, $verificationData): ContactVerification|ContactVerificationException {
+            if ($contact->contactable_type === 'user') {
+                $canonical = User::query()->find((int) $contact->contactable_id)?->canonical();
+                if ($canonical !== null) {
+                    User::query()->whereKey($canonical->identityIds())->orderBy('id')->lockForUpdate()->get();
+                }
+            }
+            $contact = Contact::query()->whereKey($contact->id)->lockForUpdate()->firstOrFail();
+            if ($contact->hasBeenVerified()) {
+                throw new LogicException('Контакт уже подтвержден.');
+            }
             $verification = $contact->verifications()
                 ->where('status', ContactVerificationStatusEnum::PENDING->value)
                 ->latest()
