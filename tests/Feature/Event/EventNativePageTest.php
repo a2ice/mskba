@@ -161,7 +161,7 @@ final class EventNativePageTest extends TestCase
             $booking->update(['status' => $status]);
             $this->get($url)->assertOk()
                 ->assertSee('data-event-rental-status="'.$status->value.'"', false)
-                ->assertSee($status->label())
+                ->assertSee($status === VenueBookingStatusEnum::REQUESTED ? 'На рассмотрении' : $status->label())
                 ->assertDontSee('data-event-rental-open>', false);
         }
         $this->assertSame($event->id, $booking->fresh()->event_id);

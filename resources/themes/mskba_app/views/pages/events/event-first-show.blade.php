@@ -25,7 +25,9 @@
     $feedback = $finished && $eventWallCanView ? app(\App\Modules\Social\Application\Services\SocialWallService::class)->reportFeedback($event, auth()->user()) : ['likes'=>0,'can_react'=>false,'reaction'=>null];
     $canJoin = $editable && $eventWallCanView && (($event->status === EventStatusEnum::PUBLISHED && ($event->visibility->value === 'public' || $owner || $currentParticipant)) || ($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at));
     $reportMedia = $finished ? $event->media->concat($event->media()->where('collection','event_report_media')->orderBy('sort_order')->get()) : collect();
-    $rentalStatusLabel = $booking?->status?->label();
+    $rentalStatusLabel = $booking?->status?->value === 'requested' ? 'На рассмотрении' : $booking?->status?->label();
+    $rentalReview = $owner && $event->sourceBooking
+        ? app(\App\Modules\VenueBooking\Application\Queries\GetRentalReviewTimeline::class)->handle($event->sourceBooking, auth()->user()) : [];
     $rentalCreator = $booking?->creatorActor?->user?->canonical();
     $rentalCreatorName = $rentalCreator && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)->allows($rentalCreator, auth()->user()?->canonical(), \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE)
         ? ($rentalCreator->nickname ?: $rentalCreator->username ?: 'Организатор') : 'Организатор';
@@ -117,7 +119,25 @@
             <section class="panel app-venue-block" id="event-rental">
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
-                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
+                <div class="app-event-rental-card">
+                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" @if($rentalReview) style="visibility:hidden" aria-hidden="true" @endif data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
+                    @if($rentalReview)
+                        <details class="app-event-rental-review" data-rental-review>
+                            <summary class="badge" aria-label="История рассмотрения: {{ $rentalStatusLabel }}">{{ $rentalStatusLabel }}<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/></svg></summary>
+                            <div class="app-event-rental-review__popover" data-rental-review-history>
+                                <strong>История рассмотрения</strong>
+                                <ol class="app-event-rental-review__timeline">
+                                    @foreach($rentalReview as $entry)
+                                        <li><span>{{ $entry['label'] }}</span><time datetime="{{ $entry['at']->toIso8601String() }}">{{ $entry['at']->setTimezone($timezone)->format('d.m.Y H:i') }}</time></li>
+                                    @endforeach
+                                </ol>
+                                @if($booking->status->value === 'requested')
+                                    <p class="muted">Просмотр самой заявки отдельно не фиксируется.</p>
+                                @endif
+                            </div>
+                        </details>
+                    @endif
+                </div>
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
                 @if($canStartRental)
@@ -247,6 +267,11 @@
 .app-event-audience .app-venue-interest-summary__avatar::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;border:2px solid var(--surface);border-radius:50%;background:var(--success)}
 .app-event-audience .app-venue-interest-summary__avatar[data-status="tentative"]::after{background:var(--warning)}.app-event-audience .app-venue-interest-summary__avatar[data-status="left"]::after{background:var(--danger)}
 .app-event-audience-count{color:var(--accent);font-weight:650}.app-event-completed,.app-event-like-tally{display:inline-flex;align-items:center;gap:6px}.app-event-like-tally svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.app-event-rental-card{position:relative;min-width:0;isolation:isolate}.app-event-rental-card>.app-venue-activity{width:100%}
+.app-event-rental-review{position:absolute;right:12px;top:12px;z-index:2}.app-event-rental-review[open]{z-index:5}
+.app-event-rental-review summary{display:inline-flex;align-items:center;gap:4px;cursor:pointer;min-height:32px;list-style:none}.app-event-rental-review summary::-webkit-details-marker{display:none}
+.app-event-rental-review__popover{position:absolute;right:0;top:calc(100% + 6px);width:min(280px,calc(100vw - 64px));padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px #0002;text-align:left;white-space:normal}
+.app-event-rental-review__timeline{list-style:none;margin:10px 0;padding:0;display:grid;gap:10px}.app-event-rental-review__timeline li{display:grid;gap:3px;font-size:13px}.app-event-rental-review__timeline time,.app-event-rental-review__popover p{font-size:12px;color:var(--muted)}
 .app-event-aside .app-venue-activity__title{font-size:14px}.app-event-aside{min-width:0}
 .app-event-report-chat{display:grid;gap:12px;min-width:0}.app-event-report-chat .venue-play-dialog__wall{border-top:1px solid var(--line);padding-top:16px}
 .app-event-report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:12px}
@@ -395,6 +420,10 @@ if(rentalStart && rentalPrompt && rentalCalendar){
         else window.addEventListener('load',beginRental,{once:true});
     }
 }
+document.querySelectorAll('[data-rental-review]').forEach(review=>{
+    document.addEventListener('click',event=>{if(review.open&&!review.contains(event.target))review.open=false;});
+    review.addEventListener('keydown',event=>{if(event.key==='Escape'&&review.open){event.preventDefault();review.open=false;review.querySelector('summary').focus();}});
+});
 document.querySelectorAll('[data-event-dialog-open]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.eventDialogOpen)?.showModal()));
 document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 document.querySelectorAll('.app-event-dialog').forEach(dialog=>{let outside=false;const onBackdrop=e=>{const rect=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom);};dialog.addEventListener('pointerdown',e=>outside=onBackdrop(e));dialog.addEventListener('pointerup',e=>{if(outside&&onBackdrop(e))dialog.close();outside=false;});dialog.addEventListener('pointercancel',()=>outside=false);});
