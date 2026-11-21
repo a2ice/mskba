@@ -46,27 +46,7 @@ jobs:
             fi
             git merge-base --is-ancestor "$before" "$target"
             changes=$(git diff --name-only "$before" "$target")
-            if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php
-              echo "Runtime/dependency changes require explicit infrastructure review"
-              exit 1
-            fi
-            if [ "$(git branch --show-current)" = feature/ui-studio-933 ]; then
-              git switch -c ui-preview "$before"
-            fi
-            git merge --ff-only "$target"
-            if printf '%s\n' "$changes" | grep -Eq '^(package\.json|package-lock\.json)$'; then
-              nice -n 15 npm ci --no-audit --no-fund
-            fi
-            if printf '%s\n' "$changes" | grep -Eq '^(resources/(css|js|themes)/|vite\.config\.|package\.json$|package-lock\.json$)'; then
-              NODE_OPTIONS=--max-old-space-size=512 RAYON_NUM_THREADS=2 nice -n 15 npm run build
-              test -s public/build/manifest.json
-            fi
-            docker exec mskba-ui-php php artisan config:clear
-            docker exec mskba-ui-php php artisan view:clear
-            docker exec mskba-ui-php php artisan route:list --path=uikit
-            test "$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' https://ui.mskba.ru/uikit)" = 401
-            printf 'Preview published: %s\n' "$(git rev-parse HEAD)"
- | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
+            if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php$' | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
               echo "Runtime/dependency changes require explicit infrastructure review"
               exit 1
             fi
