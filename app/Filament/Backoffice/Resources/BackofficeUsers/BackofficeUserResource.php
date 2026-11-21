@@ -212,6 +212,12 @@ final class BackofficeUserResource extends Resource
                                     ])->columns(2),
                                 View::make('filament.backoffice.user-save-general'),
                             ]),
+                        Tab::make('Контакты')
+                            ->icon('heroicon-o-identification')
+                            ->schema([
+                                View::make('filament.backoffice.user-contacts')
+                                    ->viewData(['editedUser' => $record]),
+                            ]),
                         Tab::make('Профиль')
                             ->icon('heroicon-o-identification')
                             ->schema([
