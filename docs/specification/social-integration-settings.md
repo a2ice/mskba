@@ -1,0 +1,11 @@
+# Social integration settings (issue #930)
+
+Filament: Site and design / Integrations and API / Social networks (/backoffice/social-integrations). Only confirmed superadmin; password re-entry for saves. Raw tokens never rendered, blank fields retain existing tokens. Database records use Laravel encryption and a scope derived from APP_ENV + APP_URL host; production and dev are separate. Existing environment defaults continue to work until first save of each provider. First save imports existing values, including Telegram webhook secret, without changing them unless requested. Do not remove env defaults until production checks succeed and a rollback backup exists. The webhook secret is displayed only as configured; rotation remains an infrastructure operation because Telegram webhook registration must be synchronized. VK ID login stays independent and is not changed here.
+
+Runtime overrides refresh in HTTP middleware, before queue jobs, Telegram CLI commands and each poll iteration. Config cache is built from the original config files only. Infrastructure parameters (network/proxy, queue names, webhook transport, APP_KEY) stay in env.
+
+VK setup: create a community access key granting wall and photos only. Save it with publication disabled, then click Check connection. This queries groups.getById to report the numeric group ID and requests photos.getWallUploadServer without uploading a photo or creating a wall post. Save the ID. If the community key receives code 27 on the photo endpoint, obtain a compatible user token with wall/photos rights, save it separately; publishing prefers this user token. Enable only in production once the photo upload endpoint succeeds. Actual posting requires separate acceptance; no existing news is reposted.
+
+Telegram: save existing values to import; token rotation validates getMe username; Check connection calls getMe/getWebhookInfo. It does not mutate the webhook. For bot token rotation, verify getWebhookInfo and use the existing telegram:configure-updates command if registration needs to be refreshed.
+
+Secrets must not be sent in chat or committed. Recovery/rotation uses the administrator interface; revocation at the provider is explicit. Avoid copying production credentials to dev.
