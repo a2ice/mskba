@@ -161,7 +161,7 @@ final class EventNativePageTest extends TestCase
             $booking->update(['status' => $status]);
             $this->get($url)->assertOk()
                 ->assertSee('data-event-rental-status="'.$status->value.'"', false)
-                ->assertSee($status->label())
+                ->assertSee($status === VenueBookingStatusEnum::REQUESTED ? 'На рассмотрении' : $status->label())
                 ->assertDontSee('data-event-rental-open>', false);
         }
         $this->assertSame($event->id, $booking->fresh()->event_id);
@@ -182,7 +182,8 @@ final class EventNativePageTest extends TestCase
             'starts_at' => $event->starts_at, 'ends_at' => $event->ends_at,
         ]);
         DB::table('venue_bookings')->where('id', $booking->id)->update([
-            'requester_user_id' => $owner->id, 'payment_state' => 'not_started',
+            'public_id' => (string) Str::uuid(), 'requester_user_id' => $owner->id,
+            'payment_state' => 'not_started',
             'quote_snapshot' => json_encode(['policy' => ['invoice_workflow' => true, 'requires_payment' => true]]),
         ]);
         $event->forceFill(['booking_id' => $booking->id])->save();
