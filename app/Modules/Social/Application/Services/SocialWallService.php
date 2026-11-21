@@ -217,11 +217,11 @@ final class SocialWallService
 
         return $this->limiter->run($user, 'event', $event->id, 'comment_delete', function () use ($event, $user, $id, $report): array {
             $lockedEvent = Event::query()->lockForUpdate()->findOrFail($event->id);
-            abort_unless($this->canCommentOnEvent($lockedEvent, $user, $report), 403);
             $entry = SocialWallEntry::query()
                 ->where('scope_type', $report ? 'event_report' : 'event')->where('scope_id', $event->id)
                 ->where('kind', 'comment')->where('actor_user_id', $user->id)
                 ->lockForUpdate()->findOrFail($id);
+            abort_unless($this->canCommentOnEvent($lockedEvent, $user, $report), 403);
 
             if ($entry->deleted_at !== null) {
                 return ['changed' => false, 'value' => $entry->load(['actor', 'target'])];
