@@ -5,11 +5,13 @@
 .studio-event-page .app-venue-intro__actions{margin-top:auto}
 .studio-event-time{display:grid;gap:4px;font-size:15px}
 .studio-event-time .muted{font-size:13px}
-.studio-event-page .app-venue-block{min-width:0}
+.studio-event-page .app-venue-block{min-width:0;align-items:stretch}
 .studio-event-page .venue-play-dialog__wall{border-top:0;padding-top:0}
 .studio-event-page .venue-play-dialog__messages{max-height:420px}
 .studio-event-page .venue-play-dialog__roster h4{font-size:20px;margin:0}
-.studio-event-page .studio-event-discussion .app-venue-block__header{margin-bottom:14px}
+.studio-event-page .studio-event-discussion .app-venue-block__header{margin-bottom:0}
+.studio-event-page .studio-event-aside .app-venue-activity__title{font-size:14px}
+.studio-event-page .venue-play-dialog__participant-star{font-size:18px}
 .studio-event-page .studio-event-aside{display:grid;gap:12px;min-width:0;align-content:start}
 .studio-event-aside p{margin:0}
 .studio-event-link{color:var(--accent);text-decoration:none}

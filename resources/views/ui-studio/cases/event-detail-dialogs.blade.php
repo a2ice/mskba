@@ -14,7 +14,7 @@
 @endphp
 @foreach($studioDialogs as $id=>$heading)
     @continue($id === 'studio-rental-dialog' && !$hasRental)
-    <dialog id="{{ $id }}" class="mskba-modal studio-event-dialog" aria-labelledby="{{ $id }}-title">
+    <dialog id="{{ $id }}" class="mskba-modal studio-event-dialog {{ $id === 'studio-auth' ? 'mskba-auth-dialog' : '' }}" aria-labelledby="{{ $id }}-title">
         <header class="mskba-modal__header"><h2 id="{{ $id }}-title">{{ $heading }}</h2><button type="button" class="icon-button" data-event-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
         <div class="mskba-modal__body mskba-scroll">
         @switch($id)
@@ -30,9 +30,12 @@
                 <button type="button" class="button primary full" data-event-open="studio-auth">Войти</button>
                 @break
             @case('studio-auth')
-                <label class="field-group">Логин или email<input type="text" autocomplete="off" placeholder="Логин или email"></label>
-                <label class="field-group">Пароль<input type="password" autocomplete="off" placeholder="Пароль"></label>
-                <button type="button" class="button primary full" data-event-demo-login>Войти</button>
+                <div class="mskba-auth-form mskba-auth-scroll">
+                    <label>Логин или подтверждённый контакт<input type="text" value="superadmin" readonly autocomplete="off"></label>
+                    <label>Пароль<input type="password" value="demo-only" readonly autocomplete="off"></label>
+                    <div class="mskba-auth-options"><label class="mskba-auth-remember"><input type="checkbox"> Запомнить меня</label></div>
+                </div>
+                <button type="button" class="button primary full" data-event-demo-login>Войти <svg aria-hidden="true"><use href="#arrow"/></svg></button>
                 @break
             @case('studio-share')
                 <div class="studio-share-choices"><button type="button" class="button primary full" data-event-open="studio-share-internal">Внутри MSKBA</button><button type="button" class="button secondary full" data-event-open="studio-share-external">В соцсетях и по почте</button></div>

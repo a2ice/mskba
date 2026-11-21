@@ -125,14 +125,20 @@ function startEdit(item) {
     sync();
     field.focus();
 }
-for (const name of ['olsen','superadmin']) {
+function rosterRow(name, status = 'confirmed') {
     const li = document.createElement('li');
     const participant = document.createElement('button');
     participant.type = 'button';
     participant.className = 'venue-play-dialog__participant';
-    participant.disabled = !postingAllowed;
+    participant.disabled = !postingAllowed || name === 'Участник';
+    li.dataset.studioParticipant = name;
     participant.innerHTML = '<span class="venue-play-dialog__avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><span class="venue-play-dialog__participant-status is-confirmed"></span><span class="venue-play-dialog__participant-name"></span>';
     participant.querySelector('.venue-play-dialog__participant-name').textContent = name;
+    participant.querySelector('.venue-play-dialog__participant-status').classList.toggle('is-confirmed',status === 'confirmed');
+    if (pageMode && name === 'olsen') {
+        const star = document.createElement('span');star.className = 'venue-play-dialog__participant-star';
+        star.title = 'Организатор';star.textContent = '★';participant.append(star);
+    }
     participant.addEventListener('click', () => {
         if (form.dataset.chatCanPost !== 'true') return;
         const prefix = '@' + name + ' ';
@@ -145,9 +151,12 @@ for (const name of ['olsen','superadmin']) {
         scrollToMessagesEnd();
     });
     li.append(participant);
-    roster.append(li);
+    return li;
 }
-dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (2/20)';
+const updateRosterHeading = () => {dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (' + roster.children.length + '/20)';};
+for (const name of (pageMode ? ['olsen','Участник'] : ['olsen','superadmin'])) roster.append(rosterRow(name));
+if(pageMode && postingAllowed)roster.append(rosterRow('superadmin',state === 'tentative' ? 'tentative' : 'confirmed'));
+updateRosterHeading();
 dialog.querySelector('[data-venue-play-roster-empty]').hidden = true;
 empty.textContent = 'Сообщений пока нет';
 if (state !== 'empty') {
@@ -170,12 +179,17 @@ function setPosting(allowed) {
     postingAllowed = !!allowed;
     setChatComposerAccess(form, postingAllowed);
     commentNotice.hidden = postingAllowed;
-    roster.querySelectorAll('button').forEach(button => button.disabled = !postingAllowed);
+    roster.querySelectorAll('button').forEach(button => button.disabled = !postingAllowed || button.closest('li').dataset.studioParticipant === 'Участник');
     sync();
 }
 setPosting(postingAllowed);
 dialog.addEventListener('studio:participation-changed', event => {
     if (!event.detail.allowed && editing) stopEdit();
+    if (pageMode) {
+        roster.querySelector('[data-studio-participant="superadmin"]')?.remove();
+        if(event.detail.allowed)roster.append(rosterRow('superadmin',event.detail.status));
+        updateRosterHeading();
+    }
     setPosting(event.detail.allowed);
     if (event.detail.message) append('Событие',event.detail.message,event.detail.status);
 });

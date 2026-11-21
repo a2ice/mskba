@@ -15,7 +15,7 @@ function show(id){
 }
 const syncCTA=()=>{cta.textContent=participation==='left'?'Участвовать':'Не участвовать';};
 syncCTA();
-const openParticipation=()=>show(participation==='left'?'studio-participate':'studio-leave');
+const openParticipation=()=>{pending=null;show(participation==='left'?'studio-participate':'studio-leave');};
 cta.addEventListener('click',openParticipation);
 root.addEventListener('studio:participate',openParticipation);
 function apply(status){
@@ -31,9 +31,15 @@ document.querySelectorAll('[data-event-rsvp]').forEach(button=>button.addEventLi
     apply(status);
 }));
 document.querySelector('[data-event-demo-login]').addEventListener('click',()=>{
-    isAuthenticated=true;if(pending)apply(pending);else show('studio-share-internal');
+    isAuthenticated=true;if(pending==='share'){pending=null;show('studio-share-internal');}else if(pending)apply(pending);else show('studio-participate');
 });
-document.querySelectorAll('[data-event-open]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();show(button.dataset.eventOpen);}));
+document.querySelectorAll('[data-event-open]').forEach(button=>button.addEventListener('click',event=>{
+    event.preventDefault();
+    const id=button.dataset.eventOpen;
+    if(id==='studio-share')pending=null;
+    if(id==='studio-share-internal'&&!isAuthenticated){pending='share';show('studio-auth');return;}
+    show(id);
+}));
 document.querySelectorAll('[data-event-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 document.querySelectorAll('.studio-event-dialog').forEach(d=>{
     let outside=null;d.addEventListener('pointerdown',e=>{outside=e.target===d?e.pointerId:null;});

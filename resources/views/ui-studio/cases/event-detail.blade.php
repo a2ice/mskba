@@ -25,8 +25,8 @@
             <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive)<span class="muted">Время предварительное</span>@endunless</div>
             <p class="app-venue-intro__copy">Хуперы любого уровня, главное желание</p>
             <div class="app-venue-intro__actions">
-                <button type="button" class="button primary large" data-event-participate>Участвовать</button>
-                <button type="button" class="button secondary large" data-event-open="studio-share">Поделиться</button>
+                <button type="button" class="button primary large" data-event-participate aria-haspopup="dialog">Участвовать</button>
+                <button type="button" class="button secondary large" data-event-open="studio-share" aria-haspopup="dialog">Поделиться</button>
             </div>
         </div>
     </div>
