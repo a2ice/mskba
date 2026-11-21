@@ -60,6 +60,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        EventFacade::listen(\Illuminate\Queue\Events\JobProcessing::class, static function (): void {
+            app(\App\Modules\Portal\Application\Services\SocialIntegrationSettings::class)->apply();
+        });
+        EventFacade::listen(\Illuminate\Console\Events\CommandStarting::class, static function ($event): void {
+            if (str_starts_with((string) $event->command, 'telegram:')) {
+                app(\App\Modules\Portal\Application\Services\SocialIntegrationSettings::class)->apply();
+            }
+        });
+
         // Shop tags use a stable morph alias, and this project enforces morph maps.
         Relation::morphMap([
             'shop_category' => ShopCategory::class,

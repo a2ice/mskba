@@ -18,6 +18,7 @@ final class TelegramUpdatesPoller
 
     public function pollOnce(): int
     {
+        app(\App\Modules\Portal\Application\Services\SocialIntegrationSettings::class)->apply();
         $timeout = max(1, (int) config('telegram.polling_timeout', 25));
         $offset = Cache::get(self::OFFSET_CACHE_KEY);
         $response = $this->telegram->call('getUpdates', array_filter([
