@@ -302,6 +302,7 @@ if(requiredContact){
     requiredContact.addEventListener('click',()=>{
         if(!contactModal){location.reload();return;}
         window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{
+            requireVerified:true,
             resume:requiredContact.dataset.contactId ? {id:Number(requiredContact.dataset.contactId),value:requiredContact.dataset.contactValue} : null
         }}));
     });

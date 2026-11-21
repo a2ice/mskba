@@ -305,7 +305,7 @@
         data.schedule_mode=form.querySelector('[name="schedule_mode"]:checked')?.value||'alternatives';
         return data;
     }
-    const save=(awaitingContact=false)=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now(),awaitingContact,pendingContact:awaitingContact?pendingContact:null}));}catch{}};
+    const save=(awaitingContact=false,contactSatisfied=false)=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now(),awaitingContact,contactSatisfied,pendingContact:awaitingContact?pendingContact:null}));}catch{}};
     const clear=()=>{
         try{
             sessionStorage.removeItem(storageKey);
@@ -366,11 +366,18 @@
         }
         modal.addEventListener('close',()=>{
             if(!dialog.open)dialog.showModal();
-            // Only retry validation; the organizer explicitly submits again.
-            report('После подтверждения контакта повторите сохранение мероприятия.');
+            if(modal.returnValue==='verified'){
+                pendingContact=null;
+                contactButton.hidden=true;
+                report('');
+                // Preserve the draft without automatically creating the event.
+                save(true,true);
+            } else {
+                report('Для сохранения мероприятия необходимо подтвердить контакт.');
+            }
         },{once:true});
         dialog.close();
-        window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{resume:pendingContact}}));
+        window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{resume:pendingContact,requireVerified:true}}));
     });
     window.addEventListener('mskba:contact:pending',event=>{
         if(event.detail?.id&&!contactButton.hidden){pendingContact=event.detail;contactButton.textContent='Продолжить подтверждение';save(true);}
@@ -436,6 +443,9 @@
         if(!restore(value))return;
         if(!dialog.open)dialog.showModal();
         if(value.awaitingContact){
+            if(value.contactSatisfied){
+                pendingContact=null;contactButton.hidden=true;report('');return;
+            }
             report('Подтвердите контакт или повторите сохранение мероприятия.');
             pendingContact=value.pendingContact||null;
             contactButton.textContent='Продолжить подтверждение';
