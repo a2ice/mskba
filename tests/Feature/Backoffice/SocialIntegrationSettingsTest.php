@@ -68,13 +68,13 @@ final class SocialIntegrationSettingsTest extends TestCase
         $this->assertSame($flow['state'], $params['state']);
         $this->assertArrayNotHasKey('verifier', $flow);
         $this->assertSame('https://oauth.vk.com/blank.html', $flow['redirect']);
-        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html?'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
+        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html#'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
             ->assertRedirect('/backoffice/social-integrations')->assertSessionHas('social_status');
         $this->assertSame('photo-secret', config('vk.wall.user_token'));
         $this->assertTrue(config('vk.wall.user_token_expires_at') > now()->timestamp);
         $this->assertTrue(app(SocialIntegrationSettings::class)->display('vk')['mini_app_secret']);
         $this->assertStringNotContainsString('photo-secret', DB::table('social_integration_settings')->first()->encrypted_settings);
-        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html?'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
+        $this->post(route('backoffice.vk-publisher.complete'), ['authorization_response' => 'https://oauth.vk.ru/blank.html#'.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789'])])
             ->assertSessionHasErrors('social');
         Http::assertSentCount(2);
         Http::assertSent(fn ($request) => $request->url() === 'https://oauth.vk.com/access_token'
@@ -93,13 +93,17 @@ final class SocialIntegrationSettingsTest extends TestCase
         ]);
         $this->actingAs($this->admin());
         Http::fake();
-        foreach (['https://example.com/blank.html?', 'https://oauth.vk.com/blank.html#', 'https://oauth.vk.com/blank.html?access_token=secret&'] as $prefix) {
+        foreach (['https://example.com/blank.html?', 'https://oauth.vk.com/blank.html#access_token=secret&', 'https://oauth.vk.com/blank.html?access_token=secret&', 'https://oauth.vk.com/blank.html?x=1#', 'https://oauth.vk.com/blank.html#state=wrong&code=abcdef0123456789&ignored='] as $prefix) {
             $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
             $flow = session('vk_publisher_oauth');
             $this->post(route('backoffice.vk-publisher.complete'), [
                 'authorization_response' => $prefix.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789']),
             ])->assertSessionHasErrors('social');
         }
+        $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+        $this->post(route('backoffice.vk-publisher.complete'), [
+            'authorization_response' => 'https://oauth.vk.ru/blank.html#code=abcdef0123456789&state=wrong',
+        ])->assertSessionHasErrors('social');
         Http::assertNothingSent();
     }
 

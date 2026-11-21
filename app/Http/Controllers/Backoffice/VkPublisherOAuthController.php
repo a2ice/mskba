@@ -55,9 +55,11 @@ final class VkPublisherOAuthController
             if (is_array($url) && ($url['scheme'] ?? null) === 'https'
                 && in_array($url['host'] ?? null, ['oauth.vk.com', 'oauth.vk.ru'], true)
                 && ($url['path'] ?? null) === '/blank.html'
-                && ! isset($url['user'], $url['pass']) && ! isset($url['user'])
-                && ! isset($url['port']) && ! isset($url['fragment'])) {
-                parse_str($url['query'] ?? '', $params);
+                && ! isset($url['user']) && ! isset($url['pass']) && ! isset($url['port'])
+                && ! (isset($url['query']) && isset($url['fragment']))) {
+                // VK returns code and state in the fragment on the live blank page.
+                // Accept either representation, never merge ambiguous parameter sets.
+                parse_str($url['fragment'] ?? $url['query'] ?? '', $params);
             }
         }
         $state = $params['state'] ?? null;
