@@ -8,6 +8,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Rewards\Domain\Models\RewardGrant;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -42,6 +43,22 @@ final class NotifyCompletedRewardGrant
             ],
         };
 
+        $bodyLink = null;
+        $venue = null;
+        if ($grant->mechanism_code === 'venue_first_approval'
+            && preg_match('/^venue:([1-9][0-9]*)$/D', $grant->business_fact_key, $matches) === 1) {
+            $venue = Venue::query()->find((int) $matches[1]);
+            if ($venue !== null && filled($venue->name)) {
+                $prefix = 'Добавленная вами площадка ';
+                $description = $prefix.$venue->name.' прошла модерацию.';
+                $bodyLink = [
+                    'text' => $venue->name,
+                    'url' => route('venues.show', $venue->routeIdentifier(), absolute: false),
+                    'offset' => strlen($prefix),
+                ];
+            }
+        }
+
         $rubles = intdiv($grant->amount_minor, 100);
         $kopeks = $grant->amount_minor % 100;
         $amount = number_format($rubles, 0, ',', ' ')
@@ -63,6 +80,7 @@ final class NotifyCompletedRewardGrant
                 'wallet_operation_id' => (int) $grant->wallet_operation_id,
                 'amount_minor' => (int) $grant->amount_minor,
                 'balance_type' => 'bonus',
+                ...($bodyLink === null ? [] : ['venue_id' => (int) $venue->id, 'body_link' => $bodyLink]),
             ],
         ]);
 
