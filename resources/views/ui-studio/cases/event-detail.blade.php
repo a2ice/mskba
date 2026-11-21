@@ -1,4 +1,4 @@
-{{-- UI Studio r9 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r10 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
