@@ -8,6 +8,7 @@
     $selectedRelatedId = old('related_id', $contentItem->related_id);
     $publishInFeed = (bool) old('publish_in_feed', $contentItem->publish_in_feed ?? true);
     $publishInTelegram = (bool) old('publish_in_telegram', $contentItem->publish_in_telegram ?? false);
+    $publishInVk = (bool) old('publish_in_vk', $vkPublication?->is_enabled ?? false);
     $selectedChats = collect(old('telegram_chat_ids', $selectedChatIds))->map(fn ($id) => (int) $id);
     $cover = $contentItem->cover?->first();
     $tagsValue = old('tags', $editing ? $contentItem->tags->pluck('name')->implode(', ') : '');
@@ -250,6 +251,7 @@
             <h2 class="content-admin-section__title">Публикация</h2>
             <input type="hidden" name="publish_in_feed" value="0">
             <input type="hidden" name="publish_in_telegram" value="0">
+            <input type="hidden" name="publish_in_vk" value="0">
             <div class="content-publication-options">
                 <label class="content-chat-option">
                     <input class="fi-checkbox-input" type="checkbox" name="publish_in_feed" value="1" @checked($publishInFeed)>
@@ -259,7 +261,22 @@
                     <input class="fi-checkbox-input" type="checkbox" name="publish_in_telegram" value="1" @checked($publishInTelegram) data-content-telegram-toggle>
                     <span>Публиковать в Telegram</span>
                 </label>
+                <label class="content-chat-option">
+                    <input class="fi-checkbox-input" type="checkbox" name="publish_in_vk" value="1" @checked($publishInVk && $vkConfigured) @disabled(! $vkConfigured)>
+                    <span>Публиковать во ВКонтакте</span>
+                </label>
             </div>
+            @error('publish_in_vk') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            @if(! $vkConfigured)
+                <small class="form-text">Публикация во ВКонтакте не настроена.</small>
+            @endif
+            @if($vkPublication?->post_id)
+                <a href="https://vk.com/wall-{{ $vkPublication->group_id }}_{{ $vkPublication->post_id }}" target="_blank" rel="noopener noreferrer">Открыть публикацию ВКонтакте</a>
+            @elseif($vkPublication?->last_error)
+                <small class="form-text">{{ $vkPublication->last_error }}</small>
+            @elseif($vkPublication && in_array($vkPublication->status, ['pending', 'sending'], true))
+                <small class="form-text">Публикация во ВКонтакте выполняется.</small>
+            @endif
             <div class="content-chat-options" data-content-telegram-chats @if(! $publishInTelegram) hidden @endif>
                 <h3 class="content-chat-options__title">Telegram-чаты</h3>
                 @forelse($telegramChats as $chat)
@@ -276,7 +293,7 @@
         </section>
 
         <div class="content-admin-faq-note" data-content-faq-publication-note @if($selectedType !== 'faq') hidden @endif>
-            FAQ публикуется в разделе справки и не отправляется в новостную ленту или Telegram.
+            FAQ публикуется в разделе справки и не отправляется в новостную ленту, Telegram или ВКонтакте.
         </div>
 
         <x-filament::button type="submit">{{ $editing ? 'Сохранить' : 'Создать материал' }}</x-filament::button>

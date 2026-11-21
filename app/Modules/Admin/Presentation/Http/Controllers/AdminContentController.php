@@ -22,6 +22,9 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Vk\Application\Services\VkContentPublicationManager;
+use App\Modules\Vk\Application\Services\VkWallPublisher;
+use App\Modules\Vk\Domain\Models\VkContentPublication;
 use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,6 +87,7 @@ final class AdminContentController extends Controller
             'contentItem' => new ContentItem(['type' => request('type') === 'system_update' ? ContentTypeEnum::SYSTEM_UPDATE : ContentTypeEnum::MATERIAL, 'status' => ContentStatusEnum::DRAFT]),
             'projectUpdate' => null,
             'selectedChatIds' => [],
+            'vkPublication' => null,
         ]);
     }
 
@@ -94,6 +98,7 @@ final class AdminContentController extends Controller
         ContentCoverManager $covers,
         ContentPublicationManager $publications,
         ContentTagManager $tags,
+        VkContentPublicationManager $vk,
     ): RedirectResponse {
         try {
             $content = DB::transaction(function () use ($request, $transliterator, $bodySanitizer, $tags): ContentItem {
@@ -125,6 +130,7 @@ final class AdminContentController extends Controller
             }
 
             $publications->syncTelegramChats($content, $this->telegramChatIds($request, $content));
+            $vk->sync($content->fresh(), $request->boolean('publish_in_vk'));
 
             return redirect()
                 ->route('admin.content.edit', $content->alias)
@@ -148,6 +154,7 @@ final class AdminContentController extends Controller
             ...$this->formData(),
             'contentItem' => $contentItem,
             'projectUpdate' => ProjectUpdateDetail::query()->where('content_item_id', $contentItem->id)->first(),
+            'vkPublication' => VkContentPublication::query()->where('content_item_id', $contentItem->id)->first(),
             'selectedChatIds' => $contentItem->telegramPublications
                 ->where('is_enabled', true)
                 ->pluck('chat_id')
@@ -163,6 +170,7 @@ final class AdminContentController extends Controller
         ContentCoverManager $covers,
         ContentPublicationManager $publications,
         ContentTagManager $tags,
+        VkContentPublicationManager $vk,
     ): RedirectResponse {
         $savedAlias = null;
 
@@ -199,6 +207,7 @@ final class AdminContentController extends Controller
             }
 
             $publications->syncTelegramChats($contentItem->fresh(), $this->telegramChatIds($request, $contentItem));
+            $vk->sync($contentItem->fresh(), $request->boolean('publish_in_vk'));
 
             return redirect()
                 ->route('admin.content.edit', $contentItem->alias)
@@ -326,6 +335,7 @@ final class AdminContentController extends Controller
             'types' => ContentTypeEnum::cases(),
             'faqSections' => FaqSection::query()->orderBy('sort_order')->orderBy('id')->get(),
             'formats' => ContentFormatEnum::cases(),
+            'vkConfigured' => VkWallPublisher::configured(),
             'telegramChats' => TelegramChat::query()
                 ->where('is_active', true)
                 ->orderBy('title')
