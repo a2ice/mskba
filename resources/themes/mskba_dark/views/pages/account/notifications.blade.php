@@ -85,7 +85,7 @@ $notificationPresenter = app(\App\Modules\Notification\Presentation\Presenters\U
                         <a href="{{ $notificationView['href'] }}" class="account-notification-item__content fc-link">
                             <h5 class="h5 mb-2"><span class="fs-lil-smaller">{{ $notification->title }}</span></h5>
                         </a>
-                        <p class="mb-3">{{ $notification->body }}</p>
+                        <p class="mb-3">@include('notification.body', ['parts' => $notificationView['body_parts'], 'linkClass' => 'fc-link'])</p>
 
                         <div class="d-flex flex-wrap gap-2">
                             @if($notificationView['action_text'])

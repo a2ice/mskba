@@ -19,6 +19,7 @@ final class UserNotificationPresenter
             'type' => $notification->type->value,
             'type_color' => $notification->type->toastBorderColor(),
             'body' => $notification->body,
+            'body_parts' => $this->bodyParts($notification),
             'href' => $notification->action_url ?: route('account.notifications', absolute: false),
             'action_text' => $actions === [] ? $notification->action_text : null,
             'read_url' => route('account.notifications.read', $notification, absolute: false),
@@ -35,6 +36,31 @@ final class UserNotificationPresenter
                 'venue_id' => $notification->payload['venue_id'] ?? null,
             ], static fn ($value): bool => $value !== null),
             'actions' => $actions,
+        ];
+    }
+
+    /** @return list<array{text: string, url?: string}> */
+    private function bodyParts(UserNotification $notification): array
+    {
+        $body = (string) $notification->body;
+        $link = $notification->payload['body_link'] ?? null;
+        $text = is_array($link) ? ($link['text'] ?? null) : null;
+        $url = is_array($link) ? ($link['url'] ?? null) : null;
+        $offset = is_array($link) ? ($link['offset'] ?? null) : null;
+
+        // A body stays plain text; only a matching, relative portal URL can become an anchor.
+        if (! is_string($text) || $text === '' || ! is_string($url)
+            || ! str_starts_with($url, '/') || str_starts_with($url, '//')
+            || str_contains($url, '\\') || preg_match('/[\x00-\x20\x7f]/', $url)
+            || ! is_int($offset) || $offset < 0 || $offset > strlen($body)
+            || substr($body, $offset, strlen($text)) !== $text) {
+            return [['text' => $body]];
+        }
+
+        return [
+            ['text' => substr($body, 0, $offset)],
+            ['text' => $text, 'url' => $url],
+            ['text' => substr($body, $offset + strlen($text))],
         ];
     }
 
