@@ -342,6 +342,38 @@
         setStep(Number(saved.step)||2);
         return true;
     }
+    let pendingContact=null;
+    const contactButton=document.createElement('button');
+    contactButton.type='button';
+    contactButton.className=submit.className;
+    contactButton.hidden=true;
+    feedback.after(contactButton);
+    function requireContact(result){
+        pendingContact=result.pending_contact||null;
+        report(result.message);
+        contactButton.textContent=pendingContact?'Продолжить подтверждение':'Подтвердить контакт';
+        contactButton.hidden=false;
+        save();
+    }
+    contactButton.addEventListener('click',()=>{
+        save();
+        const modal=document.querySelector('[data-contact-add-modal]');
+        if(!modal){
+            if(dialog.classList.contains('quick-event-dialog--app'))location.reload();
+            else location.assign('/account/contacts');
+            return;
+        }
+        modal.addEventListener('close',()=>{
+            if(!dialog.open)dialog.showModal();
+            // Only retry validation; the organizer explicitly submits again.
+            report('После подтверждения контакта повторите сохранение мероприятия.');
+        },{once:true});
+        dialog.close();
+        window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{resume:pendingContact}}));
+    });
+    window.addEventListener('mskba:contact:pending',event=>{
+        if(event.detail?.id){pendingContact=event.detail;contactButton.textContent='Продолжить подтверждение';}
+    });
     async function submitCreation(){
         if(saving)return;
         saving=true;submit.disabled=true;report('Сохраняем мероприятие…');
@@ -351,6 +383,8 @@
                 'X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':csrf(),
             },body:JSON.stringify(values())});
             const result=await response.json().catch(()=>({}));
+            if(result.code==='CONTACT_REQUIRED'){requireContact(result);return;}
+            contactButton.hidden=true;
             if(!response.ok)throw Error(Object.values(result.errors||{}).flat()[0]||result.message||'Не удалось создать мероприятие.');
             if(!result.event_url)throw Error('Сервер не вернул ссылку на мероприятие.');
             clear();
