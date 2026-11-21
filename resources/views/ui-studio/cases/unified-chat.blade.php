@@ -7,7 +7,7 @@
 @endphp
 @include('components.event-discussion-styles')
 @include('ui-studio.cases.unified-chat-candidate')
-<main class="container" style="padding-block:32px">
+<main id="studio-event-page" class="container" style="padding-block:32px">
     <button type="button" class="button secondary" data-studio-open>Мероприятие</button>
 </main>
 <dialog class="mskba-modal venue-play-dialog venue-play-dialog--app" data-studio-chat aria-labelledby="studio-chat-title">
@@ -189,7 +189,15 @@ if (state !== 'empty') {
 }
 if (state === 'editing') own = append('superadmin','Проверка сообщения.',null,true,'2026-11-21T16:37:00+03:00');
 setChatComposerAccess(form, state !== 'disabled');
-dialog.querySelector('[data-venue-play-comment-notice]').hidden = state !== 'disabled';
+const commentNotice = dialog.querySelector('[data-venue-play-comment-notice]');
+const participationLink = document.createElement('a');
+participationLink.href = '#studio-event-page';
+participationLink.className = 'venue-play-dialog__participation-link';
+participationLink.textContent = 'Участвовать';
+// Local navigation stand-in until the event-page UIKit case is designed.
+participationLink.addEventListener('click', () => dialog.close());
+commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
+commentNotice.hidden = state !== 'disabled';
 bindChatActions(form);
 field.addEventListener('input',sync);
 form.addEventListener('submit',event=>{

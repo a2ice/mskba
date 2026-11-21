@@ -1,4 +1,4 @@
-{{-- Local UIKit candidate, revision 5. Do not promote to common styles before acceptance. --}}
+{{-- Local UIKit candidate, revision 6. Do not promote to common styles before acceptance. --}}
 <style>
 /* One visible focus boundary: the composer; no nested textarea outline. */
 .venue-play-dialog__wall [data-chat-composer] {
@@ -85,5 +85,14 @@
 }
 [data-studio-chat] button.venue-play-dialog__participant:disabled {
     cursor:default;
+}
+/* Candidate participation CTA: inline themed link, not a button. */
+[data-studio-chat] .venue-play-dialog__participation-link {
+    color:var(--accent);
+    text-decoration:none;
+}
+[data-studio-chat] .venue-play-dialog__participation-link:hover,
+[data-studio-chat] .venue-play-dialog__participation-link:focus-visible {
+    text-decoration:underline;
 }
 </style>
