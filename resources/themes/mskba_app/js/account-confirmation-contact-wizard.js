@@ -1,3 +1,4 @@
+import { createContactCodeAutoSubmit } from './contact-code-auto-submit.js';
 import { createContactProviderEmulation } from './contact-provider-emulation.js';
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { createContactResendCooldown } from './contact-resend-cooldown.js';
@@ -11,6 +12,7 @@ if (root) {
     const errorNode = dialog.querySelector('[data-wizard-error]');
     const feedback = dialog.querySelector('[data-wizard-feedback]');
     const nextButton = dialog.querySelector('[data-wizard-next]');
+    const autoSubmit = createContactCodeAutoSubmit();
     const backButton = dialog.querySelector('[data-wizard-back]');
     const resendButton = dialog.querySelector('[data-wizard-resend]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -215,6 +217,7 @@ if (root) {
                 setError('Сначала запроси код подтверждения.');
                 return;
             }
+            autoSubmit.markAttempt(contactId);
             setBusy(true);
             setError();
             try {
@@ -231,6 +234,12 @@ if (root) {
                 }
             }
             finally { setBusy(false); }
+        }
+    });
+
+    codeInput.addEventListener('input', () => {
+        if (dialog.open && step === 'code' && !isBusy && autoSubmit.canSubmit(contactId, codeInput.value)) {
+            nextButton.click();
         }
     });
 
