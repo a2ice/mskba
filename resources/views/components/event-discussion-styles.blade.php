@@ -208,5 +208,9 @@ html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-sta
 [data-venue-play-pane]:has([data-chat-can-post="true"]) [data-chat-mention] {cursor:pointer;}
 [data-venue-play-pane]:has([data-chat-can-post="true"]) [data-chat-mention]:hover .venue-play-dialog__participant-name {text-decoration:underline;}
 [data-venue-play-messages-jump] svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.venue-play-dialog__participation-link{color:var(--accent);text-decoration:none}
+.venue-play-dialog__participation-link:hover{text-decoration:underline}
+.venue-play-dialog__messages li[data-reaction="like"] p{color:var(--success,#166534)}
+.venue-play-dialog__messages li[data-reaction="dislike"] p{color:var(--danger,#b91c1c)}
 </style>
 @endonce

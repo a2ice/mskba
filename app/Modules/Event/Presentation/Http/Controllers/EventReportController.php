@@ -18,6 +18,20 @@ use Throwable;
 
 final class EventReportController extends Controller
 {
+    public function candidates(Request $request, string $event,
+        \App\Modules\Identity\Application\Services\SearchDiscoverableUsers $search,
+        \App\Modules\Notification\Application\Services\DirectMessageBlockService $blocks): \Illuminate\Http\JsonResponse
+    {
+        $item = Event::query()->whereRouteIdentifier($event)->firstOrFail();
+        abort_unless($item->visibility->value === 'public' && in_array($item->status->value, ['published','completed'],true),404);
+        $viewer = $request->user()->canonical();
+        abort_if($viewer->isBlocked() || $viewer->trashed(),403);
+        $q=trim((string)$request->query('q',''));
+        if(mb_strlen($q)<2 || mb_strlen($q)>60)return response()->json(['users'=>[]]);
+        $users=$search->handle($viewer,$q,limit:12,requiredAccess:\App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::MESSAGES);
+        return response()->json(['users'=>$users->reject(fn($u)=>$viewer->isSameIdentity($u)||$blocks->blockedBetween($viewer,$u))->take(10)->map(fn($u)=>['id'=>$u->id,'name'=>$u->nickname?:$u->username?:'Участник'])->values()]);
+    }
+
     public function settings(Request $request, string $event): RedirectResponse
     {
         $data = $request->validate(['discussion_enabled'=>['required','boolean'], 'report_comments_enabled'=>['required','boolean']]);

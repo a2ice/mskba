@@ -828,6 +828,7 @@ Route::prefix('events')->group(function () {
             ->name('events.leave');
         Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
             ->name('events.participation');
+        Route::get('/{event}/share/candidates', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class,'candidates'])->middleware('throttle:30,1')->name('events.share.candidates');
         Route::patch('/{event}/feedback-settings', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'settings'])->name('events.feedback.settings');
         Route::post('/{event}/report', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'store'])->name('events.report.store');
         Route::delete('/{event}/report/media/{media}', [\App\Modules\Event\Presentation\Http\Controllers\EventReportController::class, 'destroy'])->whereNumber('media')->name('events.report.media.destroy');
