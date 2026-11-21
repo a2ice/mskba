@@ -1,7 +1,7 @@
 <script type="module">
 const root=document.querySelector('.studio-event-page');
 const state=@json($state);
-let isAuthenticated=state!=='guest', participation=['confirmed','tentative','editing'].includes(state)?(state==='tentative'?'tentative':'confirmed'):'left', pending=null;
+let isAuthenticated=!['guest','report-guest'].includes(state), participation=['confirmed','tentative','editing','discussion-owner','discussion-closed'].includes(state)?(state==='tentative'?'tentative':'confirmed'):'left', pending=null;
 const cta=root.querySelector('[data-event-participate]');
 const heroPhoto=root.querySelector('[data-studio-hero-photo]');
 const hideBrokenPhoto=()=>{heroPhoto.hidden=true;};
@@ -38,8 +38,13 @@ document.querySelectorAll('[data-event-rsvp]').forEach(button=>button.addEventLi
     apply(status);
 }));
 document.querySelector('[data-event-demo-login]').addEventListener('click',()=>{
-    isAuthenticated=true;if(pending==='share'){pending=null;show('studio-share-internal');}else if(pending)apply(pending);else show('studio-participate');
+    isAuthenticated=true;
+    if(pending==='report'){pending=null;document.querySelectorAll('.studio-event-dialog[open]').forEach(d=>d.close());root.dispatchEvent(new CustomEvent('studio:authenticated'));return;}
+    root.dispatchEvent(new CustomEvent('studio:authenticated'));
+    if(pending==='share'){pending=null;show('studio-share-internal');}else if(pending)apply(pending);else show('studio-participate');
 });
+root.addEventListener('studio:report-auth',()=>{pending='report';show('studio-auth');});
+document.getElementById('studio-auth').addEventListener('close',()=>{if(pending==='report'){pending=null;root.dispatchEvent(new CustomEvent('studio:auth-cancelled'));}});
 document.querySelectorAll('[data-event-open]').forEach(button=>button.addEventListener('click',event=>{
     event.preventDefault();
     const id=button.dataset.eventOpen;

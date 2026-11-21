@@ -52,4 +52,10 @@ html:has(.studio-event-dialog[open]){overflow:hidden}
 .studio-event-facts dd{margin:0;overflow-wrap:anywhere}
 .studio-event-page [hidden],.studio-event-dialog [hidden]{display:none!important}
 @media(max-width:900px){.studio-event-page .app-venue-page__aside{position:static;order:1}.studio-event-page .app-venue-page__sections{order:0}}
+ .studio-feedback-fields{display:grid;gap:16px}
+.studio-feedback-fields label{display:flex;align-items:flex-start;gap:10px;min-width:0;line-height:1.5}
+.studio-feedback-fields input{flex:none;width:19px;height:19px;margin:3px 0 0;accent-color:var(--accent)}
+.studio-feedback-fields label span{display:grid;gap:4px}
+.studio-feedback-fields small{color:var(--muted);font-size:13px}
+.studio-feedback-dialog .mskba-modal__footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line)}
 </style>

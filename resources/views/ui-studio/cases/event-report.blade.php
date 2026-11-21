@@ -29,12 +29,30 @@
             </div>
         </div>
     </div>
+    @if($eventFinished)
+    <div class="studio-report-chat" data-studio-report-chat>
+        <h3>Комментарии</h3>
+        <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
+            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
+            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
+        </div>
+        @include('components.event-discussion', ['chatEvent'=>(object)['id'=>'studio-report'], 'chatCanRespond'=>false,'chatShowRoster'=>false])
+    </div>
+    @endif
 </section>
 <style>
 .studio-event-report .app-venue-block__header{width:100%}
 .studio-event-report .app-venue-block__header h2{margin:0}
 .studio-event-report .app-venue-block__header .button{flex:none}
 .studio-event-report p{margin:0}
+.studio-report-chat{display:grid;gap:12px;padding-top:16px;border-top:1px solid var(--line);min-width:0}
+.studio-report-chat h3{margin:0}
+.studio-report-chat .venue-play-dialog__wall{border:0;padding:0;min-width:0}
+.studio-report-reactions button{display:inline-flex;gap:7px;align-items:center}
+.studio-report-reactions svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.studio-report-reactions button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--surface-raised)}
+.studio-report-chat li[data-reaction="like"] p{color:var(--success,#166534)}
+.studio-report-chat li[data-reaction="dislike"] p{color:var(--danger,#b91c1c)}
 .studio-report-content,.studio-report-media{display:grid;gap:12px;min-width:0}
 .studio-report-content{gap:20px}
 .studio-report-description{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text);line-height:1.6}

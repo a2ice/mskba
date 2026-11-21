@@ -1,8 +1,13 @@
-@php($studioParticipationUrl = route('ui-studio.show', ['ui_name'=>'event-detail','theme'=>$theme,'width'=>$width,'state'=>'guest'], false))
+@php
+    $studioParticipationUrl = route('ui-studio.show', ['ui_name'=>'event-detail','theme'=>$theme,'width'=>$width,'state'=>'guest'], false);
+    $studioReportMode = ($studioChatMode ?? 'discussion') === 'report';
+@endphp
 <script type="module">
 {!! file_get_contents(resource_path('js/chat-composer-actions.js')) !!}
-const dialog = document.querySelector('[data-studio-chat]');
-const form = dialog.querySelector('[data-chat-composer]');
+const reportMode = @json($studioReportMode);
+const pageRoot = document.querySelector('[data-studio-chat]');
+const dialog = reportMode ? document.querySelector('[data-studio-report-chat]') : pageRoot;
+const form = reportMode ? dialog.querySelector('[data-chat-composer]') : pageRoot.querySelector('[data-chat-composer]');
 const field = form.querySelector('textarea');
 const submit = form.querySelector('[type=submit]');
 const counter = form.querySelector('[data-venue-play-chars]');
@@ -12,10 +17,16 @@ const messages = dialog.querySelector('[data-venue-play-messages]');
 const empty = dialog.querySelector('[data-venue-play-wall-empty]');
 const roster = dialog.querySelector('[data-venue-play-participants]');
 const deleteDialog = document.querySelector('[data-venue-play-delete-dialog]');
-const pageMode = !dialog.matches('dialog');
+const pageMode = !reportMode && !dialog.matches('dialog');
+const modalMode = !reportMode && !pageMode;
 const state = @json($state);
-const eventFinished = pageMode && ['report','report-empty','report-owner'].includes(state);
-let postingAllowed = pageMode ? ['confirmed','tentative','editing','report-owner'].includes(state) : state !== 'disabled';
+const eventFinished = pageRoot.dataset.eventFinished === 'true';
+let viewerAuthenticated = !['guest','report-guest'].includes(state);
+let isParticipant = ['confirmed','tentative','editing','report-owner','report-admin','discussion-owner','discussion-closed'].includes(state);
+const mayPost = () => reportMode
+    ? eventFinished && viewerAuthenticated && pageRoot.dataset.reportCommentsEnabled === 'true'
+    : pageMode ? !eventFinished && isParticipant && pageRoot.dataset.discussionEnabled === 'true' : state !== 'disabled';
+let postingAllowed = mayPost();
 let editing = null;
 let own = null;
 // Candidate-only DOM adaptation of the real shared component. After acceptance,
@@ -82,7 +93,8 @@ function regroup() {
 }
 const append = (author, body, rsvp = null, isOwn = false, stamp = nextStamp()) => {
     const item = document.createElement('li');
-    if (rsvp) item.dataset.rsvpStatus = rsvp;
+    if (rsvp && reportMode) item.dataset.reaction = rsvp;
+    else if (rsvp) item.dataset.rsvpStatus = rsvp;
     const title = document.createElement('strong');
     title.textContent = author;
     const time = document.createElement('time');
@@ -96,6 +108,7 @@ const append = (author, body, rsvp = null, isOwn = false, stamp = nextStamp()) =
         edit.className = 'venue-play-dialog__edit';
         edit.setAttribute('aria-label','Редактировать сообщение');
         edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 12-12-3-3L5 16l-1 4zM14 7l3 3"/></svg>';
+        edit.hidden = !postingAllowed;
         edit.addEventListener('click', () => startEdit(item));
         item.append(edit);
     }
@@ -157,6 +170,7 @@ function rosterRow(name, status = 'confirmed') {
     return li;
 }
 const updateRosterHeading = () => {
+    if (!roster) return;
     const count=roster.children.length;
     dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (' + count + '/20)';
     const audience=dialog.querySelector('[data-studio-audience-avatars]');
@@ -183,44 +197,87 @@ const updateRosterHeading = () => {
     const word=mod>=11&&mod<=14?'участников':ones===1?'участник':ones>=2&&ones<=4?'участника':'участников';
     dialog.querySelector('[data-studio-audience-count]').textContent=count+' '+word;
 };
-for (const name of (pageMode ? ['olsen','Участник'] : ['olsen','superadmin'])) roster.append(rosterRow(name));
-if(pageMode && postingAllowed)roster.append(rosterRow('superadmin',state === 'tentative' ? 'tentative' : 'confirmed'));
-updateRosterHeading();
-dialog.querySelector('[data-venue-play-roster-empty]').hidden = true;
-empty.textContent = 'Сообщений пока нет';
-if (state !== 'empty') {
+if (roster) {
+    for (const name of (pageMode ? ['olsen','Участник'] : ['olsen','superadmin'])) roster.append(rosterRow(name));
+    if(pageMode && (isParticipant || eventFinished))roster.append(rosterRow('superadmin',state === 'tentative' ? 'tentative' : 'confirmed'));
+    updateRosterHeading();
+    dialog.querySelector('[data-venue-play-roster-empty]').hidden = true;
+}
+empty.textContent = reportMode ? 'Комментариев пока нет' : 'Сообщений пока нет';
+if (reportMode) {
+    field.placeholder='Написать комментарий';field.setAttribute('aria-label','Написать комментарий');
+    submit.setAttribute('aria-label','Отправить комментарий');submit.title='Отправить комментарий';
+    dialog.querySelector('.venue-play-dialog__wall').setAttribute('aria-label','Комментарии к мероприятию');
+    if (['report','report-guest','report-closed'].includes(state)) {
+        append('Событие','Пользователю olsen нравится мероприятие.','like',false,'2026-11-19T14:10:00+03:00');
+        append('olsen','Отлично поиграли, спасибо всем!',null,false,'2026-11-19T14:12:00+03:00');
+        append('superadmin','До встречи на следующей игре!',null,true,'2026-11-19T14:15:00+03:00');
+    }
+} else if (state !== 'empty') {
     append('Событие','olsen пойдёт на мероприятие.','confirmed',false,'2026-11-19T18:20:00+03:00');
     append('Событие','olsen не пойдёт на мероприятие.','left',false,'2026-11-19T19:05:00+03:00');
     append('Событие','superadmin пойдёт на мероприятие.','confirmed',false,'2026-11-21T16:35:00+03:00');
 }
-if (state === 'editing' || pageMode && state === 'confirmed') own = append('superadmin','Проверка сообщения.',null,true,'2026-11-21T16:37:00+03:00');
+if (!reportMode && (state === 'editing' || pageMode && state === 'confirmed')) own = append('superadmin','Проверка сообщения.',null,true,'2026-11-21T16:37:00+03:00');
 const commentNotice = dialog.querySelector('[data-venue-play-comment-notice]');
 const participationLink = document.createElement('a');
 participationLink.href = pageMode ? '#studio-event-title' : @json($studioParticipationUrl);
-if (!pageMode) participationLink.target = '_top';
+if (modalMode) participationLink.target = '_top';
 participationLink.className = 'venue-play-dialog__participation-link';
 participationLink.textContent = 'Участвовать';
 if (pageMode) participationLink.addEventListener('click', event => {
     event.preventDefault();dialog.dispatchEvent(new CustomEvent('studio:participate'));
 });
-if (eventFinished) commentNotice.textContent = 'Написать сообщение могут участники мероприятия.';
-else commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
+const loginLink=document.createElement('a');
+loginLink.href='#studio-auth';loginLink.className='venue-play-dialog__participation-link';loginLink.textContent='Войти';
+loginLink.addEventListener('click',e=>{e.preventDefault();pageRoot.dispatchEvent(new CustomEvent('studio:report-auth'));});
 function setPosting(allowed) {
+    if(!allowed && editing)stopEdit();
     postingAllowed = !!allowed;
     setChatComposerAccess(form, postingAllowed);
     commentNotice.hidden = postingAllowed;
-    roster.querySelectorAll('button').forEach(button => button.disabled = !postingAllowed || button.closest('li').dataset.studioParticipant === 'Участник');
+    if(reportMode) {
+        if(pageRoot.dataset.reportCommentsEnabled !== 'true')commentNotice.textContent='Комментарии закрыты.';
+        else if(!viewerAuthenticated)commentNotice.replaceChildren('Чтобы оставить комментарий, необходимо авторизоваться. ',loginLink);
+    } else if(eventFinished)commentNotice.textContent='Мероприятие завершено. Обсуждение закрыто.';
+    else if(pageMode && pageRoot.dataset.discussionEnabled !== 'true')commentNotice.textContent='Обсуждение закрыто.';
+    else commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
+    roster?.querySelectorAll('button').forEach(button => button.disabled = !postingAllowed || button.closest('li').dataset.studioParticipant === 'Участник');
+    messages.querySelectorAll('.venue-play-dialog__edit').forEach(button=>button.hidden=!postingAllowed);
     sync();
 }
 setPosting(postingAllowed);
-dialog.addEventListener('studio:participation-changed', event => {
+if(pageMode || reportMode){
+    pageRoot.addEventListener('studio:feedback-settings',()=>setPosting(mayPost()));
+    pageRoot.addEventListener('studio:authenticated',()=>{viewerAuthenticated=true;setPosting(mayPost());});
+}
+if(reportMode){
+    let reaction=null, pendingReaction=null;
+    const controls=[...dialog.querySelectorAll('[data-report-reaction]')];
+    function applyReaction(value){
+        const next=reaction===value?null:value;
+        if(next===reaction)return;
+        reaction=next;
+        controls.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reportReaction===reaction)));
+        append('Событие',reaction==='like'?'Пользователю superadmin нравится мероприятие.':reaction==='dislike'?'Пользователю superadmin не нравится мероприятие.':'Пользователь superadmin убрал оценку.',reaction);
+    }
+    controls.forEach(b=>b.addEventListener('click',()=>{
+        const value=b.dataset.reportReaction;
+        if(!viewerAuthenticated){pendingReaction=value;pageRoot.dispatchEvent(new CustomEvent('studio:report-auth'));return;}
+        applyReaction(value);
+    }));
+    pageRoot.addEventListener('studio:authenticated',()=>{if(pendingReaction){applyReaction(pendingReaction);pendingReaction=null;}});
+    pageRoot.addEventListener('studio:auth-cancelled',()=>{pendingReaction=null;});
+}
+if(!reportMode)dialog.addEventListener('studio:participation-changed', event => {
     if (!event.detail.allowed && editing) stopEdit();
+    isParticipant=event.detail.allowed;
     if (pageMode) {
         roster.querySelector('[data-studio-participant="superadmin"]')?.remove();
         if(event.detail.allowed)roster.append(rosterRow('superadmin',event.detail.status));
         updateRosterHeading();
     }
-    setPosting(event.detail.allowed);
+    setPosting(mayPost());
     if (event.detail.message) append('Событие',event.detail.message,event.detail.status);
 });
 bindChatActions(form);
@@ -245,16 +302,20 @@ form.addEventListener('mskba:chat-action', event => {
     }
 });
 remove.addEventListener('click',()=>{
-    if (editing) deleteDialog.showModal();
+    if (!editing || !postingAllowed) return;
+    deleteDialog.studioDelete = () => {
+        if (editing && postingAllowed) {editing.remove();stopEdit();regroup();}
+        deleteDialog.close();
+        if(postingAllowed)field.focus();
+    };
+    deleteDialog.showModal();
 });
-deleteDialog.querySelector('[data-venue-play-delete-close]').addEventListener('click',()=>deleteDialog.close());
-deleteDialog.querySelector('[data-venue-play-delete-confirm]').addEventListener('click',()=>{
-    if (editing) editing.remove();
-    stopEdit();
-    regroup();
-    deleteDialog.close();
-    field.focus();
-});
+if(!deleteDialog.dataset.studioBound){
+    deleteDialog.dataset.studioBound='true';
+    deleteDialog.querySelector('[data-venue-play-delete-close]').addEventListener('click',()=>deleteDialog.close());
+    deleteDialog.querySelector('[data-venue-play-delete-confirm]').addEventListener('click',()=>deleteDialog.studioDelete?.());
+    deleteDialog.addEventListener('close',()=>{deleteDialog.studioDelete=null;});
+}
 const attendance = dialog.querySelector('[data-venue-play-attendance]');
 const tentative = dialog.querySelector('[data-venue-play-rsvp="tentative"]');
 let rsvp = 'confirmed';
@@ -269,7 +330,7 @@ attendance?.addEventListener('click',()=>{
 });
 tentative?.addEventListener('click',()=>{rsvp='tentative';append('Событие','superadmin подумает об участии.','tentative');syncRsvp();});
 if (attendance && tentative) syncRsvp();
-if (!pageMode) {
+if (modalMode) {
     dialog.querySelectorAll('[data-studio-close]').forEach(button=>button.addEventListener('click',()=>dialog.close()));
     document.querySelector('[data-studio-open]').addEventListener('click',()=>dialog.showModal());
     dialog.showModal();

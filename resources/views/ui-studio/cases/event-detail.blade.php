@@ -1,12 +1,15 @@
-{{-- UI Studio r4 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r5 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
     $secondaryButton = 'button secondary';
     $chatEvent = (object) ['id' => 'studio-event'];
-    $eventFinished = in_array($state, ['report','report-empty','report-owner'], true);
-    $reportOwner = $state === 'report-owner';
-    $reportPublished = $state === 'report';
+    $eventFinished = in_array($state, ['report','report-empty','report-owner','report-admin','report-guest','report-closed'], true);
+    $reportOwner = in_array($state, ['report-owner','report-admin'], true);
+    $canManageFeedback = $reportOwner || $state === 'discussion-owner';
+    $discussionEnabled = $state !== 'discussion-closed';
+    $reportCommentsEnabled = $state !== 'report-closed';
+    $reportPublished = in_array($state, ['report','report-guest','report-closed'], true);
     $hasRental = $eventFinished || in_array($state, ['booked','inactive'], true);
     $rentalActive = $state === 'booked';
     $eventTitle = 'Игра на м. Яхромская';
@@ -18,7 +21,7 @@
 @include('components.event-discussion-styles')
 @include('ui-studio.cases.unified-chat-candidate')
 @include('ui-studio.cases.event-detail-candidate')
-<section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat aria-labelledby="studio-event-title">
+<section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat data-event-finished="{{ $eventFinished ? 'true' : 'false' }}" data-discussion-enabled="{{ $discussionEnabled ? 'true' : 'false' }}" data-report-comments-enabled="{{ $reportCommentsEnabled ? 'true' : 'false' }}" aria-labelledby="studio-event-title">
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
             <div class="app-venue-gallery__stage">
@@ -79,12 +82,14 @@
             @include('ui-studio.cases.event-report')
         </div>
         <aside class="app-venue-page__aside panel studio-event-aside" aria-label="Игры">
+            @if($canManageFeedback)<button type="button" class="button secondary full" data-event-open="studio-feedback-settings">Редактировать мероприятие</button>@endif
             <div class="studio-event-games"><strong>Игры</strong><button type="button" class="app-venue-activity" data-event-open="studio-game-dialog"><strong class="app-venue-activity__title">Игра на м. Яхромская</strong><span class="app-venue-activity__description">Баскетбол · 12:00</span></button></div>
         </aside>
     </div>
 </section>
 @include('components.event-discussion-delete-dialog')
 @include('ui-studio.cases.event-detail-dialogs')
+@if($canManageFeedback) @include('ui-studio.cases.event-feedback-dialog') @endif
 @include('ui-studio.cases.event-report-editor')
 @include('ui-studio.cases.venue-map-preview', [
     'mapShowCurrentVenueLink' => true,
@@ -96,5 +101,6 @@ const eventRoot=document.querySelector('.studio-event-page');
 const discussionPanel=eventRoot.querySelector('#studio-discussion');
 discussionPanel.append(eventRoot.querySelector('[data-venue-play-feedback]'),eventRoot.querySelector('.venue-play-dialog__wall'));
 </script>
-@include('ui-studio.cases.unified-chat-fixture')
+@include('ui-studio.cases.unified-chat-fixture', ['studioChatMode'=>'discussion'])
+@if($eventFinished) @include('ui-studio.cases.unified-chat-fixture', ['studioChatMode'=>'report']) @endif
 @include('ui-studio.cases.event-detail-actions')
