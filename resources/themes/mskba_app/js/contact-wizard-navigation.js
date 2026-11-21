@@ -19,3 +19,8 @@ export function contactWizardNavigation(step, methodLocked = false) {
         backLabel: methodLocked ? 'Отмена' : 'Назад',
     };
 }
+
+// Only a successfully verified contact can finish a subordinate flow silently.
+export function contactWizardCompletion(embedded, verified) {
+    return embedded && verified ? 'close' : 'done';
+}

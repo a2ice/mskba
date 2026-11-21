@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contactWizardNavigation } from '../../resources/themes/mskba_app/js/contact-wizard-navigation.js';
+import { contactWizardNavigation, contactWizardCompletion } from '../../resources/themes/mskba_app/js/contact-wizard-navigation.js';
 
 test('normal Contacts entry retains method selection and a working previous step', () => {
     assert.deepEqual(contactWizardNavigation('method', false), {
@@ -55,4 +55,11 @@ test('auto submit once for a contact, including paste; later attempts are manual
     assert.equal(flow.canSubmit(12, '654321'), false);
     assert.equal(createContactCodeAutoSubmit(storage).canSubmit(12, '654321'), false);
     assert.equal(flow.canSubmit(13, '123456'), true);
+});
+
+test('verified contact closes embedded flow but management retains completion', () => {
+    assert.equal(contactWizardCompletion(true, true), 'close');
+    assert.equal(contactWizardCompletion(false, true), 'done');
+    assert.equal(contactWizardCompletion(true, false), 'done');
+    assert.equal(contactWizardCompletion(false, false), 'done');
 });

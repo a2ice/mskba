@@ -3,7 +3,7 @@ import { createContactProviderEmulation } from './contact-provider-emulation.js'
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { refreshAccountContactsList } from './account-contacts-list.js';
 import { createContactResendCooldown } from './contact-resend-cooldown.js';
-import { contactWizardNavigation } from './contact-wizard-navigation.js';
+import { contactWizardNavigation, contactWizardCompletion } from './contact-wizard-navigation.js';
 const root = document.querySelector('[data-contacts-add]');
 
 if (root) {
@@ -21,6 +21,8 @@ if (root) {
     let kind = 'email';
     let busy = false;
     let methodLocked = false;
+    let embedded = false;
+    let requireVerified = false;
     let opener = null;
     let previousOverflow = '';
     let verificationContactId = null;
@@ -111,7 +113,11 @@ if (root) {
         else telegramLink.stop();
     }
 
-    function open(preselected = 'email', skipMethod = false) {
+    function open(preselected = 'email', skipMethod = false, options = {}) {
+        embedded = options.embedded === true;
+        requireVerified = options.requireVerified === true;
+        dialog.returnValue = '';
+        dialog.querySelector('input[name="new_contact_channel"][value="phone"]').disabled = requireVerified;
         opener = document.activeElement;
         const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
         (radio && !radio.disabled ? radio : dialog.querySelector('input[name="new_contact_channel"][value="email"]')).checked = true;
@@ -167,7 +173,21 @@ if (root) {
         return data;
     }
 
-    const refreshList = refreshAccountContactsList;
+    const refreshList = async () => {
+        if (document.querySelector('[data-account-contacts-list]')) await refreshAccountContactsList();
+    };
+    function completeContact(message, verified) {
+        success.textContent = message;
+        window.dispatchEvent(new CustomEvent('mskba:contact:updated', {
+            detail: { verified, embedded },
+        }));
+        if (contactWizardCompletion(embedded, verified) === 'close') {
+            // The caller owns continuation; do not submit its form or create a booking.
+            dialog.close('verified');
+        } else {
+            showStep('done');
+        }
+    }
     const verificationUrl = () => '/account/contacts/'+verificationContactId+'/verification';
     async function sendEmailCode() {
         if (!verificationContactId || cooldown.secondsLeft > 0) return;
@@ -199,10 +219,8 @@ if (root) {
             await post(verificationUrl()+'/confirm',{code});
             let updated=true;
             try { await refreshList(); } catch { updated=false; }
-            success.textContent='Email подтверждён и готов к уведомлениям.'+
-                (updated?'':' Контакты обновятся после перезагрузки страницы.');
-            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
-            showStep('done');
+            completeContact('Email подтверждён и готов к уведомлениям.'
+                + (updated ? '' : ' Контакты обновятся после перезагрузки страницы.'), true);
         }catch(e){
             setError(e.status === 404 ? 'Контакт больше недоступен. Добавьте новый контакт.' : (e.message || 'Код не подошёл. Попробуй ещё раз.'));
             if (e.status === 404) {
@@ -227,10 +245,8 @@ if (root) {
         onSuccess: async result => {
             let updated = true;
             try { await refreshList(); } catch { updated = false; }
-            success.textContent = (result.message || 'Telegram подтверждён и добавлен в список.')
-                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
-            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
-            showStep('done');
+            completeContact((result.message || 'Telegram подтверждён и добавлен в список.')
+                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.'), true);
         },
         onError: message => setError(message),
     });
@@ -242,16 +258,18 @@ if (root) {
         onSuccess: async result => {
             let updated = true;
             try { await refreshList(); } catch { updated = false; }
-            success.textContent = result.message
-                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
-            window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
-            showStep('done');
+            completeContact(result.message
+                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.'), true);
         },
     });
 
     function advanceFromMethod() {
         kind = dialog.querySelector('input[name="new_contact_channel"]:checked')?.value || '';
         if (!kind) { setError('Выбери способ связи.'); return; }
+        if (requireVerified && kind === 'phone') {
+            setError('SMS-подтверждение пока недоступно. Выбери другой способ связи.');
+            return;
+        }
         if (kind === 'email' || kind === 'phone') {
             configureValueField();
             showStep('value');
@@ -267,8 +285,9 @@ if (root) {
     window.addEventListener('mskba:contact:add', event => {
         const type = event.detail?.type;
         const resume = event.detail?.resume;
+        const options = { embedded: true, requireVerified: event.detail?.requireVerified === true };
         if (resume && Number.isSafeInteger(Number(resume.id)) && Number(resume.id) > 0 && typeof resume.value === 'string') {
-            open('email', true);
+            open('email', true, options);
             verificationContactId = Number(resume.id);
             verificationEmail = resume.value.toLowerCase();
             value.value = resume.value;
@@ -276,7 +295,7 @@ if (root) {
             showStep('verification');
             return;
         }
-        open(type || 'email', Boolean(type));
+        open(type || 'email', Boolean(type), options);
     });
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
@@ -367,12 +386,10 @@ if (root) {
                 setContactCooldown(result.seconds_left || 0);
                 if (!replacing) await sendEmailCode();
             } else {
-                success.textContent = (result.contact?.value || value.value)
+                completeContact((result.contact?.value || value.value)
                     + ' — контакт добавлен. ' + (kind==='phone'
                         ? 'SMS-подтверждение пока недоступно.'
-                        : updated?'':' Обнови страницу, чтобы увидеть контакт.');
-                window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
-                showStep('done');
+                        : updated?'':' Обнови страницу, чтобы увидеть контакт.'), result.contact?.is_verified === true);
             }
         } catch (exception) {
             // Addition may already have succeeded even if the list-refresh request failed.
