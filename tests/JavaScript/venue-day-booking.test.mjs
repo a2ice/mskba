@@ -689,7 +689,7 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(js, /mountEventDiscussion\(dialog,/);
     assert.match(shared, /refreshWall\(pane\)/);
     assert.doesNotMatch(js, /function refreshWall|function loadOlder|client_request_id/);
-    assert.match(js, /guestResponse\(status\)/);
+    assert.match(shared, /guestResponse\(status\)/);
     assert.match(shared, /attendance\.dataset\.chatActionValue=confirmed\?'left':'confirmed'/);
     assert.match(shared, /attendance\.textContent=confirmed\?'Не пойду':'Пойду'/);
     assert.match(shared, /200-\[\.\.\.field\.value\]\.length/);
