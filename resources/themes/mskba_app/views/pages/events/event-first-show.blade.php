@@ -28,6 +28,8 @@
     $rentalStatusLabel = $booking?->status?->value === 'requested' ? 'На рассмотрении' : $booking?->status?->label();
     $rentalReview = $owner && $event->sourceBooking
         ? app(\App\Modules\VenueBooking\Application\Queries\GetRentalReviewTimeline::class)->handle($event->sourceBooking, auth()->user()) : [];
+    $rentalPayment = app(\App\Modules\VenueBooking\Application\Services\EventRentalPaymentSummary::class)
+        ->forViewer($event->sourceBooking, auth()->user());
     $rentalCreator = $booking?->creatorActor?->user?->canonical();
     $rentalCreatorName = $rentalCreator && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)->allows($rentalCreator, auth()->user()?->canonical(), \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE)
         ? ($rentalCreator->nickname ?: $rentalCreator->username ?: 'Организатор') : 'Организатор';
@@ -120,7 +122,9 @@
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
                 <div class="app-event-rental-card">
-                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" @if($rentalReview) style="visibility:hidden" aria-hidden="true" @endif data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
+                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge" @if($rentalReview) style="visibility:hidden" aria-hidden="true" @endif data-event-rental-status="{{ $booking->status->value }}">{{ $rentalStatusLabel }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span>
+                    @if($rentalPayment)<span class="app-event-rental-payment" data-event-rental-payment="{{ $rentalPayment['state'] }}"><span>Оплата</span><strong>{{ $rentalPayment['label'] }}</strong></span>@endif
+                </button>
                     @if($rentalReview)
                         <details class="app-event-rental-review" data-rental-review>
                             <summary class="badge" aria-label="История рассмотрения: {{ $rentalStatusLabel }}">{{ $rentalStatusLabel }}<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v1"/></svg></summary>
@@ -225,11 +229,16 @@
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
-    <div class="mskba-modal__body mskba-scroll app-event-panel"><span class="badge">{{ $rentalStatusLabel }}</span><p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
+    <div class="mskba-modal__body mskba-scroll app-event-panel"><p><strong>Бронирование:</strong> <span class="badge">{{ $rentalStatusLabel }}</span></p>
+        @if($rentalPayment)
+            <p data-event-rental-payment="{{ $rentalPayment['state'] }}"><strong>Оплата:</strong> {{ $rentalPayment['label'] }}</p>
+            @if($rentalPayment['due_at'])<p class="muted">Оплатить до {{ $rentalPayment['due_at']->setTimezone($timezone)->format('d.m.Y H:i') }}</p>@endif
+        @endif
+        <p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
         <p>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
         @if($booking->scope)<p>{{ $booking->scope->label() }}</p>@endif
     </div>
-    @if($owner && $event->sourceBooking)<footer class="mskba-modal__footer"><a class="button secondary" href="{{ route('account.venue-bookings.show', $event->sourceBooking) }}">Перейти к заявке</a></footer>@endif
+    @if($owner && $event->sourceBooking?->public_id)<footer class="mskba-modal__footer"><a class="button secondary" href="{{ route('account.venue-bookings.show', $event->sourceBooking) }}">Перейти к заявке</a></footer>@endif
 </dialog>
 @endif
 @if(!$event->starts_at && $owner && $editable)
@@ -302,6 +311,8 @@
 .app-event-dot{color:var(--warning)}
 .app-event-dot[data-response="confirmed"]{color:var(--success)}.app-event-dot[data-response="left"]{color:var(--danger)}
 .app-event-contact-required{display:grid;gap:12px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));border-radius:12px;padding:16px;margin-bottom:8px}.app-event-contact-required .button{justify-self:start}
+.app-event-rental-payment{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-size:14px;line-height:20px;grid-column:1/-1;border-top:1px solid var(--line);padding-top:8px;margin-top:4px}
+.app-event-rental-payment>span{color:var(--muted)}.app-event-rental-payment>strong{font-weight:600}
 .app-event-description{white-space:pre-wrap}
 html:has(.app-event-dialog[open]){overflow:hidden}
 .app-event-dialog>form{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
