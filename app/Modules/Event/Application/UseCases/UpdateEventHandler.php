@@ -107,6 +107,7 @@ final class UpdateEventHandler
                     'type' => $requestedType,
                     'visibility' => EventVisibilityEnum::from($data['visibility']),
                     'description' => $data['description'] ?? null,
+                ...($event->canManageFeedback($actor->user) ? array_intersect_key($data, array_flip(['discussion_enabled', 'report_comments_enabled'])) : []),
                     'max_participants' => $maxParticipants,
                 ])->save();
 
@@ -226,6 +227,7 @@ final class UpdateEventHandler
                 'type' => $requestedType,
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
                 'description' => $data['description'] ?? null,
+                ...($event->canManageFeedback($actor->user) ? array_intersect_key($data, array_flip(['discussion_enabled', 'report_comments_enabled'])) : []),
                 'max_participants' => $maxParticipants,
                 'venue_id' => $targetVenue->id,
                 'venue_court_id' => $bookingDataProvided ? $targetCourt?->id : $event->venue_court_id,

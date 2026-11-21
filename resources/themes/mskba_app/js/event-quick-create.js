@@ -296,6 +296,7 @@
     function values(){
         const data=Object.fromEntries(new FormData(form).entries());
         delete data._token;
+        for(const name of ['discussion_enabled','report_comments_enabled'])data[name]=form.querySelector('input[type="checkbox"][name="'+name+'"]')?.checked?'1':'0';
         delete data.venue_court_id;
         if(court.value)data.venue_court_id=Number(court.value);
         if(!data.max_participants)delete data.max_participants;
@@ -316,6 +317,9 @@
         if(!saved?.draft)return false;
         for(const [name,value] of Object.entries(saved.draft)){
             if(name==='slots'||name==='schedule_mode'||name==='create_game'||name==='add_organizer_role'||name==='organizer_participates')continue;
+            if(['discussion_enabled','report_comments_enabled'].includes(name)){
+                form.querySelector('input[type="checkbox"][name="'+name+'"]').checked=String(value)==='1';continue;
+            }
             const control=form.elements.namedItem(name);
             if(control&&typeof value==='string'&&typeof control.value==='string')control.value=value;
         }

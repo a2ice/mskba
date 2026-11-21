@@ -67,6 +67,7 @@
             <article class="venue-play-dialog__detail" data-venue-play-pane="{{ $upcoming->id }}"
                 data-event-status="{{ $currentStatus ?? '' }}"
                 data-event-organizer="{{ $isMyEvent ? '1' : '0' }}"
+                data-event-page-url="{{ route('events.show', $upcoming->routeIdentifier()) }}"
                 data-event-participation-url="{{ route('events.participation', $upcoming->routeIdentifier()) }}"
                 data-event-wall-url="{{ route('events.wall.index', $upcoming->routeIdentifier()) }}"
                 data-event-post-url="{{ route('events.wall.store', $upcoming->routeIdentifier()) }}"

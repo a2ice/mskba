@@ -148,6 +148,8 @@ final class CreateEventHandler
                         ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT),
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
                 'description' => $data['description'] ?? null,
+                'discussion_enabled' => (bool) ($data['discussion_enabled'] ?? true),
+                'report_comments_enabled' => (bool) ($data['report_comments_enabled'] ?? true),
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'proposed_time_options' => $funnel ? ($data['proposed_time_options'] ?? []) : null,

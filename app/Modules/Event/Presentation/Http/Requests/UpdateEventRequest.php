@@ -32,6 +32,8 @@ final class UpdateEventRequest extends FormRequest
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
+            'discussion_enabled' => ['sometimes', 'boolean'],
+            'report_comments_enabled' => ['sometimes', 'boolean'],
             'revision_reason' => ['nullable', 'string', 'max:255'],
             'starts_at' => ['required_with:venue_id,duration_minutes,venue_court_id', 'date'],
             'duration_minutes' => ['required_with:venue_id,starts_at,venue_court_id', 'integer', 'min:1', 'max:1440'],

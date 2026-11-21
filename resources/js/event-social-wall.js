@@ -200,6 +200,7 @@ export function mountEventDiscussion(root, {
             const item=document.createElement('li');item.dataset.entryId=String(entry.id);
             item.classList.toggle('is-system',!!entry.system);
             if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
+            if(['like','dislike'].includes(entry.reaction))item.dataset.reaction=entry.reaction;
             item.classList.toggle('is-deleted',!!entry.deleted);
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
             const time=document.createElement('time');
@@ -222,12 +223,27 @@ export function mountEventDiscussion(root, {
         regroup(list);
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
         empty.hidden=list.childElementCount>0;
-        if(!empty.hidden)empty.textContent='Сообщений пока нет.';
+        if(!empty.hidden)empty.textContent=pane.hasAttribute('data-event-report-wall')?'Комментариев пока нет':'Сообщений пока нет.';
     };
     function paintWallAccess(pane,response){
         const form=pane.querySelector('[data-venue-play-message-form]');
         setChatComposerAccess(form,response.can_post);
-        pane.querySelector('[data-venue-play-comment-notice]').hidden=!!response.can_post;
+        const noticeNode=pane.querySelector('[data-venue-play-comment-notice]');
+        if(response.can_post_reason){noticeNode.textContent=response.can_post_reason;}
+        else if(!response.can_post && !pane.hasAttribute('data-event-report-wall')){
+            noticeNode.replaceChildren(document.createTextNode('Написать сообщение могут участники мероприятия. '));
+            const href=pane.dataset.eventPageUrl;
+            if(href){const a=document.createElement('a');a.className='venue-play-dialog__participation-link';a.href=href;a.textContent='Участвовать';noticeNode.append(a);}
+        }
+        noticeNode.hidden=!!response.can_post;
+        if(!response.can_post)pane.querySelectorAll('[data-venue-play-edit]').forEach(b=>b.hidden=true);
+        if(pane.hasAttribute('data-event-report-wall')){
+            pane.dataset.reportReaction=response.reaction||'';
+            pane.dataset.canReact=response.can_react?'1':'0';
+            pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=!response.can_react;b.setAttribute('aria-pressed',String(b.dataset.reportReaction===response.reaction));});
+            const tally=document.querySelector('[data-report-like-count]');
+            if(tally&&Number.isInteger(response.likes)){tally.textContent=String(response.likes);tally.setAttribute('aria-label','Лайков: '+response.likes);}
+        }
     }
     function paintWall(pane,response){
         const list=messages(pane);
@@ -336,6 +352,17 @@ export function mountEventDiscussion(root, {
         if(pane&&['confirmed','tentative','left'].includes(status))void respond(pane,status);
     }));
     for(const pane of panes){
+        let reacting=false;
+        pane.querySelectorAll('[data-report-reaction]').forEach(button=>button.addEventListener('click',async()=>{
+            if(reacting||pane.dataset.canReact!=='1')return;
+            reacting=true;const reaction=pane.dataset.reportReaction===button.dataset.reportReaction?null:button.dataset.reportReaction;
+            pane.querySelectorAll('[data-report-reaction]').forEach(b=>b.disabled=true);
+            try{const result=await request(pane.dataset.reactionUrl,'PUT',{reaction});
+                paintWallAccess(pane,{...result,can_post:pane.querySelector('[data-chat-composer]').dataset.chatCanPost==='true',can_post_reason:pane.querySelector('[data-venue-play-comment-notice]').textContent});
+                await refreshWall(pane);
+            }catch(e){notice(pane,e.message,true);}
+            finally{reacting=false;pane.querySelectorAll('[data-report-reaction]').forEach(b=>{b.disabled=pane.dataset.canReact!=='1';});}
+        }));
         pane.querySelector('[data-venue-play-roster-retry]')?.addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const messageList=messages(pane);
         messageList.addEventListener('scroll',()=>{void loadOlder(pane);},{passive:true});
@@ -352,10 +379,24 @@ export function mountEventDiscussion(root, {
             submit.title='Отправить сообщение';submit.setAttribute('aria-label',submit.title);count();
         };
         field.addEventListener('input',count);
+        const mention=name=>{
+            if(!name||form.dataset.chatCanPost!=='true'||sending||field.disabled)return;
+            const prefix='@'+name+' ';
+            if(!field.value.startsWith(prefix)&&field.value.length+prefix.length<=field.maxLength)field.setRangeText(prefix,0,0,'end');
+            count();field.focus({preventScroll:true});field.setSelectionRange(field.value.length,field.value.length);jumpToMessages(pane);
+        };
+        pane.addEventListener('mskba:event:mention',event=>mention(event.detail?.name));
         pane.querySelector('[data-venue-play-participants]')?.addEventListener('click',event=>{
             const row=event.target.closest('[data-chat-mention]');
-            if(!row||form.dataset.chatCanPost!=='true'||sending||field.disabled||
-                event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+            if(!row||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+            if(form.dataset.chatCanPost!=='true'){
+                const reportPane=document.querySelector('[data-event-report-wall]');
+                if(reportPane?.querySelector('[data-chat-composer]')?.dataset.chatCanPost==='true'){
+                    event.preventDefault();reportPane.dispatchEvent(new CustomEvent('mskba:event:mention',{detail:{name:row.dataset.chatMention}}));
+                }
+                return;
+            }
+            if(sending||field.disabled)return;
             event.preventDefault();
             const prefix='@'+row.dataset.chatMention+' ';
             if(!field.value.startsWith(prefix)&&field.value.length+prefix.length<=field.maxLength){
