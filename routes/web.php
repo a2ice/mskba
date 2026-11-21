@@ -1548,3 +1548,11 @@ Route::post('/invites/continue/register', [\App\Modules\Invitation\Presentation\
     ->middleware('throttle:5,1')->name('account-invitations.register');
 Route::post('/invites/continue/accept', [\App\Modules\Invitation\Presentation\Http\Controllers\AccountInvitationController::class, 'accept'])
     ->middleware(['auth', 'throttle:10,1'])->name('account-invitations.accept');
+
+
+Route::post('/backoffice/social-integrations/{provider}/save', [\App\Http\Controllers\Backoffice\SocialIntegrationSettingsController::class, 'save'])
+    ->whereIn('provider', ['telegram', 'vk'])->middleware(['auth:web', 'throttle:10,1'])
+    ->name('backoffice.social-integrations.save');
+Route::post('/backoffice/social-integrations/{provider}/check', [\App\Http\Controllers\Backoffice\SocialIntegrationSettingsController::class, 'check'])
+    ->whereIn('provider', ['telegram', 'vk'])->middleware(['auth:web', 'throttle:10,1'])
+    ->name('backoffice.social-integrations.check');
