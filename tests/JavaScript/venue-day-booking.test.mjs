@@ -669,7 +669,12 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.doesNotMatch(composer, /event-rsvp|data-venue-play-rsvp/);
     assert.match(composer, /data-chat-actions/);
     assert.match(composer, /data-chat-context-delete hidden/);
-    assert.match(composer, /placeholder="Написать сообщение"/);
+    assert.match(composer, /placeholder="{{ \$chatComposerLabel \?\? 'Написать сообщение' }}"/);
+    assert.match(discussion, /'chatComposerLabel' => \$chatComposerLabel \?\? 'Написать сообщение'/);
+    const report = readFileSync(new URL('../../resources/themes/mskba_app/views/pages/events/partials/event-report.blade.php', import.meta.url), 'utf8');
+    assert.match(report, /'chatComposerLabel'=>'Написать комментарий'/);
+    assert.match(report, /data-event-report-wall[\s\S]*data-report-reaction="like"[\s\S]*data-report-reaction="dislike"[\s\S]*@include\('components\.event-discussion'/);
+    assert.doesNotMatch(discussion, /data-report-reaction/);
     assert.match(composer, /data-venue-play-chars[^>]*>200</);
     assert.doesNotMatch(tpl + discussion + composer, /Обсуждение и действия|не более 3 действий в минуту|0\/200/);
     assert.match(discussion, /data-venue-play-messages/);

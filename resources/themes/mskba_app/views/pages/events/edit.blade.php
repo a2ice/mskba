@@ -112,6 +112,7 @@
                 <label for="eventDescription">Описание</label>
                 <textarea id="eventDescription" name="description" rows="5" maxlength="5000">{{ old('description', $event->description) }}</textarea>
             </div>
+            @if($event->canManageFeedback(auth()->user())) @include('components.event-feedback-fields', ['feedbackEvent'=>$event]) @endif
             <div class="app-rental-pricing__actions">
                 <button class="button primary" type="submit">Сохранить</button>
                 <a class="button secondary" href="{{ route('events.show', $event->routeIdentifier()) }}">Назад</a>
