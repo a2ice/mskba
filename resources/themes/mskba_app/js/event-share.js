@@ -9,7 +9,10 @@ if(dialog){
     const sync=()=>{send.disabled=!selected.size;send.textContent=selected.size?'Поделиться ('+selected.size+')':'Поделиться';};
     const auth=()=>{dialog.close();window.dispatchEvent(new CustomEvent('mskba:auth:open',{detail:{mode:'login',stayOnPage:true}}));};
     let pending=false;
-    document.querySelector('[data-event-dialog-next="event-share-internal"]')?.addEventListener('click',()=>{if(dialog.dataset.auth!=='1'){pending=true;auth();}});
+    document.querySelector('[data-event-dialog-next="event-share-internal"]')?.addEventListener('click',e=>{
+        if(dialog.dataset.auth!=='1'){e.preventDefault();e.stopImmediatePropagation();e.currentTarget.closest('dialog')?.close();pending=true;auth();}
+    },true);
+    window.addEventListener('mskba:auth:cancel',()=>{pending=false;});
     window.addEventListener('mskba:auth:success',()=>{dialog.dataset.auth='1';if(pending){pending=false;dialog.showModal();}});
     query.addEventListener('input',()=>{clearTimeout(timer);controller?.abort();results.replaceChildren();const q=query.value.trim();if(q.length<2)return;
         timer=setTimeout(async()=>{controller=new AbortController();try{const url=new URL(dialog.dataset.search,location.href);url.searchParams.set('q',q);const data=await request(url);for(const user of data.users||[]){const lab=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=selected.has(user.id);box.addEventListener('change',()=>{box.checked?selected.set(user.id,user.name):selected.delete(user.id);sync();});lab.append(box,document.createTextNode(' '+user.name));results.append(lab);}status.textContent=results.children.length?'':'Ничего не найдено';}catch(e){if(e.name!=='AbortError')status.textContent=e.message;}},250);

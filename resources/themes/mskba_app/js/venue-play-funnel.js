@@ -31,9 +31,10 @@ for(const page of document.querySelectorAll('[data-venue-play-page]')){
         const n=members.length,ones=n%10,mod=n%100;
         count.textContent=n+' '+(mod>=11&&mod<=14?'участников':ones===1?'участник':ones>=2&&ones<=4?'участника':'участников');
     };
+    let pendingGuestResponse=null;
     const guestNative=status=>{
         if(!status){login();return;}
-        try{sessionStorage.setItem(resumeKey,JSON.stringify({status,at:Date.now()}));}catch{}
+        pendingGuestResponse=status;
         document.getElementById('event-auth-required')?.showModal();
     };
     const controller=mountEventDiscussion(page,{
@@ -64,7 +65,14 @@ for(const page of document.querySelectorAll('[data-venue-play-page]')){
             e.preventDefault();cta.click();
         });
         document.querySelectorAll('[data-event-response-choice]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog')?.close();void controller.respond(page,b.dataset.eventResponseChoice);}));
-        document.querySelector('[data-event-auth-login]')?.addEventListener('click',()=>{document.getElementById('event-auth-required')?.close();login();});
+        const authNotice=document.getElementById('event-auth-required');
+        authNotice?.addEventListener('close',()=>{pendingGuestResponse=null;});
+        document.querySelector('[data-event-auth-login]')?.addEventListener('click',()=>{
+            const status=pendingGuestResponse;pendingGuestResponse=null;
+            if(!status)return;
+            try{sessionStorage.setItem(resumeKey,JSON.stringify({status,at:Date.now()}));}catch{}
+            authNotice?.close();login();
+        });
         const resume=()=>{
             let saved;try{saved=JSON.parse(sessionStorage.getItem(resumeKey)||'null');sessionStorage.removeItem(resumeKey);}catch{}
             if(saved&&Date.now()-saved.at<20*60*1000&&['confirmed','tentative','left'].includes(saved.status))void controller.respond(page,saved.status);

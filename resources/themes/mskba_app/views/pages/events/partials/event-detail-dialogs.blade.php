@@ -21,6 +21,7 @@
     <label class="field-group">Описание<textarea name="result_description" rows="4" maxlength="10000" placeholder="Расскажите, как прошло мероприятие">{{ old('result_description',$event->result_description) }}</textarea></label>
     <label class="field-group">Фотографии<input type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp"></label>
     <label class="field-group">Видео<input type="file" name="videos[]" multiple accept="video/mp4,video/webm"></label>
+    <p class="muted">До 10 МБ на файл, до 18 МБ за одну загрузку.</p><p role="alert" data-report-upload-error hidden></p>
     @foreach($reportMedia as $file)<div class="app-event-actions"><span>{{ str_starts_with($file->mime ?? '', 'video/')?'Видео':'Фото' }} {{ $loop->iteration }}</span><button type="submit" form="event-remove-media-{{ $file->id }}" class="button secondary">Удалить</button></div>@endforeach
     </div><footer class="mskba-modal__footer"><button type="button" class="button secondary" data-event-dialog-close>Отмена</button><button class="button primary">Опубликовать</button></footer></form>
 </dialog>
