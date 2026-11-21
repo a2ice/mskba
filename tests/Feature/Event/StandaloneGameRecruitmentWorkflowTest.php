@@ -278,7 +278,7 @@ final class StandaloneGameRecruitmentWorkflowTest extends TestCase
 
     private function confirmedUser(string $username): User
     {
-        return User::factory()->create(['username' => $username, 'status' => UserStatusEnum::CONFIRMED]);
+        return User::factory()->withVerifiedContact()->create(['username' => $username, 'status' => UserStatusEnum::CONFIRMED]);
     }
 
     private function createTeam(User $owner, string $name): Team

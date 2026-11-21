@@ -51,6 +51,10 @@ final class ShowCreationPageAccess
                 'coordination' => UserOperationalPermissionEnum::CREATE_COORDINATION,
                 default => null,
             };
+            if ($topic === 'events' && $this->permissions->allows($user, UserOperationalPermissionEnum::CREATE_EVENT)
+                && ! $this->contacts->hasVerifiedContact($user)) {
+                $requirements[] = ['message' => 'Чтобы создавать мероприятия, подтвердите хотя бы один контакт.', 'route' => 'account.contacts', 'label' => 'Подтвердить контакт'];
+            }
             if ($permission !== null && ! $this->permissions->allows($user, $permission)) {
                 $snapshot = $user->operationalPermissions()->where('permission', $permission->value)->first();
                 if ($snapshot === null && in_array($topic, ['events', 'tournaments'], true)) {

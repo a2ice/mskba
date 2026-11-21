@@ -31,6 +31,7 @@ use App\Presentation\Theming\ThemeResolver;
 use App\Support\Features\FeatureDisabledException;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -49,7 +50,7 @@ final class EventVenueBookingController extends Controller
         EventManagementAccess $access,
         QuoteVenueBookingHandler $quotes,
         EventVenueBookingProposals $proposals,
-    ): Response|RedirectResponse {
+    ): Response|RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'interest_id' => ['nullable', 'integer', 'min:1'],
@@ -96,6 +97,9 @@ final class EventVenueBookingController extends Controller
                 'proposalId' => $proposal->id ?? null,
             ]);
         } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            if ($request->expectsJson() && $exception->getMessage() === self::CONTACT_REQUIRED) {
+                return response()->json(['code' => 'CONTACT_REQUIRED', 'message' => self::CONTACT_REQUIRED], 422);
+            }
             return redirect()->route('events.show', $item->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
                     ? 'Онлайн-бронирование временно недоступно.'
@@ -114,7 +118,7 @@ final class EventVenueBookingController extends Controller
         RequestVenueBookingHandler $bookings,
         EventVenueBookingProposals $proposals,
         EventVenueInterestChat $chat,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'quote_id' => ['nullable', 'uuid'],
@@ -234,6 +238,9 @@ final class EventVenueBookingController extends Controller
                 return ['event' => $event, 'booking' => $booking];
             }, 3);
         } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            if ($request->expectsJson() && $exception->getMessage() === self::CONTACT_REQUIRED) {
+                return response()->json(['code' => 'CONTACT_REQUIRED', 'message' => self::CONTACT_REQUIRED], 422);
+            }
             return redirect()->route('events.show', $reference->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
                     ? 'Онлайн-бронирование временно недоступно.'

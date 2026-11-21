@@ -42,6 +42,7 @@ final class EventFirstCreationController extends Controller
         abort_if($actor === null || $actor->user_id === null, 403);
         $user = $actor->user?->canonical();
         abort_if($user === null || $user->isBlocked() || $user->trashed(), 403);
+        abort_if($user->operationalPermissions()->where('permission', UserOperationalPermissionEnum::CREATE_EVENT->value)->where('is_allowed', false)->exists(), 403);
         $contacts = app(VerifiedContactOperationalPermissionGranter::class);
         if (! $contacts->hasVerifiedContact($user)) {
             $message = 'Для создания мероприятия необходимо иметь подтверждённый контакт';

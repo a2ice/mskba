@@ -26,7 +26,7 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_standalone_game_can_start_with_one_known_team_without_materializing_half_a_game(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->withVerifiedContact()->create();
         $team = $this->createTeam($owner, 'Known team');
         [$venue, $start, $end] = $this->availableVenue();
 
@@ -65,7 +65,7 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_external_preselected_team_requires_acceptance_before_sides_can_be_confirmed(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Direct A');
         $teamB = $this->createTeam($ownerB, 'Invited B');
@@ -112,7 +112,7 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_team_invitation_opt_out_hides_team_and_blocks_invite_but_not_team_application(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $teamOwner = User::factory()->create();
         $team = $this->createTeam($teamOwner, 'Private Invitations Team');
         $team->update(['accepts_competition_invitations' => false]);
@@ -151,7 +151,7 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_individual_draft_starts_without_sides_and_rejects_preselected_team(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->withVerifiedContact()->create();
         $team = $this->createTeam($owner, 'Not allowed in draft');
         [$venue, $start, $end] = $this->availableVenue();
 
@@ -187,7 +187,7 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_confirmed_sides_can_be_unconfirmed_before_start(): void
     {
-        $owner = User::factory()->create();
+        $owner = User::factory()->withVerifiedContact()->create();
         $teamA = $this->createTeam($owner, 'Unlock A');
         $teamB = $this->createTeam($owner, 'Unlock B');
         [$venue, $start, $end] = $this->availableVenue();
