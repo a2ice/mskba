@@ -13,6 +13,10 @@ if (root) {
     const value = dialog.querySelector('[data-contact-add-value]');
     const label = dialog.querySelector('[data-contact-add-value-label]');
     const success = dialog.querySelector('[data-contact-add-success]');
+    const continueButton = dialog.querySelector('[data-contact-add-continue]');
+    const againButton = dialog.querySelector('[data-contact-add-again]');
+    const doneClose = dialog.querySelector('[data-contact-add-done-close]');
+    continueButton.addEventListener('click', () => { if (!busy && step === 'done' && dialog.dataset.contactVerified === 'true') dialog.close('verified'); });
     const back = dialog.querySelector('[data-contact-add-back]');
     const next = dialog.querySelector('[data-contact-add-next]');
     const footer = dialog.querySelector('[data-contact-add-footer]');
@@ -83,6 +87,7 @@ if (root) {
     const setBusy = enabled => {
         busy = enabled;
         next.disabled = enabled;
+        continueButton.disabled = enabled;
         back.disabled = enabled;
         if (verifyButton) verifyButton.disabled = enabled;
         if (resendButton) resendButton.disabled = enabled || cooldown.secondsLeft > 0;
@@ -117,6 +122,11 @@ if (root) {
         embedded = options.embedded === true;
         requireVerified = options.requireVerified === true;
         dialog.returnValue = '';
+        dialog.dataset.contactVerified = 'false';
+        dialog.querySelector('[data-contact-add-done-title]').textContent = 'Контакт добавлен';
+        continueButton.hidden = true;
+        againButton.hidden = false;
+        doneClose.hidden = false;
         dialog.querySelector('input[name="new_contact_channel"][value="phone"]').disabled = requireVerified;
         opener = document.activeElement;
         const radio=dialog.querySelector('input[name="new_contact_channel"][value="'+preselected+'"]');
@@ -177,16 +187,18 @@ if (root) {
         if (document.querySelector('[data-account-contacts-list]')) await refreshAccountContactsList();
     };
     function completeContact(message, verified) {
-        success.textContent = message;
+        const continuation = contactWizardCompletion(embedded, verified) === 'continue';
+        dialog.dataset.contactVerified = String(verified);
+        continueButton.hidden = !continuation;
+        againButton.hidden = continuation;
+        doneClose.hidden = continuation;
+        dialog.querySelector('[data-contact-add-done-title]').textContent = continuation ? 'Контакт подтверждён' : 'Контакт добавлен';
+        success.textContent = continuation ? 'Контакт успешно подтверждён.' : message;
         window.dispatchEvent(new CustomEvent('mskba:contact:updated', {
             detail: { verified, embedded },
         }));
-        if (contactWizardCompletion(embedded, verified) === 'close') {
-            // The caller owns continuation; do not submit its form or create a booking.
-            dialog.close('verified');
-        } else {
-            showStep('done');
-        }
+        showStep('done');
+        if (continuation) continueButton.focus({preventScroll: true});
     }
     const verificationUrl = () => '/account/contacts/'+verificationContactId+'/verification';
     async function sendEmailCode() {

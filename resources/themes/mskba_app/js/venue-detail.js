@@ -305,6 +305,7 @@ if (dayBookingDialog) {
     const eventInfoDialog = document.querySelector('[data-venue-day-event-dialog]');
     const form = dayBookingDialog.querySelector('[data-venue-day-booking-form]');
     const bookingButton = dayBookingDialog.querySelector('[data-venue-day-book]');
+    const eventFreeRental = dayBookingDialog.dataset.eventFree === '1';
     const summary = dayBookingDialog.querySelector('[data-venue-day-summary]');
     const minimum = dayBookingDialog.querySelector('[data-venue-day-minimum]');
     const dateButtons = Array.from(dayBookingDialog.querySelectorAll('[data-venue-day-date]'));
@@ -421,7 +422,10 @@ if (dayBookingDialog) {
             // The previous 'start' variable belonged to the summary's else block.
             // Use the selected slot from the current response; otherwise the
             // ReferenceError leaves the booking button disabled indefinitely.
-            void previewSelection(
+            if (eventFreeRental) {
+                summary.textContent = [displayClock(response.slots[selection[0]].starts_at), '–', displayClock(response.slots[selection.at(-1)].ends_at), '·', duration, 'мин · Бесплатно'].join(' ');
+                bookingButton.disabled = false;
+            } else void previewSelection(
                 response.date, response.slots[selection[0]].starts_at, duration, selection.join(','),
             );
         } else {
@@ -505,6 +509,14 @@ if (dayBookingDialog) {
                 if (slot.status === 'unavailable') return {...slot,selectable:false,price_minor:null};
                 return !rentalSearch.readOnly && slot.status === 'available' && !eligible.has(slot) ? {...slot,selectable:false} : slot;
             })};
+        }
+        if (eventFreeRental) {
+            const fresh = !data.stale && !['failed','updating'].includes(data.refresh_state);
+            data = {...data, booking_enabled: fresh, slots:data.slots.map(slot => ({
+                ...slot,
+                selectable: fresh && slot.status === 'available' && Date.parse(data.date+'T'+slot.starts_at+':00+03:00') >= Date.now(),
+                price_minor: slot.status === 'available' ? 0 : slot.price_minor,
+            }))};
         }
         response = data;
         selection = [];
@@ -931,6 +943,7 @@ if (dayBookingDialog) {
     function syncCourtDates(courtId) {
         const group = document.querySelector('[data-venue-schedule-court="' + courtId + '"]');
         if (group) dayBookingDialog.dataset.courtName = group.dataset.courtName || '';
+        if (!group && dayBookingDialog.dataset.eventCalendarCourt === String(courtId)) return;
         dateButtons.forEach(button => {
             const source = group?.querySelector('[data-venue-day-entry][data-day-date="'
                 + button.dataset.venueDayDate + '"]');

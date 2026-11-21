@@ -34,7 +34,9 @@
     $confirmedCount = app(\App\Modules\Event\Application\Services\EventIdentityParticipationService::class)->confirmedIdentityCount($event);
     $participants = $event->participants->sortBy(fn ($p) => $p->role === EventParticipantRoleEnum::ORGANIZER ? 0 : 1)->unique(fn ($p) => $p->user?->canonical()?->id ?? $p->user_id);
     $interest = $canManage ? $event->venueInterests->sortByDesc('revision')->first() : null;
-    $policy = $canEdit && $event->starts_at && !$booking && $event->status === EventStatusEnum::PUBLISHED
+    $canStartRental = $canEdit && !$booking && $event->booking_deferred
+        && ($event->status === EventStatusEnum::PUBLISHED || ($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at));
+    $policy = $canStartRental
         ? \App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy::query()->where('venue_id', $venue->id)->where('active_marker', true)->where('is_enabled', true)->first() : null;
 @endphp
 @extends('theme::layouts.app', ['title' => $event->title])
@@ -118,7 +120,7 @@
                 <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
-                @if($canEdit && $event->starts_at && $event->status === EventStatusEnum::PUBLISHED)
+                @if($canStartRental)
                     @if(!app(\App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact(auth()->user()))
                         @php
                             $pendingEmail = auth()->user()->canonical()->identityContactsQuery()
@@ -131,13 +133,10 @@
                                 {{ $pendingEmail ? 'Продолжить подтверждение' : 'Подтвердить контакт' }}
                             </button>
                         </div>
-                    @elseif($court && ($policy || $venue->hasFreeAccess()))
-                        <form method="POST" action="{{ $policy ? route('events.booking.quote', $event->routeIdentifier()) : route('events.booking.store', $event->routeIdentifier()) }}">
-                            @csrf <input type="hidden" name="expected_version" value="{{ $event->participation_confirmation_version }}">
-                            <button class="button primary" type="submit">{{ $policy ? 'Рассчитать и забронировать' : 'Забронировать бесплатную площадку' }}</button>
-                        </form>
-                    @elseif(!$court)
-                        <p class="muted">Выберите зал для бронирования.</p>
+                    @elseif(($policy || $venue->hasFreeAccess()) && $venue->courts()->exists())
+                        <button class="button primary" type="button" data-event-rental-open>Выбрать время аренды</button>
+                    @else
+                        <p class="muted">Онлайн-бронирование этого объекта пока недоступно.</p>
                     @endif
                 @endif
             @endif
@@ -200,6 +199,9 @@
     @include('theme::pages.events.partials.lifecycle-dialog', ['restoring' => false])
 @endif
 @include('theme::partials.venue-map-dialog', ['mapVenue' => null, 'mapShowCurrentVenueLink'=>true])
+@if($canStartRental && ($policy || $venue->hasFreeAccess()) && $venue->courts()->exists())
+    @include('theme::pages.events.partials.rental-selection-dialog')
+@endif
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
@@ -307,8 +309,91 @@ if(requiredContact){
         }}));
     });
     window.addEventListener('mskba:contact:pending',event=>{changed=true;if(event.detail?.id){requiredContact.dataset.contactId=event.detail.id;requiredContact.dataset.contactValue=event.detail.value;}requiredContact.textContent='Продолжить подтверждение';});
-    window.addEventListener('mskba:contact:updated',()=>{changed=true;});
-    contactModal?.addEventListener('close',()=>{if(changed)location.reload();});
+    contactModal?.addEventListener('close',()=>{
+        if(contactModal.returnValue==='verified'){
+            const url=new URL(location.href);
+            url.searchParams.set('rental','1');
+            location.assign(url);
+        }else if(changed || contactModal.dataset.contactVerified==='true')location.reload();
+    });
+}
+const rentalStart=document.querySelector('[data-event-rental-open]');
+const rentalPrompt=document.querySelector('[data-event-rental-prompt]');
+const rentalCalendar=document.querySelector('[data-event-rental-calendar]');
+if(rentalStart && rentalPrompt && rentalCalendar){
+    const title=rentalPrompt.querySelector('[data-rental-prompt-title]');
+    const message=rentalPrompt.querySelector('[data-rental-prompt-message]');
+    const choose=rentalPrompt.querySelector('[data-rental-choose-new]');
+    const apply=rentalPrompt.querySelector('[data-rental-apply-original]');
+    const courtField=rentalPrompt.querySelector('[data-event-rental-court-field]');
+    const courtSelect=rentalPrompt.querySelector('[data-event-rental-court]');
+    const courtNext=rentalPrompt.querySelector('[data-event-rental-court-next]');
+    const originalForm=rentalPrompt.querySelector('[data-event-rental-original-form]');
+    let sequence=0;
+    function showPrompt(heading,body,showApply=false,showChoose=true){
+        title.textContent=heading;message.textContent=body;
+        courtField.hidden=true;courtNext.hidden=true;
+        apply.hidden=!showApply;choose.hidden=!showChoose;
+        choose.textContent=showApply?'Нет, выбрать другое время':'Выбрать новую дату';
+        if(!rentalPrompt.open)rentalPrompt.showModal();
+    }
+    function openCalendar(){
+        if(!courtSelect.value)return;
+        if(rentalPrompt.open)rentalPrompt.close();
+        rentalCalendar.dataset.courtName=courtSelect.selectedOptions[0]?.textContent.trim()||'';
+        rentalCalendar.dispatchEvent(new CustomEvent('mskba:choose-court',{detail:{
+            courtId:Number(courtSelect.value),date:rentalPrompt.dataset.originalDate
+        }}));
+    }
+    async function checkOriginal(){
+        if(!rentalPrompt.dataset.originalDate){openCalendar();return;}
+        const current=++sequence;
+        showPrompt('Аренда','Проверяем доступность выбранного времени…',false,false);
+        try{
+            const data=new FormData(originalForm);
+            data.set('rental_action','check');data.set('venue_court_id',courtSelect.value);
+            const response=await fetch(originalForm.action,{method:'POST',body:data,credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},cache:'no-store'});
+            const result=await response.json();
+            if(current!==sequence||!rentalPrompt.open)return;
+            if(!response.ok)throw new Error(result.message||'Не удалось проверить расписание.');
+            if(result.status==='available'){
+                showPrompt('Подтвердите время','Вы уверены, что хотите применить дату и время: '+rentalPrompt.dataset.originalLabel+'?',true,true);
+            }else if(result.status==='occupied'){
+                showPrompt('Время занято','Дата и время, установленные при создании мероприятия, к сожалению, уже заняты. Выберите новую дату.');
+            }else{
+                showPrompt('Время недоступно',result.message||'Не удалось подтвердить доступность выбранного времени. Выберите другую дату.');
+            }
+        }catch(error){
+            if(current===sequence&&rentalPrompt.open)showPrompt('Расписание недоступно',error.message||'Не удалось проверить расписание.');
+        }
+    }
+    function beginRental(){
+        if(!courtSelect.value){
+            showPrompt('Выберите зал','Выберите зал для аренды.',false,false);
+            courtField.hidden=false;courtNext.hidden=false;return;
+        }
+        if(rentalPrompt.dataset.retryMessage){
+            const retry=rentalPrompt.dataset.retryMessage;
+            delete rentalPrompt.dataset.retryMessage;
+            showPrompt('Время недоступно',retry);return;
+        }
+        void checkOriginal();
+    }
+    rentalStart.addEventListener('click',beginRental);
+    courtNext.addEventListener('click',()=>{if(courtSelect.reportValidity()&&courtSelect.value)beginRental();});
+    choose.addEventListener('click',openCalendar);
+    apply.addEventListener('click',()=>{
+        originalForm.elements.venue_court_id.value=courtSelect.value;
+        originalForm.requestSubmit();
+    });
+    rentalPrompt.addEventListener('close',()=>{if(!rentalPrompt.open)++sequence;});
+    const url=new URL(location.href);
+    if(url.searchParams.get('rental')==='1'||rentalPrompt.dataset.retryMessage){
+        url.searchParams.delete('rental');history.replaceState(history.state,'',url);
+        // The shared schedule module is loaded by the layout before this interaction.
+        if(document.readyState==='complete')beginRental();
+        else window.addEventListener('load',beginRental,{once:true});
+    }
 }
 document.querySelectorAll('[data-event-dialog-open]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.eventDialogOpen)?.showModal()));
 document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));

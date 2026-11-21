@@ -86,10 +86,12 @@ test('verification actions and change choice use the shared contact dialog', () 
     assert.match(wizard, /createContactResendCooldown/);
 });
 
-test('embedded contact completion dispatches update before closing and does not refresh missing list', () => {
+test('embedded contact completion shows explicit continuation and does not refresh missing list', () => {
     assert.match(wizard, /function completeContact\(message, verified\)/);
-    assert.match(wizard, /mskba:contact:updated[\s\S]*?contactWizardCompletion\(embedded, verified\)[\s\S]*?dialog.close\('verified'\)/);
+    assert.match(wizard, /contactWizardCompletion\(embedded, verified\) === 'continue'[\s\S]*?showStep\('done'\)/);
     assert.match(wizard, /document.querySelector\('\[data-account-contacts-list\]'\)/);
     assert.match(wizard, /requireVerified: event.detail\?\.requireVerified === true/);
     assert.match(wizard, /dialog.returnValue = ''/);
+    assert.match(wizard, /continueButton.addEventListener\('click'[\s\S]*?dialog.close\('verified'\)/);
+    assert.match(partial, /data-contact-add-continue hidden>Продолжить/);
 });
