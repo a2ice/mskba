@@ -62,7 +62,7 @@
             </div>
             <div class="app-entity-heading"><h1>{{ $event->title }}</h1></div>
             @if($event->starts_at)
-                <strong>{{ $event->starts_at->setTimezone($timezone)->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
+                <strong>{{ $event->starts_at->setTimezone($timezone)->locale('ru')->translatedFormat('j F Y · H:i') }}–{{ $event->ends_at?->setTimezone($timezone)->format('H:i') }}</strong>
                 @if(!$finished && (!$booking || $booking->status->value !== 'confirmed'))<span class="muted">Время предварительное</span>@endif
                 @if(count($event->proposed_time_options ?? []) > 1)
                     <ul>@foreach($event->proposed_time_options as $option)<li>{{ str_replace('T', ' ', $option['starts_at']) }} · {{ $option['duration_minutes'] }} мин.</li>@endforeach</ul>
@@ -97,13 +97,18 @@
                 <p>{{ $courtLabel }}</p>
                 @if($address)<button type="button" class="app-venue-intro__address" data-venue-map-open aria-label="Посмотреть на карте"><svg aria-hidden="true"><use href="#pin"/></svg><span>{{ $address }}</span></button>@endif
                 @if($venue->location?->metroStations?->isNotEmpty())
-                    <div class="app-venue-intro__metro">@foreach($venue->location->metroStations as $station)
-                        <span class="app-venue-intro__station">{{ $station->name }}</span>
-                    @endforeach</div>
+                    <div class="app-venue-intro__metro" aria-label="Ближайшие станции метро">
+                        @foreach($venue->location->metroStations->loadMissing('line') as $station)
+                            <span class="app-venue-intro__station">
+                                <span class="app-venue-intro__metro-dot"
+                                    style="--metro-color: {{ preg_match('/\A#?[0-9A-Fa-f]{6}\z/D', (string) $station->line?->color) ? '#'.ltrim((string) $station->line->color, '#') : '#758392' }}"
+                                    aria-hidden="true"></span>{{ $station->name }}
+                            </span>
+                        @endforeach
+                    </div>
                 @endif
                 <div class="app-event-actions">
                     <a class="button secondary" href="{{ $venueUrl }}" target="_blank" rel="noopener noreferrer">К площадке</a>
-                    <a class="app-event-link" href="{{ route('venues.show', ['alias' => $venue->routeIdentifier(), 'availability' => 1, 'availability_court' => $court?->id, 'availability_date' => $event->starts_at?->setTimezone($timezone)->format('Y-m-d'), 'availability_time' => $event->starts_at?->setTimezone($timezone)->format('H:i')]) }}">Посмотреть занятость</a>
                 </div>
                 @unless($address)<button type="button" class="app-event-link" data-venue-map-open>Посмотреть на карте</button>@endunless
             </section>
@@ -114,7 +119,19 @@
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
                 @if($canEdit && $event->starts_at && $event->status === EventStatusEnum::PUBLISHED)
-                    @if($court && ($policy || $venue->hasFreeAccess()))
+                    @if(!app(\App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact(auth()->user()))
+                        @php
+                            $pendingEmail = auth()->user()->canonical()->identityContactsQuery()
+                                ->where('type', 'email')->whereNull('verified_at')->latest('id')->first();
+                        @endphp
+                        <div class="app-event-contact-required" role="status">
+                            <p>Для бронирования необходимо иметь подтверждённый контакт</p>
+                            <button type="button" class="button primary" data-event-contact-required
+                                @if($pendingEmail) data-contact-id="{{ $pendingEmail->id }}" data-contact-value="{{ $pendingEmail->value }}" @endif>
+                                {{ $pendingEmail ? 'Продолжить подтверждение' : 'Подтвердить контакт' }}
+                            </button>
+                        </div>
+                    @elseif($court && ($policy || $venue->hasFreeAccess()))
                         <form method="POST" action="{{ $policy ? route('events.booking.quote', $event->routeIdentifier()) : route('events.booking.store', $event->routeIdentifier()) }}">
                             @csrf <input type="hidden" name="expected_version" value="{{ $event->participation_confirmation_version }}">
                             <button class="button primary" type="submit">{{ $policy ? 'Рассчитать и забронировать' : 'Забронировать бесплатную площадку' }}</button>
@@ -257,6 +274,7 @@
 .app-event-person p{font-size:.9rem;margin-top:4px}.app-event-person .badge{margin-inline-start:6px}
 .app-event-dot{color:var(--warning)}
 .app-event-dot[data-response="confirmed"]{color:var(--success)}.app-event-dot[data-response="left"]{color:var(--danger)}
+.app-event-contact-required{display:grid;gap:12px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));border-radius:12px;padding:16px;margin-bottom:8px}.app-event-contact-required .button{justify-self:start}
 .app-event-description{white-space:pre-wrap}
 html:has(.app-event-dialog[open]){overflow:hidden}
 .app-event-dialog>form{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
@@ -277,6 +295,20 @@ html:has(.app-event-dialog[open]){overflow:hidden}
 @endpush
 @push('scripts')
 <script type="module">
+const requiredContact=document.querySelector('[data-event-contact-required]');
+if(requiredContact){
+    let changed=false;
+    const contactModal=document.querySelector('[data-contact-add-modal]');
+    requiredContact.addEventListener('click',()=>{
+        if(!contactModal){location.reload();return;}
+        window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{
+            resume:requiredContact.dataset.contactId ? {id:Number(requiredContact.dataset.contactId),value:requiredContact.dataset.contactValue} : null
+        }}));
+    });
+    window.addEventListener('mskba:contact:pending',event=>{changed=true;if(event.detail?.id){requiredContact.dataset.contactId=event.detail.id;requiredContact.dataset.contactValue=event.detail.value;}requiredContact.textContent='Продолжить подтверждение';});
+    window.addEventListener('mskba:contact:updated',()=>{changed=true;});
+    contactModal?.addEventListener('close',()=>{if(changed)location.reload();});
+}
 document.querySelectorAll('[data-event-dialog-open]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.eventDialogOpen)?.showModal()));
 document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 document.querySelectorAll('.app-event-dialog').forEach(dialog=>{let outside=false;const onBackdrop=e=>{const rect=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom);};dialog.addEventListener('pointerdown',e=>outside=onBackdrop(e));dialog.addEventListener('pointerup',e=>{if(outside&&onBackdrop(e))dialog.close();outside=false;});dialog.addEventListener('pointercancel',()=>outside=false);});

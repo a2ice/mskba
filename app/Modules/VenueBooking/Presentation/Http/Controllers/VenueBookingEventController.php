@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\CreateEventFromConfirmedVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RescheduleBookedEventHandler;
@@ -65,9 +66,19 @@ final class VenueBookingEventController extends Controller
             'emergency_reason' => ['nullable', 'string', 'max:2000'],
         ]);
         try {
-            $event = $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $data);
+            $actor = $actors->resolveForRequest($request);
+            $user = $actor?->user?->canonical();
+            abort_if($user === null || $user->isBlocked() || $user->trashed(), 403);
+            if (! app(VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact($user)) {
+                throw new VenueBookingTransitionException('Для создания мероприятия необходимо иметь подтверждённый контакт', 'CONTACT_REQUIRED');
+            }
+            $event = $handler->handle($venueBooking->id, $actor, $data);
         } catch (VenueBookingTransitionException $exception) {
-            $status = $exception->errorCode === 'BOOKING_FORBIDDEN' ? 403 : 409;
+            $status = match ($exception->errorCode) {
+                'BOOKING_FORBIDDEN' => 403,
+                'CONTACT_REQUIRED' => 422,
+                default => 409,
+            };
 
             return $request->expectsJson()
                 ? response()->json(['code' => $exception->errorCode, 'message' => $exception->getMessage()], $status)

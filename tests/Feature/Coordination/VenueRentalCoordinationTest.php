@@ -219,7 +219,7 @@ final class VenueRentalCoordinationTest extends TestCase
     /** @return array{User, Actor} */
     private function userAndActor(): array
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
 
         return [$user, app(CurrentActorResolver::class)->resolve($user, null)];
     }

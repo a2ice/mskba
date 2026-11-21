@@ -31,7 +31,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_game_uses_explicit_actual_start_and_end_flow(): void
     {
-        $ownerA = User::factory()->create(['username' => 'lifecycle-owner-a']);
+        $ownerA = User::factory()->withVerifiedContact()->create(['username' => 'lifecycle-owner-a']);
         $ownerB = User::factory()->create(['username' => 'lifecycle-owner-b']);
         $teamA = $this->createTeam($ownerA, 'Lifecycle A');
         $teamB = $this->createTeam($ownerB, 'Lifecycle B');
@@ -251,7 +251,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_game_cannot_end_before_it_starts(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Early end A');
         $teamB = $this->createTeam($ownerB, 'Early end B');
@@ -276,7 +276,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_cancelling_standalone_game_cancels_event_and_releases_booking(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Cancel standalone A');
         $teamB = $this->createTeam($ownerB, 'Cancel standalone B');
@@ -305,7 +305,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_manual_game_configuration_is_stored_as_custom_format(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Custom format A');
         $teamB = $this->createTeam($ownerB, 'Custom format B');
@@ -339,7 +339,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_period_game_requires_active_period_and_closes_periods_in_order(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Periods A');
         $teamB = $this->createTeam($ownerB, 'Periods B');
@@ -384,7 +384,7 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     public function test_period_game_can_be_ended_early_with_required_comment(): void
     {
-        $ownerA = User::factory()->create();
+        $ownerA = User::factory()->withVerifiedContact()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Early A');
         $teamB = $this->createTeam($ownerB, 'Early B');

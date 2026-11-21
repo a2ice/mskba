@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Event;
 
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
@@ -19,6 +20,48 @@ use Tests\TestCase;
 final class EventFirstFunnelTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function verifiedOrganizer(): User
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'event-organizer-'.$user->id.'@example.test',
+            'is_primary' => true,
+            'is_public' => false,
+            'verified_at' => now(),
+        ]);
+
+        return $user;
+    }
+
+    public function test_contact_required_even_for_confirmed_account_and_pending_contact_can_resume(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->verifiedOrganizer();
+        $venue = $this->venue();
+        $payload = $this->payload($venue);
+
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $payload)
+            ->assertUnprocessable()->assertJsonPath('code', 'CONTACT_REQUIRED')
+            ->assertJsonPath('pending_contact', null);
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'pending-event-organizer@example.test',
+            'is_primary' => true,
+            'is_public' => false,
+        ]);
+        $this->postJson(route('events.funnel.store'), $payload)
+            ->assertUnprocessable()->assertJsonPath('code', 'CONTACT_REQUIRED')
+            ->assertJsonPath('pending_contact.id', $contact->id);
+        $this->assertDatabaseCount('events', 0);
+
+        $contact->update(['verified_at' => now()]);
+        $user->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
+        $this->actingAs($user)->postJson(route('events.funnel.store'), $payload)
+            ->assertCreated();
+        $this->assertDatabaseCount('events', 1);
+    }
 
     private function venue(): Venue
     {
@@ -52,7 +95,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_retired_game_training_type_cannot_create_new_event(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
         $payload = $this->payload($venue);
         $payload['type'] = 'game_training';
@@ -74,7 +117,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_without_schedule_creates_only_an_unpublished_unscheduled_draft(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
 
         $this->actingAs($user)->postJson(route('events.funnel.store'), $this->payload($venue))
@@ -93,7 +136,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_two_alternative_slots_create_one_event_and_one_nonbinding_interest(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
 
         $this->actingAs($user)->postJson(route('events.funnel.store', []),
@@ -110,7 +153,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_separate_mode_creates_distinct_events_without_bookings_and_retries_are_idempotent(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
         $payload = $this->payload($venue, $this->slots(), 'separate');
 
@@ -127,7 +170,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_game_type_is_an_event_container_and_can_have_no_game(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
         $input = $this->payload($venue, $this->slots());
         $input['type'] = 'game';
@@ -146,7 +189,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_game_type_can_create_an_initial_child_game_by_default(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
         $input = $this->payload($venue, $this->slots());
         $input['type'] = 'game';
@@ -169,7 +212,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_duplicate_time_options_are_rejected(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         $venue = $this->venue();
         $slot = $this->slots()[0];
 
@@ -180,7 +223,7 @@ final class EventFirstFunnelTest extends TestCase
     }
     public function test_organizer_role_is_opt_in_preserves_other_roles_and_is_idempotent(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         app(UpdateUserParticipationRolesHandler::class)->updateOne($user, UserParticipationRoleEnum::PLAYER, true);
         $venue = $this->venue();
         $input = $this->payload($venue);
@@ -205,7 +248,7 @@ final class EventFirstFunnelTest extends TestCase
             $this->markTestSkipped('PostgreSQL-specific legacy CHECK constraint.');
         }
 
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = $this->verifiedOrganizer();
         app(UpdateUserParticipationRolesHandler::class)->updateOne($user, UserParticipationRoleEnum::PLAYER, true);
 
         DB::statement('ALTER TABLE user_participation_roles DROP CONSTRAINT IF EXISTS user_participation_roles_role_check');
@@ -226,7 +269,7 @@ final class EventFirstFunnelTest extends TestCase
 
     public function test_organizer_attendance_is_default_but_optional_and_can_change_without_losing_role(): void
     {
-        $organizer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $organizer = $this->verifiedOrganizer();
         $venue = $this->venue();
         $payload = $this->payload($venue, [$this->slots()[0]]);
         $payload['max_participants'] = 2;
@@ -257,8 +300,8 @@ final class EventFirstFunnelTest extends TestCase
             ->assertJsonPath('counts.confirmed', 0)
             ->assertJsonCount(0, 'entries');
 
-        $first = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-        $second = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $first = $this->verifiedOrganizer();
+        $second = $this->verifiedOrganizer();
         foreach ([$first, $second] as $player) {
             $this->actingAs($player)->patchJson($url, ['status' => 'confirmed'])->assertOk();
         }

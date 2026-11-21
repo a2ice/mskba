@@ -12,6 +12,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Models\Actor;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -59,6 +60,11 @@ final class CreateEventFromCoordinationHandler
 
             if ($decision === null) {
                 throw new InvalidArgumentException('У согласования нет принятого решения.');
+            }
+
+            $user = $actor->user?->canonical();
+            if ($user === null || ! app(VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact($user)) {
+                throw new InvalidArgumentException('Для создания мероприятия необходимо иметь подтверждённый контакт');
             }
 
             $event = $this->createEvent->handle($actor, $data);

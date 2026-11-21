@@ -54,7 +54,11 @@ if (root) {
         back.textContent = navigation.backLabel;
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
-        if (target === 'verification') { if (codeInput) { codeInput.value=''; codeInput.focus(); } }
+        if (target === 'verification') {
+            const address = dialog.querySelector('[data-contact-add-verification-email]');
+            if (address) address.textContent = verificationEmail;
+            if (codeInput) { codeInput.value=''; codeInput.focus(); }
+        }
         if (target === 'telegram') telegramLink.start();
         else telegramLink.stop();
     }
@@ -184,6 +188,15 @@ if (root) {
     root.querySelector('[data-contact-add-open]')?.addEventListener('click', () => open());
     window.addEventListener('mskba:contact:add', event => {
         const type = event.detail?.type;
+        const resume = event.detail?.resume;
+        if (resume && Number.isSafeInteger(Number(resume.id)) && Number(resume.id) > 0 && typeof resume.value === 'string') {
+            open('email', true);
+            verificationContactId = Number(resume.id);
+            verificationEmail = resume.value.toLowerCase();
+            value.value = resume.value;
+            showStep('verification');
+            return;
+        }
         open(type || 'email', Boolean(type));
     });
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
@@ -248,6 +261,7 @@ if (root) {
                 verificationContactId=Number(result.contact.id);
                 verificationEmail=value.value.toLowerCase();
                 showStep('verification');
+                window.dispatchEvent(new CustomEvent('mskba:contact:pending',{detail:{id:verificationContactId,value:verificationEmail}}));
                 await sendEmailCode();
             } else {
                 success.textContent = (result.contact?.value || value.value)

@@ -43,7 +43,7 @@ final class ExternalAvailabilitySnapshotRecorderTest extends TestCase
 
     private function actor(): User
     {
-        $actor = User::factory()->create([
+        $actor = User::factory()->withVerifiedContact()->create([
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
             'status' => UserStatusEnum::CONFIRMED,
         ]);
