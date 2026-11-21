@@ -1,3 +1,4 @@
+import { createContactCodeAutoSubmit } from './contact-code-auto-submit.js';
 import { createContactProviderEmulation } from './contact-provider-emulation.js';
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { refreshAccountContactsList } from './account-contacts-list.js';
@@ -26,6 +27,7 @@ if (root) {
     let verificationEmail = '';
     const codeInput = dialog.querySelector('[data-contact-add-code]');
     const verifyButton = dialog.querySelector('[data-contact-add-verify]');
+    const autoSubmit = createContactCodeAutoSubmit();
     const resendButton = dialog.querySelector('[data-contact-add-resend]');
     const changeButton = dialog.querySelector('[data-contact-add-change]');
     const changeDialog = root.querySelector('[data-contact-change-modal]');
@@ -176,7 +178,13 @@ if (root) {
         }
         catch(e) {
             if (e.status === 429) setContactCooldown(e.data?.seconds_left || 0);
-            setError(e.message || 'Не удалось отправить код. Повтори запрос.');
+            if (e.status === 404) {
+                verificationContactId = null;
+                verificationEmail = '';
+                cooldown.set(0);
+                showStep('method');
+                setError('Контакт больше недоступен. Добавьте новый контакт.');
+            } else setError(e.message || 'Не удалось отправить код. Повтори запрос.');
         }
         finally { setBusy(false); }
     }
@@ -185,6 +193,7 @@ if (root) {
         if (busy||!verificationContactId) return;
         const code=codeInput.value.trim();
         if (!/^\d{6}$/.test(code)) {setError('Введи шестизначный код подтверждения.');return;}
+        autoSubmit.markAttempt(verificationContactId);
         setBusy(true);setError('');
         try {
             await post(verificationUrl()+'/confirm',{code});
@@ -194,8 +203,23 @@ if (root) {
                 (updated?'':' Контакты обновятся после перезагрузки страницы.');
             window.dispatchEvent(new CustomEvent('mskba:contact:updated'));
             showStep('done');
-        }catch(e){setError(e.message || 'Код не подошёл. Попробуй ещё раз.');}
+        }catch(e){
+            setError(e.status === 404 ? 'Контакт больше недоступен. Добавьте новый контакт.' : (e.message || 'Код не подошёл. Попробуй ещё раз.'));
+            if (e.status === 404) {
+                verificationContactId = null;
+                verificationEmail = '';
+                cooldown.set(0);
+                showStep('method');
+                setError('Контакт больше недоступен. Добавьте новый контакт.');
+            }
+        }
         finally {setBusy(false);}
+    });
+
+    codeInput.addEventListener('input', () => {
+        if (dialog.open && step === 'verification' && !busy && autoSubmit.canSubmit(verificationContactId, codeInput.value)) {
+            verifyButton.click();
+        }
     });
 
     const telegramLink = createTelegramContactBotLink({

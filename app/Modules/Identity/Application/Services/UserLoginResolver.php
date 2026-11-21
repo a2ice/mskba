@@ -102,6 +102,8 @@ final class UserLoginResolver
                     ->where('value', $value)
                     ->orWhere('meta->username', $username);
             });
+        } elseif ($type === ContactTypeEnum::PHONE) {
+            $query->where('user_phone_key', $value);
         } else {
             $query->where('value', $value);
         }
