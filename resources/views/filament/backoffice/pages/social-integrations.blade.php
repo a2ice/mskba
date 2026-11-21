@@ -62,7 +62,7 @@
                     <x-filament::input type="number" name="group_id" min="1" :value="$vk['group_id'] ?: ''" />
                 </x-filament::input.wrapper>
             </label>
-            @foreach(['community_token'=>'Ключ доступа сообщества', 'user_token'=>'Пользовательский токен API'] as $field => $label)
+            @foreach(['community_token'=>'Ключ доступа сообщества', 'mini_app_secret'=>'Защищённый ключ Mini App'] as $field => $label)
                 <label style="display:grid;gap:6px">
                     {{ $label }}
                     <x-filament::input.wrapper>
@@ -70,6 +70,23 @@
                     </x-filament::input.wrapper>
                 </label>
             @endforeach
+            <label style="display:grid;gap:6px">
+                ID Mini App
+                <x-filament::input.wrapper>
+                    <x-filament::input type="number" name="mini_app_id" min="1" :value="$vk['mini_app_id']" required />
+                </x-filament::input.wrapper>
+            </label>
+            <p class="text-sm">Авторизация загрузки фото: 
+                @if($vk['user_token_expires_at'] && (int) $vk['user_token_expires_at'] <= now()->timestamp + 120)
+                    истекла
+                @elseif($vk['user_token_expires_at'])
+                    действительна до {{ \Illuminate\Support\Carbon::createFromTimestamp((int) $vk['user_token_expires_at'], config('app.timezone'))->format('d.m.Y H:i T') }}
+                @elseif($vk['user_token'])
+                    срок неизвестен
+                @else
+                    не подключена
+                @endif
+            </p>
             <input type="hidden" name="enabled" value="0">
             <label style="display:flex;align-items:center;gap:8px">
                 <input class="fi-checkbox-input" type="checkbox" name="enabled" value="1" @checked($vk['enabled']) @disabled(config('app.env') !== 'production')>
@@ -84,6 +101,13 @@
             </label>
             <div><x-filament::button type="submit">Сохранить</x-filament::button></div>
         </form>
+        @if($vk['mini_app_secret'] && $vk['mini_app_id'] && $vk['group_id'] && $vk['community_token'] && config('app.env') === 'production')
+            <form method="POST" action="{{ route('backoffice.vk-publisher.authorize') }}" class="mt-4">
+                @csrf
+                <x-filament::button type="submit" color="gray">Авторизоваться во ВКонтакте</x-filament::button>
+            </form>
+            <p class="text-sm">Адрес возврата: {{ route('backoffice.vk-publisher.callback') }}</p>
+        @endif
         <form method="POST" action="{{ route('backoffice.social-integrations.check', 'vk') }}" class="mt-4">
             @csrf
             <x-filament::button type="submit" color="gray">Проверить подключение</x-filament::button>

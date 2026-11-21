@@ -23,11 +23,14 @@ final class SocialIntegrationSettings
             'group_id' => 'vk.wall.group_id',
             'community_token' => 'vk.wall.community_token',
             'user_token' => 'vk.wall.user_token',
+            'user_token_expires_at' => 'vk.wall.user_token_expires_at',
+            'mini_app_id' => 'vk.wall.mini_app_id',
+            'mini_app_secret' => 'vk.wall.mini_app_secret',
             'enabled' => 'vk.wall.enabled',
         ],
     ];
 
-    private const SECRETS = ['bot_token', 'webhook_secret', 'community_token', 'user_token'];
+    private const SECRETS = ['bot_token', 'webhook_secret', 'community_token', 'user_token', 'mini_app_secret'];
 
     private function scope(): string
     {
