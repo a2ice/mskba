@@ -34,6 +34,7 @@ final class AccountContactsDialogTest extends TestCase
 
     public function test_pending_email_replacement_cancels_old_code_and_sends_new(): void
     {
+        $this->freezeTime();
         config()->set('mail.default', 'smtp');
         \Illuminate\Support\Facades\Mail::fake();
         $user = $this->user();

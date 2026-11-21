@@ -29,13 +29,18 @@ if (root) {
     const resendButton = dialog.querySelector('[data-contact-add-resend]');
     const changeButton = dialog.querySelector('[data-contact-add-change]');
     const changeDialog = root.querySelector('[data-contact-change-modal]');
-    const pendingCooldowns = JSON.parse(root.dataset.pendingCooldowns || '{}');
+    const pendingCooldowns = Object.fromEntries(Object.entries(JSON.parse(root.dataset.pendingCooldowns || '{}')).map(([id, seconds]) => [id, Date.now() + Number(seconds) * 1000]));
     let changeMode = null;
     let changedFromValue = false;
     const cooldown = createContactResendCooldown(seconds => {
         resendButton.disabled = busy || seconds > 0;
         resendButton.textContent = seconds > 0 ? 'Отправить код повторно (' + seconds + ' с)' : 'Отправить код повторно';
     });
+
+    function setContactCooldown(seconds) {
+        pendingCooldowns[verificationContactId] = Date.now() + Number(seconds || 0) * 1000;
+        cooldown.set(seconds);
+    }
 
     function openChange(fromValue = false) {
         if (busy || !verificationContactId || changeDialog.open) return;
@@ -93,7 +98,7 @@ if (root) {
         footer.classList.toggle('app-contact-wizard__verification-footer', target === 'verification');
         back.hidden = !navigation.back;
         back.textContent = navigation.backLabel;
-        next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
+        next.textContent = target === 'value' ? (changeMode === 'replace' ? 'Заменить контакт' : 'Добавить контакт') : 'Далее';
         if (target === 'value') value.focus();
         if (target === 'verification') {
             const address = dialog.querySelector('[data-contact-add-verification-email]');
@@ -167,15 +172,15 @@ if (root) {
         setBusy(true);setError('');
         try {
             const result = await post(verificationUrl(), {});
-            cooldown.set(result.seconds_left || 0);
+            setContactCooldown(result.seconds_left || 0);
         }
         catch(e) {
-            if (e.status === 429) cooldown.set(e.data?.seconds_left || 0);
+            if (e.status === 429) setContactCooldown(e.data?.seconds_left || 0);
             setError(e.message || 'Не удалось отправить код. Повтори запрос.');
         }
         finally { setBusy(false); }
     }
-    resendButton?.addEventListener('click',()=>void sendEmailCode());
+    resendButton?.addEventListener('click',()=>{ if (!busy) void sendEmailCode(); });
     verifyButton?.addEventListener('click',async()=>{
         if (busy||!verificationContactId) return;
         const code=codeInput.value.trim();
@@ -243,7 +248,7 @@ if (root) {
             verificationContactId = Number(resume.id);
             verificationEmail = resume.value.toLowerCase();
             value.value = resume.value;
-            cooldown.set(pendingCooldowns[verificationContactId] || 0);
+            cooldown.set(Math.max(0, Math.ceil(((pendingCooldowns[verificationContactId] || 0) - Date.now()) / 1000)));
             showStep('verification');
             return;
         }
@@ -335,7 +340,7 @@ if (root) {
                 verificationEmail=value.value.toLowerCase();
                 showStep('verification');
                 window.dispatchEvent(new CustomEvent('mskba:contact:pending',{detail:{id:verificationContactId,value:verificationEmail}}));
-                cooldown.set(result.seconds_left || 0);
+                setContactCooldown(result.seconds_left || 0);
                 if (!replacing) await sendEmailCode();
             } else {
                 success.textContent = (result.contact?.value || value.value)
