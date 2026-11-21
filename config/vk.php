@@ -12,6 +12,9 @@ return [
         'group_id' => (int) env('VK_WALL_GROUP_ID', 0),
         'user_token' => env('VK_WALL_USER_TOKEN'),
         'community_token' => env('VK_WALL_COMMUNITY_TOKEN'),
+        'mini_app_id' => 54729290,
+        'mini_app_secret' => null,
+        'user_token_expires_at' => null,
         'api_version' => env('VK_WALL_API_VERSION', '5.199'),
     ],
 ];

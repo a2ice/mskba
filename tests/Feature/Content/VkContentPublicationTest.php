@@ -47,7 +47,8 @@ final class VkContentPublicationTest extends TestCase
             'app.url' => 'https://mskba.ru',
             'vk.wall.enabled' => true,
             'vk.wall.group_id' => 12345,
-            'vk.wall.user_token' => 'test-token',
+            'vk.wall.user_token' => 'photo-token',
+            'vk.wall.community_token' => 'wall-token',
             'vk.wall.api_version' => '5.199',
         ]);
     }
@@ -74,6 +75,7 @@ final class VkContentPublicationTest extends TestCase
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['owner_id'] == -12345
             && $request['from_group'] == 1
+            && $request['access_token'] === 'wall-token'
             && str_contains($request['message'], $item->publicUrl()));
         $this->assertFalse($item->fresh()->publish_in_telegram);
     }

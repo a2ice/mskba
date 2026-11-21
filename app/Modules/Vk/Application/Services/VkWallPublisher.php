@@ -13,8 +13,16 @@ final class VkWallPublisher
     public static function configured(): bool
     {
         return config('vk.wall.enabled') && config('app.env') === 'production'
-            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.user_token') ?: config('vk.wall.community_token'))
+            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.community_token'))
+            && self::photoTokenAvailable()
             && parse_url((string) config('app.url'), PHP_URL_HOST) === 'mskba.ru';
+    }
+
+    public static function photoTokenAvailable(): bool
+    {
+        $expires = config('vk.wall.user_token_expires_at');
+
+        return filled(config('vk.wall.user_token')) && ($expires === null || (int) $expires > now()->timestamp + 120);
     }
 
     public function message(ContentItem $content): string
@@ -102,7 +110,7 @@ final class VkWallPublisher
             $response = Http::asForm()->timeout(20)->withoutRedirecting()
                 ->post('https://api.vk.com/method/'.$method, [
                     ...$data,
-                    'access_token' => config('vk.wall.user_token') ?: config('vk.wall.community_token'),
+                    'access_token' => $method === 'wall.post' ? config('vk.wall.community_token') : config('vk.wall.user_token'),
                     'v' => config('vk.wall.api_version'),
                 ]);
             $payload = $response->json();
