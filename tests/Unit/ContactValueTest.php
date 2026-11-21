@@ -37,6 +37,14 @@ class ContactValueTest extends TestCase
         );
     }
 
+    public function test_phone_normalizes_russian_trunk_and_international_prefixes(): void
+    {
+        foreach (['8 (999) 123-45-67', '79991234567', '+79991234567', '0079991234567'] as $number) {
+            $this->assertSame('+79991234567', (new ContactValue(ContactTypeEnum::PHONE, $number))->value());
+        }
+        $this->assertSame('+37255512345', (new ContactValue(ContactTypeEnum::PHONE, '0037255512345'))->value());
+    }
+
     public function test_it_rejects_invalid_contact_values(): void
     {
         $this->expectException(InvalidArgumentException::class);

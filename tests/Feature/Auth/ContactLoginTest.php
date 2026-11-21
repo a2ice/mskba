@@ -119,6 +119,7 @@ final class ContactLoginTest extends TestCase
         $firstUser->contacts()->create([
             'type' => ContactTypeEnum::EMAIL,
             'value' => 'database@example.com',
+            'verified_at' => now(),
         ]);
 
         $this->expectException(QueryException::class);
@@ -126,6 +127,7 @@ final class ContactLoginTest extends TestCase
         $secondUser->contacts()->create([
             'type' => ContactTypeEnum::EMAIL,
             'value' => 'DATABASE@example.com',
+            'verified_at' => now(),
         ]);
     }
 
