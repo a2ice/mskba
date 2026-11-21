@@ -13,8 +13,16 @@ final class VkWallPublisher
     public static function configured(): bool
     {
         return config('vk.wall.enabled') && config('app.env') === 'production'
-            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.user_token') ?: config('vk.wall.community_token'))
+            && (int) config('vk.wall.group_id') > 0 && filled(config('vk.wall.community_token'))
+            && self::photoTokenAvailable()
             && parse_url((string) config('app.url'), PHP_URL_HOST) === 'mskba.ru';
+    }
+
+    public static function photoTokenAvailable(): bool
+    {
+        $expires = config('vk.wall.user_token_expires_at');
+
+        return filled(config('vk.wall.user_token')) && ($expires === null || (int) $expires > now()->timestamp + 120);
     }
 
     public function message(ContentItem $content): string
@@ -22,11 +30,11 @@ final class VkWallPublisher
         return trim($content->title)."\n\n".trim($content->short_description)."\n\n".$content->publicUrl();
     }
 
-    public function prepareAttachment(ContentItem $content, int $groupId): ?string
+    public function prepareAttachment(ContentItem $content, int $groupId): string
     {
         $cover = $content->cover()->first();
         if ($cover === null) {
-            return null;
+            throw new RuntimeException('Для публикации во ВКонтакте нужна обложка.');
         }
 
         $bytes = Storage::disk($cover->disk)->get($cover->path);
@@ -80,12 +88,13 @@ final class VkWallPublisher
         return 'photo'.(int) $photo['owner_id'].'_'.(int) $photo['id'];
     }
 
-    public function publish(ContentItem $content, int $groupId, ?string $attachment): int
+    public function publish(ContentItem $content, int $groupId, string $attachment): int
     {
         $data = ['owner_id' => -$groupId, 'from_group' => 1, 'message' => $this->message($content)];
-        if ($attachment !== null) {
-            $data['attachments'] = $attachment;
+        if (blank($attachment)) {
+            throw new RuntimeException('Для публикации во ВКонтакте нужна обложка.');
         }
+        $data['attachments'] = $attachment;
 
         $response = $this->call('wall.post', $data);
         $postId = (int) ($response['post_id'] ?? 0);
@@ -102,7 +111,7 @@ final class VkWallPublisher
             $response = Http::asForm()->timeout(20)->withoutRedirecting()
                 ->post('https://api.vk.com/method/'.$method, [
                     ...$data,
-                    'access_token' => config('vk.wall.user_token') ?: config('vk.wall.community_token'),
+                    'access_token' => $method === 'wall.post' ? config('vk.wall.community_token') : config('vk.wall.user_token'),
                     'v' => config('vk.wall.api_version'),
                 ]);
             $payload = $response->json();
