@@ -102,11 +102,21 @@
             <div><x-filament::button type="submit">Сохранить</x-filament::button></div>
         </form>
         @if($vk['mini_app_secret'] && $vk['mini_app_id'] && $vk['group_id'] && $vk['community_token'] && config('app.env') === 'production')
-            <form method="POST" action="{{ route('backoffice.vk-publisher.authorize') }}" class="mt-4">
+            <form method="POST" action="{{ route('backoffice.vk-publisher.authorize') }}" target="_blank" rel="noopener noreferrer" class="mt-4">
                 @csrf
                 <x-filament::button type="submit" color="gray">Авторизоваться во ВКонтакте</x-filament::button>
             </form>
-            <p class="text-sm">Адрес возврата: {{ route('backoffice.vk-publisher.callback') }}</p>
+            <form method="POST" action="{{ route('backoffice.vk-publisher.complete') }}" class="mt-4" style="display:grid;gap:12px;max-width:44rem" autocomplete="off">
+                @csrf
+                <p class="text-sm">После согласия ВК откроет свою страницу blank.html. Вернитесь в эту вкладку. Для завершения своей интеграции MSKBA используйте только адрес ответа с code и state, без access_token. Не отправляйте его в чаты и сторонние сервисы.</p>
+                <label style="display:grid;gap:6px">
+                    Ответ авторизации ВКонтакте
+                    <x-filament::input.wrapper>
+                        <x-filament::input type="password" name="authorization_response" autocomplete="off" required maxlength="8192" />
+                    </x-filament::input.wrapper>
+                </label>
+                <div><x-filament::button type="submit" color="gray">Завершить авторизацию</x-filament::button></div>
+            </form>
         @endif
         <form method="POST" action="{{ route('backoffice.social-integrations.check', 'vk') }}" class="mt-4">
             @csrf
