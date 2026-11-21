@@ -119,6 +119,7 @@ html[data-appearance-mode="light"] .venue-play-dialog__messages li[data-rsvp-sta
 .venue-play-dialog__send svg{width:22px;height:22px}
 .chat-actions{position:relative;margin-left:auto;flex:none}
 .chat-actions__toggle{display:grid;place-items:center;width:44px;height:44px;list-style:none;border:1px solid var(--line,#cbd0d5);border-radius:5px;background:#fff;color:#18212b;cursor:pointer}
+.chat-actions__toggle[aria-disabled="true"]{opacity:.5;cursor:default}
 .chat-actions__toggle::-webkit-details-marker{display:none}
 .chat-actions__toggle svg{width:22px;height:22px}
 .chat-actions__menu{position:absolute;z-index:5;bottom:calc(100% + 8px);right:0;min-width:180px;max-width:calc(100vw - 48px);display:grid;gap:2px;padding:5px;border:1px solid var(--line,#cbd0d5);border-radius:8px;background:var(--surface,#fff);color:var(--text,#18212b);box-shadow:0 4px 16px #0002}

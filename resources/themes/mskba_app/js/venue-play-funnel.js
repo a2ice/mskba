@@ -56,14 +56,14 @@ import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js
     const selectedPane=()=>getPane(selectedId);
     const paintButtons=pane=>{
         const status=pane.dataset.eventStatus||'';
-        const choices=[...pane.querySelectorAll('[data-chat-action="event-rsvp"]')];
+        const choices=[...pane.querySelectorAll('[data-venue-play-rsvp]')];
         if(!choices.length)return;
-        const attendance=pane.querySelector('[data-chat-action-slot="attendance"]');
+        const attendance=pane.querySelector('[data-venue-play-attendance]');
         const confirmed=status==='confirmed';
-        attendance.dataset.chatActionValue=confirmed?'left':'confirmed';
+        attendance.dataset.venuePlayRsvp=confirmed?'left':'confirmed';
         attendance.textContent=confirmed?'Не пойду':'Пойду';
         choices.forEach(button=>{
-            const own=button!==attendance&&button.dataset.chatActionValue===status;
+            const own=button!==attendance&&button.dataset.venuePlayRsvp===status;
             button.classList.toggle('is-selected',own);
             if(dialog.classList.contains('venue-play-dialog--app')){
                 button.classList.toggle('primary',own);button.classList.toggle('secondary',!own);
@@ -83,7 +83,7 @@ import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js
     const rosterBusy=(pane,busy)=>{
         pane.querySelector('[data-venue-play-roster-surface]').setAttribute('aria-busy',String(busy));
         pane.querySelector('[data-venue-play-roster-loading]').hidden=!busy;
-        pane.querySelectorAll('[data-chat-action="event-rsvp"]').forEach(button=>button.disabled=busy);
+        pane.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.disabled=busy);
     };
     function paintRoster(pane,roster,scrollToOwn=false,counts=null){
         if(!roster||!Array.isArray(roster.members))throw Error('Не удалось получить актуальный список участников.');
@@ -326,11 +326,11 @@ import {bindChatActions,setChatComposerAccess,syncChatActions} from '../../../js
     dialog.querySelector('[data-venue-play-back]')?.addEventListener('click',showList);
     dialog.querySelectorAll('[data-venue-play-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));
-    dialog.addEventListener('mskba:chat-action',event=>{
-        if(event.detail?.id!=='event-rsvp'||!['confirmed','tentative','left'].includes(event.detail.value))return;
-        const pane=event.target.closest('[data-venue-play-pane]');
-        if(pane)void respond(pane,event.detail.value);
-    });
+    dialog.querySelectorAll('[data-venue-play-rsvp]').forEach(button=>button.addEventListener('click',()=>{
+        const pane=button.closest('[data-venue-play-pane]');
+        const status=button.dataset.venuePlayRsvp;
+        if(pane&&['confirmed','tentative','left'].includes(status))void respond(pane,status);
+    }));
     for(const pane of pageMode?[page]:dialog.querySelectorAll('[data-venue-play-pane]')){
         pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const messageList=messages(pane);
