@@ -1,3 +1,4 @@
+@php($studioParticipationUrl = route('ui-studio.show', ['ui_name'=>'event-detail','theme'=>$theme,'width'=>$width,'state'=>'guest'], false))
 <script type="module">
 {!! file_get_contents(resource_path('js/chat-composer-actions.js')) !!}
 const dialog = document.querySelector('[data-studio-chat]');
@@ -167,7 +168,7 @@ if (state !== 'empty') {
 if (state === 'editing' || pageMode && state === 'confirmed') own = append('superadmin','Проверка сообщения.',null,true,'2026-11-21T16:37:00+03:00');
 const commentNotice = dialog.querySelector('[data-venue-play-comment-notice]');
 const participationLink = document.createElement('a');
-participationLink.href = pageMode ? '#studio-event-title' : @json(route('ui-studio.show', ['ui_name'=>'event-detail','theme'=>$theme,'width'=>$width,'state'=>'guest'], false));
+participationLink.href = pageMode ? '#studio-event-title' : @json($studioParticipationUrl);
 if (!pageMode) participationLink.target = '_top';
 participationLink.className = 'venue-play-dialog__participation-link';
 participationLink.textContent = 'Участвовать';
