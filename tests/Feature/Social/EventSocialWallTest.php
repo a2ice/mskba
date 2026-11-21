@@ -295,14 +295,16 @@ final class EventSocialWallTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_event_page_preserves_existing_content_and_adds_event_wall_tabs(): void
+    public function test_legacy_event_page_reuses_shared_discussion_and_composer(): void
     {
         $event = $this->event();
         $this->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
-            ->assertSee('data-event-social-wall', false)
-            ->assertSee('event-wall-panel-chat', false)
-            ->assertSee('event-wall-panel-history', false);
+            ->assertSee('data-event-discussion-legacy', false)
+            ->assertSee('data-venue-play-messages', false)
+            ->assertSee('data-chat-composer', false)
+            ->assertSee('data-venue-play-delete-dialog', false)
+            ->assertDontSee('data-event-wall-tab', false);
     }
 
     public function test_organizer_can_write_without_attendance_or_confirmed_account_but_blocked_users_cannot(): void

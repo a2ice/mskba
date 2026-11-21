@@ -274,9 +274,6 @@ final class EventController extends Controller
             'currentParticipant' => $currentParticipant,
             'eventWallCanView' => $wall->canViewEvent($item, $request->user()),
             'eventWallCanPost' => $wall->canCommentOnEvent($item, $request->user()),
-            'eventWallEntries' => $wall->canViewEvent($item, $request->user())
-                ? $wall->latestForEvent($item) : collect(),
-            'eventWallCounts' => $wall->eventCounts($item),
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
