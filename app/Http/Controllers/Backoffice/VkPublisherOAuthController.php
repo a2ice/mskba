@@ -26,7 +26,7 @@ final class VkPublisherOAuthController
 
         $state = Str::random(64);
         $verifier = Str::random(64);
-        $redirect = route('backoffice.vk-publisher.callback', [], true);
+        $redirect = 'https://mskba.ru'.route('backoffice.vk-publisher.callback', [], false);
         $request->session()->put(self::SESSION, [
             'state' => $state, 'verifier' => $verifier, 'actor' => $request->user()->id,
             'app' => $appId, 'group' => $groupId, 'secret_hash' => hash('sha256', $secret),

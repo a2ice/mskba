@@ -30,11 +30,11 @@ final class VkWallPublisher
         return trim($content->title)."\n\n".trim($content->short_description)."\n\n".$content->publicUrl();
     }
 
-    public function prepareAttachment(ContentItem $content, int $groupId): ?string
+    public function prepareAttachment(ContentItem $content, int $groupId): string
     {
         $cover = $content->cover()->first();
         if ($cover === null) {
-            return null;
+            throw new RuntimeException('Для публикации во ВКонтакте нужна обложка.');
         }
 
         $bytes = Storage::disk($cover->disk)->get($cover->path);
@@ -88,12 +88,13 @@ final class VkWallPublisher
         return 'photo'.(int) $photo['owner_id'].'_'.(int) $photo['id'];
     }
 
-    public function publish(ContentItem $content, int $groupId, ?string $attachment): int
+    public function publish(ContentItem $content, int $groupId, string $attachment): int
     {
         $data = ['owner_id' => -$groupId, 'from_group' => 1, 'message' => $this->message($content)];
-        if ($attachment !== null) {
-            $data['attachments'] = $attachment;
+        if (blank($attachment)) {
+            throw new RuntimeException('Для публикации во ВКонтакте нужна обложка.');
         }
+        $data['attachments'] = $attachment;
 
         $response = $this->call('wall.post', $data);
         $postId = (int) ($response['post_id'] ?? 0);

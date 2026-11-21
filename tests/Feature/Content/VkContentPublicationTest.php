@@ -14,6 +14,9 @@ use App\Modules\Vk\Infrastructure\Jobs\PublishVkContentJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
+use App\Modules\Content\Application\Services\ContentCoverManager;
 use Tests\TestCase;
 
 final class VkContentPublicationTest extends TestCase
@@ -24,7 +27,7 @@ final class VkContentPublicationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        return ContentItem::query()->create([
+        $item = ContentItem::query()->create([
             'created_by_user_id' => $user->id,
             'updated_by_user_id' => $user->id,
             'title' => 'Игра в зале',
@@ -38,6 +41,10 @@ final class VkContentPublicationTest extends TestCase
             'publish_in_telegram' => false,
             'feed_published_at' => now(),
         ]);
+        Storage::fake('public');
+        app(ContentCoverManager::class)->replace($item, UploadedFile::fake()->image('cover.jpg', 80, 80)->get());
+
+        return $item;
     }
 
     private function configureVk(): void
@@ -53,11 +60,21 @@ final class VkContentPublicationTest extends TestCase
         ]);
     }
 
+    private function fakeVk(array $wall, int $status = 200): void
+    {
+        Http::fake([
+            'https://api.vk.com/method/photos.getWallUploadServer' => Http::response(['response' => ['upload_url' => 'https://upload.vk.com/photo']]),
+            'https://upload.vk.com/photo' => Http::response(['photo' => 'encoded', 'server' => 123, 'hash' => 'hash']),
+            'https://api.vk.com/method/photos.saveWallPhoto' => Http::response(['response' => [['owner_id' => 123, 'id' => 456]]]),
+            'https://api.vk.com/method/wall.post' => Http::response($wall, $status),
+        ]);
+    }
+
     public function test_explicit_selection_posts_once_with_direct_material_url(): void
     {
         $this->configureVk();
         Queue::fake();
-        Http::fake(['https://api.vk.com/method/wall.post' => Http::response(['response' => ['post_id' => 42]])]);
+        $this->fakeVk(['response' => ['post_id' => 42]]);
         Http::preventStrayRequests();
         $item = $this->item();
         $manager = app(VkContentPublicationManager::class);
@@ -72,11 +89,14 @@ final class VkContentPublicationTest extends TestCase
         $manager->sync($item, true);
         $job->handle(app(VkWallPublisher::class));
 
-        Http::assertSentCount(1);
-        Http::assertSent(fn ($request) => $request['owner_id'] == -12345
+        Http::assertSentCount(4);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), 'wall.post') && $request['owner_id'] == -12345
             && $request['from_group'] == 1
             && $request['access_token'] === 'wall-token'
+            && $request['attachments'] === 'photo123_456'
             && str_contains($request['message'], $item->publicUrl()));
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), 'photos.getWallUploadServer') && $request['access_token'] === 'photo-token');
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), 'photos.saveWallPhoto') && $request['access_token'] === 'photo-token');
         $this->assertFalse($item->fresh()->publish_in_telegram);
     }
 
@@ -102,7 +122,7 @@ final class VkContentPublicationTest extends TestCase
     {
         $this->configureVk();
         Queue::fake();
-        Http::fake(['https://api.vk.com/method/wall.post' => Http::response([], 503)]);
+        $this->fakeVk([], 503);
         $item = $this->item();
         $manager = app(VkContentPublicationManager::class);
         $manager->sync($item, true);
@@ -112,6 +132,6 @@ final class VkContentPublicationTest extends TestCase
         $this->assertSame('unknown', $row->fresh()->status);
         $manager->sync($item, true);
         $job->handle(app(VkWallPublisher::class));
-        Http::assertSentCount(1);
+        Http::assertSentCount(4);
     }
 }
