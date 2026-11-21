@@ -52,6 +52,9 @@ final class UiStudioController
             && is_string($width) && in_array($width, ['1440', '768', '390', '360'], true)
             && is_string($state) && ($case === null || isset($case['states'][$state])), 422);
         $embed = $request->boolean('embed');
+        if ($embed && $request->has('theme_hash')) {
+            abort_unless($request->query('theme_hash') === $themes[$theme]['hash'], 409, 'Theme snapshot changed; reload studio.');
+        }
         abort_if($embed && $case === null, 404);
         $supported = $case !== null && in_array($template, $case['templates'], true);
 
@@ -59,11 +62,12 @@ final class UiStudioController
             compact('cases', 'case', 'ui_name', 'snapshot', 'themes', 'theme', 'compare', 'template', 'templates', 'state', 'width', 'supported')), $embed);
     }
 
-    public function asset(Request $request, string $slug, string $kind): Response
+    public function asset(Request $request, string $slug, string $hash, string $kind): Response
     {
         $this->guard($request);
         $theme = $this->snapshot->read()['themes'][$slug] ?? null;
         abort_if($theme === null, 404);
+        abort_unless(hash_equals($theme['hash'], $hash), 409, 'Theme snapshot changed; reload studio.');
 
         return $this->headers(response($theme[$kind], 200, ['Content-Type' => $kind === 'css'
             ? 'text/css; charset=UTF-8' : 'application/javascript; charset=UTF-8']));

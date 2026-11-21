@@ -2,7 +2,7 @@
 <html lang="ru">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>MSKBA UI Studio</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#18212b;font:15px/1.5 system-ui,sans-serif}main{padding:24px;max-width:1800px;margin:auto}a{color:#a74500}header,form,.case{display:flex;gap:16px;flex-wrap:wrap;align-items:center}header{justify-content:space-between}form,.case{background:#fff;padding:16px;border:1px solid #ddd;border-radius:12px;margin-block:12px}label{display:grid;gap:4px}select,button{font:inherit;padding:8px;border:1px solid #aaa;border-radius:6px;background:#fff}button{cursor:pointer}h1,h2{margin:8px 0}.frames{display:flex;gap:16px;overflow:auto;align-items:flex-start;padding:12px 0}.frame{flex:none;max-width:none}.frame iframe{display:block;border:1px solid #aaa;background:white;height:80vh;min-height:480px}.case{justify-content:space-between}.muted{color:#59636f}code{overflow-wrap:anywhere}
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#18212b;font:15px/1.5 system-ui,sans-serif}main{padding:24px;max-width:1800px;margin:auto}a{color:#a74500}header,form,.case{display:flex;gap:16px;flex-wrap:wrap;align-items:center}header{justify-content:space-between}form,.case{background:#fff;padding:16px;border:1px solid #ddd;border-radius:12px;margin-block:12px}label{display:grid;gap:4px}select,button{font:inherit;padding:8px;border:1px solid #aaa;border-radius:6px;background:#fff}button{cursor:pointer}h1,h2{margin:8px 0}.frames{display:flex;gap:16px;overflow:auto;align-items:flex-start;padding:12px 0}.frame{flex:none;max-width:none}.frame iframe{box-sizing:content-box;display:block;border:1px solid #aaa;background:white;height:80vh;min-height:480px}.case{justify-content:space-between}.muted{color:#59636f}code{overflow-wrap:anywhere}
 </style></head>
 <body><main>
 <header><h1><a href="{{ route('ui-studio.show', absolute:false) }}">MSKBA UI Studio</a></h1><span>{{ $snapshot['source'] }} @if($snapshot['exported_at']) · {{ $snapshot['exported_at'] }} @endif</span></header>
@@ -28,7 +28,7 @@
         <div class="frames">
             @foreach(array_filter([$theme,$compare]) as $selected)
                 <section class="frame"><p>{{ $themes[$selected]['name'] }} · {{ $width }} px · <code>{{ substr($themes[$selected]['hash'],0,12) }}</code></p>
-                    <iframe title="{{ $themes[$selected]['name'] }}" width="{{ $width }}" src="{{ route('ui-studio.show',['ui_name'=>$ui_name,'embed'=>1,'theme'=>$selected,'template'=>$template,'state'=>$state,'width'=>$width],false) }}"></iframe>
+                    <iframe title="{{ $themes[$selected]['name'] }}" width="{{ $width }}" src="{{ route('ui-studio.show',['ui_name'=>$ui_name,'embed'=>1,'theme'=>$selected,'theme_hash'=>$themes[$selected]['hash'],'template'=>$template,'state'=>$state,'width'=>$width],false) }}"></iframe>
                 </section>
             @endforeach
         </div>
