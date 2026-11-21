@@ -305,7 +305,7 @@ if(requiredContact){
             resume:requiredContact.dataset.contactId ? {id:Number(requiredContact.dataset.contactId),value:requiredContact.dataset.contactValue} : null
         }}));
     });
-    window.addEventListener('mskba:contact:pending',()=>{changed=true;requiredContact.textContent='Продолжить подтверждение';});
+    window.addEventListener('mskba:contact:pending',event=>{changed=true;if(event.detail?.id){requiredContact.dataset.contactId=event.detail.id;requiredContact.dataset.contactValue=event.detail.value;}requiredContact.textContent='Продолжить подтверждение';});
     window.addEventListener('mskba:contact:updated',()=>{changed=true;});
     contactModal?.addEventListener('close',()=>{if(changed)location.reload();});
 }

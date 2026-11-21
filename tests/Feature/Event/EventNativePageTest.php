@@ -77,7 +77,7 @@ final class EventNativePageTest extends TestCase
             ->assertSee('Любой зал')
             ->assertSee($venue->name)
             ->assertSee('Посмотреть на карте')
-            ->assertSee('Посмотреть занятость')
+            ->assertDontSee('Посмотреть занятость')
             ->assertSee('data-venue-play-page', false)
             ->assertSee('data-venue-play-message-form', false)
             ->assertSee('data-venue-play-edit-cancel', false)
@@ -110,6 +110,34 @@ final class EventNativePageTest extends TestCase
 
         $this->actingAs(User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]))
             ->get($url)->assertNotFound();
+    }
+
+    public function test_existing_event_requires_contact_for_booking_but_remains_visible(): void
+    {
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $court = $venue->courts()->firstOrFail();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $event = $this->createEvent($owner, $venue, [
+            'venue_court_id' => $court->id,
+            'slots' => [['starts_at' => $start->format('Y-m-d\TH:i'), 'duration_minutes' => 90]],
+        ]);
+        $owner->contacts()->update(['verified_at' => null]);
+        $url = route('events.show', $event->routeIdentifier());
+
+        $this->get($url)->assertOk()
+            ->assertSee('Для бронирования необходимо иметь подтверждённый контакт')
+            ->assertSee('Продолжить подтверждение')
+            ->assertSee($start->locale('ru')->translatedFormat('j F Y · H:i').'–20:30')
+            ->assertDontSee('Посмотреть занятость');
+        foreach (['events.booking.quote', 'events.booking.store'] as $route) {
+            $this->post(route($route, $event->routeIdentifier()), [
+                'expected_version' => $event->participation_confirmation_version,
+            ])->assertRedirect($url)
+                ->assertSessionHas('error', 'Для бронирования необходимо иметь подтверждённый контакт');
+        }
+        $this->assertDatabaseCount('events', 1);
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 
     public function test_published_event_uses_nonprimary_selected_hall_and_booking_popup(): void

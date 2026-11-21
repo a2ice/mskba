@@ -287,6 +287,8 @@ final class EventWizardBookingFirstTest extends TestCase
         $this->assertSame($representative->id, $proposal->initiator->user_id);
         $this->assertDatabaseCount('venue_bookings', 0);
 
+        // Account status is independent from the verified contact requirement.
+        $organizer->forceFill(['status' => UserStatusEnum::UNCONFIRMED])->save();
         $this->actingAs($organizer)->post(route('events.booking.quote', $event->routeIdentifier()), [
             'expected_version' => $event->participation_confirmation_version,
             'interest_id' => $interest->id,

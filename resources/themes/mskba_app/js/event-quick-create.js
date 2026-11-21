@@ -305,7 +305,7 @@
         data.schedule_mode=form.querySelector('[name="schedule_mode"]:checked')?.value||'alternatives';
         return data;
     }
-    const save=()=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now()}));}catch{}};
+    const save=(awaitingContact=false)=>{try{sessionStorage.setItem(storageKey,JSON.stringify({draft:values(),step,at:Date.now(),awaitingContact,pendingContact:awaitingContact?pendingContact:null}));}catch{}};
     const clear=()=>{
         try{
             sessionStorage.removeItem(storageKey);
@@ -353,10 +353,11 @@
         report(result.message);
         contactButton.textContent=pendingContact?'Продолжить подтверждение':'Подтвердить контакт';
         contactButton.hidden=false;
-        save();
+        save(true);
     }
     contactButton.addEventListener('click',()=>{
-        save();
+        save(true);
+        if(pendingContact===undefined)pendingContact=null;
         const modal=document.querySelector('[data-contact-add-modal]');
         if(!modal){
             if(dialog.classList.contains('quick-event-dialog--app'))location.reload();
@@ -372,7 +373,7 @@
         window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{resume:pendingContact}}));
     });
     window.addEventListener('mskba:contact:pending',event=>{
-        if(event.detail?.id){pendingContact=event.detail;contactButton.textContent='Продолжить подтверждение';}
+        if(event.detail?.id&&!contactButton.hidden){pendingContact=event.detail;contactButton.textContent='Продолжить подтверждение';save(true);}
     });
     async function submitCreation(){
         if(saving)return;
@@ -431,9 +432,16 @@
     function resume(){
         let value=null;
         try{value=JSON.parse(sessionStorage.getItem(storageKey)||'null');}catch{}
-        if(!value||Date.now()-value.at>20*60*1000){clear();return;}
+        if(!value||(!value.awaitingContact&&Date.now()-value.at>20*60*1000)){clear();return;}
         if(!restore(value))return;
         if(!dialog.open)dialog.showModal();
+        if(value.awaitingContact){
+            report('Подтвердите контакт или повторите сохранение мероприятия.');
+            pendingContact=value.pendingContact||null;
+            contactButton.textContent='Продолжить подтверждение';
+            contactButton.hidden=false;
+            return;
+        }
         void submitCreation();
     }
     window.addEventListener('mskba:auth:success',()=>{
