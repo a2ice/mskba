@@ -168,6 +168,60 @@ final class EventNativePageTest extends TestCase
         $this->assertDatabaseCount('venue_bookings', 1);
     }
 
+    public function test_payment_status_is_independent_from_booking_and_private_to_payer(): void
+    {
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = $this->venue();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
+        $event = $this->createEvent($owner, $venue, [
+            'slots' => [['starts_at' => $start->format('Y-m-d\\TH:i'), 'duration_minutes' => 90]],
+        ]);
+        $booking = $event->booking()->create([
+            'venue_id' => $venue->id, 'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => VenueBookingStatusEnum::HELD, 'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at, 'ends_at' => $event->ends_at,
+        ]);
+        DB::table('venue_bookings')->where('id', $booking->id)->update([
+            'requester_user_id' => $owner->id, 'payment_state' => 'not_started',
+            'quote_snapshot' => json_encode(['policy' => ['invoice_workflow' => true, 'requires_payment' => true]]),
+        ]);
+        $event->forceFill(['booking_id' => $booking->id])->save();
+        $url = route('events.show', $event->routeIdentifier());
+        $this->get($url)->assertOk()
+            ->assertSee('data-event-rental-payment="awaiting_invoice"', false);
+        $invoice = \App\Modules\VenueBooking\Domain\Models\VenueRentalInvoice::query()->create([
+            'public_id' => (string) Str::uuid(), 'number' => 'INV-963-TEST',
+            'venue_booking_id' => $booking->id, 'kind' => 'buyer',
+            'issuer_kind' => 'portal', 'payer_kind' => 'buyer', 'payer_user_id' => $owner->id,
+            'status' => 'issued', 'currency' => 'RUB', 'amount_minor' => 10000,
+            'title' => 'Аренда', 'payment_methods' => ['sbp'], 'quote_snapshot' => [],
+            'issued_at' => now(), 'due_at' => now()->addMinutes(30),
+        ]);
+        foreach ([
+            'issued' => 'Счёт выставлен',
+            'claimed' => 'Ожидает подтверждения оплаты',
+            'paid' => 'Счёт оплачен',
+            'postpay' => 'Постоплата согласована',
+            'void' => 'Счёт отменён',
+        ] as $state => $label) {
+            $invoice->update(['status' => $state]);
+            $this->get($url)->assertOk()
+                ->assertSee('data-event-rental-status="held"', false)
+                ->assertSee('data-event-rental-payment="'.$state.'"', false)
+                ->assertSee($label);
+        }
+        $invoice->update(['status' => 'postpay']);
+        $booking->update(['status' => VenueBookingStatusEnum::CONFIRMED]);
+        $this->get($url)->assertOk()
+            ->assertSee('data-event-rental-status="confirmed"', false)
+            ->assertSee('data-event-rental-payment="postpay"', false);
+        $other = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($other)->get($url)->assertOk()
+            ->assertSee('data-event-rental-status="confirmed"', false)
+            ->assertDontSee('data-event-rental-payment="', false)
+            ->assertDontSee('Постоплата согласована');
+    }
+
     public function test_published_event_uses_nonprimary_selected_hall_and_booking_popup(): void
     {
         $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
