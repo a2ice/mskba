@@ -22,6 +22,7 @@
     aria-labelledby="venue-play-title">
     <header class="mskba-modal__header venue-play-dialog__header">
         <h2 id="venue-play-title" data-venue-play-title>Хочу здесь играть</h2>
+        <button type="button" class="icon-button venue-play-dialog__messages-jump" data-venue-play-messages-jump aria-label="Перейти к сообщениям" title="К сообщениям" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9h8M8 13h5M5 19l1-4a8 8 0 1 1 4 4z"/></svg></button>
         <button type="button" class="icon-button venue-play-dialog__close" data-venue-play-close aria-label="Закрыть">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
         </button>

@@ -84,7 +84,20 @@ final class SocialIntegrationSettingsTest extends TestCase
             && ! array_key_exists('code_verifier', $request->data()));
     }
 
-    public function test_vk_oauth_rejects_untrusted_return_url_without_exchange(): void
+    public static function invalidVkAuthorizationResponses(): array
+    {
+        return [
+            'untrusted host' => ['https://example.com/blank.html?{params}'],
+            'bearer token in fragment' => ['https://oauth.vk.com/blank.html#access_token=secret&{params}'],
+            'bearer token in query' => ['https://oauth.vk.com/blank.html?access_token=secret&{params}'],
+            'ambiguous parameters' => ['https://oauth.vk.com/blank.html?x=1#{params}'],
+            'incorrect state' => ['https://oauth.vk.ru/blank.html#code=abcdef0123456789&state=wrong'],
+            'missing state' => ['https://oauth.vk.ru/blank.html#code=abcdef0123456789'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidVkAuthorizationResponses')]
+    public function test_vk_oauth_rejects_untrusted_return_url_without_exchange(string $template): void
     {
         config([
             'app.env' => 'production', 'app.url' => 'https://mskba.ru',
@@ -93,16 +106,12 @@ final class SocialIntegrationSettingsTest extends TestCase
         ]);
         $this->actingAs($this->admin());
         Http::fake();
-        foreach (['https://example.com/blank.html?', 'https://oauth.vk.com/blank.html#access_token=secret&', 'https://oauth.vk.com/blank.html?access_token=secret&', 'https://oauth.vk.com/blank.html?x=1#', 'https://oauth.vk.com/blank.html#state=wrong&code=abcdef0123456789&ignored='] as $prefix) {
-            $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
-            $flow = session('vk_publisher_oauth');
-            $this->post(route('backoffice.vk-publisher.complete'), [
-                'authorization_response' => $prefix.http_build_query(['state' => $flow['state'], 'code' => 'abcdef0123456789']),
-            ])->assertSessionHasErrors('social');
-        }
         $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+        $flow = session('vk_publisher_oauth');
         $this->post(route('backoffice.vk-publisher.complete'), [
-            'authorization_response' => 'https://oauth.vk.ru/blank.html#code=abcdef0123456789&state=wrong',
+            'authorization_response' => str_replace('{params}', http_build_query([
+                'state' => $flow['state'], 'code' => 'abcdef0123456789',
+            ]), $template),
         ])->assertSessionHasErrors('social');
         Http::assertNothingSent();
     }
