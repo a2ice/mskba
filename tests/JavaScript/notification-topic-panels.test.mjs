@@ -69,8 +69,19 @@ test('email verification has a real Back action to edit the existing value', () 
     assert.match(wizard, /contactWizardNavigation\(target, methodLocked\)/);
     assert.match(wizard, /footer.hidden = !navigation.footer/);
     assert.match(wizard, /if \(target === 'close'\) dialog.close\(\)/);
-    assert.match(wizard, /else if \(target\) showStep\(target\)/);
+    assert.match(wizard, /else if \(target\) \{[\s\S]*?showStep\(target\);/);
     assert.match(wizard, /verificationEmail=value.value.toLowerCase\(\)/);
     assert.match(wizard, /value.value.toLowerCase\(\) === verificationEmail/);
     assert.match(wizard, /showStep\('verification'\);\s*return;/);
+});
+
+test('verification actions and change choice use the shared contact dialog', () => {
+    const footer = partial.match(/data-contact-add-footer[\s\S]*?<\/div>/)?.[0];
+    assert.ok(footer);
+    assert.match(footer, /data-contact-add-back[\s\S]*data-contact-add-verify/);
+    assert.match(partial, /data-contact-add-resend[\s\S]*data-contact-add-change/);
+    assert.match(partial, /data-contact-change-modal[\s\S]*data-contact-change-add[\s\S]*data-contact-change-replace/);
+    assert.match(wizard, /replace_contact_id: verificationContactId/);
+    assert.match(wizard, /if \(!replacing\) await sendEmailCode\(\)/);
+    assert.match(wizard, /createContactResendCooldown/);
 });

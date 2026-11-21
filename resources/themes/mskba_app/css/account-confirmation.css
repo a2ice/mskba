@@ -342,3 +342,9 @@
 /* Shared confirmation gate: missing values stay navigable without disabled submit buttons. */
 [data-confirm-missing-list] a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 [data-confirm-missing-list] li+li{margin-top:6px}
+
+/* #954: verification actions use the shared fixed footer; body actions stack. */
+.app-contact-wizard__verification-footer{justify-content:space-between}
+.app-contact-wizard__body [data-contact-add-step="verification"] .app-contact-wizard__trigger{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.app-contact-wizard__change-footer{justify-content:space-between;flex-wrap:wrap}
+.app-contact-wizard__change-footer .button{flex:1 1 auto}

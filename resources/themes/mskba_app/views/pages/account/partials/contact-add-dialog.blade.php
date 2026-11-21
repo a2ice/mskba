@@ -1,4 +1,10 @@
+@php
+    $wizardPendingEmails = auth()->user()?->canonical()->identityContactsQuery()
+        ->where('type', 'email')->whereNull('verified_at')
+        ->with(['verifications' => fn ($query) => $query->where('status', 'pending')->latest()])->get() ?? collect();
+@endphp
 <div class="app-contact-wizard" data-contacts-add
+     data-pending-cooldowns="{{ $wizardPendingEmails->mapWithKeys(fn ($contact) => [$contact->id => \App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy::secondsUntilResend($contact->verifications->first())])->toJson() }}"
      data-add-url="{{ route('account.contacts.store') }}"
      data-list-url="{{ route('account.contacts') }}"
      data-telegram-url="{{ route('account.telegram.link') }}"
@@ -38,8 +44,8 @@
                            autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000">
                 </label>
                 <div class="app-contact-wizard__trigger">
-                    <button type="button" class="button primary" data-contact-add-verify>Подтвердить код</button>
                     <button type="button" class="button secondary" data-contact-add-resend>Отправить код повторно</button>
+                    <button type="button" class="button secondary" data-contact-add-change>Изменить контакт</button>
                 </div>
             </section>
             <section data-contact-add-step="telegram" hidden>
@@ -72,6 +78,20 @@
         <div class="mskba-modal__footer app-contact-wizard__footer" data-contact-add-footer>
             <button type="button" class="button secondary" data-contact-add-back hidden>Назад</button>
             <button type="button" class="button primary" data-contact-add-next>Далее</button>
+            <button type="button" class="button primary" data-contact-add-verify hidden>Подтвердить код</button>
+        </div>
+    </dialog>
+    <dialog class="mskba-modal app-contact-wizard__dialog" data-contact-change-modal aria-labelledby="contact-change-title">
+        <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
+            <h2 id="contact-change-title" class="eyebrow accent mskba-auth-heading">Новый контакт</h2>
+            <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close" data-contact-change-close aria-label="Закрыть окно"><svg aria-hidden="true"><use href="#close"/></svg></button>
+        </header>
+        <div class="mskba-modal__body mskba-scroll app-contact-wizard__body">
+            <p>Хотите заменить контакт «<strong data-contact-change-value></strong>» или добавить новый?</p>
+        </div>
+        <div class="mskba-modal__footer app-contact-wizard__footer app-contact-wizard__change-footer">
+            <button type="button" class="button secondary" data-contact-change-add>Добавить новый</button>
+            <button type="button" class="button primary" data-contact-change-replace>Заменить</button>
         </div>
     </dialog>
 </div>
