@@ -3,6 +3,7 @@
 namespace App\Modules\Contact\Application\UseCases;
 
 use App\Modules\Contact\Application\DTO\CreateContactDTO;
+use App\Modules\Contact\Application\Services\ContactOwnership;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contact\Domain\ValueObjects\ContactValue;
@@ -17,6 +18,12 @@ class CreateContactForUserHandler
     {
         return DB::transaction(function () use ($user, $data, $contactId): Contact {
             $canonical = $user->canonical();
+            $previous = $canonical->identityContactsQuery()->whereKey($contactId)->firstOrFail();
+            $ownership = app(ContactOwnership::class);
+            $ownership->lockMany([
+                [$previous->type, $previous->value],
+                [$data->type, $data->value],
+            ]);
             User::query()->whereKey($canonical->identityIds())->orderBy('id')->lockForUpdate()->get();
             $old = $canonical->identityContactsQuery()->whereKey($contactId)->lockForUpdate()->firstOrFail();
             if ($old->hasBeenVerified() || $old->type !== ContactTypeEnum::EMAIL || $data->type !== $old->type) {
@@ -40,6 +47,8 @@ class CreateContactForUserHandler
     {
         try {
             return DB::transaction(function () use ($user, $contactData): Contact {
+                $ownership = app(ContactOwnership::class);
+                $ownership->lock($contactData->type, $contactData->value);
                 $canonicalUser = $user->canonical();
                 $identityIds = $canonicalUser->identityIds();
                 User::query()
@@ -51,25 +60,14 @@ class CreateContactForUserHandler
 
                 $value = new ContactValue($contactData->type, $contactData->value);
 
-                if ($contactData->type === ContactTypeEnum::EMAIL) {
-                    $emailAlreadyOwned = Contact::query()
-                        ->withTrashed()
-                        ->where('user_email_key', $value->value())
-                        ->whereNot(function ($query) use ($identityIds): void {
-                            $query->where('contactable_type', 'user')
-                                ->whereIn('contactable_id', $identityIds);
-                        })
-                        ->exists();
-
-                    if ($emailAlreadyOwned) {
-                        throw new InvalidArgumentException('Этот email уже используется другим пользователем.');
-                    }
-                }
+                $ownership->assertAvailable($contactData->type, $value->value(), $identityIds);
                 $hasActiveContacts = $lockedUser->identityContactsQuery()->exists();
                 $existingContact = $lockedUser->identityContactsQuery()
                     ->withTrashed()
                     ->where('type', $contactData->type)
-                    ->where('value', $value->value())
+                    ->when($contactData->type === ContactTypeEnum::PHONE,
+                        fn ($query) => $query->where('user_phone_key', $value->value()),
+                        fn ($query) => $query->where('value', $value->value()))
                     ->first();
 
                 if ($existingContact?->trashed() === false) {
@@ -96,21 +94,11 @@ class CreateContactForUserHandler
                 ]);
             });
         } catch (QueryException $exception) {
-            if ($contactData->type === ContactTypeEnum::EMAIL) {
-                $email = (new ContactValue(ContactTypeEnum::EMAIL, $contactData->value))->value();
-                $identityIds = $user->canonical()->identityIds();
-                $emailAlreadyOwned = Contact::query()
-                    ->withTrashed()
-                    ->where('user_email_key', $email)
-                    ->whereNot(function ($query) use ($identityIds): void {
-                        $query->where('contactable_type', 'user')
-                            ->whereIn('contactable_id', $identityIds);
-                    })
-                    ->exists();
-
-                if ($emailAlreadyOwned) {
-                    throw new InvalidArgumentException('Этот email уже используется другим пользователем.', previous: $exception);
-                }
+            // Translate the database's final protection after a concurrent claim.
+            if (in_array($contactData->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
+                app(ContactOwnership::class)->assertAvailable(
+                    $contactData->type, $contactData->value, $user->canonical()->identityIds(),
+                );
             }
 
             throw $exception;

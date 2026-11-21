@@ -34,6 +34,12 @@ class Contact extends Model
                 $contact->value = (new ContactValue(ContactTypeEnum::EMAIL, (string) $contact->value))->value();
             }
 
+            // Preserve evidence of earlier verified ownership when a contact is removed.
+            if ($contact->exists && $contact->verified_at === null && $contact->getRawOriginal('verified_at') !== null
+                && $contact->contactable_type === 'user'
+                && in_array($contact->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
+                $contact->ownership_reserved = true;
+            }
         });
     }
 
@@ -91,6 +97,7 @@ class Contact extends Model
             'is_primary' => 'boolean',
             'is_public' => 'boolean',
             'verified_at' => 'datetime',
+            'ownership_reserved' => 'boolean',
             'meta' => 'array',
         ];
     }
