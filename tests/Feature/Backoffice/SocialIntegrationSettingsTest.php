@@ -55,8 +55,16 @@ final class SocialIntegrationSettingsTest extends TestCase
             'https://oauth.vk.ru/access_token' => Http::response(['access_token' => 'photo-secret', 'expires_in' => 86400]),
             'https://api.vk.com/method/photos.getWallUploadServer' => Http::response(['response' => ['upload_url' => 'https://upload.vk.com/photo']]),
         ]);
-        $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+        $redirect = $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+        parse_str((string) parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $params);
+        $this->assertSame('photos', $params['scope']);
+        $this->assertSame('code', $params['response_type']);
+        $this->assertArrayNotHasKey('code_challenge', $params);
+        $this->assertArrayNotHasKey('code_challenge_method', $params);
+        $this->assertArrayNotHasKey('client_secret', $params);
         $flow = session('vk_publisher_oauth');
+        $this->assertSame($flow['state'], $params['state']);
+        $this->assertArrayNotHasKey('verifier', $flow);
         $this->assertSame('https://mskba.ru/backoffice/social-integrations/vk/callback', $flow['redirect']);
         $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
             ->assertRedirect('/backoffice/social-integrations')->assertSessionHas('social_status');
@@ -67,6 +75,11 @@ final class SocialIntegrationSettingsTest extends TestCase
         $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
             ->assertSessionHasErrors('social');
         Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request->url() === 'https://oauth.vk.ru/access_token'
+            && $request['client_secret'] === 'app-secret'
+            && $request['code'] === 'test-code'
+            && $request['redirect_uri'] === $flow['redirect']
+            && ! array_key_exists('code_verifier', $request->data()));
     }
 
     public function test_normal_user_cannot_change_social_settings(): void
