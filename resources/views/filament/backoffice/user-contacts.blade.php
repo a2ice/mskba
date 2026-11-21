@@ -10,6 +10,11 @@
             ->select(['id', 'contact_id', 'channel', 'status', 'attempts_count', 'max_attempts', 'created_at', 'verified_at', 'failed_at', 'expires_at'])
             ->latest('id')])
         ->orderByDesc('is_primary')->orderBy('id')->get() : collect();
+    $identityIds = $allowed ? $editedUser->identityIds() : [];
+    $telegramAccounts = $allowed ? \App\Modules\Telegram\Domain\Models\TelegramAccount::query()
+        ->whereIn('user_id', $identityIds)->get(['user_id', 'telegram_user_id', 'username', 'created_at', 'last_auth_at']) : collect();
+    $vkAccounts = $allowed ? \App\Modules\Vk\Domain\Models\VkAccount::query()
+        ->whereIn('user_id', $identityIds)->get(['user_id', 'vk_user_id', 'first_name', 'last_name', 'created_at', 'last_auth_at']) : collect();
     [$deletedContacts, $activeContacts] = $contacts->partition(fn ($contact) => $contact->trashed());
     $date = static fn ($value): string => $value?->format('d.m.Y H:i') ?? '—';
 @endphp
@@ -32,8 +37,17 @@
                         $currentVerification = $contact->verified_at && !$contact->trashed()
                             ? $contact->verifications->first(fn ($verification) =>
                                 $verification->status === ContactVerificationStatusEnum::CONFIRMED
-                                && $verification->verified_at?->equalTo($contact->verified_at))
+                                && $verification->verified_at !== null
+                                && abs($verification->verified_at->getTimestamp() - $contact->verified_at->getTimestamp()) <= 2)
                             : null;
+                        $socialSource = match ($contact->meta['source'] ?? null) {
+                            'telegram_mini_app' => 'Telegram Mini App',
+                            'telegram_web', 'account_telegram_link' => 'Telegram — авторизация',
+                            'telegram_chat' => 'Telegram — бот',
+                            'vk_id', 'vk_id_link', 'vk_id_auth' => 'VK ID',
+                            'test_provider_emulation' => 'Тестовая эмуляция',
+                            default => null,
+                        };
                     @endphp
                     <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700" wire:key="backoffice-contact-{{ $contact->id }}">
                         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -55,6 +69,9 @@
                             <div><dt class="text-sm text-gray-500">Подтверждён</dt><dd>{{ $contact->trashed() ? '—' : $date($contact->verified_at) }}</dd></div>
                             <div><dt class="text-sm text-gray-500">Способ подтверждения</dt><dd>{{ $currentVerification?->channel->label() ?? ($contact->verified_at && !$contact->trashed() ? 'Не зафиксирован' : '—') }}</dd></div>
                             <div><dt class="text-sm text-gray-500">Попыток ввода кода при подтверждении</dt><dd>{{ $currentVerification?->attempts_count ?? '—' }}</dd></div>
+                            @if($socialSource)
+                                <div><dt class="text-sm text-gray-500">Последний сохранённый источник привязки</dt><dd>{{ $socialSource }}</dd></div>
+                            @endif
                             @if($contact->trashed())
                                 <div><dt class="text-sm text-gray-500">Удалён</dt><dd>{{ $date($contact->deleted_at) }}</dd></div>
                             @endif
@@ -92,7 +109,9 @@
 
                 @if($groupIndex === 0)
                     @foreach([ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE, ContactTypeEnum::TELEGRAM, ContactTypeEnum::VK] as $type)
-                        @if(!$group->contains('type', $type))
+                        @if(!$group->contains('type', $type)
+                            && !($type === ContactTypeEnum::TELEGRAM && $telegramAccounts->isNotEmpty())
+                            && !($type === ContactTypeEnum::VK && $vkAccounts->isNotEmpty()))
                             <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                                 <span>{{ $type->label() }}</span>
                                 <span class="text-sm text-gray-500">Не добавлен</span>
@@ -106,4 +125,32 @@
             @endforeach
         </div>
     </x-filament::section>
+    @if($telegramAccounts->isNotEmpty() || $vkAccounts->isNotEmpty())
+        <x-filament::section heading="Привязанные способы входа">
+            <div class="space-y-3">
+                @foreach($telegramAccounts as $account)
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <strong>Telegram · {{ $account->username ? '@'.$account->username : 'ID '.$account->telegram_user_id }}</strong>
+                        <dl class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div><dt class="text-sm text-gray-500">ID Telegram</dt><dd>{{ $account->telegram_user_id }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">ID аккаунта MSKBA</dt><dd>{{ $account->user_id }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">Привязка создана</dt><dd>{{ $date($account->created_at) }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">Последняя авторизация</dt><dd>{{ $date($account->last_auth_at) }}</dd></div>
+                        </dl>
+                    </div>
+                @endforeach
+                @foreach($vkAccounts as $account)
+                    <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                        <strong>VK · {{ trim($account->first_name.' '.$account->last_name) ?: 'ID '.$account->vk_user_id }}</strong>
+                        <dl class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div><dt class="text-sm text-gray-500">ID VK</dt><dd>{{ $account->vk_user_id }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">ID аккаунта MSKBA</dt><dd>{{ $account->user_id }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">Привязка создана</dt><dd>{{ $date($account->created_at) }}</dd></div>
+                            <div><dt class="text-sm text-gray-500">Последняя авторизация</dt><dd>{{ $date($account->last_auth_at) }}</dd></div>
+                        </dl>
+                    </div>
+                @endforeach
+            </div>
+        </x-filament::section>
+    @endif
 @endif
