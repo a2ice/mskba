@@ -28,7 +28,7 @@ test('the original confirmation wizard mounts outside Contacts and opens with ch
     assert.match(layout, /pages\.account\.partials\.contact-add-dialog/);
     assert.match(partial, /contactDialogOnly/);
     assert.match(wizard, /window\.addEventListener\('mskba:contact:add', event => \{/);
-    assert.match(wizard, /open\(type \|\| 'email', Boolean\(type\)\)/);
+    assert.match(wizard, /open\(type \|\| 'email', Boolean\(type\), options\)/);
     assert.match(editor, /detail:\{type:key\}/);
     assert.match(wizard, /mskba:contact:updated/);
     assert.match(editor, /mskba:contact:updated',refreshChannels/);
@@ -53,7 +53,7 @@ test('checkbox text aligns vertically and inline plus replaces add-contact text 
 });
 
 test('contact plus skips method picker while normal entry retains it', () => {
-    assert.match(wizard, /function open\(preselected = 'email', skipMethod = false\)/);
+    assert.match(wizard, /function open\(preselected = 'email', skipMethod = false, options = \{\}\)/);
     assert.match(wizard, /methodLocked = Boolean\(skipMethod && radio && !radio.disabled\)/);
     assert.match(wizard, /if \(methodLocked\) advanceFromMethod\(\)/);
     assert.match(wizard, /else showStep\('method'\)/);
@@ -84,4 +84,14 @@ test('verification actions and change choice use the shared contact dialog', () 
     assert.match(wizard, /replace_contact_id: verificationContactId/);
     assert.match(wizard, /if \(!replacing\) await sendEmailCode\(\)/);
     assert.match(wizard, /createContactResendCooldown/);
+});
+
+test('embedded contact completion shows explicit continuation and does not refresh missing list', () => {
+    assert.match(wizard, /function completeContact\(message, verified\)/);
+    assert.match(wizard, /contactWizardCompletion\(embedded, verified\) === 'continue'[\s\S]*?showStep\('done'\)/);
+    assert.match(wizard, /document.querySelector\('\[data-account-contacts-list\]'\)/);
+    assert.match(wizard, /requireVerified: event.detail\?\.requireVerified === true/);
+    assert.match(wizard, /dialog.returnValue = ''/);
+    assert.match(wizard, /continueButton.addEventListener\('click'[\s\S]*?dialog.close\('verified'\)/);
+    assert.match(partial, /data-contact-add-continue hidden>Продолжить/);
 });
