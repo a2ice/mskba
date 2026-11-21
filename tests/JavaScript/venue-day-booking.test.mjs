@@ -1070,3 +1070,19 @@ test('message action menu stays visible but inactive without actions; only editi
     assert.equal(form.hidden,true);
     assert.equal(menu.hidden,true);
 });
+
+
+test('event rental uses shared calendar and explicit planned-time choices', () => {
+    const template = readFileSync(new URL('../../resources/themes/mskba_app/views/pages/events/partials/rental-selection-dialog.blade.php', import.meta.url), 'utf8');
+    const page = readFileSync(new URL('../../resources/themes/mskba_app/views/pages/events/event-first-show.blade.php', import.meta.url), 'utf8');
+    assert.match(template, /data-event-rental-calendar/);
+    assert.match(template, /pages\.venues\.partials\.day-calendar/);
+    assert.match(template, /data-venue-day-booking-form/);
+    assert.match(template, /Да, применить/);
+    assert.match(page, /Нет, выбрать другое время/);
+    assert.match(page, /Дата и время, установленные при создании мероприятия, к сожалению, уже заняты/);
+    assert.match(page, /result\.status==='available'/);
+    assert.match(page, /result\.status==='occupied'/);
+    assert.match(page, /rentalCalendar\.dispatchEvent\(new CustomEvent\('mskba:choose-court'/);
+    assert.match(page, /contactModal\.returnValue==='verified'/);
+});
