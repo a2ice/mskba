@@ -9,10 +9,10 @@ return [
         'unified-chat' => [
             'title' => 'Единый чат — редактор сообщения',
             'issue' => 933,
-            'revision' => 1,
-            'status' => 'Пилот · не принят',
+            'revision' => 2,
+            'status' => 'На визуальной приёмке',
             'templates' => ['mskba_app'],
-            'states' => ['normal' => 'Обычное', 'empty' => 'Пустое', 'disabled' => 'Недоступно'],
+            'states' => ['normal' => 'Обычное', 'empty' => 'Пустое', 'editing' => 'Редактирование', 'disabled' => 'Недоступно'],
         ],
     ],
 ];
