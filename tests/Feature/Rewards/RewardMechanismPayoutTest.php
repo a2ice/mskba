@@ -21,6 +21,7 @@ use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
@@ -155,7 +156,28 @@ final class RewardMechanismPayoutTest extends TestCase
 
         $this->assertSame(WalletOperationTypeEnum::BONUS_GRANT, $grant->wallet_operation_type);
         $this->assertSame('venue:'.$venue->id, $grant->business_fact_key);
-        $this->assertRewardNotice($creator, $grant, 'Бонус за новую площадку', 10_000);
+        $notice = $this->assertRewardNotice($creator, $grant, 'Бонус за новую площадку', 10_000);
+        $prefix = 'Добавленная вами площадка ';
+        $url = route('venues.show', $venue->routeIdentifier(), absolute: false);
+        $this->assertSame($prefix.$venue->name.' прошла модерацию. Начислено 100,00 ₽ бонусами.', $notice->body);
+        $this->assertSame($venue->id, $notice->payload['venue_id']);
+        $presenter = app(UserNotificationPresenter::class);
+        $parts = $presenter->present($notice)['body_parts'];
+        $this->assertSame([
+            ['text' => $prefix],
+            ['text' => $venue->name, 'url' => $url],
+            ['text' => ' прошла модерацию. Начислено 100,00 ₽ бонусами.'],
+        ], $parts);
+
+        $html = view('notification.body', ['parts' => $parts])->render();
+        $this->assertStringContainsString('href="'.e($url).'" target="_blank" rel="noopener noreferrer">'.e($venue->name).'</a>', $html);
+
+        // Invalid link metadata cannot turn the plain text into an external or script link.
+        $notice->payload = [
+            ...$notice->payload,
+            'body_link' => ['text' => $venue->name, 'offset' => strlen($prefix), 'url' => '//example.org'],
+        ];
+        $this->assertSame([['text' => $notice->body]], $presenter->present($notice)['body_parts']);
 
         $secondRequest = ModerationRequest::query()->create([
             'type' => ModerationTypeEnum::VENUE,
