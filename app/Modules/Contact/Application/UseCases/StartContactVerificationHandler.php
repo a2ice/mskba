@@ -5,6 +5,7 @@ namespace App\Modules\Contact\Application\UseCases;
 use App\Modules\Contact\Application\Services\ContactVerificationStrategyResolver;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contact\Domain\Models\ContactVerification;
+use Illuminate\Support\Facades\DB;
 use LogicException;
 
 class StartContactVerificationHandler
@@ -15,12 +16,13 @@ class StartContactVerificationHandler
 
     public function handle(Contact $contact): ContactVerification
     {
-        if ($contact->hasBeenVerified()) {
-            throw new LogicException('Контакт уже подтвержден.');
-        }
+        return DB::transaction(function () use ($contact): ContactVerification {
+            $locked = Contact::query()->whereKey($contact->id)->lockForUpdate()->firstOrFail();
+            if ($locked->hasBeenVerified()) {
+                throw new LogicException('Контакт уже подтвержден.');
+            }
 
-        return $this->strategyResolver
-            ->resolve($contact)
-            ->start($contact);
+            return $this->strategyResolver->resolve($locked)->start($locked);
+        });
     }
 }

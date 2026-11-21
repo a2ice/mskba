@@ -25,6 +25,7 @@ class CreateAccountContactRequest extends FormRequest
             'type' => ['required', Rule::enum(ContactTypeEnum::class)],
             'value' => ['required', 'string', 'max:255'],
             'label' => ['nullable', 'string', 'max:255'],
+            'replace_contact_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

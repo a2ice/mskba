@@ -13,6 +13,29 @@ use InvalidArgumentException;
 
 class CreateContactForUserHandler
 {
+    public function replacePending(User $user, CreateContactDTO $data, int $contactId): Contact
+    {
+        return DB::transaction(function () use ($user, $data, $contactId): Contact {
+            $canonical = $user->canonical();
+            User::query()->whereKey($canonical->identityIds())->orderBy('id')->lockForUpdate()->get();
+            $old = $canonical->identityContactsQuery()->whereKey($contactId)->lockForUpdate()->firstOrFail();
+            if ($old->hasBeenVerified() || $old->type !== ContactTypeEnum::EMAIL || $data->type !== $old->type) {
+                throw new InvalidArgumentException('Заменить можно только неподтверждённый email на другой email.');
+            }
+
+            // Keep the old contact and its code if validation or delivery fails.
+            $new = $this->handle($canonical, $data);
+            app(StartContactVerificationHandler::class)->handle($new);
+            $wasPrimary = $old->is_primary;
+            app(DeleteContactHandler::class)->handle($old);
+            if ($wasPrimary && ! $canonical->identityContactsQuery()->where('is_primary', true)->exists()) {
+                $new->update(['is_primary' => true]);
+            }
+
+            return $new->refresh();
+        });
+    }
+
     public function handle(User $user, CreateContactDTO $contactData): Contact
     {
         try {
