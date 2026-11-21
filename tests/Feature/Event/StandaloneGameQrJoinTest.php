@@ -298,7 +298,7 @@ final class StandaloneGameQrJoinTest extends TestCase
 
     private function confirmedUser(string $username): User
     {
-        return User::factory()->create([
+        return User::factory()->withVerifiedContact()->create([
             'username' => $username,
             'status' => UserStatusEnum::CONFIRMED,
         ]);

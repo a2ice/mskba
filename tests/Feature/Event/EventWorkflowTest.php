@@ -40,7 +40,7 @@ final class EventWorkflowTest extends TestCase
         [$venue, $start, $end] = $this->availableVenue();
         $venue->characteristics()->create(['hoops_count' => 2]);
         $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
-        $users = User::factory()->count(4)->create(['status' => UserStatusEnum::CONFIRMED]);
+        $users = User::factory()->withVerifiedContact()->count(4)->create(['status' => UserStatusEnum::CONFIRMED]);
 
         $this->actingAs($users[0])->post(route('events.store'), [
             ...$this->payload($venue, $start, $end),
@@ -87,7 +87,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_user_creates_published_event_and_confirmed_booking_on_free_venue(): void
     {
-        $user = User::factory()->create(['username' => 'organizer']);
+        $user = User::factory()->withVerifiedContact()->create(['username' => 'organizer']);
         [$venue, $start, $end] = $this->availableVenue();
 
         $response = $this->actingAs($user)->post(route('events.store'), $this->payload($venue, $start, $end));
@@ -154,7 +154,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue(['requires_booking_approval' => true]);
 
         $this->actingAs($user)
@@ -170,7 +170,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_participation_actions_are_replaced_after_registration_closes(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
@@ -207,7 +207,7 @@ final class EventWorkflowTest extends TestCase
     {
         config(['integrations.yandex.api_key' => 'test-yandex-key']);
 
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $location = Location::factory()->create();
         $venue->update(['location_id' => $location->id]);
@@ -230,7 +230,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_tentative_and_declined_participants_are_rendered_in_separate_sections(): void
     {
-        $organizer = User::factory()->create(['username' => 'event-organizer']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'event-organizer']);
         $tentativeUser = User::factory()->create(['username' => 'thinking-player']);
         $declinedUser = User::factory()->create(['username' => 'declined-player']);
         [$venue, $start, $end] = $this->availableVenue();
@@ -261,7 +261,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_full_event_keeps_response_changes_available_without_offering_a_new_place(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         $observer = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
@@ -294,7 +294,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_retired_game_training_is_readable_but_cannot_be_selected_for_creation(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $legacy = Event::factory()->create([
             'type' => EventTypeEnum::GAME_TRAINING,
@@ -320,7 +320,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_tournament_cannot_be_selected_or_created_as_an_event(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($user)
@@ -343,7 +343,7 @@ final class EventWorkflowTest extends TestCase
     public function test_event_start_and_duration_have_boundaries_and_end_is_calculated(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         $venue = Venue::factory()->create([
             'status' => VenueStatusEnum::CONFIRMED->value,
             'requires_payment' => false,
@@ -382,7 +382,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_event_can_be_created_on_venue_without_schedule(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         $venue = Venue::factory()->create([
             'status' => VenueStatusEnum::CONFIRMED->value,
             'requires_payment' => false,
@@ -413,7 +413,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_event_venue_selector_filters_by_slot_and_invalidates_cached_conditions(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$available, $start, $end] = $this->availableVenue([
             'name' => 'Арбатская свободная площадка',
             'raw_address' => 'Россия, Москва, улица Арбат, 10',
@@ -478,7 +478,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_closed_exception_applies_to_venue_without_regular_hours(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(6)->startOfDay()->setTime(12, 0);
         $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
@@ -499,8 +499,8 @@ final class EventWorkflowTest extends TestCase
 
     public function test_overlapping_event_cannot_be_created_but_adjacent_event_can(): void
     {
-        $firstUser = User::factory()->create();
-        $secondUser = User::factory()->create();
+        $firstUser = User::factory()->withVerifiedContact()->create();
+        $secondUser = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($firstUser)->post(route('events.store'), $this->payload($venue, $start, $end));
@@ -520,7 +520,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_event_must_fit_venue_working_hours(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($user)
@@ -534,7 +534,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_users_can_join_and_leave_until_capacity_is_reached(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         $lateUser = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
@@ -560,7 +560,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_user_can_switch_between_tentative_declined_and_confirmed_responses(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end, 2));
@@ -607,7 +607,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_tentative_response_does_not_consume_last_available_place(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $tentativeUser = User::factory()->create();
         $confirmedUser = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
@@ -643,8 +643,8 @@ final class EventWorkflowTest extends TestCase
 
     public function test_organizer_cancels_event_and_releases_booking(): void
     {
-        $organizer = User::factory()->create();
-        $nextOrganizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
+        $nextOrganizer = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
@@ -665,7 +665,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_unrelated_user_cannot_cancel_event_but_confirmed_superadmin_can(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $stranger = User::factory()->create();
         $superadmin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -688,7 +688,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_organizer_and_superadmin_can_edit_event_details_but_unrelated_user_cannot(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $stranger = User::factory()->create();
         $superadmin = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -745,7 +745,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_organizer_can_move_event_and_booking_between_free_venues(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$sourceVenue, $start, $end] = $this->availableVenue();
         [$targetVenue] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($sourceVenue, $start, $end));
@@ -781,7 +781,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_current_booking_is_excluded_when_duration_changes_inside_its_interval(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
@@ -802,8 +802,8 @@ final class EventWorkflowTest extends TestCase
 
     public function test_conflicting_transfer_keeps_original_event_and_booking_unchanged(): void
     {
-        $organizer = User::factory()->create();
-        $otherOrganizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
+        $otherOrganizer = User::factory()->withVerifiedContact()->create();
         [$sourceVenue, $start, $end] = $this->availableVenue();
         [$targetVenue] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($sourceVenue, $start, $end));
@@ -839,7 +839,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_booking_cannot_be_moved_when_current_or_target_venue_is_not_free(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$managedVenue, $start, $end] = $this->availableVenue();
         [$freeVenue] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($managedVenue, $start, $end));
@@ -869,7 +869,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_participant_limit_cannot_be_reduced_below_current_participants(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $firstParticipant = User::factory()->create();
         $secondParticipant = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
@@ -896,7 +896,7 @@ final class EventWorkflowTest extends TestCase
     public function test_organizer_completes_event_adds_result_and_photos(): void
     {
         Storage::fake('public');
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create(['username' => 'tagged_player']);
         $participant->profile()->create(['first_name' => 'Илья', 'last_name' => 'Игроков']);
         [$venue, $start, $end] = $this->availableVenue();
@@ -978,7 +978,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_future_event_cannot_be_completed(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
@@ -992,7 +992,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_ended_event_is_listed_as_past_and_can_be_completed_later(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
@@ -1030,7 +1030,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_event_journals_can_be_filtered_by_type_dates_and_past_outcome(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$gameVenue, $start, $end] = $this->availableVenue();
         [$trainingVenue] = $this->availableVenue();
         [$cancelledVenue] = $this->availableVenue();
@@ -1134,7 +1134,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_organizer_searches_privacy_visible_users_and_adds_participant(): void
     {
-        $organizer = User::factory()->create(['username' => 'event-owner']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'event-owner']);
         $visibleUser = User::factory()->create(['username' => 'visible-player']);
         $hiddenUser = User::factory()->create(['username' => 'hidden-player']);
         UserPrivacySetting::query()->create([
@@ -1192,7 +1192,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_organizer_cannot_change_participants_after_event_time_has_ended(): void
     {
-        $organizer = User::factory()->create(['username' => 'retrospective-owner']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'retrospective-owner']);
         $participant = User::factory()->create(['username' => 'retrospective-player']);
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(
@@ -1250,7 +1250,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_participant_management_is_locked_after_event_is_completed(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $candidate = User::factory()->create(['username' => 'late-player']);
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
@@ -1281,7 +1281,7 @@ final class EventWorkflowTest extends TestCase
 
     public function test_multiple_responsible_participants_accept_invitation_and_organizer_can_remove_them(): void
     {
-        $organizer = User::factory()->create(['username' => 'event-owner']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'event-owner']);
         $first = User::factory()->create(['username' => 'first-helper']);
         $second = User::factory()->create(['username' => 'second-helper']);
         [$venue, $start, $end] = $this->availableVenue();

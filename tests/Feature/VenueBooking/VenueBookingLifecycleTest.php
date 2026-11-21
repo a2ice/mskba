@@ -156,7 +156,7 @@ final class VenueBookingLifecycleTest extends TestCase
         Mail::fake();
         [$owner, , $venue] = $this->ownedVenue();
         [$mainResponsible] = $this->userAndActor();
-        $unrelatedAdmin = User::factory()->create([
+        $unrelatedAdmin = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
@@ -879,7 +879,7 @@ final class VenueBookingLifecycleTest extends TestCase
     /** @return array{User, Actor} */
     private function userAndActor(): array
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $actor = app(CurrentActorResolver::class)->resolve($user, null);
 
         return [$user, $actor];
