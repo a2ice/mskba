@@ -5,7 +5,7 @@
     <div class="app-messages__bubble-head">
         <strong>{{ $notification->title }}</strong>
     </div>
-    <p class="app-messages__bubble-body">{{ $notification->body }}</p>
+    <p class="app-messages__bubble-body">@include('notification.body', ['parts' => $actions['body_parts'], 'linkClass' => 'app-messages__action'])</p>
     @if ($actions['action_text'] && is_string($actions['href']) && str_starts_with($actions['href'], '/') && ! str_starts_with($actions['href'], '//'))
         <a class="app-messages__action" href="{{ $actions['href'] }}">{{ $actions['action_text'] }}</a>
     @endif

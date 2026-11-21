@@ -662,9 +662,11 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(tpl, /@include\('components\.event-discussion'/);
     assert.match(eventPage, /@include\('components\.event-discussion'/);
     assert.match(discussion, /@include\('components\.chat-composer'/);
-    assert.match(discussion, /'value' => 'confirmed'/);
-    assert.match(discussion, /'value' => 'tentative'/);
-    assert.doesNotMatch(discussion, /'value' => 'left'/);
+    assert.match(discussion, /data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду/);
+    assert.match(discussion, /data-venue-play-rsvp="tentative">Подумаю/);
+    assert.doesNotMatch(discussion, /data-venue-play-rsvp="left"/);
+    assert.match(discussion, /'chatActions' => \[\]/);
+    assert.doesNotMatch(composer, /event-rsvp|data-venue-play-rsvp/);
     assert.match(composer, /data-chat-actions/);
     assert.match(composer, /data-chat-context-delete hidden/);
     assert.match(composer, /placeholder="Написать сообщение"/);
@@ -690,9 +692,10 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(shared, /refreshWall\(pane\)/);
     assert.doesNotMatch(js, /function refreshWall|function loadOlder|client_request_id/);
     assert.match(shared, /guestResponse\(status\)/);
-    assert.match(shared, /attendance\.dataset\.chatActionValue=confirmed\?'left':'confirmed'/);
+    assert.match(shared, /attendance\.dataset\.venuePlayRsvp=confirmed\?'left':'confirmed'/);
     assert.match(shared, /attendance\.textContent=confirmed\?'Не пойду':'Пойду'/);
     assert.match(shared, /200-\[\.\.\.field\.value\]\.length/);
+    assert.match(shared, /querySelectorAll\('\[data-venue-play-rsvp\]'\)\.forEach\(button=>button\.addEventListener\('click'/);
 });
 
 test('event creation select controls reuse the branded native select, not custom compact fields', () => {
@@ -1026,4 +1029,39 @@ test('upcoming venue card opens existing event detail with shared chat before pa
     assert.match(js, /direct\.dataset\.venuePlayOpenEvent/);
     assert.match(js, /if\(!getPane\(id\)\)return;/);
     assert.match(js, /if\(!dialog\.open\)dialog\.showModal\(\);\s*showEvent\(id\);/);
+});
+
+
+test('message action menu stays visible but inactive without actions; only editing exposes deletion', async () => {
+    const {syncChatActions,setChatComposerAccess,bindChatActions}=await import('../../resources/js/chat-composer-actions.js');
+    const remove={hidden:true};
+    const cancel={hidden:true};
+    const attrs={};
+    const listeners={};
+    const summary={setAttribute:(k,v)=>attrs[k]=v,getAttribute:k=>attrs[k],addEventListener:(k,f)=>listeners[k]=f};
+    const menu={hidden:false,open:false,querySelectorAll:()=>[remove],querySelector:()=>summary,addEventListener:()=>{}};
+    const field={},counter={},send={};
+    const nodes={'[data-chat-actions]':menu,'[name="body"]':field,'[data-venue-play-chars]':counter,'[type="submit"]':send,'[data-chat-context-delete]':remove,'[data-venue-play-edit-cancel]':cancel};
+    const form={dataset:{chatCanPost:'false'},querySelector:k=>nodes[k]};
+    setChatComposerAccess(form,true);
+    assert.equal(form.hidden,false);
+    assert.equal(menu.hidden,false);
+    assert.equal(attrs['aria-disabled'],'true');
+    const previous=globalThis.document;
+    globalThis.document={addEventListener:()=>{}};
+    try {bindChatActions(form);} finally {if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
+    let prevented=false;
+    listeners.click({preventDefault:()=>prevented=true});
+    assert.equal(prevented,true);
+    remove.hidden=false;
+    assert.equal(syncChatActions(form),true);
+    assert.equal(attrs['aria-disabled'],'false');
+    menu.open=true;
+    remove.hidden=true;
+    assert.equal(syncChatActions(form),false);
+    assert.equal(menu.open,false);
+    assert.equal(menu.hidden,false);
+    setChatComposerAccess(form,false);
+    assert.equal(form.hidden,true);
+    assert.equal(menu.hidden,true);
 });

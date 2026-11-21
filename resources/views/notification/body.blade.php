@@ -1,0 +1,1 @@
+@foreach($parts as $part)@if(isset($part['url']))<a class="{{ $linkClass ?? '' }}" href="{{ $part['url'] }}" target="_blank" rel="noopener noreferrer">{{ $part['text'] }}</a>@else{{ $part['text'] }}@endif@endforeach

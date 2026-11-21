@@ -11,16 +11,19 @@
     <button type="button" class="{{ $secondaryButton }}" data-venue-play-roster-retry hidden>Повторить загрузку</button>
 </section>
 @endif
+@if($chatCanRespond ?? true)
+    <div class="venue-play-dialog__rsvp" role="group" aria-label="Ответ на участие">
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="confirmed" data-venue-play-attendance>Пойду</button>
+        <button type="button" class="{{ $secondaryButton }}" data-venue-play-rsvp="tentative">Подумаю</button>
+    </div>
+@endif
 <p class="venue-play-dialog__feedback" data-venue-play-feedback role="status" hidden></p>
 <section class="venue-play-dialog__wall" aria-label="Обсуждение мероприятия">
     <ol class="venue-play-dialog__messages mskba-scroll" data-venue-play-messages aria-live="polite"></ol>
     <p class="muted" data-venue-play-wall-empty>Загружаем обсуждение…</p>
     @include('components.chat-composer', [
         'chatComposerId' => 'venue-play-message-'.$chatEvent->id,
-        'chatActions' => ($chatCanRespond ?? true) ? [
-            ['id' => 'event-rsvp', 'value' => 'confirmed', 'slot' => 'attendance', 'label' => 'Пойду'],
-            ['id' => 'event-rsvp', 'value' => 'tentative', 'label' => 'Подумаю'],
-        ] : [],
+        'chatActions' => [],
     ])
     <p class="muted" data-venue-play-comment-notice hidden>Написать сообщение могут участники и организатор мероприятия.</p>
 </section>
