@@ -1,0 +1,88 @@
+name: UI Studio preview
+
+on:
+  push:
+    branches: [ui-preview]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mskba-ui-preview-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/ui-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Update isolated UI Studio via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 12m
+          script: |
+            set -eu
+            cd /var/www/mskba-ui
+            test "$(pwd -P)" = /var/www/mskba-ui
+            exec 9>/var/www/mskba-ui-runtime/publish.lock
+            flock -w 60 9
+            test -z "$(git status --porcelain --untracked-files=no)"
+            test "$(docker inspect --type container --format '{{.HostConfig.NetworkMode}}' mskba-ui-php)" = none
+            case "$(git branch --show-current)" in
+              feature/ui-studio-933|ui-preview) ;;
+              *) echo "Unexpected checkout"; exit 1 ;;
+            esac
+            before=$(git rev-parse HEAD)
+            git fetch --no-tags origin refs/heads/ui-preview:refs/remotes/origin/ui-preview
+            target=$(git rev-parse refs/remotes/origin/ui-preview)
+            if [ "$target" != '${{ github.sha }}' ]; then
+              echo "Superseded by a newer preview revision"
+              exit 0
+            fi
+            git merge-base --is-ancestor "$before" "$target"
+            changes=$(git diff --name-only "$before" "$target")
+            if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php
+              echo "Runtime/dependency changes require explicit infrastructure review"
+              exit 1
+            fi
+            if [ "$(git branch --show-current)" = feature/ui-studio-933 ]; then
+              git switch -c ui-preview "$before"
+            fi
+            git merge --ff-only "$target"
+            if printf '%s\n' "$changes" | grep -Eq '^(package\.json|package-lock\.json)$'; then
+              nice -n 15 npm ci --no-audit --no-fund
+            fi
+            if printf '%s\n' "$changes" | grep -Eq '^(resources/(css|js|themes)/|vite\.config\.|package\.json$|package-lock\.json$)'; then
+              NODE_OPTIONS=--max-old-space-size=512 RAYON_NUM_THREADS=2 nice -n 15 npm run build
+              test -s public/build/manifest.json
+            fi
+            docker exec mskba-ui-php php artisan config:clear
+            docker exec mskba-ui-php php artisan view:clear
+            docker exec mskba-ui-php php artisan route:list --path=uikit
+            test "$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' https://ui.mskba.ru/uikit)" = 401
+            printf 'Preview published: %s\n' "$(git rev-parse HEAD)"
+ | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
+              echo "Runtime/dependency changes require explicit infrastructure review"
+              exit 1
+            fi
+            if [ "$(git branch --show-current)" = feature/ui-studio-933 ]; then
+              git switch -c ui-preview "$before"
+            fi
+            git merge --ff-only "$target"
+            if printf '%s\n' "$changes" | grep -Eq '^(package\.json|package-lock\.json)$'; then
+              nice -n 15 npm ci --no-audit --no-fund
+            fi
+            if printf '%s\n' "$changes" | grep -Eq '^(resources/(css|js|themes)/|vite\.config\.|package\.json$|package-lock\.json$)'; then
+              NODE_OPTIONS=--max-old-space-size=512 RAYON_NUM_THREADS=2 nice -n 15 npm run build
+              test -s public/build/manifest.json
+            fi
+            docker exec mskba-ui-php php artisan config:clear
+            docker exec mskba-ui-php php artisan view:clear
+            docker exec mskba-ui-php php artisan route:list --path=uikit
+            test "$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' https://ui.mskba.ru/uikit)" = 401
+            printf 'Preview published: %s\n' "$(git rev-parse HEAD)"
