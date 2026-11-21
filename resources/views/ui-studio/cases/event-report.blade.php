@@ -30,12 +30,12 @@
         </div>
     </div>
     @if($eventFinished)
-    <div class="studio-report-chat" data-studio-report-chat>
-        <h3>Комментарии</h3>
-        <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
+    <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
             <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
             <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
         </div>
+    <div class="studio-report-chat" data-studio-report-chat>
+        <h3>Комментарии</h3>
         @include('components.event-discussion', ['chatEvent'=>(object)['id'=>'studio-report'], 'chatCanRespond'=>false,'chatShowRoster'=>false])
     </div>
     @endif
@@ -48,6 +48,7 @@
 .studio-report-chat{display:grid;gap:12px;padding-top:16px;border-top:1px solid var(--line);min-width:0}
 .studio-report-chat h3{margin:0}
 .studio-report-chat .venue-play-dialog__wall{border:0;padding:0;min-width:0}
+.studio-report-reactions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:4px}
 .studio-report-reactions button{display:inline-flex;gap:7px;align-items:center}
 .studio-report-reactions svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .studio-report-reactions button[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);background:var(--surface-raised)}

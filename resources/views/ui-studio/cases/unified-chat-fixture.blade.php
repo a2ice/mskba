@@ -266,7 +266,7 @@ if(reportMode){
     // Count active likes, not historical "like" events. Other users' demo votes remain unchanged.
     const othersLikes=Number(pageRoot.dataset.reportInitialLikes)||0;
     const tally=pageRoot.querySelector('[data-report-like-count]');
-    const controls=[...dialog.querySelectorAll('[data-report-reaction]')];
+    const controls=[...dialog.closest('#studio-report').querySelectorAll('[data-report-reaction]')];
     function syncReaction(){
         const likes=othersLikes+Number(reaction==='like');
         if(tally){tally.textContent=String(likes);tally.setAttribute('aria-label','Лайков: '+likes);}
