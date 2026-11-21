@@ -684,11 +684,15 @@ test('venue popup retains minimal event list and opens full inline event details
     assert.match(js, /showEvent\(button\.dataset\.venuePlayPreview\)/);
     assert.match(js, /listFooter\.hidden=true/);
     assert.match(js, /listFooter\.hidden=false/);
-    assert.match(js, /refreshWall\(pane\)/);
+    const shared = readFileSync(new URL('../../resources/js/event-social-wall.js', import.meta.url), 'utf8');
+    assert.match(js, /mountEventDiscussion\(page,/);
+    assert.match(js, /mountEventDiscussion\(dialog,/);
+    assert.match(shared, /refreshWall\(pane\)/);
+    assert.doesNotMatch(js, /function refreshWall|function loadOlder|client_request_id/);
     assert.match(js, /guestResponse\(status\)/);
-    assert.match(js, /attendance\.dataset\.chatActionValue=confirmed\?'left':'confirmed'/);
-    assert.match(js, /attendance\.textContent=confirmed\?'Не пойду':'Пойду'/);
-    assert.match(js, /200-\[\.\.\.field\.value\]\.length/);
+    assert.match(shared, /attendance\.dataset\.chatActionValue=confirmed\?'left':'confirmed'/);
+    assert.match(shared, /attendance\.textContent=confirmed\?'Не пойду':'Пойду'/);
+    assert.match(shared, /200-\[\.\.\.field\.value\]\.length/);
 });
 
 test('event creation select controls reuse the branded native select, not custom compact fields', () => {
