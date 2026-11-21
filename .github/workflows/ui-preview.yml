@@ -33,12 +33,14 @@ jobs:
             exec 9>/var/www/mskba-ui-runtime/publish.lock
             flock -w 60 9
             echo "Publish lock acquired"
-            dirty=$(git status --porcelain --untracked-files=no)
+            git diff --cached --quiet || { echo "Staged changes; refusing overwrite"; exit 1; }
+            # Vite replaces tracked generated assets during local build; preserve them.
+            dirty=$(git status --porcelain --untracked-files=no -- . ':(exclude)public/build/**')
             if [ -n "$dirty" ]; then
               printf "Tracked local changes; refusing overwrite:\n%s\n" "$dirty"
               exit 1
             fi
-            echo "Checkout clean"
+            echo "No local source changes (generated Vite output preserved)"
             network=$(docker inspect --type container --format '{{.HostConfig.NetworkMode}}' mskba-ui-php)
             echo "Preview network mode: $network"
             test "$network" = none
@@ -57,6 +59,10 @@ jobs:
             echo "Before: $before; target: $target"
             git merge-base --is-ancestor "$before" "$target" || { echo "Non-fast-forward or incomplete history"; exit 1; }
             changes=$(git diff --name-only "$before" "$target")
+            if printf '%s\n' "$changes" | grep -q '^public/build/'; then
+              echo "Do not commit compiled assets to ui-preview; build from source"
+              exit 1
+            fi
             if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php$' | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
               echo "Runtime/dependency changes require explicit infrastructure review"
               exit 1
