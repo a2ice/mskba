@@ -259,6 +259,8 @@ final class EventNativePageTest extends TestCase
         $url = route('events.show',$event->routeIdentifier());
         $this->get($url)->assertOk()->assertSee('Завершено')->assertSee('data-report-reaction="like"',false)
             ->assertSee('data-report-like-count',false)->assertSee('data-event-report-wall',false)
+            ->assertSee('placeholder="Написать сообщение"', false)
+            ->assertSee('placeholder="Написать комментарий"', false)
             ->assertDontSee('data-event-participate aria-haspopup',false);
         $this->post(route('events.report.store',$event->routeIdentifier()),['result_description'=>'Отличная игра'])->assertRedirect();
         $this->get($url)->assertOk()->assertSee('Отличная игра');
