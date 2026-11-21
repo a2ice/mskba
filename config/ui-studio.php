@@ -9,7 +9,7 @@ return [
         'event-detail' => [
             'title' => 'Страница мероприятия',
             'issue' => 933,
-            'revision' => 1,
+            'revision' => 2,
             'status' => 'На визуальной приёмке',
             'templates' => ['mskba_app'],
             'states' => ['guest' => 'Гость', 'normal' => 'Авторизован, не участвует', 'confirmed' => 'Пойду', 'tentative' => 'Подумаю', 'booked' => 'Активная аренда', 'inactive' => 'Неактивная аренда', 'editing' => 'Редактирование сообщения'],

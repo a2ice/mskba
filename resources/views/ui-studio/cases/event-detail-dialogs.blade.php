@@ -19,6 +19,7 @@
         <div class="mskba-modal__body mskba-scroll">
         @switch($id)
             @case('studio-participate')
+                <p class="studio-participate-copy">Подтверди участие или выбери «Подумаю», если ещё не определился.</p>
                 <div class="studio-event-choices"><button type="button" class="button primary" data-event-rsvp="confirmed">Пойду</button><button type="button" class="button secondary" data-event-rsvp="tentative">Подумаю</button></div>
                 @break
             @case('studio-leave')

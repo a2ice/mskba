@@ -133,6 +133,7 @@ function rosterRow(name, status = 'confirmed') {
     participant.className = 'venue-play-dialog__participant';
     participant.disabled = !postingAllowed || name === 'Участник';
     li.dataset.studioParticipant = name;
+    li.dataset.studioStatus = status;
     participant.innerHTML = '<span class="venue-play-dialog__avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><span class="venue-play-dialog__participant-status is-confirmed"></span><span class="venue-play-dialog__participant-name"></span>';
     participant.querySelector('.venue-play-dialog__participant-name').textContent = name;
     participant.querySelector('.venue-play-dialog__participant-status').classList.toggle('is-confirmed',status === 'confirmed');
@@ -154,7 +155,33 @@ function rosterRow(name, status = 'confirmed') {
     li.append(participant);
     return li;
 }
-const updateRosterHeading = () => {dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (' + roster.children.length + '/20)';};
+const updateRosterHeading = () => {
+    const count=roster.children.length;
+    dialog.querySelector('[data-venue-play-roster-heading]').textContent = 'Участники (' + count + '/20)';
+    const audience=dialog.querySelector('[data-studio-audience-avatars]');
+    if(!audience)return;
+    audience.replaceChildren();
+    for(const row of [...roster.children].slice(0,7)){
+        const name=row.dataset.studioParticipant;
+        const avatar=document.createElement('span');
+        avatar.className='app-venue-interest-summary__avatar';
+        avatar.dataset.status=row.dataset.studioStatus;
+        avatar.title=name;
+        if(name==='olsen'){
+            const image=document.createElement('img');
+            image.src='/build/assets/logo-mark-100--FePTRLm.png';image.alt='';
+            image.addEventListener('error',()=>avatar.replaceChildren(document.createTextNode('O')),{once:true});
+            avatar.append(image);
+        }else{
+            const icon=row.querySelector('.venue-play-dialog__avatar svg')?.cloneNode(true);
+            if(icon){icon.classList.add('app-venue-interest-summary__profile-icon');avatar.append(icon);}
+        }
+        audience.append(avatar);
+    }
+    const mod=count%100,ones=count%10;
+    const word=mod>=11&&mod<=14?'участников':ones===1?'участник':ones>=2&&ones<=4?'участника':'участников';
+    dialog.querySelector('[data-studio-audience-count]').textContent=count+' '+word;
+};
 for (const name of (pageMode ? ['olsen','Участник'] : ['olsen','superadmin'])) roster.append(rosterRow(name));
 if(pageMode && postingAllowed)roster.append(rosterRow('superadmin',state === 'tentative' ? 'tentative' : 'confirmed'));
 updateRosterHeading();

@@ -3,6 +3,13 @@ const root=document.querySelector('.studio-event-page');
 const state=@json($state);
 let isAuthenticated=state!=='guest', participation=['confirmed','tentative','editing'].includes(state)?(state==='tentative'?'tentative':'confirmed'):'left', pending=null;
 const cta=root.querySelector('[data-event-participate]');
+const heroPhoto=root.querySelector('[data-studio-hero-photo]');
+const hideBrokenPhoto=()=>{heroPhoto.hidden=true;};
+heroPhoto.addEventListener('error',hideBrokenPhoto,{once:true});
+if(heroPhoto.complete&&!heroPhoto.naturalWidth)hideBrokenPhoto();
+root.querySelector('[data-studio-audience-count]').addEventListener('click',event=>{
+    event.preventDefault();document.getElementById('studio-participants').scrollIntoView({block:'start',behavior:'smooth'});
+});
 const nav=root.querySelector('[data-venue-section-nav]');
 const syncNav=()=>root.style.setProperty('--studio-nav-height',nav.offsetHeight+'px');
 new ResizeObserver(syncNav).observe(nav);syncNav();

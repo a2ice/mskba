@@ -1,4 +1,4 @@
-{{-- UI Studio r1 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r2 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
@@ -17,13 +17,20 @@
 <section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat aria-labelledby="studio-event-title">
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
-            <div class="app-venue-gallery__stage"><img class="app-venue-gallery__slide is-active" src="{{ asset('images/venue-placeholder.png') }}" alt="Демонстрационная фотография площадки"></div>
+            <div class="app-venue-gallery__stage">
+                <div class="studio-gallery-fallback"><svg aria-hidden="true"><use href="#ball"/></svg></div>
+                <img class="app-venue-gallery__slide is-active" src="/build/assets/event-about-basketball-CPQ0p9SD.webp" alt="Демонстрационная фотография баскетбольной площадки" data-studio-hero-photo>
+            </div>
         </div>
         <div class="app-venue-intro panel">
             <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span></div>
             <div class="app-entity-heading"><h1 id="studio-event-title">{{ $eventTitle }}</h1></div>
             <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive)<span class="muted">Время предварительное</span>@endunless</div>
             <p class="app-venue-intro__copy">Хуперы любого уровня, главное желание</p>
+            <div class="app-venue-interest-summary__profiles studio-event-audience">
+                <div class="app-venue-interest-summary__avatars" data-studio-audience-avatars aria-hidden="true"></div>
+                <a href="#studio-participants" class="app-venue-interest-summary__count studio-event-audience-count" data-studio-audience-count>2 участника</a>
+            </div>
             <div class="app-venue-intro__actions">
                 <button type="button" class="button primary large" data-event-participate aria-haspopup="dialog">Участвовать</button>
                 <button type="button" class="button secondary large" data-event-open="studio-share" aria-haspopup="dialog">Поделиться</button>
@@ -31,22 +38,33 @@
         </div>
     </div>
     <nav class="app-venue-page__anchors" aria-label="Разделы мероприятия" data-venue-section-nav>
-        @if($hasRental)<a href="#studio-rental">Аренда</a>@endif
+        <a href="#studio-where">Где играем</a>
+        <a href="#studio-rental">Аренда</a>
         <a href="#studio-participants">Участники</a>
         <a href="#studio-discussion">Обсуждение</a>
     </nav>
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
-            @if($hasRental)
+            <section class="panel app-venue-block studio-event-where" id="studio-where">
+                <header class="app-venue-block__header"><h2>Где играем</h2></header>
+                <a class="studio-event-link studio-event-venue-name" href="#studio-where" data-event-open="studio-venue-dialog">{{ $venueName }}</a>
+                <p>{{ $courtName }}</p>
+                <button type="button" class="app-venue-intro__address" data-event-open="studio-venue-dialog"><svg aria-hidden="true"><use href="#pin"/></svg><span>Москва, Лобненская улица, 13</span></button>
+                <div class="app-venue-intro__metro"><span class="app-venue-intro__station"><span class="app-venue-intro__metro-dot" style="--metro-color:#a1a2a3"></span>Яхромская</span></div>
+                <button type="button" class="button secondary" data-event-open="studio-venue-dialog">К площадке</button>
+            </section>
             <section class="panel app-venue-block" id="studio-rental">
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
+                @if($hasRental)
                 <button type="button" class="app-venue-activity studio-rental-card" data-event-open="studio-rental-dialog" aria-haspopup="dialog">
                     <span class="app-venue-activity__meta"><span>{{ $eventTime }}</span><span class="badge {{ $rentalActive ? 'studio-rental-active' : '' }}">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></span>
                     <strong class="app-venue-activity__title">{{ $courtName }}</strong>
                     <span class="app-venue-activity__description">{{ $venueName }}</span>
                 </button>
+                @else
+                <p class="muted">Площадка пока не забронирована.</p>
+                @endif
             </section>
-            @endif
             <section class="panel app-venue-block studio-event-roster" id="studio-participants">
                 @include('components.event-discussion', ['chatEvent'=>$chatEvent,'chatCanRespond'=>false,'chatShowRoster'=>true])
             </section>
@@ -54,13 +72,7 @@
                 <header class="app-venue-block__header"><h2>Обсуждение</h2></header>
             </section>
         </div>
-        <aside class="app-venue-page__aside panel studio-event-aside" aria-label="Площадка и зал">
-            <strong>Площадка и зал</strong>
-            <a class="studio-event-link" href="#studio-event-venue" data-event-open="studio-venue-dialog">{{ $venueName }}</a>
-            <p>{{ $courtName }}</p>
-            <button type="button" class="app-venue-intro__address" data-event-open="studio-venue-dialog"><svg aria-hidden="true"><use href="#pin"/></svg><span>Москва, Лобненская улица, 13</span></button>
-            <div class="app-venue-intro__metro"><span class="app-venue-intro__station"><span class="app-venue-intro__metro-dot" style="--metro-color:#a1a2a3"></span>Яхромская</span></div>
-            <button type="button" class="button secondary full" data-event-open="studio-venue-dialog">К площадке</button>
+        <aside class="app-venue-page__aside panel studio-event-aside" aria-label="Игры">
             <div class="studio-event-games"><strong>Игры</strong><button type="button" class="app-venue-activity" data-event-open="studio-game-dialog"><strong class="app-venue-activity__title">Игра на м. Яхромская</strong><span class="app-venue-activity__description">Баскетбол · 12:00</span></button></div>
         </aside>
     </div>
