@@ -25,6 +25,10 @@
     $feedback = $finished && $eventWallCanView ? app(\App\Modules\Social\Application\Services\SocialWallService::class)->reportFeedback($event, auth()->user()) : ['likes'=>0,'can_react'=>false,'reaction'=>null];
     $canJoin = $editable && $eventWallCanView && (($event->status === EventStatusEnum::PUBLISHED && ($event->visibility->value === 'public' || $owner || $currentParticipant)) || ($owner && $event->status === EventStatusEnum::DRAFT && !$event->starts_at));
     $reportMedia = $finished ? $event->media->concat($event->media()->where('collection','event_report_media')->orderBy('sort_order')->get()) : collect();
+    $rentalActive = $booking && $booking->status->value === 'confirmed' && $booking->ends_at?->isFuture();
+    $rentalCreator = $booking?->creatorActor?->user?->canonical();
+    $rentalCreatorName = $rentalCreator && app(\App\Modules\Identity\Application\Services\UserPrivacyAccessService::class)->allows($rentalCreator, auth()->user()?->canonical(), \App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum::PROFILE)
+        ? ($rentalCreator->nickname ?: $rentalCreator->username ?: 'Организатор') : 'Организатор';
     $venueUrl = route('venues.show', $venue->routeIdentifier());
     $shareUrl = route('events.show', $event->routeIdentifier());
     $confirmedCount = app(\App\Modules\Event\Application\Services\EventIdentityParticipationService::class)->confirmedIdentityCount($event);
@@ -106,7 +110,7 @@
             <section class="panel app-venue-block" id="event-rental">
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
             @if($booking)
-                <button type="button" class="app-event-booking" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span>Бронирование №{{ $booking->id }}</span><strong>{{ $booking->status->label() }}</strong><svg class="app-event-booking__arrow" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"/></svg></button>
+                <button type="button" class="app-venue-activity" data-event-dialog-open="event-booking" aria-haspopup="dialog"><span class="app-venue-activity__meta"><span>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('H:i') }}</span><span class="badge">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></span><strong class="app-venue-activity__title">{{ $courtLabel }}</strong><span class="app-venue-activity__description">{{ $venue->name }}</span></button>
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
                 @if($canEdit && $event->starts_at && $event->status === EventStatusEnum::PUBLISHED)
@@ -182,7 +186,7 @@
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>
-    <div class="mskba-modal__body mskba-scroll app-event-panel"><span class="badge">{{ $booking->status->label() }}</span><p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p>
+    <div class="mskba-modal__body mskba-scroll app-event-panel"><span class="badge">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span><p>{{ $venue->name }} · {{ $courtLabel }}</p><p>{{ $address }}</p><p>Организатор аренды: {{ $rentalCreatorName }}</p>
         <p>{{ $booking->starts_at?->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $booking->ends_at?->setTimezone($timezone)->format('d.m.Y H:i') }}</p>
         @if($booking->scope)<p>{{ $booking->scope->label() }}</p>@endif
     </div>
@@ -278,6 +282,13 @@ document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.ad
 document.querySelectorAll('.app-event-dialog').forEach(dialog=>{let outside=false;const onBackdrop=e=>{const rect=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom);};dialog.addEventListener('pointerdown',e=>outside=onBackdrop(e));dialog.addEventListener('pointerup',e=>{if(outside&&onBackdrop(e))dialog.close();outside=false;});dialog.addEventListener('pointercancel',()=>outside=false);});
 document.querySelectorAll('[data-event-dialog-next]').forEach(b=>b.addEventListener('click',()=>{b.closest('dialog')?.close();document.getElementById(b.dataset.eventDialogNext)?.showModal();}));
 document.querySelector('[data-event-copy]')?.addEventListener('click',async e=>{try{await navigator.clipboard.writeText(e.currentTarget.dataset.eventCopy);e.currentTarget.textContent='Ссылка скопирована';}catch{e.currentTarget.textContent='Не удалось скопировать';}});
+document.querySelector('#event-report-editor form')?.addEventListener('submit',event=>{
+    const form=event.currentTarget,files=[...form.querySelectorAll('input[type="file"]')].flatMap(input=>[...input.files]);
+    const warning=form.querySelector('[data-report-upload-error]');
+    const invalid=files.some(f=>f.size>10*1024*1024)||files.reduce((n,f)=>n+f.size,0)>18*1024*1024;
+    warning.hidden=!invalid;warning.textContent=invalid?'До 10 МБ на файл, до 18 МБ за одну загрузку.':'';
+    if(invalid)event.preventDefault();
+});
 document.querySelectorAll('[data-event-media-open]').forEach(b=>b.addEventListener('click',()=>{
     const viewer=document.getElementById('event-media-viewer'),body=viewer.querySelector('[data-event-media-body]');
     const media=document.createElement(b.dataset.mediaKind==='video'?'video':'img');media.src=b.dataset.eventMediaOpen;

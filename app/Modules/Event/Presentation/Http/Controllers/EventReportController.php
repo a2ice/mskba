@@ -52,8 +52,12 @@ final class EventReportController extends Controller
             'photos'=>['sometimes','array','max:12'],
             'photos.*'=>['file','image','mimes:jpg,jpeg,png,webp','max:10240','dimensions:max_width=6000,max_height=6000'],
             'videos'=>['sometimes','array','max:6'],
-            'videos.*'=>['file','mimes:mp4,webm','max:51200'],
+            'videos.*'=>['file','mimes:mp4,webm','max:10240'],
         ]);
+        $files = [...$request->file('photos', []), ...$request->file('videos', [])];
+        if (array_sum(array_map(fn ($file) => $file->getSize(), $files)) > 18 * 1024 * 1024) {
+            throw ValidationException::withMessages(['photos'=>'За одну загрузку — не более 18 МБ.']);
+        }
         $saved = [];
         try {
             DB::transaction(function () use ($item, $request, $data, $normalizer, &$saved): void {
@@ -82,7 +86,9 @@ final class EventReportController extends Controller
                     if (!Storage::disk('local')->putFileAs(dirname($path),$file,basename($path))) throw new \RuntimeException('Не удалось сохранить видео.');
                     $locked->media()->create(['collection'=>'event_report_media','source'=>'upload','disk'=>'local','path'=>$path,'mime'=>$mime,'size'=>$file->getSize(),'sort_order'=>$order++]);
                 }
-                $locked->forceFill(['result_description'=>$data['result_description']??null])->save();
+                if (array_key_exists('result_description', $data)) {
+                    $locked->forceFill(['result_description'=>$data['result_description']])->save();
+                }
             });
         } catch (Throwable $e) {
             Storage::disk('local')->delete($saved);
