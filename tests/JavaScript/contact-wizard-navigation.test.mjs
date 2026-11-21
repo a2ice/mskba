@@ -40,3 +40,19 @@ test('normal non-email steps navigate back to chosen method and completion hides
         footer:false, back:false, next:false, backTarget:null, backLabel:'Назад'
     });
 });
+
+import { createContactCodeAutoSubmit } from '../../resources/themes/mskba_app/js/contact-code-auto-submit.js';
+
+test('auto submit once for a contact, including paste; later attempts are manual', () => {
+    const values = new Map();
+    const storage = {getItem: key => values.get(key), setItem: (key,value) => values.set(key,value)};
+    const flow = createContactCodeAutoSubmit(storage);
+    assert.equal(flow.canSubmit(12, '12345'), false);
+    assert.equal(flow.canSubmit(12, '12345x'), false);
+    assert.equal(flow.canSubmit(null, '123456'), false);
+    assert.equal(flow.canSubmit(12, '123456'), true);
+    flow.markAttempt(12);
+    assert.equal(flow.canSubmit(12, '654321'), false);
+    assert.equal(createContactCodeAutoSubmit(storage).canSubmit(12, '654321'), false);
+    assert.equal(flow.canSubmit(13, '123456'), true);
+});

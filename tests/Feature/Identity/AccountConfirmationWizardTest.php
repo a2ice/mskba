@@ -188,7 +188,7 @@ final class AccountConfirmationWizardTest extends TestCase
         $firstUser = $this->makeUser();
         $otherUser = $this->makeUser();
         $firstUser->contacts()->create(['type' => ContactTypeEnum::EMAIL,
-            'value' => 'occupied@example.test', 'is_primary' => true]);
+            'value' => 'occupied@example.test', 'is_primary' => true, 'verified_at' => now()]);
 
         $this->actingAs($otherUser)->postJson(route('account.confirmation.contact.store'), [
             'type' => 'email', 'value' => 'not-an-address',

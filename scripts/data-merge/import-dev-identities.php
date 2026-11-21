@@ -242,7 +242,7 @@ try {
             continue;
         }
         $data = $c;
-        unset($data['id'], $data['user_email_key']);
+        unset($data['id'], $data['user_email_key'], $data['user_phone_key']);
         $data['contactable_id'] = $userMap[$sid];
         insertRow($dst, 'contacts', $data);
         $copied['contacts']++;
