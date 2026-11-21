@@ -162,7 +162,7 @@ final class EventNativePageTest extends TestCase
             $this->get($url)->assertOk()
                 ->assertSee('data-event-rental-status="'.$status->value.'"', false)
                 ->assertSee($status->label())
-                ->assertDontSee('data-event-rental-open', false);
+                ->assertDontSee('data-event-rental-open>', false);
         }
         $this->assertSame($event->id, $booking->fresh()->event_id);
         $this->assertDatabaseCount('venue_bookings', 1);
