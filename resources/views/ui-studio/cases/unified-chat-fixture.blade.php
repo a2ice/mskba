@@ -140,12 +140,24 @@ function startEdit(item) {
     sync();
     field.focus();
 }
+function insertMention(name) {
+    if (!postingAllowed || !name || name === 'Участник') return;
+    const prefix = '@' + name + ' ';
+    if (!field.value.startsWith(prefix) && field.value.length + prefix.length <= field.maxLength) {
+        field.setRangeText(prefix, 0, 0, 'end');
+    }
+    sync();
+    field.focus({preventScroll:true});
+    field.setSelectionRange(field.value.length, field.value.length);
+    scrollToMessagesEnd();
+}
+const canMentionReport = () => eventFinished && viewerAuthenticated && pageRoot.dataset.reportCommentsEnabled === 'true';
 function rosterRow(name, status = 'confirmed') {
     const li = document.createElement('li');
     const participant = document.createElement('button');
     participant.type = 'button';
     participant.className = 'venue-play-dialog__participant';
-    participant.disabled = !postingAllowed || name === 'Участник';
+    participant.disabled = !(postingAllowed || canMentionReport()) || name === 'Участник';
     li.dataset.studioParticipant = name;
     li.dataset.studioStatus = status;
     participant.innerHTML = '<span class="venue-play-dialog__avatar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><span class="venue-play-dialog__participant-status is-confirmed"></span><span class="venue-play-dialog__participant-name"></span>';
@@ -156,15 +168,8 @@ function rosterRow(name, status = 'confirmed') {
         star.title = 'Организатор';star.textContent = '★';participant.append(star);
     }
     participant.addEventListener('click', () => {
-        if (form.dataset.chatCanPost !== 'true') return;
-        const prefix = '@' + name + ' ';
-        if (!field.value.startsWith(prefix) && field.value.length + prefix.length <= field.maxLength) {
-            field.setRangeText(prefix, 0, 0, 'end');
-        }
-        sync();
-        field.focus({preventScroll:true});
-        field.setSelectionRange(field.value.length, field.value.length);
-        scrollToMessagesEnd();
+        if(eventFinished && canMentionReport())pageRoot.dispatchEvent(new CustomEvent('studio:report-mention',{detail:{name}}));
+        else insertMention(name);
     });
     li.append(participant);
     return li;
@@ -242,7 +247,7 @@ function setPosting(allowed) {
     } else if(eventFinished)commentNotice.textContent='Мероприятие завершено. Обсуждение закрыто.';
     else if(pageMode && pageRoot.dataset.discussionEnabled !== 'true')commentNotice.textContent='Обсуждение закрыто.';
     else commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
-    roster?.querySelectorAll('button').forEach(button => button.disabled = !postingAllowed || button.closest('li').dataset.studioParticipant === 'Участник');
+    roster?.querySelectorAll('button').forEach(button => button.disabled = !(postingAllowed || canMentionReport()) || button.closest('li').dataset.studioParticipant === 'Участник');
     messages.querySelectorAll('.venue-play-dialog__edit').forEach(button=>button.hidden=!postingAllowed);
     sync();
 }
@@ -252,6 +257,7 @@ if(pageMode || reportMode){
     pageRoot.addEventListener('studio:authenticated',()=>{viewerAuthenticated=true;setPosting(mayPost());});
 }
 if(reportMode){
+    pageRoot.addEventListener('studio:report-mention',event=>insertMention(event.detail.name));
     let reaction=null, pendingReaction=null;
     const controls=[...dialog.querySelectorAll('[data-report-reaction]')];
     function applyReaction(value){
