@@ -9,10 +9,18 @@ return [
         'event-detail' => [
             'title' => 'Страница мероприятия',
             'issue' => 933,
-            'revision' => 2,
+            'revision' => 3,
             'status' => 'На визуальной приёмке',
             'templates' => ['mskba_app'],
             'states' => ['guest' => 'Гость', 'normal' => 'Авторизован, не участвует', 'confirmed' => 'Пойду', 'tentative' => 'Подумаю', 'booked' => 'Активная аренда', 'inactive' => 'Неактивная аренда', 'editing' => 'Редактирование сообщения'],
+        ],
+        'venue-map' => [
+            'title' => 'Карта площадки — общий компонент',
+            'issue' => 933,
+            'revision' => 1,
+            'status' => 'На визуальной приёмке',
+            'templates' => ['mskba_app'],
+            'states' => ['normal' => 'Со страницы площадки', 'event' => 'Со страницы мероприятия'],
         ],
         'unified-chat' => [
             'title' => 'Единый чат — редактор сообщения',

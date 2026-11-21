@@ -1,5 +1,6 @@
 import { loadYandexMaps } from '../../mskba_dark/js/core/yandex-maps.js';
 import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
+import { venueMapBalloonAction } from '../../../js/components/venue-map-balloon.js';
 
 /*
  * Shared MSKBA venue map: one dialog, one nearby search and one Yandex map.
@@ -7,7 +8,7 @@ import { venuePlacemark } from '../../mskba_dark/js/core/venue-map-pins.js';
  * resolve the same public context through GET /api/v1/venues/{id}.
  */
 const dialog = document.querySelector('[data-venue-map-dialog]');
-if (dialog) {
+if (dialog && !dialog.hasAttribute('data-map-preview')) {
     const canvas = dialog.querySelector('[data-venue-map-frame]');
     const title = dialog.querySelector('[data-venue-map-title]');
     const address = dialog.querySelector('.app-venue-map-options__address');
@@ -109,6 +110,7 @@ if (dialog) {
             map.geoObjects.add(venuePlacemark(own, {
                 hintContent: canvas.dataset.name || 'Площадка',
                 balloonContentHeader: safeHtml(canvas.dataset.name || 'Площадка'),
+                balloonContentBody: venueMapBalloonAction(canvas.dataset.venueUrl, dialog.dataset.currentVenueLink === 'true'),
             }));
             metroCollection = new window.ymaps.GeoObjectCollection();
             metroStations().forEach(station => {
@@ -153,6 +155,7 @@ if (dialog) {
         title.textContent = name + ' — на карте';
         address.textContent = String(venue.address || '');
         canvas.dataset.name = name;
+        canvas.dataset.venueUrl = String(venue.venue_url || venue.url || '');
         canvas.dataset.lat = venue.latitude == null ? '' : String(venue.latitude);
         canvas.dataset.lon = venue.longitude == null ? '' : String(venue.longitude);
         canvas.dataset.metroStations = JSON.stringify(details.metro_stations || []);
@@ -206,9 +209,13 @@ if (dialog) {
 
     dialog.querySelectorAll('[data-venue-overlay-close]').forEach(button =>
         button.addEventListener('click', () => dialog.close()));
-    dialog.addEventListener('click', event => {
-        if (event.target === dialog) dialog.close();
+    let outsidePointer = null;
+    dialog.addEventListener('pointerdown', event => { outsidePointer = event.target === dialog ? event.pointerId : null; });
+    dialog.addEventListener('pointerup', event => {
+        if (event.target === dialog && outsidePointer === event.pointerId) dialog.close();
+        outsidePointer = null;
     });
+    dialog.addEventListener('pointercancel', () => { outsidePointer = null; });
     radius?.addEventListener('input', () => {
         distance.textContent = radius.value;
     });
@@ -247,14 +254,14 @@ if (dialog) {
             const venues = Array.isArray(payload.venues) ? payload.venues : [];
             venues.forEach(venue => {
                 if (!validCoords(venue.latitude, venue.longitude)) return;
-                const href = new URL(venue.url || '', location.origin);
-                if (href.origin !== location.origin || !/^\/venues\/\d+-/.test(href.pathname)) return;
+                const action = venueMapBalloonAction(venue.url, true);
+                if (!action) return;
                 nearbyCollection.add(venuePlacemark(
                     [Number(venue.latitude), Number(venue.longitude)],
                     {
                         hintContent: String(venue.name || 'Площадка'),
                         balloonContentHeader: safeHtml(venue.name),
-                        balloonContentBody: '<a href="' + safeHtml(href.pathname) + '">Открыть площадку</a>',
+                        balloonContentBody: action,
                     },
                 ));
             });

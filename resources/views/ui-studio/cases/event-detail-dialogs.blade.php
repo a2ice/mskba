@@ -8,7 +8,6 @@
         'studio-share-internal'=>'Поделиться внутри MSKBA',
         'studio-share-external'=>'Поделиться',
         'studio-rental-dialog'=>'Аренда',
-        'studio-venue-dialog'=>'Площадка',
         'studio-game-dialog'=>'Игра',
     ];
 @endphp
@@ -57,9 +56,6 @@
                     <div><dt>Статус</dt><dd><span class="badge {{ $rentalActive ? 'studio-rental-active' : '' }}">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></dd></div>
                     <div><dt>Организатор аренды</dt><dd>olsen</dd></div>
                 </dl>
-                @break
-            @case('studio-venue-dialog')
-                <strong>{{ $venueName }}</strong><p>{{ $courtName }}</p><p>Москва, Лобненская улица, 13</p>
                 @break
             @case('studio-game-dialog')
                 <strong>{{ $eventTitle }}</strong><p>{{ $eventTime }}</p><p>{{ $courtName }}</p>

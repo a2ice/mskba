@@ -774,3 +774,12 @@ dialog.app-venue-day-dialog>.app-venue-overlay__header h2{
 .app-venue-day-dialog.is-availability-view .app-venue-day-dialog__footer{grid-template-columns:1fr}
 .app-venue-day-dialog.is-availability-view [data-venue-day-book],
 .app-venue-day-dialog.is-availability-view .app-venue-day-dialog__selection{display:none}
+
+/* The short venue balloon is shared by the event and venue map dialog. */
+.app-venue-map-dialog .app-venue-overlay__header{display:grid;grid-template-columns:16px minmax(0,1fr) 44px;gap:10px;align-items:center;text-align:center}
+.app-venue-map-dialog .app-venue-overlay__header button{justify-self:end;width:44px;height:44px}
+.app-venue-map-dialog .app-venue-overlay__header h2{min-width:0;overflow-wrap:anywhere}
+.app-venue-map-dialog .app-venue-map-frame{position:relative}
+.app-venue-map-dialog .mskba-venue-map-balloon-action{display:flex;justify-content:center;align-items:center;box-sizing:border-box;min-height:36px;margin-top:8px;padding:6px 12px;border-radius:7px;background:var(--accent,#b94c00);color:var(--accent-contrast,#fff)!important;font:600 13px/1.3 system-ui,sans-serif;text-decoration:none!important;white-space:nowrap}
+.app-venue-map-dialog .mskba-venue-map-balloon-action:hover{background:var(--accent-hover,#a34400)}
+html:has(.app-venue-map-dialog[open]){overflow:hidden}

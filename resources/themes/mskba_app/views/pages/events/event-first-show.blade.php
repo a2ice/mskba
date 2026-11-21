@@ -136,7 +136,7 @@
 @if($owner)
     @include('theme::pages.events.partials.lifecycle-dialog', ['restoring' => false])
 @endif
-@include('theme::partials.venue-map-dialog', ['mapVenue' => null])
+@include('theme::partials.venue-map-dialog', ['mapVenue' => null, 'mapShowCurrentVenueLink' => true])
 @if($booking)
 <dialog class="mskba-modal app-event-dialog" id="event-booking" aria-labelledby="event-booking-title">
     <header class="mskba-modal__header"><h2 id="event-booking-title">Бронирование №{{ $booking->id }}</h2><button type="button" class="icon-button" data-event-dialog-close aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6l-12 12M6 6l12 12"/></svg></button></header>

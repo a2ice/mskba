@@ -1,4 +1,4 @@
-{{-- UI Studio r2 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r3 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
@@ -9,6 +9,7 @@
     $eventTitle = 'Игра на м. Яхромская';
     $venueName = 'Кампус на Яхромской «Молния»';
     $courtName = 'Универсальный зал 1';
+    $studioVenueUrl = 'https://mskba.ru/venues/11-kampus-na-yakhromskoy-molniya';
     $eventTime = '22 ноября 2026 · 12:00–13:30';
 @endphp
 @include('components.event-discussion-styles')
@@ -47,11 +48,11 @@
         <div class="app-venue-page__sections">
             <section class="panel app-venue-block studio-event-where" id="studio-where">
                 <header class="app-venue-block__header"><h2>Где играем</h2></header>
-                <a class="studio-event-link studio-event-venue-name" href="#studio-where" data-event-open="studio-venue-dialog">{{ $venueName }}</a>
+                <a class="studio-event-link studio-event-venue-name" href="{{ $studioVenueUrl }}" target="_blank" rel="noopener noreferrer">{{ $venueName }}</a>
                 <p>{{ $courtName }}</p>
-                <button type="button" class="app-venue-intro__address" data-event-open="studio-venue-dialog"><svg aria-hidden="true"><use href="#pin"/></svg><span>Москва, Лобненская улица, 13</span></button>
+                <button type="button" class="app-venue-intro__address" data-venue-map-open aria-haspopup="dialog"><svg aria-hidden="true"><use href="#pin"/></svg><span>Москва, Лобненская улица, 13</span></button>
                 <div class="app-venue-intro__metro"><span class="app-venue-intro__station"><span class="app-venue-intro__metro-dot" style="--metro-color:#a1a2a3"></span>Яхромская</span></div>
-                <button type="button" class="button secondary" data-event-open="studio-venue-dialog">К площадке</button>
+                <a class="button secondary" href="{{ $studioVenueUrl }}" target="_blank" rel="noopener noreferrer">К площадке</a>
             </section>
             <section class="panel app-venue-block" id="studio-rental">
                 <header class="app-venue-block__header"><h2>Аренда</h2></header>
@@ -79,6 +80,10 @@
 </section>
 @include('components.event-discussion-delete-dialog')
 @include('ui-studio.cases.event-detail-dialogs')
+@include('ui-studio.cases.venue-map-preview', [
+    'mapShowCurrentVenueLink' => true,
+    'mapPreview' => ['name'=>$venueName, 'address'=>'Москва, Лобненская улица, 13', 'url'=>$studioVenueUrl],
+])
 <script>
 // Split the actual shared discussion into the two page sections before mounting.
 const eventRoot=document.querySelector('.studio-event-page');
