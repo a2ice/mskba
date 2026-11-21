@@ -58,6 +58,7 @@ function mountVenuePopup(dialog,authNotice){
     const listFooter=dialog.querySelector('[data-venue-play-list-footer]');
     const detailFooter=dialog.querySelector('[data-venue-play-detail-footer]');
     const title=dialog.querySelector('[data-venue-play-title]');
+    const messagesJump=dialog.querySelector('[data-venue-play-messages-jump]');
     const resumeKey='mskba:venue-play-resume:'+location.pathname;
     let selectedId=null,pendingResponse=null;
     const getPane=id=>dialog.querySelector('[data-venue-play-pane="'+Number(id)+'"]');
@@ -78,6 +79,7 @@ function mountVenuePopup(dialog,authNotice){
     function showList(){
         selectedId=null;list.hidden=false;detail.hidden=true;listFooter.hidden=false;detailFooter.hidden=true;
         title.textContent='Хочу здесь играть';
+        messagesJump.hidden=true;
     }
     function showEvent(id){
         const pane=getPane(id);if(!pane)return;
@@ -87,6 +89,7 @@ function mountVenuePopup(dialog,authNotice){
         detail.scrollTop=0;
         detail.querySelectorAll('[data-venue-play-pane]').forEach(el=>{el.hidden=el!==pane;});
         title.textContent='Мероприятие';
+        messagesJump.hidden=false;
         controller.paintButtons(pane);
         if(controller.savingPane!==pane)void controller.refreshRoster(pane);
     }
@@ -112,6 +115,7 @@ function mountVenuePopup(dialog,authNotice){
     });
     dialog.querySelectorAll('[data-venue-play-preview]').forEach(button=>
         button.addEventListener('click',()=>showEvent(button.dataset.venuePlayPreview)));
+    messagesJump.addEventListener('click',()=>{const pane=getPane(selectedId);if(pane)controller.jumpToMessages(pane);});
     dialog.querySelector('[data-venue-play-back]')?.addEventListener('click',showList);
     dialog.querySelectorAll('[data-venue-play-close]').forEach(button=>
         button.addEventListener('click',()=>dialog.close()));

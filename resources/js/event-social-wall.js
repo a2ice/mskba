@@ -55,6 +55,30 @@ export function mountEventDiscussion(root, {
     const rosterLoads=new WeakMap(), wallPages=new WeakMap();
     const messages=pane=>pane.querySelector('[data-venue-play-messages]');
     const scrollBottom=pane=>{const list=messages(pane);list.scrollTop=list.scrollHeight;};
+    const jumpToMessages=pane=>{
+        const wall=pane.querySelector('.venue-play-dialog__wall');
+        wall.scrollIntoView({block:'end'});
+        scrollBottom(pane);
+    };
+    const entryIds=list=>[...list.querySelectorAll('[data-entry-id]')].map(node=>Number(node.dataset.entryId));
+    const regroup=list=>{
+        const items=[...list.querySelectorAll('[data-entry-id]')].sort((a,b)=>
+            (a.dataset.messageStamp||'').localeCompare(b.dataset.messageStamp||'')||Number(a.dataset.entryId)-Number(b.dataset.entryId));
+        const fragment=document.createDocumentFragment();
+        let previousDay='';
+        for(const item of items){
+            const day=(item.dataset.messageStamp||'').slice(0,10);
+            if(day&&day!==previousDay){
+                const separator=document.createElement('li');separator.className='venue-play-dialog__date';
+                const label=document.createElement('time');label.dateTime=day;
+                label.textContent=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'}).format(new Date(day+'T00:00:00Z'));
+                separator.append(label);fragment.append(separator);previousDay=day;
+            }
+            fragment.append(item);
+        }
+        list.querySelectorAll('.venue-play-dialog__date').forEach(node=>node.remove());
+        list.append(fragment);
+    };
     const confirmDelete=deletionConfirmation(deleteDialog);
     const csrf=()=>document.querySelector('meta[name="csrf-token"]')?.content||'';
     const notice=(pane,message,error=false)=>{
@@ -134,6 +158,8 @@ export function mountEventDiscussion(root, {
             const full=String(member.name||'Участник'),chars=[...full];
             name.textContent=chars.length>20?chars.slice(0,20).join('')+'...':full;
             if(chars.length>20)name.title=full;
+            // Only use the already privacy-filtered public nickname, never an internal identity.
+            if(member.url&&member.name&&member.name!=='Участник')row.dataset.chatMention=full;
             row.append(avatar,dot,name);
             if(member.organizer){
                 const star=document.createElement('span');star.className='venue-play-dialog__participant-star';
@@ -176,7 +202,10 @@ export function mountEventDiscussion(root, {
             if(entry.kind==='event_rsvp_changed'&&['confirmed','tentative','left'].includes(entry.rsvp_status))item.dataset.rsvpStatus=entry.rsvp_status;
             item.classList.toggle('is-deleted',!!entry.deleted);
             const label=document.createElement('strong');label.textContent=entry.system?'Событие':(entry.actor||'Участник');
-            const time=document.createElement('time');time.textContent=(entry.date||'')+(entry.edited?' (изменено)':'');
+            const time=document.createElement('time');
+            const stamp=/^([0-9]{2})\.([0-9]{2})\.([0-9]{4}) ([0-9]{2}:[0-9]{2})$/.exec(entry.date||'');
+            if(stamp){item.dataset.messageStamp=stamp[3]+'-'+stamp[2]+'-'+stamp[1]+'T'+stamp[4];time.dateTime=item.dataset.messageStamp;time.title=entry.date;}
+            time.textContent=(stamp?stamp[4]:(entry.date||''))+(entry.edited?' (изменено)':'');
             const body=document.createElement('p');body.textContent=entry.text||'';
             item.append(label,time,body);
             if(entry.can_edit&&entry.edit_url){
@@ -187,16 +216,10 @@ export function mountEventDiscussion(root, {
             }
             if(existing){existing.replaceWith(item);}
             else if(prepend){older.append(item);}
-            else{
-                const last=list.lastElementChild;
-                if(!last||Number(last.dataset.entryId)<Number(entry.id))list.append(item);
-                else{
-                    const next=[...list.children].find(node=>Number(node.dataset.entryId)>Number(entry.id));
-                    list.insertBefore(item,next||null);
-                }
-            }
+            else list.append(item);
         }
         if(prepend)list.prepend(older);
+        regroup(list);
         const empty=pane.querySelector('[data-venue-play-wall-empty]');
         empty.hidden=list.childElementCount>0;
         if(!empty.hidden)empty.textContent='Сообщений пока нет.';
@@ -216,7 +239,7 @@ export function mountEventDiscussion(root, {
     }
     async function loadOlder(pane){
         const list=messages(pane),page=wallPages.get(pane);
-        const first=list.firstElementChild?.dataset.entryId;
+        const ids=entryIds(list),first=ids.length?Math.min(...ids):null;
         if(!page?.hasOlder||page.loading||!first||list.scrollTop>24||list.clientHeight===0)return;
         page.loading=true;
         try{
@@ -242,7 +265,7 @@ export function mountEventDiscussion(root, {
                 return;
             }
             // Merge new entries instead of throwing away history already loaded.
-            let cursor=Number(list.lastElementChild.dataset.entryId);
+            let cursor=Math.max(...entryIds(list));
             while(true){
                 const url=new URL(pane.dataset.eventWallUrl,location.href);
                 url.searchParams.set('after_id',String(cursor));
@@ -252,7 +275,7 @@ export function mountEventDiscussion(root, {
                 appendEntries(pane,entries);
                 paintWallAccess(pane,response);
                 if(entries.length<50)break;
-                cursor=Number(entries[entries.length-1].id);
+                cursor=Math.max(cursor,...entries.map(entry=>Number(entry.id)));
             }
             if(posted&&!list.querySelector('[data-entry-id="'+Number(posted.id)+'"]'))appendEntries(pane,[posted]);
             if(follow||atBottom)scrollBottom(pane);
@@ -329,6 +352,20 @@ export function mountEventDiscussion(root, {
             submit.title='Отправить сообщение';submit.setAttribute('aria-label',submit.title);count();
         };
         field.addEventListener('input',count);
+        pane.querySelector('[data-venue-play-participants]')?.addEventListener('click',event=>{
+            const row=event.target.closest('[data-chat-mention]');
+            if(!row||form.dataset.chatCanPost!=='true'||sending||field.disabled||
+                event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+            event.preventDefault();
+            const prefix='@'+row.dataset.chatMention+' ';
+            if(!field.value.startsWith(prefix)&&field.value.length+prefix.length<=field.maxLength){
+                field.setRangeText(prefix,0,0,'end');
+            }
+            count();
+            field.focus({preventScroll:true});
+            field.setSelectionRange(field.value.length,field.value.length);
+            jumpToMessages(pane);
+        });
         remove.addEventListener('click',()=>{
             if(!editing?.deleteUrl||sending)return;
             const selected=editing;
@@ -340,7 +377,9 @@ export function mountEventDiscussion(root, {
                 }finally{sending=false;submit.disabled=false;field.disabled=false;cancel.disabled=false;remove.disabled=false;}
             });
         });
-        cancel.addEventListener('click',()=>{if(!sending){finishEdit();field.focus();}});
+        form.addEventListener('mskba:chat-action',event=>{
+            if(event.detail.id==='cancel-edit'&&!sending){finishEdit();field.focus();}
+        });
         pane.querySelector('[data-venue-play-messages]').addEventListener('click',event=>{
             const edit=event.target.closest('[data-venue-play-edit]');
             if(!edit||sending||form.dataset.chatCanPost!=='true')return;
@@ -362,7 +401,7 @@ export function mountEventDiscussion(root, {
             try{
                 if(editing){
                     const response=await request(editing.url,'PATCH',{body,version:editing.version});
-                    appendEntries(pane,[response.entry]);finishEdit();notice(pane,'');
+                    appendEntries(pane,[response.entry]);finishEdit();scrollBottom(pane);notice(pane,'');
                 }else{
                     const response=await request(pane.dataset.eventPostUrl,'POST',{body,client_request_id:crypto.randomUUID()});
                     field.value='';count();
@@ -374,7 +413,7 @@ export function mountEventDiscussion(root, {
     }
 
     const controller={
-        paintButtons, refreshRoster, refreshWall, respond,
+        paintButtons, refreshRoster, refreshWall, respond, jumpToMessages,
         get savingPane(){return savingPane;},
         get authenticated(){return authenticated;},
         setAuthenticated(value){authenticated=!!value;},
