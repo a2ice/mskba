@@ -43,6 +43,32 @@ final class SocialIntegrationSettingsTest extends TestCase
         $this->assertTrue($settings->display('telegram')['webhook_secret']);
     }
 
+    public function test_vk_oauth_state_is_single_use_and_token_is_stored_only_after_photo_probe(): void
+    {
+        config([
+            'app.env' => 'production', 'app.url' => 'https://mskba.ru',
+            'vk.wall.group_id' => 174334075, 'vk.wall.mini_app_id' => 54729290,
+            'vk.wall.mini_app_secret' => 'app-secret', 'vk.wall.community_token' => 'community-secret',
+        ]);
+        $this->actingAs($this->admin());
+        Http::fake([
+            'https://oauth.vk.ru/access_token' => Http::response(['access_token' => 'photo-secret', 'expires_in' => 86400]),
+            'https://api.vk.com/method/photos.getWallUploadServer' => Http::response(['response' => ['upload_url' => 'https://upload.vk.com/photo']]),
+        ]);
+        $this->post(route('backoffice.vk-publisher.authorize'))->assertRedirect();
+        $flow = session('vk_publisher_oauth');
+        $this->assertSame('https://mskba.ru/backoffice/social-integrations/vk/callback', $flow['redirect']);
+        $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
+            ->assertRedirect('/backoffice/social-integrations')->assertSessionHas('social_status');
+        $this->assertSame('photo-secret', config('vk.wall.user_token'));
+        $this->assertTrue(config('vk.wall.user_token_expires_at') > now()->timestamp);
+        $this->assertTrue(app(SocialIntegrationSettings::class)->display('vk')['mini_app_secret']);
+        $this->assertStringNotContainsString('photo-secret', DB::table('social_integration_settings')->first()->encrypted_settings);
+        $this->get(route('backoffice.vk-publisher.callback', ['state' => $flow['state'], 'code' => 'test-code']))
+            ->assertSessionHasErrors('social');
+        Http::assertSentCount(2);
+    }
+
     public function test_normal_user_cannot_change_social_settings(): void
     {
         $user = User::factory()->create(['system_role' => UserSystemRoleEnum::USER, 'status' => UserStatusEnum::CONFIRMED]);
