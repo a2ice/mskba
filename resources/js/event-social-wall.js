@@ -75,6 +75,7 @@ export function mountEventDiscussion(root, {
         const choices=[...pane.querySelectorAll('[data-chat-action="event-rsvp"]')];
         if(!choices.length)return;
         const attendance=pane.querySelector('[data-chat-action-slot="attendance"]');
+        if(!attendance)return;
         const confirmed=status==='confirmed';
         attendance.dataset.chatActionValue=confirmed?'left':'confirmed';
         attendance.textContent=confirmed?'Не пойду':'Пойду';
@@ -97,13 +98,21 @@ export function mountEventDiscussion(root, {
         const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','#'+id);svg.append(use);return svg;
     };
     const rosterBusy=(pane,busy)=>{
-        pane.querySelector('[data-venue-play-roster-surface]').setAttribute('aria-busy',String(busy));
-        pane.querySelector('[data-venue-play-roster-loading]').hidden=!busy;
+        pane.querySelector('[data-venue-play-roster-surface]')?.setAttribute('aria-busy',String(busy));
+        const loader=pane.querySelector('[data-venue-play-roster-loading]');
+        if(loader)loader.hidden=!busy;
         pane.querySelectorAll('[data-chat-action="event-rsvp"]').forEach(button=>button.disabled=busy);
     };
     function paintRoster(pane,roster,scrollToOwn=false,counts=null){
         if(!roster||!Array.isArray(roster.members))throw Error('Не удалось получить актуальный список участников.');
         const list=pane.querySelector('[data-venue-play-participants]');
+        if(!list){
+            pane.dataset.eventStatus=roster.viewer_status||'';
+            pane.dataset.eventOrganizer=roster.viewer_is_organizer?'1':'0';
+            paintButtons(pane);
+            onRosterUpdate(pane,roster,counts);
+            return;
+        }
         const previousScroll=list.scrollTop;
         const fragment=document.createDocumentFragment();
         let ownRow=null;
@@ -152,6 +161,7 @@ export function mountEventDiscussion(root, {
     }
     const rosterFailure=(pane,message)=>{
         const empty=pane.querySelector('[data-venue-play-roster-empty]');
+        if(!empty){notice(pane,message,true);return;}
         if(!pane.querySelector('[data-venue-play-participants]').children.length){empty.hidden=false;empty.textContent=message;}
         pane.querySelector('[data-venue-play-roster-retry]').hidden=false;
     };
@@ -303,7 +313,7 @@ export function mountEventDiscussion(root, {
         if(pane)void respond(pane,event.detail.value);
     });
     for(const pane of panes){
-        pane.querySelector('[data-venue-play-roster-retry]').addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
+        pane.querySelector('[data-venue-play-roster-retry]')?.addEventListener('click',()=>{if(!saving)void refreshRoster(pane);});
         const messageList=messages(pane);
         messageList.addEventListener('scroll',()=>{void loadOlder(pane);},{passive:true});
         const form=pane.querySelector('[data-venue-play-message-form]');
