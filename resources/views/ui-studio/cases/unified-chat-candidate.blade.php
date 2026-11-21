@@ -1,4 +1,4 @@
-{{-- Local UIKit candidate, revision 4. Do not promote to common styles before acceptance. --}}
+{{-- Local UIKit candidate, revision 5. Do not promote to common styles before acceptance. --}}
 <style>
 /* One visible focus boundary: the composer; no nested textarea outline. */
 .venue-play-dialog__wall [data-chat-composer] {

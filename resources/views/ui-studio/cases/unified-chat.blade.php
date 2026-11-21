@@ -52,7 +52,7 @@ let own = null;
 // promote these placements into the component itself, not a second chat.
 const actionsMenu = form.querySelector('.chat-actions__menu');
 cancel.classList.remove('venue-play-dialog__edit-cancel');
-cancel.textContent = 'Отменить редактирование';
+cancel.textContent = 'Отменить';
 cancel.removeAttribute('aria-label');
 cancel.removeAttribute('title');
 cancel.dataset.chatAction = 'cancel-edit';
