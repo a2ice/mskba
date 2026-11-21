@@ -166,6 +166,41 @@ final class VenueEventAvailability
                 : 'В первой версии мероприятие должно завершаться в тот же день.');
         }
 
+        $overlaps = $checkBookings ? VenueBooking::query()
+            ->where('venue_id', $venue->id)
+            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            }))
+            ->when(
+                $excludedBookingId !== null,
+                fn ($query) => $query->whereKeyNot($excludedBookingId),
+            )
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
+            ->where('starts_at', '<', $endsAt)
+            ->where('ends_at', '>', $startsAt)
+            ->where(function ($query) use ($scope): void {
+                $query->whereNull('scope')->orWhereIn('scope', $scope->conflictingValues());
+            })
+            ->orderBy('starts_at')
+            ->get(['starts_at', 'ends_at']) : collect();
+
+        if ($overlaps->isNotEmpty()) {
+            $cursor = $startsAt;
+            foreach ($overlaps as $booking) {
+                $from = CarbonImmutable::parse($booking->starts_at);
+                $until = CarbonImmutable::parse($booking->ends_at);
+                if ($from->greaterThan($cursor)) {
+                    break;
+                }
+                if ($until->greaterThan($cursor)) {
+                    $cursor = $until;
+                }
+            }
+            throw new InvalidArgumentException($cursor->greaterThanOrEqualTo($endsAt)
+                ? 'Выбранное время уже занято.'
+                : 'Часть выбранного времени уже занята.');
+        }
+
         $applicableIntervals = $this->hours->intervals($venue, $court, $localStart);
 
         if ($applicableIntervals !== null && $applicableIntervals->isEmpty()) {
@@ -205,26 +240,7 @@ final class VenueEventAvailability
             $this->importedAvailability->assertAvailable($court, $startsAt, $endsAt);
         }
 
-        $hasOverlap = $checkBookings && VenueBooking::query()
-            ->where('venue_id', $venue->id)
-            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
-                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
-            }))
-            ->when(
-                $excludedBookingId !== null,
-                fn ($query) => $query->whereKeyNot($excludedBookingId),
-            )
-            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->where(function ($query) use ($scope): void {
-                $query->whereNull('scope')->orWhereIn('scope', $scope->conflictingValues());
-            })
-            ->exists();
 
-        if ($hasOverlap) {
-            throw new InvalidArgumentException('Выбранное время уже занято другим мероприятием.');
-        }
     }
 
     private function resolveCourt(Venue $venue, ?VenueCourt $court): ?VenueCourt
