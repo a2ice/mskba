@@ -1,16 +1,19 @@
-{{-- UI Studio r3 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r4 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
     $secondaryButton = 'button secondary';
     $chatEvent = (object) ['id' => 'studio-event'];
-    $hasRental = in_array($state, ['booked','inactive'], true);
+    $eventFinished = in_array($state, ['report','report-empty','report-owner'], true);
+    $reportOwner = $state === 'report-owner';
+    $reportPublished = $state === 'report';
+    $hasRental = $eventFinished || in_array($state, ['booked','inactive'], true);
     $rentalActive = $state === 'booked';
     $eventTitle = 'Игра на м. Яхромская';
     $venueName = 'Кампус на Яхромской «Молния»';
     $courtName = 'Универсальный зал 1';
     $studioVenueUrl = 'https://mskba.ru/venues/11-kampus-na-yakhromskoy-molniya';
-    $eventTime = '22 ноября 2026 · 12:00–13:30';
+    $eventTime = ($eventFinished ? '19' : '22').' ноября 2026 · 12:00–13:30';
 @endphp
 @include('components.event-discussion-styles')
 @include('ui-studio.cases.unified-chat-candidate')
@@ -24,16 +27,16 @@
             </div>
         </div>
         <div class="app-venue-intro panel">
-            <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span></div>
+            <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span>@if($eventFinished)<span class="badge">Завершено</span>@endif</div>
             <div class="app-entity-heading"><h1 id="studio-event-title">{{ $eventTitle }}</h1></div>
-            <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive)<span class="muted">Время предварительное</span>@endunless</div>
+            <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive || $eventFinished)<span class="muted">Время предварительное</span>@endunless</div>
             <p class="app-venue-intro__copy">Хуперы любого уровня, главное желание</p>
             <div class="app-venue-interest-summary__profiles studio-event-audience">
                 <div class="app-venue-interest-summary__avatars" data-studio-audience-avatars aria-hidden="true"></div>
                 <a href="#studio-participants" class="app-venue-interest-summary__count studio-event-audience-count" data-studio-audience-count>2 участника</a>
             </div>
             <div class="app-venue-intro__actions">
-                <button type="button" class="button primary large" data-event-participate aria-haspopup="dialog">Участвовать</button>
+                <button type="button" class="button primary large" data-event-participate aria-haspopup="dialog" @if($eventFinished) hidden @endif>Участвовать</button>
                 <button type="button" class="button secondary large" data-event-open="studio-share" aria-haspopup="dialog">Поделиться</button>
             </div>
         </div>
@@ -43,6 +46,7 @@
         <a href="#studio-rental">Аренда</a>
         <a href="#studio-participants">Участники</a>
         <a href="#studio-discussion">Обсуждение</a>
+        <a href="#studio-report">Как это было</a>
     </nav>
     <div class="app-venue-page__columns">
         <div class="app-venue-page__sections">
@@ -72,6 +76,7 @@
             <section class="panel app-venue-block studio-event-discussion" id="studio-discussion">
                 <header class="app-venue-block__header"><h2>Обсуждение</h2></header>
             </section>
+            @include('ui-studio.cases.event-report')
         </div>
         <aside class="app-venue-page__aside panel studio-event-aside" aria-label="Игры">
             <div class="studio-event-games"><strong>Игры</strong><button type="button" class="app-venue-activity" data-event-open="studio-game-dialog"><strong class="app-venue-activity__title">Игра на м. Яхромская</strong><span class="app-venue-activity__description">Баскетбол · 12:00</span></button></div>
@@ -80,6 +85,7 @@
 </section>
 @include('components.event-discussion-delete-dialog')
 @include('ui-studio.cases.event-detail-dialogs')
+@include('ui-studio.cases.event-report-editor')
 @include('ui-studio.cases.venue-map-preview', [
     'mapShowCurrentVenueLink' => true,
     'mapPreview' => ['name'=>$venueName, 'address'=>'Москва, Лобненская улица, 13', 'url'=>$studioVenueUrl],

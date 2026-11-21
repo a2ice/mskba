@@ -14,7 +14,8 @@ const roster = dialog.querySelector('[data-venue-play-participants]');
 const deleteDialog = document.querySelector('[data-venue-play-delete-dialog]');
 const pageMode = !dialog.matches('dialog');
 const state = @json($state);
-let postingAllowed = pageMode ? ['confirmed','tentative','editing'].includes(state) : state !== 'disabled';
+const eventFinished = pageMode && ['report','report-empty','report-owner'].includes(state);
+let postingAllowed = pageMode ? ['confirmed','tentative','editing','report-owner'].includes(state) : state !== 'disabled';
 let editing = null;
 let own = null;
 // Candidate-only DOM adaptation of the real shared component. After acceptance,
@@ -202,7 +203,8 @@ participationLink.textContent = 'Участвовать';
 if (pageMode) participationLink.addEventListener('click', event => {
     event.preventDefault();dialog.dispatchEvent(new CustomEvent('studio:participate'));
 });
-commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
+if (eventFinished) commentNotice.textContent = 'Написать сообщение могут участники мероприятия.';
+else commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
 function setPosting(allowed) {
     postingAllowed = !!allowed;
     setChatComposerAccess(form, postingAllowed);

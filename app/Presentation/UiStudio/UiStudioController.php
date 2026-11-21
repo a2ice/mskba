@@ -28,7 +28,7 @@ final class UiStudioController
             ->header('X-Content-Type-Options', 'nosniff')
             ->header('Referrer-Policy', 'no-referrer')
             ->header('X-Frame-Options', 'SAMEORIGIN')
-            ->header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'self'; frame-ancestors 'self'; form-action ".($embed ? "'none'" : "'self'"));
+            ->header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'self'; frame-ancestors 'self'; form-action ".($embed ? "'none'" : "'self'"));
     }
 
     public function show(Request $request, ?string $ui_name = null): Response

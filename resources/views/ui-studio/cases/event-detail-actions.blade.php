@@ -22,7 +22,7 @@ function show(id){
 }
 const syncCTA=()=>{cta.textContent=participation==='left'?'Участвовать':'Не участвовать';};
 syncCTA();
-const openParticipation=()=>{pending=null;show(participation==='left'?'studio-participate':'studio-leave');};
+const openParticipation=()=>{if(cta.hidden)return;pending=null;show(participation==='left'?'studio-participate':'studio-leave');};
 cta.addEventListener('click',openParticipation);
 root.addEventListener('studio:participate',openParticipation);
 function apply(status){
