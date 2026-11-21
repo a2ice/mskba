@@ -28,11 +28,21 @@ jobs:
           script: |
             set -eu
             cd /var/www/mskba-ui
+            echo "Checkout: $(pwd -P)"
             test "$(pwd -P)" = /var/www/mskba-ui
             exec 9>/var/www/mskba-ui-runtime/publish.lock
             flock -w 60 9
-            test -z "$(git status --porcelain --untracked-files=no)"
-            test "$(docker inspect --type container --format '{{.HostConfig.NetworkMode}}' mskba-ui-php)" = none
+            echo "Publish lock acquired"
+            dirty=$(git status --porcelain --untracked-files=no)
+            if [ -n "$dirty" ]; then
+              printf "Tracked local changes; refusing overwrite:\n%s\n" "$dirty"
+              exit 1
+            fi
+            echo "Checkout clean"
+            network=$(docker inspect --type container --format '{{.HostConfig.NetworkMode}}' mskba-ui-php)
+            echo "Preview network mode: $network"
+            test "$network" = none
+            echo "Current branch: $(git branch --show-current)"
             case "$(git branch --show-current)" in
               feature/ui-studio-933|ui-preview) ;;
               *) echo "Unexpected checkout"; exit 1 ;;
@@ -44,7 +54,8 @@ jobs:
               echo "Superseded by a newer preview revision"
               exit 0
             fi
-            git merge-base --is-ancestor "$before" "$target"
+            echo "Before: $before; target: $target"
+            git merge-base --is-ancestor "$before" "$target" || { echo "Non-fast-forward or incomplete history"; exit 1; }
             changes=$(git diff --name-only "$before" "$target")
             if printf '%s\n' "$changes" | grep -v '^config/ui-studio\.php$' | grep -Eq '^(composer\.(json|lock)|bootstrap/app\.php|routes/|config/)'; then
               echo "Runtime/dependency changes require explicit infrastructure review"
