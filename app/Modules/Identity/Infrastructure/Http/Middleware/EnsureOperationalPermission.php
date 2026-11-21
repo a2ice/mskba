@@ -30,6 +30,8 @@ final class EnsureOperationalPermission
             abort(403, 'Действие недоступно для заблокированного или удаленного аккаунта.');
         }
 
+        $requiresContact = $permission === UserOperationalPermissionEnum::CREATE_EVENT;
+        $hasVerifiedContact = $this->verifiedContactGranter->hasVerifiedContact($user);
         $snapshot = $user->operationalPermissions()
             ->where('permission', $permission->value)
             ->first();
@@ -37,25 +39,26 @@ final class EnsureOperationalPermission
         if ($snapshot !== null) {
             $request->session()->forget('operational_permission_intent');
 
-            if ($snapshot->is_allowed) {
-                return $next($request);
+            if (! $snapshot->is_allowed) {
+                return redirect()
+                    ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
+                    ->with('error', $this->explicitDenialMessage($permission));
             }
 
-            return redirect()
-                ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
-                ->with('error', $this->explicitDenialMessage($permission));
+            if (! $requiresContact || $hasVerifiedContact) {
+                return $next($request);
+            }
         }
 
         // Role-aware defaults must be evaluated before contact verification.
         // ADMIN/SUPERADMIN have every operational permission enabled by default,
         // while an explicit snapshot above can still override that default.
-        if ($this->permissions->allows($user, $permission)) {
+        if ((! $requiresContact || $hasVerifiedContact) && $this->permissions->allows($user, $permission)) {
             $request->session()->forget('operational_permission_intent');
 
             return $next($request);
         }
 
-        $hasVerifiedContact = $this->verifiedContactGranter->hasVerifiedContact($user);
         if ($hasVerifiedContact) {
             // Eventual-consistency safety net: old verified identities or canonical merges
             // may not have received the initial snapshot yet. Explicit false snapshots
@@ -76,6 +79,10 @@ final class EnsureOperationalPermission
             return redirect()
                 ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
                 ->with('error', $this->explicitDenialMessage($permission));
+        }
+
+        if ($requiresContact && $request->expectsJson()) {
+            return response()->json(['code' => 'CONTACT_REQUIRED', 'message' => 'Для создания мероприятия необходимо иметь подтверждённый контакт'], 422);
         }
 
         $title = $this->verificationTitle($permission);

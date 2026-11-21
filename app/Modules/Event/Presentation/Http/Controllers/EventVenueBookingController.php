@@ -18,6 +18,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
@@ -30,6 +31,7 @@ use App\Presentation\Theming\ThemeResolver;
 use App\Support\Features\FeatureDisabledException;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -39,6 +41,8 @@ use InvalidArgumentException;
 
 final class EventVenueBookingController extends Controller
 {
+    private const CONTACT_REQUIRED = 'Для бронирования необходимо иметь подтверждённый контакт';
+
     public function quote(
         Request $request,
         string $event,
@@ -46,7 +50,7 @@ final class EventVenueBookingController extends Controller
         EventManagementAccess $access,
         QuoteVenueBookingHandler $quotes,
         EventVenueBookingProposals $proposals,
-    ): Response|RedirectResponse {
+    ): Response|RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'interest_id' => ['nullable', 'integer', 'min:1'],
@@ -93,10 +97,14 @@ final class EventVenueBookingController extends Controller
                 'proposalId' => $proposal->id ?? null,
             ]);
         } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            if ($request->expectsJson() && $exception->getMessage() === self::CONTACT_REQUIRED) {
+                return response()->json(['code' => 'CONTACT_REQUIRED', 'message' => self::CONTACT_REQUIRED], 422);
+            }
             return redirect()->route('events.show', $item->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
                     ? 'Онлайн-бронирование временно недоступно.'
-                    : $exception->getMessage().' Измените время или площадку мероприятия и повторите расчёт.');
+                    : ($exception->getMessage() === self::CONTACT_REQUIRED
+                        ? self::CONTACT_REQUIRED : $exception->getMessage().' Измените время или площадку мероприятия и повторите расчёт.'));
         }
     }
 
@@ -110,7 +118,7 @@ final class EventVenueBookingController extends Controller
         RequestVenueBookingHandler $bookings,
         EventVenueBookingProposals $proposals,
         EventVenueInterestChat $chat,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:1'],
             'quote_id' => ['nullable', 'uuid'],
@@ -230,10 +238,14 @@ final class EventVenueBookingController extends Controller
                 return ['event' => $event, 'booking' => $booking];
             }, 3);
         } catch (VenueBookingPolicyException|VenueBookingTransitionException|FeatureDisabledException|InvalidArgumentException|DomainException $exception) {
+            if ($request->expectsJson() && $exception->getMessage() === self::CONTACT_REQUIRED) {
+                return response()->json(['code' => 'CONTACT_REQUIRED', 'message' => self::CONTACT_REQUIRED], 422);
+            }
             return redirect()->route('events.show', $reference->routeIdentifier())
                 ->with('error', $exception instanceof FeatureDisabledException
                     ? 'Онлайн-бронирование временно недоступно.'
-                    : $exception->getMessage().' При необходимости согласуйте другое время или площадку.');
+                    : ($exception->getMessage() === self::CONTACT_REQUIRED
+                        ? self::CONTACT_REQUIRED : $exception->getMessage().' При необходимости согласуйте другое время или площадку.'));
         }
 
         return $result['booking'] === null
@@ -259,8 +271,10 @@ final class EventVenueBookingController extends Controller
         if ($event->participation_confirmation_version !== $expectedVersion) {
             throw new InvalidArgumentException('Площадка или время мероприятия изменились. Обновите страницу.');
         }
-        if ($actor->user === null || ! $actor->user->canonical()->isConfirmed()) {
-            throw new InvalidArgumentException('Для бронирования нужен подтверждённый пользователь.');
+        $user = $actor->user?->canonical();
+        abort_if($user === null || $user->isBlocked() || $user->trashed(), 403);
+        if (! app(VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact($user)) {
+            throw new InvalidArgumentException(self::CONTACT_REQUIRED);
         }
     }
 }

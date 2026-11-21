@@ -121,7 +121,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_attendance_poll_can_resolve_duration_until_next_booking(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         [$venue, $startsAt] = $this->availableVenue();
         $this->assertTrue(
             $startsAt->addHours(6)->equalTo(
@@ -232,8 +232,8 @@ final class CoordinationWorkflowTest extends TestCase
     public function test_event_scheduling_chain_activates_steps_and_filters_occupied_venues(): void
     {
         Queue::fake();
-        $organizer = User::factory()->create();
-        $otherOrganizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
+        $otherOrganizer = User::factory()->withVerifiedContact()->create();
         [$availableVenue, $startsAt] = $this->availableVenue();
         [$occupiedVenue] = $this->availableVenue();
         $chat = TelegramChat::query()->create([
@@ -322,7 +322,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_attendance_poll_keeps_semantic_intents_and_allows_manual_participant_selection(): void
     {
-        $organizer = User::factory()->create(['username' => 'poll_organizer']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'poll_organizer']);
         $organizer->profile()->create([
             'first_name' => 'Дмитрий',
             'last_name' => 'Организатор',
@@ -448,8 +448,8 @@ final class CoordinationWorkflowTest extends TestCase
     public function test_time_poll_uses_start_times_and_rechecks_user_suggestions(): void
     {
         Queue::fake();
-        $organizer = User::factory()->create();
-        $otherOrganizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
+        $otherOrganizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         [$venue, $startsAt] = $this->availableVenue();
 
@@ -493,7 +493,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_accepted_event_change_moves_booking_and_requires_participant_reconfirmation(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         [$sourceVenue, $startsAt] = $this->availableVenue();
         [$targetVenue] = $this->availableVenue();
@@ -593,7 +593,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_participant_can_suggest_typed_unique_option_when_creator_allows_it(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         $this->actingAs($organizer)->post(route('coordination.store'), [
             ...$this->payload(),
@@ -625,7 +625,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_suggestion_is_refused_when_creator_did_not_allow_it(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $participant = User::factory()->create();
         $session = $this->createSession($organizer);
 
@@ -638,7 +638,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_user_changes_single_choice_ballot_without_duplicate(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $voter = User::factory()->create();
         $this->actingAs($organizer)->post(route('coordination.store'), [
             ...$this->payload(),
@@ -663,7 +663,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_open_poll_shows_voters_and_anonymous_poll_hides_them(): void
     {
-        $organizer = User::factory()->create(['username' => 'poll_owner']);
+        $organizer = User::factory()->withVerifiedContact()->create(['username' => 'poll_owner']);
         $voter = User::factory()->create(['username' => 'visible_voter']);
 
         $this->actingAs($organizer)->post(route('coordination.store'), [
@@ -701,7 +701,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_user_cannot_change_ballot_when_poll_forbids_vote_changes(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $voter = User::factory()->create();
 
         $this->actingAs($organizer)
@@ -737,7 +737,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_expired_poll_rejects_vote_and_scheduler_closes_it(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $voter = User::factory()->create();
         $session = $this->createSession($organizer);
         $poll = $session->polls()->firstOrFail();
@@ -784,7 +784,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_only_creator_closes_and_accepts_explicit_result(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $stranger = User::factory()->create();
         $session = $this->createSession($organizer);
         $poll = $session->polls()->firstOrFail();
@@ -838,7 +838,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_creator_explicitly_creates_event_from_accepted_decision_idempotently(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $session = $this->createSession($organizer);
         $poll = $session->polls()->firstOrFail();
         $option = $poll->options()->where('label', '20:00')->firstOrFail();
@@ -887,7 +887,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_event_transition_requires_accepted_decision_and_creator(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $stranger = User::factory()->create();
         $session = $this->createSession($organizer);
         [$venue, $startsAt] = $this->availableVenue();
@@ -912,7 +912,7 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_failed_event_invariants_do_not_create_transition(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->withVerifiedContact()->create();
         $session = $this->createSession($organizer);
         $poll = $session->polls()->firstOrFail();
         $this->actingAs($organizer)->post(route('coordination.close', $session));
