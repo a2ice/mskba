@@ -1,0 +1,77 @@
+{{-- UI Studio r1 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+@php
+    $isAppTheme = true;
+    $primaryButton = 'button primary';
+    $secondaryButton = 'button secondary';
+    $chatEvent = (object) ['id' => 'studio-event'];
+    $hasRental = in_array($state, ['booked','inactive'], true);
+    $rentalActive = $state === 'booked';
+    $eventTitle = 'Игра на м. Яхромская';
+    $venueName = 'Кампус на Яхромской «Молния»';
+    $courtName = 'Универсальный зал 1';
+    $eventTime = '22 ноября 2026 · 12:00–13:30';
+@endphp
+@include('components.event-discussion-styles')
+@include('ui-studio.cases.unified-chat-candidate')
+@include('ui-studio.cases.event-detail-candidate')
+<section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat aria-labelledby="studio-event-title">
+    <div class="app-venue-page__hero-grid">
+        <div class="app-venue-gallery panel" data-venue-gallery>
+            <div class="app-venue-gallery__stage"><img class="app-venue-gallery__slide is-active" src="{{ asset('images/venue-placeholder.png') }}" alt="Демонстрационная фотография площадки"></div>
+        </div>
+        <div class="app-venue-intro panel">
+            <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span></div>
+            <div class="app-entity-heading"><h1 id="studio-event-title">{{ $eventTitle }}</h1></div>
+            <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive)<span class="muted">Время предварительное</span>@endunless</div>
+            <p class="app-venue-intro__copy">Хуперы любого уровня, главное желание</p>
+            <div class="app-venue-intro__actions">
+                <button type="button" class="button primary large" data-event-participate>Участвовать</button>
+                <button type="button" class="button secondary large" data-event-open="studio-share">Поделиться</button>
+            </div>
+        </div>
+    </div>
+    <nav class="app-venue-page__anchors" aria-label="Разделы мероприятия" data-venue-section-nav>
+        @if($hasRental)<a href="#studio-rental">Аренда</a>@endif
+        <a href="#studio-participants">Участники</a>
+        <a href="#studio-discussion">Обсуждение</a>
+    </nav>
+    <div class="app-venue-page__columns">
+        <div class="app-venue-page__sections">
+            @if($hasRental)
+            <section class="panel app-venue-block" id="studio-rental">
+                <header class="app-venue-block__header"><h2>Аренда</h2></header>
+                <button type="button" class="app-venue-activity studio-rental-card" data-event-open="studio-rental-dialog" aria-haspopup="dialog">
+                    <span class="app-venue-activity__meta"><span>{{ $eventTime }}</span><span class="badge {{ $rentalActive ? 'studio-rental-active' : '' }}">{{ $rentalActive ? 'Активна' : 'Неактивна' }}</span></span>
+                    <strong class="app-venue-activity__title">{{ $courtName }}</strong>
+                    <span class="app-venue-activity__description">{{ $venueName }}</span>
+                </button>
+            </section>
+            @endif
+            <section class="panel app-venue-block studio-event-roster" id="studio-participants">
+                @include('components.event-discussion', ['chatEvent'=>$chatEvent,'chatCanRespond'=>false,'chatShowRoster'=>true])
+            </section>
+            <section class="panel app-venue-block studio-event-discussion" id="studio-discussion">
+                <header class="app-venue-block__header"><h2>Обсуждение</h2></header>
+            </section>
+        </div>
+        <aside class="app-venue-page__aside panel studio-event-aside" aria-label="Площадка и зал">
+            <strong>Площадка и зал</strong>
+            <a class="studio-event-link" href="#studio-event-venue" data-event-open="studio-venue-dialog">{{ $venueName }}</a>
+            <p>{{ $courtName }}</p>
+            <button type="button" class="app-venue-intro__address" data-event-open="studio-venue-dialog"><svg aria-hidden="true"><use href="#pin"/></svg><span>Москва, Лобненская улица, 13</span></button>
+            <div class="app-venue-intro__metro"><span class="app-venue-intro__station"><span class="app-venue-intro__metro-dot" style="--metro-color:#a1a2a3"></span>Яхромская</span></div>
+            <button type="button" class="button secondary full" data-event-open="studio-venue-dialog">К площадке</button>
+            <div class="studio-event-games"><strong>Игры</strong><button type="button" class="app-venue-activity" data-event-open="studio-game-dialog"><strong class="app-venue-activity__title">Игра на м. Яхромская</strong><span class="app-venue-activity__description">Баскетбол · 12:00</span></button></div>
+        </aside>
+    </div>
+</section>
+@include('components.event-discussion-delete-dialog')
+@include('ui-studio.cases.event-detail-dialogs')
+<script>
+// Split the actual shared discussion into the two page sections before mounting.
+const eventRoot=document.querySelector('.studio-event-page');
+const discussionPanel=eventRoot.querySelector('#studio-discussion');
+discussionPanel.append(eventRoot.querySelector('[data-venue-play-feedback]'),eventRoot.querySelector('.venue-play-dialog__wall'));
+</script>
+@include('ui-studio.cases.unified-chat-fixture')
+@include('ui-studio.cases.event-detail-actions')
