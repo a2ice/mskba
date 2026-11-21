@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->append(PreventNonProductionIndexing::class);
+        $middleware->append(\App\Http\Middleware\LoadSocialIntegrationSettings::class);
         $middleware->alias([
             'throttle' => RouteScopedThrottleRequests::class,
             'venue-rental-feature' => EnsureVenueRentalFeatureEnabled::class,
