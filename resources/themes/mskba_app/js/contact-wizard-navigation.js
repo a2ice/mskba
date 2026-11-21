@@ -20,7 +20,7 @@ export function contactWizardNavigation(step, methodLocked = false) {
     };
 }
 
-// Only a successfully verified contact can finish a subordinate flow silently.
+// Only a successfully verified contact can offer continuation in a subordinate flow.
 export function contactWizardCompletion(embedded, verified) {
-    return embedded && verified ? 'close' : 'done';
+    return embedded && verified ? 'continue' : 'done';
 }

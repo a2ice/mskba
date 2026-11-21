@@ -57,8 +57,8 @@ test('auto submit once for a contact, including paste; later attempts are manual
     assert.equal(flow.canSubmit(13, '123456'), true);
 });
 
-test('verified contact closes embedded flow but management retains completion', () => {
-    assert.equal(contactWizardCompletion(true, true), 'close');
+test('verified contact offers explicit continuation; management retains completion', () => {
+    assert.equal(contactWizardCompletion(true, true), 'continue');
     assert.equal(contactWizardCompletion(false, true), 'done');
     assert.equal(contactWizardCompletion(true, false), 'done');
     assert.equal(contactWizardCompletion(false, false), 'done');

@@ -70,7 +70,8 @@
                 <p data-contact-add-success>Новый контакт появился в списке ниже. Подтверждение можно выполнить отдельно.</p>
                 <div class="app-contact-wizard__trigger">
                     <button type="button" class="button primary" data-contact-add-again>Добавить ещё контакт</button>
-                    <button type="button" class="button secondary" data-contact-add-close>Закрыть</button>
+                    <button type="button" class="button secondary" data-contact-add-close data-contact-add-done-close>Закрыть</button>
+                    <button type="button" class="button primary" data-contact-add-continue hidden>Продолжить</button>
                 </div>
             </section>
             <p class="app-contact-wizard__error" data-contact-add-error role="alert" hidden></p>
