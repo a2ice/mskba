@@ -32,7 +32,7 @@
             </section>
             <section data-contact-add-step="verification" hidden>
                 <h3>Подтверждение Email</h3>
-                <p>Мы отправили шестизначный код на указанный адрес. Введи код, чтобы включить Email-уведомления.</p>
+                <p>Введи шестизначный код для <strong data-contact-add-verification-email></strong>. Если код не пришёл или срок его действия истёк, запроси повторную отправку.</p>
                 <label class="field-group" for="contact-add-verification-code">Код подтверждения
                     <input id="contact-add-verification-code" data-contact-add-code type="text" inputmode="numeric"
                            autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000">

@@ -15,6 +15,9 @@ use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
@@ -37,6 +40,25 @@ final class EventFirstCreationController extends Controller
         $input = $this->validated($request);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || $actor->user_id === null, 403);
+        $user = $actor->user?->canonical();
+        abort_if($user === null || $user->isBlocked() || $user->trashed(), 403);
+        abort_if($user->operationalPermissions()->where('permission', UserOperationalPermissionEnum::CREATE_EVENT->value)->where('is_allowed', false)->exists(), 403);
+        $contacts = app(VerifiedContactOperationalPermissionGranter::class);
+        if (! $contacts->hasVerifiedContact($user)) {
+            $message = 'Для создания мероприятия необходимо иметь подтверждённый контакт';
+            if ($request->expectsJson()) {
+                $pending = $user->identityContactsQuery()->where('type', 'email')
+                    ->whereNull('verified_at')->latest('id')->first();
+                return response()->json([
+                    'message' => $message,
+                    'code' => 'CONTACT_REQUIRED',
+                    'pending_contact' => $pending ? ['id' => $pending->id, 'value' => $pending->value] : null,
+                ], 422)->header('Cache-Control', 'private, no-store');
+            }
+            return back()->withInput()->with('error', $message);
+        }
+        $contacts->grantMissing($user);
+        abort_unless(app(UserOperationalPermissionChecker::class)->allows($user, UserOperationalPermissionEnum::CREATE_EVENT), 403);
 
         $slots = $this->validatedSlots($input, (int) $input['venue_id']);
         $separate = ($input['schedule_mode'] ?? 'alternatives') === 'separate';

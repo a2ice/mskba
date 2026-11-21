@@ -109,14 +109,14 @@ final class VenueBookingLifecycleTest extends TestCase
         [$owner, , $venue] = $this->ownedVenue();
         [$applicant, $applicantActor] = $this->userAndActor();
         $email = 'owner-booking-'.$owner->id.'@example.test';
-        Contact::query()->create([
-            'contactable_type' => 'user',
-            'contactable_id' => $owner->id,
-            'type' => ContactTypeEnum::EMAIL,
-            'value' => $email,
-            'is_primary' => true,
-            'verified_at' => now(),
-        ]);
+        // The verified-contact fixture already owns the primary email.
+        // Keep exactly one primary address so the delivery uses $email.
+        $this->assertSame(1, Contact::query()
+            ->where('contactable_type', 'user')
+            ->where('contactable_id', $owner->id)
+            ->where('type', ContactTypeEnum::EMAIL)
+            ->where('is_primary', true)
+            ->update(['value' => $email]));
 
         $booking = $this->request($venue, $owner, $applicant, $applicantActor, false);
         $outbox = VenueBookingOutboxMessage::query()
@@ -156,7 +156,7 @@ final class VenueBookingLifecycleTest extends TestCase
         Mail::fake();
         [$owner, , $venue] = $this->ownedVenue();
         [$mainResponsible] = $this->userAndActor();
-        $unrelatedAdmin = User::factory()->create([
+        $unrelatedAdmin = User::factory()->withVerifiedContact()->create([
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
         ]);
@@ -879,7 +879,7 @@ final class VenueBookingLifecycleTest extends TestCase
     /** @return array{User, Actor} */
     private function userAndActor(): array
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $actor = app(CurrentActorResolver::class)->resolve($user, null);
 
         return [$user, $actor];

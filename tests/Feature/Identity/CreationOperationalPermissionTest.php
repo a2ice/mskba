@@ -54,6 +54,21 @@ final class CreationOperationalPermissionTest extends TestCase
             ->assertRedirect(route('account.confirmation'));
     }
 
+    public function test_granted_event_permission_cannot_replace_a_verified_contact(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        UserOperationalPermission::query()->create([
+            'user_id' => $user->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_EVENT,
+            'is_allowed' => true,
+        ]);
+
+        $this->actingAs($user)->postJson(route('events.store'), [])
+            ->assertUnprocessable()->assertJsonPath('code', 'CONTACT_REQUIRED');
+        $this->get(route('events.wizard'))->assertOk()->assertSee('Подтвердить контакт')
+            ->assertDontSee('data-event-wizard', false);
+    }
+
     public function test_verified_contact_grants_missing_create_permissions(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);

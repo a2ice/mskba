@@ -57,7 +57,7 @@ final class VenueSpecialTermsTest extends TestCase
     /** @return array{User,Venue,VenueCourt} */
     private function scenario(): array
     {
-        $admin = User::factory()->create([
+        $admin = User::factory()->withVerifiedContact()->create([
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
             'status' => UserStatusEnum::CONFIRMED,
         ]);
@@ -96,7 +96,7 @@ final class VenueSpecialTermsTest extends TestCase
 
     private function activeUser(): User
     {
-        return User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        return User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
     }
 
     private function offer(User $admin, Venue $venue, User $recipient, array $overrides = [])
@@ -349,7 +349,7 @@ final class VenueSpecialTermsTest extends TestCase
     public function test_superadmin_uses_explicit_administration_and_cannot_manage_unrelated_venue_in_account(): void
     {
         [$owner, $venue] = $this->scenario();
-        $admin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN, 'status' => UserStatusEnum::CONFIRMED]);
+        $admin = User::factory()->withVerifiedContact()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN, 'status' => UserStatusEnum::CONFIRMED]);
         $manager = app(VenueSpecialTermsManager::class);
         $this->assertFalse($manager->canManage($admin, $venue));
         $this->assertTrue($manager->canManage($admin, $venue, administration: true));

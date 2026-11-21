@@ -48,6 +48,20 @@ class UserFactory extends Factory
         ];
     }
 
+    /** Create a real, verified contact for scenarios requiring one. */
+    public function withVerifiedContact(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->contacts()->create([
+                'type' => \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL,
+                'value' => 'fixture-'.Str::uuid().'@example.test',
+                'is_primary' => true,
+                'is_public' => false,
+                'verified_at' => now(),
+            ]);
+        });
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */

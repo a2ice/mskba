@@ -5,6 +5,7 @@ namespace App\Modules\VenueBooking\Application\UseCases;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
@@ -51,8 +52,9 @@ final readonly class RequestVenueBookingHandler
         abort_unless(($preRequest === null) === ($representative === null), 409);
         $user = $actor->user?->canonical();
 
-        if ($user === null || ! $user->isConfirmed()) {
-            throw new VenueBookingTransitionException('Для заявки нужен подтверждённый аккаунт.', 'BOOKING_FORBIDDEN');
+        if ($user === null || $user->isBlocked() || $user->trashed()
+            || ! app(VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact($user)) {
+            throw new VenueBookingTransitionException('Для бронирования необходимо иметь подтверждённый контакт', 'BOOKING_FORBIDDEN');
         }
 
         $quote = VenueBookingQuote::query()->where('public_id', $quotePublicId)->firstOrFail();

@@ -287,7 +287,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
     public function test_user_without_commercial_permission_cannot_publish_policy(): void
     {
         [, $venue] = $this->ownedVenue(2);
-        $stranger = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $stranger = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
 
         $this->expectException(VenueBookingPolicyException::class);
         app(PublishVenueBookingPolicyHandler::class)->handle($venue, $stranger, $this->policyData());
@@ -524,7 +524,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         ]);
 
 
-        $intruder = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $intruder = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($intruder)
             ->post(route('account.venues.calendar-prices.store', $venue), $params)->assertForbidden();
         $this->actingAs($intruder)
@@ -630,7 +630,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
     /** @return array{User, Venue} */
     private function ownedVenue(int $hoopsCount): array
     {
-        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $owner = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = Venue::factory()->create([
             'status' => VenueStatusEnum::CONFIRMED,
             'operational_status' => VenueOperationalStatusEnum::ACTIVE,

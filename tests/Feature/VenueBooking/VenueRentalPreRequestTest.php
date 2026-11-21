@@ -213,7 +213,7 @@ final class VenueRentalPreRequestTest extends TestCase
         $this->assertNotNull($message->id);
         $booking = $service->offer($pre, $agentActor);
         $this->assertSame($agentActor->id, $booking->created_by_representative_id);
-        $superadmin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        $superadmin = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::SUPERADMIN]);
         $this->assertTrue($service->can($superadmin, $pre, 'offer'));
         [, , $otherVenue] = $this->venue();
         $this->assertFalse($service->can($agent, $this->pre($otherVenue, $actor), 'offer'));
@@ -288,7 +288,7 @@ final class VenueRentalPreRequestTest extends TestCase
 
     private function person(): array
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         return [$user, app(CurrentActorResolver::class)->resolve($user, null)];
     }
 

@@ -56,12 +56,12 @@ final class VenueRentalBillingChainTest extends TestCase
     /** @return array{User,Actor,Venue,User,Actor} */
     private function scenario(bool $agent = false): array
     {
-        $admin = User::factory()->create([
+        $admin = User::factory()->withVerifiedContact()->create([
             'system_role' => UserSystemRoleEnum::SUPERADMIN,
             'status' => UserStatusEnum::CONFIRMED,
         ]);
         $adminActor = app(CurrentActorResolver::class)->resolve($admin, null);
-        $client = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $client = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $clientActor = app(CurrentActorResolver::class)->resolve($client, null);
         $venue = Venue::factory()->create([
             'status' => VenueStatusEnum::CONFIRMED,
@@ -96,7 +96,7 @@ final class VenueRentalBillingChainTest extends TestCase
             'access_level' => 'owner',
         ]);
         if ($agent) {
-            $agentUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+            $agentUser = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
             $delegation = Contract::query()->create([
                 'family' => ContractFamilyEnum::MEMBERSHIP,
                 'status' => ContractStatusEnum::ACTIVE,

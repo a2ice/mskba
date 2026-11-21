@@ -32,7 +32,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_wizard_renders_selected_entry_type_without_replacing_legacy_create_form(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
@@ -54,7 +54,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_team_picker_exposes_invitable_teams_and_own_opted_out_team_but_hides_unrelated_opted_out_team(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         $actor = Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
@@ -103,7 +103,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_half_court_discovery_keeps_two_hoop_venue_when_only_opposite_half_is_free(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
@@ -193,7 +193,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_wizard_style_3x3_submission_books_the_free_half(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
@@ -259,7 +259,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_legacy_game_training_cannot_be_created_again(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
@@ -292,7 +292,7 @@ final class EventCreationWizardTest extends TestCase
 
     public function test_wizard_preserves_selected_venue_id_after_server_validation_redirect(): void
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->withVerifiedContact()->create(['status' => UserStatusEnum::CONFIRMED]);
         Actor::factory()->create([
             'type' => ActorTypeEnum::USER->value,
             'user_id' => $user->id,
