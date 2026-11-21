@@ -123,6 +123,7 @@ if (root) {
         requireVerified = options.requireVerified === true;
         dialog.returnValue = '';
         dialog.dataset.contactVerified = 'false';
+        dialog.querySelector('[data-contact-add-done-title]').textContent = 'Контакт добавлен';
         continueButton.hidden = true;
         againButton.hidden = false;
         doneClose.hidden = false;
@@ -191,6 +192,7 @@ if (root) {
         continueButton.hidden = !continuation;
         againButton.hidden = continuation;
         doneClose.hidden = continuation;
+        dialog.querySelector('[data-contact-add-done-title]').textContent = continuation ? 'Контакт подтверждён' : 'Контакт добавлен';
         success.textContent = continuation ? 'Контакт успешно подтверждён.' : message;
         window.dispatchEvent(new CustomEvent('mskba:contact:updated', {
             detail: { verified, embedded },

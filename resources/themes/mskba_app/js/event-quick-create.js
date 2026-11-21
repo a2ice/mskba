@@ -366,7 +366,7 @@
         }
         modal.addEventListener('close',()=>{
             if(!dialog.open)dialog.showModal();
-            if(modal.returnValue==='verified'){
+            if(modal.dataset.contactVerified==='true'){
                 pendingContact=null;
                 contactButton.hidden=true;
                 report('');

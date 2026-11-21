@@ -205,7 +205,8 @@ final class EventVenueBookingController extends Controller
                     }
                     // The final submission is the only point where the event can change.
                     // All changes and the booking share the same transaction.
-                    $availability->assertAvailable($venue, $start, $end, scope: $selection['scope'], court: $selection['court']);
+                    $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+                    $availability->assertAvailable($venue, $start->setTimezone($databaseTimezone), $end->setTimezone($databaseTimezone), scope: $selection['scope'], court: $selection['court']);
                     if ($this->selectionChangesEvent($event, $selection)) {
                         if ($event->starts_at === null) {
                             $timezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
@@ -386,8 +387,10 @@ final class EventVenueBookingController extends Controller
         if (in_array($refresh['state'], ['failed', 'updating'], true)) {
             throw new InvalidArgumentException($refresh['message'] ?? 'Не удалось проверить актуальное расписание.');
         }
-        app(VenueEventAvailability::class)->assertAvailable($venue, $start, $end, scope: $scope, court: $court);
-        if (app(EffectiveVenueHours::class)->intervals($venue, $court, $start) === null) {
+        $databaseTimezone = DB::connection()->getConfig('timezone') ?: config('app.timezone', 'UTC');
+        $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
+        app(VenueEventAvailability::class)->assertAvailable($venue, $start->setTimezone($databaseTimezone), $end->setTimezone($databaseTimezone), scope: $scope, court: $court);
+        if (app(EffectiveVenueHours::class)->intervals($venue, $court, $start->setTimezone($timezone)) === null) {
             throw new InvalidArgumentException('Для выбранного времени нет подтверждённого расписания.');
         }
     }

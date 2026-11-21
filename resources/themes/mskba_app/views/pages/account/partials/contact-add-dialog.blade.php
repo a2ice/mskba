@@ -66,7 +66,7 @@
                 </div>
             @endif
             <section data-contact-add-step="done" hidden>
-                <h3>Контакт добавлен</h3>
+                <h3 data-contact-add-done-title>Контакт добавлен</h3>
                 <p data-contact-add-success>Новый контакт появился в списке ниже. Подтверждение можно выполнить отдельно.</p>
                 <div class="app-contact-wizard__trigger">
                     <button type="button" class="button primary" data-contact-add-again>Добавить ещё контакт</button>
