@@ -33,8 +33,8 @@
     <div class="studio-report-chat" data-studio-report-chat>
         <h3>Комментарии</h3>
         <div class="venue-play-dialog__rsvp studio-report-reactions" role="group" aria-label="Оценка мероприятия">
-            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
-            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
+            <button type="button" class="button secondary" data-report-reaction="like" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H3V10zM7 10l5-7a2 2 0 0 1 2 2v5h5a2 2 0 0 1 2 2l-2 7a2 2 0 0 1-2 2H7"/></svg>Нравится</button>
+            <button type="button" class="button secondary" data-report-reaction="dislike" aria-pressed="false" @disabled(!$reportViewerEligible && $state !== 'report-guest')><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H3v11zM7 14l5 7a2 2 0 0 0 2-2v-5h5a2 2 0 0 0 2-2l-2-7a2 2 0 0 0-2-2H7"/></svg>Не нравится</button>
         </div>
         @include('components.event-discussion', ['chatEvent'=>(object)['id'=>'studio-report'], 'chatCanRespond'=>false,'chatShowRoster'=>false])
     </div>

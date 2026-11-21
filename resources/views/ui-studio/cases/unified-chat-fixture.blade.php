@@ -22,9 +22,12 @@ const modalMode = !reportMode && !pageMode;
 const state = @json($state);
 const eventFinished = pageRoot.dataset.eventFinished === 'true';
 let viewerAuthenticated = !['guest','report-guest'].includes(state);
+const reportEligible = pageRoot.dataset.reportViewerEligible === 'true';
+const reportViewer = state === 'report-owner' ? 'olsen' : 'superadmin';
+const mayReact = () => eventFinished && viewerAuthenticated && reportEligible;
 let isParticipant = ['confirmed','tentative','editing','report-owner','report-admin','discussion-owner','discussion-closed'].includes(state);
 const mayPost = () => reportMode
-    ? eventFinished && viewerAuthenticated && pageRoot.dataset.reportCommentsEnabled === 'true'
+    ? mayReact() && pageRoot.dataset.reportCommentsEnabled === 'true'
     : pageMode ? !eventFinished && isParticipant && pageRoot.dataset.discussionEnabled === 'true' : state !== 'disabled';
 let postingAllowed = mayPost();
 let editing = null;
@@ -151,7 +154,7 @@ function insertMention(name) {
     field.setSelectionRange(field.value.length, field.value.length);
     scrollToMessagesEnd();
 }
-const canMentionReport = () => eventFinished && viewerAuthenticated && pageRoot.dataset.reportCommentsEnabled === 'true';
+const canMentionReport = () => mayReact() && pageRoot.dataset.reportCommentsEnabled === 'true';
 function rosterRow(name, status = 'confirmed') {
     const li = document.createElement('li');
     const participant = document.createElement('button');
@@ -213,10 +216,10 @@ if (reportMode) {
     field.placeholder='Написать комментарий';field.setAttribute('aria-label','Написать комментарий');
     submit.setAttribute('aria-label','Отправить комментарий');submit.title='Отправить комментарий';
     dialog.querySelector('.venue-play-dialog__wall').setAttribute('aria-label','Комментарии к мероприятию');
-    if (['report','report-guest','report-closed'].includes(state)) {
+    if (['report','report-guest','report-outsider','report-closed'].includes(state)) {
         append('Событие','Пользователю olsen нравится мероприятие.','like',false,'2026-11-19T14:10:00+03:00');
         append('olsen','Отлично поиграли, спасибо всем!',null,false,'2026-11-19T14:12:00+03:00');
-        append('superadmin','До встречи на следующей игре!',null,true,'2026-11-19T14:15:00+03:00');
+        append('superadmin','До встречи на следующей игре!',null,reportEligible && reportViewer === 'superadmin','2026-11-19T14:15:00+03:00');
     }
 } else if (state !== 'empty') {
     append('Событие','olsen пойдёт на мероприятие.','confirmed',false,'2026-11-19T18:20:00+03:00');
@@ -243,7 +246,8 @@ function setPosting(allowed) {
     commentNotice.hidden = postingAllowed;
     if(reportMode) {
         if(pageRoot.dataset.reportCommentsEnabled !== 'true')commentNotice.textContent='Комментарии закрыты.';
-        else if(!viewerAuthenticated)commentNotice.replaceChildren('Чтобы оставить комментарий, необходимо авторизоваться. ',loginLink);
+        else if(!viewerAuthenticated)commentNotice.replaceChildren('Оценивать и комментировать могут только участники и организатор мероприятия. ',loginLink);
+        else if(!reportEligible)commentNotice.textContent='Оценивать и комментировать могут только участники и организатор мероприятия.';
     } else if(eventFinished)commentNotice.textContent='Мероприятие завершено. Обсуждение закрыто.';
     else if(pageMode && pageRoot.dataset.discussionEnabled !== 'true')commentNotice.textContent='Обсуждение закрыто.';
     else commentNotice.replaceChildren('Написать сообщение могут участники мероприятия. ', participationLink);
@@ -259,21 +263,32 @@ if(pageMode || reportMode){
 if(reportMode){
     pageRoot.addEventListener('studio:report-mention',event=>insertMention(event.detail.name));
     let reaction=null, pendingReaction=null;
+    // Count active likes, not historical "like" events. Other users' demo votes remain unchanged.
+    const othersLikes=Number(pageRoot.dataset.reportInitialLikes)||0;
+    const tally=pageRoot.querySelector('[data-report-like-count]');
     const controls=[...dialog.querySelectorAll('[data-report-reaction]')];
+    function syncReaction(){
+        const likes=othersLikes+Number(reaction==='like');
+        if(tally){tally.textContent=String(likes);tally.setAttribute('aria-label','Лайков: '+likes);}
+        controls.forEach(b=>{
+            b.disabled=viewerAuthenticated&&!reportEligible;
+            b.setAttribute('aria-pressed',String(b.dataset.reportReaction===reaction));
+        });
+    }
     function applyReaction(value){
-        const next=reaction===value?null:value;
-        if(next===reaction)return;
-        reaction=next;
-        controls.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reportReaction===reaction)));
-        append('Событие',reaction==='like'?'Пользователю superadmin нравится мероприятие.':reaction==='dislike'?'Пользователю superadmin не нравится мероприятие.':'Пользователь superadmin убрал оценку.',reaction);
+        if(!mayReact()||!['like','dislike'].includes(value))return;
+        reaction=reaction===value?null:value;
+        syncReaction();
+        append('Событие',reaction==='like'?'Пользователю '+reportViewer+' нравится мероприятие.':reaction==='dislike'?'Пользователю '+reportViewer+' не нравится мероприятие.':'Пользователь '+reportViewer+' убрал оценку.',reaction);
     }
     controls.forEach(b=>b.addEventListener('click',()=>{
         const value=b.dataset.reportReaction;
         if(!viewerAuthenticated){pendingReaction=value;pageRoot.dispatchEvent(new CustomEvent('studio:report-auth'));return;}
-        applyReaction(value);
+        if(mayReact())applyReaction(value);
     }));
-    pageRoot.addEventListener('studio:authenticated',()=>{if(pendingReaction){applyReaction(pendingReaction);pendingReaction=null;}});
+    pageRoot.addEventListener('studio:authenticated',()=>{syncReaction();if(pendingReaction){applyReaction(pendingReaction);pendingReaction=null;}});
     pageRoot.addEventListener('studio:auth-cancelled',()=>{pendingReaction=null;});
+    syncReaction();
 }
 if(!reportMode)dialog.addEventListener('studio:participation-changed', event => {
     if (!event.detail.allowed && editing) stopEdit();
@@ -297,7 +312,7 @@ form.addEventListener('submit',event=>{
         regroup();
         messages.scrollTop = messages.scrollHeight;
     } else {
-        append('superadmin',field.value.trim(),null,true);
+        append(reportMode ? reportViewer : 'superadmin',field.value.trim(),null,true);
     }
     stopEdit();
 });

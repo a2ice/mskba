@@ -1,15 +1,19 @@
-{{-- UI Studio r5 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
+{{-- UI Studio r6 / #933. Venue detail classes + shared event discussion. Local fixtures only. --}}
 @php
     $isAppTheme = true;
     $primaryButton = 'button primary';
     $secondaryButton = 'button secondary';
     $chatEvent = (object) ['id' => 'studio-event'];
-    $eventFinished = in_array($state, ['report','report-empty','report-owner','report-admin','report-guest','report-closed'], true);
+    $eventFinished = in_array($state, ['report','report-empty','report-owner','report-admin','report-guest','report-outsider','report-closed'], true);
     $reportOwner = in_array($state, ['report-owner','report-admin'], true);
     $canManageFeedback = $reportOwner || $state === 'discussion-owner';
     $discussionEnabled = $state !== 'discussion-closed';
     $reportCommentsEnabled = $state !== 'report-closed';
-    $reportPublished = in_array($state, ['report','report-guest','report-closed'], true);
+    $reportPublished = in_array($state, ['report','report-guest','report-outsider','report-closed'], true);
+    // Demo identity: report-owner is olsen; report-admin is not a participant.
+    // The guest's demo login is superadmin, who is on the completed-event roster.
+    $reportViewerEligible = in_array($state, ['report','report-empty','report-owner','report-guest','report-closed'], true);
+    $reportInitialLikes = $reportPublished ? 1 : 0;
     $hasRental = $eventFinished || in_array($state, ['booked','inactive'], true);
     $rentalActive = $state === 'booked';
     $eventTitle = 'Игра на м. Яхромская';
@@ -21,7 +25,7 @@
 @include('components.event-discussion-styles')
 @include('ui-studio.cases.unified-chat-candidate')
 @include('ui-studio.cases.event-detail-candidate')
-<section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat data-event-finished="{{ $eventFinished ? 'true' : 'false' }}" data-discussion-enabled="{{ $discussionEnabled ? 'true' : 'false' }}" data-report-comments-enabled="{{ $reportCommentsEnabled ? 'true' : 'false' }}" aria-labelledby="studio-event-title">
+<section class="container app-venue-page studio-event-page venue-play-dialog--app" data-studio-chat data-event-finished="{{ $eventFinished ? 'true' : 'false' }}" data-discussion-enabled="{{ $discussionEnabled ? 'true' : 'false' }}" data-report-comments-enabled="{{ $reportCommentsEnabled ? 'true' : 'false' }}" data-report-viewer-eligible="{{ $reportViewerEligible ? 'true' : 'false' }}" data-report-initial-likes="{{ $reportInitialLikes }}" aria-labelledby="studio-event-title">
     <div class="app-venue-page__hero-grid">
         <div class="app-venue-gallery panel" data-venue-gallery>
             <div class="app-venue-gallery__stage">
@@ -30,7 +34,7 @@
             </div>
         </div>
         <div class="app-venue-intro panel">
-            <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span>@if($eventFinished)<span class="badge">Завершено</span>@endif</div>
+            <div class="app-venue-intro__badges"><span class="badge">Игра</span><span class="badge">Публичное</span>@if($eventFinished)<span class="badge studio-event-completed">Завершено <span class="studio-event-like-tally" title="Количество лайков"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#heart"/></svg><span data-report-like-count role="status" aria-live="polite" aria-label="Лайков: {{ $reportInitialLikes }}">{{ $reportInitialLikes }}</span></span></span>@endif</div>
             <div class="app-entity-heading"><h1 id="studio-event-title">{{ $eventTitle }}</h1></div>
             <div class="studio-event-time"><strong>{{ $eventTime }}</strong>@unless($rentalActive || $eventFinished)<span class="muted">Время предварительное</span>@endunless</div>
             <p class="app-venue-intro__copy">Хуперы любого уровня, главное желание</p>

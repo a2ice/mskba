@@ -9,10 +9,10 @@ return [
         'event-detail' => [
             'title' => 'Страница мероприятия',
             'issue' => 933,
-            'revision' => 5,
+            'revision' => 6,
             'status' => 'На визуальной приёмке',
             'templates' => ['mskba_app'],
-            'states' => ['guest' => 'Гость', 'normal' => 'Авторизован, не участвует', 'confirmed' => 'Пойду', 'tentative' => 'Подумаю', 'booked' => 'Активная аренда', 'inactive' => 'Неактивная аренда', 'editing' => 'Редактирование сообщения', 'report' => 'Опубликованный отчёт', 'report-empty' => 'Завершено, без отчёта', 'report-owner' => 'Завершено, организатор', 'report-admin' => 'Завершено, суперадминистратор', 'report-guest' => 'Завершено, гость', 'report-closed' => 'Комментарии закрыты', 'discussion-owner' => 'Организатор, до мероприятия', 'discussion-closed' => 'Обсуждение закрыто'],
+            'states' => ['guest' => 'Гость', 'normal' => 'Авторизован, не участвует', 'confirmed' => 'Пойду', 'tentative' => 'Подумаю', 'booked' => 'Активная аренда', 'inactive' => 'Неактивная аренда', 'editing' => 'Редактирование сообщения', 'report' => 'Опубликованный отчёт', 'report-empty' => 'Завершено, без отчёта', 'report-owner' => 'Завершено, организатор', 'report-admin' => 'Завершено, суперадминистратор', 'report-guest' => 'Завершено, гость', 'report-outsider' => 'Завершено, не участник', 'report-closed' => 'Комментарии закрыты', 'discussion-owner' => 'Организатор, до мероприятия', 'discussion-closed' => 'Обсуждение закрыто'],
         ],
         'event-feedback-settings' => [
             'title' => 'Мероприятие — настройки обсуждения и комментариев',
