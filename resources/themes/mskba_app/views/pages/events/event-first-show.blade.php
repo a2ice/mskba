@@ -119,7 +119,19 @@
             @else
                 <p class="muted">Площадка пока не забронирована.</p>
                 @if($canEdit && $event->starts_at && $event->status === EventStatusEnum::PUBLISHED)
-                    @if($court && ($policy || $venue->hasFreeAccess()))
+                    @if(!app(\App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter::class)->hasVerifiedContact(auth()->user()))
+                        @php
+                            $pendingEmail = auth()->user()->canonical()->identityContactsQuery()
+                                ->where('type', 'email')->whereNull('verified_at')->latest('id')->first();
+                        @endphp
+                        <div class="app-event-contact-required" role="status">
+                            <p>Для бронирования необходимо иметь подтверждённый контакт</p>
+                            <button type="button" class="button primary" data-event-contact-required
+                                @if($pendingEmail) data-contact-id="{{ $pendingEmail->id }}" data-contact-value="{{ $pendingEmail->value }}" @endif>
+                                {{ $pendingEmail ? 'Продолжить подтверждение' : 'Подтвердить контакт' }}
+                            </button>
+                        </div>
+                    @elseif($court && ($policy || $venue->hasFreeAccess()))
                         <form method="POST" action="{{ $policy ? route('events.booking.quote', $event->routeIdentifier()) : route('events.booking.store', $event->routeIdentifier()) }}">
                             @csrf <input type="hidden" name="expected_version" value="{{ $event->participation_confirmation_version }}">
                             <button class="button primary" type="submit">{{ $policy ? 'Рассчитать и забронировать' : 'Забронировать бесплатную площадку' }}</button>
@@ -262,6 +274,7 @@
 .app-event-person p{font-size:.9rem;margin-top:4px}.app-event-person .badge{margin-inline-start:6px}
 .app-event-dot{color:var(--warning)}
 .app-event-dot[data-response="confirmed"]{color:var(--success)}.app-event-dot[data-response="left"]{color:var(--danger)}
+.app-event-contact-required{display:grid;gap:12px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line));border-radius:12px;padding:16px;margin-bottom:8px}.app-event-contact-required .button{justify-self:start}
 .app-event-description{white-space:pre-wrap}
 html:has(.app-event-dialog[open]){overflow:hidden}
 .app-event-dialog>form{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;overflow:hidden}
@@ -282,6 +295,20 @@ html:has(.app-event-dialog[open]){overflow:hidden}
 @endpush
 @push('scripts')
 <script type="module">
+const requiredContact=document.querySelector('[data-event-contact-required]');
+if(requiredContact){
+    let changed=false;
+    const contactModal=document.querySelector('[data-contact-add-modal]');
+    requiredContact.addEventListener('click',()=>{
+        if(!contactModal){location.reload();return;}
+        window.dispatchEvent(new CustomEvent('mskba:contact:add',{detail:{
+            resume:requiredContact.dataset.contactId ? {id:Number(requiredContact.dataset.contactId),value:requiredContact.dataset.contactValue} : null
+        }}));
+    });
+    window.addEventListener('mskba:contact:pending',()=>{changed=true;requiredContact.textContent='Продолжить подтверждение';});
+    window.addEventListener('mskba:contact:updated',()=>{changed=true;});
+    contactModal?.addEventListener('close',()=>{if(changed)location.reload();});
+}
 document.querySelectorAll('[data-event-dialog-open]').forEach(button=>button.addEventListener('click',()=>document.getElementById(button.dataset.eventDialogOpen)?.showModal()));
 document.querySelectorAll('[data-event-dialog-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 document.querySelectorAll('.app-event-dialog').forEach(dialog=>{let outside=false;const onBackdrop=e=>{const rect=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom);};dialog.addEventListener('pointerdown',e=>outside=onBackdrop(e));dialog.addEventListener('pointerup',e=>{if(outside&&onBackdrop(e))dialog.close();outside=false;});dialog.addEventListener('pointercancel',()=>outside=false);});
