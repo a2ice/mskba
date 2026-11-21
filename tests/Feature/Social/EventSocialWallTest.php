@@ -371,4 +371,30 @@ final class EventSocialWallTest extends TestCase
         $event->update(['visibility' => EventVisibilityEnum::PRIVATE]);
         $this->getJson($wall)->assertNotFound();
     }
+
+    public function test_report_feedback_is_separate_and_likes_count_current_votes(): void
+    {
+        $event = $this->event();
+        $author = $event->organizerActor->user;
+        $this->actingAs($author);
+        $this->postWall($event, 'До игры')->assertCreated();
+        $reaction = route('events.report.reaction', $event->routeIdentifier());
+        $report = route('events.wall.index', ['event' => $event->routeIdentifier(), 'report' => 1]);
+        $postReport = route('events.wall.store', ['event' => $event->routeIdentifier(), 'report' => 1]);
+        $this->putJson($reaction, ['reaction'=>'like'])->assertForbidden();
+        $event->forceFill(['starts_at'=>now()->subHours(3), 'ends_at'=>now()->subHour(), 'status'=>EventStatusEnum::COMPLETED])->save();
+        $this->postWall($event, 'Закрыто')->assertForbidden();
+        $this->putJson($reaction, ['reaction'=>'like'])->assertOk()->assertJsonPath('likes', 1);
+        $this->putJson($reaction, ['reaction'=>'like'])->assertOk()->assertJsonPath('likes', 1);
+        $this->putJson($reaction, ['reaction'=>'dislike'])->assertOk()->assertJsonPath('likes', 0);
+        $this->travel(61)->seconds();
+        $this->postJson($postReport, ['body'=>'Спасибо!', 'client_request_id'=>(string)Str::uuid()])->assertCreated();
+        $this->getJson($report)->assertOk()->assertJsonCount(3, 'entries')->assertJsonPath('can_post', true);
+        $this->getJson(route('events.wall.index', $event->routeIdentifier()))->assertOk()->assertJsonCount(1, 'entries')->assertJsonPath('can_post', false);
+        $event->forceFill(['report_comments_enabled'=>false])->save();
+        $this->postJson($postReport, ['body'=>'Закрыто', 'client_request_id'=>(string)Str::uuid()])->assertForbidden();
+        $this->putJson($reaction, ['reaction'=>null])->assertOk()->assertJsonPath('likes', 0);
+        $this->actingAs($this->confirmedUser())->putJson($reaction, ['reaction'=>'like'])->assertForbidden();
+        $this->getJson($report)->assertOk()->assertJsonPath('can_react', false)->assertJsonPath('can_post', false);
+    }
 }

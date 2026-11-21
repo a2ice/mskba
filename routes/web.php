@@ -828,6 +828,8 @@ Route::prefix('events')->group(function () {
             ->name('events.leave');
         Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
             ->name('events.participation');
+        Route::put('/{event}/report/reaction', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'reaction'])
+            ->name('events.report.reaction');
         Route::post('/{event}/wall', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'store'])
             ->name('events.wall.store');
         Route::patch('/{event}/wall/{entry}', [\App\Modules\Social\Presentation\Http\Controllers\EventSocialWallController::class, 'update'])

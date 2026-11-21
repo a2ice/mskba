@@ -27,7 +27,7 @@ final class SocialWallService
         // visitors need to understand who is attending before deciding to join.
         // Writing remains restricted to confirmed participants and organizers.
         if ($event->visibility === EventVisibilityEnum::PUBLIC
-            && $event->status === \App\Modules\Event\Domain\Enums\EventStatusEnum::PUBLISHED) {
+            && in_array($event->status, [\App\Modules\Event\Domain\Enums\EventStatusEnum::PUBLISHED, \App\Modules\Event\Domain\Enums\EventStatusEnum::COMPLETED], true)) {
             return true;
         }
 
@@ -47,7 +47,24 @@ final class SocialWallService
             || $event->organizerActor()->whereIn('user_id', $identityIds)->exists();
     }
 
-    public function canCommentOnEvent(Event $event, ?User $user): bool
+    public function canCommentOnEvent(Event $event, ?User $user, bool $report = false): bool
+    {
+        if ($report) {
+            return ($event->report_comments_enabled ?? true) && $this->canReactToEvent($event, $user);
+        }
+
+        return ! $event->hasEnded()
+            && ! in_array($event->status, [\App\Modules\Event\Domain\Enums\EventStatusEnum::CANCELLED], true)
+            && ($event->discussion_enabled ?? true)
+            && $this->isEventMember($event, $user);
+    }
+
+    public function canReactToEvent(Event $event, ?User $user): bool
+    {
+        return $event->hasEnded() && $this->isEventMember($event, $user, true);
+    }
+
+    private function isEventMember(Event $event, ?User $user, bool $confirmedOnly = false): bool
     {
         $user = $user?->canonical();
         if ($user === null || $user->trashed() || $user->isBlocked()) {
@@ -64,7 +81,7 @@ final class SocialWallService
         $isParticipant = $event->participants()
             ->whereIn('user_id', $identityIds)
             ->where('confirmation_version', $event->participation_confirmation_version)
-            ->whereIn('status', [
+            ->whereIn('status', $confirmedOnly ? [EventParticipantStatusEnum::CONFIRMED->value] : [
                 EventParticipantStatusEnum::CONFIRMED->value,
                 EventParticipantStatusEnum::TENTATIVE->value,
             ])->exists();
@@ -73,10 +90,10 @@ final class SocialWallService
     }
 
     /** @return Collection<int, SocialWallEntry> */
-    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null, ?int $beforeId = null): Collection
+    public function latestForEvent(Event $event, int $limit = 50, ?int $afterId = null, ?int $beforeId = null, bool $report = false): Collection
     {
         $query = SocialWallEntry::query()
-            ->where('scope_type', 'event')->where('scope_id', $event->id)
+            ->where('scope_type', $report ? 'event_report' : 'event')->where('scope_id', $event->id)
             ->whereNull('deleted_at')
             ->with(['actor:id,username,nickname,deleted_at', 'target:id,username,deleted_at']);
 
@@ -111,9 +128,9 @@ final class SocialWallService
         ]);
     }
 
-    public function postEventComment(Event $event, User $user, string $body, string $requestId): SocialWallEntry
+    public function postEventComment(Event $event, User $user, string $body, string $requestId, bool $report = false): SocialWallEntry
     {
-        if (! $this->canCommentOnEvent($event, $user)) {
+        if (! $this->canCommentOnEvent($event, $user, $report)) {
             abort(403, 'Комментировать могут организатор и подтверждённые участники мероприятия.');
         }
 
@@ -127,9 +144,11 @@ final class SocialWallService
 
         $user = $user->canonical();
 
-        return $this->limiter->run($user, 'event', $event->id, 'comment', function () use ($event, $user, $body, $requestId): array {
+        return $this->limiter->run($user, 'event', $event->id, 'comment', function () use ($event, $user, $body, $requestId, $report): array {
+            $lockedEvent = Event::query()->lockForUpdate()->findOrFail($event->id);
+            abort_unless($this->canCommentOnEvent($lockedEvent, $user, $report), 403);
             $existing = SocialWallEntry::query()
-                ->where('scope_type', 'event')->where('scope_id', $event->id)
+                ->where('scope_type', $report ? 'event_report' : 'event')->where('scope_id', $event->id)
                 ->where('actor_user_id', $user->id)
                 ->where('client_request_id', $requestId)->first();
             if ($existing !== null) {
@@ -137,7 +156,7 @@ final class SocialWallService
             }
 
             $entry = SocialWallEntry::query()->create([
-                'scope_type' => 'event',
+                'scope_type' => $report ? 'event_report' : 'event',
                 'scope_id' => $event->id,
                 'actor_user_id' => $user->id,
                 'kind' => 'comment',
@@ -149,7 +168,7 @@ final class SocialWallService
         });
     }
 
-    public function editOwnEventComment(Event $event, User $user, int $id, string $body, int $version): SocialWallEntry
+    public function editOwnEventComment(Event $event, User $user, int $id, string $body, int $version, bool $report = false): SocialWallEntry
     {
         $body = trim($body);
         if ($body === '' || mb_strlen($body) > 200) {
@@ -157,11 +176,13 @@ final class SocialWallService
         }
 
         $user = $user->canonical();
-        abort_unless($this->canCommentOnEvent($event, $user), 403);
+        abort_unless($this->canCommentOnEvent($event, $user, $report), 403);
 
-        return $this->limiter->run($user, 'event', $event->id, 'comment_edit', function () use ($event, $user, $id, $body, $version): array {
+        return $this->limiter->run($user, 'event', $event->id, 'comment_edit', function () use ($event, $user, $id, $body, $version, $report): array {
+            $lockedEvent = Event::query()->lockForUpdate()->findOrFail($event->id);
+            abort_unless($this->canCommentOnEvent($lockedEvent, $user, $report), 403);
             $entry = SocialWallEntry::query()
-                ->where('scope_type', 'event')->where('scope_id', $event->id)
+                ->where('scope_type', $report ? 'event_report' : 'event')->where('scope_id', $event->id)
                 ->where('kind', 'comment')->where('actor_user_id', $user->id)
                 ->whereNull('deleted_at')->whereNull('hidden_at')
                 ->lockForUpdate()->findOrFail($id);
@@ -190,13 +211,15 @@ final class SocialWallService
         });
     }
 
-    public function deleteOwnEventComment(Event $event, User $user, int $id): SocialWallEntry
+    public function deleteOwnEventComment(Event $event, User $user, int $id, bool $report = false): SocialWallEntry
     {
         $user = $user->canonical();
 
-        return $this->limiter->run($user, 'event', $event->id, 'comment_delete', function () use ($event, $user, $id): array {
+        return $this->limiter->run($user, 'event', $event->id, 'comment_delete', function () use ($event, $user, $id, $report): array {
+            $lockedEvent = Event::query()->lockForUpdate()->findOrFail($event->id);
+            abort_unless($this->canCommentOnEvent($lockedEvent, $user, $report), 403);
             $entry = SocialWallEntry::query()
-                ->where('scope_type', 'event')->where('scope_id', $event->id)
+                ->where('scope_type', $report ? 'event_report' : 'event')->where('scope_id', $event->id)
                 ->where('kind', 'comment')->where('actor_user_id', $user->id)
                 ->lockForUpdate()->findOrFail($id);
 
@@ -210,6 +233,44 @@ final class SocialWallService
             ])->save();
 
             return ['changed' => true, 'value' => $entry->load(['actor', 'target'])];
+        });
+    }
+
+    /** Current votes are distinct from immutable action history. */
+    public function reportFeedback(Event $event, ?User $user): array
+    {
+        $query = DB::table('event_report_reactions')->where('event_id', $event->id);
+        $viewer = $user?->canonical();
+
+        return [
+            'likes' => (clone $query)->where('reaction', 'like')->count(),
+            'reaction' => $viewer ? (clone $query)->where('user_id', $viewer->id)->value('reaction') : null,
+            'can_react' => $this->canReactToEvent($event, $viewer),
+        ];
+    }
+
+    public function setEventReaction(Event $event, User $user, ?string $reaction): array
+    {
+        abort_unless(in_array($reaction, [null, 'like', 'dislike'], true), 422);
+        $user = $user->canonical();
+        abort_unless($this->canReactToEvent($event, $user), 403);
+
+        return $this->limiter->run($user, 'event_report', $event->id, 'reaction', function () use ($event, $user, $reaction): array {
+            $locked = Event::query()->lockForUpdate()->findOrFail($event->id);
+            abort_unless($this->canReactToEvent($locked, $user), 403);
+            $key = ['event_id' => $locked->id, 'user_id' => $user->id];
+            $current = DB::table('event_report_reactions')->where($key)->value('reaction');
+            if ($current === $reaction) {
+                return ['changed' => false, 'value' => $this->reportFeedback($locked, $user)];
+            }
+            if ($reaction === null) {
+                DB::table('event_report_reactions')->where($key)->delete();
+            } else {
+                DB::table('event_report_reactions')->updateOrInsert($key, ['reaction' => $reaction, 'updated_at' => now()]);
+            }
+            $this->appendSystem('event_report', $locked->id, $user, 'event_reaction_changed', ['to' => $reaction]);
+
+            return ['changed' => true, 'value' => $this->reportFeedback($locked, $user)];
         });
     }
 
@@ -248,7 +309,7 @@ final class SocialWallService
     public function present(SocialWallEntry $entry): array
     {
         $actor = $entry->actor;
-        $actorName = $entry->scope_type === 'event' && filled($actor?->nickname)
+        $actorName = in_array($entry->scope_type, ['event','event_report'], true) && filled($actor?->nickname)
             ? $actor->nickname : $actor?->username;
         $name = $actor !== null && ! $actor->trashed() && filled($actorName)
             ? $actorName : 'Удалённый пользователь';
@@ -262,6 +323,11 @@ final class SocialWallService
                 'tentative' => 'пока думает, идти ли на мероприятие.',
                 'left' => 'не пойдёт на мероприятие.',
                 default => 'изменил ответ на участие.',
+            },
+            'event_reaction_changed' => match ($status) {
+                'like' => 'Пользователю '.$name.' нравится мероприятие.',
+                'dislike' => 'Пользователю '.$name.' не нравится мероприятие.',
+                default => 'Пользователь '.$name.' убрал оценку.',
             },
             'group_admin_nominated' => $name.' подал заявку на администратора группы.',
             'group_admin_vote_cast' => $name.' подтвердил назначение '.$targetName.' администратором группы.',
@@ -295,6 +361,7 @@ final class SocialWallService
             'hidden' => $hidden,
             'system' => $entry->kind !== 'comment',
             'rsvp_status' => $entry->kind === 'event_rsvp_changed' ? $status : null,
+            'reaction' => $entry->kind === 'event_reaction_changed' && in_array($status, ['like','dislike'], true) ? $status : null,
             'version' => $entry->kind === 'comment' ? (int) ($entry->metadata['version'] ?? 1) : null,
             'date' => $displayDate?->format('d.m.Y H:i'),
             'edited' => $editedAt !== null,
